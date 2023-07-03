@@ -1,6 +1,6 @@
 [workspace]
 members = [
-	"contracts/dao-core",
+	"contracts/dao-dao",
 	"contracts/proposal/*",
 	"contracts/pre-propose/*",
 	"contracts/staking/*",
@@ -74,7 +74,7 @@ cw-vesting = { path = "./contracts/external/cw-vesting" }
 cw20-stake = { path = "./contracts/staking/cw20-stake", version = "2.1.0" }
 cw-stake-tracker = { path = "./packages/cw-stake-tracker", version = "2.1.0" }
 cw721-controllers = { path = "./packages/cw721-controllers", version = "2.1.0" }
-dao-core = { path = "./contracts/dao-core" }
+dao-dao = { path = "./contracts/dao-dao" }
 dao-interface = { path = "./packages/dao-interface", version = "2.1.0" }
 dao-dao-macros = { path = "./packages/dao-dao-macros", version = "2.1.0" }
 dao-pre-propose-approval-single = { path = "./contracts/pre-propose/dao-pre-propose-approval-single", version = "2.1.0" }

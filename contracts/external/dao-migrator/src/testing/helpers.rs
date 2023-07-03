@@ -3,10 +3,10 @@ use cosmwasm_std::{
     WasmMsg,
 };
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
-use dao_core::query::SubDao;
+use dao_dao::query::SubDao;
 use dao_testing::contracts::{
-    cw20_base_contract, cw20_staked_balances_voting_contract, cw4_group_contract,
-    dao_core_contract, proposal_single_contract, v1_dao_core_contract, v1_proposal_single_contract,
+    cw20_base_contract, cw20_staked_balances_voting_contract, cw4_group_contract, dao_dao_contract,
+    proposal_single_contract, v1_dao_dao_contract, v1_proposal_single_contract,
 };
 
 use crate::{
@@ -50,7 +50,7 @@ pub enum VotingType {
 
 pub fn get_v1_code_ids(app: &mut App) -> (CodeIds, V1CodeIds) {
     let code_ids = CodeIds {
-        core: app.store_code(v1_dao_core_contract()),
+        core: app.store_code(v1_dao_dao_contract()),
         proposal_single: app.store_code(v1_proposal_single_contract()),
         cw20_base: app.store_code(cw20_base_contract()),
         cw20_stake: app.store_code(v1_cw20_stake_contract()),
@@ -70,7 +70,7 @@ pub fn get_v1_code_ids(app: &mut App) -> (CodeIds, V1CodeIds) {
 
 pub fn get_v2_code_ids(app: &mut App) -> (CodeIds, V2CodeIds) {
     let code_ids = CodeIds {
-        core: app.store_code(dao_core_contract()),
+        core: app.store_code(dao_dao_contract()),
         proposal_single: app.store_code(proposal_single_contract()),
         cw20_base: app.store_code(cw20_base_contract()),
         cw20_stake: app.store_code(v2_cw20_stake_contract()),

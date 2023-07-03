@@ -2,7 +2,7 @@ use std::borrow::BorrowMut;
 
 use cosmwasm_std::Addr;
 use cw_multi_test::Executor;
-use dao_core::{query::SubDao, state::ProposalModuleStatus};
+use dao_dao::{query::SubDao, state::ProposalModuleStatus};
 
 use crate::{
     testing::{
@@ -71,11 +71,11 @@ pub fn basic_test(voting_type: VotingType, from_core: bool) {
 
     assert_eq!(test_state_v1, test_state_v2);
 
-    let modules: Vec<dao_core::state::ProposalModule> = app
+    let modules: Vec<dao_dao::state::ProposalModule> = app
         .wrap()
         .query_wasm_smart(
             module_addrs.core,
-            &dao_core::msg::QueryMsg::ProposalModules {
+            &dao_dao::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -139,11 +139,11 @@ fn test_migrator_address_is_first() {
 
     assert_eq!(test_state_v1, test_state_v2);
 
-    let modules: Vec<dao_core::state::ProposalModule> = app
+    let modules: Vec<dao_dao::state::ProposalModule> = app
         .wrap()
         .query_wasm_smart(
             module_addrs.core,
-            &dao_core::msg::QueryMsg::ProposalModules {
+            &dao_dao::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -348,11 +348,11 @@ fn test_sub_daos() {
     )
     .unwrap();
 
-    let sub_daos: Vec<dao_core::query::SubDao> = app
+    let sub_daos: Vec<dao_dao::query::SubDao> = app
         .wrap()
         .query_wasm_smart(
             module_addrs.core,
-            &dao_core::msg::QueryMsg::ListSubDaos {
+            &dao_dao::msg::QueryMsg::ListSubDaos {
                 start_after: None,
                 limit: None,
             },

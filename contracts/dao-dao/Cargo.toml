@@ -1,5 +1,5 @@
 [package]
-name = "dao-core"
+name = "dao-dao"
 authors = ["ekez <ekez@withoutdoing.com>"]
 description = "A DAO DAO core module."
 edition = { workspace = true }

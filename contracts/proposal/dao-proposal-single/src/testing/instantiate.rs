@@ -135,7 +135,7 @@ pub(crate) fn instantiate_with_staked_cw721_governance(
         )
         .unwrap();
 
-    let instantiate_core = dao_core::msg::InstantiateMsg {
+    let instantiate_core = dao_dao::msg::InstantiateMsg {
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
@@ -174,9 +174,9 @@ pub(crate) fn instantiate_with_staked_cw721_governance(
         )
         .unwrap();
 
-    let core_state: dao_core::query::DumpStateResponse = app
+    let core_state: dao_dao::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr.clone(), &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr.clone(), &dao_dao::msg::QueryMsg::DumpState {})
         .unwrap();
     let staking_addr = core_state.voting_module;
 
@@ -249,7 +249,7 @@ pub(crate) fn instantiate_with_native_staked_balances_governance(
     let native_stake_id = app.store_code(native_staked_balances_voting_contract());
     let core_contract_id = app.store_code(cw_core_contract());
 
-    let instantiate_core = dao_core::msg::InstantiateMsg {
+    let instantiate_core = dao_dao::msg::InstantiateMsg {
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
@@ -289,9 +289,9 @@ pub(crate) fn instantiate_with_native_staked_balances_governance(
         )
         .unwrap();
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_dao::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr.clone(), &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr.clone(), &dao_dao::msg::QueryMsg::DumpState {})
         .unwrap();
     let native_staking_addr = gov_state.voting_module;
 
@@ -356,7 +356,7 @@ pub(crate) fn instantiate_with_staked_balances_governance(
     let staked_balances_voting_id = app.store_code(cw20_staked_balances_voting_contract());
     let core_contract_id = app.store_code(cw_core_contract());
 
-    let instantiate_core = dao_core::msg::InstantiateMsg {
+    let instantiate_core = dao_dao::msg::InstantiateMsg {
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
@@ -405,9 +405,9 @@ pub(crate) fn instantiate_with_staked_balances_governance(
         )
         .unwrap();
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_dao::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr.clone(), &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr.clone(), &dao_dao::msg::QueryMsg::DumpState {})
         .unwrap();
     let voting_module = gov_state.voting_module;
 
@@ -466,7 +466,7 @@ pub(crate) fn instantiate_with_staking_active_threshold(
         }]
     });
 
-    let governance_instantiate = dao_core::msg::InstantiateMsg {
+    let governance_instantiate = dao_dao::msg::InstantiateMsg {
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
@@ -552,7 +552,7 @@ pub(crate) fn instantiate_with_cw4_groups_governance(
             .collect()
     };
 
-    let governance_instantiate = dao_core::msg::InstantiateMsg {
+    let governance_instantiate = dao_dao::msg::InstantiateMsg {
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),

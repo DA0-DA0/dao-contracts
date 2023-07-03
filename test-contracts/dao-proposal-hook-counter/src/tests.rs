@@ -2,7 +2,7 @@ use cosmwasm_std::{to_binary, Addr, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_hooks::HooksResponse;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
-use dao_core::state::ProposalModule;
+use dao_dao::state::ProposalModule;
 use dao_interface::{Admin, ModuleInstantiateInfo};
 
 use dao_voting::{
@@ -48,11 +48,11 @@ fn cw20_balances_voting() -> Box<dyn Contract<Empty>> {
 
 fn cw_gov_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        dao_core::contract::execute,
-        dao_core::contract::instantiate,
-        dao_core::contract::query,
+        dao_dao::contract::execute,
+        dao_dao::contract::instantiate,
+        dao_dao::contract::query,
     )
-    .with_reply(dao_core::contract::reply);
+    .with_reply(dao_dao::contract::reply);
     Box::new(contract)
 }
 
@@ -65,7 +65,7 @@ fn counters_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-fn instantiate_governance(app: &mut App, code_id: u64, msg: dao_core::msg::InstantiateMsg) -> Addr {
+fn instantiate_governance(app: &mut App, code_id: u64, msg: dao_dao::msg::InstantiateMsg) -> Addr {
     app.instantiate_contract(
         code_id,
         Addr::unchecked(CREATOR_ADDR),
@@ -94,7 +94,7 @@ fn instantiate_with_default_governance(
         }]
     });
 
-    let governance_instantiate = dao_core::msg::InstantiateMsg {
+    let governance_instantiate = dao_dao::msg::InstantiateMsg {
         dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
@@ -157,7 +157,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             governance_addr,
-            &dao_core::msg::QueryMsg::ProposalModules {
+            &dao_dao::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },

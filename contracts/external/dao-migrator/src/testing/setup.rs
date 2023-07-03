@@ -291,7 +291,7 @@ pub fn execute_migration(
                 WasmMsg::Migrate {
                     contract_addr: module_addrs.core.to_string(),
                     new_code_id: new_code_ids.core,
-                    msg: to_binary(&dao_core::msg::MigrateMsg::FromV1 {
+                    msg: to_binary(&dao_dao::msg::MigrateMsg::FromV1 {
                         dao_uri: None,
                         params: None,
                     })
@@ -300,7 +300,7 @@ pub fn execute_migration(
                 .into(),
                 WasmMsg::Execute {
                     contract_addr: module_addrs.core.to_string(),
-                    msg: to_binary(&dao_core::msg::ExecuteMsg::UpdateProposalModules {
+                    msg: to_binary(&dao_dao::msg::ExecuteMsg::UpdateProposalModules {
                         to_add: vec![ModuleInstantiateInfo {
                             code_id: migrator_code_id,
                             msg: to_binary(&crate::msg::InstantiateMsg {
@@ -379,13 +379,13 @@ pub fn execute_migration_from_core(
         .map(|addr| {
             (
                 addr.clone().into(),
-                dao_core::migrate_msg::ProposalParams {
+                dao_dao::migrate_msg::ProposalParams {
                     close_proposal_on_execution_failure: true,
-                    pre_propose_info: dao_core::migrate_msg::PreProposeInfo::AnyoneMayPropose {},
+                    pre_propose_info: dao_dao::migrate_msg::PreProposeInfo::AnyoneMayPropose {},
                 },
             )
         })
-        .collect::<Vec<(String, dao_core::migrate_msg::ProposalParams)>>();
+        .collect::<Vec<(String, dao_dao::migrate_msg::ProposalParams)>>();
 
     app.execute_contract(
         sender.clone(),
@@ -396,13 +396,13 @@ pub fn execute_migration_from_core(
             msgs: vec![WasmMsg::Migrate {
                 contract_addr: module_addrs.core.to_string(),
                 new_code_id: new_code_ids.core,
-                msg: to_binary(&dao_core::msg::MigrateMsg::FromV1 {
+                msg: to_binary(&dao_dao::msg::MigrateMsg::FromV1 {
                     dao_uri: None,
-                    params: Some(dao_core::migrate_msg::MigrateParams {
+                    params: Some(dao_dao::migrate_msg::MigrateParams {
                         migrator_code_id,
-                        params: dao_core::migrate_msg::MigrateV1ToV2 {
+                        params: dao_dao::migrate_msg::MigrateV1ToV2 {
                             sub_daos: params.sub_daos.unwrap(),
-                            migration_params: dao_core::migrate_msg::MigrationModuleParams {
+                            migration_params: dao_dao::migrate_msg::MigrationModuleParams {
                                 migrate_stake_cw20_manager: params.migrate_cw20,
                                 proposal_params,
                             },

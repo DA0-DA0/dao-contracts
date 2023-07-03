@@ -3,7 +3,7 @@ use cw_multi_test::{next_block, App, Executor};
 use cw_utils::Duration;
 use dao_interface::{voting::InfoResponse, Admin, ModuleInstantiateInfo};
 use dao_testing::contracts::{
-    cw4_group_contract, dao_core_contract, dao_voting_cw4_contract, proposal_condorcet_contract,
+    cw4_group_contract, dao_dao_contract, dao_voting_cw4_contract, proposal_condorcet_contract,
 };
 use dao_voting::threshold::PercentageThreshold;
 
@@ -71,11 +71,11 @@ impl SuiteBuilder {
 
         let mut app = App::default();
         let condorcet_id = app.store_code(proposal_condorcet_contract());
-        let core_id = app.store_code(dao_core_contract());
+        let core_id = app.store_code(dao_dao_contract());
         let cw4_id = app.store_code(cw4_group_contract());
         let cw4_voting_id = app.store_code(dao_voting_cw4_contract());
 
-        let core_instantiate = dao_core::msg::InstantiateMsg {
+        let core_instantiate = dao_dao::msg::InstantiateMsg {
             admin: None,
             name: "core module".to_string(),
             description: "core module".to_string(),
@@ -111,11 +111,11 @@ impl SuiteBuilder {
                 None,
             )
             .unwrap();
-        let condorcet: Vec<dao_core::state::ProposalModule> = app
+        let condorcet: Vec<dao_dao::state::ProposalModule> = app
             .wrap()
             .query_wasm_smart(
                 &core,
-                &dao_core::msg::QueryMsg::ProposalModules {
+                &dao_dao::msg::QueryMsg::ProposalModules {
                     start_after: None,
                     limit: None,
                 },

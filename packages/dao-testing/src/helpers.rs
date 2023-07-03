@@ -40,7 +40,7 @@ pub fn instantiate_with_cw20_balances_governance(
             .collect()
     };
 
-    let governance_instantiate = dao_core::msg::InstantiateMsg {
+    let governance_instantiate = dao_dao::msg::InstantiateMsg {
         dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
@@ -119,7 +119,7 @@ pub fn instantiate_with_staked_balances_governance(
     let staked_balances_voting_id = app.store_code(staked_balances_voting());
     let core_contract_id = app.store_code(cw_gov_contract());
 
-    let instantiate_core = dao_core::msg::InstantiateMsg {
+    let instantiate_core = dao_dao::msg::InstantiateMsg {
         dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
@@ -168,9 +168,9 @@ pub fn instantiate_with_staked_balances_governance(
         )
         .unwrap();
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_dao::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr.clone(), &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr.clone(), &dao_dao::msg::QueryMsg::DumpState {})
         .unwrap();
     let voting_module = gov_state.voting_module;
 
@@ -235,7 +235,7 @@ pub fn instantiate_with_staking_active_threshold(
         ]
     });
 
-    let governance_instantiate = dao_core::msg::InstantiateMsg {
+    let governance_instantiate = dao_dao::msg::InstantiateMsg {
         dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
@@ -316,7 +316,7 @@ pub fn instantiate_with_cw4_groups_governance(
             .collect()
     };
 
-    let governance_instantiate = dao_core::msg::InstantiateMsg {
+    let governance_instantiate = dao_dao::msg::InstantiateMsg {
         dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
@@ -400,11 +400,11 @@ fn cw20_staked_balances_voting() -> Box<dyn Contract<Empty>> {
 
 fn cw_gov_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        dao_core::contract::execute,
-        dao_core::contract::instantiate,
-        dao_core::contract::query,
+        dao_dao::contract::execute,
+        dao_dao::contract::instantiate,
+        dao_dao::contract::query,
     )
-    .with_reply(dao_core::contract::reply);
+    .with_reply(dao_dao::contract::reply);
     Box::new(contract)
 }
 

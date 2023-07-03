@@ -178,10 +178,9 @@ pub fn execute_propose(
         _ => return Err(ContractError::InvalidProposer {}),
     };
 
-    let voting_module: Addr = deps.querier.query_wasm_smart(
-        config.dao.clone(),
-        &dao_core::msg::QueryMsg::VotingModule {},
-    )?;
+    let voting_module: Addr = deps
+        .querier
+        .query_wasm_smart(config.dao.clone(), &dao_dao::msg::QueryMsg::VotingModule {})?;
 
     // Voting modules are not required to implement this
     // query. Lacking an implementation they are active by default.
@@ -295,9 +294,7 @@ pub fn execute_execute(
         if !prop.msgs.is_empty() {
             let execute_message = WasmMsg::Execute {
                 contract_addr: config.dao.to_string(),
-                msg: to_binary(&dao_core::msg::ExecuteMsg::ExecuteProposalHook {
-                    msgs: prop.msgs,
-                })?,
+                msg: to_binary(&dao_dao::msg::ExecuteMsg::ExecuteProposalHook { msgs: prop.msgs })?,
                 funds: vec![],
             };
             match config.close_proposal_on_execution_failure {

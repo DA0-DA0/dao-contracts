@@ -1,4 +1,4 @@
-# dao-core
+# dao-dao
 
 This contract is the core module for all DAO DAO DAOs. It handles
 management of voting power and proposal modules, executes messages,
@@ -37,7 +37,7 @@ There are two ways that a non-native token may be added to the DAO
 treasury.
 
 If `automatically_add_[cw20s|cw721s]` is set to true in the [DAO's
-config](https://github.com/DA0-DA0/dao-contracts/blob/74bd3881fdd86829e5e8b132b9952dd64f2d0737/contracts/dao-core/src/state.rs#L16-L21),
+config](https://github.com/DA0-DA0/dao-contracts/blob/74bd3881fdd86829e5e8b132b9952dd64f2d0737/contracts/dao-dao/src/state.rs#L16-L21),
 the DAO will add the token to the treasury upon receiving the token
 via cw20's `Send` method and cw721's `SendNft` method.
 

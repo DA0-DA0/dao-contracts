@@ -100,11 +100,11 @@ pub(crate) fn cw721_stake_contract() -> Box<dyn Contract<Empty>> {
 
 pub(crate) fn cw_core_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        dao_core::contract::execute,
-        dao_core::contract::instantiate,
-        dao_core::contract::query,
+        dao_dao::contract::execute,
+        dao_dao::contract::instantiate,
+        dao_dao::contract::query,
     )
-    .with_reply(dao_core::contract::reply);
+    .with_reply(dao_dao::contract::reply);
     Box::new(contract)
 }
 

@@ -35,12 +35,12 @@ fn cw20_contract() -> Box<dyn Contract<Empty>> {
 
 fn cw_core_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        dao_core::contract::execute,
-        dao_core::contract::instantiate,
-        dao_core::contract::query,
+        dao_dao::contract::execute,
+        dao_dao::contract::instantiate,
+        dao_dao::contract::query,
     )
-    .with_reply(dao_core::contract::reply)
-    .with_migrate(dao_core::contract::migrate);
+    .with_reply(dao_dao::contract::reply)
+    .with_migrate(dao_dao::contract::migrate);
     Box::new(contract)
 }
 
@@ -72,7 +72,7 @@ pub fn test_set_admin() {
 
     // Instantiate core contract using factory.
     let cw_core_code_id = app.store_code(cw_core_contract());
-    let instantiate_core = dao_core::msg::InstantiateMsg {
+    let instantiate_core = dao_dao::msg::InstantiateMsg {
         dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),

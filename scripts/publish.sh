@@ -30,7 +30,7 @@ do
   cd "$START_DIR"
 done
 
-cd contracts/dao-core
+cd contracts/dao-dao
 cargo publish --dry-run
 cd "$START_DIR"
 

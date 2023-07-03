@@ -1,5 +1,5 @@
 {
-  "contract_name": "dao-core",
+  "contract_name": "dao-dao",
   "contract_version": "2.1.0",
   "idl_version": "1.0.0",
   "instantiate": {

@@ -45,7 +45,7 @@ fn main() -> Result<()> {
 
     orc.store_contracts("artifacts", &key, None)?;
 
-    let msg = dao_core::msg::InstantiateMsg {
+    let msg = dao_dao::msg::InstantiateMsg {
         admin: Some(addr.clone()),
         name: "DAO DAO".to_string(),
         description: "A DAO that makes DAO tooling".to_string(),
@@ -114,7 +114,7 @@ fn main() -> Result<()> {
 
     // Init dao dao dao with an initial treasury of 9000000 tokens
     orc.instantiate(
-        "dao_core",
+        "dao_dao",
         "dao_init",
         &msg,
         &key,
@@ -149,7 +149,7 @@ fn main() -> Result<()> {
     );
     println!(
         "NEXT_PUBLIC_CWCORE_CODE_ID={}",
-        orc.contract_map.code_id("dao_core")?
+        orc.contract_map.code_id("dao_dao")?
     );
     println!(
         "NEXT_PUBLIC_CWPROPOSALSINGLE_CODE_ID={}",
@@ -169,7 +169,7 @@ fn main() -> Result<()> {
     );
     println!(
         "NEXT_PUBLIC_DAO_CONTRACT_ADDRESS={}",
-        orc.contract_map.address("dao_core")?
+        orc.contract_map.address("dao_dao")?
     );
     println!(
         "NEXT_PUBLIC_V1_FACTORY_CONTRACT_ADDRESS={}",

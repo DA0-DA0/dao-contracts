@@ -34,7 +34,7 @@ cw-utils = { workspace = true }
 cw4-group = { workspace = true }
 cw20 = { workspace = true }
 cw20-base = { workspace = true }
-dao-core = { workspace = true }
+dao-dao = { workspace = true }
 dao-proposal-hooks = { workspace = true }
 dao-proposal-single = { workspace = true, features = ["library"] }
 dao-testing = { workspace = true }

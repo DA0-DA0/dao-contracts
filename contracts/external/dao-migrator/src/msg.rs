@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use dao_core::query::SubDao;
+use dao_dao::query::SubDao;
 
 use crate::types::{MigrationParams, V1CodeIds, V2CodeIds};
 

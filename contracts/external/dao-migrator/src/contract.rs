@@ -7,7 +7,7 @@ use cosmwasm_std::{
     StdResult, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
-use dao_core::{query::SubDao, state::ProposalModule};
+use dao_dao::{query::SubDao, state::ProposalModule};
 use dao_interface::ModuleInstantiateCallback;
 
 use crate::{
@@ -145,7 +145,7 @@ fn execute_migration_v1_v2(
     // --------------------
     let voting_module: Addr = deps.querier.query_wasm_smart(
         info.sender.clone(),
-        &dao_core::msg::QueryMsg::VotingModule {},
+        &dao_dao::msg::QueryMsg::VotingModule {},
     )?;
 
     let voting_code_id =
@@ -225,7 +225,7 @@ fn execute_migration_v1_v2(
     // We take all the proposal modules of the DAO.
     let proposal_modules: Vec<ProposalModule> = deps.querier.query_wasm_smart(
         info.sender.clone(),
-        &dao_core::msg::QueryMsg::ProposalModules {
+        &dao_dao::msg::QueryMsg::ProposalModules {
             start_after: None,
             limit: None,
         },
@@ -303,7 +303,7 @@ fn execute_migration_v1_v2(
     msgs.push(
         WasmMsg::Execute {
             contract_addr: info.sender.to_string(),
-            msg: to_binary(&dao_core::msg::ExecuteMsg::UpdateSubDaos {
+            msg: to_binary(&dao_dao::msg::ExecuteMsg::UpdateSubDaos {
                 to_add: sub_daos,
                 to_remove: vec![],
             })?,
@@ -316,7 +316,7 @@ fn execute_migration_v1_v2(
     let proposal_hook_msg = SubMsg::reply_on_success(
         WasmMsg::Execute {
             contract_addr: info.sender.to_string(),
-            msg: to_binary(&dao_core::msg::ExecuteMsg::ExecuteProposalHook { msgs })?,
+            msg: to_binary(&dao_dao::msg::ExecuteMsg::ExecuteProposalHook { msgs })?,
             funds: vec![],
         },
         V1_V2_REPLY_ID,
@@ -343,10 +343,10 @@ pub fn reply(deps: DepsMut, env: Env, reply: Reply) -> Result<Response, Contract
             // and only then delete our module if everything worked out.
             let remove_msg = WasmMsg::Execute {
                 contract_addr: core_addr.to_string(),
-                msg: to_binary(&dao_core::msg::ExecuteMsg::ExecuteProposalHook {
+                msg: to_binary(&dao_dao::msg::ExecuteMsg::ExecuteProposalHook {
                     msgs: vec![WasmMsg::Execute {
                         contract_addr: core_addr.to_string(),
-                        msg: to_binary(&dao_core::msg::ExecuteMsg::UpdateProposalModules {
+                        msg: to_binary(&dao_dao::msg::ExecuteMsg::UpdateProposalModules {
                             to_add: vec![],
                             to_disable: vec![env.contract.address.to_string()],
                         })?,

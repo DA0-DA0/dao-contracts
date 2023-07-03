@@ -7,7 +7,7 @@ use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Uint128};
 use cw20_stake::msg::{StakedValueResponse, TotalValueResponse};
 
 use cw_utils::Duration;
-use dao_core::query::{GetItemResponse, PauseInfoResponse};
+use dao_dao::query::{GetItemResponse, PauseInfoResponse};
 use dao_voting::{
     pre_propose::ProposalCreationPolicy, threshold::PercentageThreshold, threshold::Threshold,
 };
@@ -35,12 +35,12 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
     let dao = res.unwrap();
 
     let res = chain.orc.execute(
-        "dao_core",
+        "dao_dao",
         "exc_admin_msgs_pause_dao_fail",
-        &dao_core::msg::ExecuteMsg::ExecuteAdminMsgs {
+        &dao_dao::msg::ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
                 contract_addr: dao.addr,
-                msg: to_binary(&dao_core::msg::ExecuteMsg::Pause {
+                msg: to_binary(&dao_dao::msg::ExecuteMsg::Pause {
                     duration: Duration::Time(100),
                 })
                 .unwrap(),
@@ -55,7 +55,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
 
     let res = chain
         .orc
-        .query("dao_core", &dao_core::msg::QueryMsg::PauseInfo {})
+        .query("dao_dao", &dao_dao::msg::QueryMsg::PauseInfo {})
         .unwrap();
     let res: PauseInfoResponse = res.data().unwrap();
 
@@ -74,12 +74,12 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
     chain
         .orc
         .execute(
-            "dao_core",
+            "dao_dao",
             "exc_admin_msgs_pause_dao",
-            &dao_core::msg::ExecuteMsg::ExecuteAdminMsgs {
+            &dao_dao::msg::ExecuteMsg::ExecuteAdminMsgs {
                 msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
                     contract_addr: dao.addr,
-                    msg: to_binary(&dao_core::msg::ExecuteMsg::Pause {
+                    msg: to_binary(&dao_dao::msg::ExecuteMsg::Pause {
                         duration: Duration::Height(100),
                     })
                     .unwrap(),
@@ -93,7 +93,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
 
     let res = chain
         .orc
-        .query("dao_core", &dao_core::msg::QueryMsg::PauseInfo {})
+        .query("dao_dao", &dao_dao::msg::QueryMsg::PauseInfo {})
         .unwrap();
 
     let res: PauseInfoResponse = res.data().unwrap();
@@ -121,8 +121,8 @@ fn execute_items(chain: &mut Chain) {
     let res = chain
         .orc
         .query(
-            "dao_core",
-            &dao_core::msg::QueryMsg::GetItem {
+            "dao_dao",
+            &dao_dao::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
         )
@@ -134,12 +134,12 @@ fn execute_items(chain: &mut Chain) {
     chain
         .orc
         .execute(
-            "dao_core",
+            "dao_dao",
             "exc_items_set",
-            &dao_core::msg::ExecuteMsg::ExecuteAdminMsgs {
+            &dao_dao::msg::ExecuteMsg::ExecuteAdminMsgs {
                 msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
                     contract_addr: dao.addr.clone(),
-                    msg: to_binary(&dao_core::msg::ExecuteMsg::SetItem {
+                    msg: to_binary(&dao_dao::msg::ExecuteMsg::SetItem {
                         key: "meme".to_string(),
                         value: "foobar".to_string(),
                     })
@@ -155,8 +155,8 @@ fn execute_items(chain: &mut Chain) {
     let res = chain
         .orc
         .query(
-            "dao_core",
-            &dao_core::msg::QueryMsg::GetItem {
+            "dao_dao",
+            &dao_dao::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
         )
@@ -169,12 +169,12 @@ fn execute_items(chain: &mut Chain) {
     chain
         .orc
         .execute(
-            "dao_core",
+            "dao_dao",
             "exc_items_rm",
-            &dao_core::msg::ExecuteMsg::ExecuteAdminMsgs {
+            &dao_dao::msg::ExecuteMsg::ExecuteAdminMsgs {
                 msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
                     contract_addr: dao.addr,
-                    msg: to_binary(&dao_core::msg::ExecuteMsg::RemoveItem {
+                    msg: to_binary(&dao_dao::msg::ExecuteMsg::RemoveItem {
                         key: "meme".to_string(),
                     })
                     .unwrap(),
@@ -189,8 +189,8 @@ fn execute_items(chain: &mut Chain) {
     let res = chain
         .orc
         .query(
-            "dao_core",
-            &dao_core::msg::QueryMsg::GetItem {
+            "dao_dao",
+            &dao_dao::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
         )
@@ -217,7 +217,7 @@ fn instantiate_with_no_admin(chain: &mut Chain) {
     assert_eq!(dao.state.pause_info, PauseInfoResponse::Unpaused {});
     assert_eq!(
         dao.state.config,
-        dao_core::state::Config {
+        dao_dao::state::Config {
             dao_uri: None,
             name: "DAO DAO".to_string(),
             description: "A DAO that makes DAO tooling".to_string(),
@@ -251,7 +251,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
     assert_eq!(dao.state.pause_info, PauseInfoResponse::Unpaused {});
     assert_eq!(
         dao.state.config,
-        dao_core::state::Config {
+        dao_dao::state::Config {
             dao_uri: None,
             name: "DAO DAO".to_string(),
             description: "A DAO that makes DAO tooling".to_string(),
@@ -310,7 +310,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
         ownership,
         cw20_stake::msg::Ownership::<Addr> {
             owner: Some(Addr::unchecked(
-                chain.orc.contract_map.address("dao_core").unwrap()
+                chain.orc.contract_map.address("dao_dao").unwrap()
             )),
             pending_owner: None,
             pending_expiry: None
@@ -377,6 +377,6 @@ fn instantiate_with_admin(chain: &mut Chain) {
     );
     assert_eq!(
         config_res.dao,
-        chain.orc.contract_map.address("dao_core").unwrap()
+        chain.orc.contract_map.address("dao_dao").unwrap()
     );
 }

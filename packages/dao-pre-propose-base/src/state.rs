@@ -21,7 +21,7 @@ pub struct Config {
 pub struct PreProposeContract<InstantiateExt, ExecuteExt, QueryExt, ProposalMessage> {
     /// The proposal module that this module is associated with.
     pub proposal_module: Item<'static, Addr>,
-    /// The DAO (cw-dao-core module) that this module is associated
+    /// The DAO (dao-dao module) that this module is associated
     /// with.
     pub dao: Item<'static, Addr>,
     /// The configuration for this module.

@@ -27,7 +27,7 @@ dao-voting = { workspace = true }
 dao-dao-macros = { workspace = true }
 dao-interface = { workspace = true }
 
-dao-core = { workspace = true, features = ["library"] }
+dao-dao = { workspace = true, features = ["library"] }
 
 thiserror = { workspace = true }
 

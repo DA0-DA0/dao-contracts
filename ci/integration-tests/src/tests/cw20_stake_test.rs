@@ -107,8 +107,8 @@ fn execute_stake_tokens(chain: &mut Chain) {
     let res = chain
         .orc
         .query(
-            "dao_core",
-            &dao_core::msg::QueryMsg::VotingPowerAtHeight {
+            "dao_dao",
+            &dao_dao::msg::QueryMsg::VotingPowerAtHeight {
                 address: user_addr,
                 height: None,
             },
