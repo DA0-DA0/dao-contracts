@@ -299,7 +299,7 @@ pub fn parse_id(data: &[u8]) -> StdResult<u64> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use cosmwasm_std::testing::mock_env;
+    use cosmwasm_std::dao_testing::mock_env;
 
     #[test]
     fn count_votes() {

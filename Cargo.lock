@@ -318,12 +318,12 @@ dependencies = [
  "cw4",
  "cw4-group",
  "cw4-voting",
+ "dao-testing",
  "dao-voting",
  "indexable-hooks",
  "proposal-hooks",
  "schemars",
  "serde",
- "testing",
  "thiserror",
  "vote-hooks",
 ]
@@ -556,6 +556,16 @@ dependencies = [
  "schemars",
  "serde",
  "thiserror",
+]
+
+[[package]]
+name = "dao-testing"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-std",
+ "cw-multi-test",
+ "dao-voting",
+ "rand",
 ]
 
 [[package]]
@@ -1111,16 +1121,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "testing"
-version = "0.1.0"
-dependencies = [
- "cosmwasm-std",
- "cw-multi-test",
- "dao-voting",
- "rand",
 ]
 
 [[package]]

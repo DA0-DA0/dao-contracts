@@ -56,7 +56,7 @@ cw-multi-test = "0.13"
 cw4-voting = { path = "../cw4-voting", version = "0.1.0" }
 cw20-balance-voting = { path = "../../debug/cw20-balance-voting", version = "0.1.0" }
 cw20-staked-balance-voting = { path = "../cw20-staked-balance-voting", version = "0.1.0" }
-testing = { version = "*", path = "../../packages/testing" }
+dao-testing = { version = "0.1.0", path = "../../packages/dao-testing" }
 cw20-stake = { path= "../cw20-stake", version = "0.2.6" }
 cw20-base = "0.13"
 cw4 = "0.13"
