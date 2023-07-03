@@ -22,6 +22,14 @@ START_DIR=$(pwd)
 #  }
 # <https://stackoverflow.com/a/3162500>
 
+for f in ./packages/*
+do
+  echo "publishing ${f##*/}"
+  cd "$f"
+  cargo publish --dry-run
+  cd "$START_DIR"
+done
+
 cd contracts/dao-core
 cargo publish --dry-run
 cd "$START_DIR"
@@ -59,14 +67,6 @@ do
 done
 
 for f in ./contracts/external/*
-do
-  echo "publishing ${f##*/}"
-  cd "$f"
-  cargo publish --dry-run
-  cd "$START_DIR"
-done
-
-for f in ./packages/*
 do
   echo "publishing ${f##*/}"
   cd "$f"
