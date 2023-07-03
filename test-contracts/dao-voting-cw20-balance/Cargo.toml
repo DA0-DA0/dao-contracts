@@ -1,6 +1,7 @@
 [package]
 name = "dao-voting-cw20-balance"
 authors = ["ekez <ekez@withoutdoing.com>"]
+description = "A DAO DAO test contract."
 edition = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }

@@ -1,6 +1,7 @@
 [package]
 name = "dao-proposal-sudo"
 authors = ["ekez <ekez@withoutdoing.com>"]
+description = "A proposal module that allows direct execution without voting."
 edition = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
