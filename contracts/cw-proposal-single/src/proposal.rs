@@ -1,8 +1,8 @@
 use cosmwasm_std::{Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdResult, Storage, Uint128};
 use cw_utils::Expiration;
+use dao_voting::{compare_vote_count, PercentageThreshold, Status, Threshold, VoteCmp, Votes};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use voting::{compare_vote_count, PercentageThreshold, Status, Threshold, VoteCmp, Votes};
 
 use crate::{
     query::ProposalResponse,

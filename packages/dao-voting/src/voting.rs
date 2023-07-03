@@ -40,7 +40,7 @@ pub enum VoteCmp {
 /// For example, the following assertion will succede:
 ///
 /// ```rust
-/// use voting::{compare_vote_count, VoteCmp};
+/// use dao_voting::{compare_vote_count, VoteCmp};
 /// use cosmwasm_std::{Uint128, Decimal};
 /// fn test() {
 ///     assert!(compare_vote_count(

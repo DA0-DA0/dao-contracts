@@ -202,6 +202,7 @@ dependencies = [
  "cw20-base",
  "cw721",
  "cw721-base",
+ "dao-voting",
  "schemars",
  "serde",
  "thiserror",
@@ -317,6 +318,7 @@ dependencies = [
  "cw4",
  "cw4-group",
  "cw4-voting",
+ "dao-voting",
  "indexable-hooks",
  "proposal-hooks",
  "schemars",
@@ -324,7 +326,6 @@ dependencies = [
  "testing",
  "thiserror",
  "vote-hooks",
- "voting",
 ]
 
 [[package]]
@@ -552,6 +553,16 @@ dependencies = [
  "cw-utils",
  "cw2",
  "cw721",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-voting"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-std",
  "schemars",
  "serde",
  "thiserror",
@@ -821,13 +832,13 @@ dependencies = [
  "cw20",
  "cw20-balance-voting",
  "cw20-base",
+ "dao-voting",
  "indexable-hooks",
  "proposal-hooks",
  "schemars",
  "serde",
  "thiserror",
  "vote-hooks",
- "voting",
 ]
 
 [[package]]
@@ -1108,8 +1119,8 @@ version = "0.1.0"
 dependencies = [
  "cosmwasm-std",
  "cw-multi-test",
+ "dao-voting",
  "rand",
- "voting",
 ]
 
 [[package]]
@@ -1170,16 +1181,6 @@ dependencies = [
  "indexable-hooks",
  "schemars",
  "serde",
-]
-
-[[package]]
-name = "voting"
-version = "0.1.0"
-dependencies = [
- "cosmwasm-std",
- "schemars",
- "serde",
- "thiserror",
 ]
 
 [[package]]

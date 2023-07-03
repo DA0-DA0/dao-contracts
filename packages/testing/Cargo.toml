@@ -12,5 +12,5 @@ edition = "2021"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 rand = "0.8"
 cosmwasm-std = { version = "1.0.0" }
-voting = { path = "../voting", version = "*" }
+dao-voting = { path = "../dao-voting", version = "0.1.0" }
 cw-multi-test = {  version = "0.13" }

@@ -12,7 +12,7 @@ use indexable_hooks::Hooks;
 use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 use vote_hooks::new_vote_hooks;
 
-use voting::{Status, Threshold, Vote, Votes};
+use dao_voting::{Status, Threshold, Vote, Votes};
 
 use crate::{
     error::ContractError,

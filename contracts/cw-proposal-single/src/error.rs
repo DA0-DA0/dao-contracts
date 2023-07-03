@@ -16,7 +16,7 @@ pub enum ContractError {
     Unauthorized {},
 
     #[error("{0}")]
-    ThresholdError(#[from] voting::ThresholdError),
+    ThresholdError(#[from] dao_voting::ThresholdError),
 
     #[error("Suggested proposal expiration is larger than the maximum proposal duration")]
     InvalidExpiration {},

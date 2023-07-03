@@ -42,6 +42,7 @@ cw721 = "0.13"
 schemars = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
+dao-voting = { version = "0.1", path = "../../packages/dao-voting" }
 cw-core-interface = { version = "0.1.0", path = "../../packages/cw-core-interface" }
 cw-core-macros = { version = "0.1.0", path = "../../packages/cw-core-macros" }
 cw-paginate-storage = { version = "0.1.0", path = "../../packages/cw-paginate-storage" }

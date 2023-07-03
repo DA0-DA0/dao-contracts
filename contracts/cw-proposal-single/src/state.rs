@@ -6,7 +6,7 @@ use indexable_hooks::Hooks;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use voting::{Threshold, Vote};
+use dao_voting::{Threshold, Vote};
 
 use crate::{
     msg::{DepositInfo, DepositToken},

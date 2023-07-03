@@ -4,7 +4,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cw_core_macros::govmod_query;
-use voting::Threshold;
+use dao_voting::Threshold;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -81,7 +81,7 @@ pub enum ExecuteMsg {
         /// The ID of the proposal to vote on.
         proposal_id: u64,
         /// The senders position on the proposal.
-        vote: voting::Vote,
+        vote: dao_voting::Vote,
     },
     /// Causes the messages associated with a passed proposal to be
     /// executed by the DAO.

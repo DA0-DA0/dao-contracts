@@ -10,8 +10,8 @@ use cw_utils::Duration;
 
 use indexable_hooks::HooksResponse;
 
+use dao_voting::{PercentageThreshold, Status, Threshold, Vote, Votes};
 use testing::{ShouldExecute, TestVote};
-use voting::{PercentageThreshold, Status, Threshold, Vote, Votes};
 
 use crate::{
     msg::{DepositInfo, DepositToken, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
