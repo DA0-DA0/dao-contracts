@@ -1,5 +1,6 @@
 [package]
-name = "cw-paginate"
+name = "cw-paginate-storage"
+authors = ["Callum Anderson <callumanderson745@gmail.com>"]
 version = "0.1.0"
 edition = "2021"
 description = "DAO DAO v1 macros."

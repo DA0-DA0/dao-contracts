@@ -9,7 +9,7 @@ use cw_storage_plus::Map;
 use cw_utils::{parse_reply_instantiate_data, Duration};
 
 use cw_core_interface::voting;
-use cw_paginate::{paginate_map, paginate_map_keys};
+use cw_paginate_storage::{paginate_map, paginate_map_keys};
 
 use crate::error::ContractError;
 use crate::msg::{
