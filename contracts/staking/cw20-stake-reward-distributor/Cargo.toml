@@ -2,9 +2,11 @@
 name = "cw20-stake-reward-distributor"
 edition = "2018"
 authors = ["Vernon Johnson <vtj2105@columbia.edu>, ekez <ekez@withoutdoing.com>"]
+description = "Distributes cw20 staking rewards."
 license = { workspace = true }
 repository = { workspace = true }
 version = { workspace = true }
+
 
 [lib]
 crate-type = ["cdylib", "rlib"]

@@ -229,12 +229,12 @@ dependencies = [
  "cw-admin-factory",
  "cw-utils 0.16.0",
  "cw20 0.16.0",
- "cw20-stake 2.1.0",
+ "cw20-stake 2.1.5",
  "dao-dao",
  "dao-interface",
  "dao-pre-propose-single",
  "dao-proposal-single",
- "dao-voting 2.1.0",
+ "dao-voting 2.1.5",
  "dao-voting-cw20-staked",
  "env_logger",
  "serde",
@@ -548,7 +548,7 @@ dependencies = [
 
 [[package]]
 name = "cw-admin-factory"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -675,7 +675,7 @@ dependencies = [
 
 [[package]]
 name = "cw-denom"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -692,13 +692,13 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-paginate-storage 2.1.0",
+ "cw-paginate-storage 2.1.5",
  "cw-storage-plus 1.1.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw20-stake 2.1.0",
+ "cw20-stake 2.1.5",
  "dao-dao",
  "dao-interface",
  "dao-voting-cw20-staked",
@@ -707,7 +707,7 @@ dependencies = [
 
 [[package]]
 name = "cw-hooks"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -774,7 +774,7 @@ dependencies = [
 
 [[package]]
 name = "cw-paginate-storage"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
@@ -785,7 +785,7 @@ dependencies = [
 
 [[package]]
 name = "cw-payroll-factory"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -829,7 +829,7 @@ dependencies = [
 
 [[package]]
 name = "cw-stake-tracker"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -882,7 +882,7 @@ dependencies = [
 
 [[package]]
 name = "cw-token-swap"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -951,7 +951,7 @@ dependencies = [
 
 [[package]]
 name = "cw-vesting"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
@@ -959,7 +959,7 @@ dependencies = [
  "cw-denom",
  "cw-multi-test",
  "cw-ownable",
- "cw-paginate-storage 2.1.0",
+ "cw-paginate-storage 2.1.5",
  "cw-stake-tracker",
  "cw-storage-plus 1.1.0",
  "cw-utils 0.16.0",
@@ -975,7 +975,7 @@ dependencies = [
 
 [[package]]
 name = "cw-wormhole"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1142,25 +1142,7 @@ dependencies = [
 
 [[package]]
 name = "cw20-stake"
-version = "0.2.6"
-source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5d057329afd98d62567aaa4dca2c96f"
-dependencies = [
- "cosmwasm-std",
- "cosmwasm-storage",
- "cw-controllers 0.13.4",
- "cw-storage-plus 0.13.4",
- "cw-utils 0.13.4",
- "cw2 0.13.4",
- "cw20 0.13.4",
- "cw20-base 0.13.4",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
-name = "cw20-stake"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
@@ -1169,20 +1151,20 @@ dependencies = [
  "cw-controllers 0.16.0",
  "cw-multi-test",
  "cw-ownable",
- "cw-paginate-storage 2.1.0",
+ "cw-paginate-storage 2.1.5",
  "cw-storage-plus 1.1.0",
  "cw-utils 0.13.4",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw20-stake 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw20-stake 0.2.6",
  "thiserror",
 ]
 
 [[package]]
 name = "cw20-stake-external-rewards"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
@@ -1197,14 +1179,14 @@ dependencies = [
  "cw20 0.13.4",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw20-stake 2.1.0",
+ "cw20-stake 2.1.5",
  "stake-cw20-external-rewards",
  "thiserror",
 ]
 
 [[package]]
 name = "cw20-stake-reward-distributor"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1215,7 +1197,7 @@ dependencies = [
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw20-stake 2.1.0",
+ "cw20-stake 2.1.5",
  "stake-cw20-reward-distributor",
  "thiserror",
 ]
@@ -1235,7 +1217,7 @@ dependencies = [
  "cw2 0.13.4",
  "cw20 0.13.4",
  "cw20-base 0.13.4",
- "cw20-stake 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw20-stake 0.2.6",
  "schemars",
  "serde",
  "thiserror",
@@ -1389,7 +1371,7 @@ dependencies = [
 
 [[package]]
 name = "cw721-controllers"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1400,13 +1382,13 @@ dependencies = [
 
 [[package]]
 name = "dao-dao"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-core",
  "cw-multi-test",
- "cw-paginate-storage 2.1.0",
+ "cw-paginate-storage 2.1.5",
  "cw-storage-plus 1.1.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
@@ -1423,13 +1405,13 @@ dependencies = [
 
 [[package]]
 name = "dao-dao-macros"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-hooks",
  "dao-interface",
- "dao-voting 2.1.0",
+ "dao-voting 2.1.5",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
@@ -1437,7 +1419,7 @@ dependencies = [
 
 [[package]]
 name = "dao-interface"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1448,7 +1430,7 @@ dependencies = [
 
 [[package]]
 name = "dao-migrator"
-version = "2.0.2"
+version = "2.1.5"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
@@ -1464,8 +1446,8 @@ dependencies = [
  "cw20 0.13.4",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw20-stake 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "cw20-stake 2.1.0",
+ "cw20-stake 0.2.6",
+ "cw20-stake 2.1.5",
  "cw20-staked-balance-voting",
  "cw4 0.13.4",
  "cw4-voting",
@@ -1474,7 +1456,7 @@ dependencies = [
  "dao-proposal-single",
  "dao-testing",
  "dao-voting 0.1.0",
- "dao-voting 2.1.0",
+ "dao-voting 2.1.5",
  "dao-voting-cw20-staked",
  "dao-voting-cw4",
  "thiserror",
@@ -1482,13 +1464,13 @@ dependencies = [
 
 [[package]]
 name = "dao-pre-propose-approval-single"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-denom",
  "cw-multi-test",
- "cw-paginate-storage 2.1.0",
+ "cw-paginate-storage 2.1.5",
  "cw-storage-plus 1.1.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
@@ -1501,7 +1483,7 @@ dependencies = [
  "dao-proposal-hooks",
  "dao-proposal-single",
  "dao-testing",
- "dao-voting 2.1.0",
+ "dao-voting 2.1.5",
  "dao-voting-cw20-staked",
  "dao-voting-cw4",
  "thiserror",
@@ -1509,7 +1491,7 @@ dependencies = [
 
 [[package]]
 name = "dao-pre-propose-approver"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1528,14 +1510,14 @@ dependencies = [
  "dao-proposal-hooks",
  "dao-proposal-single",
  "dao-testing",
- "dao-voting 2.1.0",
+ "dao-voting 2.1.5",
  "dao-voting-cw20-staked",
  "dao-voting-cw4",
 ]
 
 [[package]]
 name = "dao-pre-propose-base"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1547,14 +1529,14 @@ dependencies = [
  "cw2 0.16.0",
  "dao-interface",
  "dao-proposal-hooks",
- "dao-voting 2.1.0",
+ "dao-voting 2.1.5",
  "serde",
  "thiserror",
 ]
 
 [[package]]
 name = "dao-pre-propose-multiple"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1571,14 +1553,14 @@ dependencies = [
  "dao-proposal-hooks",
  "dao-proposal-multiple",
  "dao-testing",
- "dao-voting 2.1.0",
+ "dao-voting 2.1.5",
  "dao-voting-cw20-staked",
  "dao-voting-cw4",
 ]
 
 [[package]]
 name = "dao-pre-propose-single"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1596,7 +1578,7 @@ dependencies = [
  "dao-proposal-hooks",
  "dao-proposal-single",
  "dao-testing",
- "dao-voting 2.1.0",
+ "dao-voting 2.1.5",
  "dao-voting-cw20-staked",
  "dao-voting-cw4",
 ]
@@ -1618,14 +1600,14 @@ dependencies = [
  "dao-dao-macros",
  "dao-interface",
  "dao-testing",
- "dao-voting 2.1.0",
+ "dao-voting 2.1.5",
  "dao-voting-cw4",
  "thiserror",
 ]
 
 [[package]]
 name = "dao-proposal-hook-counter"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1641,24 +1623,24 @@ dependencies = [
  "dao-proposal-hooks",
  "dao-proposal-single",
  "dao-vote-hooks",
- "dao-voting 2.1.0",
+ "dao-voting 2.1.5",
  "dao-voting-cw20-balance",
  "thiserror",
 ]
 
 [[package]]
 name = "dao-proposal-hooks"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-hooks",
- "dao-voting 2.1.0",
+ "dao-voting 2.1.5",
 ]
 
 [[package]]
 name = "dao-proposal-multiple"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1671,7 +1653,7 @@ dependencies = [
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw20-stake 2.1.0",
+ "cw20-stake 2.1.5",
  "cw3 0.16.0",
  "cw4 0.16.0",
  "cw4-group 0.16.0",
@@ -1685,7 +1667,7 @@ dependencies = [
  "dao-testing",
  "dao-vote-hooks",
  "dao-voting 0.1.0",
- "dao-voting 2.1.0",
+ "dao-voting 2.1.5",
  "dao-voting-cw20-balance",
  "dao-voting-cw20-staked",
  "dao-voting-cw4",
@@ -1697,7 +1679,7 @@ dependencies = [
 
 [[package]]
 name = "dao-proposal-single"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1713,7 +1695,7 @@ dependencies = [
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw20-stake 2.1.0",
+ "cw20-stake 2.1.5",
  "cw3 0.16.0",
  "cw4 0.16.0",
  "cw4-group 0.16.0",
@@ -1727,7 +1709,7 @@ dependencies = [
  "dao-testing",
  "dao-vote-hooks",
  "dao-voting 0.1.0",
- "dao-voting 2.1.0",
+ "dao-voting 2.1.5",
  "dao-voting-cw20-balance",
  "dao-voting-cw20-staked",
  "dao-voting-cw4",
@@ -1738,7 +1720,7 @@ dependencies = [
 
 [[package]]
 name = "dao-proposal-sudo"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1753,7 +1735,7 @@ dependencies = [
 
 [[package]]
 name = "dao-testing"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1766,7 +1748,7 @@ dependencies = [
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw20-stake 2.1.0",
+ "cw20-stake 2.1.5",
  "cw4 0.16.0",
  "cw4-group 0.16.0",
  "cw721-base",
@@ -1777,7 +1759,7 @@ dependencies = [
  "dao-proposal-condorcet",
  "dao-proposal-single",
  "dao-voting 0.1.0",
- "dao-voting 2.1.0",
+ "dao-voting 2.1.5",
  "dao-voting-cw20-balance",
  "dao-voting-cw20-staked",
  "dao-voting-cw4",
@@ -1789,12 +1771,12 @@ dependencies = [
 
 [[package]]
 name = "dao-vote-hooks"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-hooks",
- "dao-voting 2.1.0",
+ "dao-voting 2.1.5",
 ]
 
 [[package]]
@@ -1811,7 +1793,7 @@ dependencies = [
 
 [[package]]
 name = "dao-voting"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1827,7 +1809,7 @@ dependencies = [
 
 [[package]]
 name = "dao-voting-cw20-balance"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1844,7 +1826,7 @@ dependencies = [
 
 [[package]]
 name = "dao-voting-cw20-staked"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1855,7 +1837,7 @@ dependencies = [
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw20-stake 2.1.0",
+ "cw20-stake 2.1.5",
  "dao-dao-macros",
  "dao-interface",
  "thiserror",
@@ -1863,7 +1845,7 @@ dependencies = [
 
 [[package]]
 name = "dao-voting-cw4"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1881,14 +1863,14 @@ dependencies = [
 
 [[package]]
 name = "dao-voting-cw721-staked"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-controllers 0.16.0",
  "cw-multi-test",
- "cw-paginate-storage 2.1.0",
+ "cw-paginate-storage 2.1.5",
  "cw-storage-plus 1.1.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
@@ -1903,7 +1885,7 @@ dependencies = [
 
 [[package]]
 name = "dao-voting-native-staked"
-version = "2.1.0"
+version = "2.1.5"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
@@ -1911,7 +1893,7 @@ dependencies = [
  "cosmwasm-storage",
  "cw-controllers 0.16.0",
  "cw-multi-test",
- "cw-paginate-storage 2.1.0",
+ "cw-paginate-storage 2.1.5",
  "cw-storage-plus 1.1.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
@@ -2520,14 +2502,14 @@ dependencies = [
  "cw-vesting",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw20-stake 2.1.0",
+ "cw20-stake 2.1.5",
  "cw721 0.16.0",
  "cw721-base",
  "dao-dao",
  "dao-interface",
  "dao-pre-propose-single",
  "dao-proposal-single",
- "dao-voting 2.1.0",
+ "dao-voting 2.1.5",
  "dao-voting-cw20-staked",
  "dao-voting-cw721-staked",
  "env_logger",
@@ -2549,9 +2531,9 @@ dependencies = [
 
 [[package]]
 name = "itoa"
-version = "1.0.7"
+version = "1.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0aa48fab2893d8a49caa94082ae8488f4e1050d73b367881dcd2198f4199fd8"
+checksum = "62b02a5381cc465bd3041d84623d0fa3b66738b52b8e2fc3bab8ad63ab032f4a"
 
 [[package]]
 name = "js-sys"
@@ -3130,9 +3112,9 @@ checksum = "4f3208ce4d8448b3f3e7d168a73f5e0c43a61e32930de3bceeccedb388b6bf06"
 
 [[package]]
 name = "ryu"
-version = "1.0.13"
+version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f91339c0467de62360649f8d3e185ca8de4224ff281f66000de5eb2a77a79041"
+checksum = "fe232bdf6be8c8de797b22184ee71118d63780ea42ac85b61d1baa6d3b782ae9"
 
 [[package]]
 name = "same-file"
@@ -3231,9 +3213,9 @@ checksum = "bebd363326d05ec3e2f532ab7660680f3b02130d780c299bca73469d521bc0ed"
 
 [[package]]
 name = "serde"
-version = "1.0.165"
+version = "1.0.166"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c939f902bb7d0ccc5bce4f03297e161543c2dcb30914faf032c2bd0b7a0d48fc"
+checksum = "d01b7404f9d441d3ad40e6a636a7782c377d2abdbe4fa2440e2edcc2f4f10db8"
 dependencies = [
  "serde_derive",
 ]
@@ -3249,18 +3231,18 @@ dependencies = [
 
 [[package]]
 name = "serde_bytes"
-version = "0.11.9"
+version = "0.11.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "416bda436f9aab92e02c8e10d49a15ddd339cea90b6e340fe51ed97abb548294"
+checksum = "f3c5113243e4a3a1c96587342d067f3e6b0f50790b6cf40d2868eb647a3eef0e"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.165"
+version = "1.0.166"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6eaae920e25fffe4019b75ff65e7660e72091e59dd204cb5849bbd6a3fd343d7"
+checksum = "5dd83d6dde2b6b2d466e14d9d1acce8816dedee94f735eac6395808b3483c6d6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3424,7 +3406,8 @@ dependencies = [
 [[package]]
 name = "stake-cw20-external-rewards"
 version = "0.2.6"
-source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5d057329afd98d62567aaa4dca2c96f"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c9bbc1e4b7a932957a05a76921015a849b234c3f25e59fe1fd0d2eab71654bc"
 dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
@@ -3434,7 +3417,7 @@ dependencies = [
  "cw2 0.13.4",
  "cw20 0.13.4",
  "cw20-base 0.13.4",
- "cw20-stake 0.2.6 (git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0)",
+ "cw20-stake 0.2.6",
  "schemars",
  "serde",
  "thiserror",
@@ -3443,7 +3426,8 @@ dependencies = [
 [[package]]
 name = "stake-cw20-reward-distributor"
 version = "0.1.0"
-source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5d057329afd98d62567aaa4dca2c96f"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4260ff7aec6dddb43cb5f1104ef5cebe2787853bc83af9172ce5b828b577c4c5"
 dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
@@ -3452,7 +3436,7 @@ dependencies = [
  "cw2 0.13.4",
  "cw20 0.13.4",
  "cw20-base 0.13.4",
- "cw20-stake 0.2.6 (git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0)",
+ "cw20-stake 0.2.6",
  "schemars",
  "serde",
  "thiserror",
@@ -3941,9 +3925,9 @@ checksum = "92888ba5573ff080736b3648696b70cafad7d250551175acbaa4e0385b3e1460"
 
 [[package]]
 name = "unicode-ident"
-version = "1.0.9"
+version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b15811caf2415fb889178633e7724bad2509101cde276048e013b9def5e51fa0"
+checksum = "22049a19f4a68748a168c0fc439f9516686aa045927ff767eca0a85101fb6e73"
 
 [[package]]
 name = "unicode-normalization"
