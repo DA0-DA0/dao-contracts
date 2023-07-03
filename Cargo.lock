@@ -192,7 +192,7 @@ dependencies = [
  "cw-core-interface",
  "cw-core-macros",
  "cw-multi-test 0.13.4 (git+https://github.com/CosmWasm/cw-plus?branch=main)",
- "cw-paginate",
+ "cw-paginate-storage",
  "cw-proposal-sudo",
  "cw-storage-plus 0.13.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw-utils 0.13.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -302,7 +302,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-paginate"
+name = "cw-paginate-storage"
 version = "0.1.0"
 dependencies = [
  "cosmwasm-std",
