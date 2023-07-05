@@ -6,7 +6,7 @@ use cosmwasm_std::{
 };
 
 use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
-use dao_interface::{Admin, ModuleInstantiateInfo};
+use dao_interface::state::{Admin, ModuleInstantiateInfo};
 
 use crate::{
     contract::instantiate,
@@ -72,7 +72,7 @@ pub fn test_set_admin() {
 
     // Instantiate core contract using factory.
     let cw_core_code_id = app.store_code(cw_core_contract());
-    let instantiate_core = dao_dao::msg::InstantiateMsg {
+    let instantiate_core = dao_interface::msg::InstantiateMsg {
         dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),

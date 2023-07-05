@@ -1,7 +1,10 @@
 use cosmwasm_std::{coins, to_binary, Addr, BankMsg, CosmosMsg, Decimal};
 use cw_multi_test::{next_block, App, Executor};
 use cw_utils::Duration;
-use dao_interface::{voting::InfoResponse, Admin, ModuleInstantiateInfo};
+use dao_interface::{
+    state::{Admin, ModuleInstantiateInfo},
+    voting::InfoResponse,
+};
 use dao_testing::contracts::{
     cw4_group_contract, dao_dao_contract, dao_voting_cw4_contract, proposal_condorcet_contract,
 };
@@ -75,7 +78,7 @@ impl SuiteBuilder {
         let cw4_id = app.store_code(cw4_group_contract());
         let cw4_voting_id = app.store_code(dao_voting_cw4_contract());
 
-        let core_instantiate = dao_dao::msg::InstantiateMsg {
+        let core_instantiate = dao_interface::msg::InstantiateMsg {
             admin: None,
             name: "core module".to_string(),
             description: "core module".to_string(),
@@ -111,11 +114,11 @@ impl SuiteBuilder {
                 None,
             )
             .unwrap();
-        let condorcet: Vec<dao_dao::state::ProposalModule> = app
+        let condorcet: Vec<dao_interface::state::ProposalModule> = app
             .wrap()
             .query_wasm_smart(
                 &core,
-                &dao_dao::msg::QueryMsg::ProposalModules {
+                &dao_interface::msg::QueryMsg::ProposalModules {
                     start_after: None,
                     limit: None,
                 },

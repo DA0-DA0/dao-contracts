@@ -10,10 +10,10 @@ use cw_multi_test::{
     custom_app, next_block, App, AppResponse, Contract, ContractWrapper, Executor,
 };
 use cw_utils::Duration;
+use dao_interface::state::Admin;
 use dao_interface::voting::{
     InfoResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
-use dao_interface::Admin;
 
 const DAO_ADDR: &str = "dao";
 const ADDR1: &str = "addr1";

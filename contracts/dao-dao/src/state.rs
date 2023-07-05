@@ -1,47 +1,7 @@
-use cosmwasm_schema::cw_serde;
-use cw_utils::Expiration;
-
 use cosmwasm_std::{Addr, Empty};
 use cw_storage_plus::{Item, Map};
-
-/// Top level config type for core module.
-#[cw_serde]
-pub struct Config {
-    /// The name of the contract.
-    pub name: String,
-    /// A description of the contract.
-    pub description: String,
-    /// An optional image URL for displaying alongside the contract.
-    pub image_url: Option<String>,
-    /// If true the contract will automatically add received cw20
-    /// tokens to its treasury.
-    pub automatically_add_cw20s: bool,
-    /// If true the contract will automatically add received cw721
-    /// tokens to its treasury.
-    pub automatically_add_cw721s: bool,
-    /// The URI for the DAO as defined by the DAOstar standard
-    /// <https://daostar.one/EIP>
-    pub dao_uri: Option<String>,
-}
-
-/// Top level type describing a proposal module.
-#[cw_serde]
-pub struct ProposalModule {
-    /// The address of the proposal module.
-    pub address: Addr,
-    /// The URL prefix of this proposal module as derived from the module ID.
-    /// Prefixes are mapped to letters, e.g. 0 is 'A', and 26 is 'AA'.
-    pub prefix: String,
-    /// The status of the proposal module, e.g. 'Enabled' or 'Disabled.'
-    pub status: ProposalModuleStatus,
-}
-
-/// The status of a proposal module.
-#[cw_serde]
-pub enum ProposalModuleStatus {
-    Enabled,
-    Disabled,
-}
+use cw_utils::Expiration;
+use dao_interface::state::{Config, ProposalModule};
 
 /// The admin of the contract. Typically a DAO. The contract admin may
 /// unilaterally execute messages on this contract.

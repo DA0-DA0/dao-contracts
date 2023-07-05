@@ -101,7 +101,7 @@ impl UncheckedDepositInfo {
             DepositToken::VotingModuleToken {} => {
                 let voting_module: Addr = deps
                     .querier
-                    .query_wasm_smart(dao, &dao_dao::msg::QueryMsg::VotingModule {})?;
+                    .query_wasm_smart(dao, &dao_interface::msg::QueryMsg::VotingModule {})?;
                 // If the voting module has no token this will
                 // error. This is desirable.
                 let token_addr: Addr = deps.querier.query_wasm_smart(

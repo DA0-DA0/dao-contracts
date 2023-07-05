@@ -14,7 +14,7 @@ use cw2::set_contract_version;
 use cw721::Cw721ReceiveMsg;
 use cw_storage_plus::Bound;
 use cw_utils::Duration;
-use dao_interface::Admin;
+use dao_interface::state::Admin;
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw721-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");

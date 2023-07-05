@@ -12,6 +12,9 @@ In addition to the wiki spec this contract may also pause. To do so a
 core module will stop all actions on the module for the duration of
 the pause.
 
+## Developing
+Core messages and interfaces are defined in the [dao-interfaces](../../packages/dao-interface) package. If you are building new modules or a contract that interacts with a DAO, use `dao-interface`.
+
 ## Treasury management
 
 For management of non-native assets this contract maintains a list of

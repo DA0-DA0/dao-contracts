@@ -12,8 +12,8 @@ pub struct V1CodeIds {
 }
 
 impl V1CodeIds {
-    pub fn to(self) -> dao_dao::migrate_msg::V1CodeIds {
-        dao_dao::migrate_msg::V1CodeIds {
+    pub fn to(self) -> dao_interface::migrate_msg::V1CodeIds {
+        dao_interface::migrate_msg::V1CodeIds {
             proposal_single: self.proposal_single,
             cw4_voting: self.cw4_voting,
             cw20_stake: self.cw20_stake,
@@ -31,8 +31,8 @@ pub struct V2CodeIds {
 }
 
 impl V2CodeIds {
-    pub fn to(self) -> dao_dao::migrate_msg::V2CodeIds {
-        dao_dao::migrate_msg::V2CodeIds {
+    pub fn to(self) -> dao_interface::migrate_msg::V2CodeIds {
+        dao_interface::migrate_msg::V2CodeIds {
             proposal_single: self.proposal_single,
             cw4_voting: self.cw4_voting,
             cw20_stake: self.cw20_stake,

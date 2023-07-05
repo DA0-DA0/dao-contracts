@@ -7,8 +7,8 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_controllers::ClaimsResponse;
 use cw_utils::{must_pay, Duration};
+use dao_interface::state::Admin;
 use dao_interface::voting::{TotalPowerAtHeightResponse, VotingPowerAtHeightResponse};
-use dao_interface::Admin;
 
 use crate::error::ContractError;
 use crate::msg::{

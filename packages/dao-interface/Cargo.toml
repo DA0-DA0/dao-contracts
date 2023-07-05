@@ -12,7 +12,10 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 dao-dao-macros = { workspace = true }
 cw2 = { workspace = true }
+cw20 = { workspace = true }
+cw721 = { workspace = true }
 cw-hooks = { workspace = true }
+cw-utils = { workspace = true }
 
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }

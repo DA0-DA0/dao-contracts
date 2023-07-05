@@ -1,7 +1,7 @@
 use cosmwasm_std::{to_binary, Addr, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App, Executor};
-use dao_dao::query::{GetItemResponse, ProposalModuleCountResponse};
+use dao_interface::query::{GetItemResponse, ProposalModuleCountResponse};
 use dao_testing::contracts::{
     cw20_base_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
     dao_dao_contract, proposal_single_contract, v1_dao_dao_contract, v1_proposal_single_contract,
@@ -316,7 +316,7 @@ fn test_v1_v2_full_migration() {
                 WasmMsg::Migrate {
                     contract_addr: core.to_string(),
                     new_code_id: v2_core_code,
-                    msg: to_binary(&dao_dao::msg::MigrateMsg::FromV1 {
+                    msg: to_binary(&dao_interface::msg::MigrateMsg::FromV1 {
                         dao_uri: Some("dao-uri".to_string()),
                         params: None,
                     })
@@ -375,7 +375,7 @@ fn test_v1_v2_full_migration() {
     // ----
     let module_counts: ProposalModuleCountResponse = app
         .wrap()
-        .query_wasm_smart(&core, &dao_dao::msg::QueryMsg::ProposalModuleCount {})
+        .query_wasm_smart(&core, &dao_interface::msg::QueryMsg::ProposalModuleCount {})
         .unwrap();
     assert_eq!(
         module_counts,
@@ -392,7 +392,7 @@ fn test_v1_v2_full_migration() {
         .wrap()
         .query_wasm_smart(
             &core,
-            &dao_dao::msg::QueryMsg::GetItem {
+            &dao_interface::msg::QueryMsg::GetItem {
                 key: "key".to_string(),
             },
         )
@@ -413,7 +413,7 @@ fn test_v1_v2_full_migration() {
         sender.as_str(),
         vec![WasmMsg::Execute {
             contract_addr: core.to_string(),
-            msg: to_binary(&dao_dao::msg::ExecuteMsg::UpdateCw20List {
+            msg: to_binary(&dao_interface::msg::ExecuteMsg::UpdateCw20List {
                 to_add: vec![],
                 to_remove: vec![token.into_string()],
             })
@@ -430,11 +430,11 @@ fn test_v1_v2_full_migration() {
         dao_voting::voting::Vote::Yes,
     );
     execute_proposal(&mut app, &proposal, sender.as_str(), 4);
-    let tokens: Vec<dao_dao::query::Cw20BalanceResponse> = app
+    let tokens: Vec<dao_interface::query::Cw20BalanceResponse> = app
         .wrap()
         .query_wasm_smart(
             &core,
-            &dao_dao::msg::QueryMsg::Cw20Balances {
+            &dao_interface::msg::QueryMsg::Cw20Balances {
                 start_after: None,
                 limit: None,
             },

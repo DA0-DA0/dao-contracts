@@ -5,8 +5,8 @@ use cw20::Cw20Coin;
 use cw_denom::UncheckedDenom;
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor};
 
-use dao_dao::state::ProposalModule;
-use dao_interface::{Admin, ModuleInstantiateInfo};
+use dao_interface::state::ProposalModule;
+use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_pre_propose_approval_single::{
     msg::{
         ExecuteExt, ExecuteMsg, InstantiateExt, InstantiateMsg, ProposeMessage, QueryExt, QueryMsg,
@@ -198,7 +198,7 @@ fn setup_default_test(
         .wrap()
         .query_wasm_smart(
             core_addr.clone(),
-            &dao_dao::msg::QueryMsg::ProposalModules {
+            &dao_interface::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -252,7 +252,7 @@ fn setup_default_test(
         .wrap()
         .query_wasm_smart(
             _approver_core_addr.clone(),
-            &dao_dao::msg::QueryMsg::ProposalModules {
+            &dao_interface::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },

@@ -1,7 +1,7 @@
 use cosm_orc::orchestrator::{ExecReq, SigningKey};
 use cosmwasm_std::{Binary, Empty, Uint128};
 use cw_utils::Duration;
-use dao_interface::Admin;
+use dao_interface::state::Admin;
 use test_context::test_context;
 
 use dao_voting_cw721_staked as module;

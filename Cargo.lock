@@ -1424,7 +1424,10 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-hooks",
+ "cw-utils 0.16.0",
  "cw2 0.16.0",
+ "cw20 0.16.0",
+ "cw721 0.16.0",
  "dao-dao-macros",
 ]
 

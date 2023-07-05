@@ -4,8 +4,8 @@ use cosm_orc::orchestrator::SigningKey;
 use cosmwasm_std::{to_binary, CosmosMsg, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_utils::Duration;
-use dao_dao::query::DumpStateResponse;
-use dao_interface::{Admin, ModuleInstantiateInfo};
+use dao_interface::query::DumpStateResponse;
+use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_voting::{
     deposit::{DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
     pre_propose::{PreProposeInfo, ProposalCreationPolicy},
@@ -29,7 +29,7 @@ pub fn create_dao(
     user_addr: String,
     key: &SigningKey,
 ) -> Result<DaoState> {
-    let msg = dao_dao::msg::InstantiateMsg {
+    let msg = dao_interface::msg::InstantiateMsg {
         dao_uri: None,
         admin,
         name: "DAO DAO".to_string(),
@@ -105,7 +105,7 @@ pub fn create_dao(
 
     let state: DumpStateResponse = chain
         .orc
-        .query("dao_dao", &dao_dao::msg::QueryMsg::DumpState {})?
+        .query("dao_dao", &dao_interface::msg::QueryMsg::DumpState {})?
         .data()
         .unwrap();
     chain

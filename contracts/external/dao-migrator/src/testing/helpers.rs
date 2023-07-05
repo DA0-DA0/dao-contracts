@@ -3,7 +3,7 @@ use cosmwasm_std::{
     WasmMsg,
 };
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
-use dao_dao::query::SubDao;
+use dao_interface::query::SubDao;
 use dao_testing::contracts::{
     cw20_base_contract, cw20_staked_balances_voting_contract, cw4_group_contract, dao_dao_contract,
     proposal_single_contract, v1_dao_dao_contract, v1_proposal_single_contract,

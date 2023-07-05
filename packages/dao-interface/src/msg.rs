@@ -1,9 +1,9 @@
-use crate::state::Config;
-use crate::{migrate_msg::MigrateParams, query::SubDao};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{CosmosMsg, Empty};
 use cw_utils::Duration;
-use dao_interface::ModuleInstantiateInfo;
+
+use crate::state::Config;
+use crate::{migrate_msg::MigrateParams, query::SubDao, state::ModuleInstantiateInfo};
 
 /// Information about an item to be stored in the items list.
 #[cw_serde]
@@ -182,7 +182,7 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Returns contract version info
-    #[returns(dao_interface::voting::InfoResponse)]
+    #[returns(crate::voting::InfoResponse)]
     Info {},
     /// Gets all proposal modules associated with the
     /// contract.
@@ -219,13 +219,13 @@ pub enum QueryMsg {
     #[returns(crate::query::DaoURIResponse)]
     DaoURI {},
     /// Returns the voting power for an address at a given height.
-    #[returns(dao_interface::voting::VotingPowerAtHeightResponse)]
+    #[returns(crate::voting::VotingPowerAtHeightResponse)]
     VotingPowerAtHeight {
         address: String,
         height: Option<u64>,
     },
     /// Returns the total voting power at a given block height.
-    #[returns(dao_interface::voting::TotalPowerAtHeightResponse)]
+    #[returns(crate::voting::TotalPowerAtHeightResponse)]
     TotalPowerAtHeight { height: Option<u64> },
 }
 

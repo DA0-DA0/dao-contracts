@@ -2,9 +2,6 @@
 
 pub mod contract;
 mod error;
-pub mod migrate_msg;
-pub mod msg;
-pub mod query;
 pub mod state;
 
 #[cfg(test)]

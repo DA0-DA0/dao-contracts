@@ -2,7 +2,7 @@ use cosmwasm_std::{to_binary, Addr, Binary, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_utils::Duration;
-use dao_interface::{Admin, ModuleInstantiateInfo};
+use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_voting_cw20_staked::msg::ActiveThreshold;
 
 const CREATOR_ADDR: &str = "creator";
@@ -40,7 +40,7 @@ pub fn instantiate_with_cw20_balances_governance(
             .collect()
     };
 
-    let governance_instantiate = dao_dao::msg::InstantiateMsg {
+    let governance_instantiate = dao_interface::msg::InstantiateMsg {
         dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
@@ -119,7 +119,7 @@ pub fn instantiate_with_staked_balances_governance(
     let staked_balances_voting_id = app.store_code(staked_balances_voting());
     let core_contract_id = app.store_code(cw_gov_contract());
 
-    let instantiate_core = dao_dao::msg::InstantiateMsg {
+    let instantiate_core = dao_interface::msg::InstantiateMsg {
         dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
@@ -168,9 +168,12 @@ pub fn instantiate_with_staked_balances_governance(
         )
         .unwrap();
 
-    let gov_state: dao_dao::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr.clone(), &dao_dao::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(
+            core_addr.clone(),
+            &dao_interface::msg::QueryMsg::DumpState {},
+        )
         .unwrap();
     let voting_module = gov_state.voting_module;
 
@@ -235,7 +238,7 @@ pub fn instantiate_with_staking_active_threshold(
         ]
     });
 
-    let governance_instantiate = dao_dao::msg::InstantiateMsg {
+    let governance_instantiate = dao_interface::msg::InstantiateMsg {
         dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
@@ -316,7 +319,7 @@ pub fn instantiate_with_cw4_groups_governance(
             .collect()
     };
 
-    let governance_instantiate = dao_dao::msg::InstantiateMsg {
+    let governance_instantiate = dao_interface::msg::InstantiateMsg {
         dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),

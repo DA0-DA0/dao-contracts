@@ -3,7 +3,7 @@ use cosm_orc::orchestrator::{Coin, Key, SigningKey};
 use cosm_orc::{config::cfg::Config, orchestrator::cosm_orc::CosmOrc};
 use cosmwasm_std::{to_binary, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
-use dao_interface::{Admin, ModuleInstantiateInfo};
+use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_voting::{
     deposit::{DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
     pre_propose::PreProposeInfo,
@@ -45,7 +45,7 @@ fn main() -> Result<()> {
 
     orc.store_contracts("artifacts", &key, None)?;
 
-    let msg = dao_dao::msg::InstantiateMsg {
+    let msg = dao_interface::msg::InstantiateMsg {
         admin: Some(addr.clone()),
         name: "DAO DAO".to_string(),
         description: "A DAO that makes DAO tooling".to_string(),

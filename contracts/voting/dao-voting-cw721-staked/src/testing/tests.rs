@@ -2,7 +2,7 @@ use cosmwasm_std::Uint128;
 use cw721_controllers::{NftClaim, NftClaimsResponse};
 use cw_multi_test::next_block;
 use cw_utils::Duration;
-use dao_interface::Admin;
+use dao_interface::state::Admin;
 
 use crate::{
     state::{Config, MAX_CLAIMS},

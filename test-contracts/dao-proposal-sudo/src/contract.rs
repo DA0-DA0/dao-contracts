@@ -59,7 +59,7 @@ pub fn execute_execute(
 
     let msg = WasmMsg::Execute {
         contract_addr: dao.to_string(),
-        msg: to_binary(&dao_interface::ExecuteMsg::ExecuteProposalHook { msgs })?,
+        msg: to_binary(&dao_interface::msg::ExecuteMsg::ExecuteProposalHook { msgs })?,
         funds: vec![],
     };
 
