@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-pre-propose-multiple",
-  "contract_version": "2.1.0",
+  "contract_version": "2.1.3",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1350,7 +1350,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Gets the DAO (cw-dao-dao) module this contract is associated with. Returns `Addr`.",
+        "description": "Gets the DAO (dao-dao) module this contract is associated with. Returns `Addr`.",
         "type": "object",
         "required": [
           "dao"

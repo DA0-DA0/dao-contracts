@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-dao",
-  "contract_version": "2.1.0",
+  "contract_version": "2.1.3",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
