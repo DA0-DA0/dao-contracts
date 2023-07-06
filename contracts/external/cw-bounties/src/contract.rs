@@ -33,7 +33,7 @@ pub fn instantiate(
     cw_ownable::initialize_owner(deps.storage, deps.api, Some(owner.as_str()))?;
 
     // Initialize the next ID
-    ID.save(deps.storage, &1)?;
+    ID.save(deps.storage, &0)?;
 
     Ok(Response::default())
 }
@@ -49,7 +49,7 @@ pub fn execute(
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     match msg {
-        ExecuteMsg::Close { id } => close(deps, info, id),
+        ExecuteMsg::Close { id } => close(deps, env, info, id),
         ExecuteMsg::Create {
             amount,
             title,
@@ -114,14 +114,24 @@ pub fn create(
         .add_attribute("id", id.to_string()))
 }
 
-pub fn close(deps: DepsMut, info: MessageInfo, id: u64) -> Result<Response, ContractError> {
+pub fn close(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    id: u64,
+) -> Result<Response, ContractError> {
     // Check bounty exists
-    let bounty = BOUNTIES.load(deps.storage, id)?;
+    let mut bounty = BOUNTIES.load(deps.storage, id)?;
 
     // Check bounty is open
     if bounty.status != BountyStatus::Open {
         return Err(ContractError::NotOpen {});
     };
+
+    bounty.status = BountyStatus::Closed {
+        closed_at: env.block.time.seconds(),
+    };
+    BOUNTIES.save(deps.storage, id, &bounty)?;
 
     // Pay out remaining funds to owner
     // Only owner can call this, so sender is owner
@@ -205,13 +215,35 @@ pub fn update(
         },
     )?;
 
-    // Check if amount is greater or less than original amount
-    let old_amount = bounty.amount;
     let res = Response::new()
         .add_attribute("action", "update_bounty")
         .add_attribute("bounty_id", id.to_string())
         .add_attribute("amount", new_amount.amount.to_string());
 
+    // check if new amount has different denom
+    if new_amount.denom != bounty.amount.denom {
+        // If denom is different, check funds sent match new amount
+        let sent_amount = must_pay(&info, &new_amount.denom)?;
+        if sent_amount != new_amount.amount {
+            return Err(ContractError::InvalidAmount {
+                expected: new_amount.amount,
+                actual: sent_amount,
+            });
+        }
+        // send back old amount
+        let msg = BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: vec![Coin {
+                denom: bounty.amount.denom,
+                amount: bounty.amount.amount,
+            }],
+        };
+
+        return Ok(res.add_message(msg));
+    };
+
+    // Check if amount is greater or less than original amount
+    let old_amount = bounty.amount;
     match new_amount.amount.cmp(&old_amount.amount) {
         Ordering::Greater => {
             // If new amount is greater, check funds sent plus

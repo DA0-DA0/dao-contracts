@@ -537,6 +537,7 @@ dependencies = [
 name = "cw-bounties"
 version = "2.1.0"
 dependencies = [
+ "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-denom",
