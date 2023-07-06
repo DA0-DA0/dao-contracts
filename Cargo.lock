@@ -229,12 +229,12 @@ dependencies = [
  "cw-admin-factory",
  "cw-utils 0.16.0",
  "cw20 0.16.0",
- "cw20-stake 2.1.2",
+ "cw20-stake 2.1.3",
  "dao-dao",
  "dao-interface",
  "dao-pre-propose-single",
  "dao-proposal-single",
- "dao-voting 2.1.2",
+ "dao-voting 2.1.3",
  "dao-voting-cw20-staked",
  "env_logger",
  "serde",
@@ -548,7 +548,7 @@ dependencies = [
 
 [[package]]
 name = "cw-admin-factory"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -675,7 +675,7 @@ dependencies = [
 
 [[package]]
 name = "cw-denom"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -692,13 +692,13 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-paginate-storage 2.1.2",
+ "cw-paginate-storage 2.1.3",
  "cw-storage-plus 1.1.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw20-stake 2.1.2",
+ "cw20-stake 2.1.3",
  "dao-dao",
  "dao-interface",
  "dao-voting-cw20-staked",
@@ -707,7 +707,7 @@ dependencies = [
 
 [[package]]
 name = "cw-hooks"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -774,7 +774,7 @@ dependencies = [
 
 [[package]]
 name = "cw-paginate-storage"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
@@ -785,7 +785,7 @@ dependencies = [
 
 [[package]]
 name = "cw-payroll-factory"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -829,7 +829,7 @@ dependencies = [
 
 [[package]]
 name = "cw-stake-tracker"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -882,7 +882,7 @@ dependencies = [
 
 [[package]]
 name = "cw-token-swap"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -951,7 +951,7 @@ dependencies = [
 
 [[package]]
 name = "cw-vesting"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
@@ -959,7 +959,7 @@ dependencies = [
  "cw-denom",
  "cw-multi-test",
  "cw-ownable",
- "cw-paginate-storage 2.1.2",
+ "cw-paginate-storage 2.1.3",
  "cw-stake-tracker",
  "cw-storage-plus 1.1.0",
  "cw-utils 0.16.0",
@@ -975,7 +975,7 @@ dependencies = [
 
 [[package]]
 name = "cw-wormhole"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1142,7 +1142,7 @@ dependencies = [
 
 [[package]]
 name = "cw20-stake"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
@@ -1151,7 +1151,7 @@ dependencies = [
  "cw-controllers 0.16.0",
  "cw-multi-test",
  "cw-ownable",
- "cw-paginate-storage 2.1.2",
+ "cw-paginate-storage 2.1.3",
  "cw-storage-plus 1.1.0",
  "cw-utils 0.13.4",
  "cw-utils 0.16.0",
@@ -1164,7 +1164,7 @@ dependencies = [
 
 [[package]]
 name = "cw20-stake-external-rewards"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
@@ -1179,14 +1179,14 @@ dependencies = [
  "cw20 0.13.4",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw20-stake 2.1.2",
+ "cw20-stake 2.1.3",
  "stake-cw20-external-rewards",
  "thiserror",
 ]
 
 [[package]]
 name = "cw20-stake-reward-distributor"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1197,7 +1197,7 @@ dependencies = [
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw20-stake 2.1.2",
+ "cw20-stake 2.1.3",
  "stake-cw20-reward-distributor",
  "thiserror",
 ]
@@ -1371,7 +1371,7 @@ dependencies = [
 
 [[package]]
 name = "cw721-controllers"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1382,13 +1382,13 @@ dependencies = [
 
 [[package]]
 name = "dao-dao"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-core",
  "cw-multi-test",
- "cw-paginate-storage 2.1.2",
+ "cw-paginate-storage 2.1.3",
  "cw-storage-plus 1.1.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
@@ -1405,13 +1405,13 @@ dependencies = [
 
 [[package]]
 name = "dao-dao-macros"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-hooks",
  "dao-interface",
- "dao-voting 2.1.2",
+ "dao-voting 2.1.3",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
@@ -1419,7 +1419,7 @@ dependencies = [
 
 [[package]]
 name = "dao-interface"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1432,7 +1432,7 @@ dependencies = [
 
 [[package]]
 name = "dao-migrator"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
@@ -1449,7 +1449,7 @@ dependencies = [
  "cw20 0.16.0",
  "cw20-base 0.16.0",
  "cw20-stake 0.2.6",
- "cw20-stake 2.1.2",
+ "cw20-stake 2.1.3",
  "cw20-staked-balance-voting",
  "cw4 0.13.4",
  "cw4-voting",
@@ -1458,7 +1458,7 @@ dependencies = [
  "dao-proposal-single",
  "dao-testing",
  "dao-voting 0.1.0",
- "dao-voting 2.1.2",
+ "dao-voting 2.1.3",
  "dao-voting-cw20-staked",
  "dao-voting-cw4",
  "thiserror",
@@ -1466,13 +1466,13 @@ dependencies = [
 
 [[package]]
 name = "dao-pre-propose-approval-single"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-denom",
  "cw-multi-test",
- "cw-paginate-storage 2.1.2",
+ "cw-paginate-storage 2.1.3",
  "cw-storage-plus 1.1.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
@@ -1485,7 +1485,7 @@ dependencies = [
  "dao-proposal-hooks",
  "dao-proposal-single",
  "dao-testing",
- "dao-voting 2.1.2",
+ "dao-voting 2.1.3",
  "dao-voting-cw20-staked",
  "dao-voting-cw4",
  "thiserror",
@@ -1493,7 +1493,7 @@ dependencies = [
 
 [[package]]
 name = "dao-pre-propose-approver"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1512,14 +1512,14 @@ dependencies = [
  "dao-proposal-hooks",
  "dao-proposal-single",
  "dao-testing",
- "dao-voting 2.1.2",
+ "dao-voting 2.1.3",
  "dao-voting-cw20-staked",
  "dao-voting-cw4",
 ]
 
 [[package]]
 name = "dao-pre-propose-base"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1531,14 +1531,14 @@ dependencies = [
  "cw2 0.16.0",
  "dao-interface",
  "dao-proposal-hooks",
- "dao-voting 2.1.2",
+ "dao-voting 2.1.3",
  "serde",
  "thiserror",
 ]
 
 [[package]]
 name = "dao-pre-propose-multiple"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1555,14 +1555,14 @@ dependencies = [
  "dao-proposal-hooks",
  "dao-proposal-multiple",
  "dao-testing",
- "dao-voting 2.1.2",
+ "dao-voting 2.1.3",
  "dao-voting-cw20-staked",
  "dao-voting-cw4",
 ]
 
 [[package]]
 name = "dao-pre-propose-single"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1580,14 +1580,14 @@ dependencies = [
  "dao-proposal-hooks",
  "dao-proposal-single",
  "dao-testing",
- "dao-voting 2.1.2",
+ "dao-voting 2.1.3",
  "dao-voting-cw20-staked",
  "dao-voting-cw4",
 ]
 
 [[package]]
 name = "dao-proposal-condorcet"
-version = "0.2.0"
+version = "2.1.3"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
@@ -1602,14 +1602,14 @@ dependencies = [
  "dao-dao-macros",
  "dao-interface",
  "dao-testing",
- "dao-voting 2.1.2",
+ "dao-voting 2.1.3",
  "dao-voting-cw4",
  "thiserror",
 ]
 
 [[package]]
 name = "dao-proposal-hook-counter"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1625,24 +1625,24 @@ dependencies = [
  "dao-proposal-hooks",
  "dao-proposal-single",
  "dao-vote-hooks",
- "dao-voting 2.1.2",
+ "dao-voting 2.1.3",
  "dao-voting-cw20-balance",
  "thiserror",
 ]
 
 [[package]]
 name = "dao-proposal-hooks"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-hooks",
- "dao-voting 2.1.2",
+ "dao-voting 2.1.3",
 ]
 
 [[package]]
 name = "dao-proposal-multiple"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1655,7 +1655,7 @@ dependencies = [
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw20-stake 2.1.2",
+ "cw20-stake 2.1.3",
  "cw3 0.16.0",
  "cw4 0.16.0",
  "cw4-group 0.16.0",
@@ -1668,7 +1668,7 @@ dependencies = [
  "dao-testing",
  "dao-vote-hooks",
  "dao-voting 0.1.0",
- "dao-voting 2.1.2",
+ "dao-voting 2.1.3",
  "dao-voting-cw20-balance",
  "dao-voting-cw20-staked",
  "dao-voting-cw4",
@@ -1680,7 +1680,7 @@ dependencies = [
 
 [[package]]
 name = "dao-proposal-single"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1696,7 +1696,7 @@ dependencies = [
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw20-stake 2.1.2",
+ "cw20-stake 2.1.3",
  "cw3 0.16.0",
  "cw4 0.16.0",
  "cw4-group 0.16.0",
@@ -1710,7 +1710,7 @@ dependencies = [
  "dao-testing",
  "dao-vote-hooks",
  "dao-voting 0.1.0",
- "dao-voting 2.1.2",
+ "dao-voting 2.1.3",
  "dao-voting-cw20-balance",
  "dao-voting-cw20-staked",
  "dao-voting-cw4",
@@ -1721,7 +1721,7 @@ dependencies = [
 
 [[package]]
 name = "dao-proposal-sudo"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1736,7 +1736,7 @@ dependencies = [
 
 [[package]]
 name = "dao-testing"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1749,7 +1749,7 @@ dependencies = [
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw20-stake 2.1.2",
+ "cw20-stake 2.1.3",
  "cw4 0.16.0",
  "cw4-group 0.16.0",
  "cw721-base",
@@ -1760,7 +1760,7 @@ dependencies = [
  "dao-proposal-condorcet",
  "dao-proposal-single",
  "dao-voting 0.1.0",
- "dao-voting 2.1.2",
+ "dao-voting 2.1.3",
  "dao-voting-cw20-balance",
  "dao-voting-cw20-staked",
  "dao-voting-cw4",
@@ -1772,12 +1772,12 @@ dependencies = [
 
 [[package]]
 name = "dao-vote-hooks"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-hooks",
- "dao-voting 2.1.2",
+ "dao-voting 2.1.3",
 ]
 
 [[package]]
@@ -1794,7 +1794,7 @@ dependencies = [
 
 [[package]]
 name = "dao-voting"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1809,7 +1809,7 @@ dependencies = [
 
 [[package]]
 name = "dao-voting-cw20-balance"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1826,7 +1826,7 @@ dependencies = [
 
 [[package]]
 name = "dao-voting-cw20-staked"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1837,7 +1837,7 @@ dependencies = [
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw20-stake 2.1.2",
+ "cw20-stake 2.1.3",
  "dao-dao-macros",
  "dao-interface",
  "thiserror",
@@ -1845,7 +1845,7 @@ dependencies = [
 
 [[package]]
 name = "dao-voting-cw4"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1863,14 +1863,14 @@ dependencies = [
 
 [[package]]
 name = "dao-voting-cw721-staked"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-controllers 0.16.0",
  "cw-multi-test",
- "cw-paginate-storage 2.1.2",
+ "cw-paginate-storage 2.1.3",
  "cw-storage-plus 1.1.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
@@ -1885,7 +1885,7 @@ dependencies = [
 
 [[package]]
 name = "dao-voting-native-staked"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
@@ -1893,7 +1893,7 @@ dependencies = [
  "cosmwasm-storage",
  "cw-controllers 0.16.0",
  "cw-multi-test",
- "cw-paginate-storage 2.1.2",
+ "cw-paginate-storage 2.1.3",
  "cw-storage-plus 1.1.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
@@ -2502,14 +2502,14 @@ dependencies = [
  "cw-vesting",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw20-stake 2.1.2",
+ "cw20-stake 2.1.3",
  "cw721 0.16.0",
  "cw721-base",
  "dao-dao",
  "dao-interface",
  "dao-pre-propose-single",
  "dao-proposal-single",
- "dao-voting 2.1.2",
+ "dao-voting 2.1.3",
  "dao-voting-cw20-staked",
  "dao-voting-cw721-staked",
  "env_logger",

@@ -60,7 +60,7 @@ cargo publish
 cd "$START_DIR"
 
 cd packages/dao-dao-macros
-cargo publish
+cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
 
 cd packages/dao-voting
@@ -86,7 +86,7 @@ cd test-contracts/dao-proposal-sudo
 cargo publish
 cd "$START_DIR"
 
-cd test-contracts/dao-voting-cw20-balances
+cd test-contracts/dao-voting-cw20-balance
 cargo publish
 cd "$START_DIR"
 
@@ -98,10 +98,6 @@ sleep 120
 
 # Contracts
 cd contracts/external/cw-token-swap
-cargo hack publish --no-dev-deps --allow-dirty
-cd "$START_DIR"
-
-cd contracts/external/cw-fund-distributor
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
 
@@ -185,6 +181,11 @@ cd "$START_DIR"
 
 sleep 120
 
+# TODO re-enable when ready
+# cd contracts/external/cw-fund-distributor
+# cargo hack publish --no-dev-deps --allow-dirty
+# cd "$START_DIR"
+
 cd contracts/external/dao-migrator
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
@@ -195,6 +196,5 @@ cd "$START_DIR"
 
 echo "Everything is published!"
 
-# VERSION=$(grep -A1 "\[workspace.package\]" Cargo.toml | awk -F'"' '/version/ {print $2}');
-# git tag v"$VERSION"
-# git push origin v"$VERSION"
+VERSION=$(grep -A1 "\[workspace.package\]" Cargo.toml | awk -F'"' '/version/ {print $2}');
+git tag v"$VERSION"

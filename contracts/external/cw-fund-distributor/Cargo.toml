@@ -3,6 +3,7 @@ name = "cw-fund-distributor"
 authors = ["bekauz <bekauz@protonmail.com>"]
 description = "A CosmWasm contract for distributing funds to DAO members based on voting power."
 edition = { workspace = true }
+license = { workspace = true }
 repository = { workspace = true }
 version = "0.1.0"
 
