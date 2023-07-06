@@ -5,7 +5,7 @@ description = "A DAO DAO proposal module with ranked-choice, Condorcet voting."
 edition = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
-version = "0.1.0"
+version = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -22,20 +22,16 @@ cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 cw-utils = { workspace = true }
-
 dao-voting = { workspace = true }
 dao-dao-macros = { workspace = true }
 dao-interface = { workspace = true }
-
-dao-dao = { workspace = true, features = ["library"] }
-
 thiserror = { workspace = true }
 
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }
 cw-multi-test = { workspace = true }
+dao-dao = { workspace = true, features = ["library"] }
 dao-testing = { workspace = true }
-
 dao-voting-cw4 = { workspace = true }
 cw4-group = { workspace = true }
 cw4 = { workspace = true }

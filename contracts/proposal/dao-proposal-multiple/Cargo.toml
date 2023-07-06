@@ -33,7 +33,6 @@ cw2 = { workspace = true }
 cw20 = { workspace = true }
 cw3 = { workspace = true }
 thiserror = { version = "1.0" }
-dao-dao = { workspace = true, features = ["library"] }
 dao-dao-macros = { workspace = true }
 dao-pre-propose-base = { workspace = true }
 dao-interface = { workspace = true }
