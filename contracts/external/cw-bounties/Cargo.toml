@@ -31,3 +31,4 @@ thiserror = { workspace = true }
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }
 cw-multi-test = { workspace = true }
+anyhow = { workspace = true }
