@@ -3400,7 +3400,8 @@ dependencies = [
 [[package]]
 name = "stake-cw20"
 version = "0.2.6"
-source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v0.3.0#5d46fc6f4a9a2fed3a85e700215d0421e1c196be"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cfbd45133276dbe4d6588899f4d4d06fdb9f16921fd1394affc0bccc9a5cb0b6"
 dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
