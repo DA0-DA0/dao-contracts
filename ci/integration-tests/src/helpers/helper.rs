@@ -98,14 +98,14 @@ pub fn create_dao(
 
     chain
         .orc
-        .instantiate("dao_dao", op_name, &msg, key, None, vec![])?;
+        .instantiate("dao_dao_core", op_name, &msg, key, None, vec![])?;
 
     // add proposal, pre-propose, voting, cw20_stake, and cw20_base
     // contracts to the orc contract map.
 
     let state: DumpStateResponse = chain
         .orc
-        .query("dao_dao", &dao_interface::msg::QueryMsg::DumpState {})?
+        .query("dao_dao_core", &dao_interface::msg::QueryMsg::DumpState {})?
         .data()
         .unwrap();
     chain
@@ -169,7 +169,7 @@ pub fn create_dao(
         .unwrap();
 
     Ok(DaoState {
-        addr: chain.orc.contract_map.address("dao_dao")?,
+        addr: chain.orc.contract_map.address("dao_dao_core")?,
         state,
     })
 }

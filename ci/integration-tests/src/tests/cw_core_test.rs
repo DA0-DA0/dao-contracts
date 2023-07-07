@@ -35,7 +35,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
     let dao = res.unwrap();
 
     let res = chain.orc.execute(
-        "dao_dao",
+        "dao_dao_core",
         "exc_admin_msgs_pause_dao_fail",
         &dao_interface::msg::ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
@@ -55,7 +55,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
 
     let res = chain
         .orc
-        .query("dao_dao", &dao_interface::msg::QueryMsg::PauseInfo {})
+        .query("dao_dao_core", &dao_interface::msg::QueryMsg::PauseInfo {})
         .unwrap();
     let res: PauseInfoResponse = res.data().unwrap();
 
@@ -74,7 +74,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
     chain
         .orc
         .execute(
-            "dao_dao",
+            "dao_dao_core",
             "exc_admin_msgs_pause_dao",
             &dao_interface::msg::ExecuteMsg::ExecuteAdminMsgs {
                 msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
@@ -93,7 +93,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
 
     let res = chain
         .orc
-        .query("dao_dao", &dao_interface::msg::QueryMsg::PauseInfo {})
+        .query("dao_dao_core", &dao_interface::msg::QueryMsg::PauseInfo {})
         .unwrap();
 
     let res: PauseInfoResponse = res.data().unwrap();
@@ -121,7 +121,7 @@ fn execute_items(chain: &mut Chain) {
     let res = chain
         .orc
         .query(
-            "dao_dao",
+            "dao_dao_core",
             &dao_interface::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
@@ -134,7 +134,7 @@ fn execute_items(chain: &mut Chain) {
     chain
         .orc
         .execute(
-            "dao_dao",
+            "dao_dao_core",
             "exc_items_set",
             &dao_interface::msg::ExecuteMsg::ExecuteAdminMsgs {
                 msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
@@ -155,7 +155,7 @@ fn execute_items(chain: &mut Chain) {
     let res = chain
         .orc
         .query(
-            "dao_dao",
+            "dao_dao_core",
             &dao_interface::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
@@ -169,7 +169,7 @@ fn execute_items(chain: &mut Chain) {
     chain
         .orc
         .execute(
-            "dao_dao",
+            "dao_dao_core",
             "exc_items_rm",
             &dao_interface::msg::ExecuteMsg::ExecuteAdminMsgs {
                 msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
@@ -189,7 +189,7 @@ fn execute_items(chain: &mut Chain) {
     let res = chain
         .orc
         .query(
-            "dao_dao",
+            "dao_dao_core",
             &dao_interface::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
@@ -310,7 +310,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
         ownership,
         cw20_stake::msg::Ownership::<Addr> {
             owner: Some(Addr::unchecked(
-                chain.orc.contract_map.address("dao_dao").unwrap()
+                chain.orc.contract_map.address("dao_dao_core").unwrap()
             )),
             pending_owner: None,
             pending_expiry: None
@@ -377,6 +377,6 @@ fn instantiate_with_admin(chain: &mut Chain) {
     );
     assert_eq!(
         config_res.dao,
-        chain.orc.contract_map.address("dao_dao").unwrap()
+        chain.orc.contract_map.address("dao_dao_core").unwrap()
     );
 }
