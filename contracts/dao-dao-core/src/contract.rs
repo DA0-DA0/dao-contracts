@@ -27,7 +27,7 @@ use crate::state::{
     PAUSED, PROPOSAL_MODULES, SUBDAO_LIST, TOTAL_PROPOSAL_MODULE_COUNT, VOTING_MODULE,
 };
 
-pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-dao";
+pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-dao-core";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const PROPOSAL_MODULE_REPLY_ID: u64 = 0;

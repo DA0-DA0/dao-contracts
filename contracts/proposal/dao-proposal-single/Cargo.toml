@@ -42,7 +42,7 @@ cw-proposal-single-v1 = { workspace = true, features = ["library"] }
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }
 cw-multi-test = { workspace = true }
-dao-dao = { workspace = true }
+dao-dao-core = { workspace = true }
 dao-voting-cw4 = { workspace = true }
 dao-voting-cw20-balance = { workspace = true }
 dao-voting-cw20-staked = { workspace = true }

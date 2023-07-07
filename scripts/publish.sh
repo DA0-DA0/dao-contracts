@@ -171,7 +171,7 @@ cd contracts/voting/dao-voting-native-staked
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
 
-cd contracts/dao-dao
+cd contracts/dao-dao-core
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
 

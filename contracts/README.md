@@ -1,6 +1,6 @@
 # DAO Contracts
 
-- `dao-dao` - the core module for DAOs.
+- `dao-dao-core` - the core module for DAOs.
 - `external` - contracts used by DAOs that are not part of a DAO
   module.
 - `pre-propose` - pre-propose modules.

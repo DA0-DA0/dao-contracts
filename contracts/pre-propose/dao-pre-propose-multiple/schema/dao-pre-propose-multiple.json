@@ -1350,7 +1350,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Gets the DAO (dao-dao) module this contract is associated with. Returns `Addr`.",
+        "description": "Gets the DAO (dao-dao-core) module this contract is associated with. Returns `Addr`.",
         "type": "object",
         "required": [
           "dao"

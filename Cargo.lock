@@ -73,9 +73,9 @@ dependencies = [
 
 [[package]]
 name = "async-trait"
-version = "0.1.70"
+version = "0.1.71"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79fa67157abdfd688a259b6648808757db9347af834624f27ec646da976aee5d"
+checksum = "a564d521dd56509c4c47480d00b80ee55f7e385ae48db5744c67ad50c92d2ebf"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -230,7 +230,7 @@ dependencies = [
  "cw-utils 0.16.0",
  "cw20 0.16.0",
  "cw20-stake 2.1.5",
- "dao-dao",
+ "dao-dao-core",
  "dao-interface",
  "dao-pre-propose-single",
  "dao-proposal-single",
@@ -558,7 +558,7 @@ dependencies = [
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20-base 0.16.0",
- "dao-dao",
+ "dao-dao-core",
  "dao-interface",
  "thiserror",
 ]
@@ -699,7 +699,7 @@ dependencies = [
  "cw20 0.16.0",
  "cw20-base 0.16.0",
  "cw20-stake 2.1.5",
- "dao-dao",
+ "dao-dao-core",
  "dao-interface",
  "dao-voting-cw20-staked",
  "thiserror",
@@ -1381,7 +1381,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "dao-dao"
+name = "dao-dao-core"
 version = "2.1.5"
 dependencies = [
  "cosmwasm-schema",
@@ -1453,7 +1453,7 @@ dependencies = [
  "cw20-staked-balance-voting",
  "cw4 0.13.4",
  "cw4-voting",
- "dao-dao",
+ "dao-dao-core",
  "dao-interface",
  "dao-proposal-single",
  "dao-testing",
@@ -1479,7 +1479,7 @@ dependencies = [
  "cw20 0.16.0",
  "cw20-base 0.16.0",
  "cw4-group 0.16.0",
- "dao-dao",
+ "dao-dao-core",
  "dao-interface",
  "dao-pre-propose-base",
  "dao-proposal-hooks",
@@ -1505,7 +1505,7 @@ dependencies = [
  "cw20 0.16.0",
  "cw20-base 0.16.0",
  "cw4-group 0.16.0",
- "dao-dao",
+ "dao-dao-core",
  "dao-interface",
  "dao-pre-propose-approval-single",
  "dao-pre-propose-base",
@@ -1549,7 +1549,7 @@ dependencies = [
  "cw20 0.16.0",
  "cw20-base 0.16.0",
  "cw4-group 0.16.0",
- "dao-dao",
+ "dao-dao-core",
  "dao-interface",
  "dao-pre-propose-base",
  "dao-proposal-hooks",
@@ -1574,7 +1574,7 @@ dependencies = [
  "cw20 0.16.0",
  "cw20-base 0.16.0",
  "cw4-group 0.16.0",
- "dao-dao",
+ "dao-dao-core",
  "dao-interface",
  "dao-pre-propose-base",
  "dao-proposal-hooks",
@@ -1598,7 +1598,7 @@ dependencies = [
  "cw2 0.16.0",
  "cw4 0.16.0",
  "cw4-group 0.16.0",
- "dao-dao",
+ "dao-dao-core",
  "dao-dao-macros",
  "dao-interface",
  "dao-testing",
@@ -1620,7 +1620,7 @@ dependencies = [
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "dao-dao",
+ "dao-dao-core",
  "dao-interface",
  "dao-proposal-hooks",
  "dao-proposal-single",
@@ -1701,7 +1701,7 @@ dependencies = [
  "cw4 0.16.0",
  "cw4-group 0.16.0",
  "cw721-base",
- "dao-dao",
+ "dao-dao-core",
  "dao-dao-macros",
  "dao-interface",
  "dao-pre-propose-base",
@@ -1753,7 +1753,7 @@ dependencies = [
  "cw4 0.16.0",
  "cw4-group 0.16.0",
  "cw721-base",
- "dao-dao",
+ "dao-dao-core",
  "dao-interface",
  "dao-pre-propose-multiple",
  "dao-pre-propose-single",
@@ -2505,7 +2505,7 @@ dependencies = [
  "cw20-stake 2.1.5",
  "cw721 0.16.0",
  "cw721-base",
- "dao-dao",
+ "dao-dao-core",
  "dao-interface",
  "dao-pre-propose-single",
  "dao-proposal-single",
@@ -3225,9 +3225,9 @@ checksum = "bebd363326d05ec3e2f532ab7660680f3b02130d780c299bca73469d521bc0ed"
 
 [[package]]
 name = "serde"
-version = "1.0.166"
+version = "1.0.167"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d01b7404f9d441d3ad40e6a636a7782c377d2abdbe4fa2440e2edcc2f4f10db8"
+checksum = "7daf513456463b42aa1d94cff7e0c24d682b429f020b9afa4f5ba5c40a22b237"
 dependencies = [
  "serde_derive",
 ]
@@ -3243,18 +3243,18 @@ dependencies = [
 
 [[package]]
 name = "serde_bytes"
-version = "0.11.10"
+version = "0.11.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3c5113243e4a3a1c96587342d067f3e6b0f50790b6cf40d2868eb647a3eef0e"
+checksum = "5a16be4fe5320ade08736447e3198294a5ea9a6d44dde6f35f0a5e06859c427a"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.166"
+version = "1.0.167"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5dd83d6dde2b6b2d466e14d9d1acce8816dedee94f735eac6395808b3483c6d6"
+checksum = "b69b106b68bc8054f0e974e70d19984040f8a5cf9215ca82626ea4853f82c4b9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3285,9 +3285,9 @@ dependencies = [
 
 [[package]]
 name = "serde_repr"
-version = "0.1.13"
+version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f0a21fba416426ac927b1691996e82079f8b6156e920c85345f135b2e9ba2de"
+checksum = "1d89a8107374290037607734c0b73a85db7ed80cae314b3c5791f192a496e731"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3650,18 +3650,18 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.41"
+version = "1.0.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c16a64ba9387ef3fdae4f9c1a7f07a0997fce91985c0336f1ddc1822b3b37802"
+checksum = "a35fc5b8971143ca348fa6df4f024d4d55264f3468c71ad1c2f365b0a4d58c42"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.41"
+version = "1.0.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d14928354b01c4d6a4f0e549069adef399a284e7995c7ccca94e8a07a5346c59"
+checksum = "463fe12d7993d3b327787537ce8dd4dfa058de32fc2b195ef3cde03dc4771e8f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3913,9 +3913,9 @@ checksum = "497961ef93d974e23eb6f433eb5fe1b7930b659f06d12dec6fc44a8f554c0bba"
 
 [[package]]
 name = "ucd-trie"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e79c4d996edb816c91e4308506774452e55e95c3c9de07b6729e17e15a5ef81"
+checksum = "ed646292ffc8188ef8ea4d1e0e0150fb15a5c2e12ad9b8fc191ae7a8a7f3c4b9"
 
 [[package]]
 name = "uint"

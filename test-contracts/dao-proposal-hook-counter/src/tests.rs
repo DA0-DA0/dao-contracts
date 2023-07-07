@@ -48,11 +48,11 @@ fn cw20_balances_voting() -> Box<dyn Contract<Empty>> {
 
 fn cw_gov_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        dao_dao::contract::execute,
-        dao_dao::contract::instantiate,
-        dao_dao::contract::query,
+        dao_dao_core::contract::execute,
+        dao_dao_core::contract::instantiate,
+        dao_dao_core::contract::query,
     )
-    .with_reply(dao_dao::contract::reply);
+    .with_reply(dao_dao_core::contract::reply);
     Box::new(contract)
 }
 
