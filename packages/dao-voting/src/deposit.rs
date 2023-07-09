@@ -36,7 +36,7 @@ pub enum DepositToken {
     /// module. NOTE: in order to use the token address of the voting
     /// module the voting module must (1) use a cw20 token and (2)
     /// implement the `TokenContract {}` query type defined by
-    /// `dao_macros::token_query`. Failing to implement that
+    /// `dao_dao_macros::token_query`. Failing to implement that
     /// and using this option will cause instantiation to fail.
     VotingModuleToken {},
 }
@@ -101,7 +101,7 @@ impl UncheckedDepositInfo {
             DepositToken::VotingModuleToken {} => {
                 let voting_module: Addr = deps
                     .querier
-                    .query_wasm_smart(dao, &dao_core::msg::QueryMsg::VotingModule {})?;
+                    .query_wasm_smart(dao, &dao_interface::msg::QueryMsg::VotingModule {})?;
                 // If the voting module has no token this will
                 // error. This is desirable.
                 let token_addr: Addr = deps.querier.query_wasm_smart(

@@ -4,7 +4,7 @@ use cw20::Cw20Coin;
 use cw20_base::msg::InstantiateMarketingInfo;
 use cw_utils::Duration;
 
-use dao_macros::{active_query, token_query, voting_module_query};
+use dao_dao_macros::{active_query, token_query, voting_module_query};
 
 /// Information about the staking contract to be used with this voting
 /// module.

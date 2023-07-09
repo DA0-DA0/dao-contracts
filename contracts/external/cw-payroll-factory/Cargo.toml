@@ -3,6 +3,7 @@ name ="cw-payroll-factory"
 authors = ["Jake Hartnell"]
 description = "A CosmWasm factory contract for instantiating a payroll contract."
 edition = { workspace = true }
+license = { workspace = true }
 repository = { workspace = true }
 version = { workspace = true }
 

@@ -2,7 +2,7 @@ use cosmwasm_std::{coins, Addr, Uint128};
 use cw20::Cw20Coin;
 
 use cw_multi_test::{App, BankSudo, Executor};
-use dao_core::state::ProposalModule;
+use dao_interface::state::ProposalModule;
 use dao_pre_propose_single as cppbps;
 
 use cw_denom::CheckedDenom;
@@ -136,7 +136,7 @@ where
         .wrap()
         .query_wasm_smart(
             core_addr.clone(),
-            &dao_core::msg::QueryMsg::ProposalModules {
+            &dao_interface::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },

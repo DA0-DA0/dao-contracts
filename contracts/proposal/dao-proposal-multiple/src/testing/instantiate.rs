@@ -3,13 +3,13 @@ use cw20::Cw20Coin;
 
 use cw_multi_test::{next_block, App, BankSudo, ContractWrapper, Executor, SudoMsg};
 use cw_utils::Duration;
-use dao_interface::{Admin, ModuleInstantiateInfo};
+use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_pre_propose_multiple as cppm;
 
 use dao_testing::contracts::{
     cw20_balances_voting_contract, cw20_base_contract, cw20_stake_contract,
     cw20_staked_balances_voting_contract, cw4_group_contract, cw721_base_contract,
-    dao_core_contract, native_staked_balances_voting_contract, pre_propose_multiple_contract,
+    dao_dao_contract, native_staked_balances_voting_contract, pre_propose_multiple_contract,
 };
 use dao_voting::{
     deposit::{DepositRefundPolicy, UncheckedDepositInfo},
@@ -124,7 +124,7 @@ pub fn _instantiate_with_staked_cw721_governance(
         );
         Box::new(contract)
     });
-    let core_contract_id = app.store_code(dao_core_contract());
+    let core_contract_id = app.store_code(dao_dao_contract());
 
     let nft_address = app
         .instantiate_contract(
@@ -141,7 +141,7 @@ pub fn _instantiate_with_staked_cw721_governance(
         )
         .unwrap();
 
-    let instantiate_core = dao_core::msg::InstantiateMsg {
+    let instantiate_core = dao_interface::msg::InstantiateMsg {
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
@@ -180,9 +180,12 @@ pub fn _instantiate_with_staked_cw721_governance(
         )
         .unwrap();
 
-    let core_state: dao_core::query::DumpStateResponse = app
+    let core_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr.clone(), &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(
+            core_addr.clone(),
+            &dao_interface::msg::QueryMsg::DumpState {},
+        )
         .unwrap();
     let staking_addr = core_state.voting_module;
 
@@ -253,9 +256,9 @@ pub fn _instantiate_with_native_staked_balances_governance(
     };
 
     let native_stake_id = app.store_code(native_staked_balances_voting_contract());
-    let core_contract_id = app.store_code(dao_core_contract());
+    let core_contract_id = app.store_code(dao_dao_contract());
 
-    let instantiate_core = dao_core::msg::InstantiateMsg {
+    let instantiate_core = dao_interface::msg::InstantiateMsg {
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
@@ -295,9 +298,12 @@ pub fn _instantiate_with_native_staked_balances_governance(
         )
         .unwrap();
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr.clone(), &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(
+            core_addr.clone(),
+            &dao_interface::msg::QueryMsg::DumpState {},
+        )
         .unwrap();
     let native_staking_addr = gov_state.voting_module;
 
@@ -335,7 +341,7 @@ pub fn instantiate_with_cw20_balances_governance(
     let proposal_module_code_id = app.store_code(proposal_multiple_contract());
 
     let cw20_id = app.store_code(cw20_base_contract());
-    let core_id = app.store_code(dao_core_contract());
+    let core_id = app.store_code(dao_dao_contract());
     let votemod_id = app.store_code(cw20_balances_voting_contract());
 
     let initial_balances = initial_balances.unwrap_or_else(|| {
@@ -361,7 +367,7 @@ pub fn instantiate_with_cw20_balances_governance(
             .collect()
     };
 
-    let governance_instantiate = dao_core::msg::InstantiateMsg {
+    let governance_instantiate = dao_interface::msg::InstantiateMsg {
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
@@ -439,9 +445,9 @@ pub fn instantiate_with_staked_balances_governance(
     let cw20_id = app.store_code(cw20_base_contract());
     let cw20_stake_id = app.store_code(cw20_stake_contract());
     let staked_balances_voting_id = app.store_code(cw20_staked_balances_voting_contract());
-    let core_contract_id = app.store_code(dao_core_contract());
+    let core_contract_id = app.store_code(dao_dao_contract());
 
-    let instantiate_core = dao_core::msg::InstantiateMsg {
+    let instantiate_core = dao_interface::msg::InstantiateMsg {
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
@@ -490,9 +496,12 @@ pub fn instantiate_with_staked_balances_governance(
         )
         .unwrap();
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr.clone(), &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(
+            core_addr.clone(),
+            &dao_interface::msg::QueryMsg::DumpState {},
+        )
         .unwrap();
     let voting_module = gov_state.voting_module;
 
@@ -571,9 +580,9 @@ pub fn instantiate_with_multiple_staked_balances_governance(
     let cw20_id = app.store_code(cw20_base_contract());
     let cw20_stake_id = app.store_code(cw20_stake_contract());
     let staked_balances_voting_id = app.store_code(cw20_staked_balances_voting_contract());
-    let core_contract_id = app.store_code(dao_core_contract());
+    let core_contract_id = app.store_code(dao_dao_contract());
 
-    let instantiate_core = dao_core::msg::InstantiateMsg {
+    let instantiate_core = dao_interface::msg::InstantiateMsg {
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
@@ -624,9 +633,12 @@ pub fn instantiate_with_multiple_staked_balances_governance(
         )
         .unwrap();
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr.clone(), &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(
+            core_addr.clone(),
+            &dao_interface::msg::QueryMsg::DumpState {},
+        )
         .unwrap();
     let voting_module = gov_state.voting_module;
 
@@ -675,7 +687,7 @@ pub fn instantiate_with_staking_active_threshold(
     let proposal_module_code_id = app.store_code(proposal_multiple_contract());
     let cw20_id = app.store_code(cw20_base_contract());
     let cw20_staking_id = app.store_code(cw20_stake_contract());
-    let core_id = app.store_code(dao_core_contract());
+    let core_id = app.store_code(dao_dao_contract());
     let votemod_id = app.store_code(cw20_staked_balances_voting_contract());
 
     let initial_balances = initial_balances.unwrap_or_else(|| {
@@ -685,7 +697,7 @@ pub fn instantiate_with_staking_active_threshold(
         }]
     });
 
-    let governance_instantiate = dao_core::msg::InstantiateMsg {
+    let governance_instantiate = dao_interface::msg::InstantiateMsg {
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
@@ -741,7 +753,7 @@ pub fn _instantiate_with_cw4_groups_governance(
 ) -> Addr {
     let proposal_module_code_id = app.store_code(proposal_multiple_contract());
     let cw4_id = app.store_code(cw4_group_contract());
-    let core_id = app.store_code(dao_core_contract());
+    let core_id = app.store_code(dao_dao_contract());
     let votemod_id = app.store_code(cw4_group_contract());
 
     let initial_weights = initial_weights.unwrap_or_else(|| {
@@ -771,7 +783,7 @@ pub fn _instantiate_with_cw4_groups_governance(
             .collect()
     };
 
-    let governance_instantiate = dao_core::msg::InstantiateMsg {
+    let governance_instantiate = dao_interface::msg::InstantiateMsg {
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),

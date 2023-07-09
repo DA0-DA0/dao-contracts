@@ -1,5 +1,5 @@
 use cosmwasm_schema::write_api;
-use dao_core::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use dao_interface::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
 fn main() {
     write_api! {

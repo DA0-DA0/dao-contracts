@@ -27,8 +27,7 @@ cw20 = { workspace = true }
 cw3 = { workspace = true }
 thiserror = { workspace = true }
 
-dao-core = { workspace = true, features = ["library"] }
-dao-macros = { workspace = true }
+dao-dao-macros = { workspace = true }
 dao-pre-propose-base = { workspace = true }
 dao-interface = { workspace = true }
 dao-voting = { workspace = true }
@@ -43,6 +42,7 @@ cw-proposal-single-v1 = { workspace = true, features = ["library"] }
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }
 cw-multi-test = { workspace = true }
+dao-dao-core = { workspace = true }
 dao-voting-cw4 = { workspace = true }
 dao-voting-cw20-balance = { workspace = true }
 dao-voting-cw20-staked = { workspace = true }

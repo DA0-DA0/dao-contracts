@@ -2,6 +2,7 @@
 name = "cw20-stake-external-rewards"
 authors = ["Ben2x4 <Ben2x4@tutanota.com>", "ekez <ekez@withoutdoing.com>"]
 edition = "2018"
+description = "Distributes staking rewards."
 license = { workspace = true }
 repository = { workspace = true }
 version = { workspace = true }

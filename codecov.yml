@@ -1,5 +1,5 @@
 ignore:
     - "ci"
-    - "packages/dao-macros"
+    - "packages/dao-dao-macros"
     - "packages/dao-testing"
     - "test-contracts"

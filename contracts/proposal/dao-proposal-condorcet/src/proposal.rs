@@ -161,7 +161,7 @@ impl Proposal {
         let msgs = self.choices[winner as usize].msgs.clone();
         let core_exec = WasmMsg::Execute {
             contract_addr: dao.into_string(),
-            msg: to_binary(&dao_core::msg::ExecuteMsg::ExecuteProposalHook { msgs })?,
+            msg: to_binary(&dao_interface::msg::ExecuteMsg::ExecuteProposalHook { msgs })?,
             funds: vec![],
         };
         Ok(if self.close_on_execution_failure {

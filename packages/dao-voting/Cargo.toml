@@ -13,8 +13,7 @@ cosmwasm-schema = { workspace = true }
 thiserror = { workspace = true }
 cw20 = { workspace = true }
 dao-interface = { workspace = true }
-dao-macros = { workspace = true }
-dao-core = { workspace = true }
+dao-dao-macros = { workspace = true }
 cw-denom = { workspace = true }
 cw-utils = { workspace = true }
 cw-storage-plus = { workspace = true }

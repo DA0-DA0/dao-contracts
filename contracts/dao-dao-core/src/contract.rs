@@ -5,25 +5,29 @@ use cosmwasm_std::{
     Reply, Response, StdError, StdResult, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
+use cw_paginate_storage::{paginate_map, paginate_map_keys, paginate_map_values};
 use cw_storage_plus::Map;
 use cw_utils::{parse_reply_instantiate_data, Duration};
-
-use cw_paginate::{paginate_map, paginate_map_keys, paginate_map_values};
-use dao_interface::{voting, Admin, ModuleInstantiateCallback, ModuleInstantiateInfo};
+use dao_interface::{
+    msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg},
+    query::{
+        AdminNominationResponse, Cw20BalanceResponse, DaoURIResponse, DumpStateResponse,
+        GetItemResponse, PauseInfoResponse, ProposalModuleCountResponse, SubDao,
+    },
+    state::{
+        Admin, Config, ModuleInstantiateCallback, ModuleInstantiateInfo, ProposalModule,
+        ProposalModuleStatus,
+    },
+    voting,
+};
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::query::{
-    AdminNominationResponse, Cw20BalanceResponse, DaoURIResponse, DumpStateResponse,
-    GetItemResponse, PauseInfoResponse, ProposalModuleCountResponse, SubDao,
-};
 use crate::state::{
-    Config, ProposalModule, ProposalModuleStatus, ACTIVE_PROPOSAL_MODULE_COUNT, ADMIN, CONFIG,
-    CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN, PAUSED, PROPOSAL_MODULES, SUBDAO_LIST,
-    TOTAL_PROPOSAL_MODULE_COUNT, VOTING_MODULE,
+    ACTIVE_PROPOSAL_MODULE_COUNT, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN,
+    PAUSED, PROPOSAL_MODULES, SUBDAO_LIST, TOTAL_PROPOSAL_MODULE_COUNT, VOTING_MODULE,
 };
 
-pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-core";
+pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-dao-core";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const PROPOSAL_MODULE_REPLY_ID: u64 = 0;
@@ -810,7 +814,7 @@ pub fn query_list_sub_daos(
         .map(|addr| deps.api.addr_validate(&addr))
         .transpose()?;
 
-    let subdaos = cw_paginate::paginate_map(
+    let subdaos = cw_paginate_storage::paginate_map(
         deps,
         &SUBDAO_LIST,
         start_at.as_ref(),

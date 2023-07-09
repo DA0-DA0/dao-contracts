@@ -1,4 +1,4 @@
-use dao_macros::limit_variant_count;
+use dao_dao_macros::limit_variant_count;
 
 const FAILED_PROPOSAL_EXECUTION_MASK: u64 = 0b000;
 const FAILED_PROPOSAL_HOOK_MASK: u64 = 0b001;

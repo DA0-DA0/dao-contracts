@@ -1,7 +1,7 @@
 use cosmwasm_std::{Addr, Uint128};
 use cw_hooks::HooksResponse;
 use cw_multi_test::App;
-use dao_core::state::{ProposalModule, ProposalModuleStatus};
+use dao_interface::state::{ProposalModule, ProposalModuleStatus};
 use dao_pre_propose_multiple as cppm;
 use dao_voting::pre_propose::ProposalCreationPolicy;
 
@@ -49,7 +49,7 @@ pub fn query_multiple_proposal_module(app: &App, core_addr: &Addr) -> Addr {
         .wrap()
         .query_wasm_smart(
             core_addr,
-            &dao_core::msg::QueryMsg::ProposalModules {
+            &dao_interface::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -127,14 +127,14 @@ pub fn query_dao_token(app: &App, core_addr: &Addr) -> Addr {
 
 pub fn query_voting_module(app: &App, core_addr: &Addr) -> Addr {
     app.wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::VotingModule {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::VotingModule {})
         .unwrap()
 }
 
 pub fn query_cw20_token_staking_contracts(app: &App, core_addr: &Addr) -> (Addr, Addr) {
     let voting_module: Addr = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::VotingModule {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::VotingModule {})
         .unwrap();
     let token_contract: Addr = app
         .wrap()

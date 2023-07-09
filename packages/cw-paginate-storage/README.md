@@ -20,7 +20,7 @@ You can use this package to write a query to list it's contents like:
 ```rust
 use cosmwasm_std::{Deps, Binary, to_binary, StdResult};
 use cw_storage_plus::Map;
-use cw_paginate::paginate_map;                         
+use cw_paginate_storage::paginate_map;                         
 
 pub const ITEMS: Map<String, String> = Map::new("items");
 

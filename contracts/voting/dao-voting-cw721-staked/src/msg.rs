@@ -1,8 +1,8 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw721::Cw721ReceiveMsg;
 use cw_utils::Duration;
-use dao_interface::Admin;
-use dao_macros::voting_module_query;
+use dao_dao_macros::voting_module_query;
+use dao_interface::state::Admin;
 
 #[cw_serde]
 pub struct InstantiateMsg {

@@ -6,7 +6,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 
-use dao_interface::ModuleInstantiateCallback;
+use dao_interface::state::ModuleInstantiateCallback;
 use dao_pre_propose_approval_single::msg::{
     ApproverProposeMessage, ExecuteExt as ApprovalExt, ExecuteMsg as PreProposeApprovalExecuteMsg,
 };

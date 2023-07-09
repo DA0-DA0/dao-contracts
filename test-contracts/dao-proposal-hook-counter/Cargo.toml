@@ -1,6 +1,7 @@
 [package]
 name = "dao-proposal-hook-counter"
 authors = ["Callum Anderson <callumanderson745@gmail.com>"]
+description = "A DAO DAO test contract for counting proposal hook calls."
 edition = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
@@ -32,6 +33,6 @@ cw20-base = { workspace = true }
 cw-utils = { workspace = true }
 dao-voting = { workspace = true }
 dao-interface = { workspace = true }
-dao-core = { workspace = true }
+dao-dao-core = { workspace = true }
 dao-proposal-single = { workspace = true }
 cw-multi-test = { workspace = true }

@@ -1,4 +1,4 @@
-# dao-core
+# dao-dao-core
 
 This contract is the core module for all DAO DAO DAOs. It handles
 management of voting power and proposal modules, executes messages,
@@ -11,6 +11,9 @@ In addition to the wiki spec this contract may also pause. To do so a
 `Pause` message must be executed by a proposal module. Pausing the
 core module will stop all actions on the module for the duration of
 the pause.
+
+## Developing
+Core messages and interfaces are defined in the [dao-interfaces](../../packages/dao-interface) package. If you are building new modules or a contract that interacts with a DAO, use `dao-interface`.
 
 ## Treasury management
 
@@ -37,7 +40,7 @@ There are two ways that a non-native token may be added to the DAO
 treasury.
 
 If `automatically_add_[cw20s|cw721s]` is set to true in the [DAO's
-config](https://github.com/DA0-DA0/dao-contracts/blob/74bd3881fdd86829e5e8b132b9952dd64f2d0737/contracts/dao-core/src/state.rs#L16-L21),
+config](https://github.com/DA0-DA0/dao-contracts/blob/74bd3881fdd86829e5e8b132b9952dd64f2d0737/contracts/dao-dao/src/state.rs#L16-L21),
 the DAO will add the token to the treasury upon receiving the token
 via cw20's `Send` method and cw721's `SendNft` method.
 

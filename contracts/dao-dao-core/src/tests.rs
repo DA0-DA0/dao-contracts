@@ -9,18 +9,18 @@ use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_storage_plus::{Item, Map};
 use cw_utils::{Duration, Expiration};
 use dao_interface::{
-    voting::{InfoResponse, VotingPowerAtHeightResponse},
-    Admin, ModuleInstantiateInfo,
-};
-
-use crate::{
-    contract::{derive_proposal_module_prefix, migrate, CONTRACT_NAME, CONTRACT_VERSION},
     msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{
         AdminNominationResponse, Cw20BalanceResponse, DaoURIResponse, DumpStateResponse,
         GetItemResponse, PauseInfoResponse, ProposalModuleCountResponse, SubDao,
     },
-    state::{Config, ProposalModule, ProposalModuleStatus, PROPOSAL_MODULES},
+    state::{Admin, Config, ModuleInstantiateInfo, ProposalModule, ProposalModuleStatus},
+    voting::{InfoResponse, VotingPowerAtHeightResponse},
+};
+
+use crate::{
+    contract::{derive_proposal_module_prefix, migrate, CONTRACT_NAME, CONTRACT_VERSION},
+    state::PROPOSAL_MODULES,
     ContractError,
 };
 

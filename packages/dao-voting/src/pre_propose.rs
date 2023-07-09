@@ -3,7 +3,7 @@
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Empty, StdResult, SubMsg};
-use dao_interface::ModuleInstantiateInfo;
+use dao_interface::state::ModuleInstantiateInfo;
 
 use crate::reply::pre_propose_module_instantiation_id;
 

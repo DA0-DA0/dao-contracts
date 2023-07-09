@@ -4,8 +4,8 @@ use cw_denom::{CheckedDenom, UncheckedDenom};
 use cw_hooks::HooksResponse;
 use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 use cw_utils::Duration;
-use dao_core::state::ProposalModule;
-use dao_interface::{Admin, ModuleInstantiateInfo};
+use dao_interface::state::ProposalModule;
+use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_voting::{
     deposit::{CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
     multiple_choice::{
@@ -278,9 +278,9 @@ fn test_proposal_count_initialized_to_zero() {
     };
     let core_addr = instantiate_with_staked_balances_governance(&mut app, msg, None);
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let proposal_modules = gov_state.proposal_modules;
 
@@ -326,9 +326,9 @@ fn test_no_early_pass_with_min_duration() {
         ]),
     );
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let proposal_modules = gov_state.proposal_modules;
 
@@ -420,9 +420,9 @@ fn test_propose_with_messages() {
         ]),
     );
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let proposal_modules = gov_state.proposal_modules;
 
@@ -602,9 +602,9 @@ fn test_min_duration_same_as_proposal_duration() {
         ]),
     );
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let proposal_modules = gov_state.proposal_modules;
 
@@ -709,9 +709,12 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
 
     let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr.clone(), &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(
+            core_addr.clone(),
+            &dao_interface::msg::QueryMsg::DumpState {},
+        )
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -879,9 +882,9 @@ fn test_take_proposal_deposit() {
         }]),
     );
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -984,9 +987,9 @@ fn test_native_proposal_deposit() {
         }]),
     );
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -1114,9 +1117,9 @@ fn test_deposit_return_on_execute() {
         true,
     );
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -1171,9 +1174,12 @@ fn test_deposit_return_zero() {
         true,
     );
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr.clone(), &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(
+            core_addr.clone(),
+            &dao_interface::msg::QueryMsg::DumpState {},
+        )
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -1223,9 +1229,9 @@ fn test_query_list_votes() {
         true,
     );
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -1301,9 +1307,9 @@ fn test_cant_vote_executed_or_closed() {
         true,
     );
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -1412,9 +1418,9 @@ fn test_cant_propose_zero_power() {
         ]),
     );
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let proposal_modules = gov_state.proposal_modules;
 
@@ -1511,9 +1517,9 @@ fn test_cant_vote_not_registered() {
         false,
     );
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -1862,9 +1868,9 @@ fn test_close_open_proposal() {
         false,
     );
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -1930,9 +1936,9 @@ fn test_no_refund_failed_proposal() {
         false,
     );
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -2007,9 +2013,9 @@ fn test_deposit_return_on_close() {
         }),
         false,
     );
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -2076,9 +2082,9 @@ fn test_execute_expired_proposal() {
         ]),
     );
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let proposal_modules = gov_state.proposal_modules;
 
@@ -2186,9 +2192,9 @@ fn test_update_config() {
         false,
     );
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -2302,9 +2308,9 @@ fn test_no_return_if_no_refunds() {
         }),
         true,
     );
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -2364,7 +2370,7 @@ fn test_query_list_proposals() {
         .wrap()
         .query_wasm_smart(
             gov_addr,
-            &dao_core::msg::QueryMsg::ProposalModules {
+            &dao_interface::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -2625,7 +2631,7 @@ fn test_active_threshold_absolute() {
     let dao = govmod_config.dao;
     let voting_module: Addr = app
         .wrap()
-        .query_wasm_smart(dao, &dao_core::msg::QueryMsg::VotingModule {})
+        .query_wasm_smart(dao, &dao_interface::msg::QueryMsg::VotingModule {})
         .unwrap();
     let staking_contract: Addr = app
         .wrap()
@@ -2753,7 +2759,7 @@ fn test_active_threshold_percent() {
     let dao = govmod_config.dao;
     let voting_module: Addr = app
         .wrap()
-        .query_wasm_smart(dao, &dao_core::msg::QueryMsg::VotingModule {})
+        .query_wasm_smart(dao, &dao_interface::msg::QueryMsg::VotingModule {})
         .unwrap();
     let staking_contract: Addr = app
         .wrap()
@@ -2874,7 +2880,7 @@ fn test_active_threshold_none() {
     let dao = govmod_config.dao;
     let voting_module: Addr = app
         .wrap()
-        .query_wasm_smart(dao, &dao_core::msg::QueryMsg::VotingModule {})
+        .query_wasm_smart(dao, &dao_interface::msg::QueryMsg::VotingModule {})
         .unwrap();
     let staking_contract: Addr = app
         .wrap()
@@ -3487,9 +3493,12 @@ fn test_return_deposit_to_dao_on_proposal_failure() {
         false,
     );
 
-    let core_state: dao_core::query::DumpStateResponse = app
+    let core_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr.clone(), &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(
+            core_addr.clone(),
+            &dao_interface::msg::QueryMsg::DumpState {},
+        )
         .unwrap();
     let proposal_modules = core_state.proposal_modules;
 
@@ -3548,7 +3557,7 @@ fn test_close_failed_proposal() {
     let dao = govmod_config.dao;
     let voting_module: Addr = app
         .wrap()
-        .query_wasm_smart(dao, &dao_core::msg::QueryMsg::VotingModule {})
+        .query_wasm_smart(dao, &dao_interface::msg::QueryMsg::VotingModule {})
         .unwrap();
     let staking_contract: Addr = app
         .wrap()
@@ -3806,7 +3815,7 @@ fn test_no_double_refund_on_execute_fail_and_close() {
     let dao = proposal_config.dao;
     let voting_module: Addr = app
         .wrap()
-        .query_wasm_smart(dao, &dao_core::msg::QueryMsg::VotingModule {})
+        .query_wasm_smart(dao, &dao_interface::msg::QueryMsg::VotingModule {})
         .unwrap();
     let staking_contract: Addr = app
         .wrap()
@@ -4140,9 +4149,9 @@ fn test_vote_with_rationale() {
         ]),
     );
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -4236,9 +4245,9 @@ fn test_revote_with_rationale() {
         ]),
     );
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -4390,9 +4399,9 @@ fn test_update_rationale() {
         ]),
     );
 
-    let gov_state: dao_core::query::DumpStateResponse = app
+    let gov_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 

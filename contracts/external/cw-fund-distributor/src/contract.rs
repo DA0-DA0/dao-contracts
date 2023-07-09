@@ -14,7 +14,7 @@ use cosmwasm_std::{
     Order, Response, StdError, StdResult, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw_paginate::paginate_map;
+use cw_paginate_storage::paginate_map;
 
 use dao_interface::voting;
 

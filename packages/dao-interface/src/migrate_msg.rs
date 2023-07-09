@@ -2,9 +2,9 @@
 //! copyo of the types from dao-migrator contract.
 
 use cosmwasm_schema::cw_serde;
-use dao_interface::ModuleInstantiateInfo;
 
 use crate::query::SubDao;
+use crate::state::ModuleInstantiateInfo;
 
 #[cw_serde]
 pub struct MigrateParams {

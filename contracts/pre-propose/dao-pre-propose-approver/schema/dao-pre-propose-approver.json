@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-pre-propose-approver",
-  "contract_version": "2.1.0",
+  "contract_version": "2.2.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -283,7 +283,7 @@
             "additionalProperties": false
           },
           {
-            "description": "Use the token address of the associated DAO's voting module. NOTE: in order to use the token address of the voting module the voting module must (1) use a cw20 token and (2) implement the `TokenContract {}` query type defined by `dao_macros::token_query`. Failing to implement that and using this option will cause instantiation to fail.",
+            "description": "Use the token address of the associated DAO's voting module. NOTE: in order to use the token address of the voting module the voting module must (1) use a cw20 token and (2) implement the `TokenContract {}` query type defined by `dao_dao_macros::token_query`. Failing to implement that and using this option will cause instantiation to fail.",
             "type": "object",
             "required": [
               "voting_module_token"
@@ -440,7 +440,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Gets the DAO (cw-dao-core) module this contract is associated with. Returns `Addr`.",
+        "description": "Gets the DAO (dao-dao-core) module this contract is associated with. Returns `Addr`.",
         "type": "object",
         "required": [
           "dao"

@@ -1,5 +1,5 @@
 [package]
-name = "cw-paginate"
+name = "cw-paginate-storage"
 authors = ["ekez ekez@withoutdoing.com"]
 description = "A package for paginating cosmwasm maps."
 edition = { workspace = true }

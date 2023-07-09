@@ -8,7 +8,7 @@ use cosmwasm_std::Addr;
 use cw_multi_test::{App, Executor};
 use cw_utils::Duration;
 
-use dao_interface::Admin;
+use dao_interface::state::Admin;
 use dao_testing::contracts::voting_cw721_staked_contract;
 
 use crate::msg::InstantiateMsg;

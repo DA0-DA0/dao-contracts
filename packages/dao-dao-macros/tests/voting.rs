@@ -1,6 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
-use dao_macros::voting_module_query;
+use dao_dao_macros::voting_module_query;
 
 /// enum for testing. Important that this derives things / has other
 /// attributes so we can be sure we aren't messing with other macros

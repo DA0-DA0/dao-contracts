@@ -10,7 +10,10 @@ use cw_denom::CheckedDenom;
 use cw_hooks::{HookError, HooksResponse};
 use cw_multi_test::{next_block, App, Executor};
 use cw_utils::Duration;
-use dao_interface::{voting::InfoResponse, Admin, ModuleInstantiateInfo};
+use dao_interface::{
+    state::{Admin, ModuleInstantiateInfo},
+    voting::InfoResponse,
+};
 use dao_testing::{ShouldExecute, TestSingleChoiceVote};
 use dao_voting::{
     deposit::{CheckedDepositInfo, UncheckedDepositInfo},
@@ -1274,9 +1277,9 @@ fn test_three_of_five_multisig() {
         ]),
     );
 
-    let core_state: dao_core::query::DumpStateResponse = app
+    let core_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let proposal_module = core_state
         .proposal_modules
@@ -1356,9 +1359,9 @@ fn test_three_of_five_multisig_revoting() {
         ]),
     );
 
-    let core_state: dao_core::query::DumpStateResponse = app
+    let core_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let proposal_module = core_state
         .proposal_modules
@@ -1509,9 +1512,9 @@ fn test_proposal_count_initialized_to_zero() {
         ]),
     );
 
-    let core_state: dao_core::query::DumpStateResponse = app
+    let core_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
         .unwrap();
     let proposal_modules = core_state.proposal_modules;
 
@@ -1597,7 +1600,7 @@ fn test_migrate_from_v1() {
     let staked_balances_voting_id = app.store_code(cw20_staked_balances_voting_contract());
     let core_contract_id = app.store_code(cw_core_contract());
 
-    let instantiate_core = dao_core::msg::InstantiateMsg {
+    let instantiate_core = dao_interface::msg::InstantiateMsg {
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
@@ -1646,9 +1649,12 @@ fn test_migrate_from_v1() {
         )
         .unwrap();
 
-    let core_state: dao_core::query::DumpStateResponse = app
+    let core_state: dao_interface::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr.clone(), &dao_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(
+            core_addr.clone(),
+            &dao_interface::msg::QueryMsg::DumpState {},
+        )
         .unwrap();
     let voting_module = core_state.voting_module;
 

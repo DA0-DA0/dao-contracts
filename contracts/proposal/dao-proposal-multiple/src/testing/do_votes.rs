@@ -2,7 +2,7 @@ use cosmwasm_std::{coins, Addr, Decimal, Uint128};
 use cw20::Cw20Coin;
 use cw_denom::CheckedDenom;
 use cw_multi_test::{App, BankSudo, Executor};
-use dao_core::state::ProposalModule;
+use dao_interface::state::ProposalModule;
 use dao_testing::ShouldExecute;
 use dao_voting::{
     deposit::{CheckedDepositInfo, UncheckedDepositInfo},
@@ -138,7 +138,7 @@ where
         .wrap()
         .query_wasm_smart(
             governance_addr.clone(),
-            &dao_core::msg::QueryMsg::ProposalModules {
+            &dao_interface::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },

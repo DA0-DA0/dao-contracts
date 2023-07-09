@@ -4,8 +4,8 @@ use cosm_orc::orchestrator::SigningKey;
 use cosmwasm_std::{to_binary, CosmosMsg, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_utils::Duration;
-use dao_core::query::DumpStateResponse;
-use dao_interface::{Admin, ModuleInstantiateInfo};
+use dao_interface::query::DumpStateResponse;
+use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_voting::{
     deposit::{DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
     pre_propose::{PreProposeInfo, ProposalCreationPolicy},
@@ -29,7 +29,7 @@ pub fn create_dao(
     user_addr: String,
     key: &SigningKey,
 ) -> Result<DaoState> {
-    let msg = dao_core::msg::InstantiateMsg {
+    let msg = dao_interface::msg::InstantiateMsg {
         dao_uri: None,
         admin,
         name: "DAO DAO".to_string(),
@@ -98,14 +98,14 @@ pub fn create_dao(
 
     chain
         .orc
-        .instantiate("dao_core", op_name, &msg, key, None, vec![])?;
+        .instantiate("dao_dao_core", op_name, &msg, key, None, vec![])?;
 
     // add proposal, pre-propose, voting, cw20_stake, and cw20_base
     // contracts to the orc contract map.
 
     let state: DumpStateResponse = chain
         .orc
-        .query("dao_core", &dao_core::msg::QueryMsg::DumpState {})?
+        .query("dao_dao_core", &dao_interface::msg::QueryMsg::DumpState {})?
         .data()
         .unwrap();
     chain
@@ -169,7 +169,7 @@ pub fn create_dao(
         .unwrap();
 
     Ok(DaoState {
-        addr: chain.orc.contract_map.address("dao_core")?,
+        addr: chain.orc.contract_map.address("dao_dao_core")?,
         state,
     })
 }

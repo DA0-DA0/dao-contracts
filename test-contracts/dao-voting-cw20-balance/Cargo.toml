@@ -1,6 +1,7 @@
 [package]
 name = "dao-voting-cw20-balance"
 authors = ["ekez <ekez@withoutdoing.com>"]
+description = "A DAO DAO test contract."
 edition = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
@@ -23,7 +24,7 @@ cw2 = { workspace = true }
 cw20 = { workspace = true }
 cw-utils = { workspace = true }
 thiserror = { workspace = true }
-dao-macros = { workspace = true }
+dao-dao-macros = { workspace = true }
 dao-interface = { workspace = true }
 cw20-base = {  workspace = true, features = ["library"] }
 

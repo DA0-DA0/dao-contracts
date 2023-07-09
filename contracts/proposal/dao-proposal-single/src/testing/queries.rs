@@ -1,6 +1,6 @@
 use cosmwasm_std::{Addr, Uint128};
 use cw_multi_test::App;
-use dao_core::state::{ProposalModule, ProposalModuleStatus};
+use dao_interface::state::{ProposalModule, ProposalModuleStatus};
 
 use cw_hooks::HooksResponse;
 use dao_pre_propose_single as cppbps;
@@ -139,7 +139,7 @@ pub(crate) fn query_single_proposal_module(app: &App, core_addr: &Addr) -> Addr 
         .wrap()
         .query_wasm_smart(
             core_addr,
-            &dao_core::msg::QueryMsg::ProposalModules {
+            &dao_interface::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -174,7 +174,7 @@ pub(crate) fn query_dao_token(app: &App, core_addr: &Addr) -> Addr {
 
 pub(crate) fn query_voting_module(app: &App, core_addr: &Addr) -> Addr {
     app.wrap()
-        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::VotingModule {})
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::VotingModule {})
         .unwrap()
 }
 

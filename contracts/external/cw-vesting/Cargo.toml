@@ -1,6 +1,7 @@
 [package]
 name = "cw-vesting"
 authors = ["Jake Hartnell", "ekez <ekez@withoutdoing.com>", "blue-note"]
+description = "A CosmWasm vesting contract."
 edition = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
@@ -20,7 +21,7 @@ cosmwasm-schema = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["staking"] }
 cw-denom = { workspace = true }
 cw-ownable = { workspace = true }
-cw-paginate = { workspace = true }
+cw-paginate-storage = { workspace = true }
 cw-stake-tracker = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }

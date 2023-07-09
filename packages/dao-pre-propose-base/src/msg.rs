@@ -98,7 +98,7 @@ where
     /// associated with. Returns `Addr`.
     #[returns(cosmwasm_std::Addr)]
     ProposalModule {},
-    /// Gets the DAO (cw-dao-core) module this contract is associated
+    /// Gets the DAO (dao-dao-core) module this contract is associated
     /// with. Returns `Addr`.
     #[returns(cosmwasm_std::Addr)]
     Dao {},
