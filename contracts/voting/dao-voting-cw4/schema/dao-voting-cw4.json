@@ -7,24 +7,70 @@
     "title": "InstantiateMsg",
     "type": "object",
     "required": [
-      "cw4_group_code_id",
-      "initial_members"
+      "group_contract"
     ],
     "properties": {
-      "cw4_group_code_id": {
-        "type": "integer",
-        "format": "uint64",
-        "minimum": 0.0
-      },
-      "initial_members": {
-        "type": "array",
-        "items": {
-          "$ref": "#/definitions/Member"
-        }
+      "group_contract": {
+        "$ref": "#/definitions/GroupContract"
       }
     },
     "additionalProperties": false,
     "definitions": {
+      "GroupContract": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "existing"
+            ],
+            "properties": {
+              "existing": {
+                "type": "object",
+                "required": [
+                  "address"
+                ],
+                "properties": {
+                  "address": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "new"
+            ],
+            "properties": {
+              "new": {
+                "type": "object",
+                "required": [
+                  "cw4_group_code_id",
+                  "initial_members"
+                ],
+                "properties": {
+                  "cw4_group_code_id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  },
+                  "initial_members": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/Member"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
       "Member": {
         "description": "A group member has a weight associated with them. This may all be equal, or may have meaning in the app that makes use of the group (eg. voting power)",
         "type": "object",
@@ -49,63 +95,8 @@
   "execute": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "ExecuteMsg",
-    "oneOf": [
-      {
-        "type": "object",
-        "required": [
-          "member_changed_hook"
-        ],
-        "properties": {
-          "member_changed_hook": {
-            "type": "object",
-            "required": [
-              "diffs"
-            ],
-            "properties": {
-              "diffs": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/definitions/MemberDiff"
-                }
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      }
-    ],
-    "definitions": {
-      "MemberDiff": {
-        "description": "MemberDiff shows the old and new states for a given cw4 member They cannot both be None. old = None, new = Some -> Insert old = Some, new = Some -> Update old = Some, new = None -> Delete",
-        "type": "object",
-        "required": [
-          "key"
-        ],
-        "properties": {
-          "key": {
-            "type": "string"
-          },
-          "new": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint64",
-            "minimum": 0.0
-          },
-          "old": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint64",
-            "minimum": 0.0
-          }
-        },
-        "additionalProperties": false
-      }
-    }
+    "type": "string",
+    "enum": []
   },
   "query": {
     "$schema": "http://json-schema.org/draft-07/schema#",

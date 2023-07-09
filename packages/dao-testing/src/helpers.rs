@@ -4,6 +4,7 @@ use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_utils::Duration;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_voting_cw20_staked::msg::ActiveThreshold;
+use dao_voting_cw4::msg::GroupContract;
 
 const CREATOR_ADDR: &str = "creator";
 
@@ -330,8 +331,10 @@ pub fn instantiate_with_cw4_groups_governance(
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: votemod_id,
             msg: to_binary(&dao_voting_cw4::msg::InstantiateMsg {
-                cw4_group_code_id: cw4_id,
-                initial_members: initial_weights,
+                group_contract: GroupContract::New {
+                    cw4_group_code_id: cw4_id,
+                    initial_members: initial_weights,
+                },
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),

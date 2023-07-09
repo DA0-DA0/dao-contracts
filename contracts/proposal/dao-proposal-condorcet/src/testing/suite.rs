@@ -9,6 +9,7 @@ use dao_testing::contracts::{
     cw4_group_contract, dao_dao_contract, dao_voting_cw4_contract, proposal_condorcet_contract,
 };
 use dao_voting::threshold::PercentageThreshold;
+use dao_voting_cw4::msg::GroupContract;
 
 use crate::{
     config::{Config, UncheckedConfig},
@@ -88,8 +89,10 @@ impl SuiteBuilder {
             voting_module_instantiate_info: ModuleInstantiateInfo {
                 code_id: cw4_voting_id,
                 msg: to_binary(&dao_voting_cw4::msg::InstantiateMsg {
-                    cw4_group_code_id: cw4_id,
-                    initial_members,
+                    group_contract: GroupContract::New {
+                        cw4_group_code_id: cw4_id,
+                        initial_members,
+                    },
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),

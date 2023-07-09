@@ -10,8 +10,7 @@ use dao_interface::voting::{
 
 use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
-    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    ContractError,
+    msg::{GroupContract, InstantiateMsg, MigrateMsg, QueryMsg},
 };
 
 const DAO_ADDR: &str = "dao";
@@ -78,8 +77,10 @@ fn setup_test_case(app: &mut App) -> Addr {
         app,
         voting_id,
         InstantiateMsg {
-            cw4_group_code_id: cw4_id,
-            initial_members: members,
+            group_contract: GroupContract::New {
+                cw4_group_code_id: cw4_id,
+                initial_members: members,
+            },
         },
     )
 }
@@ -94,8 +95,10 @@ fn test_instantiate() {
     let voting_id = app.store_code(voting_contract());
     let cw4_id = app.store_code(cw4_contract());
     let msg = InstantiateMsg {
-        cw4_group_code_id: cw4_id,
-        initial_members: vec![],
+        group_contract: GroupContract::New {
+            cw4_group_code_id: cw4_id,
+            initial_members: [].into(),
+        },
     };
     let _err = app
         .instantiate_contract(
@@ -110,21 +113,23 @@ fn test_instantiate() {
 
     // Instantiate with members but no weight
     let msg = InstantiateMsg {
-        cw4_group_code_id: cw4_id,
-        initial_members: vec![
-            cw4::Member {
-                addr: ADDR1.to_string(),
-                weight: 0,
-            },
-            cw4::Member {
-                addr: ADDR2.to_string(),
-                weight: 0,
-            },
-            cw4::Member {
-                addr: ADDR3.to_string(),
-                weight: 0,
-            },
-        ],
+        group_contract: GroupContract::New {
+            cw4_group_code_id: cw4_id,
+            initial_members: vec![
+                cw4::Member {
+                    addr: ADDR1.to_string(),
+                    weight: 0,
+                },
+                cw4::Member {
+                    addr: ADDR2.to_string(),
+                    weight: 0,
+                },
+                cw4::Member {
+                    addr: ADDR3.to_string(),
+                    weight: 0,
+                },
+            ],
+        },
     };
     let _err = app
         .instantiate_contract(
@@ -136,6 +141,73 @@ fn test_instantiate() {
             None,
         )
         .unwrap_err();
+}
+
+#[test]
+pub fn test_instantiate_existing_contract() {
+    let mut app = App::default();
+
+    let voting_id = app.store_code(voting_contract());
+    let cw4_id = app.store_code(cw4_contract());
+
+    let cw4_addr = app
+        .instantiate_contract(
+            cw4_id,
+            Addr::unchecked(DAO_ADDR),
+            &cw4_group::msg::InstantiateMsg {
+                admin: Some(DAO_ADDR.to_string()),
+                members: vec![cw4::Member {
+                    addr: ADDR1.to_string(),
+                    weight: 1,
+                }],
+            },
+            &[],
+            "cw4 group",
+            None,
+        )
+        .unwrap();
+
+    // Instantiate with existing contract
+    let msg = InstantiateMsg {
+        group_contract: GroupContract::Existing {
+            address: cw4_addr.to_string(),
+        },
+    };
+    let _err = app
+        .instantiate_contract(
+            voting_id,
+            Addr::unchecked(DAO_ADDR),
+            &msg,
+            &[],
+            "voting module",
+            None,
+        )
+        .unwrap();
+
+    // Update ADDR1's weight to 2
+    let msg = cw4_group::msg::ExecuteMsg::UpdateMembers {
+        remove: vec![],
+        add: vec![cw4::Member {
+            addr: ADDR1.to_string(),
+            weight: 2,
+        }],
+    };
+
+    app.execute_contract(Addr::unchecked(DAO_ADDR), cw4_addr.clone(), &msg, &[])
+        .unwrap();
+
+    // Same should be true about the groups contract.
+    let cw4_power: cw4::MemberResponse = app
+        .wrap()
+        .query_wasm_smart(
+            cw4_addr,
+            &cw4::Cw4QueryMsg::Member {
+                addr: ADDR1.to_string(),
+                at_height: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(cw4_power.weight.unwrap(), 2);
 }
 
 #[test]
@@ -168,38 +240,6 @@ fn test_contract_info() {
         .query_wasm_smart(voting_addr, &QueryMsg::Dao {})
         .unwrap();
     assert_eq!(dao_contract, Addr::unchecked(DAO_ADDR));
-}
-
-#[test]
-fn test_permissions() {
-    let mut app = App::default();
-    let voting_addr = setup_test_case(&mut app);
-
-    // DAO can not execute hook message.
-    let err: ContractError = app
-        .execute_contract(
-            Addr::unchecked(DAO_ADDR),
-            voting_addr.clone(),
-            &ExecuteMsg::MemberChangedHook { diffs: vec![] },
-            &[],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert!(matches!(err, ContractError::Unauthorized {}));
-
-    // Contract itself can not execute hook message.
-    let err: ContractError = app
-        .execute_contract(
-            voting_addr.clone(),
-            voting_addr,
-            &ExecuteMsg::MemberChangedHook { diffs: vec![] },
-            &[],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert!(matches!(err, ContractError::Unauthorized {}));
 }
 
 #[test]
@@ -502,8 +542,10 @@ fn test_migrate() {
     let voting_id = app.store_code(voting_contract());
     let cw4_id = app.store_code(cw4_contract());
     let msg = InstantiateMsg {
-        cw4_group_code_id: cw4_id,
-        initial_members,
+        group_contract: GroupContract::New {
+            cw4_group_code_id: cw4_id,
+            initial_members,
+        },
     };
     let voting_addr = app
         .instantiate_contract(
@@ -560,25 +602,27 @@ fn test_duplicate_member() {
     // Instantiate with members but have a duplicate
     // Total weight is actually 69 but ADDR3 appears twice.
     let msg = InstantiateMsg {
-        cw4_group_code_id: cw4_id,
-        initial_members: vec![
-            cw4::Member {
-                addr: ADDR3.to_string(), // same address above
-                weight: 19,
-            },
-            cw4::Member {
-                addr: ADDR1.to_string(),
-                weight: 25,
-            },
-            cw4::Member {
-                addr: ADDR2.to_string(),
-                weight: 25,
-            },
-            cw4::Member {
-                addr: ADDR3.to_string(),
-                weight: 19,
-            },
-        ],
+        group_contract: GroupContract::New {
+            cw4_group_code_id: cw4_id,
+            initial_members: vec![
+                cw4::Member {
+                    addr: ADDR3.to_string(), // same address above
+                    weight: 19,
+                },
+                cw4::Member {
+                    addr: ADDR1.to_string(),
+                    weight: 25,
+                },
+                cw4::Member {
+                    addr: ADDR2.to_string(),
+                    weight: 25,
+                },
+                cw4::Member {
+                    addr: ADDR3.to_string(),
+                    weight: 19,
+                },
+            ],
+        },
     };
     // Previous versions voting power was 100, due to no dedup.
     // Now we error
@@ -631,22 +675,7 @@ fn test_zero_voting_power() {
     app.execute_contract(Addr::unchecked(DAO_ADDR), cw4_addr, &msg, &[])
         .unwrap();
 
-    // Should still be one as voting power should not update until
-    // the following block.
-    let addr1_voting_power: VotingPowerAtHeightResponse = app
-        .wrap()
-        .query_wasm_smart(
-            voting_addr.clone(),
-            &QueryMsg::VotingPowerAtHeight {
-                address: ADDR1.to_string(),
-                height: None,
-            },
-        )
-        .unwrap();
-    assert_eq!(addr1_voting_power.power, Uint128::new(1u128));
-
-    // update block to see the changes
-    app.update_block(next_block);
+    // Check ADDR1's power is now 0
     let addr1_voting_power: VotingPowerAtHeightResponse = app
         .wrap()
         .query_wasm_smart(
