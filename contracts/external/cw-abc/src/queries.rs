@@ -62,7 +62,7 @@ pub fn query_donations(
     start_aftor: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<DonationsResponse> {
-    let donations = cw_paginate::paginate_map(
+    let donations = cw_paginate_storage::paginate_map(
         Deps {
             storage: deps.storage,
             api: deps.api,
@@ -85,7 +85,7 @@ pub fn query_hatchers(
     start_aftor: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<HatchersResponse> {
-    let hatchers = cw_paginate::paginate_map(
+    let hatchers = cw_paginate_storage::paginate_map(
         Deps {
             storage: deps.storage,
             api: deps.api,

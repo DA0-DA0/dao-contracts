@@ -6,18 +6,18 @@ use std::collections::HashSet;
 
 use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenMsg};
 
-use crate::abc::CurveFn;
+use crate::abc::{CommonsPhase, CurveFn};
 use crate::curves::DecimalPlaces;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, UpdatePhaseConfigMsg};
 use crate::state::{
-    CurveState, CURVE_STATE, CURVE_TYPE, HATCHER_ALLOWLIST, PHASE_CONFIG, SUPPLY_DENOM,
+    CurveState, CURVE_STATE, CURVE_TYPE, HATCHER_ALLOWLIST, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
 };
 use crate::{commands, queries};
 use cw_utils::nonpayable;
 
 // version info for migration info
-pub(crate) const CONTRACT_NAME: &str = "crates.io:cw20-abc";
+pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-abc";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // By default, the prefix for token factory tokens is "factory"
@@ -85,6 +85,9 @@ pub fn instantiate(
     }
 
     PHASE_CONFIG.save(deps.storage, &phase_config)?;
+
+    // TODO don't hardcode this?
+    PHASE.save(deps.storage, &CommonsPhase::Hatch)?;
 
     cw_ownable::initialize_owner(deps.storage, deps.api, Some(info.sender.as_str()))?;
 

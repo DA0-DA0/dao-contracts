@@ -1,6 +1,4 @@
 pub mod abc;
-#[cfg(feature = "boot")]
-pub mod boot;
 pub(crate) mod commands;
 pub mod contract;
 pub mod curves;

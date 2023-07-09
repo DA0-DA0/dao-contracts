@@ -726,13 +726,17 @@ dependencies = [
 name = "cw-abc"
 version = "0.0.1"
 dependencies = [
+ "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-address-like",
+ "cw-multi-test",
  "cw-ownable",
+ "cw-paginate-storage 2.3.0",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
+ "getrandom",
  "integer-cbrt",
  "integer-sqrt",
  "rust_decimal",

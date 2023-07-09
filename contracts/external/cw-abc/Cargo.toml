@@ -20,7 +20,7 @@ crate-type = ["cdylib", "rlib"]
 backtraces = ["cosmwasm-std/backtraces"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
-boot = ["dep:cw-orch"]
+# interface = ["dep:cw-orch"] # Adds the dependency when the feature is enabled
 
 [dependencies]
 cw-utils = { workspace = true }
@@ -35,18 +35,17 @@ rust_decimal = "1.14.3"
 integer-sqrt = "0.1.5"
 integer-cbrt = "0.1.2"
 getrandom = { version = "0.2", features = ["js"] }
-# TODO publish this
+# TODO publish this and move to workspace
 token-bindings = { git = "https://github.com/CosmosContracts/token-bindings", rev = "1412b94" }
 cw-ownable = { workspace = true }
 cw-paginate-storage = { workspace = true }
-cw-orch = { version = "0.13.3", optional = true, git = "https://github.com/AbstractSDK/cw-orchestrator", branch = "main" }
+# cw-orch = { version = "0.13.3", optional = true }
 
 [dev-dependencies]
 # TODO move to workspace
 speculoos = "0.11.0"
-#cw-multi-test = { version = "0.16.0" }
 anyhow = { workspace = true }
-cw-abc = { path = ".", features = ["boot"] }
+cw-multi-test = { workspace = true }
 
 [profile.release]
 rpath = false
