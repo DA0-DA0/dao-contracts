@@ -1,6 +1,5 @@
 use cosmwasm_std::{Addr, Binary, Empty};
 use cw721::Cw721ExecuteMsg;
-use cw721_base::MintMsg;
 use cw_multi_test::{App, AppResponse, Executor};
 
 use anyhow::Result as AnyResult;
@@ -45,12 +44,12 @@ pub fn mint_nft(
     app.execute_contract(
         addr!(sender),
         cw721.clone(),
-        &cw721_base::ExecuteMsg::Mint::<Empty, Empty>(MintMsg {
+        &cw721_base::ExecuteMsg::Mint::<Empty, Empty> {
             token_id: token_id.to_string(),
             owner: receiver.to_string(),
             token_uri: None,
             extension: Empty::default(),
-        }),
+        },
         &[],
     )
 }

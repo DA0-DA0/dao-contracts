@@ -1,6 +1,5 @@
 use cosmwasm_std::{to_binary, Addr, Coin, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
-use dao_voting_cw20_staked::msg::ActiveThreshold;
 
 use cw_multi_test::{next_block, App, BankSudo, Executor, SudoMsg};
 use cw_utils::Duration;
@@ -10,7 +9,7 @@ use dao_pre_propose_single as cppbps;
 use dao_voting::{
     deposit::{DepositRefundPolicy, UncheckedDepositInfo},
     pre_propose::PreProposeInfo,
-    threshold::{PercentageThreshold, Threshold::ThresholdQuorum},
+    threshold::{ActiveThreshold, PercentageThreshold, Threshold::ThresholdQuorum},
 };
 use dao_voting_cw4::msg::GroupContract;
 
@@ -149,7 +148,10 @@ pub(crate) fn instantiate_with_staked_cw721_governance(
             msg: to_binary(&dao_voting_cw721_staked::msg::InstantiateMsg {
                 owner: Some(Admin::CoreModule {}),
                 unstaking_duration: None,
-                nft_address: nft_address.to_string(),
+                nft_contract: dao_voting_cw721_staked::msg::NftContract::Existing {
+                    address: nft_address.to_string(),
+                },
+                active_threshold: None,
             })
             .unwrap(),
             admin: None,
@@ -189,14 +191,12 @@ pub(crate) fn instantiate_with_staked_cw721_governance(
             app.execute_contract(
                 Addr::unchecked("ekez"),
                 nft_address.clone(),
-                &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::Mint(
-                    cw721_base::msg::MintMsg::<Option<Empty>> {
-                        token_id: format!("{address}_{i}"),
-                        owner: address.clone(),
-                        token_uri: None,
-                        extension: None,
-                    },
-                ),
+                &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::Mint {
+                    token_id: format!("{address}_{i}"),
+                    owner: address.clone(),
+                    token_uri: None,
+                    extension: None,
+                },
                 &[],
             )
             .unwrap();

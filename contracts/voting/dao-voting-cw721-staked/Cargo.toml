@@ -21,15 +21,16 @@ cw-storage-plus = { workspace = true }
 cw-controllers = { workspace = true }
 dao-dao-macros = { workspace = true }
 dao-interface = { workspace = true }
+cw721 = { workspace = true }
+cw721-base = { workspace = true, features = ["library"] }
 cw721-controllers = { workspace = true }
 cw-paginate-storage = { workspace = true }
-cw721 = { workspace = true }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
+dao-voting = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-cw721-base = { workspace = true }
 cw-multi-test = { workspace = true }
 anyhow = { workspace = true }
 dao-testing = { workspace = true }

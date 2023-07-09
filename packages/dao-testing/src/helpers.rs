@@ -1,10 +1,16 @@
-use cosmwasm_std::{to_binary, Addr, Binary, Empty, Uint128};
+use cosmwasm_std::{to_binary, Addr, Binary, Uint128};
 use cw20::Cw20Coin;
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cw_multi_test::{App, Executor};
 use cw_utils::Duration;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
-use dao_voting_cw20_staked::msg::ActiveThreshold;
+use dao_voting::threshold::ActiveThreshold;
 use dao_voting_cw4::msg::GroupContract;
+
+use crate::contracts::{
+    cw20_balances_voting_contract, cw20_base_contract, cw20_stake_contract,
+    cw20_staked_balances_voting_contract, cw4_group_contract, dao_dao_contract,
+    dao_voting_cw4_contract,
+};
 
 const CREATOR_ADDR: &str = "creator";
 
@@ -14,9 +20,9 @@ pub fn instantiate_with_cw20_balances_governance(
     governance_instantiate: Binary,
     initial_balances: Option<Vec<Cw20Coin>>,
 ) -> Addr {
-    let cw20_id = app.store_code(cw20_contract());
-    let core_id = app.store_code(cw_gov_contract());
-    let votemod_id = app.store_code(cw20_balances_voting());
+    let cw20_id = app.store_code(cw20_base_contract());
+    let core_id = app.store_code(dao_dao_contract());
+    let votemod_id = app.store_code(cw20_balances_voting_contract());
 
     let initial_balances = initial_balances.unwrap_or_else(|| {
         vec![Cw20Coin {
@@ -115,10 +121,10 @@ pub fn instantiate_with_staked_balances_governance(
             .collect()
     };
 
-    let cw20_id = app.store_code(cw20_contract());
-    let cw20_stake_id = app.store_code(cw20_stake());
-    let staked_balances_voting_id = app.store_code(staked_balances_voting());
-    let core_contract_id = app.store_code(cw_gov_contract());
+    let cw20_id = app.store_code(cw20_base_contract());
+    let cw20_stake_id = app.store_code(cw20_stake_contract());
+    let staked_balances_voting_id = app.store_code(cw20_staked_balances_voting_contract());
+    let core_contract_id = app.store_code(dao_dao_contract());
 
     let instantiate_core = dao_interface::msg::InstantiateMsg {
         dao_uri: None,
@@ -221,10 +227,10 @@ pub fn instantiate_with_staking_active_threshold(
     initial_balances: Option<Vec<Cw20Coin>>,
     active_threshold: Option<ActiveThreshold>,
 ) -> Addr {
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_base_contract());
     let cw20_staking_id = app.store_code(cw20_stake_contract());
-    let governance_id = app.store_code(cw_gov_contract());
-    let votemod_id = app.store_code(cw20_staked_balances_voting());
+    let governance_id = app.store_code(dao_dao_contract());
+    let votemod_id = app.store_code(cw20_staked_balances_voting_contract());
 
     let initial_balances = initial_balances.unwrap_or_else(|| {
         vec![
@@ -294,9 +300,9 @@ pub fn instantiate_with_cw4_groups_governance(
     proposal_module_instantiate: Binary,
     initial_weights: Option<Vec<Cw20Coin>>,
 ) -> Addr {
-    let cw4_id = app.store_code(cw4_contract());
-    let core_id = app.store_code(cw_gov_contract());
-    let votemod_id = app.store_code(cw4_voting_contract());
+    let cw4_id = app.store_code(cw4_group_contract());
+    let core_id = app.store_code(dao_dao_contract());
+    let votemod_id = app.store_code(dao_voting_cw4_contract());
 
     let initial_weights = initial_weights.unwrap_or_default();
 
@@ -364,90 +370,4 @@ pub fn instantiate_with_cw4_groups_governance(
     app.update_block(|block| block.height += 1);
 
     addr
-}
-
-pub fn cw20_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        cw20_base::contract::execute,
-        cw20_base::contract::instantiate,
-        cw20_base::contract::query,
-    );
-    Box::new(contract)
-}
-
-pub fn cw20_stake_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        cw20_stake::contract::execute,
-        cw20_stake::contract::instantiate,
-        cw20_stake::contract::query,
-    );
-    Box::new(contract)
-}
-
-pub fn cw20_balances_voting() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        dao_voting_cw20_balance::contract::execute,
-        dao_voting_cw20_balance::contract::instantiate,
-        dao_voting_cw20_balance::contract::query,
-    )
-    .with_reply(dao_voting_cw20_balance::contract::reply);
-    Box::new(contract)
-}
-
-fn cw20_staked_balances_voting() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        dao_voting_cw20_staked::contract::execute,
-        dao_voting_cw20_staked::contract::instantiate,
-        dao_voting_cw20_staked::contract::query,
-    )
-    .with_reply(dao_voting_cw20_staked::contract::reply);
-    Box::new(contract)
-}
-
-fn cw_gov_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        dao_dao_core::contract::execute,
-        dao_dao_core::contract::instantiate,
-        dao_dao_core::contract::query,
-    )
-    .with_reply(dao_dao_core::contract::reply);
-    Box::new(contract)
-}
-
-fn staked_balances_voting() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        dao_voting_cw20_staked::contract::execute,
-        dao_voting_cw20_staked::contract::instantiate,
-        dao_voting_cw20_staked::contract::query,
-    )
-    .with_reply(dao_voting_cw20_staked::contract::reply);
-    Box::new(contract)
-}
-
-fn cw20_stake() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        cw20_stake::contract::execute,
-        cw20_stake::contract::instantiate,
-        cw20_stake::contract::query,
-    );
-    Box::new(contract)
-}
-
-fn cw4_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        cw4_group::contract::execute,
-        cw4_group::contract::instantiate,
-        cw4_group::contract::query,
-    );
-    Box::new(contract)
-}
-
-fn cw4_voting_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        dao_voting_cw4::contract::execute,
-        dao_voting_cw4::contract::instantiate,
-        dao_voting_cw4::contract::query,
-    )
-    .with_reply(dao_voting_cw4::contract::reply);
-    Box::new(contract)
 }

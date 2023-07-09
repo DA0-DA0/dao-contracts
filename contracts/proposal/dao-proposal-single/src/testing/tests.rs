@@ -24,10 +24,9 @@ use dao_voting::{
         mask_proposal_hook_index, mask_vote_hook_index,
     },
     status::Status,
-    threshold::{PercentageThreshold, Threshold},
+    threshold::{ActiveThreshold, PercentageThreshold, Threshold},
     voting::{Vote, Votes},
 };
-use dao_voting_cw20_staked::msg::ActiveThreshold;
 
 use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},

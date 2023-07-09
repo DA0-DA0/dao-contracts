@@ -14,6 +14,7 @@ cosm-orc = { version = "4.0" }
 cw20 = { workspace = true }
 cw20-base = { workspace = true }
 cw721-base = { workspace = true }
+cw721-roles = { workspace = true }
 cw721 = { workspace = true }
 cw-utils = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["ibc3"] }

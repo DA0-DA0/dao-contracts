@@ -15,9 +15,8 @@ use dao_voting::{
     },
     pre_propose::PreProposeInfo,
     status::Status,
-    threshold::{PercentageThreshold, Threshold},
+    threshold::{ActiveThreshold, PercentageThreshold, Threshold},
 };
-use dao_voting_cw20_staked::msg::ActiveThreshold;
 use std::panic;
 
 use crate::{

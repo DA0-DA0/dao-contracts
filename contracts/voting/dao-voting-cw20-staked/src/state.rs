@@ -1,7 +1,7 @@
-use crate::msg::ActiveThreshold;
 use cosmwasm_std::Addr;
 use cw_storage_plus::Item;
 use cw_utils::Duration;
+use dao_voting::threshold::ActiveThreshold;
 
 pub const ACTIVE_THRESHOLD: Item<ActiveThreshold> = Item::new("active_threshold");
 pub const TOKEN: Item<Addr> = Item::new("token");

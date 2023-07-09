@@ -1,5 +1,4 @@
 use cosmwasm_std::{to_binary, CosmosMsg, Empty, WasmMsg};
-use cw721_base::MintMsg;
 use dao_proposal_single::query::ProposalResponse;
 use dao_voting::voting::Vote;
 use test_context::test_context;
@@ -16,14 +15,12 @@ fn mint_mint_mint_mint(cw721: &str, owner: &str, mints: u64) -> Vec<CosmosMsg> {
         .map(|mint| {
             WasmMsg::Execute {
                 contract_addr: cw721.to_string(),
-                msg: to_binary(&cw721_base::msg::ExecuteMsg::Mint::<Empty, Empty>(
-                    MintMsg::<Empty> {
+                msg: to_binary(&cw721_base::msg::ExecuteMsg::<Empty, Empty>::Mint{
                         token_id: mint.to_string(),
                         owner: owner.to_string(),
                         token_uri: Some("https://bafkreibufednctf2f2bpduiibgkvpqcw5rtdmhqh2htqx3qbdnji4h55hy.ipfs.nftstorage.link".to_string()),
                         extension: Empty::default(),
-                    },
-                ))
+                    })
                 .unwrap(),
                 funds: vec![],
             }

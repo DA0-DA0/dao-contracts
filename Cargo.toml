@@ -1,14 +1,14 @@
 [workspace]
 members = [
 	"contracts/dao-dao-core",
+	"contracts/external/*",
 	"contracts/proposal/*",
 	"contracts/pre-propose/*",
 	"contracts/staking/*",
 	"contracts/voting/*",
 	"packages/*",
 	"test-contracts/*",
-	"ci/*",
-	"contracts/external/*"
+	"ci/*"
 	]
 exclude = ["ci/configs/"]
 
@@ -17,10 +17,6 @@ edition = "2021"
 license = "BSD-3-Clause"
 repository = "https://github.com/DA0-DA0/dao-contracts"
 version = "2.2.0"
-
-[profile.release.package.stake-cw20-external-rewards]
-codegen-units = 1
-incremental = false
 
 [profile.release]
 codegen-units = 1
@@ -50,8 +46,8 @@ cw20-base = "0.16"
 cw3 = "0.16"
 cw4 = "0.16"
 cw4-group = "0.16"
-cw721 = "0.16"
-cw721-base = "0.16"
+cw721 = "0.17"
+cw721-base = "0.17"
 proc-macro2 = "1.0"
 quote = "1.0"
 rand = "0.8"
@@ -74,6 +70,8 @@ cw-vesting = { path = "./contracts/external/cw-vesting", version = "2.2.0" }
 cw20-stake = { path = "./contracts/staking/cw20-stake", version = "2.2.0" }
 cw-stake-tracker = { path = "./packages/cw-stake-tracker", version = "2.2.0" }
 cw721-controllers = { path = "./packages/cw721-controllers", version = "2.2.0" }
+cw721-roles = { path = "./contracts/external/cw721-roles", version = "*" }
+dao-cw721-extensions = { path = "./packages/dao-cw721-extensions", version = "*" }
 dao-dao-core = { path = "./contracts/dao-dao-core", version = "2.2.0" }
 dao-interface = { path = "./packages/dao-interface", version = "2.2.0" }
 dao-dao-macros = { path = "./packages/dao-dao-macros", version = "2.2.0" }
@@ -93,6 +91,7 @@ dao-voting = { path = "./packages/dao-voting", version = "2.2.0" }
 dao-voting-cw20-balance = { path = "./test-contracts/dao-voting-cw20-balance", version = "2.2.0" }
 dao-voting-cw20-staked = { path = "./contracts/voting/dao-voting-cw20-staked", version = "2.2.0" }
 dao-voting-cw4 = { path = "./contracts/voting/dao-voting-cw4", version = "2.2.0" }
+dao-voting-cw721-roles = { path = "./contracts/voting/dao-voting-cw721-roles", version = "*" }
 dao-voting-cw721-staked = { path = "./contracts/voting/dao-voting-cw721-staked", version = "2.2.0" }
 dao-voting-native-staked = { path = "./contracts/voting/dao-voting-native-staked", version = "2.2.0" }
 
