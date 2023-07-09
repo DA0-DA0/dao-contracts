@@ -32,7 +32,7 @@ cw-utils = { workspace = true }
 cw2 = { workspace = true }
 cw20 = { workspace = true }
 cw3 = { workspace = true }
-thiserror = { version = "1.0" }
+thiserror = { workspace = true }
 dao-dao-macros = { workspace = true }
 dao-pre-propose-base = { workspace = true }
 dao-interface = { workspace = true }
