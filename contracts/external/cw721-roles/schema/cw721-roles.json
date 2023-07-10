@@ -1,6 +1,6 @@
 {
   "contract_name": "cw721-roles",
-  "contract_version": "2.1.0",
+  "contract_version": "2.2.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1416,7 +1416,7 @@
       ],
       "properties": {
         "tokens": {
-          "description": "Contains all token_ids in lexicographical ordering If there are more than `limit`, use `start_from` in future queries to achieve pagination.",
+          "description": "Contains all token_ids in lexicographical ordering If there are more than `limit`, use `start_after` in future queries to achieve pagination.",
           "type": "array",
           "items": {
             "type": "string"
@@ -2113,7 +2113,7 @@
       ],
       "properties": {
         "tokens": {
-          "description": "Contains all token_ids in lexicographical ordering If there are more than `limit`, use `start_from` in future queries to achieve pagination.",
+          "description": "Contains all token_ids in lexicographical ordering If there are more than `limit`, use `start_after` in future queries to achieve pagination.",
           "type": "array",
           "items": {
             "type": "string"

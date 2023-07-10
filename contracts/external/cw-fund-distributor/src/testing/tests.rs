@@ -406,7 +406,6 @@ fn test_fund_cw20() {
 }
 
 #[test]
-#[should_panic(expected = "Invalid zero amount")]
 pub fn test_fund_cw20_zero_amount() {
     let BaseTest {
         mut app,
@@ -437,7 +436,7 @@ pub fn test_fund_cw20_zero_amount() {
         token_address,
         &cw20::Cw20ExecuteMsg::Send {
             contract: distributor_address.to_string(),
-            amount: Uint128::zero(),
+            amount: Uint128::zero(), // since cw20-base v1.1.0 this is allowed
             msg: Binary::default(),
         },
         &[],

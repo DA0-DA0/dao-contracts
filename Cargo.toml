@@ -32,33 +32,42 @@ incremental = false
 overflow-checks = true
 
 [workspace.dependencies]
-anyhow = { version = "1.0.51"}
-cosmwasm-schema = { version = "1.1" }
-cosmwasm-std = { version = "1.1", features = ["ibc3"] }
-cosmwasm-storage = { version = "1.1" }
-cw-controllers = "0.16"
-cw-multi-test = { version = "0.16" }
+anyhow = { version = "1.0"}
+assert_matches = "1.5"
+cosm-orc = { version = "4.0" }
+cosm-tome = "0.2"
+cosmos-sdk-proto = "0.19"
+cosmwasm-schema = { version = "1.2" }
+cosmwasm-std = { version = "1.2", features = ["ibc3"] }
+cosmwasm-storage = { version = "1.2" }
+cw-controllers = "1.1"
+cw-multi-test = "0.16"
 cw-storage-plus = { version = "1.1" }
-cw-utils = "0.16"
-cw2 = "0.16"
-cw20 = "0.16"
-cw20-base = "0.16"
-cw3 = "0.16"
-cw4 = "0.16"
-cw4-group = "0.16"
-cw721 = "0.17"
-cw721-base = "0.17"
+cw-utils = "1.0"
+cw2 = "1.1"
+cw20 = "1.1"
+cw20-base = "1.1"
+cw3 = "1.1"
+cw4 = "1.1"
+cw4-group = "1.1"
+cw721 = "0.18"
+cw721-base = "0.18"
+env_logger = "0.10"
+once_cell = "1.18"
 proc-macro2 = "1.0"
 quote = "1.0"
 rand = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"]}
+serde_json = "1.0"
+serde_yaml = "0.9"
 syn = { version = "1.0", features = ["derive"] }
-thiserror = { version = "1.0.30" }
-wynd-utils = "0.4.1"
+test-context = "0.1"
+thiserror = { version = "1.0" }
+wynd-utils = "0.4"
 
 # One commit ahead of version 0.3.0. Allows initialization with an
 # optional owner.
-cw-ownable = "0.5.0"
+cw-ownable = "0.5"
 
 cw-admin-factory = { path = "./contracts/external/cw-admin-factory", version = "2.2.0" }
 cw-denom = { path = "./packages/cw-denom", version = "2.2.0" }
