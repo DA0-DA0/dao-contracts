@@ -1,6 +1,6 @@
 [package]
 name = "cw-bounties"
-authors = ["Jake Hartnell"]
+authors = ["Jake Hartnell", "Mr T <mr-t@arkprotocol.io>"]
 description = "A CosmWasm contract for creating and managing on-chain bounties."
 edition = { workspace = true }
 license = { workspace = true }
