@@ -1,5 +1,5 @@
 use cosmwasm_std::StdError;
-use cw_utils::PaymentError;
+use cw_utils::{ParseReplyError, PaymentError};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -9,6 +9,18 @@ pub enum ContractError {
 
     #[error("{0}")]
     PaymentError(#[from] PaymentError),
+
+    #[error("{0}")]
+    ParseReplyError(#[from] ParseReplyError),
+
+    #[error("Got a submessage reply with unknown id: {id}")]
+    UnknownReplyId { id: u64 },
+
+    #[error("Error creating token")]
+    TokenCreationError {},
+
+    #[error("Initial governance token balances must not be empty")]
+    InitialBalancesError {},
 
     #[error("Unauthorized")]
     Unauthorized {},

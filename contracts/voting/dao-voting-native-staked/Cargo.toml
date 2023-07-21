@@ -29,6 +29,7 @@ thiserror = { workspace = true }
 dao-dao-macros = { workspace = true }
 dao-interface = { workspace = true }
 cw-paginate-storage = { workspace = true }
+token-bindings = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }

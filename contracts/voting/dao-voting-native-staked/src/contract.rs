@@ -1,23 +1,32 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coins, to_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
-    StdResult, Uint128,
+    coins, to_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QueryRequest,
+    Reply, Response, StdResult, SubMsg, Uint128,
 };
 use cw2::set_contract_version;
 use cw_controllers::ClaimsResponse;
-use cw_utils::{must_pay, Duration};
+use cw_utils::{must_pay, Duration, ParseReplyError};
 use dao_interface::state::Admin;
 use dao_interface::voting::{TotalPowerAtHeightResponse, VotingPowerAtHeightResponse};
+use token_bindings::{
+    CreateDenomResponse, DenomUnit, FullDenomResponse, Metadata, MetadataResponse, TokenFactoryMsg,
+    TokenFactoryQuery, TokenMsg, TokenQuery,
+};
 
 use crate::error::ContractError;
 use crate::msg::{
     ExecuteMsg, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg, StakerBalanceResponse,
+    TokenInfo,
 };
-use crate::state::{Config, CLAIMS, CONFIG, DAO, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL};
+use crate::state::{
+    Config, CLAIMS, CONFIG, DAO, DENOM, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL, TOKEN_INFO,
+};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-native-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const CREATE_TOKEN_REPLY_ID: u64 = 0;
 
 fn validate_duration(duration: Option<Duration>) -> Result<(), ContractError> {
     if let Some(unstaking_duration) = duration {
@@ -43,7 +52,7 @@ pub fn instantiate(
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> Result<Response, ContractError> {
+) -> Result<Response<TokenFactoryMsg>, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let owner = msg
@@ -64,29 +73,86 @@ pub fn instantiate(
     let config = Config {
         owner,
         manager,
-        denom: msg.denom,
         unstaking_duration: msg.unstaking_duration,
     };
 
     CONFIG.save(deps.storage, &config)?;
     DAO.save(deps.storage, &info.sender)?;
 
-    Ok(Response::new()
-        .add_attribute("action", "instantiate")
-        .add_attribute(
-            "owner",
-            config
-                .owner
-                .map(|a| a.to_string())
-                .unwrap_or_else(|| "None".to_string()),
-        )
-        .add_attribute(
-            "manager",
-            config
-                .manager
-                .map(|a| a.to_string())
-                .unwrap_or_else(|| "None".to_string()),
-        ))
+    match &msg.token_info {
+        TokenInfo::Existing { denom } => {
+            DENOM.save(deps.storage, &denom)?;
+
+            Ok(Response::new()
+                .add_attribute("action", "instantiate")
+                .add_attribute("token", "existing_token")
+                .add_attribute("token_denom", denom)
+                .add_attribute(
+                    "owner",
+                    config
+                        .owner
+                        .map(|a| a.to_string())
+                        .unwrap_or_else(|| "None".to_string()),
+                )
+                .add_attribute(
+                    "manager",
+                    config
+                        .manager
+                        .map(|a| a.to_string())
+                        .unwrap_or_else(|| "None".to_string()),
+                ))
+        }
+        TokenInfo::New {
+            symbol,
+            initial_balances,
+            ..
+        } => {
+            let initial_supply = initial_balances
+                .iter()
+                .fold(Uint128::zero(), |p, n| p + n.amount);
+            // Cannot instantiate with no initial token owners because it would
+            // immediately lock the DAO.
+            if initial_supply.is_zero() {
+                return Err(ContractError::InitialBalancesError {});
+            }
+
+            // Validate initial balance addresses.
+            for initial in initial_balances {
+                deps.api.addr_validate(&initial.address)?;
+            }
+
+            // Store token info for usage later in replies.
+            TOKEN_INFO.save(deps.storage, &msg.token_info)?;
+
+            let msg: SubMsg<TokenFactoryMsg> = SubMsg::reply_on_success(
+                TokenMsg::CreateDenom {
+                    subdenom: symbol.to_lowercase(),
+                    metadata: None,
+                },
+                CREATE_TOKEN_REPLY_ID,
+            );
+
+            Ok(Response::default()
+                .add_attribute("action", "instantiate")
+                .add_attribute("token", "new_token")
+                .add_attribute("token_denom", symbol.to_lowercase())
+                .add_attribute(
+                    "owner",
+                    config
+                        .owner
+                        .map(|a| a.to_string())
+                        .unwrap_or_else(|| "None".to_string()),
+                )
+                .add_attribute(
+                    "manager",
+                    config
+                        .manager
+                        .map(|a| a.to_string())
+                        .unwrap_or_else(|| "None".to_string()),
+                )
+                .add_submessage(msg))
+        }
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -113,8 +179,8 @@ pub fn execute_stake(
     env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    let amount = must_pay(&info, &config.denom)?;
+    let denom = DENOM.load(deps.storage)?;
+    let amount = must_pay(&info, &denom)?;
 
     STAKED_BALANCES.update(
         deps.storage,
@@ -167,11 +233,12 @@ pub fn execute_unstake(
     )?;
 
     let config = CONFIG.load(deps.storage)?;
+    let denom = DENOM.load(deps.storage)?;
     match config.unstaking_duration {
         None => {
             let msg = CosmosMsg::Bank(BankMsg::Send {
                 to_address: info.sender.to_string(),
-                amount: coins(amount.u128(), config.denom),
+                amount: coins(amount.u128(), denom),
             });
             Ok(Response::new()
                 .add_message(msg)
@@ -260,10 +327,10 @@ pub fn execute_claim(
         return Err(ContractError::NothingToClaim {});
     }
 
-    let config = CONFIG.load(deps.storage)?;
-    let msg = CosmosMsg::Bank(BankMsg::Send {
+    let denom = DENOM.load(deps.storage)?;
+    let msg: CosmosMsg = CosmosMsg::Bank(BankMsg::Send {
         to_address: info.sender.to_string(),
-        amount: coins(release.u128(), config.denom),
+        amount: coins(release.u128(), denom),
     });
 
     Ok(Response::new()
@@ -286,6 +353,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Dao {} => query_dao(deps),
         QueryMsg::Claims { address } => to_binary(&query_claims(deps, address)?),
         QueryMsg::GetConfig {} => to_binary(&CONFIG.load(deps.storage)?),
+        QueryMsg::GetDenom {} => to_binary(&DENOM.load(deps.storage)?),
         QueryMsg::ListStakers { start_after, limit } => {
             query_list_stakers(deps, start_after, limit)
         }
@@ -365,4 +433,102 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     // Set contract to version to latest
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(Response::default())
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(
+    deps: DepsMut<TokenFactoryQuery>,
+    _env: Env,
+    msg: Reply,
+) -> Result<Response<TokenFactoryMsg>, ContractError> {
+    match msg.id {
+        CREATE_TOKEN_REPLY_ID => {
+            let data = msg
+                .result
+                .into_result()
+                .map_err(ParseReplyError::SubMsgFailure)?
+                .data
+                .ok_or_else(|| ParseReplyError::ParseFailure("Missing reply data".to_owned()))?;
+            let res = CreateDenomResponse::from_reply_data(data);
+
+            match res {
+                Ok(res) => {
+                    let token_info = TOKEN_INFO.load(deps.storage)?;
+                    match token_info {
+                        TokenInfo::New {
+                            name,
+                            symbol,
+                            decimals,
+                            initial_balances,
+                            initial_dao_balance,
+                        } => {
+                            let dao = DAO.load(deps.storage)?;
+                            let denom = res.new_token_denom;
+
+                            let res: MetadataResponse =
+                                deps.querier
+                                    .query(&QueryRequest::from(TokenQuery::Metadata {
+                                        denom: denom.clone(),
+                                    }))?;
+                            if res.metadata.is_none() {
+                                return Err(ContractError::TokenCreationError {});
+                            }
+                            let mut metadata = res.metadata.unwrap();
+                            metadata.denom_units.append(&mut vec![DenomUnit {
+                                denom: symbol.clone(),
+                                exponent: decimals,
+                                aliases: vec![],
+                            }]);
+
+                            // Mint initial tokens.
+                            let mut mint_msgs: Vec<TokenMsg> = initial_balances
+                                .iter()
+                                .map(|initial| TokenMsg::MintTokens {
+                                    denom: denom.clone(),
+                                    amount: initial.amount,
+                                    mint_to_address: initial.address.clone(),
+                                })
+                                .collect();
+                            // Mint initial DAO tokens.
+                            if let Some(initial_dao_balance) = initial_dao_balance {
+                                if initial_dao_balance > Uint128::zero() {
+                                    mint_msgs.push(TokenMsg::MintTokens {
+                                        denom: denom.clone(),
+                                        amount: initial_dao_balance,
+                                        mint_to_address: dao.to_string(),
+                                    });
+                                }
+                            }
+                            // Update the metadata with the symbol and decimals.
+                            let metadata_msg = TokenMsg::SetMetadata {
+                                denom: denom.clone(),
+                                metadata: Metadata {
+                                    description: metadata.description,
+                                    denom_units: metadata.denom_units,
+                                    base: metadata.base,
+                                    display: Some(symbol.clone()),
+                                    name: Some(name),
+                                    symbol: Some(symbol),
+                                },
+                            };
+                            // Set the token's admin to the DAO.
+                            let admin_msg = TokenMsg::ChangeAdmin {
+                                denom: denom.clone(),
+                                new_admin_address: dao.to_string(),
+                            };
+
+                            Ok(Response::default()
+                                .add_attribute("token_denom", denom)
+                                .add_messages(mint_msgs)
+                                .add_message(metadata_msg)
+                                .add_message(admin_msg))
+                        }
+                        _ => Err(ContractError::TokenCreationError {}),
+                    }
+                }
+                Err(_) => Err(ContractError::TokenCreationError {}),
+            }
+        }
+        _ => Err(ContractError::UnknownReplyId { id: msg.id }),
+    }
 }
