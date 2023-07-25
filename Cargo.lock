@@ -3846,9 +3846,9 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "token-bindings"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d54c6770b276639ce088eaa64a587aa9dd041b531607c7d9dc0855da4125323d"
+checksum = "2b0a73aa1767debafefe5fa89b3a1d3e7648dcf24ab982d72a385719cd7b8518"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",

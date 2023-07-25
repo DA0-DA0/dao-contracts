@@ -10,8 +10,8 @@ use cw_utils::{must_pay, Duration, ParseReplyError};
 use dao_interface::state::Admin;
 use dao_interface::voting::{TotalPowerAtHeightResponse, VotingPowerAtHeightResponse};
 use token_bindings::{
-    CreateDenomResponse, DenomUnit, FullDenomResponse, Metadata, MetadataResponse, TokenFactoryMsg,
-    TokenFactoryQuery, TokenMsg, TokenQuery,
+    CreateDenomResponse, DenomUnit, Metadata, MetadataResponse, TokenFactoryMsg, TokenFactoryQuery,
+    TokenMsg, TokenQuery,
 };
 
 use crate::error::ContractError;
@@ -81,7 +81,7 @@ pub fn instantiate(
 
     match &msg.token_info {
         TokenInfo::Existing { denom } => {
-            DENOM.save(deps.storage, &denom)?;
+            DENOM.save(deps.storage, denom)?;
 
             Ok(Response::new()
                 .add_attribute("action", "instantiate")
