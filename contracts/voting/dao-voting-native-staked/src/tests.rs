@@ -1,6 +1,7 @@
 use crate::contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::{
     ExecuteMsg, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg, StakerBalanceResponse,
+    TokenInfo,
 };
 use crate::state::Config;
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
@@ -208,7 +209,9 @@ fn test_instantiate() {
                 addr: DAO_ADDR.to_string(),
             }),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -220,7 +223,9 @@ fn test_instantiate() {
         InstantiateMsg {
             owner: None,
             manager: None,
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: None,
         },
     );
@@ -237,7 +242,9 @@ fn test_instantiate_dao_owner() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -261,7 +268,9 @@ fn test_instantiate_invalid_unstaking_duration() {
                 addr: DAO_ADDR.to_string(),
             }),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(0)),
         },
     );
@@ -273,7 +282,9 @@ fn test_instantiate_invalid_unstaking_duration() {
         InstantiateMsg {
             owner: None,
             manager: None,
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: None,
         },
     );
@@ -290,7 +301,9 @@ fn test_stake_invalid_denom() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -309,7 +322,9 @@ fn test_stake_valid_denom() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -330,7 +345,9 @@ fn test_unstake_none_staked() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -349,7 +366,9 @@ fn test_unstake_zero_tokens() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -368,7 +387,9 @@ fn test_unstake_invalid_balance() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -391,7 +412,9 @@ fn test_unstake() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -426,7 +449,9 @@ fn test_unstake_no_unstaking_duration() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: None,
         },
     );
@@ -463,7 +488,9 @@ fn test_claim_no_claims() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -482,7 +509,9 @@ fn test_claim_claim_not_reached() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -509,7 +538,9 @@ fn test_claim() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -560,7 +591,9 @@ fn test_update_config_invalid_sender() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -588,7 +621,9 @@ fn test_update_config_non_owner_changes_owner() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -607,7 +642,9 @@ fn test_update_config_as_owner() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -629,7 +666,6 @@ fn test_update_config_as_owner() {
             owner: Some(Addr::unchecked(ADDR1)),
             manager: Some(Addr::unchecked(DAO_ADDR)),
             unstaking_duration: Some(Duration::Height(10)),
-            denom: DENOM.to_string(),
         },
         config
     );
@@ -645,7 +681,9 @@ fn test_update_config_as_manager() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -667,7 +705,6 @@ fn test_update_config_as_manager() {
             owner: Some(Addr::unchecked(DAO_ADDR)),
             manager: Some(Addr::unchecked(ADDR2)),
             unstaking_duration: Some(Duration::Height(10)),
-            denom: DENOM.to_string(),
         },
         config
     );
@@ -684,7 +721,9 @@ fn test_update_config_invalid_duration() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -711,7 +750,9 @@ fn test_query_dao() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -731,7 +772,9 @@ fn test_query_info() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -751,7 +794,9 @@ fn test_query_claims() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -787,7 +832,9 @@ fn test_query_get_config() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -799,7 +846,6 @@ fn test_query_get_config() {
             owner: Some(Addr::unchecked(DAO_ADDR)),
             manager: Some(Addr::unchecked(ADDR1)),
             unstaking_duration: Some(Duration::Height(5)),
-            denom: DENOM.to_string(),
         }
     )
 }
@@ -814,7 +860,9 @@ fn test_voting_power_queries() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
@@ -920,7 +968,9 @@ fn test_query_list_stakers() {
         InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
         },
     );
