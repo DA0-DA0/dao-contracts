@@ -1,15 +1,19 @@
 use crate::contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::{
-    ExecuteMsg, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg, StakerBalanceResponse,
-    TokenInfo,
+    ExecuteMsg, InitialBalance, InstantiateMsg, ListStakersResponse, MigrateMsg, NewDenom,
+    QueryMsg, StakerBalanceResponse, TfCoreConfig, TfCoreInstantiateMsg, TfCoreQueryMsg, TokenInfo,
 };
 use crate::state::Config;
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
-use cosmwasm_std::{coins, Addr, Coin, Empty, Uint128};
+use cosmwasm_std::{
+    coins, to_binary, Addr, Binary, Coin, Deps, DepsMut, Empty, Env, MessageInfo, Response,
+    StdError, StdResult, Uint128,
+};
 use cw_controllers::ClaimsResponse;
 use cw_multi_test::{
     custom_app, next_block, App, AppResponse, Contract, ContractWrapper, Executor,
 };
+use cw_storage_plus::Item;
 use cw_utils::Duration;
 use dao_interface::state::Admin;
 use dao_interface::voting::{
@@ -27,6 +31,46 @@ fn staking_contract() -> Box<dyn Contract<Empty>> {
         crate::contract::execute,
         crate::contract::instantiate,
         crate::contract::query,
+    )
+    .with_reply(crate::contract::reply);
+    Box::new(contract)
+}
+
+const MANAGER: Item<String> = Item::new("manager");
+fn mock_tf_core_contract() -> Box<dyn Contract<Empty>> {
+    let contract: ContractWrapper<
+        Empty,
+        TfCoreInstantiateMsg,
+        TfCoreQueryMsg,
+        StdError,
+        StdError,
+        StdError,
+    > = ContractWrapper::new(
+        |_deps: DepsMut,
+         _env: Env,
+         _info: MessageInfo,
+         _msg: Empty|
+         -> Result<Response, StdError> { Ok(Response::default()) },
+        |deps: DepsMut,
+         _env: Env,
+         info: MessageInfo,
+         msg: TfCoreInstantiateMsg|
+         -> Result<Response, StdError> {
+            MANAGER.save(
+                deps.storage,
+                &msg.manager.unwrap_or_else(|| info.sender.to_string()),
+            )?;
+            Ok(Response::default())
+        },
+        |deps: Deps, _env: Env, msg: TfCoreQueryMsg| -> StdResult<Binary> {
+            match msg {
+                TfCoreQueryMsg::GetConfig {} => to_binary(&TfCoreConfig {
+                    manager: MANAGER.load(deps.storage)?,
+                    allowed_mint_addresses: vec![MANAGER.load(deps.storage)?],
+                    denoms: vec![DENOM.to_string()],
+                }),
+            }
+        },
     );
     Box::new(contract)
 }
@@ -330,6 +374,40 @@ fn test_stake_valid_denom() {
     );
 
     // Try and stake an valid denom
+    stake_tokens(&mut app, addr, ADDR1, 100, DENOM).unwrap();
+    app.update_block(next_block);
+}
+
+#[test]
+fn test_stake_new_denom() {
+    let mut app = mock_app();
+    let tf_core_code_id = app.store_code(mock_tf_core_contract());
+    let staking_id = app.store_code(staking_contract());
+    let addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: Some(Admin::CoreModule {}),
+            manager: Some(ADDR1.to_string()),
+            token_info: TokenInfo::New {
+                tf_core_code_id,
+                info: NewDenom {
+                    name: DENOM.to_string(),
+                    description: Some(DENOM.to_string()),
+                    symbol: DENOM.to_string(),
+                    decimals: 6,
+                    initial_balances: Some(vec![InitialBalance {
+                        address: ADDR1.to_string(),
+                        amount: Uint128::new(100),
+                    }]),
+                },
+                initial_dao_balance: Some(Uint128::new(900)),
+            },
+            unstaking_duration: Some(Duration::Height(5)),
+        },
+    );
+
+    // Try and stake a valid denom
     stake_tokens(&mut app, addr, ADDR1, 100, DENOM).unwrap();
     app.update_block(next_block);
 }

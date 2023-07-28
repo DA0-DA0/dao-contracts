@@ -266,7 +266,9 @@ pub(crate) fn instantiate_with_native_staked_balances_governance(
             msg: to_binary(&dao_voting_native_staked::msg::InstantiateMsg {
                 owner: Some(Admin::CoreModule {}),
                 manager: None,
-                denom: "ujuno".to_string(),
+                token_info: dao_voting_native_staked::msg::TokenInfo::Existing {
+                    denom: "ujuno".to_string(),
+                },
                 unstaking_duration: None,
             })
             .unwrap(),

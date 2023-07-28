@@ -4,8 +4,6 @@ use cw_controllers::Claims;
 use cw_storage_plus::{Item, SnapshotItem, SnapshotMap, Strategy};
 use cw_utils::Duration;
 
-use crate::msg::TokenInfo;
-
 #[cw_serde]
 pub struct Config {
     pub owner: Option<Addr>,
@@ -34,6 +32,3 @@ pub const STAKED_TOTAL: SnapshotItem<Uint128> = SnapshotItem::new(
 pub const MAX_CLAIMS: u64 = 100;
 
 pub const CLAIMS: Claims = Claims::new("claims");
-
-/// The instantiation token info to use when creating a new tokenfactory denom.
-pub const TOKEN_INFO: Item<TokenInfo> = Item::new("token_info");

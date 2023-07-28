@@ -1,32 +1,26 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coins, to_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QueryRequest,
-    Reply, Response, StdResult, SubMsg, Uint128,
+    coins, to_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_controllers::ClaimsResponse;
-use cw_utils::{must_pay, Duration, ParseReplyError};
+use cw_utils::{must_pay, parse_reply_instantiate_data, Duration};
 use dao_interface::state::Admin;
 use dao_interface::voting::{TotalPowerAtHeightResponse, VotingPowerAtHeightResponse};
-use token_bindings::{
-    CreateDenomResponse, DenomUnit, Metadata, MetadataResponse, TokenFactoryMsg, TokenFactoryQuery,
-    TokenMsg, TokenQuery,
-};
 
 use crate::error::ContractError;
 use crate::msg::{
-    ExecuteMsg, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg, StakerBalanceResponse,
-    TokenInfo,
+    ExecuteMsg, InitialBalance, InstantiateMsg, ListStakersResponse, MigrateMsg, NewDenom,
+    QueryMsg, StakerBalanceResponse, TfCoreConfig, TfCoreInstantiateMsg, TfCoreQueryMsg, TokenInfo,
 };
-use crate::state::{
-    Config, CLAIMS, CONFIG, DAO, DENOM, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL, TOKEN_INFO,
-};
+use crate::state::{Config, CLAIMS, CONFIG, DAO, DENOM, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-native-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const CREATE_TOKEN_REPLY_ID: u64 = 0;
+const INSTANTIATE_TOKEN_REPLY_ID: u64 = 0;
 
 fn validate_duration(duration: Option<Duration>) -> Result<(), ContractError> {
     if let Some(unstaking_duration) = duration {
@@ -52,7 +46,7 @@ pub fn instantiate(
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let owner = msg
@@ -79,9 +73,9 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
     DAO.save(deps.storage, &info.sender)?;
 
-    match &msg.token_info {
+    match msg.token_info {
         TokenInfo::Existing { denom } => {
-            DENOM.save(deps.storage, denom)?;
+            DENOM.save(deps.storage, &denom)?;
 
             Ok(Response::new()
                 .add_attribute("action", "instantiate")
@@ -103,10 +97,12 @@ pub fn instantiate(
                 ))
         }
         TokenInfo::New {
-            symbol,
-            initial_balances,
-            ..
+            tf_core_code_id,
+            info: denom_info,
+            initial_dao_balance,
         } => {
+            let mut initial_balances = denom_info.initial_balances.unwrap_or_default();
+
             let initial_supply = initial_balances
                 .iter()
                 .fold(Uint128::zero(), |p, n| p + n.amount);
@@ -116,26 +112,40 @@ pub fn instantiate(
                 return Err(ContractError::InitialBalancesError {});
             }
 
-            // Validate initial balance addresses.
-            for initial in initial_balances {
-                deps.api.addr_validate(&initial.address)?;
+            // Add initial DAO balance to initial_balances if nonzero.
+            if let Some(initial_dao_balance) = initial_dao_balance {
+                if !initial_dao_balance.is_zero() {
+                    initial_balances.push(InitialBalance {
+                        address: info.sender.to_string(),
+                        amount: initial_dao_balance,
+                    });
+                }
             }
 
-            // Store token info for usage later in replies.
-            TOKEN_INFO.save(deps.storage, &msg.token_info)?;
-
-            let msg: SubMsg<TokenFactoryMsg> = SubMsg::reply_on_success(
-                TokenMsg::CreateDenom {
-                    subdenom: symbol.to_lowercase(),
-                    metadata: None,
-                },
-                CREATE_TOKEN_REPLY_ID,
-            );
+            let msg = WasmMsg::Instantiate {
+                // Set DAO as admin.
+                admin: Some(info.sender.to_string()),
+                code_id: tf_core_code_id,
+                msg: to_binary(&TfCoreInstantiateMsg {
+                    manager: Some(info.sender.to_string()),
+                    allowed_mint_addresses: vec![info.sender.to_string()],
+                    existing_denoms: None,
+                    new_denoms: Some(vec![NewDenom {
+                        name: denom_info.name,
+                        description: denom_info.description,
+                        symbol: denom_info.symbol,
+                        decimals: denom_info.decimals,
+                        initial_balances: Some(initial_balances),
+                    }]),
+                })?,
+                funds: vec![],
+                label: "Token Factory Core".to_string(),
+            };
+            let msg = SubMsg::reply_on_success(msg, INSTANTIATE_TOKEN_REPLY_ID);
 
             Ok(Response::default()
                 .add_attribute("action", "instantiate")
                 .add_attribute("token", "new_token")
-                .add_attribute("token_denom", symbol.to_lowercase())
                 .add_attribute(
                     "owner",
                     config
@@ -436,97 +446,29 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(
-    deps: DepsMut<TokenFactoryQuery>,
-    _env: Env,
-    msg: Reply,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
-        CREATE_TOKEN_REPLY_ID => {
-            let data = msg
-                .result
-                .into_result()
-                .map_err(ParseReplyError::SubMsgFailure)?
-                .data
-                .ok_or_else(|| ParseReplyError::ParseFailure("Missing reply data".to_owned()))?;
-            let res = CreateDenomResponse::from_reply_data(data);
-
+        INSTANTIATE_TOKEN_REPLY_ID => {
+            let res = parse_reply_instantiate_data(msg);
             match res {
                 Ok(res) => {
-                    let token_info = TOKEN_INFO.load(deps.storage)?;
-                    match token_info {
-                        TokenInfo::New {
-                            name,
-                            symbol,
-                            decimals,
-                            initial_balances,
-                            initial_dao_balance,
-                        } => {
-                            let dao = DAO.load(deps.storage)?;
-                            let denom = res.new_token_denom;
+                    let addr = deps.api.addr_validate(&res.contract_address)?;
 
-                            let res: MetadataResponse =
-                                deps.querier
-                                    .query(&QueryRequest::from(TokenQuery::Metadata {
-                                        denom: denom.clone(),
-                                    }))?;
-                            if res.metadata.is_none() {
-                                return Err(ContractError::TokenCreationError {});
-                            }
-                            let mut metadata = res.metadata.unwrap();
-                            metadata.denom_units.append(&mut vec![DenomUnit {
-                                denom: symbol.clone(),
-                                exponent: decimals,
-                                aliases: vec![],
-                            }]);
-
-                            // Mint initial tokens.
-                            let mut mint_msgs: Vec<TokenMsg> = initial_balances
-                                .iter()
-                                .map(|initial| TokenMsg::MintTokens {
-                                    denom: denom.clone(),
-                                    amount: initial.amount,
-                                    mint_to_address: initial.address.clone(),
-                                })
-                                .collect();
-                            // Mint initial DAO tokens.
-                            if let Some(initial_dao_balance) = initial_dao_balance {
-                                if initial_dao_balance > Uint128::zero() {
-                                    mint_msgs.push(TokenMsg::MintTokens {
-                                        denom: denom.clone(),
-                                        amount: initial_dao_balance,
-                                        mint_to_address: dao.to_string(),
-                                    });
-                                }
-                            }
-                            // Update the metadata with the symbol and decimals.
-                            let metadata_msg = TokenMsg::SetMetadata {
-                                denom: denom.clone(),
-                                metadata: Metadata {
-                                    description: metadata.description,
-                                    denom_units: metadata.denom_units,
-                                    base: metadata.base,
-                                    display: Some(symbol.clone()),
-                                    name: Some(name),
-                                    symbol: Some(symbol),
-                                },
-                            };
-                            // Set the token's admin to the DAO.
-                            let admin_msg = TokenMsg::ChangeAdmin {
-                                denom: denom.clone(),
-                                new_admin_address: dao.to_string(),
-                            };
-
-                            Ok(Response::default()
-                                .add_attribute("token_denom", denom)
-                                .add_messages(mint_msgs)
-                                .add_message(metadata_msg)
-                                .add_message(admin_msg))
-                        }
-                        _ => Err(ContractError::TokenCreationError {}),
+                    // Retrieve the denom from the token factory core contract
+                    // once it's created.
+                    let config: TfCoreConfig = deps
+                        .querier
+                        .query_wasm_smart(addr.clone(), &TfCoreQueryMsg::GetConfig {})?;
+                    if config.denoms.len() != 1 {
+                        return Err(ContractError::TokenFactoryCoreInstantiateError {});
                     }
+                    DENOM.save(deps.storage, &config.denoms[0])?;
+
+                    Ok(Response::new()
+                        .add_attribute("token_factory_core_contract", addr)
+                        .add_attribute("token_denom", &config.denoms[0]))
                 }
-                Err(_) => Err(ContractError::TokenCreationError {}),
+                Err(_) => Err(ContractError::TokenFactoryCoreInstantiateError {}),
             }
         }
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),

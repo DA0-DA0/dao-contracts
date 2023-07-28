@@ -16,8 +16,8 @@ pub enum ContractError {
     #[error("Got a submessage reply with unknown id: {id}")]
     UnknownReplyId { id: u64 },
 
-    #[error("Error creating token")]
-    TokenCreationError {},
+    #[error("Token factory core contract instantiate error")]
+    TokenFactoryCoreInstantiateError {},
 
     #[error("Initial governance token balances must not be empty")]
     InitialBalancesError {},
