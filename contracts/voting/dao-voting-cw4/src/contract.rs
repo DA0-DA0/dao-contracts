@@ -5,7 +5,7 @@ use cosmwasm_std::{
     Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw4::{MemberResponse, TotalWeightResponse};
+use cw4::{MemberListResponse, MemberResponse, TotalWeightResponse};
 use cw_utils::parse_reply_instantiate_data;
 
 use crate::error::ContractError;
@@ -81,6 +81,20 @@ pub fn instantiate(
         }
         GroupContract::Existing { address } => {
             let group_contract = deps.api.addr_validate(&address)?;
+
+            // Validate valid group contract that has at least one member.
+            let res: MemberListResponse = deps.querier.query_wasm_smart(
+                group_contract.clone(),
+                &cw4_group::msg::QueryMsg::ListMembers {
+                    start_after: None,
+                    limit: Some(1),
+                },
+            )?;
+
+            if res.members.is_empty() {
+                return Err(ContractError::ZeroTotalWeight {});
+            }
+
             GROUP_CONTRACT.save(deps.storage, &group_contract)?;
 
             Ok(Response::new()
