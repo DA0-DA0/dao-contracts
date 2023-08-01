@@ -1,7 +1,7 @@
 use crate::contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::{
-    ExecuteMsg, InitialBalance, InstantiateMsg, ListStakersResponse, MigrateMsg, NewDenom,
-    QueryMsg, StakerBalanceResponse, TfCoreConfig, TfCoreInstantiateMsg, TfCoreQueryMsg, TokenInfo,
+    ExecuteMsg, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg, StakerBalanceResponse,
+    TokenInfo,
 };
 use crate::state::Config;
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
@@ -40,8 +40,8 @@ const MANAGER: Item<String> = Item::new("manager");
 fn mock_tf_core_contract() -> Box<dyn Contract<Empty>> {
     let contract: ContractWrapper<
         Empty,
-        TfCoreInstantiateMsg,
-        TfCoreQueryMsg,
+        juno_tokenfactory_core::msg::InstantiateMsg,
+        juno_tokenfactory_core::msg::QueryMsg,
         StdError,
         StdError,
         StdError,
@@ -54,7 +54,7 @@ fn mock_tf_core_contract() -> Box<dyn Contract<Empty>> {
         |deps: DepsMut,
          _env: Env,
          info: MessageInfo,
-         msg: TfCoreInstantiateMsg|
+         msg: juno_tokenfactory_core::msg::InstantiateMsg|
          -> Result<Response, StdError> {
             MANAGER.save(
                 deps.storage,
@@ -62,13 +62,16 @@ fn mock_tf_core_contract() -> Box<dyn Contract<Empty>> {
             )?;
             Ok(Response::default())
         },
-        |deps: Deps, _env: Env, msg: TfCoreQueryMsg| -> StdResult<Binary> {
+        |deps: Deps, _env: Env, msg: juno_tokenfactory_core::msg::QueryMsg| -> StdResult<Binary> {
             match msg {
-                TfCoreQueryMsg::GetConfig {} => to_binary(&TfCoreConfig {
-                    manager: MANAGER.load(deps.storage)?,
-                    allowed_mint_addresses: vec![MANAGER.load(deps.storage)?],
-                    denoms: vec![DENOM.to_string()],
-                }),
+                juno_tokenfactory_core::msg::QueryMsg::GetConfig {} => {
+                    to_binary(&juno_tokenfactory_core::state::Config {
+                        manager: MANAGER.load(deps.storage)?,
+                        allowed_mint_addresses: vec![MANAGER.load(deps.storage)?],
+                        denoms: vec![DENOM.to_string()],
+                    })
+                }
+                _ => Err(StdError::generic_err("unknown query")),
             }
         },
     );
@@ -391,12 +394,12 @@ fn test_stake_new_denom() {
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::New {
                 tf_core_code_id,
-                info: NewDenom {
+                info: juno_tokenfactory_core::msg::NewDenom {
                     name: DENOM.to_string(),
                     description: Some(DENOM.to_string()),
                     symbol: DENOM.to_string(),
                     decimals: 6,
-                    initial_balances: Some(vec![InitialBalance {
+                    initial_balances: Some(vec![juno_tokenfactory_core::msg::InitialBalance {
                         address: ADDR1.to_string(),
                         amount: Uint128::new(100),
                     }]),

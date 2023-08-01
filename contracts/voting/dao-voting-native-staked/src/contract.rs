@@ -12,8 +12,8 @@ use dao_interface::voting::{TotalPowerAtHeightResponse, VotingPowerAtHeightRespo
 
 use crate::error::ContractError;
 use crate::msg::{
-    ExecuteMsg, InitialBalance, InstantiateMsg, ListStakersResponse, MigrateMsg, NewDenom,
-    QueryMsg, StakerBalanceResponse, TfCoreConfig, TfCoreInstantiateMsg, TfCoreQueryMsg, TokenInfo,
+    ExecuteMsg, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg, StakerBalanceResponse,
+    TokenInfo,
 };
 use crate::state::{Config, CLAIMS, CONFIG, DAO, DENOM, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL};
 
@@ -115,7 +115,7 @@ pub fn instantiate(
             // Add initial DAO balance to initial_balances if nonzero.
             if let Some(initial_dao_balance) = initial_dao_balance {
                 if !initial_dao_balance.is_zero() {
-                    initial_balances.push(InitialBalance {
+                    initial_balances.push(juno_tokenfactory_core::msg::InitialBalance {
                         address: info.sender.to_string(),
                         amount: initial_dao_balance,
                     });
@@ -126,11 +126,11 @@ pub fn instantiate(
                 // Set DAO as admin.
                 admin: Some(info.sender.to_string()),
                 code_id: tf_core_code_id,
-                msg: to_binary(&TfCoreInstantiateMsg {
+                msg: to_binary(&juno_tokenfactory_core::msg::InstantiateMsg {
                     manager: Some(info.sender.to_string()),
                     allowed_mint_addresses: vec![info.sender.to_string()],
                     existing_denoms: None,
-                    new_denoms: Some(vec![NewDenom {
+                    new_denoms: Some(vec![juno_tokenfactory_core::msg::NewDenom {
                         name: denom_info.name,
                         description: denom_info.description,
                         symbol: denom_info.symbol,
@@ -456,9 +456,11 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
                     // Retrieve the denom from the token factory core contract
                     // once it's created.
-                    let config: TfCoreConfig = deps
-                        .querier
-                        .query_wasm_smart(addr.clone(), &TfCoreQueryMsg::GetConfig {})?;
+                    let config: juno_tokenfactory_core::state::Config =
+                        deps.querier.query_wasm_smart(
+                            addr.clone(),
+                            &juno_tokenfactory_core::msg::QueryMsg::GetConfig {},
+                        )?;
                     if config.denoms.len() != 1 {
                         return Err(ContractError::TokenFactoryCoreInstantiateError {});
                     }

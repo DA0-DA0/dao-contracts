@@ -3,6 +3,7 @@ use cosmwasm_std::Uint128;
 use cw_utils::Duration;
 use dao_dao_macros::voting_module_query;
 use dao_interface::state::Admin;
+use juno_tokenfactory_core::msg::NewDenom;
 
 #[cw_serde]
 pub enum TokenInfo {
@@ -17,47 +18,6 @@ pub enum TokenInfo {
         info: NewDenom,
         initial_dao_balance: Option<Uint128>,
     },
-}
-
-// TODO: Get from tokenfactory_core contract once published.
-#[cw_serde]
-pub struct TfCoreInstantiateMsg {
-    // the manager of the contract is the one who can transfer the admin to another address
-    // Typically this should be a multisig or a DAO (https://daodao.zone/)
-    // Default is the contract initializer
-    pub manager: Option<String>,
-    pub allowed_mint_addresses: Vec<String>,
-
-    // We can manage multiple denoms
-    pub existing_denoms: Option<Vec<String>>, // ex: factory/juno1xxx/test
-    pub new_denoms: Option<Vec<NewDenom>>,
-}
-
-#[cw_serde]
-pub struct NewDenom {
-    pub name: String,
-    pub description: Option<String>,
-    pub symbol: String,
-    pub decimals: u32,
-    pub initial_balances: Option<Vec<InitialBalance>>,
-}
-#[cw_serde]
-
-pub struct InitialBalance {
-    pub address: String,
-    pub amount: Uint128,
-}
-
-#[cw_serde]
-pub struct TfCoreConfig {
-    pub manager: String,
-    pub allowed_mint_addresses: Vec<String>,
-    pub denoms: Vec<String>,
-}
-
-#[cw_serde]
-pub enum TfCoreQueryMsg {
-    GetConfig {},
 }
 
 #[cw_serde]
