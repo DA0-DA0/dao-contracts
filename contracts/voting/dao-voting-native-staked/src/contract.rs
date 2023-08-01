@@ -12,8 +12,8 @@ use dao_interface::voting::{TotalPowerAtHeightResponse, VotingPowerAtHeightRespo
 
 use crate::error::ContractError;
 use crate::msg::{
-    ExecuteMsg, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg, StakerBalanceResponse,
-    TokenInfo,
+    DenomResponse, ExecuteMsg, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg,
+    StakerBalanceResponse, TokenInfo,
 };
 use crate::state::{Config, CLAIMS, CONFIG, DAO, DENOM, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL};
 
@@ -363,7 +363,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Dao {} => query_dao(deps),
         QueryMsg::Claims { address } => to_binary(&query_claims(deps, address)?),
         QueryMsg::GetConfig {} => to_binary(&CONFIG.load(deps.storage)?),
-        QueryMsg::GetDenom {} => to_binary(&DENOM.load(deps.storage)?),
+        QueryMsg::GetDenom {} => to_binary(&DenomResponse {
+            denom: DENOM.load(deps.storage)?,
+        }),
         QueryMsg::ListStakers { start_after, limit } => {
             query_list_stakers(deps, start_after, limit)
         }

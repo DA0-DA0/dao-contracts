@@ -1,9 +1,10 @@
 use crate::contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::{
-    ExecuteMsg, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg, StakerBalanceResponse,
-    TokenInfo,
+    DenomResponse, ExecuteMsg, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg,
+    StakerBalanceResponse, TokenInfo,
 };
 use crate::state::Config;
+use crate::ContractError;
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{
     coins, to_binary, Addr, Binary, Coin, Deps, DepsMut, Empty, Env, MessageInfo, Response,
@@ -142,6 +143,19 @@ fn instantiate_staking(app: &mut App, staking_id: u64, msg: InstantiateMsg) -> A
     )
     .unwrap()
 }
+fn instantiate_staking_error(app: &mut App, staking_id: u64, msg: InstantiateMsg) -> ContractError {
+    app.instantiate_contract(
+        staking_id,
+        Addr::unchecked(DAO_ADDR),
+        &msg,
+        &[],
+        "Staking",
+        None,
+    )
+    .unwrap_err()
+    .downcast()
+    .unwrap()
+}
 
 fn stake_tokens(
     app: &mut App,
@@ -233,6 +247,12 @@ fn get_config(app: &mut App, staking_addr: Addr) -> Config {
         .unwrap()
 }
 
+fn get_denom(app: &mut App, staking_addr: Addr) -> DenomResponse {
+    app.wrap()
+        .query_wasm_smart(staking_addr, &QueryMsg::GetDenom {})
+        .unwrap()
+}
+
 fn get_claims(app: &mut App, staking_addr: Addr, address: String) -> ClaimsResponse {
     app.wrap()
         .query_wasm_smart(staking_addr, &QueryMsg::Claims { address })
@@ -244,7 +264,7 @@ fn get_balance(app: &mut App, address: &str, denom: &str) -> Uint128 {
 }
 
 #[test]
-fn test_instantiate() {
+fn test_instantiate_existing() {
     let mut app = mock_app();
     let staking_id = app.store_code(staking_contract());
     // Populated fields
@@ -276,6 +296,90 @@ fn test_instantiate() {
             unstaking_duration: None,
         },
     );
+}
+
+#[test]
+fn test_instantiate_new_denom() {
+    let mut app = mock_app();
+    let tf_core_code_id = app.store_code(mock_tf_core_contract());
+    let staking_id = app.store_code(staking_contract());
+
+    // Populated fields
+    let addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: Some(Admin::CoreModule {}),
+            manager: Some(ADDR1.to_string()),
+            token_info: TokenInfo::New {
+                tf_core_code_id,
+                info: juno_tokenfactory_core::msg::NewDenom {
+                    name: DENOM.to_string(),
+                    description: Some(DENOM.to_string()),
+                    symbol: DENOM.to_string(),
+                    decimals: 6,
+                    initial_balances: Some(vec![juno_tokenfactory_core::msg::InitialBalance {
+                        address: ADDR1.to_string(),
+                        amount: Uint128::new(100),
+                    }]),
+                },
+                initial_dao_balance: Some(Uint128::new(900)),
+            },
+            unstaking_duration: Some(Duration::Height(5)),
+        },
+    );
+
+    let denom = get_denom(&mut app, addr);
+
+    assert_eq!(denom.denom, DENOM);
+
+    // Non populated fields
+    instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: None,
+            manager: None,
+            token_info: TokenInfo::New {
+                tf_core_code_id,
+                info: juno_tokenfactory_core::msg::NewDenom {
+                    name: DENOM.to_string(),
+                    description: None,
+                    symbol: DENOM.to_string(),
+                    decimals: 6,
+                    initial_balances: Some(vec![juno_tokenfactory_core::msg::InitialBalance {
+                        address: ADDR1.to_string(),
+                        amount: Uint128::new(100),
+                    }]),
+                },
+                initial_dao_balance: None,
+            },
+            unstaking_duration: None,
+        },
+    );
+
+    // No initial balances except DAO.
+    let err = instantiate_staking_error(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: None,
+            manager: None,
+            token_info: TokenInfo::New {
+                tf_core_code_id,
+                info: juno_tokenfactory_core::msg::NewDenom {
+                    name: DENOM.to_string(),
+                    description: None,
+                    symbol: DENOM.to_string(),
+                    decimals: 6,
+                    initial_balances: None,
+                },
+                initial_dao_balance: Some(Uint128::new(900)),
+            },
+            unstaking_duration: None,
+        },
+    );
+    assert_eq!(err, ContractError::InitialBalancesError {});
 }
 
 #[test]
