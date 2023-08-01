@@ -92,7 +92,7 @@ pub fn instantiate(
             )?;
 
             if res.members.is_empty() {
-                return Err(ContractError::ZeroTotalWeight {});
+                return Err(ContractError::NoMembers {});
             }
 
             GROUP_CONTRACT.save(deps.storage, &group_contract)?;

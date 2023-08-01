@@ -11,6 +11,7 @@ use dao_interface::voting::{
 use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
     msg::{GroupContract, InstantiateMsg, MigrateMsg, QueryMsg},
+    ContractError,
 };
 
 const DAO_ADDR: &str = "dao";
@@ -149,6 +150,39 @@ pub fn test_instantiate_existing_contract() {
 
     let voting_id = app.store_code(voting_contract());
     let cw4_id = app.store_code(cw4_contract());
+
+    // Fail with no members.
+    let cw4_addr = app
+        .instantiate_contract(
+            cw4_id,
+            Addr::unchecked(DAO_ADDR),
+            &cw4_group::msg::InstantiateMsg {
+                admin: Some(DAO_ADDR.to_string()),
+                members: vec![],
+            },
+            &[],
+            "cw4 group",
+            None,
+        )
+        .unwrap();
+
+    let err: ContractError = app
+        .instantiate_contract(
+            voting_id,
+            Addr::unchecked(DAO_ADDR),
+            &InstantiateMsg {
+                group_contract: GroupContract::Existing {
+                    address: cw4_addr.to_string(),
+                },
+            },
+            &[],
+            "voting module",
+            None,
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::NoMembers {});
 
     let cw4_addr = app
         .instantiate_contract(
