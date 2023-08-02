@@ -246,7 +246,7 @@ fn test_distribute() {
     app.execute_contract(Addr::unchecked(OWNER), cw20_addr.clone(), &msg, &[])
         .unwrap();
 
-    app.update_block(|mut block| block.height += 10);
+    app.update_block(|block| block.height += 10);
     app.execute_contract(
         Addr::unchecked(OWNER),
         distributor_addr.clone(),
@@ -262,7 +262,7 @@ fn test_distribute() {
     assert_eq!(distributor_info.balance, Uint128::new(990));
     assert_eq!(distributor_info.last_payment_block, app.block_info().height);
 
-    app.update_block(|mut block| block.height += 500);
+    app.update_block(|block| block.height += 500);
     app.execute_contract(
         Addr::unchecked(OWNER),
         distributor_addr.clone(),
@@ -278,7 +278,7 @@ fn test_distribute() {
     assert_eq!(distributor_info.balance, Uint128::new(490));
     assert_eq!(distributor_info.last_payment_block, app.block_info().height);
 
-    app.update_block(|mut block| block.height += 1000);
+    app.update_block(|block| block.height += 1000);
     app.execute_contract(
         Addr::unchecked(OWNER),
         distributor_addr.clone(),
@@ -296,7 +296,7 @@ fn test_distribute() {
     let last_payment_block = distributor_info.last_payment_block;
 
     // Pays out nothing
-    app.update_block(|mut block| block.height += 1100);
+    app.update_block(|block| block.height += 1100);
     let err: ContractError = app
         .execute_contract(
             Addr::unchecked(OWNER),
@@ -318,7 +318,7 @@ fn test_distribute() {
     assert_eq!(distributor_info.last_payment_block, last_payment_block);
 
     // go to a block before the last payment
-    app.update_block(|mut block| block.height -= 2000);
+    app.update_block(|block| block.height -= 2000);
     let err: ContractError = app
         .execute_contract(
             Addr::unchecked(OWNER),
@@ -458,7 +458,7 @@ fn test_withdraw() {
     app.execute_contract(Addr::unchecked(OWNER), cw20_addr.clone(), &msg, &[])
         .unwrap();
 
-    app.update_block(|mut block| block.height += 10);
+    app.update_block(|block| block.height += 10);
     app.execute_contract(
         Addr::unchecked(OWNER),
         distributor_addr.clone(),
@@ -541,7 +541,7 @@ fn test_dao_deploy() {
     app.execute_contract(Addr::unchecked(OWNER), cw20_addr.clone(), &msg, &[])
         .unwrap();
 
-    app.update_block(|mut block| block.height += 10);
+    app.update_block(|block| block.height += 10);
     app.execute_contract(
         Addr::unchecked(OWNER),
         distributor_addr.clone(),

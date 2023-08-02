@@ -233,7 +233,7 @@ fn test_update_config() -> anyhow::Result<()> {
     );
 
     let info = app.block_info();
-    app.update_block(|mut block| {
+    app.update_block(|block| {
         block.height += 3;
         block.time = match Duration::Time(1).after(&info) {
             cw_utils::Expiration::AtTime(timestamp) => timestamp,

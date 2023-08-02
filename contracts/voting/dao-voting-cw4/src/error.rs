@@ -1,7 +1,7 @@
 use cosmwasm_std::StdError;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
@@ -21,7 +21,7 @@ pub enum ContractError {
     #[error("Contract only supports queries")]
     NoExecute {},
 
-    #[error("Cannot instantiate a group contract with no initial members")]
+    #[error("Cannot instantiate or use a group contract with no initial members")]
     NoMembers {},
 
     #[error("Got a submessage reply with unknown id: {id}")]
