@@ -8,8 +8,8 @@ members = [
 	"contracts/voting/*",
 	"packages/*",
 	"test-contracts/*",
-	"ci/*"
-	]
+	"ci/*",
+]
 exclude = ["ci/configs/"]
 
 [workspace.package]
@@ -32,7 +32,7 @@ incremental = false
 overflow-checks = true
 
 [workspace.dependencies]
-anyhow = { version = "1.0"}
+anyhow = { version = "1.0" }
 assert_matches = "1.5"
 cosm-orc = { version = "4.0" }
 cosm-tome = "0.2"
@@ -52,13 +52,13 @@ cw4 = "1.1"
 cw4-group = "1.1"
 cw721 = "0.18"
 cw721-base = "0.18"
-juno-tokenfactory-core = "0.0.3"
+juno-tokenfactory-core = { version = "0.0.3", features = ["library"] }
 env_logger = "0.10"
 once_cell = "1.18"
 proc-macro2 = "1.0"
 quote = "1.0"
 rand = "0.8"
-serde = { version = "1.0", default-features = false, features = ["derive"]}
+serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.9"
 syn = { version = "1.0", features = ["derive"] }
@@ -109,7 +109,7 @@ dao-voting-native-staked = { path = "./contracts/voting/dao-voting-native-staked
 # v1 dependencies. used for state migrations.
 cw-core-v1 = { package = "cw-core", version = "0.1.0" }
 cw-proposal-single-v1 = { package = "cw-proposal-single", version = "0.1.0" }
-cw-utils-v1 = {package = "cw-utils", version = "0.13"}
+cw-utils-v1 = { package = "cw-utils", version = "0.13" }
 cw20-stake-external-rewards-v1 = { package = "stake-cw20-external-rewards", version = "0.2.6" }
 cw20-stake-reward-distributor-v1 = { package = "stake-cw20-reward-distributor", version = "0.1.0" }
 cw20-stake-v1 = { package = "cw20-stake", version = "0.2.6" }
