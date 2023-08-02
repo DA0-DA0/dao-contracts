@@ -3,7 +3,6 @@ use cosmwasm_std::Uint128;
 use cw_utils::Duration;
 use dao_dao_macros::voting_module_query;
 use dao_interface::state::Admin;
-use juno_tokenfactory_core::msg::NewDenom;
 
 #[cw_serde]
 pub enum TokenInfo {
@@ -15,7 +14,7 @@ pub enum TokenInfo {
         // Code ID of tokenfactory-core middleware contract that manages
         // token creation and administration.
         tf_core_code_id: u64,
-        info: NewDenom,
+        info: juno_tokenfactory_core::msg::NewDenom,
         initial_dao_balance: Option<Uint128>,
     },
 }
