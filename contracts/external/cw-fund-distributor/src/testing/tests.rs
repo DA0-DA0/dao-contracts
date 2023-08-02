@@ -583,7 +583,7 @@ pub fn test_claim_cw20() {
     let balance = query_cw20_balance(&mut app, token_address.clone(), distributor_address.clone());
 
     assert_eq!(balance.balance, amount);
-    app.update_block(|mut block| block.height += 11);
+    app.update_block(|block| block.height += 11);
 
     // claim the tokens
     // should result in an entitlement of (10/(10 + 20))%
@@ -654,7 +654,7 @@ pub fn test_claim_cw20_twice() {
 
     assert_eq!(balance.balance, amount);
 
-    app.update_block(|mut block| block.height += 11);
+    app.update_block(|block| block.height += 11);
 
     // claim the tokens twice
     app.execute_contract(
@@ -723,7 +723,7 @@ pub fn test_claim_cw20s_empty_list() {
         Addr::unchecked(CREATOR_ADDR),
     );
 
-    app.update_block(|mut b| b.height += 11);
+    app.update_block(|b| b.height += 11);
 
     let err: ContractError = app
         .execute_contract(
@@ -767,7 +767,7 @@ pub fn test_claim_natives_twice() {
         Addr::unchecked(CREATOR_ADDR),
     );
 
-    app.update_block(|mut block| block.height += 11);
+    app.update_block(|block| block.height += 11);
 
     // claim twice
     app.execute_contract(
@@ -830,7 +830,7 @@ pub fn test_claim_natives() {
         Addr::unchecked(CREATOR_ADDR),
     );
 
-    app.update_block(|mut block| block.height += 11);
+    app.update_block(|block| block.height += 11);
 
     app.execute_contract(
         Addr::unchecked("bekauz"),
@@ -898,7 +898,7 @@ pub fn test_claim_all() {
     );
 
     // claiming period
-    app.update_block(|mut block| block.height += 11);
+    app.update_block(|block| block.height += 11);
 
     app.execute_contract(
         Addr::unchecked("bekauz"),
@@ -963,7 +963,7 @@ pub fn test_claim_natives_empty_list_of_denoms() {
         Addr::unchecked(CREATOR_ADDR),
     );
 
-    app.update_block(|mut block| block.height += 11);
+    app.update_block(|block| block.height += 11);
 
     let err: ContractError = app
         .execute_contract(
@@ -1013,7 +1013,7 @@ pub fn test_redistribute_unclaimed_funds() {
         Addr::unchecked(CREATOR_ADDR),
     );
 
-    app.update_block(|mut block| block.height += 11);
+    app.update_block(|block| block.height += 11);
 
     // claim the initial allocation equal to 1/3rd of 500000
     app.execute_contract(
@@ -1286,7 +1286,7 @@ pub fn test_fund_cw20_during_claiming_period() {
     );
 
     // skip into the claiming period
-    app.update_block(|mut block| block.height += 11);
+    app.update_block(|block| block.height += 11);
 
     // attempt to fund the contract
     let err: ContractError = app
@@ -1323,7 +1323,7 @@ pub fn test_fund_natives_during_claiming_period() {
     mint_natives(&mut app, Addr::unchecked(CREATOR_ADDR), amount);
 
     // skip into the claim period
-    app.update_block(|mut block| block.height += 11);
+    app.update_block(|block| block.height += 11);
 
     // attempt to fund
     let err: ContractError = app

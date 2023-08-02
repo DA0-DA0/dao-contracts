@@ -203,7 +203,7 @@ pub fn test_claim_lots_of_native_tokens() {
         .unwrap();
     }
 
-    app.update_block(|mut block| block.height += 11);
+    app.update_block(|block| block.height += 11);
 
     app.execute_contract(
         Addr::unchecked("bekauz"),
@@ -276,7 +276,7 @@ pub fn test_claim_lots_of_cw20s() {
         })
         .collect();
 
-    app.update_block(|mut block| block.height += 11);
+    app.update_block(|block| block.height += 11);
 
     app.execute_contract(
         Addr::unchecked("bekauz"),

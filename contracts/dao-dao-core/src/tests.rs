@@ -1148,7 +1148,7 @@ fn test_admin_permissions() {
     );
 
     // DAO unpauses after 10 blocks
-    app.update_block(|mut block| block.height += 11);
+    app.update_block(|block| block.height += 11);
 
     // Admin can nominate a new admin.
     let res = app.execute_contract(
@@ -1414,7 +1414,7 @@ fn test_admin_nomination() {
     );
 
     // DAO unpauses after 10 blocks
-    app.update_block(|mut block| block.height += 11);
+    app.update_block(|block| block.height += 11);
 
     // Remove the admin.
     app.execute_contract(
@@ -2428,7 +2428,7 @@ fn test_pause() {
 
     assert!(matches!(err, ContractError::Paused { .. }));
 
-    app.update_block(|mut block| block.height += 9);
+    app.update_block(|block| block.height += 9);
 
     // Still not unpaused.
     let err: ContractError = app
@@ -2454,7 +2454,7 @@ fn test_pause() {
 
     assert!(matches!(err, ContractError::Paused { .. }));
 
-    app.update_block(|mut block| block.height += 1);
+    app.update_block(|block| block.height += 1);
 
     let paused: PauseInfoResponse = app
         .wrap()

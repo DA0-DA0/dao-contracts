@@ -400,7 +400,7 @@ fn test_proposal_close_after_expiry() {
     assert!(matches!(err, ContractError::WrongCloseStatus {}));
 
     // Expire the proposal. Now it should be closable.
-    app.update_block(|mut b| b.time = b.time.plus_seconds(604800));
+    app.update_block(|b| b.time = b.time.plus_seconds(604800));
     close_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Closed);
@@ -444,7 +444,7 @@ fn test_proposal_cant_close_after_expiry_is_passed() {
     assert_eq!(proposal.proposal.status, Status::Open);
 
     // Expire the proposal. This should pass it.
-    app.update_block(|mut b| b.time = b.time.plus_seconds(604800));
+    app.update_block(|b| b.time = b.time.plus_seconds(604800));
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Passed);
 
@@ -481,7 +481,7 @@ fn test_execute_no_non_passed_execution() {
     assert!(matches!(err, ContractError::NotPassed {}));
 
     // Expire the proposal.
-    app.update_block(|mut b| b.time = b.time.plus_seconds(604800));
+    app.update_block(|b| b.time = b.time.plus_seconds(604800));
     let err = execute_proposal_should_fail(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
     assert!(matches!(err, ContractError::NotPassed {}));
 
@@ -1050,7 +1050,7 @@ fn test_min_voting_period_no_early_pass() {
     let proposal_response = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal_response.proposal.status, Status::Open);
 
-    app.update_block(|mut block| block.height += 10);
+    app.update_block(|block| block.height += 10);
     let proposal_response = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal_response.proposal.status, Status::Passed);
 }
@@ -1088,7 +1088,7 @@ fn test_min_duration_same_as_proposal_duration() {
     vote_on_proposal(&mut app, &proposal_module, "whale", proposal_id, Vote::Yes);
     vote_on_proposal(&mut app, &proposal_module, "ekez", proposal_id, Vote::No);
 
-    app.update_block(|mut b| b.height += 100);
+    app.update_block(|b| b.height += 100);
     let proposal_response = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal_response.proposal.status, Status::Passed);
 }
@@ -1147,7 +1147,7 @@ fn test_revoting_playthrough() {
     assert!(matches!(err, ContractError::AlreadyCast {}));
 
     // Expire the proposal allowing the votes to be tallied.
-    app.update_block(|mut b| b.time = b.time.plus_seconds(604800));
+    app.update_block(|b| b.time = b.time.plus_seconds(604800));
     let proposal_response = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal_response.proposal.status, Status::Passed);
     execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
@@ -1236,7 +1236,7 @@ fn test_allow_revoting_config_changes() {
         Vote::No,
     );
     // Expire the revoting proposal and close it.
-    app.update_block(|mut b| b.time = b.time.plus_seconds(604800));
+    app.update_block(|b| b.time = b.time.plus_seconds(604800));
     close_proposal(&mut app, &proposal_module, CREATOR_ADDR, revoting_proposal);
 }
 
@@ -1393,7 +1393,7 @@ fn test_three_of_five_multisig_revoting() {
     assert!(matches!(err, ContractError::AlreadyCast {}));
 
     // Expire the revoting proposal and close it.
-    app.update_block(|mut b| b.time = b.time.plus_seconds(604800));
+    app.update_block(|b| b.time = b.time.plus_seconds(604800));
     let proposal: ProposalResponse = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Rejected);
 }
@@ -2635,7 +2635,7 @@ pub fn test_not_allow_voting_on_expired_proposal() {
     } = setup_test(vec![]);
 
     // expire the proposal
-    app.update_block(|mut b| b.time = b.time.plus_seconds(604800));
+    app.update_block(|b| b.time = b.time.plus_seconds(604800));
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Rejected);
     assert_eq!(proposal.proposal.votes.yes, Uint128::zero());
