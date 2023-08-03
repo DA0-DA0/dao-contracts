@@ -30,7 +30,7 @@ dao-dao-macros = { workspace = true }
 dao-interface = { workspace = true }
 cw-paginate-storage = { workspace = true }
 token-bindings = { workspace = true }
-juno-tokenfactory-core = { workspace = true }
+juno-tokenfactory-core = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }

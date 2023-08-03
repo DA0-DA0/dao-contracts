@@ -52,7 +52,7 @@ cw4 = "1.1"
 cw4-group = "1.1"
 cw721 = "0.18"
 cw721-base = "0.18"
-juno-tokenfactory-core = { version = "0.0.3", features = ["library"] }
+juno-tokenfactory-core = { version = "0.0.4" }
 env_logger = "0.10"
 once_cell = "1.18"
 proc-macro2 = "1.0"
