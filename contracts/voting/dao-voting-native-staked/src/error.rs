@@ -42,4 +42,16 @@ pub enum ContractError {
 
     #[error("Amount being unstaked must be non-zero")]
     ZeroUnstake {},
+
+    #[error("Active threshold percentage must be greater than 0 and less than 1")]
+    InvalidActivePercentage {},
+
+    #[error("Active threshold count must be greater than zero")]
+    ZeroActiveCount {},
+
+    #[error("Absolute count threshold cannot be greater than the total token supply")]
+    InvalidAbsoluteCount {},
+
+    #[error("Cannot change the contract's token after it has been set")]
+    DuplicateToken {},
 }

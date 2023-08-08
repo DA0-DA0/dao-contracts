@@ -1998,6 +1998,7 @@ dependencies = [
  "cw2 1.1.0",
  "dao-dao-macros",
  "dao-interface",
+ "dao-voting 2.2.0",
  "juno-tokenfactory-core",
  "thiserror",
  "token-bindings",

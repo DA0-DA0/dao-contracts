@@ -1,26 +1,35 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coins, to_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdResult, SubMsg, Uint128, WasmMsg,
+    coins, to_binary, BankMsg, BankQuery, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env,
+    MessageInfo, Reply, Response, StdResult, SubMsg, Uint128, WasmMsg, Uint256,
 };
 use cw2::set_contract_version;
 use cw_controllers::ClaimsResponse;
 use cw_utils::{must_pay, parse_reply_instantiate_data, Duration};
 use dao_interface::state::Admin;
-use dao_interface::voting::{TotalPowerAtHeightResponse, VotingPowerAtHeightResponse};
+use dao_interface::voting::{
+    IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
+};
+use dao_voting::threshold::ActiveThreshold;
 
 use crate::error::ContractError;
 use crate::msg::{
-    DenomResponse, ExecuteMsg, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg,
-    StakerBalanceResponse, TokenInfo,
+    ActiveThresholdResponse, DenomResponse, ExecuteMsg, InstantiateMsg, ListStakersResponse,
+    MigrateMsg, QueryMsg, StakerBalanceResponse, TokenInfo,
 };
-use crate::state::{Config, CLAIMS, CONFIG, DAO, DENOM, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL};
+use crate::state::{
+    Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, DENOM, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL,
+};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-native-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const INSTANTIATE_TOKEN_REPLY_ID: u64 = 0;
+
+// We multiply by this when calculating needed power for being active
+// when using active threshold with percent
+const PRECISION_FACTOR: u128 = 10u128.pow(9);
 
 fn validate_duration(duration: Option<Duration>) -> Result<(), ContractError> {
     if let Some(unstaking_duration) = duration {
@@ -73,8 +82,21 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
     DAO.save(deps.storage, &info.sender)?;
 
+    if let Some(active_threshold) = msg.active_threshold.as_ref() {
+        if let ActiveThreshold::Percentage { percent } = active_threshold {
+            if *percent > Decimal::percent(100) || *percent <= Decimal::percent(0) {
+                return Err(ContractError::InvalidActivePercentage {});
+            }
+        }
+        ACTIVE_THRESHOLD.save(deps.storage, active_threshold)?;
+    }
+
     match msg.token_info {
         TokenInfo::Existing { denom } => {
+            if let Some(ActiveThreshold::AbsoluteCount { count }) = msg.active_threshold {
+                assert_valid_absolute_count_threshold(deps.as_ref(), &denom, count)?;
+            }
+
             DENOM.save(deps.storage, &denom)?;
 
             Ok(Response::new()
@@ -165,6 +187,25 @@ pub fn instantiate(
     }
 }
 
+pub fn assert_valid_absolute_count_threshold(
+    deps: Deps,
+    token_denom: &str,
+    count: Uint128,
+) -> Result<(), ContractError> {
+    if count.is_zero() {
+        return Err(ContractError::ZeroActiveCount {});
+    }
+    let supply: cosmwasm_std::SupplyResponse =
+        deps.querier
+            .query(&cosmwasm_std::QueryRequest::Bank(BankQuery::Supply {
+                denom: token_denom.to_string(),
+            }))?;
+    if count > supply.amount.amount {
+        return Err(ContractError::InvalidAbsoluteCount {});
+    }
+    Ok(())
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
@@ -181,6 +222,9 @@ pub fn execute(
             duration,
         } => execute_update_config(deps, info, owner, manager, duration),
         ExecuteMsg::Claim {} => execute_claim(deps, env, info),
+        ExecuteMsg::UpdateActiveThreshold { new_threshold } => {
+            execute_update_active_threshold(deps, env, info, new_threshold)
+        }
     }
 }
 
@@ -350,6 +394,37 @@ pub fn execute_claim(
         .add_attribute("amount", release))
 }
 
+pub fn execute_update_active_threshold(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    new_active_threshold: Option<ActiveThreshold>,
+) -> Result<Response, ContractError> {
+    let dao = DAO.load(deps.storage)?;
+    if info.sender != dao {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    if let Some(active_threshold) = new_active_threshold {
+        match active_threshold {
+            ActiveThreshold::Percentage { percent } => {
+                if percent > Decimal::percent(100) || percent.is_zero() {
+                    return Err(ContractError::InvalidActivePercentage {});
+                }
+            }
+            ActiveThreshold::AbsoluteCount { count } => {
+                let denom = DENOM.load(deps.storage)?;
+                assert_valid_absolute_count_threshold(deps.as_ref(), &denom, count)?;
+            }
+        }
+        ACTIVE_THRESHOLD.save(deps.storage, &active_threshold)?;
+    } else {
+        ACTIVE_THRESHOLD.remove(deps.storage);
+    }
+
+    Ok(Response::new().add_attribute("action", "update_active_threshold"))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -369,6 +444,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::ListStakers { start_after, limit } => {
             query_list_stakers(deps, start_after, limit)
         }
+        QueryMsg::IsActive {} => query_is_active(deps),
+        QueryMsg::ActiveThreshold {} => query_active_threshold(deps),
     }
 }
 
@@ -440,6 +517,74 @@ pub fn query_list_stakers(
     to_binary(&ListStakersResponse { stakers })
 }
 
+pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
+    let threshold = ACTIVE_THRESHOLD.may_load(deps.storage)?;
+    if let Some(threshold) = threshold {
+        let denom = DENOM.load(deps.storage)?;
+        let actual_power = STAKED_TOTAL.may_load(deps.storage)?.unwrap_or_default();
+        match threshold {
+            ActiveThreshold::AbsoluteCount { count } => to_binary(&IsActiveResponse {
+                active: actual_power >= count,
+            }),
+            ActiveThreshold::Percentage { percent } => {
+                // percent is bounded between [0, 100]. decimal
+                // represents percents in u128 terms as p *
+                // 10^15. this bounds percent between [0, 10^17].
+                //
+                // total_potential_power is bounded between [0, 2^128]
+                // as it tracks the balances of a cw20 token which has
+                // a max supply of 2^128.
+                //
+                // with our precision factor being 10^9:
+                //
+                // total_power <= 2^128 * 10^9 <= 2^256
+                //
+                // so we're good to put that in a u256.
+                //
+                // multiply_ratio promotes to a u512 under the hood,
+                // so it won't overflow, multiplying by a percent less
+                // than 100 is gonna make something the same size or
+                // smaller, applied + 10^9 <= 2^128 * 10^9 + 10^9 <=
+                // 2^256, so the top of the round won't overflow, and
+                // rounding is rounding down, so the whole thing can
+                // be safely unwrapped at the end of the day thank you
+                // for coming to my ted talk.
+                let total_potential_power: cosmwasm_std::SupplyResponse =
+                    deps.querier
+                        .query(&cosmwasm_std::QueryRequest::Bank(BankQuery::Supply {
+                            denom,
+                        }))?;
+                let total_power = total_potential_power
+                    .amount
+                    .amount
+                    .full_mul(PRECISION_FACTOR);
+                // under the hood decimals are `atomics / 10^decimal_places`.
+                // cosmwasm doesn't give us a Decimal * Uint256
+                // implementation so we take the decimal apart and
+                // multiply by the fraction.
+                let applied = total_power.multiply_ratio(
+                    percent.atomics(),
+                    Uint256::from(10u64).pow(percent.decimal_places()),
+                );
+                let rounded = (applied + Uint256::from(PRECISION_FACTOR) - Uint256::from(1u128))
+                    / Uint256::from(PRECISION_FACTOR);
+                let count: Uint128 = rounded.try_into().unwrap();
+                to_binary(&IsActiveResponse {
+                    active: actual_power >= count,
+                })
+            }
+        }
+    } else {
+        to_binary(&IsActiveResponse { active: true })
+    }
+}
+
+pub fn query_active_threshold(deps: Deps) -> StdResult<Binary> {
+    to_binary(&ActiveThresholdResponse {
+        active_threshold: ACTIVE_THRESHOLD.may_load(deps.storage)?,
+    })
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     // Set contract to version to latest
@@ -456,6 +601,13 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                 Ok(res) => {
                     let addr = deps.api.addr_validate(&res.contract_address)?;
 
+                    let denom = DENOM.may_load(deps.storage)?;
+                    if denom.is_some() {
+                        // There is no known way this error could ever
+                        // be triggered, we're just paranoid.
+                        return Err(ContractError::DuplicateToken {});
+                    }
+
                     // Retrieve the denom from the token factory core contract
                     // once it's created.
                     let config: juno_tokenfactory_core::state::Config =
@@ -466,7 +618,13 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     if config.denoms.len() != 1 {
                         return Err(ContractError::TokenFactoryCoreInstantiateError {});
                     }
-                    DENOM.save(deps.storage, &config.denoms[0])?;
+                    let denom = &config.denoms[0];
+                    DENOM.save(deps.storage, denom)?;
+
+                    let active_threshold = ACTIVE_THRESHOLD.may_load(deps.storage)?;
+                    if let Some(ActiveThreshold::AbsoluteCount { count }) = active_threshold {
+                        assert_valid_absolute_count_threshold(deps.as_ref(), denom, count)?;
+                    }
 
                     Ok(Response::new()
                         .add_attribute("token_factory_core_contract", addr)

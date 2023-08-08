@@ -274,6 +274,7 @@ pub fn _instantiate_with_native_staked_balances_governance(
                     denom: "ujuno".to_string(),
                 },
                 unstaking_duration: None,
+                active_threshold: None,
             })
             .unwrap(),
             admin: None,

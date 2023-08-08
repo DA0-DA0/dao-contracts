@@ -17,7 +17,7 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-cosmwasm-std = { workspace = true }
+cosmwasm-std    = { workspace = true, features = ["cosmwasm_1_1"] }
 cosmwasm-schema = { workspace = true }
 cosmwasm-storage = { workspace = true }
 cw-storage-plus = { workspace = true }
@@ -28,6 +28,7 @@ cw-controllers = { workspace = true }
 thiserror = { workspace = true }
 dao-dao-macros = { workspace = true }
 dao-interface = { workspace = true }
+dao-voting = { workspace = true }
 cw-paginate-storage = { workspace = true }
 token-bindings = { workspace = true }
 juno-tokenfactory-core = { workspace = true, features = ["library"] }

@@ -3,6 +3,7 @@ use cosmwasm_std::{Addr, Uint128};
 use cw_controllers::Claims;
 use cw_storage_plus::{Item, SnapshotItem, SnapshotMap, Strategy};
 use cw_utils::Duration;
+use dao_voting::threshold::ActiveThreshold;
 
 #[cw_serde]
 pub struct Config {
@@ -32,3 +33,5 @@ pub const STAKED_TOTAL: SnapshotItem<Uint128> = SnapshotItem::new(
 pub const MAX_CLAIMS: u64 = 100;
 
 pub const CLAIMS: Claims = Claims::new("claims");
+
+pub const ACTIVE_THRESHOLD: Item<ActiveThreshold> = Item::new("active_threshold");

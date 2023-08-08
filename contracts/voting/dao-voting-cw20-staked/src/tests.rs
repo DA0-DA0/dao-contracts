@@ -1108,7 +1108,7 @@ fn test_active_threshold_percent_rounds_up() {
     assert!(!is_active.active);
 
     // Stake 1 more token as creator, should now be active.
-    stake_tokens(&mut app, staking_addr, token_addr, CREATOR_ADDR, 2);
+    stake_tokens(&mut app, staking_addr, token_addr, CREATOR_ADDR, 1);
     app.update_block(next_block);
 
     let is_active: IsActiveResponse = app

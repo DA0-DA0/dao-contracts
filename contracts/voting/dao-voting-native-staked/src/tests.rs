@@ -1,14 +1,14 @@
 use crate::contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::{
-    DenomResponse, ExecuteMsg, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg,
-    StakerBalanceResponse, TokenInfo,
+    ActiveThresholdResponse, DenomResponse, ExecuteMsg, InstantiateMsg, ListStakersResponse,
+    MigrateMsg, QueryMsg, StakerBalanceResponse, TokenInfo,
 };
 use crate::state::Config;
 use crate::ContractError;
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{
-    coins, to_binary, Addr, Binary, Coin, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdError, StdResult, Uint128,
+    coins, to_binary, Addr, Binary, Coin, Decimal, Deps, DepsMut, Empty, Env, MessageInfo,
+    Response, StdError, StdResult, Uint128,
 };
 use cw_controllers::ClaimsResponse;
 use cw_multi_test::{
@@ -18,14 +18,16 @@ use cw_storage_plus::Item;
 use cw_utils::Duration;
 use dao_interface::state::Admin;
 use dao_interface::voting::{
-    InfoResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
+    InfoResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
+use dao_voting::threshold::ActiveThreshold;
 
 const DAO_ADDR: &str = "dao";
 const ADDR1: &str = "addr1";
 const ADDR2: &str = "addr2";
 const DENOM: &str = "ujuno";
 const INVALID_DENOM: &str = "uinvalid";
+const ODD_DENOM: &str = "uodd";
 
 fn staking_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -109,6 +111,10 @@ fn mock_app() -> App {
                     Coin {
                         denom: INVALID_DENOM.to_string(),
                         amount: Uint128::new(10000),
+                    },
+                    Coin {
+                        denom: ODD_DENOM.to_string(),
+                        amount: Uint128::new(5),
                     },
                 ],
             )
@@ -280,6 +286,7 @@ fn test_instantiate_existing() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -294,6 +301,7 @@ fn test_instantiate_existing() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: None,
+            active_threshold: None,
         },
     );
 }
@@ -326,6 +334,7 @@ fn test_instantiate_new_denom() {
                 initial_dao_balance: Some(Uint128::new(900)),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -355,6 +364,7 @@ fn test_instantiate_new_denom() {
                 initial_dao_balance: None,
             },
             unstaking_duration: None,
+            active_threshold: None,
         },
     );
 
@@ -377,6 +387,7 @@ fn test_instantiate_new_denom() {
                 initial_dao_balance: Some(Uint128::new(900)),
             },
             unstaking_duration: None,
+            active_threshold: None,
         },
     );
     assert_eq!(err, ContractError::InitialBalancesError {});
@@ -397,6 +408,7 @@ fn test_instantiate_dao_owner() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -423,6 +435,9 @@ fn test_instantiate_invalid_unstaking_duration() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(0)),
+            active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                count: Uint128::new(1),
+            }),
         },
     );
 
@@ -437,6 +452,7 @@ fn test_instantiate_invalid_unstaking_duration() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: None,
+            active_threshold: None,
         },
     );
 }
@@ -456,6 +472,7 @@ fn test_stake_invalid_denom() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -477,6 +494,7 @@ fn test_stake_valid_denom() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -511,6 +529,7 @@ fn test_stake_new_denom() {
                 initial_dao_balance: Some(Uint128::new(900)),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -534,6 +553,7 @@ fn test_unstake_none_staked() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -555,6 +575,7 @@ fn test_unstake_zero_tokens() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -576,6 +597,7 @@ fn test_unstake_invalid_balance() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -601,6 +623,7 @@ fn test_unstake() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -638,6 +661,7 @@ fn test_unstake_no_unstaking_duration() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: None,
+            active_threshold: None,
         },
     );
 
@@ -677,6 +701,7 @@ fn test_claim_no_claims() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -698,6 +723,7 @@ fn test_claim_claim_not_reached() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -727,6 +753,7 @@ fn test_claim() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -780,6 +807,7 @@ fn test_update_config_invalid_sender() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -810,6 +838,7 @@ fn test_update_config_non_owner_changes_owner() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -831,6 +860,7 @@ fn test_update_config_as_owner() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -870,6 +900,7 @@ fn test_update_config_as_manager() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -910,6 +941,7 @@ fn test_update_config_invalid_duration() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -939,6 +971,7 @@ fn test_query_dao() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -961,6 +994,7 @@ fn test_query_info() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -983,6 +1017,7 @@ fn test_query_claims() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -1021,6 +1056,7 @@ fn test_query_get_config() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -1049,6 +1085,7 @@ fn test_voting_power_queries() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -1157,6 +1194,7 @@ fn test_query_list_stakers() {
                 denom: DENOM.to_string(),
             },
             unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
         },
     );
 
@@ -1227,6 +1265,314 @@ fn test_query_list_stakers() {
         .unwrap();
 
     assert_eq!(stakers, ListStakersResponse { stakers: vec![] });
+}
+
+#[test]
+#[should_panic(expected = "Active threshold count must be greater than zero")]
+fn test_instantiate_zero_active_threshold_count() {
+    let mut app = mock_app();
+    let staking_id = app.store_code(staking_contract());
+    instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: Some(Admin::Address {
+                addr: DAO_ADDR.to_string(),
+            }),
+            manager: Some(ADDR1.to_string()),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
+            unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                count: Uint128::zero(),
+            }),
+        },
+    );
+}
+
+#[test]
+fn test_active_threshold_absolute_count() {
+    let mut app = App::default();
+    let staking_id = app.store_code(staking_contract());
+    let addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: Some(Admin::Address {
+                addr: DAO_ADDR.to_string(),
+            }),
+            manager: Some(ADDR1.to_string()),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
+            unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                count: Uint128::new(100),
+            }),
+        },
+    );
+
+    // Not active as none staked
+    let is_active: IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(addr.clone(), &QueryMsg::IsActive {})
+        .unwrap();
+    assert!(!is_active.active);
+
+    // Stake 100 tokens
+    stake_tokens(&mut app, addr.clone(), ADDR1, 100, DENOM).unwrap();
+    app.update_block(next_block);
+
+    // Active as enough staked
+    let is_active: IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(addr, &QueryMsg::IsActive {})
+        .unwrap();
+    assert!(is_active.active);
+}
+
+#[test]
+fn test_active_threshold_percent() {
+    let mut app = App::default();
+    let staking_id = app.store_code(staking_contract());
+    let addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: Some(Admin::Address {
+                addr: DAO_ADDR.to_string(),
+            }),
+            manager: Some(ADDR1.to_string()),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
+            unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: Some(ActiveThreshold::Percentage {
+                percent: Decimal::percent(20),
+            }),
+        },
+    );
+
+    // Not active as none staked
+    let is_active: IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(addr.clone(), &QueryMsg::IsActive {})
+        .unwrap();
+    assert!(!is_active.active);
+
+    // Stake 6000 tokens, now active
+    stake_tokens(&mut app, addr.clone(), ADDR1, 6000, DENOM).unwrap();
+    app.update_block(next_block);
+
+    // Active as enough staked
+    let is_active: IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(addr, &QueryMsg::IsActive {})
+        .unwrap();
+    assert!(is_active.active);
+}
+
+#[test]
+fn test_active_threshold_percent_rounds_up() {
+    let mut app = App::default();
+    let staking_id = app.store_code(staking_contract());
+    let addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: Some(Admin::Address {
+                addr: DAO_ADDR.to_string(),
+            }),
+            manager: Some(ADDR1.to_string()),
+            token_info: TokenInfo::Existing {
+                denom: ODD_DENOM.to_string(),
+            },
+            unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: Some(ActiveThreshold::Percentage {
+                percent: Decimal::percent(50),
+            }),
+        },
+    );
+
+    // Not active as none staked
+    let is_active: IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(addr.clone(), &QueryMsg::IsActive {})
+        .unwrap();
+    assert!(!is_active.active);
+
+    // Stake 2 tokens, should not be active.
+    stake_tokens(&mut app, addr.clone(), ADDR1, 2, ODD_DENOM).unwrap();
+    app.update_block(next_block);
+
+    let is_active: IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(addr.clone(), &QueryMsg::IsActive {})
+        .unwrap();
+    assert!(!is_active.active);
+
+    // Stake 1 more token, should now be active.
+    stake_tokens(&mut app, addr.clone(), ADDR1, 1, ODD_DENOM).unwrap();
+    app.update_block(next_block);
+
+    let is_active: IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(addr, &QueryMsg::IsActive {})
+        .unwrap();
+    assert!(is_active.active);
+}
+
+#[test]
+fn test_active_threshold_none() {
+    let mut app = App::default();
+    let staking_id = app.store_code(staking_contract());
+    let addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: Some(Admin::Address {
+                addr: DAO_ADDR.to_string(),
+            }),
+            manager: Some(ADDR1.to_string()),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
+            unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
+        },
+    );
+
+    // Active as no threshold
+    let is_active: IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(addr, &QueryMsg::IsActive {})
+        .unwrap();
+    assert!(is_active.active);
+}
+
+#[test]
+fn test_update_active_threshold() {
+    let mut app = App::default();
+    let staking_id = app.store_code(staking_contract());
+    let addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: Some(Admin::Address {
+                addr: DAO_ADDR.to_string(),
+            }),
+            manager: Some(ADDR1.to_string()),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
+            unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
+        },
+    );
+
+    let resp: ActiveThresholdResponse = app
+        .wrap()
+        .query_wasm_smart(addr.clone(), &QueryMsg::ActiveThreshold {})
+        .unwrap();
+    assert_eq!(resp.active_threshold, None);
+
+    let msg = ExecuteMsg::UpdateActiveThreshold {
+        new_threshold: Some(ActiveThreshold::AbsoluteCount {
+            count: Uint128::new(100),
+        }),
+    };
+
+    // Expect failure as sender is not the DAO
+    app.execute_contract(Addr::unchecked(ADDR1), addr.clone(), &msg, &[])
+        .unwrap_err();
+
+    // Expect success as sender is the DAO
+    app.execute_contract(Addr::unchecked(DAO_ADDR), addr.clone(), &msg, &[])
+        .unwrap();
+
+    let resp: ActiveThresholdResponse = app
+        .wrap()
+        .query_wasm_smart(addr, &QueryMsg::ActiveThreshold {})
+        .unwrap();
+    assert_eq!(
+        resp.active_threshold,
+        Some(ActiveThreshold::AbsoluteCount {
+            count: Uint128::new(100)
+        })
+    );
+}
+
+#[test]
+#[should_panic(expected = "Active threshold percentage must be greater than 0 and less than 1")]
+fn test_active_threshold_percentage_gt_100() {
+    let mut app = App::default();
+    let staking_id = app.store_code(staking_contract());
+    instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: Some(Admin::Address {
+                addr: DAO_ADDR.to_string(),
+            }),
+            manager: Some(ADDR1.to_string()),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
+            unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: Some(ActiveThreshold::Percentage {
+                percent: Decimal::percent(120),
+            }),
+        },
+    );
+}
+
+#[test]
+#[should_panic(expected = "Active threshold percentage must be greater than 0 and less than 1")]
+fn test_active_threshold_percentage_lte_0() {
+    let mut app = App::default();
+    let staking_id = app.store_code(staking_contract());
+    instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: Some(Admin::Address {
+                addr: DAO_ADDR.to_string(),
+            }),
+            manager: Some(ADDR1.to_string()),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
+            unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: Some(ActiveThreshold::Percentage {
+                percent: Decimal::percent(0),
+            }),
+        },
+    );
+}
+
+#[test]
+#[should_panic(expected = "Absolute count threshold cannot be greater than the total token supply")]
+fn test_active_threshold_absolute_count_invalid() {
+    let mut app = App::default();
+    let staking_id = app.store_code(staking_contract());
+    instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: Some(Admin::Address {
+                addr: DAO_ADDR.to_string(),
+            }),
+            manager: Some(ADDR1.to_string()),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
+            unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                count: Uint128::new(30001),
+            }),
+        },
+    );
 }
 
 #[test]

@@ -1,8 +1,9 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw_utils::Duration;
-use dao_dao_macros::voting_module_query;
+use dao_dao_macros::{active_query, voting_module_query};
 use dao_interface::state::Admin;
+use dao_voting::threshold::ActiveThreshold;
 
 #[cw_serde]
 pub enum TokenInfo {
@@ -29,6 +30,9 @@ pub struct InstantiateMsg {
     pub token_info: TokenInfo,
     // How long until the tokens become liquid again
     pub unstaking_duration: Option<Duration>,
+    /// The number or percentage of tokens that must be staked
+    /// for the DAO to be active
+    pub active_threshold: Option<ActiveThreshold>,
 }
 
 #[cw_serde]
@@ -43,9 +47,16 @@ pub enum ExecuteMsg {
         duration: Option<Duration>,
     },
     Claim {},
+    /// Sets the active threshold to a new value. Only the
+    /// instantiator of this contract (a DAO most likely) may call this
+    /// method.
+    UpdateActiveThreshold {
+        new_threshold: Option<ActiveThreshold>,
+    },
 }
 
 #[voting_module_query]
+#[active_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
@@ -60,6 +71,8 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    #[returns(ActiveThresholdResponse)]
+    ActiveThreshold {},
 }
 
 #[cw_serde]
@@ -79,4 +92,9 @@ pub struct StakerBalanceResponse {
 #[cw_serde]
 pub struct DenomResponse {
     pub denom: String,
+}
+
+#[cw_serde]
+pub struct ActiveThresholdResponse {
+    pub active_threshold: Option<ActiveThreshold>,
 }
