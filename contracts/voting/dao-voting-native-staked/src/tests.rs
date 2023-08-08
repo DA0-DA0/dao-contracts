@@ -1,7 +1,7 @@
 use crate::contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::{
-    ActiveThresholdResponse, DenomResponse, ExecuteMsg, InstantiateMsg, ListStakersResponse,
-    MigrateMsg, QueryMsg, StakerBalanceResponse, TokenInfo,
+    ActiveThresholdResponse, DenomResponse, ExecuteMsg, GetHooksResponse, InstantiateMsg,
+    ListStakersResponse, MigrateMsg, QueryMsg, StakerBalanceResponse, TokenInfo,
 };
 use crate::state::Config;
 use crate::ContractError;
@@ -1573,6 +1573,70 @@ fn test_active_threshold_absolute_count_invalid() {
             }),
         },
     );
+}
+
+#[test]
+fn test_add_remove_hooks() {
+    let mut app = App::default();
+    let staking_id = app.store_code(staking_contract());
+    let addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: Some(Admin::Address {
+                addr: DAO_ADDR.to_string(),
+            }),
+            manager: Some(ADDR1.to_string()),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
+            unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
+        },
+    );
+
+    // No hooks exist.
+    let resp: GetHooksResponse = app
+        .wrap()
+        .query_wasm_smart(addr.clone(), &QueryMsg::GetHooks {})
+        .unwrap();
+    assert_eq!(resp.hooks, Vec::<String>::new());
+
+    // Add a hook.
+    app.execute_contract(
+        Addr::unchecked(DAO_ADDR),
+        addr.clone(),
+        &ExecuteMsg::AddHook {
+            addr: "hook".to_string(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // One hook exists.
+    let resp: GetHooksResponse = app
+        .wrap()
+        .query_wasm_smart(addr.clone(), &QueryMsg::GetHooks {})
+        .unwrap();
+    assert_eq!(resp.hooks, vec!["hook".to_string()]);
+
+    // Remove hook.
+    app.execute_contract(
+        Addr::unchecked(DAO_ADDR),
+        addr.clone(),
+        &ExecuteMsg::RemoveHook {
+            addr: "hook".to_string(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // No hook exists.
+    let resp: GetHooksResponse = app
+        .wrap()
+        .query_wasm_smart(addr, &QueryMsg::GetHooks {})
+        .unwrap();
+    assert_eq!(resp.hooks, Vec::<String>::new());
 }
 
 #[test]

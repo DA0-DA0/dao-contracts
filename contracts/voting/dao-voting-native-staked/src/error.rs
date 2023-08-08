@@ -4,14 +4,14 @@ use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
-    #[error("{0}")]
+    #[error(transparent)]
     Std(#[from] StdError),
-
-    #[error("{0}")]
+    #[error(transparent)]
     PaymentError(#[from] PaymentError),
-
-    #[error("{0}")]
+    #[error(transparent)]
     ParseReplyError(#[from] ParseReplyError),
+    #[error(transparent)]
+    HookError(#[from] cw_controllers::HookError),
 
     #[error("Got a submessage reply with unknown id: {id}")]
     UnknownReplyId { id: u64 },

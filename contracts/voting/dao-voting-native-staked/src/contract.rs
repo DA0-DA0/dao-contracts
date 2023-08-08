@@ -1,8 +1,9 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
+
 use cosmwasm_std::{
     coins, to_binary, BankMsg, BankQuery, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdResult, SubMsg, Uint128, WasmMsg, Uint256,
+    MessageInfo, Reply, Response, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_controllers::ClaimsResponse;
@@ -14,12 +15,14 @@ use dao_interface::voting::{
 use dao_voting::threshold::ActiveThreshold;
 
 use crate::error::ContractError;
+use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 use crate::msg::{
-    ActiveThresholdResponse, DenomResponse, ExecuteMsg, InstantiateMsg, ListStakersResponse,
-    MigrateMsg, QueryMsg, StakerBalanceResponse, TokenInfo,
+    ActiveThresholdResponse, DenomResponse, ExecuteMsg, GetHooksResponse, InstantiateMsg,
+    ListStakersResponse, MigrateMsg, QueryMsg, StakerBalanceResponse, TokenInfo,
 };
 use crate::state::{
-    Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, DENOM, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL,
+    Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, DENOM, HOOKS, MAX_CLAIMS, STAKED_BALANCES,
+    STAKED_TOTAL,
 };
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-native-staked";
@@ -225,6 +228,8 @@ pub fn execute(
         ExecuteMsg::UpdateActiveThreshold { new_threshold } => {
             execute_update_active_threshold(deps, env, info, new_threshold)
         }
+        ExecuteMsg::AddHook { addr } => execute_add_hook(deps, env, info, addr),
+        ExecuteMsg::RemoveHook { addr } => execute_remove_hook(deps, env, info, addr),
     }
 }
 
@@ -247,8 +252,10 @@ pub fn execute_stake(
         env.block.height,
         |total| -> StdResult<Uint128> { Ok(total.unwrap_or_default().checked_add(amount)?) },
     )?;
+    let hook_msgs = stake_hook_msgs(deps.storage, info.sender.clone(), amount)?;
 
     Ok(Response::new()
+        .add_submessages(hook_msgs)
         .add_attribute("action", "stake")
         .add_attribute("amount", amount.to_string())
         .add_attribute("from", info.sender))
@@ -285,6 +292,7 @@ pub fn execute_unstake(
                 .map_err(|_e| ContractError::InvalidUnstakeAmount {})
         },
     )?;
+    let hook_msgs = unstake_hook_msgs(deps.storage, info.sender.clone(), amount)?;
 
     let config = CONFIG.load(deps.storage)?;
     let denom = DENOM.load(deps.storage)?;
@@ -296,6 +304,7 @@ pub fn execute_unstake(
             });
             Ok(Response::new()
                 .add_message(msg)
+                .add_submessages(hook_msgs)
                 .add_attribute("action", "unstake")
                 .add_attribute("from", info.sender)
                 .add_attribute("amount", amount)
@@ -314,6 +323,7 @@ pub fn execute_unstake(
                 duration.after(&env.block),
             )?;
             Ok(Response::new()
+                .add_submessages(hook_msgs)
                 .add_attribute("action", "unstake")
                 .add_attribute("from", info.sender)
                 .add_attribute("amount", amount)
@@ -425,6 +435,42 @@ pub fn execute_update_active_threshold(
     Ok(Response::new().add_attribute("action", "update_active_threshold"))
 }
 
+pub fn execute_add_hook(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    addr: String,
+) -> Result<Response, ContractError> {
+    let config: Config = CONFIG.load(deps.storage)?;
+    if Some(info.sender.clone()) != config.owner && Some(info.sender.clone()) != config.manager {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let hook = deps.api.addr_validate(&addr)?;
+    HOOKS.add_hook(deps.storage, hook)?;
+    Ok(Response::new()
+        .add_attribute("action", "add_hook")
+        .add_attribute("hook", addr))
+}
+
+pub fn execute_remove_hook(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    addr: String,
+) -> Result<Response, ContractError> {
+    let config: Config = CONFIG.load(deps.storage)?;
+    if Some(info.sender.clone()) != config.owner && Some(info.sender.clone()) != config.manager {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let hook = deps.api.addr_validate(&addr)?;
+    HOOKS.remove_hook(deps.storage, hook)?;
+    Ok(Response::new()
+        .add_attribute("action", "remove_hook")
+        .add_attribute("hook", addr))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -446,6 +492,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::IsActive {} => query_is_active(deps),
         QueryMsg::ActiveThreshold {} => query_active_threshold(deps),
+        QueryMsg::GetHooks {} => to_binary(&query_hooks(deps)?),
     }
 }
 
@@ -582,6 +629,12 @@ pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
 pub fn query_active_threshold(deps: Deps) -> StdResult<Binary> {
     to_binary(&ActiveThresholdResponse {
         active_threshold: ACTIVE_THRESHOLD.may_load(deps.storage)?,
+    })
+}
+
+pub fn query_hooks(deps: Deps) -> StdResult<GetHooksResponse> {
+    Ok(GetHooksResponse {
+        hooks: HOOKS.query_hooks(deps)?.hooks,
     })
 }
 

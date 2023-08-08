@@ -53,6 +53,12 @@ pub enum ExecuteMsg {
     UpdateActiveThreshold {
         new_threshold: Option<ActiveThreshold>,
     },
+    AddHook {
+        addr: String,
+    },
+    RemoveHook {
+        addr: String,
+    },
 }
 
 #[voting_module_query]
@@ -73,6 +79,8 @@ pub enum QueryMsg {
     },
     #[returns(ActiveThresholdResponse)]
     ActiveThreshold {},
+    #[returns(GetHooksResponse)]
+    GetHooks {},
 }
 
 #[cw_serde]
@@ -97,4 +105,9 @@ pub struct DenomResponse {
 #[cw_serde]
 pub struct ActiveThresholdResponse {
     pub active_threshold: Option<ActiveThreshold>,
+}
+
+#[cw_serde]
+pub struct GetHooksResponse {
+    pub hooks: Vec<String>,
 }
