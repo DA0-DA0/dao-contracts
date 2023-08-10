@@ -9,8 +9,8 @@ use crate::ContractError;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
-    Response, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
+    from_binary, to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Empty, Env,
+    MessageInfo, Reply, Response, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ReceiveMsg, NumTokensResponse};
@@ -89,10 +89,31 @@ pub fn instantiate(
         NftContract::New {
             code_id,
             label,
-            name,
-            symbol,
+            msg: instantiate_msg,
             initial_nfts,
         } => {
+            // The instantiate message for the NFT contract is likely to be a cw721 or sg721
+            // instantiate message. We need to deserialize it and update the minter to be this
+            // contract.
+            //
+            // Custom NFT contracts with Instantiate messages that do fit the cw721 or sg721
+            // interface will not work with this contract. Use NftContract::Existing instead.
+            let cw721_instantiate_msg = from_binary::<cw721_base::InstantiateMsg>(&instantiate_msg);
+            let sg721_instantiate_msg = from_binary::<sg721::InstantiateMsg>(&instantiate_msg);
+
+            // Update the minter to be this contract, reserialize into Binary
+            let instantiate_msg = match (cw721_instantiate_msg, sg721_instantiate_msg) {
+                (Ok(mut cw721_instantiate_msg), _) => {
+                    cw721_instantiate_msg.minter = env.contract.address.to_string();
+                    to_binary(&cw721_instantiate_msg)?
+                }
+                (_, Ok(mut sg721_instantiate_msg)) => {
+                    sg721_instantiate_msg.minter = env.contract.address.to_string();
+                    to_binary(&sg721_instantiate_msg)?
+                }
+                _ => return Err(ContractError::NftInstantiateError {}),
+            };
+
             // Check there is at least one NFT to initialize
             if initial_nfts.is_empty() {
                 return Err(ContractError::NoInitialNfts {});
@@ -110,28 +131,25 @@ pub fn instantiate(
             INITITIAL_NFTS.save(deps.storage, &initial_nfts)?;
 
             // Create instantiate submessage for NFT roles contract
-            let msg = SubMsg::reply_on_success(
+            let instantiate_msg = SubMsg::reply_on_success(
                 WasmMsg::Instantiate {
                     code_id,
                     funds: vec![],
                     admin: Some(info.sender.to_string()),
                     label,
-                    msg: to_binary(&cw721_base::msg::InstantiateMsg {
-                        name,
-                        symbol,
-                        // Admin must be set to contract to mint initial NFTs
-                        minter: env.contract.address.to_string(),
-                    })?,
+                    msg: instantiate_msg,
                 },
                 INSTANTIATE_NFT_CONTRACT_REPLY_ID,
             );
 
-            Ok(Response::default().add_submessage(msg).add_attribute(
-                "owner",
-                owner
-                    .map(|a| a.into_string())
-                    .unwrap_or_else(|| "None".to_string()),
-            ))
+            Ok(Response::default()
+                .add_submessage(instantiate_msg)
+                .add_attribute(
+                    "owner",
+                    owner
+                        .map(|a| a.into_string())
+                        .unwrap_or_else(|| "None".to_string()),
+                ))
         }
     }
 }
@@ -605,14 +623,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                             Ok(SubMsg::new(WasmMsg::Execute {
                                 contract_addr: nft_contract.clone(),
                                 funds: vec![],
-                                msg: to_binary(
-                                    &cw721_base::msg::ExecuteMsg::<Empty, Empty>::Mint {
-                                        token_id: nft.token_id.clone(),
-                                        owner: nft.owner.clone(),
-                                        token_uri: nft.token_uri.clone(),
-                                        extension: Empty {},
-                                    },
-                                )?,
+                                msg: nft.clone(),
                             }))
                         })
                         .collect::<Vec<SubMsg>>();
