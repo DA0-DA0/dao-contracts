@@ -1,16 +1,19 @@
+use anyhow::Result as AnyResult;
+use cosmwasm_schema::{schemars::JsonSchema, serde::de::DeserializeOwned};
 use cosmwasm_std::{
     coin, coins,
     testing::{MockApi, MockStorage},
-    Addr, Api, Coin, Decimal, Empty, GovMsg, IbcMsg, IbcQuery, StdResult, Storage, Uint128,
+    Addr, Api, Binary, BlockInfo, Coin, CustomQuery, Decimal, Empty, GovMsg, IbcMsg, IbcQuery,
+    Querier, StdResult, Storage, Uint128,
 };
 use cw_multi_test::{
     custom_app,
     custom_handler::{CachingCustomHandler, CachingCustomHandlerState},
-    App, AppBuilder, AppResponse, BankKeeper, BankSudo, Contract, ContractWrapper,
-    DistributionKeeper, Executor, FailingModule, Router, StakeKeeper, WasmKeeper,
+    next_block, App, AppBuilder, AppResponse, BankKeeper, BankSudo, BasicAppBuilder, Contract,
+    ContractWrapper, CosmosRouter, DistributionKeeper, Executor, FailingModule, Module,
+    StakeKeeper, SudoMsg, WasmKeeper,
 };
-use cw_utils::PaymentError;
-use token_bindings::{Metadata, TokenFactoryMsg, TokenFactoryQuery};
+use token_bindings::{Metadata, TokenFactoryMsg, TokenFactoryQuery, TokenMsg};
 
 use crate::{
     abc::{
@@ -18,15 +21,104 @@ use crate::{
         SupplyToken,
     },
     msg::{CurveInfoResponse, InstantiateMsg},
-    ContractError,
 };
+
+pub struct CustomHandler {}
+
+impl Module for CustomHandler {
+    type ExecT = TokenFactoryMsg;
+    type QueryT = TokenFactoryQuery;
+    type SudoT = Empty;
+
+    fn execute<ExecC, QueryC>(
+        &self,
+        api: &dyn Api,
+        storage: &mut dyn Storage,
+        router: &dyn CosmosRouter<ExecC = ExecC, QueryC = QueryC>,
+        block: &BlockInfo,
+        _sender: Addr,
+        msg: Self::ExecT,
+    ) -> AnyResult<AppResponse>
+    where
+        ExecC: std::fmt::Debug + Clone + PartialEq + JsonSchema + DeserializeOwned + 'static,
+        QueryC: CustomQuery + DeserializeOwned + 'static,
+    {
+        println!("msg {:?}", msg);
+        match msg {
+            TokenFactoryMsg::Token(TokenMsg::MintTokens {
+                denom,
+                amount,
+                mint_to_address,
+            }) => {
+                println!("minting tokens");
+
+                // mint new tokens
+                let mint = SudoMsg::Bank(BankSudo::Mint {
+                    to_address: mint_to_address,
+                    amount: vec![Coin {
+                        denom: denom.clone(),
+                        amount: amount.clone(),
+                    }],
+                });
+                return Ok(router.sudo(api, storage, block, mint)?);
+            }
+            TokenFactoryMsg::Token(TokenMsg::CreateDenom { subdenom, metadata }) => {
+                println!("creating denom");
+                return Ok(AppResponse::default());
+            }
+            _ => unimplemented!(),
+        };
+    }
+
+    fn sudo<ExecC, QueryC>(
+        &self,
+        _api: &dyn Api,
+        _storage: &mut dyn Storage,
+        _router: &dyn CosmosRouter<ExecC = ExecC, QueryC = QueryC>,
+        _block: &BlockInfo,
+        _msg: Self::SudoT,
+    ) -> AnyResult<AppResponse>
+    where
+        ExecC: std::fmt::Debug + Clone + PartialEq + JsonSchema + DeserializeOwned + 'static,
+        QueryC: CustomQuery + DeserializeOwned + 'static,
+    {
+        unimplemented!()
+    }
+
+    fn query(
+        &self,
+        _api: &dyn Api,
+        _storage: &dyn Storage,
+        _querier: &dyn Querier,
+        _block: &BlockInfo,
+        _request: Self::QueryT,
+    ) -> AnyResult<Binary> {
+        unimplemented!()
+    }
+}
+
+// impl CustomHandler {
+//     // this is a custom initialization method
+//     pub fn set_payout(
+//         &self,
+//         storage: &mut dyn Storage,
+//         lottery: Coin,
+//         pity: Coin,
+//     ) -> AnyResult<()> {
+//         LOTTERY.save(storage, &lottery)?;
+//         PITY.save(storage, &pity)?;
+//         Ok(())
+//     }
+// }
 
 pub struct Test {
     pub app: App<
         BankKeeper,
         MockApi,
         MockStorage,
-        CachingCustomHandler<TokenFactoryMsg, TokenFactoryQuery>,
+        // CachingCustomHandler<TokenFactoryMsg, TokenFactoryQuery>,
+        // FailingModule<TokenFactoryMsg, TokenFactoryQuery, Empty>,
+        CustomHandler,
         WasmKeeper<TokenFactoryMsg, TokenFactoryQuery>,
         StakeKeeper,
         DistributionKeeper,
@@ -47,8 +139,19 @@ impl Test {
         let custom_handler = CachingCustomHandler::<TokenFactoryMsg, TokenFactoryQuery>::new();
         let custom_handler_state = custom_handler.state();
 
-        let mut app = AppBuilder::new_custom()
-            .with_custom(custom_handler)
+        // let mut app = AppBuilder::new_custom()
+        //     .with_custom(custom_handler)
+        //     .build(|_, _, _| {});
+
+        // let mut app = custom_app::<TokenFactoryMsg, TokenFactoryQuery, _>(|router, _, storage| {
+        //     router
+        //         .bank
+        //         .init_balance(storage, &owner, coins(10000, "ujuno"))
+        //         .unwrap();
+        // });
+
+        let mut app = BasicAppBuilder::<TokenFactoryMsg, TokenFactoryQuery>::new_custom()
+            .with_custom(CustomHandler {})
             .build(|_, _, _| {});
 
         app.sudo(cw_multi_test::SudoMsg::Bank(BankSudo::Mint {
@@ -128,6 +231,14 @@ impl Test {
         Ok(res)
     }
 
+    pub fn burn(&mut self, amount: Vec<Coin>) -> Result<AppResponse, anyhow::Error> {
+        let msg = crate::msg::ExecuteMsg::Burn {};
+        let res =
+            self.app
+                .execute_contract(self.owner.clone(), self.addr.clone(), &msg, &amount)?;
+        Ok(res)
+    }
+
     pub fn query_curve_info(&self) -> StdResult<CurveInfoResponse> {
         let msg = crate::msg::QueryMsg::CurveInfo {};
         self.app.wrap().query_wasm_smart(&self.addr, &msg)
@@ -169,6 +280,9 @@ pub fn test_happy_path() {
     // Buy some coins
     test.buy(coins(100, "ujuno")).unwrap();
 
+    // // Update block
+    // test.app.update_block(next_block);
+
     // Curve has been updated
     let curve_info = test.query_curve_info().unwrap();
     assert_eq!(
@@ -183,7 +297,7 @@ pub fn test_happy_path() {
         }
     );
 
-    // assert balance
+    // Assert balance
     let balance_after = test
         .app
         .wrap()
@@ -195,4 +309,19 @@ pub fn test_happy_path() {
         balance_before.amount.u128(),
         balance_after.amount.u128()
     );
+
+    // TODO get denom
+    let tf_balance = test
+        .app
+        .wrap()
+        .query_balance(test.addr.clone(), "factory/contract0/subdenom")
+        .unwrap();
+    // TODO how to handle this?
+    println!("{:?}", tf_balance);
+
+    // // Burn some coins
+    // test.burn(coins(100, "ujuno")).unwrap();
+
+    // let curve_info = test.query_curve_info().unwrap();
+    // println!("{:?}", curve_info);
 }

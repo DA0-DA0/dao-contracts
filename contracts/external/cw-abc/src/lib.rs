@@ -8,6 +8,8 @@ mod integration;
 pub mod msg;
 mod queries;
 pub mod state;
+#[cfg(test)]
+mod testtube;
 
 pub use crate::error::ContractError;
 

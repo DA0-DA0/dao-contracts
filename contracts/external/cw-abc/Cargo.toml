@@ -46,6 +46,7 @@ cw-paginate-storage = { workspace = true }
 speculoos = "0.11.0"
 anyhow = { workspace = true }
 cw-multi-test = { workspace = true }
+osmosis-test-tube = "16.0.0"
 
 [profile.release]
 rpath = false
