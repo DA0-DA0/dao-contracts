@@ -917,6 +917,43 @@ fn test_active_threshold_percentage_lte_0() {
 }
 
 #[test]
+fn test_invalid_instantiate_msg() {
+    let mut app = App::default();
+    let module_id = app.store_code(voting_cw721_staked_contract());
+    let cw721_id = app.store_code(cw721_base_contract());
+
+    app.instantiate_contract(
+        module_id,
+        Addr::unchecked(CREATOR_ADDR),
+        &InstantiateMsg {
+            owner: Some(Admin::Address {
+                addr: CREATOR_ADDR.to_string(),
+            }),
+            nft_contract: NftContract::New {
+                code_id: cw721_id,
+                label: "Test NFT".to_string(),
+                msg: to_binary(&Empty {}).unwrap(),
+                initial_nfts: vec![to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                    owner: CREATOR_ADDR.to_string(),
+                    token_uri: Some("https://example.com".to_string()),
+                    token_id: "1".to_string(),
+                    extension: Empty {},
+                })
+                .unwrap()],
+            },
+            unstaking_duration: None,
+            active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                count: Uint128::new(1),
+            }),
+        },
+        &[],
+        "cw721_voting",
+        None,
+    )
+    .unwrap_err();
+}
+
+#[test]
 fn test_no_initial_nfts_fails() {
     let mut app = App::default();
     let cw721_id = app.store_code(cw721_base_contract());
