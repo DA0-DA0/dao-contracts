@@ -34,5 +34,6 @@ token-bindings = { workspace = true }
 juno-tokenfactory-core = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
-cw-multi-test = { workspace = true }
 anyhow = { workspace = true }
+cw-multi-test = { workspace = true }
+osmosis-test-tube = { workspace = true }

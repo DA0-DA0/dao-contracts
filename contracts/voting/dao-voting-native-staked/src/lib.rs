@@ -7,6 +7,8 @@ pub mod msg;
 pub mod state;
 
 #[cfg(test)]
-mod tests;
+mod test_tube;
+// #[cfg(test)]
+// mod tests;
 
 pub use crate::error::ContractError;
