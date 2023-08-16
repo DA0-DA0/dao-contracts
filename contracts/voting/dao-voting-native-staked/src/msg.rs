@@ -4,6 +4,21 @@ use cw_utils::Duration;
 use dao_dao_macros::{active_query, voting_module_query};
 use dao_interface::state::Admin;
 use dao_voting::threshold::ActiveThreshold;
+use token_bindings::Metadata;
+
+#[cw_serde]
+pub struct InitialBalance {
+    pub amount: Uint128,
+    pub mint_to_address: String,
+}
+
+#[cw_serde]
+pub struct NewTokenInfo {
+    pub subdenom: String,
+    pub metadata: Option<Metadata>,
+    pub initial_balances: Vec<InitialBalance>,
+    pub initial_dao_balance: Option<Uint128>,
+}
 
 #[cw_serde]
 pub enum TokenInfo {
@@ -11,17 +26,12 @@ pub enum TokenInfo {
         /// Token denom e.g. ujuno, or some ibc denom.
         denom: String,
     },
-    New {
-        // Code ID of tokenfactory-core middleware contract that manages
-        // token creation and administration.
-        tf_core_code_id: u64,
-        info: juno_tokenfactory_core::msg::NewDenom,
-        initial_dao_balance: Option<Uint128>,
-    },
+    New(NewTokenInfo),
 }
 
 #[cw_serde]
 pub struct InstantiateMsg {
+    // TODO replace with cw-ownable
     // Owner can update all configs including changing the owner. This will generally be a DAO.
     pub owner: Option<Admin>,
     // Manager can update all configs except changing the owner. This will generally be an operations multisig for a DAO.

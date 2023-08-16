@@ -6,10 +6,13 @@ use thiserror::Error;
 pub enum ContractError {
     #[error(transparent)]
     Std(#[from] StdError),
+
     #[error(transparent)]
     PaymentError(#[from] PaymentError),
+
     #[error(transparent)]
     ParseReplyError(#[from] ParseReplyError),
+
     #[error(transparent)]
     HookError(#[from] cw_controllers::HookError),
 

@@ -683,7 +683,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
@@ -809,7 +809,7 @@ version = "2.2.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw20 1.1.0",
  "cw20-base 1.1.0",
  "thiserror",
@@ -821,7 +821,7 @@ version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-paginate-storage 2.2.0",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
@@ -842,6 +842,25 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus 1.1.0",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-multi-test"
+version = "0.15.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e8e81b4a7821d5eeba0d23f737c16027b39a600742ca8c32eb980895ffd270f4"
+dependencies = [
+ "anyhow",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-storage-plus 0.15.1",
+ "cw-utils 0.15.1",
+ "derivative",
+ "itertools",
+ "prost 0.9.0",
+ "schemars",
+ "serde",
  "thiserror",
 ]
 
@@ -908,7 +927,7 @@ version = "2.2.0"
 dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-storage-plus 1.1.0",
  "serde",
 ]
@@ -920,7 +939,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-denom",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-ownable",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
@@ -990,6 +1009,17 @@ dependencies = [
 
 [[package]]
 name = "cw-storage-plus"
+version = "0.15.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc6cf70ef7686e2da9ad7b067c5942cd3e88dd9453f7af42f54557f8af300fb0"
+dependencies = [
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw-storage-plus"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9b6f91c0b94481a3e9ef1ceb183c37d00764f8751e39b45fc09f4d9b970d469"
@@ -1016,7 +1046,7 @@ version = "2.2.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
@@ -1045,6 +1075,21 @@ checksum = "9dbaecb78c8e8abfd6b4258c7f4fbeb5c49a5e45ee4d910d3240ee8e1d714e1b"
 dependencies = [
  "cosmwasm-std",
  "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-utils"
+version = "0.15.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ae0b69fa7679de78825b4edeeec045066aa2b2c4b6e063d80042e565bb4da5c"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw2 0.15.1",
+ "schemars",
+ "semver",
  "serde",
  "thiserror",
 ]
@@ -1087,7 +1132,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-denom",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-ownable",
  "cw-paginate-storage 2.2.0",
  "cw-stake-tracker",
@@ -1133,6 +1178,19 @@ checksum = "04cf4639517490dd36b333bbd6c4fbd92e325fd0acf4683b41753bc5eb63bfc1"
 dependencies = [
  "cosmwasm-std",
  "cw-storage-plus 0.13.4",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw2"
+version = "0.15.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5abb8ecea72e09afff830252963cb60faf945ce6cef2c20a43814516082653da"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 0.15.1",
  "schemars",
  "serde",
 ]
@@ -1279,7 +1337,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-controllers 1.1.0",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-ownable",
  "cw-paginate-storage 2.2.0",
  "cw-storage-plus 1.1.0",
@@ -1301,7 +1359,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-controllers 1.1.0",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-ownable",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
@@ -1320,7 +1378,7 @@ version = "2.2.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-ownable",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
@@ -1551,7 +1609,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-controllers 1.1.0",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-ownable",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
@@ -1583,7 +1641,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-core",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-paginate-storage 2.2.0",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
@@ -1635,7 +1693,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-core",
  "cw-core-interface 0.1.0 (git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0)",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-proposal-single",
  "cw-storage-plus 1.1.0",
  "cw-utils 0.13.4",
@@ -1667,7 +1725,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-denom",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-paginate-storage 2.2.0",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
@@ -1694,7 +1752,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-denom",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
@@ -1721,7 +1779,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-denom",
  "cw-hooks",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
@@ -1739,7 +1797,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-denom",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
  "cw20 1.1.0",
@@ -1764,7 +1822,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-denom",
  "cw-hooks",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
  "cw20 1.1.0",
@@ -1788,7 +1846,7 @@ dependencies = [
  "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
@@ -1810,7 +1868,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-hooks",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
@@ -1845,7 +1903,7 @@ dependencies = [
  "cosmwasm-storage",
  "cw-denom",
  "cw-hooks",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
@@ -1884,7 +1942,7 @@ dependencies = [
  "cw-core",
  "cw-denom",
  "cw-hooks",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-proposal-single",
  "cw-storage-plus 1.1.0",
  "cw-utils 0.13.4",
@@ -1922,7 +1980,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-storage-plus 1.1.0",
  "cw2 1.1.0",
  "dao-dao-macros",
@@ -1938,7 +1996,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-core",
  "cw-hooks",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-proposal-single",
  "cw-utils 1.0.1",
  "cw-vesting",
@@ -2011,7 +2069,7 @@ version = "2.2.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
@@ -2029,7 +2087,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
@@ -2049,7 +2107,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
@@ -2067,7 +2125,7 @@ dependencies = [
  "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-ownable",
  "cw-paginate-storage 2.2.0",
  "cw-storage-plus 1.1.0",
@@ -2093,7 +2151,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-controllers 1.1.0",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-paginate-storage 2.2.0",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
@@ -2117,7 +2175,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-controllers 1.1.0",
- "cw-multi-test",
+ "cw-multi-test 0.16.5",
  "cw-paginate-storage 2.2.0",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
@@ -2125,10 +2183,10 @@ dependencies = [
  "dao-dao-macros",
  "dao-interface",
  "dao-voting 2.2.0",
- "juno-tokenfactory-core",
  "osmosis-test-tube",
  "thiserror",
- "token-bindings",
+ "token-bindings 0.10.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "token-bindings-test",
 ]
 
 [[package]]
@@ -2834,37 +2892,6 @@ dependencies = [
  "pest",
  "pest_derive",
  "serde",
-]
-
-[[package]]
-name = "juno-tokenfactory-core"
-version = "0.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26bc1eb966873007ae4abc4181effc8c3cf232862c704d70279d4bbf4b28f437"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cosmwasm-storage",
- "cw-storage-plus 1.1.0",
- "cw2 1.1.0",
- "juno-tokenfactory-types",
- "schemars",
- "serde",
- "thiserror",
- "token-bindings",
-]
-
-[[package]]
-name = "juno-tokenfactory-types"
-version = "0.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74ccbc2c6ebd9dc895e805a2bea7596b5c3543f21d517655ad98361a25ee0b30"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "schemars",
- "serde",
- "token-bindings",
 ]
 
 [[package]]
@@ -4281,6 +4308,33 @@ dependencies = [
  "cosmwasm-std",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "token-bindings"
+version = "0.10.3"
+source = "git+https://github.com/CosmosContracts/token-bindings.git?rev=5299b86bcdb898c0dc4f194b1c910153d1cfbddc#5299b86bcdb898c0dc4f194b1c910153d1cfbddc"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "token-bindings-test"
+version = "0.8.0"
+source = "git+https://github.com/CosmosContracts/token-bindings.git?rev=5299b86bcdb898c0dc4f194b1c910153d1cfbddc#5299b86bcdb898c0dc4f194b1c910153d1cfbddc"
+dependencies = [
+ "anyhow",
+ "cosmwasm-std",
+ "cw-multi-test 0.15.1",
+ "cw-storage-plus 0.15.1",
+ "itertools",
+ "schemars",
+ "serde",
+ "thiserror",
+ "token-bindings 0.10.3 (git+https://github.com/CosmosContracts/token-bindings.git?rev=5299b86bcdb898c0dc4f194b1c910153d1cfbddc)",
 ]
 
 [[package]]

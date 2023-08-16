@@ -3,32 +3,33 @@ use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
     coins, to_binary, BankMsg, BankQuery, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
+    MessageInfo, Reply, Response, StdResult, SubMsg, Uint128, Uint256,
 };
 use cw2::set_contract_version;
 use cw_controllers::ClaimsResponse;
-use cw_utils::{must_pay, parse_reply_instantiate_data, Duration};
+use cw_utils::{must_pay, Duration};
 use dao_interface::state::Admin;
 use dao_interface::voting::{
     IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
 use dao_voting::threshold::ActiveThreshold;
+use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenMsg, TokenQuerier};
 
 use crate::error::ContractError;
 use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 use crate::msg::{
     ActiveThresholdResponse, DenomResponse, ExecuteMsg, GetHooksResponse, InstantiateMsg,
-    ListStakersResponse, MigrateMsg, QueryMsg, StakerBalanceResponse, TokenInfo,
+    ListStakersResponse, MigrateMsg, NewTokenInfo, QueryMsg, StakerBalanceResponse, TokenInfo,
 };
 use crate::state::{
     Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, DENOM, HOOKS, MAX_CLAIMS, STAKED_BALANCES,
-    STAKED_TOTAL,
+    STAKED_TOTAL, TOKEN_INSTANTIATION_INFO,
 };
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-native-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const INSTANTIATE_TOKEN_REPLY_ID: u64 = 0;
+const CREATE_DENOM_REPLY_ID: u64 = 0;
 
 // We multiply by this when calculating needed power for being active
 // when using active threshold with percent
@@ -54,11 +55,11 @@ fn validate_duration(duration: Option<Duration>) -> Result<(), ContractError> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> Result<Response, ContractError> {
+) -> Result<Response<TokenFactoryMsg>, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let owner = msg
@@ -121,77 +122,34 @@ pub fn instantiate(
                         .unwrap_or_else(|| "None".to_string()),
                 ))
         }
-        TokenInfo::New {
-            tf_core_code_id,
-            info: denom_info,
-            initial_dao_balance,
-        } => {
-            let mut initial_balances = denom_info.initial_balances.unwrap_or_default();
-
-            let initial_supply = initial_balances
-                .iter()
-                .fold(Uint128::zero(), |p, n| p + n.amount);
-            // Cannot instantiate with no initial token owners because it would
-            // immediately lock the DAO.
-            if initial_supply.is_zero() {
-                return Err(ContractError::InitialBalancesError {});
+        TokenInfo::New(token) => {
+            // TODO investigate how much validation we need to do
+            if token.subdenom.eq("") {
+                // TODO replace with token factory errors
+                return Err(ContractError::NothingToClaim {});
             }
 
-            // Add initial DAO balance to initial_balances if nonzero.
-            if let Some(initial_dao_balance) = initial_dao_balance {
-                if !initial_dao_balance.is_zero() {
-                    initial_balances.push(juno_tokenfactory_core::msg::InitialBalance {
-                        address: info.sender.to_string(),
-                        amount: initial_dao_balance,
-                    });
-                }
-            }
+            // Create Token Factory denom SubMsg
+            let create_denom_msg = SubMsg::reply_on_success(
+                TokenMsg::CreateDenom {
+                    subdenom: token.clone().subdenom,
+                    metadata: token.clone().metadata,
+                },
+                CREATE_DENOM_REPLY_ID,
+            );
 
-            let msg = WasmMsg::Instantiate {
-                // Set DAO as admin.
-                admin: Some(info.sender.to_string()),
-                code_id: tf_core_code_id,
-                msg: to_binary(&juno_tokenfactory_core::msg::InstantiateMsg {
-                    manager: Some(info.sender.to_string()),
-                    allowed_mint_addresses: vec![info.sender.to_string()],
-                    existing_denoms: None,
-                    new_denoms: Some(vec![juno_tokenfactory_core::msg::NewDenom {
-                        name: denom_info.name,
-                        description: denom_info.description,
-                        symbol: denom_info.symbol,
-                        decimals: denom_info.decimals,
-                        initial_balances: Some(initial_balances),
-                    }]),
-                })?,
-                funds: vec![],
-                label: "Token Factory Core".to_string(),
-            };
-            let msg = SubMsg::reply_on_success(msg, INSTANTIATE_TOKEN_REPLY_ID);
+            // Save new token info for use in reply
+            TOKEN_INSTANTIATION_INFO.save(deps.storage, &token)?;
 
-            Ok(Response::default()
-                .add_attribute("action", "instantiate")
-                .add_attribute("token", "new_token")
-                .add_attribute(
-                    "owner",
-                    config
-                        .owner
-                        .map(|a| a.to_string())
-                        .unwrap_or_else(|| "None".to_string()),
-                )
-                .add_attribute(
-                    "manager",
-                    config
-                        .manager
-                        .map(|a| a.to_string())
-                        .unwrap_or_else(|| "None".to_string()),
-                )
-                .add_submessage(msg))
+            Ok(Response::new()
+                .add_attribute("method", "create_denom")
+                .add_submessage(create_denom_msg))
         }
     }
 }
 
 pub fn assert_valid_absolute_count_threshold(
-    deps: Deps,
+    deps: Deps<TokenFactoryQuery>,
     token_denom: &str,
     count: Uint128,
 ) -> Result<(), ContractError> {
@@ -211,7 +169,7 @@ pub fn assert_valid_absolute_count_threshold(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
@@ -234,7 +192,7 @@ pub fn execute(
 }
 
 pub fn execute_stake(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
@@ -262,7 +220,7 @@ pub fn execute_stake(
 }
 
 pub fn execute_unstake(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     env: Env,
     info: MessageInfo,
     amount: Uint128,
@@ -333,7 +291,7 @@ pub fn execute_unstake(
 }
 
 pub fn execute_update_config(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     info: MessageInfo,
     new_owner: Option<String>,
     new_manager: Option<String>,
@@ -382,7 +340,7 @@ pub fn execute_update_config(
 }
 
 pub fn execute_claim(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
@@ -405,7 +363,7 @@ pub fn execute_claim(
 }
 
 pub fn execute_update_active_threshold(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     _env: Env,
     info: MessageInfo,
     new_active_threshold: Option<ActiveThreshold>,
@@ -436,7 +394,7 @@ pub fn execute_update_active_threshold(
 }
 
 pub fn execute_add_hook(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     _env: Env,
     info: MessageInfo,
     addr: String,
@@ -454,7 +412,7 @@ pub fn execute_add_hook(
 }
 
 pub fn execute_remove_hook(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     _env: Env,
     info: MessageInfo,
     addr: String,
@@ -472,7 +430,7 @@ pub fn execute_remove_hook(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps<TokenFactoryQuery>, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::VotingPowerAtHeight { address, height } => {
             to_binary(&query_voting_power_at_height(deps, env, address, height)?)
@@ -497,7 +455,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 pub fn query_voting_power_at_height(
-    deps: Deps,
+    deps: Deps<TokenFactoryQuery>,
     env: Env,
     address: String,
     height: Option<u64>,
@@ -511,7 +469,7 @@ pub fn query_voting_power_at_height(
 }
 
 pub fn query_total_power_at_height(
-    deps: Deps,
+    deps: Deps<TokenFactoryQuery>,
     env: Env,
     height: Option<u64>,
 ) -> StdResult<TotalPowerAtHeightResponse> {
@@ -522,49 +480,52 @@ pub fn query_total_power_at_height(
     Ok(TotalPowerAtHeightResponse { power, height })
 }
 
-pub fn query_info(deps: Deps) -> StdResult<Binary> {
+pub fn query_info(deps: Deps<TokenFactoryQuery>) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
     to_binary(&dao_interface::voting::InfoResponse { info })
 }
 
-pub fn query_dao(deps: Deps) -> StdResult<Binary> {
+pub fn query_dao(deps: Deps<TokenFactoryQuery>) -> StdResult<Binary> {
     let dao = DAO.load(deps.storage)?;
     to_binary(&dao)
 }
 
-pub fn query_claims(deps: Deps, address: String) -> StdResult<ClaimsResponse> {
+pub fn query_claims(deps: Deps<TokenFactoryQuery>, address: String) -> StdResult<ClaimsResponse> {
     CLAIMS.query_claims(deps, &deps.api.addr_validate(&address)?)
 }
 
 pub fn query_list_stakers(
-    deps: Deps,
+    deps: Deps<TokenFactoryQuery>,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<Binary> {
-    let start_at = start_after
-        .map(|addr| deps.api.addr_validate(&addr))
-        .transpose()?;
+    unimplemented!()
 
-    let stakers = cw_paginate_storage::paginate_snapshot_map(
-        deps,
-        &STAKED_BALANCES,
-        start_at.as_ref(),
-        limit,
-        cosmwasm_std::Order::Ascending,
-    )?;
+    // let start_at = start_after
+    //     .map(|addr| deps.api.addr_validate(&addr))
+    //     .transpose()?;
 
-    let stakers = stakers
-        .into_iter()
-        .map(|(address, balance)| StakerBalanceResponse {
-            address: address.into_string(),
-            balance,
-        })
-        .collect();
+    // // TODO fix me
+    // let stakers = cw_paginate_storage::paginate_snapshot_map(
+    //     deps,
+    //     &STAKED_BALANCES,
+    //     start_at.as_ref(),
+    //     limit,
+    //     cosmwasm_std::Order::Ascending,
+    // )?;
 
-    to_binary(&ListStakersResponse { stakers })
+    // let stakers = stakers
+    //     .into_iter()
+    //     .map(|(address, balance)| StakerBalanceResponse {
+    //         address: address.into_string(),
+    //         balance,
+    //     })
+    //     .collect();
+
+    // to_binary(&ListStakersResponse { stakers })
 }
 
-pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
+pub fn query_is_active(deps: Deps<TokenFactoryQuery>) -> StdResult<Binary> {
     let threshold = ACTIVE_THRESHOLD.may_load(deps.storage)?;
     if let Some(threshold) = threshold {
         let denom = DENOM.load(deps.storage)?;
@@ -626,65 +587,94 @@ pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
     }
 }
 
-pub fn query_active_threshold(deps: Deps) -> StdResult<Binary> {
+pub fn query_active_threshold(deps: Deps<TokenFactoryQuery>) -> StdResult<Binary> {
     to_binary(&ActiveThresholdResponse {
         active_threshold: ACTIVE_THRESHOLD.may_load(deps.storage)?,
     })
 }
 
-pub fn query_hooks(deps: Deps) -> StdResult<GetHooksResponse> {
+pub fn query_hooks(deps: Deps<TokenFactoryQuery>) -> StdResult<GetHooksResponse> {
     Ok(GetHooksResponse {
         hooks: HOOKS.query_hooks(deps)?.hooks,
     })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(
+    deps: DepsMut<TokenFactoryQuery>,
+    _env: Env,
+    _msg: MigrateMsg,
+) -> Result<Response, ContractError> {
     // Set contract to version to latest
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+pub fn reply(
+    deps: DepsMut<TokenFactoryQuery>,
+    env: Env,
+    msg: Reply,
+) -> Result<Response<TokenFactoryMsg>, ContractError> {
     match msg.id {
-        INSTANTIATE_TOKEN_REPLY_ID => {
-            let res = parse_reply_instantiate_data(msg);
-            match res {
-                Ok(res) => {
-                    let addr = deps.api.addr_validate(&res.contract_address)?;
+        CREATE_DENOM_REPLY_ID => {
+            // Load info for new token and the DAO's address
+            let token = TOKEN_INSTANTIATION_INFO.load(deps.storage)?;
+            let dao = DAO.load(deps.storage)?;
 
-                    let denom = DENOM.may_load(deps.storage)?;
-                    if denom.is_some() {
-                        // There is no known way this error could ever
-                        // be triggered, we're just paranoid.
-                        return Err(ContractError::DuplicateToken {});
-                    }
+            // Get the new token factory denom
+            let querier = TokenQuerier::new(&deps.querier);
+            let denom = querier
+                .full_denom(env.contract.address.to_string(), token.subdenom)?
+                .denom;
 
-                    // Retrieve the denom from the token factory core contract
-                    // once it's created.
-                    let config: juno_tokenfactory_core::state::Config =
-                        deps.querier.query_wasm_smart(
-                            addr.clone(),
-                            &juno_tokenfactory_core::msg::QueryMsg::GetConfig {},
-                        )?;
-                    if config.denoms.len() != 1 {
-                        return Err(ContractError::TokenFactoryCoreInstantiateError {});
-                    }
-                    let denom = &config.denoms[0];
-                    DENOM.save(deps.storage, denom)?;
+            let mut mint_msgs: Vec<TokenMsg> = vec![];
 
-                    let active_threshold = ACTIVE_THRESHOLD.may_load(deps.storage)?;
-                    if let Some(ActiveThreshold::AbsoluteCount { count }) = active_threshold {
-                        assert_valid_absolute_count_threshold(deps.as_ref(), denom, count)?;
-                    }
+            // Check supply is greater than zero
+            let initial_supply = token
+                .initial_balances
+                .iter()
+                .fold(Uint128::zero(), |p, n| p + n.amount);
 
-                    Ok(Response::new()
-                        .add_attribute("token_factory_core_contract", addr)
-                        .add_attribute("token_denom", &config.denoms[0]))
-                }
-                Err(_) => Err(ContractError::TokenFactoryCoreInstantiateError {}),
+            // Cannot instantiate with no initial token owners because it would
+            // immediately lock the DAO.
+            if initial_supply.is_zero() {
+                return Err(ContractError::InitialBalancesError {});
             }
+
+            // Mint initial balances
+            token.initial_balances.iter().for_each(|b| {
+                mint_msgs.push(TokenMsg::MintTokens {
+                    denom: denom.clone(),
+                    amount: b.amount,
+                    mint_to_address: b.mint_to_address.clone(),
+                })
+            });
+
+            // Add initial DAO balance to initial_balances if nonzero.
+            if let Some(initial_dao_balance) = token.initial_dao_balance {
+                if !initial_dao_balance.is_zero() {
+                    mint_msgs.push(TokenMsg::MintTokens {
+                        denom: denom.clone(),
+                        amount: initial_dao_balance,
+                        mint_to_address: dao.to_string(),
+                    })
+                }
+            }
+
+            // Clear up unneeded storage.
+            TOKEN_INSTANTIATION_INFO.remove(deps.storage);
+
+            // Update token factory denom admin to be the DAO
+            let update_token_admin_msg = TokenMsg::ChangeAdmin {
+                denom: denom.clone(),
+                new_admin_address: dao.to_string(),
+            };
+
+            // TODO what other info do we want here?
+            Ok(Response::new()
+                .add_messages(mint_msgs)
+                .add_message(update_token_admin_msg))
         }
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }
