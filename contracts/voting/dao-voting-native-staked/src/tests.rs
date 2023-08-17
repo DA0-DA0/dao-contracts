@@ -88,6 +88,7 @@ fn mock_app() -> App {
         ],
     }))
     .unwrap();
+    app.update_block(next_block);
     app
 }
 
@@ -1254,8 +1255,9 @@ fn test_instantiate_zero_active_threshold_count() {
 
 #[test]
 fn test_active_threshold_absolute_count() {
-    let mut app = App::default();
+    let mut app = mock_app();
     let staking_id = app.store_code(staking_contract());
+
     let addr = instantiate_staking(
         &mut app,
         staking_id,
@@ -1295,7 +1297,7 @@ fn test_active_threshold_absolute_count() {
 
 #[test]
 fn test_active_threshold_percent() {
-    let mut app = App::default();
+    let mut app = mock_app();
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
@@ -1336,7 +1338,7 @@ fn test_active_threshold_percent() {
 
 #[test]
 fn test_active_threshold_percent_rounds_up() {
-    let mut app = App::default();
+    let mut app = mock_app();
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
@@ -1414,7 +1416,7 @@ fn test_active_threshold_none() {
 
 #[test]
 fn test_update_active_threshold() {
-    let mut app = App::default();
+    let mut app = mock_app();
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,

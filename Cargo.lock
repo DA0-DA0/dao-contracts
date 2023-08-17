@@ -848,7 +848,7 @@ dependencies = [
 [[package]]
 name = "cw-multi-test"
 version = "0.16.5"
-source = "git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support#e601da7975cbbb731402ae967590d3655bb9f390"
+source = "git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support#b0887db69619ea9f10b6866d07b6ae54159045c5"
 dependencies = [
  "anyhow",
  "cosmwasm-std",

@@ -2,13 +2,13 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    coins, to_binary, BankMsg, BankQuery, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdResult, SubMsg, Uint128, Uint256, Order, Addr,
+    coins, to_binary, BankMsg, BankQuery, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
+    MessageInfo, Order, Reply, Response, StdResult, SubMsg, Uint128, Uint256,
 };
 use cw2::set_contract_version;
 use cw_controllers::ClaimsResponse;
 use cw_storage_plus::Bound;
-use cw_utils::{must_pay, Duration, maybe_addr};
+use cw_utils::{maybe_addr, must_pay, Duration};
 use dao_interface::state::Admin;
 use dao_interface::voting::{
     IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
@@ -20,7 +20,7 @@ use crate::error::ContractError;
 use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 use crate::msg::{
     ActiveThresholdResponse, DenomResponse, ExecuteMsg, GetHooksResponse, InstantiateMsg,
-    ListStakersResponse, MigrateMsg, NewTokenInfo, QueryMsg, StakerBalanceResponse, TokenInfo,
+    ListStakersResponse, MigrateMsg, QueryMsg, StakerBalanceResponse, TokenInfo,
 };
 use crate::state::{
     Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, DENOM, HOOKS, MAX_CLAIMS, STAKED_BALANCES,
@@ -161,12 +161,8 @@ pub fn assert_valid_absolute_count_threshold(
     if count.is_zero() {
         return Err(ContractError::ZeroActiveCount {});
     }
-    let supply: cosmwasm_std::SupplyResponse =
-        deps.querier
-            .query(&cosmwasm_std::QueryRequest::Bank(BankQuery::Supply {
-                denom: token_denom.to_string(),
-            }))?;
-    if count > supply.amount.amount {
+    let supply: Coin = deps.querier.query_supply(token_denom.to_string())?;
+    if count > supply.amount {
         return Err(ContractError::InvalidAbsoluteCount {});
     }
     Ok(())
@@ -405,7 +401,7 @@ pub fn execute_add_hook(
     addr: String,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
-    if Some(info.sender.clone()) != config.owner && Some(info.sender.clone()) != config.manager {
+    if Some(info.sender.clone()) != config.owner && Some(info.sender) != config.manager {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -423,7 +419,7 @@ pub fn execute_remove_hook(
     addr: String,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
-    if Some(info.sender.clone()) != config.owner && Some(info.sender.clone()) != config.manager {
+    if Some(info.sender.clone()) != config.owner && Some(info.sender) != config.manager {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -508,13 +504,16 @@ pub fn query_list_stakers(
     let addr = maybe_addr(deps.api, start_after)?;
     let start = addr.as_ref().map(Bound::exclusive);
 
-    let stakers = STAKED_BALANCES.range(deps.storage, start, None, Order::Ascending)
-        .take(limit).map(|item| {
+    let stakers = STAKED_BALANCES
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|item| {
             item.map(|(address, balance)| StakerBalanceResponse {
                 address: address.into_string(),
                 balance,
             })
-        }).collect::<StdResult<_>>()?;
+        })
+        .collect::<StdResult<_>>()?;
 
     to_binary(&ListStakersResponse { stakers })
 }
@@ -623,7 +622,6 @@ pub fn reply(
                 .denom;
             DENOM.save(deps.storage, &denom)?;
 
-
             let mut mint_msgs: Vec<TokenMsg> = vec![];
 
             // Check supply is greater than zero
@@ -663,7 +661,7 @@ pub fn reply(
 
             // Update token factory denom admin to be the DAO
             let update_token_admin_msg = TokenMsg::ChangeAdmin {
-                denom: denom.clone(),
+                denom,
                 new_admin_address: dao.to_string(),
             };
 

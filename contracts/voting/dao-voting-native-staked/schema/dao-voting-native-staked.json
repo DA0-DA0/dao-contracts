@@ -147,6 +147,35 @@
         "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
         "type": "string"
       },
+      "DenomUnit": {
+        "description": "This maps to cosmos.bank.v1beta1.DenomUnit protobuf struct",
+        "type": "object",
+        "required": [
+          "aliases",
+          "denom",
+          "exponent"
+        ],
+        "properties": {
+          "aliases": {
+            "description": "aliases is a list of string aliases for the given denom",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "denom": {
+            "description": "denom represents the string name of the given denom unit (e.g uatom).",
+            "type": "string"
+          },
+          "exponent": {
+            "description": "exponent represents power of 10 exponent that one must raise the base_denom to in order to equal the given DenomUnit's denom 1 denom = 1^exponent base_denom (e.g. with a base_denom of uatom, one can create a DenomUnit of 'atom' with exponent = 6, thus: 1 atom = 10^6 uatom).",
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      },
       "Duration": {
         "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
         "oneOf": [
@@ -184,31 +213,39 @@
       "InitialBalance": {
         "type": "object",
         "required": [
-          "address",
-          "amount"
+          "amount",
+          "mint_to_address"
         ],
         "properties": {
-          "address": {
-            "type": "string"
-          },
           "amount": {
             "$ref": "#/definitions/Uint128"
+          },
+          "mint_to_address": {
+            "type": "string"
           }
         },
         "additionalProperties": false
       },
-      "NewDenom": {
+      "Metadata": {
+        "description": "This maps to cosmos.bank.v1beta1.Metadata protobuf struct",
         "type": "object",
         "required": [
-          "decimals",
-          "name",
-          "symbol"
+          "denom_units"
         ],
         "properties": {
-          "decimals": {
-            "type": "integer",
-            "format": "uint32",
-            "minimum": 0.0
+          "base": {
+            "description": "base represents the base denom (should be the DenomUnit with exponent = 0).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "denom_units": {
+            "description": "denom_units represents the list of DenomUnit's for a given coin",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/DenomUnit"
+            }
           },
           "description": {
             "type": [
@@ -216,19 +253,64 @@
               "null"
             ]
           },
-          "initial_balances": {
+          "display": {
+            "description": "display indicates the suggested denom that should be displayed in clients.",
             "type": [
-              "array",
+              "string",
               "null"
-            ],
+            ]
+          },
+          "name": {
+            "description": "name defines the name of the token (eg: Cosmos Atom)",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "symbol": {
+            "description": "symbol is the token symbol usually shown on exchanges (eg: ATOM). This can be the same as the display.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "NewTokenInfo": {
+        "type": "object",
+        "required": [
+          "initial_balances",
+          "subdenom"
+        ],
+        "properties": {
+          "initial_balances": {
+            "type": "array",
             "items": {
               "$ref": "#/definitions/InitialBalance"
             }
           },
-          "name": {
-            "type": "string"
+          "initial_dao_balance": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Uint128"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
-          "symbol": {
+          "metadata": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Metadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "subdenom": {
             "type": "string"
           }
         },
@@ -265,32 +347,7 @@
             ],
             "properties": {
               "new": {
-                "type": "object",
-                "required": [
-                  "info",
-                  "tf_core_code_id"
-                ],
-                "properties": {
-                  "info": {
-                    "$ref": "#/definitions/NewDenom"
-                  },
-                  "initial_dao_balance": {
-                    "anyOf": [
-                      {
-                        "$ref": "#/definitions/Uint128"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "tf_core_code_id": {
-                    "type": "integer",
-                    "format": "uint64",
-                    "minimum": 0.0
-                  }
-                },
-                "additionalProperties": false
+                "$ref": "#/definitions/NewTokenInfo"
               }
             },
             "additionalProperties": false

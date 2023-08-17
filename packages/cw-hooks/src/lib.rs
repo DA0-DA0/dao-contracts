@@ -3,7 +3,7 @@
 use thiserror::Error;
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, CustomQuery, Deps, Empty, StdError, StdResult, Storage, SubMsg};
+use cosmwasm_std::{Addr, CustomQuery, Deps, StdError, StdResult, Storage, SubMsg};
 use cw_storage_plus::Item;
 
 #[cw_serde]
