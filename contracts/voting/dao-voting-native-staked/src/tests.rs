@@ -8,23 +8,19 @@ use crate::msg::{
 };
 use crate::state::Config;
 use crate::ContractError;
-use cosmwasm_std::testing::{mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage};
-use cosmwasm_std::{
-    coins, to_binary, Addr, Binary, Coin, Decimal, Deps, DepsMut, Empty, Env, MessageInfo,
-    OwnedDeps, Response, StdError, StdResult, Uint128,
-};
+use cosmwasm_std::testing::{mock_env, MockApi, MockQuerier, MockStorage};
+use cosmwasm_std::{coins, Addr, Coin, Decimal, OwnedDeps, Uint128};
 use cw_controllers::ClaimsResponse;
 use cw_multi_test::{
-    custom_app, next_block, AppResponse, BankSudo, Contract, ContractWrapper, Executor, SudoMsg,
+    next_block, AppResponse, BankSudo, Contract, ContractWrapper, Executor, SudoMsg,
 };
-use cw_storage_plus::Item;
 use cw_utils::Duration;
 use dao_interface::state::Admin;
 use dao_interface::voting::{
     InfoResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
 use dao_voting::threshold::ActiveThreshold;
-use token_bindings::{Metadata, TokenFactoryMsg, TokenFactoryQuery, TokenQuery};
+use token_bindings::{Metadata, TokenFactoryMsg, TokenFactoryQuery};
 use token_bindings_test::TokenFactoryApp as App;
 
 const DAO_ADDR: &str = "dao";
