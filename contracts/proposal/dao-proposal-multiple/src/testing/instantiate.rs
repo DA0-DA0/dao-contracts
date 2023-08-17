@@ -7,7 +7,7 @@ use dao_pre_propose_multiple as cppm;
 use dao_testing::contracts::{
     cw20_balances_voting_contract, cw20_base_contract, cw20_stake_contract,
     cw20_staked_balances_voting_contract, cw4_group_contract, cw721_base_contract,
-    dao_dao_contract, native_staked_balances_voting_contract, pre_propose_multiple_contract,
+    dao_dao_contract, pre_propose_multiple_contract,
 };
 use dao_voting::{
     deposit::{DepositRefundPolicy, UncheckedDepositInfo},
