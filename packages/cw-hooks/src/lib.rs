@@ -3,7 +3,7 @@
 use thiserror::Error;
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, CustomQuery, Deps, StdError, StdResult, Storage, SubMsg};
+use cosmwasm_std::{Addr, CustomQuery, Deps, Empty, StdError, StdResult, Storage, SubMsg};
 use cw_storage_plus::Item;
 
 #[cw_serde]
@@ -73,6 +73,19 @@ impl<'a> Hooks<'a> {
             .into_iter()
             .map(prep)
             .collect()
+    }
+
+    pub fn prepare_hooks_custom_msg<F: FnMut(Addr) -> StdResult<SubMsg<T>>, T>(
+        &self,
+        storage: &dyn Storage,
+        prep: F,
+    ) -> StdResult<Vec<SubMsg<T>>> {
+        self.0
+            .may_load(storage)?
+            .unwrap_or_default()
+            .into_iter()
+            .map(prep)
+            .collect::<Result<Vec<SubMsg<T>>, _>>()
     }
 
     pub fn hook_count(&self, storage: &dyn Storage) -> StdResult<u32> {

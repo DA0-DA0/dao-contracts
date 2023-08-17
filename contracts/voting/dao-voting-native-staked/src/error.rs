@@ -14,7 +14,7 @@ pub enum ContractError {
     ParseReplyError(#[from] ParseReplyError),
 
     #[error(transparent)]
-    HookError(#[from] cw_controllers::HookError),
+    HookError(#[from] cw_hooks::HookError),
 
     #[error("Got a submessage reply with unknown id: {id}")]
     UnknownReplyId { id: u64 },
