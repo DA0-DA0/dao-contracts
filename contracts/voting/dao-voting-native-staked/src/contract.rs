@@ -627,6 +627,8 @@ pub fn reply(
             let denom = querier
                 .full_denom(env.contract.address.to_string(), token.subdenom)?
                 .denom;
+            DENOM.save(deps.storage, &denom)?;
+
 
             let mut mint_msgs: Vec<TokenMsg> = vec![];
 

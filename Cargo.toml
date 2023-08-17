@@ -64,8 +64,8 @@ serde_yaml = "0.9"
 syn = { version = "1.0", features = ["derive"] }
 test-context = "0.1"
 thiserror = { version = "1.0" }
-token-bindings = { version = "0.10.2" }
-token-bindings-test = { git = "https://github.com/CosmosContracts/token-bindings.git", rev = "5299b86bcdb898c0dc4f194b1c910153d1cfbddc" }
+token-bindings = { git = "https://github.com/CosmosContracts/token-bindings.git", branch = "update-token-bindings-test" }
+token-bindings-test = { git = "https://github.com/CosmosContracts/token-bindings.git", branch = "update-token-bindings-test" }
 wynd-utils = "0.4"
 
 # One commit ahead of version 0.3.0. Allows initialization with an
