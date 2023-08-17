@@ -3,11 +3,12 @@ use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
     coins, to_binary, BankMsg, BankQuery, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdResult, SubMsg, Uint128, Uint256,
+    MessageInfo, Reply, Response, StdResult, SubMsg, Uint128, Uint256, Order, Addr,
 };
 use cw2::set_contract_version;
 use cw_controllers::ClaimsResponse;
-use cw_utils::{must_pay, Duration};
+use cw_storage_plus::Bound;
+use cw_utils::{must_pay, Duration, maybe_addr};
 use dao_interface::state::Admin;
 use dao_interface::voting::{
     IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
@@ -28,6 +29,10 @@ use crate::state::{
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-native-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+// Settings for query pagination
+const MAX_LIMIT: u32 = 30;
+const DEFAULT_LIMIT: u32 = 10;
 
 const CREATE_DENOM_REPLY_ID: u64 = 0;
 
@@ -499,30 +504,19 @@ pub fn query_list_stakers(
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<Binary> {
-    unimplemented!()
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let addr = maybe_addr(deps.api, start_after)?;
+    let start = addr.as_ref().map(Bound::exclusive);
 
-    // let start_at = start_after
-    //     .map(|addr| deps.api.addr_validate(&addr))
-    //     .transpose()?;
+    let stakers = STAKED_BALANCES.range(deps.storage, start, None, Order::Ascending)
+        .take(limit).map(|item| {
+            item.map(|(address, balance)| StakerBalanceResponse {
+                address: address.into_string(),
+                balance,
+            })
+        }).collect::<StdResult<_>>()?;
 
-    // // TODO fix me
-    // let stakers = cw_paginate_storage::paginate_snapshot_map(
-    //     deps,
-    //     &STAKED_BALANCES,
-    //     start_at.as_ref(),
-    //     limit,
-    //     cosmwasm_std::Order::Ascending,
-    // )?;
-
-    // let stakers = stakers
-    //     .into_iter()
-    //     .map(|(address, balance)| StakerBalanceResponse {
-    //         address: address.into_string(),
-    //         balance,
-    //     })
-    //     .collect();
-
-    // to_binary(&ListStakersResponse { stakers })
+    to_binary(&ListStakersResponse { stakers })
 }
 
 pub fn query_is_active(deps: Deps<TokenFactoryQuery>) -> StdResult<Binary> {
