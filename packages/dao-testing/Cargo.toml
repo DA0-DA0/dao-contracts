@@ -47,3 +47,4 @@ dao-voting-cw721-roles = { workspace = true }
 dao-voting-native-staked = { workspace = true }
 voting-v1 = { workspace = true }
 stake-cw20-v03 = { workspace = true }
+token-bindings = { workpsace = true }

@@ -1930,6 +1930,7 @@ dependencies = [
  "dao-voting-native-staked",
  "rand",
  "thiserror",
+ "token-bindings 0.10.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1971,6 +1972,7 @@ dependencies = [
  "dao-voting-cw721-staked",
  "dao-voting-native-staked",
  "thiserror",
+ "token-bindings-test",
 ]
 
 [[package]]
@@ -2024,6 +2026,7 @@ dependencies = [
  "dao-voting-native-staked",
  "rand",
  "stake-cw20",
+ "token-bindings 0.10.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2175,6 +2178,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-controllers 1.1.0",
+ "cw-hooks",
  "cw-multi-test 0.16.5",
  "cw-paginate-storage 2.2.0",
  "cw-storage-plus 1.1.0",

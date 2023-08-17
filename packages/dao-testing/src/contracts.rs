@@ -3,6 +3,7 @@ use cosmwasm_std::Empty;
 use cw_multi_test::{Contract, ContractWrapper};
 use dao_pre_propose_multiple as cppm;
 use dao_pre_propose_single as cpps;
+use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 
 pub fn cw20_base_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -108,7 +109,8 @@ pub fn cw20_balances_voting_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn native_staked_balances_voting_contract() -> Box<dyn Contract<Empty>> {
+pub fn native_staked_balances_voting_contract(
+) -> Box<dyn Contract<TokenFactoryMsg, TokenFactoryQuery>> {
     let contract = ContractWrapper::new(
         dao_voting_native_staked::contract::execute,
         dao_voting_native_staked::contract::instantiate,
