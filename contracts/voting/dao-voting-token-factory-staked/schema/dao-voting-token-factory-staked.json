@@ -1,5 +1,5 @@
 {
-  "contract_name": "dao-voting-native-staked",
+  "contract_name": "dao-voting-token-factory-staked",
   "contract_version": "2.2.0",
   "idl_version": "1.0.0",
   "instantiate": {
@@ -365,6 +365,7 @@
     "title": "ExecuteMsg",
     "oneOf": [
       {
+        "description": "Stakes tokens with the contract to get voting power in the DAO",
         "type": "object",
         "required": [
           "stake"
@@ -378,6 +379,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Unstakes tokens so that they begin unbonding",
         "type": "object",
         "required": [
           "unstake"
@@ -399,6 +401,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Updates the contract configuration",
         "type": "object",
         "required": [
           "update_config"
@@ -436,6 +439,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Claims unstaked tokens that have completed the unbonding period",
         "type": "object",
         "required": [
           "claim"
@@ -475,6 +479,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Adds a hook that fires on staking / unstaking",
         "type": "object",
         "required": [
           "add_hook"
@@ -496,6 +501,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Removes a hook that fires on staking / unstaking",
         "type": "object",
         "required": [
           "remove_hook"
