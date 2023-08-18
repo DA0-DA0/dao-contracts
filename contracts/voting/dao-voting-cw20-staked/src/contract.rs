@@ -8,14 +8,11 @@ use cw2::set_contract_version;
 use cw20::{Cw20Coin, TokenInfoResponse};
 use cw_utils::parse_reply_instantiate_data;
 use dao_interface::voting::IsActiveResponse;
-use dao_voting::threshold::ActiveThreshold;
+use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 use std::convert::TryInto;
 
 use crate::error::ContractError;
-use crate::msg::{
-    ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StakingInfo,
-    TokenInfo,
-};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StakingInfo, TokenInfo};
 use crate::state::{
     ACTIVE_THRESHOLD, DAO, STAKING_CONTRACT, STAKING_CONTRACT_CODE_ID,
     STAKING_CONTRACT_UNSTAKING_DURATION, TOKEN,

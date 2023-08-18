@@ -1,7 +1,7 @@
 use crate::contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::{
-    ActiveThresholdResponse, ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse,
-    MigrateMsg, QueryMsg, StakerBalanceResponse,
+    ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg,
+    StakerBalanceResponse,
 };
 use crate::state::Config;
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
@@ -15,7 +15,7 @@ use dao_interface::state::Admin;
 use dao_interface::voting::{
     InfoResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
-use dao_voting::threshold::ActiveThreshold;
+use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
 const DAO_ADDR: &str = "dao";
 const ADDR1: &str = "addr1";

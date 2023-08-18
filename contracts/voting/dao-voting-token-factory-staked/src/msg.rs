@@ -3,7 +3,7 @@ use cosmwasm_std::Uint128;
 use cw_utils::Duration;
 use dao_dao_macros::{active_query, voting_module_query};
 use dao_interface::state::Admin;
-use dao_voting::threshold::ActiveThreshold;
+use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 use token_bindings::Metadata;
 
 #[cw_serde]
@@ -110,11 +110,6 @@ pub struct StakerBalanceResponse {
 #[cw_serde]
 pub struct DenomResponse {
     pub denom: String,
-}
-
-#[cw_serde]
-pub struct ActiveThresholdResponse {
-    pub active_threshold: Option<ActiveThreshold>,
 }
 
 #[cw_serde]

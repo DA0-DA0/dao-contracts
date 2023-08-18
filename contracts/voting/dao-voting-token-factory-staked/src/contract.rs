@@ -13,21 +13,21 @@ use dao_interface::state::Admin;
 use dao_interface::voting::{
     IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
-use dao_voting::threshold::ActiveThreshold;
+use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenMsg, TokenQuerier};
 
 use crate::error::ContractError;
 use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 use crate::msg::{
-    ActiveThresholdResponse, DenomResponse, ExecuteMsg, GetHooksResponse, InstantiateMsg,
-    ListStakersResponse, MigrateMsg, QueryMsg, StakerBalanceResponse, TokenInfo,
+    DenomResponse, ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg,
+    QueryMsg, StakerBalanceResponse, TokenInfo,
 };
 use crate::state::{
     Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, DENOM, HOOKS, MAX_CLAIMS, STAKED_BALANCES,
     STAKED_TOTAL, TOKEN_INSTANTIATION_INFO,
 };
 
-pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-native-staked";
+pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-token-factory-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // Settings for query pagination
@@ -128,10 +128,10 @@ pub fn instantiate(
                 ))
         }
         TokenInfo::New(token) => {
-            // TODO investigate how much validation we need to do
             if token.subdenom.eq("") {
-                // TODO replace with token factory errors
-                return Err(ContractError::NothingToClaim {});
+                return Err(ContractError::InvalidSubdenom {
+                    subdenom: token.subdenom,
+                });
             }
 
             // Create Token Factory denom SubMsg
@@ -661,12 +661,12 @@ pub fn reply(
 
             // Update token factory denom admin to be the DAO
             let update_token_admin_msg = TokenMsg::ChangeAdmin {
-                denom,
+                denom: denom.clone(),
                 new_admin_address: dao.to_string(),
             };
 
-            // TODO what other info do we want here?
             Ok(Response::new()
+                .add_attribute("denom", denom)
                 .add_messages(mint_msgs)
                 .add_message(update_token_admin_msg))
         }

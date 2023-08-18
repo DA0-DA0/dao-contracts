@@ -4,10 +4,10 @@ use cw_multi_test::{next_block, App, Executor};
 use cw_utils::Duration;
 use dao_interface::{state::Admin, voting::IsActiveResponse};
 use dao_testing::contracts::{cw721_base_contract, voting_cw721_staked_contract};
-use dao_voting::threshold::ActiveThreshold;
+use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
 use crate::{
-    msg::{ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, NftContract, NftMintMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, NftContract, NftMintMsg, QueryMsg},
     state::{Config, MAX_CLAIMS},
     testing::{
         execute::{

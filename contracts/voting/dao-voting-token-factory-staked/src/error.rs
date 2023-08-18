@@ -25,6 +25,9 @@ pub enum ContractError {
     #[error("Initial governance token balances must not be empty")]
     InitialBalancesError {},
 
+    #[error("Invalid subdenom: {subdenom:?}")]
+    InvalidSubdenom { subdenom: String },
+
     #[error("Unauthorized")]
     Unauthorized {},
 

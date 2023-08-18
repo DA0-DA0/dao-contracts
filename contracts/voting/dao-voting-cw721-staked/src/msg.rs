@@ -4,7 +4,7 @@ use cw721::Cw721ReceiveMsg;
 use cw_utils::Duration;
 use dao_dao_macros::{active_query, voting_module_query};
 use dao_interface::state::Admin;
-use dao_voting::threshold::ActiveThreshold;
+use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
 #[cw_serde]
 pub struct NftMintMsg {
@@ -107,11 +107,6 @@ pub enum QueryMsg {
     },
     #[returns(ActiveThresholdResponse)]
     ActiveThreshold {},
-}
-
-#[cw_serde]
-pub struct ActiveThresholdResponse {
-    pub active_threshold: Option<ActiveThreshold>,
 }
 
 #[cw_serde]

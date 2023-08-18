@@ -2,9 +2,8 @@ use std::marker::PhantomData;
 
 use crate::contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::{
-    ActiveThresholdResponse, DenomResponse, ExecuteMsg, GetHooksResponse, InitialBalance,
-    InstantiateMsg, ListStakersResponse, MigrateMsg, NewTokenInfo, QueryMsg, StakerBalanceResponse,
-    TokenInfo,
+    DenomResponse, ExecuteMsg, GetHooksResponse, InitialBalance, InstantiateMsg,
+    ListStakersResponse, MigrateMsg, NewTokenInfo, QueryMsg, StakerBalanceResponse, TokenInfo,
 };
 use crate::state::Config;
 use crate::ContractError;
@@ -19,7 +18,7 @@ use dao_interface::state::Admin;
 use dao_interface::voting::{
     InfoResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
-use dao_voting::threshold::ActiveThreshold;
+use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 use token_bindings::{Metadata, TokenFactoryMsg, TokenFactoryQuery};
 use token_bindings_test::TokenFactoryApp as App;
 
@@ -961,7 +960,10 @@ fn test_query_info() {
 
     let msg = QueryMsg::Info {};
     let resp: InfoResponse = app.wrap().query_wasm_smart(addr, &msg).unwrap();
-    assert_eq!(resp.info.contract, "crates.io:dao-voting-native-staked");
+    assert_eq!(
+        resp.info.contract,
+        "crates.io:dao-voting-token-factory-staked"
+    );
 }
 
 #[test]
