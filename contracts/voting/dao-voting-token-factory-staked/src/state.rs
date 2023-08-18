@@ -19,11 +19,11 @@ pub struct Config {
 /// The configuration of this voting contract
 pub const CONFIG: Item<Config> = Item::new("config");
 
-/// The native denom associated with this contract
-pub const DENOM: Item<String> = Item::new("denom");
-
 /// The address of the DAO this voting contract is connected to
 pub const DAO: Item<Addr> = Item::new("dao");
+
+/// The native denom associated with this contract
+pub const DENOM: Item<String> = Item::new("denom");
 
 /// Keeps track of staked balances by address over time
 pub const STAKED_BALANCES: SnapshotMap<&Addr, Uint128> = SnapshotMap::new(

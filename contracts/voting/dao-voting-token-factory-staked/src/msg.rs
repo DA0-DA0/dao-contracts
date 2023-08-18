@@ -47,15 +47,17 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
+    /// Stakes tokens with the contract to get voting power in the DAO
     Stake {},
-    Unstake {
-        amount: Uint128,
-    },
+    /// Unstakes tokens so that they begin unbonding
+    Unstake { amount: Uint128 },
+    /// Updates the contract configuration
     UpdateConfig {
         owner: Option<String>,
         manager: Option<String>,
         duration: Option<Duration>,
     },
+    /// Claims unstaked tokens that have completed the unbonding period
     Claim {},
     /// Sets the active threshold to a new value. Only the
     /// instantiator of this contract (a DAO most likely) may call this
@@ -63,12 +65,10 @@ pub enum ExecuteMsg {
     UpdateActiveThreshold {
         new_threshold: Option<ActiveThreshold>,
     },
-    AddHook {
-        addr: String,
-    },
-    RemoveHook {
-        addr: String,
-    },
+    /// Adds a hook that fires on staking / unstaking
+    AddHook { addr: String },
+    /// Removes a hook that fires on staking / unstaking
+    RemoveHook { addr: String },
 }
 
 #[voting_module_query]

@@ -1,11 +1,13 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw_utils::Duration;
-use dao_dao_macros::voting_module_query;
+use dao_dao_macros::{active_query, voting_module_query};
 use dao_interface::state::Admin;
+use dao_voting::threshold::ActiveThreshold;
 
 #[cw_serde]
 pub struct InstantiateMsg {
+    // TODO replace with cw-ownable
     // Owner can update all configs including changing the owner. This will generally be a DAO.
     pub owner: Option<Admin>,
     // Manager can update all configs except changing the owner. This will generally be an operations multisig for a DAO.
@@ -14,23 +16,39 @@ pub struct InstantiateMsg {
     pub denom: String,
     // How long until the tokens become liquid again
     pub unstaking_duration: Option<Duration>,
+    /// The number or percentage of tokens that must be staked
+    /// for the DAO to be active
+    pub active_threshold: Option<ActiveThreshold>,
 }
 
 #[cw_serde]
 pub enum ExecuteMsg {
+    /// Stakes tokens with the contract to get voting power in the DAO
     Stake {},
-    Unstake {
-        amount: Uint128,
-    },
+    /// Unstakes tokens so that they begin unbonding
+    Unstake { amount: Uint128 },
+    /// Updates the contract configuration
     UpdateConfig {
         owner: Option<String>,
         manager: Option<String>,
         duration: Option<Duration>,
     },
+    /// Claims unstaked tokens that have completed the unbonding period
     Claim {},
+    /// Sets the active threshold to a new value. Only the
+    /// instantiator of this contract (a DAO most likely) may call this
+    /// method.
+    UpdateActiveThreshold {
+        new_threshold: Option<ActiveThreshold>,
+    },
+    /// Adds a hook that fires on staking / unstaking
+    AddHook { addr: String },
+    /// Removes a hook that fires on staking / unstaking
+    RemoveHook { addr: String },
 }
 
 #[voting_module_query]
+#[active_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
@@ -38,11 +56,17 @@ pub enum QueryMsg {
     GetConfig {},
     #[returns(cw_controllers::ClaimsResponse)]
     Claims { address: String },
+    #[returns(DenomResponse)]
+    GetDenom {},
     #[returns(ListStakersResponse)]
     ListStakers {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    #[returns(ActiveThresholdResponse)]
+    ActiveThreshold {},
+    #[returns(GetHooksResponse)]
+    GetHooks {},
 }
 
 #[cw_serde]
@@ -57,4 +81,19 @@ pub struct ListStakersResponse {
 pub struct StakerBalanceResponse {
     pub address: String,
     pub balance: Uint128,
+}
+
+#[cw_serde]
+pub struct ActiveThresholdResponse {
+    pub active_threshold: Option<ActiveThreshold>,
+}
+
+#[cw_serde]
+pub struct DenomResponse {
+    pub denom: String,
+}
+
+#[cw_serde]
+pub struct GetHooksResponse {
+    pub hooks: Vec<String>,
 }

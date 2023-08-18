@@ -17,13 +17,15 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-cosmwasm-std = { workspace = true }
+cosmwasm-std    = { workspace = true, features = ["cosmwasm_1_1"] }
 cosmwasm-schema = { workspace = true }
 cosmwasm-storage = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
+cw-hooks = { workspace = true }
 cw-utils = { workspace = true }
 cw-controllers = { workspace = true }
+dao-voting = { workspace = true }
 
 thiserror = { workspace = true }
 dao-dao-macros = { workspace = true }

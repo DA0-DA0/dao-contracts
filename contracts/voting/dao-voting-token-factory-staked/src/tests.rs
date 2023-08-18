@@ -88,7 +88,6 @@ fn mock_app() -> App {
         ],
     }))
     .unwrap();
-    app.update_block(next_block);
     app
 }
 
