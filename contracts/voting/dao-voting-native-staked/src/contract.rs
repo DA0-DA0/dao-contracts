@@ -19,8 +19,7 @@ use crate::msg::{
     QueryMsg, StakerBalanceResponse,
 };
 use crate::state::{
-    Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, DENOM, HOOKS, MAX_CLAIMS, STAKED_BALANCES,
-    STAKED_TOTAL,
+    Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, HOOKS, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL,
 };
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-native-staked";
@@ -81,7 +80,6 @@ pub fn instantiate(
 
     CONFIG.save(deps.storage, &config)?;
     DAO.save(deps.storage, &info.sender)?;
-    DENOM.save(deps.storage, &msg.denom)?;
 
     if let Some(active_threshold) = msg.active_threshold.as_ref() {
         match active_threshold {
@@ -339,7 +337,7 @@ pub fn execute_update_active_threshold(
                 }
             }
             ActiveThreshold::AbsoluteCount { count } => {
-                let denom = DENOM.load(deps.storage)?;
+                let denom = CONFIG.load(deps.storage)?.denom;
                 assert_valid_absolute_count_threshold(deps.as_ref(), &denom, count)?;
             }
         }
@@ -403,9 +401,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::ListStakers { start_after, limit } => {
             query_list_stakers(deps, start_after, limit)
         }
-        QueryMsg::GetDenom {} => to_binary(&DenomResponse {
-            denom: DENOM.load(deps.storage)?,
-        }),
+        QueryMsg::GetDenom {} => query_denom(deps),
         QueryMsg::IsActive {} => query_is_active(deps),
         QueryMsg::ActiveThreshold {} => query_active_threshold(deps),
         QueryMsg::GetHooks {} => to_binary(&query_hooks(deps)?),
@@ -448,6 +444,13 @@ pub fn query_dao(deps: Deps) -> StdResult<Binary> {
     to_binary(&dao)
 }
 
+pub fn query_denom(deps: Deps) -> StdResult<Binary> {
+    let config = CONFIG.load(deps.storage)?;
+    to_binary(&DenomResponse {
+        denom: config.denom,
+    })
+}
+
 pub fn query_claims(deps: Deps, address: String) -> StdResult<ClaimsResponse> {
     CLAIMS.query_claims(deps, &deps.api.addr_validate(&address)?)
 }
@@ -483,7 +486,7 @@ pub fn query_list_stakers(
 pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
     let threshold = ACTIVE_THRESHOLD.may_load(deps.storage)?;
     if let Some(threshold) = threshold {
-        let denom = DENOM.load(deps.storage)?;
+        let denom = CONFIG.load(deps.storage)?.denom;
         let actual_power = STAKED_TOTAL.may_load(deps.storage)?.unwrap_or_default();
         match threshold {
             ActiveThreshold::AbsoluteCount { count } => to_binary(&IsActiveResponse {
@@ -554,7 +557,6 @@ pub fn query_hooks(deps: Deps) -> StdResult<GetHooksResponse> {
     })
 }
 
-// TODO update migration logic and test
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     // Set contract to version to latest

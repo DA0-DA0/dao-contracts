@@ -8,7 +8,6 @@ use dao_voting::threshold::ActiveThreshold;
 
 #[cw_serde]
 pub struct Config {
-    // TODO use cw-ownable
     pub owner: Option<Addr>,
     pub manager: Option<Addr>,
     pub denom: String,
@@ -20,9 +19,6 @@ pub const CONFIG: Item<Config> = Item::new("config");
 
 /// The address of the DAO that instantiated this contract
 pub const DAO: Item<Addr> = Item::new("dao");
-
-/// The native denom associated with this contract
-pub const DENOM: Item<String> = Item::new("denom");
 
 /// Keeps track of staked balances by address over time
 pub const STAKED_BALANCES: SnapshotMap<&Addr, Uint128> = SnapshotMap::new(
