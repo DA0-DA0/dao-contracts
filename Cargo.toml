@@ -55,7 +55,7 @@ cw721 = "0.18"
 cw721-base = "0.18"
 env_logger = "0.10"
 once_cell = "1.18"
-osmosis-test-tube = "16.1.2"
+# osmosis-test-tube = "16.1.2"
 proc-macro2 = "1.0"
 quote = "1.0"
 rand = "0.8"
@@ -107,6 +107,7 @@ dao-voting-cw4 = { path = "./contracts/voting/dao-voting-cw4", version = "2.2.0"
 dao-voting-cw721-roles = { path = "./contracts/voting/dao-voting-cw721-roles", version = "*" }
 dao-voting-cw721-staked = { path = "./contracts/voting/dao-voting-cw721-staked", version = "2.2.0" }
 dao-voting-native-staked = { path = "./contracts/voting/dao-voting-native-staked", version = "2.2.0" }
+dao-voting-token-factory-staked = { path = "./contracts/voting/dao-voting-token-factory-staked", version = "2.2.0" }
 
 # v1 dependencies. used for state migrations.
 cw-core-v1 = { package = "cw-core", version = "0.1.0" }

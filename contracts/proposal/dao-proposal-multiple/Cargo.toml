@@ -58,4 +58,3 @@ cw721-base = { workspace = true }
 cw4 = { workspace = true }
 cw4-group = { workspace = true }
 rand = { workspace = true }
-token-bindings = { workspace = true }

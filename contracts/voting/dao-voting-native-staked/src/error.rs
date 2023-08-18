@@ -1,29 +1,14 @@
 use cosmwasm_std::StdError;
-use cw_utils::{ParseReplyError, PaymentError};
+use cw_utils::PaymentError;
 use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug)]
 pub enum ContractError {
-    #[error(transparent)]
+    #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error(transparent)]
+    #[error("{0}")]
     PaymentError(#[from] PaymentError),
-
-    #[error(transparent)]
-    ParseReplyError(#[from] ParseReplyError),
-
-    #[error(transparent)]
-    HookError(#[from] cw_hooks::HookError),
-
-    #[error("Got a submessage reply with unknown id: {id}")]
-    UnknownReplyId { id: u64 },
-
-    #[error("Token factory core contract instantiate error")]
-    TokenFactoryCoreInstantiateError {},
-
-    #[error("Initial governance token balances must not be empty")]
-    InitialBalancesError {},
 
     #[error("Unauthorized")]
     Unauthorized {},
@@ -45,16 +30,4 @@ pub enum ContractError {
 
     #[error("Amount being unstaked must be non-zero")]
     ZeroUnstake {},
-
-    #[error("Active threshold percentage must be greater than 0 and less than 1")]
-    InvalidActivePercentage {},
-
-    #[error("Active threshold count must be greater than zero")]
-    ZeroActiveCount {},
-
-    #[error("Absolute count threshold cannot be greater than the total token supply")]
-    InvalidAbsoluteCount {},
-
-    #[error("Cannot change the contract's token after it has been set")]
-    DuplicateToken {},
 }

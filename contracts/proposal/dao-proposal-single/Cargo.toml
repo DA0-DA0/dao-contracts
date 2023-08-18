@@ -57,4 +57,3 @@ cw721-base = { workspace = true }
 cw4 = { workspace = true }
 cw4-group = { workspace = true }
 cw-core-v1 = { workspace = true, features = ["library"] }
-token-bindings-test = { workspace = true }

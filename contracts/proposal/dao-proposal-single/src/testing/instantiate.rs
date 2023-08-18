@@ -19,7 +19,7 @@ use super::{
     contracts::{
         cw20_base_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
         cw4_group_contract, cw4_voting_contract, cw721_base_contract, cw721_stake_contract,
-        cw_core_contract, proposal_single_contract,
+        cw_core_contract, native_staked_balances_voting_contract, proposal_single_contract,
     },
     CREATOR_ADDR,
 };
@@ -220,116 +220,114 @@ pub(crate) fn instantiate_with_staked_cw721_governance(
     core_addr
 }
 
-// pub(crate) fn instantiate_with_native_staked_balances_governance(
-//     app: &mut App,
-//     proposal_module_instantiate: InstantiateMsg,
-//     initial_balances: Option<Vec<Cw20Coin>>,
-// ) -> Addr {
-//     let proposal_module_code_id = app.store_code(proposal_single_contract());
+pub(crate) fn instantiate_with_native_staked_balances_governance(
+    app: &mut App,
+    proposal_module_instantiate: InstantiateMsg,
+    initial_balances: Option<Vec<Cw20Coin>>,
+) -> Addr {
+    let proposal_module_code_id = app.store_code(proposal_single_contract());
 
-//     let initial_balances = initial_balances.unwrap_or_else(|| {
-//         vec![Cw20Coin {
-//             address: CREATOR_ADDR.to_string(),
-//             amount: Uint128::new(100_000_000),
-//         }]
-//     });
+    let initial_balances = initial_balances.unwrap_or_else(|| {
+        vec![Cw20Coin {
+            address: CREATOR_ADDR.to_string(),
+            amount: Uint128::new(100_000_000),
+        }]
+    });
 
-//     // Collapse balances so that we can test double votes.
-//     let initial_balances: Vec<Cw20Coin> = {
-//         let mut already_seen = vec![];
-//         initial_balances
-//             .into_iter()
-//             .filter(|Cw20Coin { address, amount: _ }| {
-//                 if already_seen.contains(address) {
-//                     false
-//                 } else {
-//                     already_seen.push(address.clone());
-//                     true
-//                 }
-//             })
-//             .collect()
-//     };
+    // Collapse balances so that we can test double votes.
+    let initial_balances: Vec<Cw20Coin> = {
+        let mut already_seen = vec![];
+        initial_balances
+            .into_iter()
+            .filter(|Cw20Coin { address, amount: _ }| {
+                if already_seen.contains(address) {
+                    false
+                } else {
+                    already_seen.push(address.clone());
+                    true
+                }
+            })
+            .collect()
+    };
 
-//     let native_stake_id = app.store_code(native_staked_balances_voting_contract());
-//     let core_contract_id = app.store_code(cw_core_contract());
+    let native_stake_id = app.store_code(native_staked_balances_voting_contract());
+    let core_contract_id = app.store_code(cw_core_contract());
 
-//     let instantiate_core = dao_interface::msg::InstantiateMsg {
-//         admin: None,
-//         name: "DAO DAO".to_string(),
-//         description: "A DAO that builds DAOs".to_string(),
-//         dao_uri: None,
-//         image_url: None,
-//         automatically_add_cw20s: true,
-//         automatically_add_cw721s: false,
-//         voting_module_instantiate_info: ModuleInstantiateInfo {
-//             code_id: native_stake_id,
-//             msg: to_binary(&dao_voting_native_staked::msg::InstantiateMsg {
-//                 owner: Some(Admin::CoreModule {}),
-//                 manager: None,
-//                 token_info: dao_voting_native_staked::msg::TokenInfo::Existing {
-//                     denom: "ujuno".to_string(),
-//                 },
-//                 unstaking_duration: None,
-//                 active_threshold: None,
-//             })
-//             .unwrap(),
-//             admin: None,
-//             label: "DAO DAO voting module".to_string(),
-//         },
-//         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
-//             code_id: proposal_module_code_id,
-//             label: "DAO DAO governance module.".to_string(),
-//             admin: Some(Admin::CoreModule {}),
-//             msg: to_binary(&proposal_module_instantiate).unwrap(),
-//         }],
-//         initial_items: None,
-//     };
+    let instantiate_core = dao_interface::msg::InstantiateMsg {
+        admin: None,
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs".to_string(),
+        dao_uri: None,
+        image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: false,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: native_stake_id,
+            msg: to_binary(&dao_voting_native_staked::msg::InstantiateMsg {
+                owner: Some(Admin::CoreModule {}),
+                manager: None,
+                denom: "ujuno".to_string(),
+                unstaking_duration: None,
+                // active_threshold: None,
+            })
+            .unwrap(),
+            admin: None,
+            label: "DAO DAO voting module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
+            code_id: proposal_module_code_id,
+            label: "DAO DAO governance module.".to_string(),
+            admin: Some(Admin::CoreModule {}),
+            msg: to_binary(&proposal_module_instantiate).unwrap(),
+        }],
+        initial_items: None,
+    };
 
-//     let core_addr = app
-//         .instantiate_contract(
-//             core_contract_id,
-//             Addr::unchecked(CREATOR_ADDR),
-//             &instantiate_core,
-//             &[],
-//             "DAO DAO",
-//             None,
-//         )
-//         .unwrap();
+    let core_addr = app
+        .instantiate_contract(
+            core_contract_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &instantiate_core,
+            &[],
+            "DAO DAO",
+            None,
+        )
+        .unwrap();
 
-//     let gov_state: dao_interface::query::DumpStateResponse = app
-//         .wrap()
-//         .query_wasm_smart(
-//             core_addr.clone(),
-//             &dao_interface::msg::QueryMsg::DumpState {},
-//         )
-//         .unwrap();
-//     let native_staking_addr = gov_state.voting_module;
+    let gov_state: dao_interface::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(
+            core_addr.clone(),
+            &dao_interface::msg::QueryMsg::DumpState {},
+        )
+        .unwrap();
+    let native_staking_addr = gov_state.voting_module;
 
-//     for Cw20Coin { address, amount } in initial_balances {
-//         app.sudo(SudoMsg::Bank(BankSudo::Mint {
-//             to_address: address.clone(),
-//             amount: vec![Coin {
-//                 denom: "ujuno".to_string(),
-//                 amount,
-//             }],
-//         }))
-//         .unwrap();
-//         app.execute_contract(
-//             Addr::unchecked(&address),
-//             native_staking_addr.clone(),
-//             &dao_voting_native_staked::msg::ExecuteMsg::Stake {},
-//             &[Coin {
-//                 amount,
-//                 denom: "ujuno".to_string(),
-//             }],
-//         )
-//         .unwrap();
-//     }
+    for Cw20Coin { address, amount } in initial_balances {
+        app.sudo(SudoMsg::Bank(BankSudo::Mint {
+            to_address: address.clone(),
+            amount: vec![Coin {
+                denom: "ujuno".to_string(),
+                amount,
+            }],
+        }))
+        .unwrap();
+        app.execute_contract(
+            Addr::unchecked(&address),
+            native_staking_addr.clone(),
+            &dao_voting_native_staked::msg::ExecuteMsg::Stake {},
+            &[Coin {
+                amount,
+                denom: "ujuno".to_string(),
+            }],
+        )
+        .unwrap();
+    }
 
-//     app.update_block(next_block);
+    app.update_block(next_block);
 
-//     core_addr
-// }
+    core_addr
+}
 
 pub(crate) fn instantiate_with_staked_balances_governance(
     app: &mut App,
