@@ -624,11 +624,14 @@ pub fn reply(
 
             let mut mint_msgs: Vec<TokenMsg> = vec![];
 
-            // Check supply is greater than zero
+            // Check supply is greater than zero, iterate through initial
+            // balances and sum them.
             let initial_supply = token
                 .initial_balances
                 .iter()
-                .fold(Uint128::zero(), |p, n| p + n.amount);
+                .fold(Uint128::zero(), |previous, new_balance| {
+                    previous + new_balance.amount
+                });
 
             // Cannot instantiate with no initial token owners because it would
             // immediately lock the DAO.

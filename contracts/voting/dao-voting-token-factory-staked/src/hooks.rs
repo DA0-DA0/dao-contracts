@@ -3,7 +3,6 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_binary, Addr, StdResult, Storage, SubMsg, Uint128, WasmMsg};
 use token_bindings::TokenFactoryMsg;
 
-// This is just a helper to properly serialize the above message
 #[cw_serde]
 pub enum StakeChangedHookMsg {
     Stake { addr: Addr, amount: Uint128 },
