@@ -107,7 +107,7 @@ impl<'a> Hooks<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::{coins, testing::mock_dependencies, BankMsg};
+    use cosmwasm_std::{coins, testing::mock_dependencies, BankMsg, Empty};
 
     // Shorthand for an unchecked address.
     macro_rules! addr {
@@ -144,6 +144,30 @@ mod tests {
         assert_eq!(
             msgs,
             vec![SubMsg::reply_always(
+                BankMsg::Burn {
+                    amount: coins(4, "uekez"),
+                },
+                2,
+            )]
+        );
+
+        // Test prepare hooks with custom messages.
+        // In a real world scenario, you would be using something like
+        // TokenFactoryMsg.
+        let msgs = hooks
+            .prepare_hooks_custom_msg(storage, |a| {
+                Ok(SubMsg::<Empty>::reply_always(
+                    BankMsg::Burn {
+                        amount: coins(a.as_str().len() as u128, "uekez"),
+                    },
+                    2,
+                ))
+            })
+            .unwrap();
+
+        assert_eq!(
+            msgs,
+            vec![SubMsg::<Empty>::reply_always(
                 BankMsg::Burn {
                     amount: coins(4, "uekez"),
                 },
