@@ -922,35 +922,40 @@ fn test_invalid_instantiate_msg() {
     let module_id = app.store_code(voting_cw721_staked_contract());
     let cw721_id = app.store_code(cw721_base_contract());
 
-    app.instantiate_contract(
-        module_id,
-        Addr::unchecked(CREATOR_ADDR),
-        &InstantiateMsg {
-            owner: Some(Admin::Address {
-                addr: CREATOR_ADDR.to_string(),
-            }),
-            nft_contract: NftContract::New {
-                code_id: cw721_id,
-                label: "Test NFT".to_string(),
-                msg: to_binary(&Empty {}).unwrap(),
-                initial_nfts: vec![to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
-                    owner: CREATOR_ADDR.to_string(),
-                    token_uri: Some("https://example.com".to_string()),
-                    token_id: "1".to_string(),
-                    extension: Empty {},
-                })
-                .unwrap()],
+    let err = app
+        .instantiate_contract(
+            module_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &InstantiateMsg {
+                owner: Some(Admin::Address {
+                    addr: CREATOR_ADDR.to_string(),
+                }),
+                nft_contract: NftContract::New {
+                    code_id: cw721_id,
+                    label: "Test NFT".to_string(),
+                    msg: to_binary(&Empty {}).unwrap(),
+                    initial_nfts: vec![to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                        owner: CREATOR_ADDR.to_string(),
+                        token_uri: Some("https://example.com".to_string()),
+                        token_id: "1".to_string(),
+                        extension: Empty {},
+                    })
+                    .unwrap()],
+                },
+                unstaking_duration: None,
+                active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                    count: Uint128::new(1),
+                }),
             },
-            unstaking_duration: None,
-            active_threshold: Some(ActiveThreshold::AbsoluteCount {
-                count: Uint128::new(1),
-            }),
-        },
-        &[],
-        "cw721_voting",
-        None,
-    )
-    .unwrap_err();
+            &[],
+            "cw721_voting",
+            None,
+        )
+        .unwrap_err();
+    assert_eq!(
+        err.root_cause().to_string(),
+        "Error instantiating NFT contract".to_string()
+    );
 }
 
 #[test]
@@ -959,34 +964,39 @@ fn test_no_initial_nfts_fails() {
     let cw721_id = app.store_code(cw721_base_contract());
     let module_id = app.store_code(voting_cw721_staked_contract());
 
-    app.instantiate_contract(
-        module_id,
-        Addr::unchecked(CREATOR_ADDR),
-        &InstantiateMsg {
-            owner: Some(Admin::Address {
-                addr: CREATOR_ADDR.to_string(),
-            }),
-            nft_contract: NftContract::New {
-                code_id: cw721_id,
-                label: "Test NFT".to_string(),
-                msg: to_binary(&Cw721InstantiateMsg {
-                    name: "Test NFT".to_string(),
-                    symbol: "TEST".to_string(),
-                    minter: CREATOR_ADDR.to_string(),
-                })
-                .unwrap(),
-                initial_nfts: vec![],
+    let err = app
+        .instantiate_contract(
+            module_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &InstantiateMsg {
+                owner: Some(Admin::Address {
+                    addr: CREATOR_ADDR.to_string(),
+                }),
+                nft_contract: NftContract::New {
+                    code_id: cw721_id,
+                    label: "Test NFT".to_string(),
+                    msg: to_binary(&Cw721InstantiateMsg {
+                        name: "Test NFT".to_string(),
+                        symbol: "TEST".to_string(),
+                        minter: CREATOR_ADDR.to_string(),
+                    })
+                    .unwrap(),
+                    initial_nfts: vec![],
+                },
+                unstaking_duration: None,
+                active_threshold: Some(ActiveThreshold::Percentage {
+                    percent: Decimal::percent(1),
+                }),
             },
-            unstaking_duration: None,
-            active_threshold: Some(ActiveThreshold::Percentage {
-                percent: Decimal::percent(0),
-            }),
-        },
-        &[],
-        "cw721_voting",
-        None,
-    )
-    .unwrap_err();
+            &[],
+            "cw721_voting",
+            None,
+        )
+        .unwrap_err();
+    assert_eq!(
+        err.root_cause().to_string(),
+        "New NFT contract must be instantiated with at least one NFT".to_string()
+    );
 }
 
 // I can create new Stargaze NFT collection when creating a dao-voting-cw721-staked contract

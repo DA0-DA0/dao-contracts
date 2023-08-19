@@ -130,7 +130,7 @@ pub fn instantiate(
             // Save initial NFTs for use in reply
             INITITIAL_NFTS.save(deps.storage, &initial_nfts)?;
 
-            // Create instantiate submessage for NFT roles contract
+            // Create instantiate submessage for NFT contract
             let instantiate_msg = SubMsg::reply_on_success(
                 WasmMsg::Instantiate {
                     code_id,

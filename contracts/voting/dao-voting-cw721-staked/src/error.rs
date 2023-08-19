@@ -21,7 +21,7 @@ pub enum ContractError {
     #[error("Error instantiating NFT contract")]
     NftInstantiateError {},
 
-    #[error("New cw721-roles contract must be instantiated with at least one NFT")]
+    #[error("New NFT contract must be instantiated with at least one NFT")]
     NoInitialNfts {},
 
     #[error("Nothing to claim")]
