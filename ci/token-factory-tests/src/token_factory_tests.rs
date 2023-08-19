@@ -1,5 +1,13 @@
-use cosmwasm_std::Coin;
+use cosmwasm_std::{Coin, Uint128};
+use cw_utils::Duration;
+use dao_interface::state::Admin;
+use dao_voting_token_factory_staked::msg::{
+    DenomResponse, InitialBalance, InstantiateMsg, NewTokenInfo, QueryMsg, TokenInfo,
+};
 use osmosis_test_tube::{Account, Module, OsmosisTestApp, Wasm};
+use token_bindings::Metadata;
+
+const DENOM: &str = "test";
 
 #[test]
 fn happy_path() {
@@ -24,31 +32,44 @@ fn happy_path() {
         .data
         .code_id;
 
-    // ============= NEW CODE ================
+    let contract_addr = wasm
+        .instantiate(
+            code_id,
+            &InstantiateMsg {
+                owner: Some(Admin::CoreModule {}),
+                manager: Some(admin.address()),
+                token_info: TokenInfo::New(NewTokenInfo {
+                    subdenom: DENOM.to_string(),
+                    metadata: Some(Metadata {
+                        description: Some("Awesome token, get it now!".to_string()),
+                        denom_units: vec![],
+                        base: None,
+                        display: Some(DENOM.to_string()),
+                        name: Some(DENOM.to_string()),
+                        symbol: Some(DENOM.to_string()),
+                    }),
+                    initial_balances: vec![InitialBalance {
+                        amount: Uint128::new(100),
+                        mint_to_address: admin.address(),
+                    }],
+                    initial_dao_balance: Some(Uint128::new(900)),
+                }),
+                unstaking_duration: Some(Duration::Height(5)),
+                active_threshold: None,
+            },
+            None,  // contract admin used for migration, not the same as cw1_whitelist admin
+            None,  // contract label
+            &[],   // funds
+            admin, // signer
+        )
+        .unwrap()
+        .data
+        .address;
 
-    // // instantiate contract with initial admin and make admin list mutable
-    // let init_admins = vec![admin.address()];
-    // let contract_addr = wasm
-    //     .instantiate(
-    //         code_id,
-    //         &InstantiateMsg {
-    //             admins: init_admins.clone(),
-    //             mutable: true,
-    //         },
-    //         None, // contract admin used for migration, not the same as cw1_whitelist admin
-    //         None, // contract label
-    //         &[], // funds
-    //         admin, // signer
-    //     )
-    //     .unwrap()
-    //     .data
-    //     .address;
+    // Query contract state to check if contract instantiation works properly
+    let tf_denom = wasm
+        .query::<QueryMsg, DenomResponse>(&contract_addr, &QueryMsg::GetDenom {})
+        .unwrap();
 
-    // // query contract state to check if contract instantiation works properly
-    // let admin_list = wasm
-    //     .query::<QueryMsg, AdminListResponse>(&contract_addr, &QueryMsg::AdminList {})
-    //     .unwrap();
-
-    // assert_eq!(admin_list.admins, init_admins);
-    // assert!(admin_list.mutable);
+    println!("Token Factory Denom: {:?}", tf_denom);
 }
