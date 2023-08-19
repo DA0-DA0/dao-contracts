@@ -121,6 +121,20 @@ mod tests {
         let mut deps = mock_dependencies();
         let storage = &mut deps.storage;
         let hooks = Hooks::new("hooks");
+
+        // Prepare hooks doesn't through error if no hooks added
+        let msgs = hooks
+            .prepare_hooks(storage, |a| {
+                Ok(SubMsg::reply_always(
+                    BankMsg::Burn {
+                        amount: coins(a.as_str().len() as u128, "uekez"),
+                    },
+                    2,
+                ))
+            })
+            .unwrap();
+        assert_eq!(msgs, vec![]);
+
         hooks.add_hook(storage, addr!("ekez")).unwrap();
         hooks.add_hook(storage, addr!("meow")).unwrap();
 
