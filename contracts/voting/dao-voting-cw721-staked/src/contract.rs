@@ -1,5 +1,5 @@
 use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
-use crate::msg::{ActiveThresholdResponse, NftContract};
+use crate::msg::{ActiveThresholdResponse, MigrateMsg, NftContract};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{
     register_staked_nft, register_unstaked_nfts, Config, ACTIVE_THRESHOLD, CONFIG, DAO, HOOKS,
@@ -617,6 +617,13 @@ pub fn query_staked_nfts(
         None => range.collect(),
     };
     to_binary(&range?)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    // Set contract to version to latest
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
