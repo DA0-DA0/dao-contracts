@@ -3,6 +3,7 @@ name = "dao-dao-token-factory-integration-tests"
 version = "0.1.0"
 edition = { workspace = true }
 
+[dependencies]
 cosmwasm-std = { workspace = true, features = ["ibc3", "cosmwasm_1_1"] }
 cw-utils = { workspace = true }
 osmosis-test-tube = { workspace = true }
