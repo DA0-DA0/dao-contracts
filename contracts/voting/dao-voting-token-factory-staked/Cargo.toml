@@ -35,5 +35,4 @@ token-bindings = { workspace = true }
 [dev-dependencies]
 anyhow = { workspace = true }
 cw-multi-test = { workspace = true }
-# osmosis-test-tube = { workspace = true }
 token-bindings-test = { workspace = true }
