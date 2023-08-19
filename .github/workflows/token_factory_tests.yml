@@ -8,6 +8,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      options: --user root
 
     steps:
       - uses: actions/checkout@v3
@@ -43,5 +45,5 @@ jobs:
       - name: Install just
         run: cargo install just || true
 
-      - name: Run tests (needs sudo to make directories)
-        run: sudo just token-factory-tests
+      - name: Run tests
+        run: just token-factory-tests
