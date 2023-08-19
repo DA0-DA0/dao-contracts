@@ -1,4 +1,4 @@
-name: test
+name: Token Factory Tests
 
 on: [push, pull_request]
 
