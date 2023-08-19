@@ -1,7 +1,8 @@
 use crate::contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION};
+use crate::error::ContractError;
 use crate::msg::{
-    ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg,
-    StakerBalanceResponse,
+    DenomResponse, ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg,
+    QueryMsg, StakerBalanceResponse,
 };
 use crate::state::Config;
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
@@ -258,11 +259,34 @@ fn test_instantiate_dao_owner() {
 }
 
 #[test]
+fn test_instantiate_no_owner() {
+    let mut app = mock_app();
+    let staking_id = app.store_code(staking_contract());
+    // Populated fields
+    let addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: None,
+            manager: None,
+            denom: DENOM.to_string(),
+            unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
+        },
+    );
+
+    let config = get_config(&mut app, addr);
+
+    assert_eq!(config.owner, None);
+}
+
+#[test]
 #[should_panic(expected = "Invalid unstaking duration, unstaking duration cannot be 0")]
 fn test_instantiate_invalid_unstaking_duration() {
     let mut app = mock_app();
     let staking_id = app.store_code(staking_contract());
-    // Populated fields
+
+    // Populated fields with height
     let _addr = instantiate_staking(
         &mut app,
         staking_id,
@@ -273,6 +297,23 @@ fn test_instantiate_invalid_unstaking_duration() {
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(0)),
+            active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                count: Uint128::new(1),
+            }),
+        },
+    );
+
+    // Populated fields with height
+    let _addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: Some(Admin::Address {
+                addr: DAO_ADDR.to_string(),
+            }),
+            manager: Some(ADDR1.to_string()),
+            denom: DENOM.to_string(),
+            unstaking_duration: Some(Duration::Time(0)),
             active_threshold: Some(ActiveThreshold::AbsoluteCount {
                 count: Uint128::new(1),
             }),
@@ -749,6 +790,27 @@ fn test_query_dao() {
     let msg = QueryMsg::Dao {};
     let dao: Addr = app.wrap().query_wasm_smart(addr, &msg).unwrap();
     assert_eq!(dao, Addr::unchecked(DAO_ADDR));
+}
+
+#[test]
+fn test_query_denom() {
+    let mut app = mock_app();
+    let staking_id = app.store_code(staking_contract());
+    let addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: Some(Admin::CoreModule {}),
+            manager: Some(ADDR1.to_string()),
+            denom: DENOM.to_string(),
+            unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
+        },
+    );
+
+    let msg = QueryMsg::GetDenom {};
+    let denom: DenomResponse = app.wrap().query_wasm_smart(addr, &msg).unwrap();
+    assert_eq!(denom.denom, DENOM.to_string());
 }
 
 #[test]
@@ -1345,6 +1407,21 @@ fn test_add_remove_hooks() {
         .unwrap();
     assert_eq!(resp.hooks, Vec::<String>::new());
 
+    // Non-owner can't add hook
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(ADDR2),
+            addr.clone(),
+            &ExecuteMsg::AddHook {
+                addr: "hook".to_string(),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
+
     // Add a hook.
     app.execute_contract(
         Addr::unchecked(DAO_ADDR),
@@ -1362,6 +1439,21 @@ fn test_add_remove_hooks() {
         .query_wasm_smart(addr.clone(), &QueryMsg::GetHooks {})
         .unwrap();
     assert_eq!(resp.hooks, vec!["hook".to_string()]);
+
+    // Non-owner can't remove hook
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(ADDR2),
+            addr.clone(),
+            &ExecuteMsg::RemoveHook {
+                addr: "hook".to_string(),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
 
     // Remove hook.
     app.execute_contract(
