@@ -31,7 +31,6 @@ pub enum TokenInfo {
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    // TODO replace with cw-ownable
     // Owner can update all configs including changing the owner. This will generally be a DAO.
     pub owner: Option<Admin>,
     // Manager can update all configs except changing the owner. This will generally be an operations multisig for a DAO.

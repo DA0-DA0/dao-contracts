@@ -10,7 +10,6 @@ use crate::msg::NewTokenInfo;
 
 #[cw_serde]
 pub struct Config {
-    // TODO use cw-ownable
     pub owner: Option<Addr>,
     pub manager: Option<Addr>,
     pub unstaking_duration: Option<Duration>,
