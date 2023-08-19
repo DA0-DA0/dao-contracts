@@ -25,6 +25,9 @@ integration-test-dev test_name="":
 bootstrap-dev: deploy-local workspace-optimize-arm
 	RUST_LOG=info CONFIG={{orc_config}} cargo run bootstrap-env
 
+token-factory-tests: workspace-optimize
+	RUST_LOG=info cargo token-factory-test
+
 deploy-local: download-deps
 	docker kill cosmwasm || true
 	docker volume rm -f junod_data

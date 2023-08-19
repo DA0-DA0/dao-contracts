@@ -1487,6 +1487,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "dao-dao-token-factory-integration-tests"
+version = "0.1.0"
+
+[[package]]
 name = "dao-interface"
 version = "2.2.0"
 dependencies = [
