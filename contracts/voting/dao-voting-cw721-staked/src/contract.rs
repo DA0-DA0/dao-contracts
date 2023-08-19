@@ -6,11 +6,12 @@ use crate::state::{
     INITITIAL_NFTS, MAX_CLAIMS, NFT_BALANCES, NFT_CLAIMS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
 };
 use crate::ContractError;
+use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_binary, to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Empty, Env,
-    MessageInfo, Reply, Response, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
+    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ReceiveMsg, NumTokensResponse};
@@ -28,6 +29,42 @@ const INSTANTIATE_NFT_CONTRACT_REPLY_ID: u64 = 0;
 // We multiply by this when calculating needed power for being active
 // when using active threshold with percent
 const PRECISION_FACTOR: u128 = 10u128.pow(9);
+
+#[cw_serde]
+pub enum NftInstantiateMsg {
+    Cw721(cw721_base::InstantiateMsg),
+    Sg721(sg721::InstantiateMsg),
+}
+
+impl NftInstantiateMsg {
+    fn update_minter(&mut self, minter: &str) {
+        match self {
+            NftInstantiateMsg::Cw721(msg) => msg.minter = minter.to_string(),
+            NftInstantiateMsg::Sg721(msg) => msg.minter = minter.to_string(),
+        }
+    }
+
+    fn to_binary(&self) -> Result<Binary, StdError> {
+        match self {
+            NftInstantiateMsg::Cw721(msg) => to_binary(&msg),
+            NftInstantiateMsg::Sg721(msg) => to_binary(&msg),
+        }
+    }
+}
+
+pub fn try_deserialize_nft_instantiate_msg(
+    instantiate_msg: Binary,
+) -> Result<NftInstantiateMsg, ContractError> {
+    if let Ok(cw721_msg) = from_binary::<cw721_base::msg::InstantiateMsg>(&instantiate_msg) {
+        return Ok(NftInstantiateMsg::Cw721(cw721_msg));
+    }
+
+    if let Ok(sg721_msg) = from_binary::<sg721::InstantiateMsg>(&instantiate_msg) {
+        return Ok(NftInstantiateMsg::Sg721(sg721_msg));
+    }
+
+    Err(ContractError::NftInstantiateError {})
+}
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -92,27 +129,10 @@ pub fn instantiate(
             msg: instantiate_msg,
             initial_nfts,
         } => {
-            // The instantiate message for the NFT contract is likely to be a cw721 or sg721
-            // instantiate message. We need to deserialize it and update the minter to be this
-            // contract.
-            //
-            // Custom NFT contracts with Instantiate messages that do fit the cw721 or sg721
-            // interface will not work with this contract. Use NftContract::Existing instead.
-            let cw721_instantiate_msg = from_binary::<cw721_base::InstantiateMsg>(&instantiate_msg);
-            let sg721_instantiate_msg = from_binary::<sg721::InstantiateMsg>(&instantiate_msg);
-
-            // Update the minter to be this contract, reserialize into Binary
-            let instantiate_msg = match (cw721_instantiate_msg, sg721_instantiate_msg) {
-                (Ok(mut cw721_instantiate_msg), _) => {
-                    cw721_instantiate_msg.minter = env.contract.address.to_string();
-                    to_binary(&cw721_instantiate_msg)?
-                }
-                (_, Ok(mut sg721_instantiate_msg)) => {
-                    sg721_instantiate_msg.minter = env.contract.address.to_string();
-                    to_binary(&sg721_instantiate_msg)?
-                }
-                _ => return Err(ContractError::NftInstantiateError {}),
-            };
+            // Deserialize the binary msg into either cw721 or sg721
+            let mut instantiate_msg = try_deserialize_nft_instantiate_msg(instantiate_msg)?;
+            // Update the minter to be this contract
+            instantiate_msg.update_minter(env.contract.address.as_str());
 
             // Check there is at least one NFT to initialize
             if initial_nfts.is_empty() {
@@ -137,7 +157,7 @@ pub fn instantiate(
                     funds: vec![],
                     admin: Some(info.sender.to_string()),
                     label,
-                    msg: instantiate_msg,
+                    msg: instantiate_msg.to_binary()?,
                 },
                 INSTANTIATE_NFT_CONTRACT_REPLY_ID,
             );
