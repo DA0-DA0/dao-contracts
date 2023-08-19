@@ -189,8 +189,16 @@ mod tests {
             )]
         );
 
+        // Query hooks returns all hooks added
         let HooksResponse { hooks: the_hooks } = hooks.query_hooks(deps.as_ref()).unwrap();
-
         assert_eq!(the_hooks, vec![addr!("meow")]);
+
+        // Remove last hook
+        hooks.remove_hook(&mut deps.storage, addr!("meow")).unwrap();
+
+        // Query hooks returns empty vector if no hooks added
+        let HooksResponse { hooks: the_hooks } = hooks.query_hooks(deps.as_ref()).unwrap();
+        let no_hooks: Vec<String> = vec![];
+        assert_eq!(the_hooks, no_hooks);
     }
 }

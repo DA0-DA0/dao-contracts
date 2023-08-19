@@ -1306,7 +1306,7 @@ fn test_update_active_threshold() {
 
     let resp: ActiveThresholdResponse = app
         .wrap()
-        .query_wasm_smart(addr, &QueryMsg::ActiveThreshold {})
+        .query_wasm_smart(addr.clone(), &QueryMsg::ActiveThreshold {})
         .unwrap();
     assert_eq!(
         resp.active_threshold,
@@ -1314,6 +1314,31 @@ fn test_update_active_threshold() {
             count: Uint128::new(100)
         })
     );
+
+    // Can't set threshold to invalid value
+    let msg = ExecuteMsg::UpdateActiveThreshold {
+        new_threshold: Some(ActiveThreshold::Percentage {
+            percent: Decimal::percent(120),
+        }),
+    };
+    let err: ContractError = app
+        .execute_contract(Addr::unchecked(DAO_ADDR), addr.clone(), &msg, &[])
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::InvalidActivePercentage {});
+
+    // Remove threshold
+    let msg = ExecuteMsg::UpdateActiveThreshold {
+        new_threshold: None,
+    };
+    app.execute_contract(Addr::unchecked(DAO_ADDR), addr.clone(), &msg, &[])
+        .unwrap();
+    let resp: ActiveThresholdResponse = app
+        .wrap()
+        .query_wasm_smart(addr, &QueryMsg::ActiveThreshold {})
+        .unwrap();
+    assert_eq!(resp.active_threshold, None);
 }
 
 #[test]
