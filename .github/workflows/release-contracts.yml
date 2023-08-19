@@ -14,7 +14,7 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-    container: cosmwasm/workspace-optimizer:0.12.11
+    container: cosmwasm/workspace-optimizer:0.12.13
     steps:
       - uses: actions/checkout@v3
 
