@@ -1,12 +1,15 @@
 [package]
-name = "dao-dao-token-factory-integration-tests"
+name = "token-factory-tests"
 version = "0.1.0"
 edition = { workspace = true }
 
 [dependencies]
 cosmwasm-std = { workspace = true, features = ["ibc3", "cosmwasm_1_1"] }
 cw-utils = { workspace = true }
+dao-interface = { workspace = true }
+dao-voting-token-factory-staked = { workspace = true }
 osmosis-test-tube = { workspace = true }
+token-bindings = { workspace = true }
 
 anyhow = { workspace = true }
 serde = { workspace = true }

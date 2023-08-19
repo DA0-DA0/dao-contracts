@@ -1613,19 +1613,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dao-dao-token-factory-integration-tests"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cosmwasm-std",
- "cw-utils 1.0.1",
- "env_logger 0.10.0",
- "osmosis-test-tube",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "dao-interface"
 version = "2.2.0"
 dependencies = [
@@ -4329,6 +4316,22 @@ dependencies = [
  "schemars",
  "serde",
  "thiserror",
+ "token-bindings 0.10.3 (git+https://github.com/CosmosContracts/token-bindings.git?branch=update-token-bindings-test)",
+]
+
+[[package]]
+name = "token-factory-tests"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cosmwasm-std",
+ "cw-utils 1.0.1",
+ "dao-interface",
+ "dao-voting-token-factory-staked",
+ "env_logger 0.10.0",
+ "osmosis-test-tube",
+ "serde",
+ "serde_json",
  "token-bindings 0.10.3 (git+https://github.com/CosmosContracts/token-bindings.git?branch=update-token-bindings-test)",
 ]
 
