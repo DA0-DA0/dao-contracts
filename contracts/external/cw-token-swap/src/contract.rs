@@ -10,7 +10,8 @@ use cw_utils::must_pay;
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StatusResponse},
-    state::{CheckedCounterparty, CheckedTokenInfo, COUNTERPARTY_ONE, COUNTERPARTY_TWO},
+    state::{COUNTERPARTY_ONE, COUNTERPARTY_TWO},
+    types::{CheckedCounterparty, CheckedSwapInfo},
 };
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-token-swap";
@@ -112,14 +113,16 @@ fn do_fund(
     storage.save(deps.storage, &counterparty)?;
 
     let messages = if counterparty.provided && other_counterparty.provided {
-        vec![
-            counterparty
-                .promise
-                .into_send_message(&other_counterparty.address)?,
+        let mut msgs = counterparty
+            .promise
+            .into_send_message(other_counterparty.address.to_string(), false)?;
+
+        msgs.extend(
             other_counterparty
                 .promise
-                .into_send_message(&counterparty.address)?,
-        ]
+                .into_send_message(counterparty.address.to_string(), false)?,
+        );
+        msgs
     } else {
         vec![]
     };
@@ -143,9 +146,10 @@ pub fn execute_receive(
         storage,
     } = get_counterparty(deps.as_ref(), &sender)?;
 
-    let (expected_payment, paid) = if let CheckedTokenInfo::Cw20 {
+    let (expected_payment, paid) = if let CheckedSwapInfo::Cw20 {
         contract_addr,
         amount,
+        ..
     } = &counterparty.promise
     {
         if *contract_addr != token_contract {
@@ -174,9 +178,8 @@ pub fn execute_fund(deps: DepsMut, info: MessageInfo) -> Result<Response, Contra
         other_counterparty,
         storage,
     } = get_counterparty(deps.as_ref(), &info.sender)?;
-
     let (expected_payment, paid) =
-        if let CheckedTokenInfo::Native { amount, denom } = &counterparty.promise {
+        if let CheckedSwapInfo::Native { amount, denom, .. } = &counterparty.promise {
             let paid = must_pay(&info, denom).map_err(|_| ContractError::InvalidFunds {})?;
 
             (*amount, paid)
@@ -217,7 +220,7 @@ pub fn execute_withdraw(deps: DepsMut, info: MessageInfo) -> Result<Response, Co
     let message = counterparty
         .promise
         .clone()
-        .into_send_message(&counterparty.address)?;
+        .into_send_message(counterparty.address.to_string(), true)?;
 
     let mut counterparty = counterparty;
     counterparty.provided = false;
@@ -226,7 +229,7 @@ pub fn execute_withdraw(deps: DepsMut, info: MessageInfo) -> Result<Response, Co
     Ok(Response::new()
         .add_attribute("method", "withdraw")
         .add_attribute("counterparty", counterparty.address)
-        .add_message(message))
+        .add_messages(message))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
