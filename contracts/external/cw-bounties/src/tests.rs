@@ -286,11 +286,6 @@ pub fn test_update_bounty() {
         )
         .unwrap();
 
-        let juno_balance_after_create = test
-            .app
-            .wrap()
-            .query_balance(test.owner.clone(), JUNO_DENOM)
-            .unwrap();
         test.update(
             1,
             coin(2 * bounty_amount, JUNO_DENOM),
@@ -565,6 +560,35 @@ pub fn test_update_bounty() {
             "before: {}, after: {}",
             initial_atom_balance.amount.u128(),
             atom_balance_after.amount.u128()
+        );
+    }
+
+    // case: update bounty with different denom, but owner sends with incorrect denom
+    {
+        let mut test = Test::new();
+        // create bounty
+        test.create(
+            coin(bounty_amount, JUNO_DENOM),
+            "title".to_string(),
+            Some("description".to_string()),
+            &[coin(bounty_amount, JUNO_DENOM)],
+        )
+        .unwrap();
+
+        let err: ContractError = test
+            .update(
+                1,
+                coin(200, ATOM_DENOM), // update with atom denom
+                "title".to_string(),
+                Some("description".to_string()),
+                &[coin(200, JUNO_DENOM)], // but send juno denom
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+        assert_eq!(
+            err,
+            ContractError::PaymentError(PaymentError::MissingDenom(ATOM_DENOM.to_string()))
         );
     }
 
