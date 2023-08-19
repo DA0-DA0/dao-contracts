@@ -39,7 +39,7 @@ deploy-local: download-deps
 		-p 26657:26657 \
 		-p 9090:9090 \
 		--mount type=volume,source=junod_data,target=/root \
-		ghcr.io/cosmoscontracts/juno:v11.0.0 /opt/setup_and_run.sh {{test_addrs}}
+		ghcr.io/cosmoscontracts/juno:v16.0.0 /opt/setup_and_run.sh {{test_addrs}}
 
 download-deps:
 	mkdir -p artifacts target
