@@ -269,7 +269,7 @@ pub fn test_close_bounty() {
 #[test]
 pub fn test_update_bounty() {
     let bounty_amount = 100;
-    // case: update bounty
+    // case: update bounty with higher amount
     {
         let mut test = Test::new();
         let initial_juno_balance = test
@@ -286,6 +286,11 @@ pub fn test_update_bounty() {
         )
         .unwrap();
 
+        let juno_balance_after_create = test
+            .app
+            .wrap()
+            .query_balance(test.owner.clone(), JUNO_DENOM)
+            .unwrap();
         test.update(
             1,
             coin(2 * bounty_amount, JUNO_DENOM),
@@ -315,7 +320,113 @@ pub fn test_update_bounty() {
             .query_balance(test.owner.clone(), JUNO_DENOM)
             .unwrap();
         assert!(
-            initial_juno_balance.amount.u128() == (balance_after.amount.u128() + 200),
+            initial_juno_balance.amount.u128() == (balance_after.amount.u128() + 2 * bounty_amount),
+            "before: {}, after: {}",
+            initial_juno_balance.amount.u128(),
+            balance_after.amount.u128()
+        );
+    }
+
+    // case: update bounty with lower amount
+    {
+        let mut test = Test::new();
+        let initial_juno_balance = test
+            .app
+            .wrap()
+            .query_balance(test.owner.clone(), JUNO_DENOM)
+            .unwrap();
+        // create bounty
+        test.create(
+            coin(bounty_amount, JUNO_DENOM),
+            "title".to_string(),
+            Some("description".to_string()),
+            &[coin(bounty_amount, JUNO_DENOM)],
+        )
+        .unwrap();
+
+        test.update(
+            1,
+            coin(bounty_amount / 2, JUNO_DENOM),
+            "title".to_string(),
+            Some("description".to_string()),
+            &[], // no funds needed, since update amount is lower
+        )
+        .unwrap();
+        // - assert bounty
+        let bounty = test.query(1).unwrap();
+        assert_eq!(
+            bounty,
+            Bounty {
+                id: 1,
+                amount: coin(bounty_amount / 2, JUNO_DENOM),
+                title: "title".to_string(),
+                description: Some("description".to_string()),
+                status: BountyStatus::Open,
+                created_at: test.app.block_info().time.seconds(),
+                updated_at: Some(test.app.block_info().time.seconds()),
+            }
+        );
+        // assert balance
+        let balance_after = test
+            .app
+            .wrap()
+            .query_balance(test.owner.clone(), JUNO_DENOM)
+            .unwrap();
+        assert!(
+            initial_juno_balance.amount.u128() == (balance_after.amount.u128() + bounty_amount / 2),
+            "before: {}, after: {}",
+            initial_juno_balance.amount.u128(),
+            balance_after.amount.u128()
+        );
+    }
+
+    // case: update bounty with lower amount + owner accidentally send funds
+    {
+        let mut test = Test::new();
+        let initial_juno_balance = test
+            .app
+            .wrap()
+            .query_balance(test.owner.clone(), JUNO_DENOM)
+            .unwrap();
+        // create bounty
+        test.create(
+            coin(bounty_amount, JUNO_DENOM),
+            "title".to_string(),
+            Some("description".to_string()),
+            &[coin(bounty_amount, JUNO_DENOM)],
+        )
+        .unwrap();
+
+        test.update(
+            1,
+            coin(bounty_amount / 2, JUNO_DENOM),
+            "title".to_string(),
+            Some("description".to_string()),
+            &[coin(bounty_amount, JUNO_DENOM)],
+        )
+        .unwrap();
+        // - assert bounty
+        let bounty = test.query(1).unwrap();
+        assert_eq!(
+            bounty,
+            Bounty {
+                id: 1,
+                amount: coin(bounty_amount / 2, JUNO_DENOM),
+                title: "title".to_string(),
+                description: Some("description".to_string()),
+                status: BountyStatus::Open,
+                created_at: test.app.block_info().time.seconds(),
+                updated_at: Some(test.app.block_info().time.seconds()),
+            }
+        );
+        // assert balance
+        let balance_after = test
+            .app
+            .wrap()
+            .query_balance(test.owner.clone(), JUNO_DENOM)
+            .unwrap();
+        assert!(
+            initial_juno_balance.amount.u128() == (balance_after.amount.u128() + bounty_amount / 2),
             "before: {}, after: {}",
             initial_juno_balance.amount.u128(),
             balance_after.amount.u128()

@@ -7,7 +7,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_paginate_storage::paginate_map_values;
-use cw_utils::must_pay;
+use cw_utils::{may_pay, must_pay};
 
 use crate::{
     error::ContractError,
@@ -243,7 +243,7 @@ pub fn update(
     };
 
     // Check if amount is greater or less than original amount
-    let old_amount = bounty.amount;
+    let old_amount = bounty.amount.clone();
     match new_amount.amount.cmp(&old_amount.amount) {
         Ordering::Greater => {
             // If new amount is greater, check funds sent plus
@@ -259,7 +259,9 @@ pub fn update(
         }
         Ordering::Less => {
             // If new amount is less, pay out difference to owner
-            let diff = old_amount.amount - new_amount.amount;
+            // in case owner accidentally sent funds, send back as well
+            let funds_send = may_pay(&info, &bounty.amount.denom)?;
+            let diff = old_amount.amount - new_amount.amount + funds_send;
             let msg = BankMsg::Send {
                 to_address: info.sender.to_string(),
                 amount: vec![Coin {
