@@ -1,10 +1,10 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
+use cw_tokenfactory_issuer::msg::DenomUnit;
 use cw_utils::Duration;
 use dao_dao_macros::{active_query, token_query, voting_module_query};
 use dao_interface::state::Admin;
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
-pub use osmosis_std::types::cosmos::bank::v1beta1::{DenomUnit, Metadata};
 
 #[cw_serde]
 pub struct InitialBalance {
@@ -13,9 +13,19 @@ pub struct InitialBalance {
 }
 
 #[cw_serde]
+pub struct NewDenomMetadata {
+    pub name: String,
+    pub description: String,
+    pub symbol: String,
+    pub display: String,
+    pub decimals: u32,
+    pub additional_denom_units: Option<Vec<DenomUnit>>,
+}
+
+#[cw_serde]
 pub struct NewTokenInfo {
     pub subdenom: String,
-    pub metadata: Option<Metadata>,
+    pub metadata: Option<NewDenomMetadata>,
     pub initial_balances: Vec<InitialBalance>,
     pub initial_dao_balance: Option<Uint128>,
 }

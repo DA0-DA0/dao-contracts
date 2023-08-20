@@ -9,7 +9,7 @@ use cw2::set_contract_version;
 use cw_controllers::ClaimsResponse;
 use cw_storage_plus::Bound;
 use cw_tokenfactory_issuer::msg::{
-    ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg,
+    DenomUnit, ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg, Metadata,
 };
 use cw_utils::{maybe_addr, must_pay, parse_reply_instantiate_data, Duration};
 use dao_interface::state::Admin;
@@ -702,12 +702,32 @@ pub fn reply(
                         funds: vec![],
                     });
 
-                    // TODO first denom_unit must be the same as the denom. Make a custom metadata type?
                     // If metadata, set it by calling the contract
                     if let Some(metadata) = token.metadata {
+                        // The first denom_unit must be the same as the denom. Make a custom metadata type?
+                        let mut denom_units = vec![DenomUnit {
+                            denom: denom.clone(),
+                            exponent: 0,
+                            aliases: vec![metadata.symbol.clone()],
+                        }];
+
+                        // Caller can optionally define additional units
+                        if let Some(mut additional_units) = metadata.additional_denom_units {
+                            denom_units.append(&mut additional_units);
+                        }
+
                         msgs.push(WasmMsg::Execute {
                             contract_addr: issuer_addr.clone(),
-                            msg: to_binary(&IssuerExecuteMsg::SetDenomMetadata { metadata })?,
+                            msg: to_binary(&IssuerExecuteMsg::SetDenomMetadata {
+                                metadata: Metadata {
+                                    description: metadata.description,
+                                    denom_units,
+                                    base: denom.clone(),
+                                    display: metadata.display,
+                                    name: metadata.name,
+                                    symbol: metadata.symbol,
+                                },
+                            })?,
                             funds: vec![],
                         });
                     }

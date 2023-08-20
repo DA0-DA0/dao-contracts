@@ -44,5 +44,5 @@ token-bindings = { workspace = true }
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }
 cw-multi-test = { workspace = true }
-osmosis-test-tube = "17.0.0-rc0"
+osmosis-test-tube = { workspace = true }
 serde_json = { workspace = true }

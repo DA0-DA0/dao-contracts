@@ -56,6 +56,7 @@ cw721-base = "0.18"
 env_logger = "0.10"
 once_cell = "1.18"
 osmosis-std = {git = "https://github.com/osmosis-labs/osmosis-rust", branch = "main"}
+osmosis-test-tube = "17.0.0-rc0"
 proc-macro2 = "1.0"
 prost = "0.11"
 quote = "1.0"
