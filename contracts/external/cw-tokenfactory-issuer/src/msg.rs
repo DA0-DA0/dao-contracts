@@ -1,8 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Uint128};
-
-// re-export Metadata related structs so that using this contract as lib can access the struct
-pub use osmosis_std::types::cosmos::bank::v1beta1::{DenomUnit, Metadata};
+pub use token_bindings::{DenomUnit, Metadata};
 
 #[cw_serde]
 pub enum InstantiateMsg {

@@ -1,9 +1,6 @@
 use cosmwasm_std::{coins, BankMsg, Coin, DepsMut, Env, MessageInfo, Response, Uint128};
-// use osmo_bindings::TokenFactoryMsg;
-use osmosis_std::types::cosmos::bank::v1beta1::Metadata;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgSetDenomMetadata};
-
-use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
+use token_bindings::{Metadata, TokenFactoryMsg, TokenFactoryQuery};
 
 use crate::error::ContractError;
 use crate::helpers::{check_bool_allowance, check_is_contract_owner};
@@ -165,7 +162,7 @@ pub fn change_tokenfactory_admin(
 
 pub fn set_denom_metadata(
     deps: DepsMut<TokenFactoryQuery>,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     metadata: Metadata,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
@@ -174,9 +171,9 @@ pub fn set_denom_metadata(
 
     Ok(Response::new()
         .add_attribute("action", "set_denom_metadata")
-        .add_message(MsgSetDenomMetadata {
-            sender: env.contract.address.to_string(),
-            metadata: Some(metadata),
+        .add_message(TokenFactoryMsg::SetMetadata {
+            denom: DENOM.load(deps.storage)?,
+            metadata,
         }))
 }
 
