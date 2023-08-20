@@ -21,6 +21,8 @@ pub enum InstantiateMsg {
 #[cw_serde]
 pub struct MigrateMsg {}
 
+/// TODO add force transfer
+/// TODO more doc strings
 #[cw_serde]
 pub enum ExecuteMsg {
     ChangeTokenFactoryAdmin {

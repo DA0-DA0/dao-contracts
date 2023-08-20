@@ -58,6 +58,7 @@ fn validate_duration(duration: Option<Duration>) -> Result<(), ContractError> {
     Ok(())
 }
 
+// TODO consider removing token factory msg and query dependencies
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut<TokenFactoryQuery>,
@@ -134,6 +135,8 @@ pub fn instantiate(
                 });
             }
 
+            // TODO instantiate token issuer instead
+            // TODO make sure to set contract admin as DAO
             // Create Token Factory denom SubMsg
             let create_denom_msg = SubMsg::reply_on_success(
                 TokenFactoryMsg::CreateDenom {
@@ -611,6 +614,8 @@ pub fn reply(
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
     match msg.id {
         CREATE_DENOM_REPLY_ID => {
+            // TODO get address of cw-tokenfactory-issuer
+
             // Load info for new token and the DAO's address
             let token = TOKEN_INSTANTIATION_INFO.load(deps.storage)?;
             let dao = DAO.load(deps.storage)?;
@@ -621,6 +626,8 @@ pub fn reply(
                 .full_denom(env.contract.address.to_string(), token.subdenom)?
                 .denom;
             DENOM.save(deps.storage, &denom)?;
+
+            // TODO if metadata, set it
 
             let mut mint_msgs: Vec<TokenFactoryMsg> = vec![];
 
@@ -639,12 +646,13 @@ pub fn reply(
                 return Err(ContractError::InitialBalancesError {});
             }
 
+            // TODO Call issuer contract to mint tokens
             // Mint initial balances
             token.initial_balances.iter().for_each(|b| {
                 mint_msgs.push(TokenFactoryMsg::MintTokens {
                     denom: denom.clone(),
                     amount: b.amount,
-                    mint_to_address: b.mint_to_address.clone(),
+                    mint_to_address: b.address.clone(),
                 })
             });
 
@@ -662,6 +670,7 @@ pub fn reply(
             // Clear up unneeded storage.
             TOKEN_INSTANTIATION_INFO.remove(deps.storage);
 
+            // TODO update issuer contract admin
             // Update token factory denom admin to be the DAO
             let update_token_admin_msg = TokenFactoryMsg::ChangeAdmin {
                 denom: denom.clone(),

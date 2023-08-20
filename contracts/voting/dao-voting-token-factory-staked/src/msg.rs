@@ -9,11 +9,13 @@ use token_bindings::Metadata;
 #[cw_serde]
 pub struct InitialBalance {
     pub amount: Uint128,
-    pub mint_to_address: String,
+    pub address: String,
 }
 
 #[cw_serde]
 pub struct NewTokenInfo {
+    // TODO
+    // pub token_issuer_code_id: u64,
     pub subdenom: String,
     pub metadata: Option<Metadata>,
     pub initial_balances: Vec<InitialBalance>,

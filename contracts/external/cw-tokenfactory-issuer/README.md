@@ -1,20 +1,18 @@
 # cw-tokenfactory-issuer
 
-This repo contains a set of contracts that when used in conjunction with the x/tokenfactory module
-in Osmosis will enable a centrally issued stablecoin with the ability to mint, burn, freeze, and blacklist.
+Forked from [osmosis-labs/cw-tokenfactory-issuer](https://github.com/osmosis-labs/cw-tokenfactory-issuer).
 
-The contract would have an owner, but can delegate capabilities to other acccounts. For example, the owner
-of a contract can delegate minting allowance of 1000 tokens to a new address.
+This repo contains a set of contracts that when used in conjunction with the x/tokenfactory module in Osmosis, Juno, and many other chains will enable a centrally issued stablecoin with the ability to mint, burn, freeze, and blacklist.
 
-The contract would be the admin of a tokenfactory denom. For minting and burning, users then interact with the contract using its own ExecuteMsgs which trigger the contract's access control logic, and the contract then dispatches tokenfactory sdk.Msgs
-from its own contract account.
+The contract would have an owner, but can delegate capabilities to other acccounts. For example, the owner of a contract can delegate minting allowance of 1000 tokens to a new address.
 
-The contract also contains a SudoMsg::BlockBeforeSend hook that allows for the blacklisting of specific accounts as well as the
-freezing of all transfers if necessary.
+The contract would be the admin of a tokenfactory denom. For minting and burning, users then interact with the contract using its own ExecuteMsgs which trigger the contract's access control logic, and the contract then dispatches tokenfactory sdk.Msgs from its own contract account.
+
+The contract also contains a `SudoMsg::BlockBeforeSend`` hook that allows for the blacklisting of specific accounts as well as the freezing of all transfers if necessary.
 
 ## Deployment
 
-The contract does not create its own tokenfactory denom. Instead, it is expected that a tokenfactory denom is created by an external account which sets denom metadata, points to the contract as the BlockBeforeSend hook, and then passes over admin control to the contract.
+The contract does not create its own tokenfactory denom. Instead, it is expected that a tokenfactory denom is created by an external account which sets denom metadata, points to the contract as the `BlockBeforeSend` hook, and then passes over admin control to the contract.
 
 Here we will present guide for getting the contract deployed and setup.
 

@@ -2161,6 +2161,7 @@ dependencies = [
  "cw-multi-test",
  "cw-paginate-storage 2.2.0",
  "cw-storage-plus 1.1.0",
+ "cw-tokenfactory-issuer",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
  "dao-dao-macros",

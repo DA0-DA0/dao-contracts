@@ -8,7 +8,7 @@ use crate::msg::{
 use crate::state::Config;
 use crate::ContractError;
 use cosmwasm_std::testing::{mock_env, MockApi, MockQuerier, MockStorage};
-use cosmwasm_std::{coins, Addr, Coin, Decimal, OwnedDeps, Uint128};
+use cosmwasm_std::{coins, Addr, Coin, Decimal, Empty, OwnedDeps, Uint128};
 use cw_controllers::ClaimsResponse;
 use cw_multi_test::{
     next_block, AppResponse, BankSudo, Contract, ContractWrapper, Executor, SudoMsg,
@@ -29,7 +29,18 @@ const DENOM: &str = "ujuno";
 const INVALID_DENOM: &str = "uinvalid";
 const ODD_DENOM: &str = "uodd";
 
+fn issuer_contract() -> Box<dyn Contract<TokenFactoryMsg, Empty>> {
+    let contract = ContractWrapper::new(
+        cw_tokenfactory_issuer::contract::execute,
+        cw_tokenfactory_issuer::contract::instantiate,
+        cw_tokenfactory_issuer::contract::query,
+    )
+    .with_reply(cw_tokenfactory_issuer::contract::reply);
+    Box::new(contract)
+}
+
 fn staking_contract() -> Box<dyn Contract<TokenFactoryMsg, TokenFactoryQuery>> {
+    // TODO with empty, after removing the need for the extra message types
     let contract = ContractWrapper::new(
         crate::contract::execute,
         crate::contract::instantiate,
@@ -225,6 +236,8 @@ fn get_balance(app: &mut App, address: &str, denom: &str) -> Uint128 {
 #[test]
 fn test_instantiate_existing() {
     let mut app = mock_app();
+    // TODO
+    // let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     // Populated fields
     let _addr = instantiate_staking(
@@ -283,7 +296,7 @@ fn test_instantiate_new_denom() {
                 }),
                 initial_balances: vec![InitialBalance {
                     amount: Uint128::new(100),
-                    mint_to_address: ADDR1.to_string(),
+                    address: ADDR1.to_string(),
                 }],
                 initial_dao_balance: Some(Uint128::new(900)),
             }),
@@ -315,7 +328,7 @@ fn test_instantiate_new_denom() {
                 }),
                 initial_balances: vec![InitialBalance {
                     amount: Uint128::new(100),
-                    mint_to_address: ADDR1.to_string(),
+                    address: ADDR1.to_string(),
                 }],
                 initial_dao_balance: None,
             }),
@@ -483,7 +496,7 @@ fn test_stake_new_denom() {
                 }),
                 initial_balances: vec![InitialBalance {
                     amount: Uint128::new(100),
-                    mint_to_address: ADDR1.to_string(),
+                    address: ADDR1.to_string(),
                 }],
                 initial_dao_balance: Some(Uint128::new(900)),
             }),

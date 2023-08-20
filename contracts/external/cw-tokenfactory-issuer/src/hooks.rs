@@ -1,4 +1,3 @@
-#[cfg(not(feature = "library"))]
 use cosmwasm_std::{Coin, DepsMut, Response};
 
 use crate::error::ContractError;

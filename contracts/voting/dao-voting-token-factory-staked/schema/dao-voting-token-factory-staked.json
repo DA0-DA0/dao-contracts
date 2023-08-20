@@ -214,13 +214,13 @@
         "type": "object",
         "required": [
           "amount",
-          "mint_to_address"
+          "address"
         ],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
           },
-          "mint_to_address": {
+          "address": {
             "type": "string"
           }
         },
