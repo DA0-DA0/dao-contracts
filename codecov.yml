@@ -1,0 +1,5 @@
+ignore:
+    - "ci"
+    - "packages/dao-dao-macros"
+    - "packages/dao-testing"
+    - "test-contracts"

@@ -1,0 +1,20 @@
+[package]
+name = "dao-interface"
+authors = ["ekez ekez@withoutdoing.com"]
+description = "A package containing interface definitions for DAO DAO DAOs."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw2 = { workspace = true }
+cw20 = { workspace = true }
+cw721 = { workspace = true }
+cw-hooks = { workspace = true }
+cw-utils = { workspace = true }
+
+[dev-dependencies]
+cosmwasm-schema = { workspace = true }

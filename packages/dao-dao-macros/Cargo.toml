@@ -1,0 +1,23 @@
+[package]
+name = "dao-dao-macros"
+authors = ["ekez ekez@withoutdoing.com"]
+description = "A package macros for deriving DAO module interfaces."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[lib]
+proc-macro = true
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+syn = { workspace = true }
+quote = { workspace = true }
+proc-macro2 = { workspace = true }
+
+[dev-dependencies]
+dao-interface = { workspace = true }
+cw-hooks = { workspace = true }
+dao-voting = { workspace = true }
+cosmwasm-std = { workspace = true }

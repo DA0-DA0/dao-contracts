@@ -1,0 +1,33 @@
+[package]
+name = "dao-voting-cw4"
+authors = ["Callum Anderson <callumanderson745@gmail.com>"]
+description = "A DAO DAO voting module based on cw4 membership."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-storage = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+cw-utils = { workspace = true }
+cosmwasm-schema = { workspace = true }
+thiserror = { workspace = true }
+dao-dao-macros = { workspace = true }
+dao-interface = { workspace = true }
+cw4 = { workspace = true }
+cw4-group = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }

@@ -1,0 +1,35 @@
+# macOS
+.DS_Store
+
+# Text file backups
+**/*.rs.bk
+
+# Build results
+target/
+
+# IDEs
+.vscode/
+.idea/
+*.iml
+**/.editorconfig
+
+# Auto-gen
+.cargo-ok
+
+# Build artifacts
+*.wasm
+hash.txt
+contracts.txt
+artifacts/
+
+# code coverage
+tarpaulin-report.*
+
+# integration tests
+gas_reports/
+ci/configs/cosm-orc/local.yaml
+
+contracts/**/Cargo.lock
+packages/**/Cargo.lock
+debug/**/Cargo.lock
+ci/**/Cargo.lock

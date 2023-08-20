@@ -1,0 +1,32 @@
+[package]
+name = "dao-voting-cw20-balance"
+authors = ["ekez <ekez@withoutdoing.com>"]
+description = "A DAO DAO test contract."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+cw20 = { workspace = true }
+cw-utils = { workspace = true }
+thiserror = { workspace = true }
+dao-dao-macros = { workspace = true }
+dao-interface = { workspace = true }
+cw20-base = {  workspace = true, features = ["library"] }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }

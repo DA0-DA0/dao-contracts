@@ -1,0 +1,14 @@
+[package]
+name = "dao-vote-hooks"
+authors = ["ekez ekez@withoutdoing.com"]
+description = "A package for managing vote hooks."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-hooks = { workspace = true }
+dao-voting = { workspace = true }

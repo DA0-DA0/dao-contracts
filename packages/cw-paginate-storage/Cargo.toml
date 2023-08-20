@@ -1,0 +1,17 @@
+[package]
+name = "cw-paginate-storage"
+authors = ["ekez ekez@withoutdoing.com"]
+description = "A package for paginating cosmwasm maps."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-storage = { workspace = true }
+cw-storage-plus = { workspace = true }
+serde = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }

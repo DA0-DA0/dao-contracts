@@ -1,0 +1,37 @@
+[package]
+name          = "cw721-roles"
+authors       = ["Jake Hartnell"]
+description   = "Non-transferable CW721 NFT contract that incorporates voting weights and on-chain roles."
+version       = { workspace = true }
+edition       = { workspace = true }
+repository    = { workspace = true }
+license       = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std    = { workspace = true }
+cw-controllers  = { workspace = true }
+cw-ownable      = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-utils        = { workspace = true }
+cw2             = { workspace = true }
+cw4             = { workspace = true }
+cw721           = { workspace = true }
+cw721-base      = { workspace = true, features = ["library"] }
+dao-cw721-extensions = { workspace = true }
+serde           = { workspace = true }
+thiserror       = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test   = { workspace = true }
+dao-testing     = { workspace = true }
+dao-voting-cw721-staked = { workspace = true }

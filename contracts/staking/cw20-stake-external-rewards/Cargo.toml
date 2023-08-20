@@ -1,0 +1,37 @@
+[package]
+name = "cw20-stake-external-rewards"
+authors = ["Ben2x4 <Ben2x4@tutanota.com>", "ekez <ekez@withoutdoing.com>"]
+edition = "2018"
+description = "Distributes staking rewards."
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cosmwasm-storage = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-controllers = { workspace = true }
+cw20 = { workspace = true }
+cw-utils = { workspace = true }
+cw20-base = {  workspace = true, features = ["library"] }
+cw2 = { workspace = true }
+thiserror = { workspace = true }
+cw20-stake = { workspace = true, features = ["library"]}
+cw-ownable = { workspace = true }
+
+cw20-stake-external-rewards-v1 = { workspace = true }
+cw20-013 = { package = "cw20", version = "0.13" }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }
+anyhow = { workspace = true }

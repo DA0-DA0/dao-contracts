@@ -1,0 +1,13 @@
+[package]
+name = "cw-stake-tracker"
+authors = ["ekez <ekez@withoutdoing.com>"]
+description = "A package for tracking staked and unbonding tokens in x/staking."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace =  true }
+cw-wormhole = { workspace = true }

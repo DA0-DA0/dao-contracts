@@ -1,0 +1,14 @@
+[package]
+name = "dao-cw721-extensions"
+authors = ["Jake Hartnell"]
+description = "A package for DAO cw721 extensions."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-controllers = { workspace = true }
+cw4 = { workspace = true }

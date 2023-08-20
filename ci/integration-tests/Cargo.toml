@@ -1,0 +1,41 @@
+[package]
+name = "integration-tests"
+version = "0.1.0"
+edition = { workspace = true }
+
+# This crate depends on rand. These are not featured in
+# wasm builds of cosmwasm. Despite this crate only being used as a dev
+# dependency, because it is part of the workspace it will always be
+# compiled. There is no good way to remove a member from a workspace
+# conditionally. As such, we don't compile anything here if we're
+# targeting wasm.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cosm-orc = { workspace = true }
+cw20 = { workspace = true }
+cw20-base = { workspace = true }
+cw721-base = { workspace = true }
+cw721-roles = { workspace = true }
+cw721 = { workspace = true }
+cw-utils = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["ibc3"] }
+
+cw-vesting = { workspace = true }
+cw20-stake = { workspace = true }
+dao-dao-core = { workspace = true }
+dao-interface = { workspace = true }
+dao-pre-propose-single = { workspace = true }
+dao-proposal-single = { workspace = true }
+dao-voting = { workspace = true }
+dao-voting-cw20-staked = { workspace = true }
+dao-voting-cw721-staked = { workspace = true }
+
+assert_matches = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+once_cell = { workspace = true }
+env_logger = { workspace = true }
+test-context = { workspace = true }
+cosm-tome = { workspace = true }
+cosmos-sdk-proto = { workspace = true }
+rand = { workspace = true }

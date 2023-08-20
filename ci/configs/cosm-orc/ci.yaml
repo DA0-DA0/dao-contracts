@@ -1,0 +1,8 @@
+chain_cfg:
+  denom: "ujunox"
+  prefix: "juno"
+  chain_id: "testing"
+  grpc_endpoint: "http://localhost:9090/"
+  derivation_path: "m/44'/118'/0'/0/0"
+  gas_price: 0.1
+  gas_adjustment: 1.5

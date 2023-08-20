@@ -1,0 +1,15 @@
+[package]
+name = "cw721-controllers"
+authors = ["CypherApe cypherape@protonmail.com"]
+description = "A package for managing cw721 claims."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-utils = { workspace = true }
+cw-storage-plus = { workspace = true }
+thiserror = { workspace = true }

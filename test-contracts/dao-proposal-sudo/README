@@ -1,0 +1,5 @@
+# dao-proposal-sudo
+
+A governance module for the cw-governance contract. Instantiated with
+a root address. The root address may indiscriminately cause the module
+to execute messages on the DAO. No other user may do this.

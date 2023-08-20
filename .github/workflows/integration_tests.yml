@@ -1,0 +1,101 @@
+name: Integration Tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    env:
+      GAS_OUT_DIR: gas_reports
+      GAS_LIMIT: 100000000
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install latest nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly-2023-02-02
+          target: wasm32-unknown-unknown
+          override: true
+
+      - name: Rust Dependencies Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+            artifacts/
+          key: ${{ runner.os }}-cargo-with-artifacts-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Set latest just version
+        run: echo "JUST_VERSION=$(cargo search just -q | sed -n -e '/^just[[:space:]]/p' | cut -d '"' -f 2)" >> $GITHUB_ENV
+
+      - name: Get cached just
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/bin/just
+          key: ${{ runner.os }}-just-${{ env.JUST_VERSION }}
+
+      - name: Install just
+        run: cargo install just || true
+
+      - name: Get mainnet GAS_LIMIT
+        run: echo "MAINNET_GAS_LIMIT=$(curl -s https://juno-rpc.polkachu.com/consensus_params | jq -r '.result.consensus_params.block.max_gas')" >> $GITHUB_ENV
+
+      - name: Mainnet block GAS_LIMIT changed
+        if: ${{ env.MAINNET_GAS_LIMIT != env.GAS_LIMIT }}
+        uses: actions/github-script@v6
+        with:
+          script: core.setFailed(`Integration tests must update GAS_LIMIT from ${process.env.GAS_LIMIT} to ${process.env.MAINNET_GAS_LIMIT}`)
+
+      - name: Run Integration Tests
+        run: just integration-test
+
+      - name: Combine Test Gas Reports
+        run: cd ci/integration-tests/ && jq -rs 'reduce .[] as $item ({}; . * $item)' gas_reports/*.json > gas_report.json
+
+      - name: Raw Gas Report
+        run: cat ci/integration-tests/gas_report.json
+
+      - name: Set GIT_BRANCH
+        run: echo "GIT_BRANCH=$(echo ${{ github.ref }} | sed 's|/|-|g')" >> $GITHUB_ENV
+
+      - name: Upload Gas Report
+        if: ${{ github.ref == 'refs/heads/main' }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: dao-dao-gas-report-${{ env.GIT_BRANCH }}
+          path: ci/integration-tests/gas_report.json
+          retention-days: 90
+
+      - name: Download main gas report
+        id: download_gas
+        # Because the max retention period of github artifacts is 90 days
+        # there's a possibility the main's report no longer exists
+        continue-on-error: true
+        if: ${{ github.ref != 'refs/heads/main' }}
+        # NOTE: We can't use github's `actions/download-artifact` because it doesnt support
+        # downloading an artifact cross workflows yet
+        # https://github.com/actions/download-artifact/issues/3
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          branch: main
+          workflow: integration_tests.yml
+          name: dao-dao-gas-report-refs-heads-main
+
+      - name: Post gas diff to PR
+        if: ${{ github.ref != 'refs/heads/main' && steps.download_gas.outputs.found_artifact == 'true' }}
+        uses: de-husk/cosm-orc-gas-diff-action@v0.6.2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          current_json: ci/integration-tests/gas_report.json
+          old_json: gas_report.json

@@ -1,0 +1,14 @@
+chain_cfg:
+  denom: "ujunox"
+  prefix: "juno"
+  chain_id: "uni-5"
+  grpc_endpoint: "http://juno-testnet-grpc.polkachu.com:26090"
+  derivation_path: "m/44'/118'/0'/0/0"
+  gas_price: 0.1
+  gas_adjustment: 1.5
+
+contract_deploy_info:
+  cw20_base:
+    code_id: 229
+  cw4_group:
+    code_id: 230

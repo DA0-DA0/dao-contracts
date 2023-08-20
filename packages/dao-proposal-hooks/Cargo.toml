@@ -1,0 +1,14 @@
+[package]
+name = "dao-proposal-hooks"
+authors = ["Callum Anderson <callumanderson745@gmail.com>"]
+description = "A package for managing proposal hooks."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-hooks = { workspace = true }
+dao-voting = { workspace = true }

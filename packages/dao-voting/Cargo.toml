@@ -1,0 +1,19 @@
+[package]
+name = "dao-voting"
+authors = ["ekez ekez@withoutdoing.com"]
+description = "Types and methods for CosmWasm DAO voting."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+thiserror = { workspace = true }
+cw20 = { workspace = true }
+dao-interface = { workspace = true }
+dao-dao-macros = { workspace = true }
+cw-denom = { workspace = true }
+cw-utils = { workspace = true }
+cw-storage-plus = { workspace = true }

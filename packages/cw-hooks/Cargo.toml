@@ -1,0 +1,14 @@
+[package]
+name = "cw-hooks"
+authors = ["Callum Anderson <callumanderson745@gmail.com>"]
+description = "A package for managing a set of hooks which can be accessed by their index."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+thiserror = { workspace = true }
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
