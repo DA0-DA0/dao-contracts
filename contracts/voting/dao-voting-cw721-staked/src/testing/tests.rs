@@ -1,3 +1,4 @@
+use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128};
 use cw721::OwnerOfResponse;
 use cw721_base::msg::{ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg};
@@ -12,7 +13,8 @@ use sg_multi_test::StargazeApp;
 use sg_std::StargazeMsgWrapper;
 
 use crate::{
-    msg::{ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, NftContract, QueryMsg},
+    contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
+    msg::{ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, NftContract, QueryMsg},
     state::{Config, MAX_CLAIMS},
     testing::{
         execute::{
@@ -1084,4 +1086,14 @@ fn test_instantiate_with_new_sg721_collection() -> anyhow::Result<()> {
     assert_eq!(owner.owner, CREATOR_ADDR);
 
     Ok(())
+}
+
+#[test]
+pub fn test_migrate_update_version() {
+    let mut deps = mock_dependencies();
+    cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
+    migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
+    let version = cw2::get_contract_version(&deps.storage).unwrap();
+    assert_eq!(version.version, CONTRACT_VERSION);
+    assert_eq!(version.contract, CONTRACT_NAME);
 }
