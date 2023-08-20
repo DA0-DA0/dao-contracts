@@ -1,5 +1,6 @@
 use cosmwasm_std::{Addr, Deps, Order, StdResult, Uint128};
 use cw_storage_plus::{Bound, Map};
+use token_bindings::TokenFactoryQuery;
 
 use crate::msg::{
     AllowanceInfo, AllowanceResponse, AllowancesResponse, BlacklisteesResponse,
@@ -15,31 +16,37 @@ use crate::state::{
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 
-pub fn query_denom(deps: Deps) -> StdResult<DenomResponse> {
+pub fn query_denom(deps: Deps<TokenFactoryQuery>) -> StdResult<DenomResponse> {
     let denom = DENOM.load(deps.storage)?;
     Ok(DenomResponse { denom })
 }
 
-pub fn query_is_frozen(deps: Deps) -> StdResult<IsFrozenResponse> {
+pub fn query_is_frozen(deps: Deps<TokenFactoryQuery>) -> StdResult<IsFrozenResponse> {
     let is_frozen = IS_FROZEN.load(deps.storage)?;
     Ok(IsFrozenResponse { is_frozen })
 }
 
-pub fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
+pub fn query_owner(deps: Deps<TokenFactoryQuery>) -> StdResult<OwnerResponse> {
     let owner = OWNER.load(deps.storage)?;
     Ok(OwnerResponse {
         address: owner.into_string(),
     })
 }
 
-pub fn query_mint_allowance(deps: Deps, address: String) -> StdResult<AllowanceResponse> {
+pub fn query_mint_allowance(
+    deps: Deps<TokenFactoryQuery>,
+    address: String,
+) -> StdResult<AllowanceResponse> {
     let allowance = MINTER_ALLOWANCES
         .may_load(deps.storage, &deps.api.addr_validate(&address)?)?
         .unwrap_or_else(Uint128::zero);
     Ok(AllowanceResponse { allowance })
 }
 
-pub fn query_burn_allowance(deps: Deps, address: String) -> StdResult<AllowanceResponse> {
+pub fn query_burn_allowance(
+    deps: Deps<TokenFactoryQuery>,
+    address: String,
+) -> StdResult<AllowanceResponse> {
     let allowance = BURNER_ALLOWANCES
         .may_load(deps.storage, &deps.api.addr_validate(&address)?)?
         .unwrap_or_else(Uint128::zero);
@@ -47,7 +54,7 @@ pub fn query_burn_allowance(deps: Deps, address: String) -> StdResult<AllowanceR
 }
 
 pub fn query_allowances(
-    deps: Deps,
+    deps: Deps<TokenFactoryQuery>,
     start_after: Option<String>,
     limit: Option<u32>,
     allowances: Map<&Addr, Uint128>,
@@ -78,7 +85,7 @@ pub fn query_allowances(
 }
 
 pub fn query_mint_allowances(
-    deps: Deps,
+    deps: Deps<TokenFactoryQuery>,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<AllowancesResponse> {
@@ -88,7 +95,7 @@ pub fn query_mint_allowances(
 }
 
 pub fn query_burn_allowances(
-    deps: Deps,
+    deps: Deps<TokenFactoryQuery>,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<AllowancesResponse> {
@@ -97,7 +104,10 @@ pub fn query_burn_allowances(
     })
 }
 
-pub fn query_is_blacklisted(deps: Deps, address: String) -> StdResult<StatusResponse> {
+pub fn query_is_blacklisted(
+    deps: Deps<TokenFactoryQuery>,
+    address: String,
+) -> StdResult<StatusResponse> {
     let status = BLACKLISTED_ADDRESSES
         .load(deps.storage, &deps.api.addr_validate(&address)?)
         .unwrap_or(false);
@@ -105,7 +115,7 @@ pub fn query_is_blacklisted(deps: Deps, address: String) -> StdResult<StatusResp
 }
 
 pub fn query_status_map(
-    deps: Deps,
+    deps: Deps<TokenFactoryQuery>,
     start_after: Option<String>,
     limit: Option<u32>,
     map: Map<&Addr, bool>,
@@ -133,7 +143,7 @@ pub fn query_status_map(
 }
 
 pub fn query_blacklistees(
-    deps: Deps,
+    deps: Deps<TokenFactoryQuery>,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<BlacklisteesResponse> {
@@ -142,7 +152,10 @@ pub fn query_blacklistees(
     })
 }
 
-pub fn query_is_blacklister(deps: Deps, address: String) -> StdResult<StatusResponse> {
+pub fn query_is_blacklister(
+    deps: Deps<TokenFactoryQuery>,
+    address: String,
+) -> StdResult<StatusResponse> {
     let status = BLACKLISTER_ALLOWANCES
         .load(deps.storage, &deps.api.addr_validate(&address)?)
         .unwrap_or(false);
@@ -150,7 +163,7 @@ pub fn query_is_blacklister(deps: Deps, address: String) -> StdResult<StatusResp
 }
 
 pub fn query_blacklister_allowances(
-    deps: Deps,
+    deps: Deps<TokenFactoryQuery>,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<BlacklisterAllowancesResponse> {
@@ -160,7 +173,7 @@ pub fn query_blacklister_allowances(
 }
 
 pub fn query_freezer_allowances(
-    deps: Deps,
+    deps: Deps<TokenFactoryQuery>,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<FreezerAllowancesResponse> {
@@ -169,7 +182,10 @@ pub fn query_freezer_allowances(
     })
 }
 
-pub fn query_is_freezer(deps: Deps, address: String) -> StdResult<StatusResponse> {
+pub fn query_is_freezer(
+    deps: Deps<TokenFactoryQuery>,
+    address: String,
+) -> StdResult<StatusResponse> {
     let status = FREEZER_ALLOWANCES
         .load(deps.storage, &deps.api.addr_validate(&address)?)
         .unwrap_or(false);

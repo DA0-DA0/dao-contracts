@@ -3,7 +3,7 @@ use cosmwasm_std::{coins, BankMsg, Coin, DepsMut, Env, MessageInfo, Response, Ui
 use osmosis_std::types::cosmos::bank::v1beta1::Metadata;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgSetDenomMetadata};
 
-use token_bindings::TokenFactoryMsg;
+use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 
 use crate::error::ContractError;
 use crate::helpers::{check_bool_allowance, check_is_contract_owner};
@@ -13,7 +13,7 @@ use crate::state::{
 };
 
 pub fn mint(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     env: Env,
     info: MessageInfo,
     to_address: String,
@@ -70,7 +70,7 @@ pub fn mint(
 }
 
 pub fn burn(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     env: Env,
     info: MessageInfo,
     amount: Uint128,
@@ -120,7 +120,7 @@ pub fn burn(
 }
 
 pub fn change_contract_owner(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     info: MessageInfo,
     new_owner: String,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
@@ -140,7 +140,7 @@ pub fn change_contract_owner(
 }
 
 pub fn change_tokenfactory_admin(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     info: MessageInfo,
     new_admin: String,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
@@ -164,7 +164,7 @@ pub fn change_tokenfactory_admin(
 }
 
 pub fn set_denom_metadata(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     env: Env,
     info: MessageInfo,
     metadata: Metadata,
@@ -181,7 +181,7 @@ pub fn set_denom_metadata(
 }
 
 pub fn set_blacklister(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     info: MessageInfo,
     address: String,
     status: bool,
@@ -208,7 +208,7 @@ pub fn set_blacklister(
 }
 
 pub fn set_freezer(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     info: MessageInfo,
     address: String,
     status: bool,
@@ -235,7 +235,7 @@ pub fn set_freezer(
 }
 
 pub fn set_burner(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     info: MessageInfo,
     address: String,
     allowance: Uint128,
@@ -262,7 +262,7 @@ pub fn set_burner(
 }
 
 pub fn set_minter(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     info: MessageInfo,
     address: String,
     allowance: Uint128,
@@ -289,7 +289,7 @@ pub fn set_minter(
 }
 
 pub fn freeze(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     info: MessageInfo,
     status: bool,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
@@ -307,7 +307,7 @@ pub fn freeze(
 }
 
 pub fn blacklist(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     info: MessageInfo,
     address: String,
     status: bool,

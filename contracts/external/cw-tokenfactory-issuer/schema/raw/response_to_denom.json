@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DenomResponse",
+  "type": "object",
+  "required": [
+    "denom"
+  ],
+  "properties": {
+    "denom": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

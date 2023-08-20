@@ -10,7 +10,7 @@ use cw2::set_contract_version;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{
     MsgCreateDenom, MsgCreateDenomResponse, MsgSetBeforeSendHook,
 };
-use token_bindings::TokenFactoryMsg;
+use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 
 use crate::error::ContractError;
 use crate::execute;
@@ -27,7 +27,7 @@ const CREATE_DENOM_REPLY_ID: u64 = 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -69,13 +69,17 @@ pub fn instantiate(
 /// Allow contract to be able to migrate if admin is set.
 /// This provides option for migration, if admin is not set, this functionality will be disabled
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(
+    _deps: DepsMut<TokenFactoryQuery>,
+    _env: Env,
+    _msg: MigrateMsg,
+) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("action", "migrate"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     env: Env,
     msg: Reply,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
@@ -107,7 +111,7 @@ pub fn reply(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    deps: DepsMut,
+    deps: DepsMut<TokenFactoryQuery>,
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
@@ -152,7 +156,11 @@ pub fn execute(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
+pub fn sudo(
+    deps: DepsMut<TokenFactoryQuery>,
+    _env: Env,
+    msg: SudoMsg,
+) -> Result<Response, ContractError> {
     match msg {
         SudoMsg::BlockBeforeSend { from, to, amount } => {
             hooks::beforesend_hook(deps, from, to, amount)
@@ -161,7 +169,7 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps<TokenFactoryQuery>, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::IsFrozen {} => to_binary(&queries::query_is_frozen(deps)?),
         QueryMsg::Denom {} => to_binary(&queries::query_denom(deps)?),

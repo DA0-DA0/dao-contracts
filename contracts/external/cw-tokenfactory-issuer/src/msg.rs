@@ -22,49 +22,31 @@ pub enum InstantiateMsg {
 pub struct MigrateMsg {}
 
 /// TODO add force transfer
-/// TODO more doc strings
 #[cw_serde]
 pub enum ExecuteMsg {
-    ChangeTokenFactoryAdmin {
-        new_admin: String,
-    },
-    ChangeContractOwner {
-        new_owner: String,
-    },
-    SetDenomMetadata {
-        /// Set denom metadata. see: https://docs.cosmos.network/main/modules/bank#denom-metadata.
-        metadata: Metadata,
-    },
+    /// Change the admin of the Token Factory denom itself.
+    ChangeTokenFactoryAdmin { new_admin: String },
+
+    /// Change the owner of this contract who is allowed to call privileged methods.
+    ChangeContractOwner { new_owner: String },
+
+    /// Set denom metadata. see: https://docs.cosmos.network/main/modules/bank#denom-metadata.
+    SetDenomMetadata { metadata: Metadata },
 
     /// Grant/revoke mint allowance.
-    SetMinter {
-        address: String,
-        allowance: Uint128,
-    },
+    SetMinter { address: String, allowance: Uint128 },
 
     /// Grant/revoke burn allowance.
-    SetBurner {
-        address: String,
-        allowance: Uint128,
-    },
+    SetBurner { address: String, allowance: Uint128 },
 
     /// Grant/revoke permission to blacklist addresses
-    SetBlacklister {
-        address: String,
-        status: bool,
-    },
+    SetBlacklister { address: String, status: bool },
 
     /// Grant/revoke permission to freeze the token
-    SetFreezer {
-        address: String,
-        status: bool,
-    },
+    SetFreezer { address: String, status: bool },
 
     /// Mint token to address. Mint allowance is required and wiil be deducted after successful mint.
-    Mint {
-        to_address: String,
-        amount: Uint128,
-    },
+    Mint { to_address: String, amount: Uint128 },
 
     /// Burn token to address. Burn allowance is required and wiil be deducted after successful burn.
     Burn {
@@ -74,16 +56,11 @@ pub enum ExecuteMsg {
 
     /// Block target address from sending/receiving token attached to this contract
     /// tokenfactory's beforesend listener must be set to this contract in order for it to work as intended.
-    Blacklist {
-        address: String,
-        status: bool,
-    },
+    Blacklist { address: String, status: bool },
 
     /// Block every token transfers of the token attached to this contract
     /// tokenfactory's beforesend listener must be set to this contract in order for it to work as intended.
-    Freeze {
-        status: bool,
-    },
+    Freeze { status: bool },
 }
 
 /// SudoMsg is only exposed for internal Cosmos SDK modules to call.

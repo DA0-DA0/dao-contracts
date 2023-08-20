@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "oneOf": [
+    {
+      "description": "`NewToken` will create a new token when instantiate the contract. Newly created token will have full denom as `factory/<contract_address>/<subdenom>`. It will be attached to the contract setup the beforesend listener automatically.",
+      "type": "object",
+      "required": [
+        "new_token"
+      ],
+      "properties": {
+        "new_token": {
+          "type": "object",
+          "required": [
+            "subdenom"
+          ],
+          "properties": {
+            "subdenom": {
+              "description": "component of fulldenom (`factory/<contract_address>/<subdenom>`).",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "`ExistingToken` will use already created token. So to set this up, tokenfactory admin needs to create a new token and set beforesend listener manually.",
+      "type": "object",
+      "required": [
+        "existing_token"
+      ],
+      "properties": {
+        "existing_token": {
+          "type": "object",
+          "required": [
+            "denom"
+          ],
+          "properties": {
+            "denom": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

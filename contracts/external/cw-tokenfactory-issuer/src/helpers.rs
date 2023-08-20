@@ -2,6 +2,7 @@ use crate::state::{BLACKLISTED_ADDRESSES, DENOM, IS_FROZEN, OWNER};
 use crate::ContractError;
 use cosmwasm_std::{Addr, Coin, Deps, MessageInfo, Uint128};
 use cw_storage_plus::Map;
+use token_bindings::TokenFactoryQuery;
 
 pub fn check_contract_has_funds(
     denom: String,
@@ -27,7 +28,10 @@ pub fn check_contract_has_funds(
     }
 }
 
-pub fn check_is_contract_owner(deps: Deps, sender: Addr) -> Result<(), ContractError> {
+pub fn check_is_contract_owner(
+    deps: Deps<TokenFactoryQuery>,
+    sender: Addr,
+) -> Result<(), ContractError> {
     let owner = OWNER.load(deps.storage)?;
     if owner != sender {
         Err(ContractError::Unauthorized {})
@@ -37,7 +41,7 @@ pub fn check_is_contract_owner(deps: Deps, sender: Addr) -> Result<(), ContractE
 }
 
 pub fn check_bool_allowance(
-    deps: Deps,
+    deps: Deps<TokenFactoryQuery>,
     info: MessageInfo,
     allowances: Map<&Addr, bool>,
 ) -> Result<(), ContractError> {
@@ -59,7 +63,10 @@ pub fn check_bool_allowance(
     Ok(())
 }
 
-pub fn check_is_not_blacklisted(deps: Deps, address: String) -> Result<(), ContractError> {
+pub fn check_is_not_blacklisted(
+    deps: Deps<TokenFactoryQuery>,
+    address: String,
+) -> Result<(), ContractError> {
     let addr = deps.api.addr_validate(&address)?;
     if let Some(is_blacklisted) = BLACKLISTED_ADDRESSES.may_load(deps.storage, &addr)? {
         if is_blacklisted {
@@ -69,7 +76,10 @@ pub fn check_is_not_blacklisted(deps: Deps, address: String) -> Result<(), Contr
     Ok(())
 }
 
-pub fn check_is_not_frozen(deps: Deps, denom: &str) -> Result<(), ContractError> {
+pub fn check_is_not_frozen(
+    deps: Deps<TokenFactoryQuery>,
+    denom: &str,
+) -> Result<(), ContractError> {
     let is_frozen = IS_FROZEN.load(deps.storage)?;
     let contract_denom = DENOM.load(deps.storage)?;
 
