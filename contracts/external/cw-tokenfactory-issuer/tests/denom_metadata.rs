@@ -1,9 +1,9 @@
 mod helpers;
+use cw_tokenfactory_issuer::{msg::InstantiateMsg, ContractError};
 use helpers::{TestEnv, TokenfactoryIssuer};
 use osmosis_testing::cosmrs::proto::cosmos::bank::v1beta1::{
     DenomUnit, Metadata, QueryDenomMetadataRequest,
 };
-use tokenfactory_issuer::{msg::InstantiateMsg, ContractError};
 
 #[test]
 fn set_denom_metadata_by_contract_owner_should_work() {
@@ -13,17 +13,17 @@ fn set_denom_metadata_by_contract_owner_should_work() {
     let env = TestEnv::new(InstantiateMsg::NewToken { subdenom }, 0).unwrap();
     let owner = &env.test_accs[0];
 
-    let denom = env.tokenfactory_issuer.query_denom().unwrap().denom;
-    let metadata = tokenfactory_issuer::msg::Metadata {
+    let denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
+    let metadata = cw_tokenfactory_issuer::msg::Metadata {
         base: denom.clone(),
         description: "Thai Baht stablecoin".to_string(),
         denom_units: vec![
-            tokenfactory_issuer::msg::DenomUnit {
+            cw_tokenfactory_issuer::msg::DenomUnit {
                 denom: denom.clone(),
                 exponent: 0,
                 aliases: vec!["sthb".to_string()],
             },
-            tokenfactory_issuer::msg::DenomUnit {
+            cw_tokenfactory_issuer::msg::DenomUnit {
                 denom: "sthb".to_string(),
                 exponent: 6,
                 aliases: vec![],
@@ -62,7 +62,7 @@ fn set_denom_metadata_by_contract_owner_should_work() {
     );
 
     // set denom metadata
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .set_denom_metadata(metadata.clone(), owner)
         .unwrap();
 
@@ -103,17 +103,17 @@ fn set_denom_metadata_by_contract_non_owner_should_fail() {
     let env = TestEnv::new(InstantiateMsg::NewToken { subdenom }, 0).unwrap();
     let non_owner = &env.test_accs[1];
 
-    let denom = env.tokenfactory_issuer.query_denom().unwrap().denom;
-    let metadata = tokenfactory_issuer::msg::Metadata {
+    let denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
+    let metadata = cw_tokenfactory_issuer::msg::Metadata {
         base: denom.clone(),
         description: "Thai Baht stablecoin".to_string(),
         denom_units: vec![
-            tokenfactory_issuer::msg::DenomUnit {
+            cw_tokenfactory_issuer::msg::DenomUnit {
                 denom,
                 exponent: 0,
                 aliases: vec!["sthb".to_string()],
             },
-            tokenfactory_issuer::msg::DenomUnit {
+            cw_tokenfactory_issuer::msg::DenomUnit {
                 denom: "sthb".to_string(),
                 exponent: 6,
                 aliases: vec![],
@@ -126,7 +126,7 @@ fn set_denom_metadata_by_contract_non_owner_should_fail() {
 
     // set denom metadata
     let err = env
-        .tokenfactory_issuer
+        .cw_tokenfactory_issuer
         .set_denom_metadata(metadata, non_owner)
         .unwrap_err();
 
@@ -144,17 +144,17 @@ fn set_denom_metadata_with_base_denom_unit_should_overides_default_base_denom_un
     let env = TestEnv::new(InstantiateMsg::NewToken { subdenom }, 0).unwrap();
     let owner = &env.test_accs[0];
 
-    let denom = env.tokenfactory_issuer.query_denom().unwrap().denom;
-    let metadata = tokenfactory_issuer::msg::Metadata {
+    let denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
+    let metadata = cw_tokenfactory_issuer::msg::Metadata {
         base: denom.clone(),
         description: "Thai Baht stablecoin".to_string(),
         denom_units: vec![
-            tokenfactory_issuer::msg::DenomUnit {
+            cw_tokenfactory_issuer::msg::DenomUnit {
                 denom: denom.clone(),
                 exponent: 0,
                 aliases: vec!["sthb".to_string()],
             },
-            tokenfactory_issuer::msg::DenomUnit {
+            cw_tokenfactory_issuer::msg::DenomUnit {
                 denom: "sthb".to_string(),
                 exponent: 6,
                 aliases: vec![],
@@ -166,7 +166,7 @@ fn set_denom_metadata_with_base_denom_unit_should_overides_default_base_denom_un
     };
 
     // set denom metadata
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .set_denom_metadata(metadata.clone(), owner)
         .unwrap();
 

@@ -1,5 +1,5 @@
+use cw_tokenfactory_issuer::ContractError;
 use osmosis_testing::Account;
-use tokenfactory_issuer::ContractError;
 
 mod helpers;
 use helpers::{TestEnv, TokenfactoryIssuer};
@@ -9,9 +9,9 @@ fn transfer_token_factory_admin_by_contract_owner_should_pass() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
     let new_admin = &env.test_accs[1];
-    let denom = env.tokenfactory_issuer.query_denom().unwrap().denom;
+    let denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
 
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .change_tokenfactory_admin(&new_admin.address(), owner)
         .unwrap();
 
@@ -25,7 +25,7 @@ fn transfer_token_factory_admin_by_non_contract_owner_should_fail() {
     let someone_else = &env.test_accs[1];
 
     let err = env
-        .tokenfactory_issuer
+        .cw_tokenfactory_issuer
         .change_tokenfactory_admin(&someone_else.address(), non_owner)
         .unwrap_err();
 

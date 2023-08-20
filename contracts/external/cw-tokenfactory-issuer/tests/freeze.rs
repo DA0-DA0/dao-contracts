@@ -1,8 +1,8 @@
 mod helpers;
 
+use cw_tokenfactory_issuer::{msg::StatusInfo, ContractError};
 use helpers::{TestEnv, TokenfactoryIssuer};
 use osmosis_testing::Account;
-use tokenfactory_issuer::{msg::StatusInfo, ContractError};
 
 #[test]
 fn set_freezer_performed_by_contract_owner_should_pass() {
@@ -10,24 +10,24 @@ fn set_freezer_performed_by_contract_owner_should_pass() {
     let owner = &env.test_accs[0];
     let non_owner = &env.test_accs[1];
 
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .set_freezer(&non_owner.address(), true, owner)
         .unwrap();
 
     let is_freezer = env
-        .tokenfactory_issuer
+        .cw_tokenfactory_issuer
         .query_is_freezer(&env.test_accs[1].address())
         .unwrap()
         .status;
 
     assert!(is_freezer);
 
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .set_freezer(&non_owner.address(), false, owner)
         .unwrap();
 
     let is_freezer = env
-        .tokenfactory_issuer
+        .cw_tokenfactory_issuer
         .query_is_freezer(&env.test_accs[1].address())
         .unwrap()
         .status;
@@ -41,7 +41,7 @@ fn set_freezer_performed_by_non_contract_owner_should_fail() {
     let non_owner = &env.test_accs[1];
 
     let err = env
-        .tokenfactory_issuer
+        .cw_tokenfactory_issuer
         .set_freezer(&non_owner.address(), true, non_owner)
         .unwrap_err();
 
@@ -63,15 +63,15 @@ fn set_freezer_to_false_should_remove_it_from_storage() {
         .collect::<Vec<_>>();
     sorted_addrs.sort();
 
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .set_freezer(&sorted_addrs[0], true, owner)
         .unwrap();
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .set_freezer(&sorted_addrs[1], true, owner)
         .unwrap();
 
     assert_eq!(
-        env.tokenfactory_issuer
+        env.cw_tokenfactory_issuer
             .query_freezer_allowances(None, None)
             .unwrap()
             .freezers,
@@ -87,12 +87,12 @@ fn set_freezer_to_false_should_remove_it_from_storage() {
         ]
     );
 
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .set_freezer(&sorted_addrs[1], false, owner)
         .unwrap();
 
     assert_eq!(
-        env.tokenfactory_issuer
+        env.cw_tokenfactory_issuer
             .query_freezer_allowances(None, None)
             .unwrap()
             .freezers,
@@ -103,7 +103,7 @@ fn set_freezer_to_false_should_remove_it_from_storage() {
     );
 
     assert!(
-        !env.tokenfactory_issuer
+        !env.cw_tokenfactory_issuer
             .query_is_freezer(&sorted_addrs[1])
             .unwrap()
             .status
@@ -116,25 +116,35 @@ fn freeze_by_freezer_should_pass() {
     let owner = &env.test_accs[0];
     let non_owner = &env.test_accs[1];
 
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .set_freezer(&non_owner.address(), true, owner)
         .unwrap();
-    env.tokenfactory_issuer.freeze(true, non_owner).unwrap();
+    env.cw_tokenfactory_issuer.freeze(true, non_owner).unwrap();
 
     // should be frozen after set true
-    assert!(env.tokenfactory_issuer.query_is_frozen().unwrap().is_frozen);
+    assert!(
+        env.cw_tokenfactory_issuer
+            .query_is_frozen()
+            .unwrap()
+            .is_frozen
+    );
 
-    env.tokenfactory_issuer.freeze(false, non_owner).unwrap();
+    env.cw_tokenfactory_issuer.freeze(false, non_owner).unwrap();
 
     // should be unfrozen after set false
-    assert!(!env.tokenfactory_issuer.query_is_frozen().unwrap().is_frozen);
+    assert!(
+        !env.cw_tokenfactory_issuer
+            .query_is_frozen()
+            .unwrap()
+            .is_frozen
+    );
 }
 
 #[test]
 fn freeze_by_non_freezer_should_fail() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
-    let err = env.tokenfactory_issuer.freeze(true, owner).unwrap_err();
+    let err = env.cw_tokenfactory_issuer.freeze(true, owner).unwrap_err();
 
     assert_eq!(
         err,
@@ -152,14 +162,14 @@ fn query_freezer_within_default_limit() {
         |env| {
             move |allowance| {
                 let owner = &env.test_accs[0];
-                env.tokenfactory_issuer
+                env.cw_tokenfactory_issuer
                     .set_freezer(&allowance.address, true, owner)
                     .unwrap();
             }
         },
         |env| {
             move |start_after, limit| {
-                env.tokenfactory_issuer
+                env.cw_tokenfactory_issuer
                     .query_freezer_allowances(start_after, limit)
                     .unwrap()
                     .freezers
@@ -178,14 +188,14 @@ fn query_freezer_over_default_limit() {
         |env| {
             move |allowance| {
                 let owner = &env.test_accs[0];
-                env.tokenfactory_issuer
+                env.cw_tokenfactory_issuer
                     .set_freezer(&allowance.address, true, owner)
                     .unwrap();
             }
         },
         |env| {
             move |start_after, limit| {
-                env.tokenfactory_issuer
+                env.cw_tokenfactory_issuer
                     .query_freezer_allowances(start_after, limit)
                     .unwrap()
                     .freezers

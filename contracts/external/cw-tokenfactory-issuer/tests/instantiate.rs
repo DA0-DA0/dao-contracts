@@ -1,7 +1,7 @@
 use cosmwasm_std::coins;
 
+use cw_tokenfactory_issuer::msg::InstantiateMsg;
 use osmosis_testing::{Account, OsmosisTestApp, RunnerError};
-use tokenfactory_issuer::msg::InstantiateMsg;
 
 mod helpers;
 
@@ -25,26 +25,30 @@ fn instantiate_with_new_token_shoud_set_initial_state_correctly() {
     // check tokenfactory's token admin
     let denom = format!(
         "factory/{}/{}",
-        env.tokenfactory_issuer.contract_addr, subdenom
+        env.cw_tokenfactory_issuer.contract_addr, subdenom
     );
 
     assert_eq!(
         env.token_admin(&denom),
-        env.tokenfactory_issuer.contract_addr,
+        env.cw_tokenfactory_issuer.contract_addr,
         "token admin must be tokenfactory-issuer contract"
     );
 
     // check initial contract state
-    let contract_denom = env.tokenfactory_issuer.query_denom().unwrap().denom;
+    let contract_denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
     assert_eq!(
         denom, contract_denom,
         "denom stored in contract must be `factory/<contract_addr>/<subdenom>`"
     );
 
-    let is_frozen = env.tokenfactory_issuer.query_is_frozen().unwrap().is_frozen;
+    let is_frozen = env
+        .cw_tokenfactory_issuer
+        .query_is_frozen()
+        .unwrap()
+        .is_frozen;
     assert!(!is_frozen, "newly instantiated contract must not be frozen");
 
-    let owner_addr = env.tokenfactory_issuer.query_owner().unwrap().address;
+    let owner_addr = env.cw_tokenfactory_issuer.query_owner().unwrap().address;
     assert_eq!(
         owner_addr,
         owner.address(),
@@ -67,15 +71,15 @@ fn instantiate_with_new_token_shoud_set_hook_correctly() {
 
     let denom = format!(
         "factory/{}/{}",
-        env.tokenfactory_issuer.contract_addr, subdenom
+        env.cw_tokenfactory_issuer.contract_addr, subdenom
     );
 
     // freeze
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .set_freezer(&owner.address(), true, owner)
         .unwrap();
 
-    env.tokenfactory_issuer.freeze(true, owner).unwrap();
+    env.cw_tokenfactory_issuer.freeze(true, owner).unwrap();
 
     // bank send should fail
     let err = env
@@ -97,7 +101,7 @@ fn instantiate_with_existing_token_should_set_initial_state_correctly() {
     let test_accs = TestEnv::create_default_test_accs(&app, 1);
 
     let denom = format!("factory/{}/uthb", test_accs[0].address());
-    let tokenfactory_issuer = TokenfactoryIssuer::new(
+    let cw_tokenfactory_issuer = TokenfactoryIssuer::new(
         app,
         &InstantiateMsg::ExistingToken {
             denom: denom.clone(),
@@ -107,22 +111,26 @@ fn instantiate_with_existing_token_should_set_initial_state_correctly() {
     .unwrap();
 
     let env = TestEnv {
-        tokenfactory_issuer,
+        cw_tokenfactory_issuer,
         test_accs,
     };
 
     let owner = &env.test_accs[0];
 
-    let contract_denom = env.tokenfactory_issuer.query_denom().unwrap().denom;
+    let contract_denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
     assert_eq!(
         denom, contract_denom,
         "denom stored in contract must be `factory/<contract_addr>/<subdenom>`"
     );
 
-    let is_frozen = env.tokenfactory_issuer.query_is_frozen().unwrap().is_frozen;
+    let is_frozen = env
+        .cw_tokenfactory_issuer
+        .query_is_frozen()
+        .unwrap()
+        .is_frozen;
     assert!(!is_frozen, "newly instantiated contract must not be frozen");
 
-    let owner_addr = env.tokenfactory_issuer.query_owner().unwrap().address;
+    let owner_addr = env.cw_tokenfactory_issuer.query_owner().unwrap().address;
     assert_eq!(
         owner_addr,
         owner.address(),

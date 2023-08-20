@@ -8,13 +8,13 @@ use osmosis_testing::{Account, RunnerError};
 fn before_send_should_not_block_anything_by_default() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
-    let denom = env.tokenfactory_issuer.query_denom().unwrap().denom;
+    let denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
 
     // mint to self
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .set_minter(&owner.address(), 10000, owner)
         .unwrap();
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .mint(&owner.address(), 10000, owner)
         .unwrap();
 
@@ -27,14 +27,14 @@ fn before_send_should_not_block_anything_by_default() {
 fn before_send_should_block_on_frozen() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
-    let denom = env.tokenfactory_issuer.query_denom().unwrap().denom;
+    let denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
 
     // freeze
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .set_freezer(&owner.address(), true, owner)
         .unwrap();
 
-    env.tokenfactory_issuer.freeze(true, owner).unwrap();
+    env.cw_tokenfactory_issuer.freeze(true, owner).unwrap();
 
     // bank send should fail
     let err = env
@@ -53,21 +53,21 @@ fn before_send_should_block_sending_from_blacklisted_address() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
     let blacklistee = &env.test_accs[1];
-    let denom = env.tokenfactory_issuer.query_denom().unwrap().denom;
+    let denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
 
     // mint to blacklistee
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .set_minter(&owner.address(), 20000, owner)
         .unwrap();
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .mint(&blacklistee.address(), 20000, owner)
         .unwrap();
 
     // blacklist
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .set_blacklister(&owner.address(), true, owner)
         .unwrap();
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .blacklist(&blacklistee.address(), true, owner)
         .unwrap();
 
@@ -89,21 +89,21 @@ fn before_send_should_block_sending_to_blacklisted_address() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
     let blacklistee = &env.test_accs[1];
-    let denom = env.tokenfactory_issuer.query_denom().unwrap().denom;
+    let denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
 
     // mint to self
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .set_minter(&owner.address(), 10000, owner)
         .unwrap();
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .mint(&owner.address(), 10000, owner)
         .unwrap();
 
     // blacklist
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .set_blacklister(&owner.address(), true, owner)
         .unwrap();
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .blacklist(&blacklistee.address(), true, owner)
         .unwrap();
 

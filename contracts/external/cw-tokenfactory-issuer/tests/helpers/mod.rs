@@ -4,6 +4,17 @@
 
 use cosmwasm_std::Coin;
 
+use cw_tokenfactory_issuer::msg::{
+    BlacklisteesResponse, BlacklisterAllowancesResponse, Metadata, MigrateMsg,
+};
+use cw_tokenfactory_issuer::{
+    msg::{
+        AllowanceResponse, AllowancesResponse, DenomResponse, ExecuteMsg,
+        FreezerAllowancesResponse, InstantiateMsg, IsFrozenResponse, OwnerResponse, QueryMsg,
+        StatusResponse,
+    },
+    ContractError,
+};
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetadataRequest;
 use osmosis_testing::{
     cosmrs::proto::{
@@ -19,21 +30,10 @@ use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::rc::Rc;
-use tokenfactory_issuer::msg::{
-    BlacklisteesResponse, BlacklisterAllowancesResponse, Metadata, MigrateMsg,
-};
-use tokenfactory_issuer::{
-    msg::{
-        AllowanceResponse, AllowancesResponse, DenomResponse, ExecuteMsg,
-        FreezerAllowancesResponse, InstantiateMsg, IsFrozenResponse, OwnerResponse, QueryMsg,
-        StatusResponse,
-    },
-    ContractError,
-};
 
 pub struct TestEnv {
     pub test_accs: Vec<SigningAccount>,
-    pub tokenfactory_issuer: TokenfactoryIssuer,
+    pub cw_tokenfactory_issuer: TokenfactoryIssuer,
 }
 
 impl TestEnv {
@@ -42,12 +42,12 @@ impl TestEnv {
         let test_accs_count: u64 = 4;
         let test_accs = Self::create_default_test_accs(&app, test_accs_count);
 
-        let tokenfactory_issuer =
+        let cw_tokenfactory_issuer =
             TokenfactoryIssuer::new(app, &instantiate_msg, &test_accs[signer_index])?;
 
         Ok(Self {
             test_accs,
-            tokenfactory_issuer,
+            cw_tokenfactory_issuer,
         })
     }
 
@@ -62,7 +62,7 @@ impl TestEnv {
     }
 
     pub fn app(&self) -> &OsmosisTestApp {
-        &self.tokenfactory_issuer.app
+        &self.cw_tokenfactory_issuer.app
     }
     pub fn tokenfactory(&self) -> TokenFactory<'_, OsmosisTestApp> {
         TokenFactory::new(self.app())
@@ -444,7 +444,7 @@ impl TokenfactoryIssuer {
                 .join("target")
                 .join("wasm32-unknown-unknown")
                 .join("release")
-                .join("tokenfactory_issuer.wasm"),
+                .join("cw_tokenfactory_issuer.wasm"),
         )
         .unwrap()
     }
@@ -471,7 +471,7 @@ pub fn test_query_within_default_limit<QueryResult, SetStateClosure, QueryStateC
     let env = Rc::new(TestEnv::default());
     let test_accs_count = 10;
     let test_accs_with_allowance =
-        TestEnv::create_default_test_accs(&env.tokenfactory_issuer.app, test_accs_count);
+        TestEnv::create_default_test_accs(&env.cw_tokenfactory_issuer.app, test_accs_count);
 
     let mut sorted_addrs = test_accs_with_allowance
         .iter()
@@ -532,7 +532,7 @@ pub fn test_query_over_default_limit<QueryResult, SetStateClosure, QueryStateClo
     let env = Rc::new(TestEnv::default());
     let test_accs_count = 40;
     let test_accs_with_allowance =
-        TestEnv::create_default_test_accs(&env.tokenfactory_issuer.app, test_accs_count);
+        TestEnv::create_default_test_accs(&env.cw_tokenfactory_issuer.app, test_accs_count);
 
     let mut sorted_addrs = test_accs_with_allowance
         .iter()

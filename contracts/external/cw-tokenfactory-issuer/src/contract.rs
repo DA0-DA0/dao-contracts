@@ -24,7 +24,7 @@ use crate::queries;
 use crate::state::{DENOM, IS_FROZEN, OWNER};
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:tokenfactory-issuer";
+const CONTRACT_NAME: &str = "crates.io:cw-tokenfactory-issuer";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const CREATE_DENOM_REPLY_ID: u64 = 1;
@@ -86,18 +86,20 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response<OsmosisMsg>
         let MsgCreateDenomResponse { new_token_denom } = msg.result.try_into()?;
         DENOM.save(deps.storage, &new_token_denom)?;
 
-        // TODO maybe do error handling for this?
+        // TODO maybe do error handling for this? Not every chain supports it.
         // // set beforesend listener to this contract
         // // this will trigger sudo endpoint before any bank send
         // // which makes blacklisting / freezing possible
-        // let msg_set_beforesend_listener: CosmosMsg<OsmosisMsg> = MsgSetBeforeSendHook {
-        //     sender: env.contract.address.to_string(),
-        //     denom: new_token_denom.clone(),
-        //     cosmwasm_address: env.contract.address.to_string(),
-        // }
-        // .into();
+        let msg_set_beforesend_listener: CosmosMsg<OsmosisMsg> = MsgSetBeforeSendHook {
+            sender: env.contract.address.to_string(),
+            denom: new_token_denom.clone(),
+            cosmwasm_address: env.contract.address.to_string(),
+        }
+        .into();
 
-        return Ok(Response::new().add_attribute("denom", new_token_denom));
+        return Ok(Response::new()
+            .add_attribute("denom", new_token_denom)
+            .add_message(msg_set_beforesend_listener));
     }
 
     unreachable!()

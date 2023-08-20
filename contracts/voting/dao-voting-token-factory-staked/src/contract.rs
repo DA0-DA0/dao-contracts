@@ -14,7 +14,7 @@ use dao_interface::voting::{
     IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
-use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenMsg, TokenQuerier};
+use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenQuerier};
 
 use crate::error::ContractError;
 use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
@@ -136,7 +136,7 @@ pub fn instantiate(
 
             // Create Token Factory denom SubMsg
             let create_denom_msg = SubMsg::reply_on_success(
-                TokenMsg::CreateDenom {
+                TokenFactoryMsg::CreateDenom {
                     subdenom: token.clone().subdenom,
                     metadata: token.clone().metadata,
                 },
@@ -622,7 +622,7 @@ pub fn reply(
                 .denom;
             DENOM.save(deps.storage, &denom)?;
 
-            let mut mint_msgs: Vec<TokenMsg> = vec![];
+            let mut mint_msgs: Vec<TokenFactoryMsg> = vec![];
 
             // Check supply is greater than zero, iterate through initial
             // balances and sum them.
@@ -641,7 +641,7 @@ pub fn reply(
 
             // Mint initial balances
             token.initial_balances.iter().for_each(|b| {
-                mint_msgs.push(TokenMsg::MintTokens {
+                mint_msgs.push(TokenFactoryMsg::MintTokens {
                     denom: denom.clone(),
                     amount: b.amount,
                     mint_to_address: b.mint_to_address.clone(),
@@ -651,7 +651,7 @@ pub fn reply(
             // Add initial DAO balance to initial_balances if nonzero.
             if let Some(initial_dao_balance) = token.initial_dao_balance {
                 if !initial_dao_balance.is_zero() {
-                    mint_msgs.push(TokenMsg::MintTokens {
+                    mint_msgs.push(TokenFactoryMsg::MintTokens {
                         denom: denom.clone(),
                         amount: initial_dao_balance,
                         mint_to_address: dao.to_string(),
@@ -663,7 +663,7 @@ pub fn reply(
             TOKEN_INSTANTIATION_INFO.remove(deps.storage);
 
             // Update token factory denom admin to be the DAO
-            let update_token_admin_msg = TokenMsg::ChangeAdmin {
+            let update_token_admin_msg = TokenFactoryMsg::ChangeAdmin {
                 denom: denom.clone(),
                 new_admin_address: dao.to_string(),
             };

@@ -1,0 +1,49 @@
+[package]
+authors = ["Maurits Bos <maurits.bos@gmail.com>", "Sunny Aggarwal <sunny@osmsosis.team>"]
+name = "cw-tokenfactory-issuer"
+description = "A CosmWasm contract that issues new Token Factory tokens on supported chains."
+version = { workspace = true }
+edition = { workspace = true }
+repository = { workspace = true }
+
+# This repo was fork from osmosis-labs/cw-tokenfactory-issuer and does not use
+# the default DAO DAO license
+license = "Apache-2.0"
+
+
+exclude = [
+  # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
+  "contract.wasm",
+  "hash.txt",
+]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true }
+cosmwasm-storage = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+osmosis-std = { workspace = true }
+prost = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true, default-features = false, features = ["derive"]}
+thiserror = { workspace = true }
+token-bindings = { workspace = true }
+
+[dev-dependencies]
+cosmwasm-schema = { workspace = true }
+cw-multi-test = { workspace = true }
+# TODO update to test tube or figure out what to do with tests
+osmosis-testing = "0.13.2"
+serde_json = { workspace = true }

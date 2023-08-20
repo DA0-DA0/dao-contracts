@@ -1,8 +1,8 @@
 mod helpers;
 use cosmwasm_std::Uint128;
+use cw_tokenfactory_issuer::{msg::AllowanceInfo, ContractError};
 use helpers::{TestEnv, TokenfactoryIssuer};
 use osmosis_testing::{cosmrs::proto::cosmos::bank::v1beta1::QueryBalanceRequest, Account};
-use tokenfactory_issuer::{msg::AllowanceInfo, ContractError};
 
 #[test]
 fn set_minter_performed_by_contract_owner_should_pass() {
@@ -11,12 +11,12 @@ fn set_minter_performed_by_contract_owner_should_pass() {
     let non_owner = &env.test_accs[1];
 
     let allowance = 1000000;
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .set_minter(&non_owner.address(), allowance, owner)
         .unwrap();
 
     let mint_allowance = env
-        .tokenfactory_issuer
+        .cw_tokenfactory_issuer
         .query_mint_allowance(&env.test_accs[1].address())
         .unwrap()
         .allowance;
@@ -32,7 +32,7 @@ fn set_minter_performed_by_non_contract_owner_should_fail() {
     let allowance = 1000000;
 
     let err = env
-        .tokenfactory_issuer
+        .cw_tokenfactory_issuer
         .set_minter(&non_owner.address(), allowance, non_owner)
         .unwrap_err();
 
@@ -50,18 +50,18 @@ fn set_allowance_to_0_should_remove_it_from_storage() {
 
     // set allowance to some value
     let allowance = 1000000;
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .set_minter(&minter.address(), allowance, owner)
         .unwrap();
 
     // set allowance to 0
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .set_minter(&minter.address(), 0, owner)
         .unwrap();
 
     // check if key for the minter address is removed
     assert_eq!(
-        env.tokenfactory_issuer
+        env.cw_tokenfactory_issuer
             .query_mint_allowances(None, None)
             .unwrap()
             .allowances,
@@ -77,18 +77,18 @@ fn used_up_allowance_should_be_removed_from_storage() {
 
     // set allowance to some value
     let allowance = 1000000;
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .set_minter(&minter.address(), allowance, owner)
         .unwrap();
 
     // use all allowance
-    env.tokenfactory_issuer
+    env.cw_tokenfactory_issuer
         .mint(&minter.address(), allowance, minter)
         .unwrap();
 
     // check if key for the minter address is removed
     assert_eq!(
-        env.tokenfactory_issuer
+        env.cw_tokenfactory_issuer
             .query_mint_allowances(None, None)
             .unwrap()
             .allowances,
@@ -109,22 +109,22 @@ fn mint_less_than_or_eq_allowance_should_pass_and_deduct_allowance() {
     cases.into_iter().for_each(|(allowance, mint_amount)| {
         let env = TestEnv::default();
         let owner = &env.test_accs[0];
-        let denom = env.tokenfactory_issuer.query_denom().unwrap().denom;
+        let denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
 
         let minter = &env.test_accs[1];
         let mint_to = &env.test_accs[2];
 
-        env.tokenfactory_issuer
+        env.cw_tokenfactory_issuer
             .set_minter(&minter.address(), allowance, owner)
             .unwrap();
 
-        env.tokenfactory_issuer
+        env.cw_tokenfactory_issuer
             .mint(&mint_to.address(), mint_amount, minter)
             .unwrap();
 
         // check if allowance is deducted properly
         let resulted_allowance = env
-            .tokenfactory_issuer
+            .cw_tokenfactory_issuer
             .query_mint_allowance(&minter.address())
             .unwrap()
             .allowance
@@ -158,12 +158,12 @@ fn mint_over_allowance_should_fail_and_not_deduct_allowance() {
         let minter = &env.test_accs[1];
         let mint_to = &env.test_accs[2];
 
-        env.tokenfactory_issuer
+        env.cw_tokenfactory_issuer
             .set_minter(&minter.address(), allowance, owner)
             .unwrap();
 
         let err = env
-            .tokenfactory_issuer
+            .cw_tokenfactory_issuer
             .mint(&mint_to.address(), mint_amount, minter)
             .unwrap_err();
 
@@ -177,7 +177,7 @@ fn mint_over_allowance_should_fail_and_not_deduct_allowance() {
 
         // check if allowance stays the same
         let resulted_allowance = env
-            .tokenfactory_issuer
+            .cw_tokenfactory_issuer
             .query_mint_allowance(&minter.address())
             .unwrap()
             .allowance
@@ -198,12 +198,12 @@ fn mint_0_should_fail_and_not_deduct_allowance() {
         let minter = &env.test_accs[1];
         let mint_to = &env.test_accs[2];
 
-        env.tokenfactory_issuer
+        env.cw_tokenfactory_issuer
             .set_minter(&minter.address(), allowance, owner)
             .unwrap();
 
         let err = env
-            .tokenfactory_issuer
+            .cw_tokenfactory_issuer
             .mint(&mint_to.address(), mint_amount, minter)
             .unwrap_err();
 
@@ -214,7 +214,7 @@ fn mint_0_should_fail_and_not_deduct_allowance() {
 
         // check if allowance stays the same
         let resulted_allowance = env
-            .tokenfactory_issuer
+            .cw_tokenfactory_issuer
             .query_mint_allowance(&minter.address())
             .unwrap()
             .allowance
@@ -234,14 +234,14 @@ fn test_query_mint_allowances_within_default_limit() {
         |env| {
             move |allowance| {
                 let owner = &env.test_accs[0];
-                env.tokenfactory_issuer
+                env.cw_tokenfactory_issuer
                     .set_minter(&allowance.address, allowance.allowance.u128(), owner)
                     .unwrap();
             }
         },
         |env| {
             move |start_after, limit| {
-                env.tokenfactory_issuer
+                env.cw_tokenfactory_issuer
                     .query_mint_allowances(start_after, limit)
                     .unwrap()
                     .allowances
@@ -260,14 +260,14 @@ fn test_query_mint_allowance_over_default_limit() {
         |env| {
             move |allowance| {
                 let owner = &env.test_accs[0];
-                env.tokenfactory_issuer
+                env.cw_tokenfactory_issuer
                     .set_minter(&allowance.address, allowance.allowance.u128(), owner)
                     .unwrap();
             }
         },
         |env| {
             move |start_after, limit| {
-                env.tokenfactory_issuer
+                env.cw_tokenfactory_issuer
                     .query_mint_allowances(start_after, limit)
                     .unwrap()
                     .allowances
