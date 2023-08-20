@@ -437,8 +437,10 @@ impl TokenfactoryIssuer {
 
     fn get_wasm_byte_code() -> Vec<u8> {
         let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        println!("MANIFEST {:?}", manifest_path);
         std::fs::read(
             manifest_path
+                .join("..")
                 .join("..")
                 .join("..")
                 .join("target")
