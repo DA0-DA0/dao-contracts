@@ -70,10 +70,12 @@ pub fn instantiate(
 /// This provides option for migration, if admin is not set, this functionality will be disabled
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(
-    _deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut<TokenFactoryQuery>,
     _env: Env,
     _msg: MigrateMsg,
 ) -> Result<Response, ContractError> {
+    // Set contract to version to latest
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(Response::new().add_attribute("action", "migrate"))
 }
 
