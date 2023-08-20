@@ -1,8 +1,7 @@
-mod helpers;
-
 use cosmwasm_std::coins;
-use helpers::TestEnv;
 use osmosis_test_tube::{Account, RunnerError};
+
+use crate::test_env::TestEnv;
 
 #[test]
 fn before_send_should_not_block_anything_by_default() {

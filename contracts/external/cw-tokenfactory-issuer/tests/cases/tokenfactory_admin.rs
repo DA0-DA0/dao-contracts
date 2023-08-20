@@ -1,8 +1,7 @@
 use cw_tokenfactory_issuer::ContractError;
 use osmosis_test_tube::Account;
 
-mod helpers;
-use helpers::{TestEnv, TokenfactoryIssuer};
+use crate::test_env::{TestEnv, TokenfactoryIssuer};
 
 #[test]
 fn transfer_token_factory_admin_by_contract_owner_should_pass() {

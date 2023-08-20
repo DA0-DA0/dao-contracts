@@ -1,13 +1,8 @@
 use cosmwasm_std::coins;
-
 use cw_tokenfactory_issuer::msg::InstantiateMsg;
 use osmosis_test_tube::{Account, OsmosisTestApp, RunnerError};
 
-mod helpers;
-
-use helpers::{TestEnv, TokenfactoryIssuer};
-
-// new denom
+use crate::test_env::{TestEnv, TokenfactoryIssuer};
 
 #[test]
 fn instantiate_with_new_token_shoud_set_initial_state_correctly() {

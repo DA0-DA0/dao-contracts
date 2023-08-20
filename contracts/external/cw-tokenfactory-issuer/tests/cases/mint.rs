@@ -1,8 +1,10 @@
-mod helpers;
 use cosmwasm_std::Uint128;
 use cw_tokenfactory_issuer::{msg::AllowanceInfo, ContractError};
-use helpers::{TestEnv, TokenfactoryIssuer};
 use osmosis_test_tube::{osmosis_std::types::cosmos::bank::v1beta1::QueryBalanceRequest, Account};
+
+use crate::test_env::{
+    test_query_over_default_limit, test_query_within_default_limit, TestEnv, TokenfactoryIssuer,
+};
 
 #[test]
 fn set_minter_performed_by_contract_owner_should_pass() {
@@ -226,7 +228,7 @@ fn mint_0_should_fail_and_not_deduct_allowance() {
 
 #[test]
 fn test_query_mint_allowances_within_default_limit() {
-    helpers::test_query_within_default_limit::<AllowanceInfo, _, _>(
+    test_query_within_default_limit::<AllowanceInfo, _, _>(
         |(i, addr)| AllowanceInfo {
             address: addr.to_string(),
             allowance: Uint128::from((i as u128 + 1) * 10000u128), // generate distincted allowance
@@ -252,7 +254,7 @@ fn test_query_mint_allowances_within_default_limit() {
 
 #[test]
 fn test_query_mint_allowance_over_default_limit() {
-    helpers::test_query_over_default_limit::<AllowanceInfo, _, _>(
+    test_query_over_default_limit::<AllowanceInfo, _, _>(
         |(i, addr)| AllowanceInfo {
             address: addr.to_string(),
             allowance: Uint128::from((i as u128 + 1) * 10000u128), // generate distincted allowance

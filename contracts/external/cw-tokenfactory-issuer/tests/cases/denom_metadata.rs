@@ -1,9 +1,9 @@
-mod helpers;
 use cw_tokenfactory_issuer::{msg::InstantiateMsg, ContractError};
-use helpers::{TestEnv, TokenfactoryIssuer};
 use osmosis_test_tube::osmosis_std::types::cosmos::bank::v1beta1::{
     DenomUnit, Metadata, QueryDenomMetadataRequest,
 };
+
+use crate::test_env::{TestEnv, TokenfactoryIssuer};
 
 #[test]
 fn set_denom_metadata_by_contract_owner_should_work() {

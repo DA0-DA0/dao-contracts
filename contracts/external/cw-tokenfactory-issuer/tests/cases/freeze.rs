@@ -1,8 +1,9 @@
-mod helpers;
-
 use cw_tokenfactory_issuer::{msg::StatusInfo, ContractError};
-use helpers::{TestEnv, TokenfactoryIssuer};
 use osmosis_test_tube::Account;
+
+use crate::test_env::{
+    test_query_over_default_limit, test_query_within_default_limit, TestEnv, TokenfactoryIssuer,
+};
 
 #[test]
 fn set_freezer_performed_by_contract_owner_should_pass() {
@@ -154,7 +155,7 @@ fn freeze_by_non_freezer_should_fail() {
 
 #[test]
 fn query_freezer_within_default_limit() {
-    helpers::test_query_within_default_limit::<StatusInfo, _, _>(
+    test_query_within_default_limit::<StatusInfo, _, _>(
         |(_, addr)| StatusInfo {
             address: addr.to_string(),
             status: true,
@@ -180,7 +181,7 @@ fn query_freezer_within_default_limit() {
 
 #[test]
 fn query_freezer_over_default_limit() {
-    helpers::test_query_over_default_limit::<StatusInfo, _, _>(
+    test_query_over_default_limit::<StatusInfo, _, _>(
         |(_, addr)| StatusInfo {
             address: addr.to_string(),
             status: true,

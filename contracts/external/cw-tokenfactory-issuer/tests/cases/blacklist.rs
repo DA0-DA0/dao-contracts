@@ -1,8 +1,9 @@
-mod helpers;
-
 use cw_tokenfactory_issuer::{msg::StatusInfo, ContractError};
-use helpers::{TestEnv, TokenfactoryIssuer};
 use osmosis_test_tube::Account;
+
+use crate::test_env::{
+    test_query_over_default_limit, test_query_within_default_limit, TestEnv, TokenfactoryIssuer,
+};
 
 #[test]
 fn set_blacklister_performed_by_contract_owner_should_pass() {
@@ -227,7 +228,7 @@ fn set_blacklist_to_false_should_remove_it_from_storage() {
 // query blacklisters
 #[test]
 fn query_blacklister_within_default_limit() {
-    helpers::test_query_within_default_limit::<StatusInfo, _, _>(
+    test_query_within_default_limit::<StatusInfo, _, _>(
         |(_, addr)| StatusInfo {
             address: addr.to_string(),
             status: true,
@@ -253,7 +254,7 @@ fn query_blacklister_within_default_limit() {
 
 #[test]
 fn query_blacklister_over_default_limit() {
-    helpers::test_query_over_default_limit::<StatusInfo, _, _>(
+    test_query_over_default_limit::<StatusInfo, _, _>(
         |(_, addr)| StatusInfo {
             address: addr.to_string(),
             status: true,
@@ -279,7 +280,7 @@ fn query_blacklister_over_default_limit() {
 // query blacklistees
 #[test]
 fn query_blacklistee_within_default_limit() {
-    helpers::test_query_within_default_limit::<StatusInfo, _, _>(
+    test_query_within_default_limit::<StatusInfo, _, _>(
         |(_, addr)| StatusInfo {
             address: addr.to_string(),
             status: true,
@@ -309,7 +310,7 @@ fn query_blacklistee_within_default_limit() {
 
 #[test]
 fn query_blacklistee_over_default_limit() {
-    helpers::test_query_over_default_limit::<StatusInfo, _, _>(
+    test_query_over_default_limit::<StatusInfo, _, _>(
         |(_, addr)| StatusInfo {
             address: addr.to_string(),
             status: true,
