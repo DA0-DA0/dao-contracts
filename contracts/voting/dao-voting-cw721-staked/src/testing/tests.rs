@@ -1,13 +1,20 @@
-use cosmwasm_std::{Addr, Decimal, Empty, Uint128};
+use cosmwasm_std::testing::{mock_dependencies, mock_env};
+use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128};
+use cw721::OwnerOfResponse;
+use cw721_base::msg::{ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg};
 use cw721_controllers::{NftClaim, NftClaimsResponse};
-use cw_multi_test::{next_block, App, Executor};
+use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 use cw_utils::Duration;
 use dao_interface::{state::Admin, voting::IsActiveResponse};
 use dao_testing::contracts::{cw721_base_contract, voting_cw721_staked_contract};
 use dao_voting::threshold::ActiveThreshold;
+use sg721::CollectionInfo;
+use sg_multi_test::StargazeApp;
+use sg_std::StargazeMsgWrapper;
 
 use crate::{
-    msg::{ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, NftContract, NftMintMsg, QueryMsg},
+    contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
+    msg::{ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, NftContract, QueryMsg},
     state::{Config, MAX_CLAIMS},
     testing::{
         execute::{
@@ -26,7 +33,7 @@ use super::{
 
 // I can create new NFT collection when creating a dao-voting-cw721-staked contract
 #[test]
-fn test_instantiate_with_new_collection() -> anyhow::Result<()> {
+fn test_instantiate_with_new_cw721_collection() -> anyhow::Result<()> {
     let mut app = App::default();
     let module_id = app.store_code(voting_cw721_staked_contract());
     let cw721_id = app.store_code(cw721_base_contract());
@@ -42,14 +49,17 @@ fn test_instantiate_with_new_collection() -> anyhow::Result<()> {
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
                     label: "Test NFT".to_string(),
-                    name: "Test NFT".to_string(),
-                    symbol: "TEST".to_string(),
-                    initial_nfts: vec![NftMintMsg {
+                    msg: to_binary(&Cw721InstantiateMsg {
+                        name: "Test NFT".to_string(),
+                        symbol: "TEST".to_string(),
+                        minter: CREATOR_ADDR.to_string(),
+                    })?,
+                    initial_nfts: vec![to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
                         owner: CREATOR_ADDR.to_string(),
                         token_uri: Some("https://example.com".to_string()),
                         token_id: "1".to_string(),
                         extension: Empty {},
-                    }],
+                    })?],
                 },
                 unstaking_duration: None,
                 active_threshold: None,
@@ -466,14 +476,19 @@ fn test_instantiate_zero_active_threshold_count() {
             nft_contract: NftContract::New {
                 code_id: cw721_id,
                 label: "Test NFT".to_string(),
-                name: "Test NFT".to_string(),
-                symbol: "TEST".to_string(),
-                initial_nfts: vec![NftMintMsg {
+                msg: to_binary(&Cw721InstantiateMsg {
+                    name: "Test NFT".to_string(),
+                    symbol: "TEST".to_string(),
+                    minter: CREATOR_ADDR.to_string(),
+                })
+                .unwrap(),
+                initial_nfts: vec![to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
                     owner: CREATOR_ADDR.to_string(),
                     token_uri: Some("https://example.com".to_string()),
                     token_id: "1".to_string(),
                     extension: Empty {},
-                }],
+                })
+                .unwrap()],
             },
             unstaking_duration: None,
             active_threshold: Some(ActiveThreshold::AbsoluteCount {
@@ -504,27 +519,34 @@ fn test_active_threshold_absolute_count() {
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
                     label: "Test NFT".to_string(),
-                    name: "Test NFT".to_string(),
-                    symbol: "TEST".to_string(),
+                    msg: to_binary(&Cw721InstantiateMsg {
+                        name: "Test NFT".to_string(),
+                        symbol: "TEST".to_string(),
+                        minter: CREATOR_ADDR.to_string(),
+                    })
+                    .unwrap(),
                     initial_nfts: vec![
-                        NftMintMsg {
+                        to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
                             owner: CREATOR_ADDR.to_string(),
                             token_uri: Some("https://example.com".to_string()),
                             token_id: "1".to_string(),
                             extension: Empty {},
-                        },
-                        NftMintMsg {
+                        })
+                        .unwrap(),
+                        to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
                             owner: CREATOR_ADDR.to_string(),
                             token_uri: Some("https://example.com".to_string()),
                             token_id: "2".to_string(),
                             extension: Empty {},
-                        },
-                        NftMintMsg {
+                        })
+                        .unwrap(),
+                        to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
                             owner: CREATOR_ADDR.to_string(),
                             token_uri: Some("https://example.com".to_string()),
                             token_id: "3".to_string(),
                             extension: Empty {},
-                        },
+                        })
+                        .unwrap(),
                     ],
                 },
                 unstaking_duration: None,
@@ -580,14 +602,19 @@ fn test_active_threshold_percent() {
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
                     label: "Test NFT".to_string(),
-                    name: "Test NFT".to_string(),
-                    symbol: "TEST".to_string(),
-                    initial_nfts: vec![NftMintMsg {
+                    msg: to_binary(&Cw721InstantiateMsg {
+                        name: "Test NFT".to_string(),
+                        symbol: "TEST".to_string(),
+                        minter: CREATOR_ADDR.to_string(),
+                    })
+                    .unwrap(),
+                    initial_nfts: vec![to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
                         owner: CREATOR_ADDR.to_string(),
                         token_uri: Some("https://example.com".to_string()),
                         token_id: "1".to_string(),
                         extension: Empty {},
-                    }],
+                    })
+                    .unwrap()],
                 },
                 unstaking_duration: None,
                 active_threshold: Some(ActiveThreshold::Percentage {
@@ -639,39 +666,48 @@ fn test_active_threshold_percent_rounds_up() {
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
                     label: "Test NFT".to_string(),
-                    name: "Test NFT".to_string(),
-                    symbol: "TEST".to_string(),
+                    msg: to_binary(&Cw721InstantiateMsg {
+                        name: "Test NFT".to_string(),
+                        symbol: "TEST".to_string(),
+                        minter: CREATOR_ADDR.to_string(),
+                    })
+                    .unwrap(),
                     initial_nfts: vec![
-                        NftMintMsg {
+                        to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
                             owner: CREATOR_ADDR.to_string(),
                             token_uri: Some("https://example.com".to_string()),
                             token_id: "1".to_string(),
                             extension: Empty {},
-                        },
-                        NftMintMsg {
+                        })
+                        .unwrap(),
+                        to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
                             owner: CREATOR_ADDR.to_string(),
                             token_uri: Some("https://example.com".to_string()),
                             token_id: "2".to_string(),
                             extension: Empty {},
-                        },
-                        NftMintMsg {
+                        })
+                        .unwrap(),
+                        to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
                             owner: CREATOR_ADDR.to_string(),
                             token_uri: Some("https://example.com".to_string()),
                             token_id: "3".to_string(),
                             extension: Empty {},
-                        },
-                        NftMintMsg {
+                        })
+                        .unwrap(),
+                        to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
                             owner: CREATOR_ADDR.to_string(),
                             token_uri: Some("https://example.com".to_string()),
                             token_id: "4".to_string(),
                             extension: Empty {},
-                        },
-                        NftMintMsg {
+                        })
+                        .unwrap(),
+                        to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
                             owner: CREATOR_ADDR.to_string(),
                             token_uri: Some("https://example.com".to_string()),
                             token_id: "5".to_string(),
                             extension: Empty {},
-                        },
+                        })
+                        .unwrap(),
                     ],
                 },
                 unstaking_duration: None,
@@ -736,14 +772,19 @@ fn test_update_active_threshold() {
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
                     label: "Test NFT".to_string(),
-                    name: "Test NFT".to_string(),
-                    symbol: "TEST".to_string(),
-                    initial_nfts: vec![NftMintMsg {
+                    msg: to_binary(&Cw721InstantiateMsg {
+                        name: "Test NFT".to_string(),
+                        symbol: "TEST".to_string(),
+                        minter: CREATOR_ADDR.to_string(),
+                    })
+                    .unwrap(),
+                    initial_nfts: vec![to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
                         owner: CREATOR_ADDR.to_string(),
                         token_uri: Some("https://example.com".to_string()),
                         token_id: "1".to_string(),
                         extension: Empty {},
-                    }],
+                    })
+                    .unwrap()],
                 },
                 unstaking_duration: None,
                 active_threshold: None,
@@ -808,14 +849,19 @@ fn test_active_threshold_percentage_gt_100() {
             nft_contract: NftContract::New {
                 code_id: cw721_id,
                 label: "Test NFT".to_string(),
-                name: "Test NFT".to_string(),
-                symbol: "TEST".to_string(),
-                initial_nfts: vec![NftMintMsg {
+                msg: to_binary(&Cw721InstantiateMsg {
+                    name: "Test NFT".to_string(),
+                    symbol: "TEST".to_string(),
+                    minter: CREATOR_ADDR.to_string(),
+                })
+                .unwrap(),
+                initial_nfts: vec![to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
                     owner: CREATOR_ADDR.to_string(),
                     token_uri: Some("https://example.com".to_string()),
                     token_id: "1".to_string(),
                     extension: Empty {},
-                }],
+                })
+                .unwrap()],
             },
             unstaking_duration: None,
             active_threshold: Some(ActiveThreshold::Percentage {
@@ -846,14 +892,19 @@ fn test_active_threshold_percentage_lte_0() {
             nft_contract: NftContract::New {
                 code_id: cw721_id,
                 label: "Test NFT".to_string(),
-                name: "Test NFT".to_string(),
-                symbol: "TEST".to_string(),
-                initial_nfts: vec![NftMintMsg {
+                msg: to_binary(&Cw721InstantiateMsg {
+                    name: "Test NFT".to_string(),
+                    symbol: "TEST".to_string(),
+                    minter: CREATOR_ADDR.to_string(),
+                })
+                .unwrap(),
+                initial_nfts: vec![to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
                     owner: CREATOR_ADDR.to_string(),
                     token_uri: Some("https://example.com".to_string()),
                     token_id: "1".to_string(),
                     extension: Empty {},
-                }],
+                })
+                .unwrap()],
             },
             unstaking_duration: None,
             active_threshold: Some(ActiveThreshold::Percentage {
@@ -868,33 +919,181 @@ fn test_active_threshold_percentage_lte_0() {
 }
 
 #[test]
+fn test_invalid_instantiate_msg() {
+    let mut app = App::default();
+    let module_id = app.store_code(voting_cw721_staked_contract());
+    let cw721_id = app.store_code(cw721_base_contract());
+
+    let err = app
+        .instantiate_contract(
+            module_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &InstantiateMsg {
+                owner: Some(Admin::Address {
+                    addr: CREATOR_ADDR.to_string(),
+                }),
+                nft_contract: NftContract::New {
+                    code_id: cw721_id,
+                    label: "Test NFT".to_string(),
+                    msg: to_binary(&Empty {}).unwrap(),
+                    initial_nfts: vec![to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                        owner: CREATOR_ADDR.to_string(),
+                        token_uri: Some("https://example.com".to_string()),
+                        token_id: "1".to_string(),
+                        extension: Empty {},
+                    })
+                    .unwrap()],
+                },
+                unstaking_duration: None,
+                active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                    count: Uint128::new(1),
+                }),
+            },
+            &[],
+            "cw721_voting",
+            None,
+        )
+        .unwrap_err();
+    assert_eq!(
+        err.root_cause().to_string(),
+        "Error instantiating NFT contract".to_string()
+    );
+}
+
+#[test]
 fn test_no_initial_nfts_fails() {
     let mut app = App::default();
     let cw721_id = app.store_code(cw721_base_contract());
     let module_id = app.store_code(voting_cw721_staked_contract());
 
-    app.instantiate_contract(
-        module_id,
-        Addr::unchecked(CREATOR_ADDR),
-        &InstantiateMsg {
-            owner: Some(Admin::Address {
-                addr: CREATOR_ADDR.to_string(),
-            }),
-            nft_contract: NftContract::New {
-                code_id: cw721_id,
-                label: "Test NFT".to_string(),
-                name: "Test NFT".to_string(),
-                symbol: "TEST".to_string(),
-                initial_nfts: vec![],
+    let err = app
+        .instantiate_contract(
+            module_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &InstantiateMsg {
+                owner: Some(Admin::Address {
+                    addr: CREATOR_ADDR.to_string(),
+                }),
+                nft_contract: NftContract::New {
+                    code_id: cw721_id,
+                    label: "Test NFT".to_string(),
+                    msg: to_binary(&Cw721InstantiateMsg {
+                        name: "Test NFT".to_string(),
+                        symbol: "TEST".to_string(),
+                        minter: CREATOR_ADDR.to_string(),
+                    })
+                    .unwrap(),
+                    initial_nfts: vec![],
+                },
+                unstaking_duration: None,
+                active_threshold: Some(ActiveThreshold::Percentage {
+                    percent: Decimal::percent(1),
+                }),
             },
-            unstaking_duration: None,
-            active_threshold: Some(ActiveThreshold::Percentage {
-                percent: Decimal::percent(0),
-            }),
+            &[],
+            "cw721_voting",
+            None,
+        )
+        .unwrap_err();
+    assert_eq!(
+        err.root_cause().to_string(),
+        "New NFT contract must be instantiated with at least one NFT".to_string()
+    );
+}
+
+// I can create new Stargaze NFT collection when creating a dao-voting-cw721-staked contract
+#[test]
+fn test_instantiate_with_new_sg721_collection() -> anyhow::Result<()> {
+    // Setup Stargaze contracts for multi-test
+    fn sg721_base_contract() -> Box<dyn Contract<StargazeMsgWrapper>> {
+        let contract = ContractWrapper::new(
+            sg721_base::entry::execute,
+            sg721_base::entry::instantiate,
+            sg721_base::entry::query,
+        );
+        Box::new(contract)
+    }
+
+    // Stargze contracts need a custom message wrapper
+    fn voting_sg721_staked_contract() -> Box<dyn Contract<StargazeMsgWrapper>> {
+        let contract = ContractWrapper::new_with_empty(
+            crate::contract::execute,
+            crate::contract::instantiate,
+            crate::contract::query,
+        )
+        .with_reply_empty(crate::contract::reply);
+        Box::new(contract)
+    }
+
+    let mut app = StargazeApp::default();
+    let module_id = app.store_code(voting_sg721_staked_contract());
+    let sg721_id = app.store_code(sg721_base_contract());
+
+    let module_addr = app
+        .instantiate_contract(
+            module_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &InstantiateMsg {
+                owner: Some(Admin::Address {
+                    addr: CREATOR_ADDR.to_string(),
+                }),
+                nft_contract: NftContract::New {
+                    code_id: sg721_id,
+                    label: "Test NFT".to_string(),
+                    msg: to_binary(&sg721::InstantiateMsg {
+                        name: "Test NFT".to_string(),
+                        symbol: "TEST".to_string(),
+                        minter: CREATOR_ADDR.to_string(),
+                        collection_info: CollectionInfo {
+                            creator: CREATOR_ADDR.to_string(),
+                            description: "Test NFT".to_string(),
+                            image: "https://example.com/image.jpg".to_string(),
+                            external_link: None,
+                            explicit_content: None,
+                            start_trading_time: None,
+                            royalty_info: None,
+                        },
+                    })?,
+                    initial_nfts: vec![to_binary(&sg721::ExecuteMsg::<Empty, Empty>::Mint {
+                        owner: CREATOR_ADDR.to_string(),
+                        token_uri: Some("https://example.com".to_string()),
+                        token_id: "1".to_string(),
+                        extension: Empty {},
+                    })?],
+                },
+                unstaking_duration: None,
+                active_threshold: None,
+            },
+            &[],
+            "cw721_voting",
+            None,
+        )
+        .unwrap();
+
+    let config: Config = app
+        .wrap()
+        .query_wasm_smart(module_addr, &QueryMsg::Config {})?;
+    let sg721_addr = config.nft_address;
+
+    // Check that the NFT contract was created
+    let owner: OwnerOfResponse = app.wrap().query_wasm_smart(
+        sg721_addr,
+        &cw721::Cw721QueryMsg::OwnerOf {
+            token_id: "1".to_string(),
+            include_expired: None,
         },
-        &[],
-        "cw721_voting",
-        None,
-    )
-    .unwrap_err();
+    )?;
+    assert_eq!(owner.owner, CREATOR_ADDR);
+
+    Ok(())
+}
+
+#[test]
+pub fn test_migrate_update_version() {
+    let mut deps = mock_dependencies();
+    cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
+    migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
+    let version = cw2::get_contract_version(&deps.storage).unwrap();
+    assert_eq!(version.version, CONTRACT_VERSION);
+    assert_eq!(version.contract, CONTRACT_NAME);
 }

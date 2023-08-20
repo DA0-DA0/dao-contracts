@@ -18,10 +18,10 @@ pub enum ContractError {
     #[error("Invalid token. Got ({received}), expected ({expected})")]
     InvalidToken { received: Addr, expected: Addr },
 
-    #[error("Error instantiating cw721-roles contract")]
+    #[error("Error instantiating NFT contract")]
     NftInstantiateError {},
 
-    #[error("New cw721-roles contract must be instantiated with at least one NFT")]
+    #[error("New NFT contract must be instantiated with at least one NFT")]
     NoInitialNfts {},
 
     #[error("Nothing to claim")]
