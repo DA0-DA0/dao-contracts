@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw_utils::Duration;
-use dao_dao_macros::{active_query, voting_module_query};
+use dao_dao_macros::{active_query, token_query, voting_module_query};
 use dao_interface::state::Admin;
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 pub use osmosis_std::types::cosmos::bank::v1beta1::{DenomUnit, Metadata};
@@ -78,17 +78,16 @@ pub enum ExecuteMsg {
     RemoveHook { addr: String },
 }
 
-// TODO query for getting cw-tokenfactory-issuer addr
-#[voting_module_query]
 #[active_query]
+#[voting_module_query]
+#[token_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(crate::state::Config)]
     GetConfig {},
-    // TODO rename
     #[returns(DenomResponse)]
-    GetDenom {},
+    Denom {},
     #[returns(cw_controllers::ClaimsResponse)]
     Claims { address: String },
     #[returns(ListStakersResponse)]

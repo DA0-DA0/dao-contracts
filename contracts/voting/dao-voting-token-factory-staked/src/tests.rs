@@ -220,7 +220,7 @@ fn get_config(app: &mut App, staking_addr: Addr) -> Config {
 
 fn get_denom(app: &mut App, staking_addr: Addr) -> DenomResponse {
     app.wrap()
-        .query_wasm_smart(staking_addr, &QueryMsg::GetDenom {})
+        .query_wasm_smart(staking_addr, &QueryMsg::Denom {})
         .unwrap()
 }
 
@@ -1025,6 +1025,31 @@ fn test_query_info() {
         resp.info.contract,
         "crates.io:dao-voting-token-factory-staked"
     );
+}
+
+#[test]
+fn test_query_token_contract() {
+    let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
+    let staking_id = app.store_code(staking_contract());
+    let addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            token_issuer_code_id: issuer_id,
+            owner: Some(Admin::CoreModule {}),
+            manager: Some(ADDR1.to_string()),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
+            unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
+        },
+    );
+
+    let msg = QueryMsg::TokenContract {};
+    let res: Addr = app.wrap().query_wasm_smart(addr, &msg).unwrap();
+    assert_eq!(res, Addr::unchecked("contract#1"));
 }
 
 #[test]

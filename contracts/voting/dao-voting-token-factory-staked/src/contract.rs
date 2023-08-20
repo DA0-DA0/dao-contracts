@@ -151,7 +151,6 @@ pub fn instantiate(
                 .add_submessage(issuer_instantiate_msg))
         }
         TokenInfo::New(token) => {
-            println!("New TOKEN: {:?}", token);
             // Tnstantiate cw-token-factory-issuer contract
             // DAO (sender) is set as contract admin
             let issuer_instantiate_msg = SubMsg::reply_on_success(
@@ -161,8 +160,7 @@ pub fn instantiate(
                     msg: to_binary(&IssuerInstantiateMsg::NewToken {
                         subdenom: token.subdenom.clone(),
                     })?,
-                    /// TODO do funds need to be sent with this?
-                    funds: vec![],
+                    funds: info.funds,
                     label: "cw-tokenfactory-issuer".to_string(),
                 },
                 INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID,
@@ -480,7 +478,7 @@ pub fn query(deps: Deps<TokenFactoryQuery>, env: Env, msg: QueryMsg) -> StdResul
         QueryMsg::Dao {} => query_dao(deps),
         QueryMsg::Claims { address } => to_binary(&query_claims(deps, address)?),
         QueryMsg::GetConfig {} => to_binary(&CONFIG.load(deps.storage)?),
-        QueryMsg::GetDenom {} => to_binary(&DenomResponse {
+        QueryMsg::Denom {} => to_binary(&DenomResponse {
             denom: DENOM.load(deps.storage)?,
         }),
         QueryMsg::ListStakers { start_after, limit } => {
@@ -489,6 +487,7 @@ pub fn query(deps: Deps<TokenFactoryQuery>, env: Env, msg: QueryMsg) -> StdResul
         QueryMsg::IsActive {} => query_is_active(deps),
         QueryMsg::ActiveThreshold {} => query_active_threshold(deps),
         QueryMsg::GetHooks {} => to_binary(&query_hooks(deps)?),
+        QueryMsg::TokenContract {} => to_binary(&TOKEN_ISSUER_CONTRACT.load(deps.storage)?),
     }
 }
 
@@ -668,7 +667,6 @@ pub fn reply(
                     // Load the DAO address
                     let dao = DAO.load(deps.storage)?;
 
-                    // TODO maybe use wasm query?
                     // Get the new token factory denom and save it
                     let querier = TokenQuerier::new(&deps.querier);
                     let denom = querier
@@ -693,6 +691,16 @@ pub fn reply(
 
                     // Msgs to be executed to finalize setup
                     let mut msgs: Vec<WasmMsg> = vec![];
+
+                    // Grant an allowance to mint the initial supply
+                    msgs.push(WasmMsg::Execute {
+                        contract_addr: issuer_addr.clone(),
+                        msg: to_binary(&IssuerExecuteMsg::SetMinter {
+                            address: env.contract.address.to_string(),
+                            allowance: initial_supply,
+                        })?,
+                        funds: vec![],
+                    });
 
                     // If metadata, set it by calling the contract
                     if let Some(metadata) = token.metadata {
