@@ -168,7 +168,7 @@ impl TokenfactoryIssuer {
         signer: &SigningAccount,
     ) -> RunnerExecuteResult<MsgExecuteContractResponse> {
         let wasm = Wasm::new(&self.app);
-        Ok(wasm.execute(&self.contract_addr, execute_msg, funds, signer)?)
+        wasm.execute(&self.contract_addr, execute_msg, funds, signer)
     }
 
     pub fn change_contract_owner(

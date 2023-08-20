@@ -85,30 +85,28 @@ pub fn reply(
     env: Env,
     msg: Reply,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
-    // TODO unknown reply id error
+    match msg.id {
+        CREATE_DENOM_REPLY_ID => {
+            let MsgCreateDenomResponse { new_token_denom } = msg.result.try_into()?;
+            DENOM.save(deps.storage, &new_token_denom)?;
 
-    // after instantiate contract
-    if msg.id == CREATE_DENOM_REPLY_ID {
-        let MsgCreateDenomResponse { new_token_denom } = msg.result.try_into()?;
-        DENOM.save(deps.storage, &new_token_denom)?;
+            // TODO maybe do error handling for this? Not every chain supports it.
+            // set beforesend listener to this contract
+            // this will trigger sudo endpoint before any bank send
+            // which makes blacklisting / freezing possible
+            let msg_set_beforesend_hook: CosmosMsg<TokenFactoryMsg> = MsgSetBeforeSendHook {
+                sender: env.contract.address.to_string(),
+                denom: new_token_denom.clone(),
+                cosmwasm_address: env.contract.address.to_string(),
+            }
+            .into();
 
-        // TODO maybe do error handling for this? Not every chain supports it.
-        // set beforesend listener to this contract
-        // this will trigger sudo endpoint before any bank send
-        // which makes blacklisting / freezing possible
-        let msg_set_beforesend_hook: CosmosMsg<TokenFactoryMsg> = MsgSetBeforeSendHook {
-            sender: env.contract.address.to_string(),
-            denom: new_token_denom.clone(),
-            cosmwasm_address: env.contract.address.to_string(),
+            Ok(Response::new()
+                .add_attribute("denom", new_token_denom)
+                .add_message(msg_set_beforesend_hook))
         }
-        .into();
-
-        return Ok(Response::new()
-            .add_attribute("denom", new_token_denom)
-            .add_message(msg_set_beforesend_hook));
+        _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }
-
-    unreachable!()
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -33,11 +33,14 @@ fn set_denom_metadata_by_contract_owner_should_work() {
         name: "Stable Thai Baht".to_string(),
         symbol: "STHB".to_string(),
     };
+    env.cw_tokenfactory_issuer
+        .set_denom_metadata(metadata, owner)
+        .unwrap();
 
     // // TODO fix me
     // // should set basic metadata
     // assert_eq!(
-    //     env.bank()
+    //     env.tokenfactory()
     //         .query_denom_metadata(&QueryDenomMetadataRequest {
     //             denom: denom.clone()
     //         })

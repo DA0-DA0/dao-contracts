@@ -19,7 +19,7 @@ use dao_interface::voting::{
     InfoResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
-use osmosis_std::types::cosmos::bank::v1beta1::{DenomUnit, Metadata};
+use osmosis_std::types::cosmos::bank::v1beta1::Metadata;
 use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 use token_bindings_test::TokenFactoryApp as App;
 
@@ -1049,7 +1049,7 @@ fn test_query_token_contract() {
 
     let msg = QueryMsg::TokenContract {};
     let res: Addr = app.wrap().query_wasm_smart(addr, &msg).unwrap();
-    assert_eq!(res, Addr::unchecked("contract#1"));
+    assert_eq!(res, Addr::unchecked("contract1"));
 }
 
 #[test]

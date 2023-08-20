@@ -702,6 +702,7 @@ pub fn reply(
                         funds: vec![],
                     });
 
+                    // TODO first denom_unit must be the same as the denom. Make a custom metadata type?
                     // If metadata, set it by calling the contract
                     if let Some(metadata) = token.metadata {
                         msgs.push(WasmMsg::Execute {
