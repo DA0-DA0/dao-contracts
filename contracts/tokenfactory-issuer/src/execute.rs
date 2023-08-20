@@ -1,7 +1,9 @@
 use cosmwasm_std::{coins, BankMsg, Coin, DepsMut, Env, MessageInfo, Response, Uint128};
-use osmo_bindings::OsmosisMsg;
+// use osmo_bindings::OsmosisMsg;
 use osmosis_std::types::cosmos::bank::v1beta1::Metadata;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgSetDenomMetadata};
+
+use token_bindings::TokenFactoryMsg as OsmosisMsg;
 
 use crate::error::ContractError;
 use crate::helpers::{check_bool_allowance, check_is_contract_owner};

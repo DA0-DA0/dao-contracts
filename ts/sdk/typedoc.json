@@ -1,7 +1,0 @@
-{
-  "out": "./docs",
-  "name": "cw-tokenfactory-issuer",
-  "theme": "markdown",
-  "readme": "none",
-  "tsconfig": "./tsconfig.bundle.json"
-}

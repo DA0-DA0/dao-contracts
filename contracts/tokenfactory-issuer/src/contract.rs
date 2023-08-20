@@ -8,10 +8,13 @@ use cosmwasm_std::{
 use cosmwasm_std::{CosmosMsg, Reply};
 use cw2::set_contract_version;
 
-use osmo_bindings::OsmosisMsg;
+// use osmo_bindings::OsmosisMsg;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{
-    MsgCreateDenom, MsgCreateDenomResponse, MsgSetBeforeSendListener,
+    MsgCreateDenom, MsgCreateDenomResponse, MsgSetBeforeSendHook,
 };
+
+// TODO figure out a better way to do this and support multiple versions
+use token_bindings::TokenFactoryMsg as OsmosisMsg;
 
 use crate::error::ContractError;
 use crate::execute;
@@ -76,24 +79,25 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, 
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response<OsmosisMsg>, ContractError> {
+    // TODO unknown reply id error
+
     // after instantiate contract
     if msg.id == CREATE_DENOM_REPLY_ID {
         let MsgCreateDenomResponse { new_token_denom } = msg.result.try_into()?;
         DENOM.save(deps.storage, &new_token_denom)?;
 
-        // set beforesend listener to this contract
-        // this will trigger sudo endpoint before any bank send
-        // which makes blacklisting / freezing possible
-        let msg_set_beforesend_listener: CosmosMsg<OsmosisMsg> = MsgSetBeforeSendListener {
-            sender: env.contract.address.to_string(),
-            denom: new_token_denom.clone(),
-            cosmwasm_address: env.contract.address.to_string(),
-        }
-        .into();
+        // TODO maybe do error handling for this?
+        // // set beforesend listener to this contract
+        // // this will trigger sudo endpoint before any bank send
+        // // which makes blacklisting / freezing possible
+        // let msg_set_beforesend_listener: CosmosMsg<OsmosisMsg> = MsgSetBeforeSendHook {
+        //     sender: env.contract.address.to_string(),
+        //     denom: new_token_denom.clone(),
+        //     cosmwasm_address: env.contract.address.to_string(),
+        // }
+        // .into();
 
-        return Ok(Response::new()
-            .add_attribute("denom", new_token_denom)
-            .add_message(msg_set_beforesend_listener));
+        return Ok(Response::new().add_attribute("denom", new_token_denom));
     }
 
     unreachable!()
