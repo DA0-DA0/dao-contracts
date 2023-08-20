@@ -1,5 +1,5 @@
 use cw_tokenfactory_issuer::ContractError;
-use osmosis_testing::Account;
+use osmosis_test_tube::Account;
 
 mod helpers;
 use helpers::{TestEnv, TokenfactoryIssuer};

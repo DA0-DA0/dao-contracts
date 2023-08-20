@@ -1,7 +1,7 @@
 mod helpers;
 use helpers::TestEnv;
-use osmosis_testing::{
-    cosmrs::proto::cosmwasm::wasm::v1::{QueryContractInfoRequest, QueryContractInfoResponse},
+use osmosis_test_tube::{
+    osmosis_std::types::cosmwasm::wasm::v1::{QueryContractInfoRequest, QueryContractInfoResponse},
     Runner,
 };
 

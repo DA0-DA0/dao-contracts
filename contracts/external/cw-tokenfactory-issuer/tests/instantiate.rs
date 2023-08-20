@@ -1,7 +1,7 @@
 use cosmwasm_std::coins;
 
 use cw_tokenfactory_issuer::msg::InstantiateMsg;
-use osmosis_testing::{Account, OsmosisTestApp, RunnerError};
+use osmosis_test_tube::{Account, OsmosisTestApp, RunnerError};
 
 mod helpers;
 
@@ -92,8 +92,6 @@ fn instantiate_with_new_token_shoud_set_hook_correctly() {
 
     assert_eq!(err, RunnerError::ExecuteError { msg: format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The contract is frozen for denom \"{denom}\": execute wasm contract failed") });
 }
-
-// existing denom
 
 #[test]
 fn instantiate_with_existing_token_should_set_initial_state_correctly() {

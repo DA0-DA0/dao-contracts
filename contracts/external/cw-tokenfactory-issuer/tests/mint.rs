@@ -2,7 +2,7 @@ mod helpers;
 use cosmwasm_std::Uint128;
 use cw_tokenfactory_issuer::{msg::AllowanceInfo, ContractError};
 use helpers::{TestEnv, TokenfactoryIssuer};
-use osmosis_testing::{cosmrs::proto::cosmos::bank::v1beta1::QueryBalanceRequest, Account};
+use osmosis_test_tube::{osmosis_std::types::cosmos::bank::v1beta1::QueryBalanceRequest, Account};
 
 #[test]
 fn set_minter_performed_by_contract_owner_should_pass() {

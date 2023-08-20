@@ -513,6 +513,7 @@ dependencies = [
  "serde_json",
  "subtle-encoding",
  "tendermint 0.23.9",
+ "tendermint-rpc 0.23.9",
  "thiserror",
 ]
 
@@ -533,7 +534,7 @@ dependencies = [
  "serde_json",
  "subtle-encoding",
  "tendermint 0.26.0",
- "tendermint-rpc",
+ "tendermint-rpc 0.26.0",
  "thiserror",
 ]
 
@@ -1034,7 +1035,7 @@ dependencies = [
  "cw-storage-plus 1.1.0",
  "cw2 1.1.0",
  "osmosis-std 0.16.2",
- "osmosis-testing",
+ "osmosis-test-tube",
  "prost 0.11.9",
  "schemars",
  "serde",
@@ -3093,13 +3094,12 @@ checksum = "4d5d9eb14b174ee9aa2ef96dc2b94637a2d4b6e7cb873c7e171f0c20c6cf3eac"
 
 [[package]]
 name = "osmosis-std"
-version = "0.13.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10d6fe6ac7fcba45ed61d738091d33c838c4cabbcf4892dc7aa56d19d39cc976"
+version = "0.16.2"
+source = "git+https://github.com/osmosis-labs/osmosis-rust?branch=main#3c9e6e48b5abb7362170305912ff0d57997b3b62"
 dependencies = [
  "chrono",
  "cosmwasm-std",
- "osmosis-std-derive 0.13.2",
+ "osmosis-std-derive 0.16.2 (git+https://github.com/osmosis-labs/osmosis-rust?branch=main)",
  "prost 0.11.9",
  "prost-types",
  "schemars",
@@ -3109,12 +3109,13 @@ dependencies = [
 
 [[package]]
 name = "osmosis-std"
-version = "0.16.2"
-source = "git+https://github.com/osmosis-labs/osmosis-rust?branch=main#3c9e6e48b5abb7362170305912ff0d57997b3b62"
+version = "0.17.0-rc0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0b022b748710ecdf1adc6a124c3bef29f17ef05e7fa1260a08889d1d53f9cc5"
 dependencies = [
  "chrono",
  "cosmwasm-std",
- "osmosis-std-derive 0.16.2",
+ "osmosis-std-derive 0.16.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost 0.11.9",
  "prost-types",
  "schemars",
@@ -3124,12 +3125,13 @@ dependencies = [
 
 [[package]]
 name = "osmosis-std-derive"
-version = "0.13.2"
+version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a455e262a6fdfd3914f3a4e11e6bc0ce491901cb9d507d7856d7ef6e129e90c6"
+checksum = "f47f0b2f22adb341bb59e5a3a1b464dde033181954bd055b9ae86d6511ba465b"
 dependencies = [
  "itertools 0.10.5",
  "proc-macro2",
+ "prost-types",
  "quote",
  "syn 1.0.109",
 ]
@@ -3147,19 +3149,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "osmosis-testing"
-version = "0.13.2"
+name = "osmosis-test-tube"
+version = "17.0.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42636a83a181b7c4f94658eb3bb219caa51ff55bcc69750cd7ae4bf50b12cb2f"
+checksum = "977a2b4f088dd704a47e96b5914e28465cfcdb1cb1145a1f9b45c219a9b145c5"
 dependencies = [
  "base64 0.13.1",
  "bindgen",
  "cosmrs 0.9.0",
  "cosmwasm-std",
- "osmosis-std 0.13.2",
+ "osmosis-std 0.17.0-rc0",
  "prost 0.11.9",
  "serde",
  "serde_json",
+ "test-tube",
  "thiserror",
 ]
 
@@ -4059,6 +4062,20 @@ dependencies = [
 
 [[package]]
 name = "tendermint-config"
+version = "0.23.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d42ee0abc27ef5fc34080cce8d43c189950d331631546e7dfb983b6274fa327"
+dependencies = [
+ "flex-error",
+ "serde",
+ "serde_json",
+ "tendermint 0.23.9",
+ "toml",
+ "url",
+]
+
+[[package]]
+name = "tendermint-config"
 version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "202a2f19502c03b353d8157694ed24fbc58c3dd64a92a5b0cb80b79c82af5be4"
@@ -4127,6 +4144,39 @@ dependencies = [
 
 [[package]]
 name = "tendermint-rpc"
+version = "0.23.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6f14aafe3528a0f75e9f3f410b525617b2de16c4b7830a21f717eee62882ec60"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "flex-error",
+ "futures",
+ "getrandom",
+ "http",
+ "hyper",
+ "hyper-proxy",
+ "hyper-rustls",
+ "peg",
+ "pin-project",
+ "serde",
+ "serde_bytes",
+ "serde_json",
+ "subtle-encoding",
+ "tendermint 0.23.9",
+ "tendermint-config 0.23.9",
+ "tendermint-proto 0.23.9",
+ "thiserror",
+ "time",
+ "tokio",
+ "tracing",
+ "url",
+ "uuid",
+ "walkdir",
+]
+
+[[package]]
+name = "tendermint-rpc"
 version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5d87fa5429bd2ee39c4809dd546096daf432de9b71157bc12c182ab5bae7ea7"
@@ -4148,7 +4198,7 @@ dependencies = [
  "subtle",
  "subtle-encoding",
  "tendermint 0.26.0",
- "tendermint-config",
+ "tendermint-config 0.26.0",
  "tendermint-proto 0.26.0",
  "thiserror",
  "time",
@@ -4187,6 +4237,22 @@ checksum = "8901a55b0a7a06ebc4a674dcca925170da8e613fa3b163a1df804ed10afb154d"
 dependencies = [
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "test-tube"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09b1f7cafdf7738331999fb1465d2d3032f08ac61940e1ef4601dbbef21d6a5e"
+dependencies = [
+ "base64 0.13.1",
+ "cosmrs 0.9.0",
+ "cosmwasm-std",
+ "osmosis-std 0.17.0-rc0",
+ "prost 0.11.9",
+ "serde",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]

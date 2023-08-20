@@ -1,7 +1,7 @@
 mod helpers;
 use cw_tokenfactory_issuer::ContractError;
 use helpers::{TestEnv, TokenfactoryIssuer};
-use osmosis_testing::Account;
+use osmosis_test_tube::Account;
 
 #[test]
 fn change_owner_by_owner_should_work() {

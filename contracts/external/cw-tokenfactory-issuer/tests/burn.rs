@@ -2,8 +2,8 @@ mod helpers;
 use cosmwasm_std::Uint128;
 use cw_tokenfactory_issuer::{msg::AllowanceInfo, ContractError};
 use helpers::{TestEnv, TokenfactoryIssuer};
-use osmosis_testing::{
-    cosmrs::proto::cosmos::bank::v1beta1::QueryBalanceRequest, Account, RunnerError,
+use osmosis_test_tube::{
+    osmosis_std::types::cosmos::bank::v1beta1::QueryBalanceRequest, Account, RunnerError,
 };
 
 #[test]

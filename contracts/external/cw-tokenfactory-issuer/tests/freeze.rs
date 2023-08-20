@@ -2,7 +2,7 @@ mod helpers;
 
 use cw_tokenfactory_issuer::{msg::StatusInfo, ContractError};
 use helpers::{TestEnv, TokenfactoryIssuer};
-use osmosis_testing::Account;
+use osmosis_test_tube::Account;
 
 #[test]
 fn set_freezer_performed_by_contract_owner_should_pass() {

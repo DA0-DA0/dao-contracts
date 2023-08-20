@@ -1,6 +1,6 @@
 // the code is used in test but reported as dead code
 // see https://github.com/rust-lang/rust/issues/46379
-#![allow(dead_code)]
+// #![allow(dead_code)]
 
 use cosmwasm_std::Coin;
 
@@ -15,13 +15,13 @@ use cw_tokenfactory_issuer::{
     },
     ContractError,
 };
-use osmosis_std::types::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetadataRequest;
-use osmosis_testing::{
-    cosmrs::proto::{
+use osmosis_test_tube::{
+    osmosis_std::types::{
         cosmos::bank::v1beta1::{MsgSend, MsgSendResponse},
         cosmwasm::wasm::v1::{
             MsgExecuteContractResponse, MsgMigrateContract, MsgMigrateContractResponse,
         },
+        osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetadataRequest,
     },
     Account, Bank, Module, OsmosisTestApp, Runner, RunnerError, RunnerExecuteResult,
     SigningAccount, TokenFactory, Wasm,
@@ -96,7 +96,7 @@ impl TestEnv {
                 amount: coins
                     .into_iter()
                     .map(
-                        |c| osmosis_testing::cosmrs::proto::cosmos::base::v1beta1::Coin {
+                        |c| osmosis_test_tube::osmosis_std::types::cosmos::base::v1beta1::Coin {
                             denom: c.denom,
                             amount: c.amount.to_string(),
                         },
@@ -168,7 +168,7 @@ impl TokenfactoryIssuer {
         signer: &SigningAccount,
     ) -> RunnerExecuteResult<MsgExecuteContractResponse> {
         let wasm = Wasm::new(&self.app);
-        wasm.execute(&self.contract_addr, execute_msg, funds, signer)
+        Ok(wasm.execute(&self.contract_addr, execute_msg, funds, signer)?)
     }
 
     pub fn change_contract_owner(
