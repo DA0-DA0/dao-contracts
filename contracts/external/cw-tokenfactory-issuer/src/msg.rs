@@ -1,6 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Uint128};
-pub use token_bindings::{DenomUnit, Metadata};
+pub use osmosis_std::types::cosmos::bank::v1beta1::{DenomUnit, Metadata};
 
 #[cw_serde]
 pub enum InstantiateMsg {

@@ -4,7 +4,7 @@ use cw_utils::Duration;
 use dao_dao_macros::{active_query, voting_module_query};
 use dao_interface::state::Admin;
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
-use token_bindings::Metadata;
+pub use osmosis_std::types::cosmos::bank::v1beta1::{DenomUnit, Metadata};
 
 #[cw_serde]
 pub struct InitialBalance {

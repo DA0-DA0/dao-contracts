@@ -32,6 +32,7 @@ dao-voting = { workspace = true }
 cw-paginate-storage = { workspace = true }
 cw-tokenfactory-issuer = { workspace = true, features = ["library"] }
 token-bindings = { workspace = true }
+osmosis-std = { workspace = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }

@@ -19,7 +19,8 @@ use dao_interface::voting::{
     InfoResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
-use token_bindings::{Metadata, TokenFactoryMsg, TokenFactoryQuery};
+use osmosis_std::types::cosmos::bank::v1beta1::{DenomUnit, Metadata};
+use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 use token_bindings_test::TokenFactoryApp as App;
 
 const DAO_ADDR: &str = "dao";
@@ -290,12 +291,12 @@ fn test_instantiate_new_denom() {
             token_info: TokenInfo::New(NewTokenInfo {
                 subdenom: DENOM.to_string(),
                 metadata: Some(Metadata {
-                    description: Some("Awesome token, get it now!".to_string()),
+                    description: "Awesome token, get it now!".to_string(),
                     denom_units: vec![],
-                    base: None,
-                    display: Some(DENOM.to_string()),
-                    name: Some(DENOM.to_string()),
-                    symbol: Some(DENOM.to_string()),
+                    base: DENOM.to_string(),
+                    display: DENOM.to_string(),
+                    name: DENOM.to_string(),
+                    symbol: DENOM.to_string(),
                 }),
                 initial_balances: vec![InitialBalance {
                     amount: Uint128::new(100),
@@ -323,12 +324,12 @@ fn test_instantiate_new_denom() {
             token_info: TokenInfo::New(NewTokenInfo {
                 subdenom: DENOM.to_string(),
                 metadata: Some(Metadata {
-                    description: Some("Awesome token, get it now!".to_string()),
+                    description: "Awesome token, get it now!".to_string(),
                     denom_units: vec![],
-                    base: None,
-                    display: Some(DENOM.to_string()),
-                    name: Some(DENOM.to_string()),
-                    symbol: Some(DENOM.to_string()),
+                    base: DENOM.to_string(),
+                    display: DENOM.to_string(),
+                    name: DENOM.to_string(),
+                    symbol: DENOM.to_string(),
                 }),
                 initial_balances: vec![InitialBalance {
                     amount: Uint128::new(100),
@@ -352,12 +353,12 @@ fn test_instantiate_new_denom() {
             token_info: TokenInfo::New(NewTokenInfo {
                 subdenom: DENOM.to_string(),
                 metadata: Some(Metadata {
-                    description: Some("Awesome token, get it now!".to_string()),
+                    description: "Awesome token, get it now!".to_string(),
                     denom_units: vec![],
-                    base: None,
-                    display: Some(DENOM.to_string()),
-                    name: Some(DENOM.to_string()),
-                    symbol: Some(DENOM.to_string()),
+                    base: DENOM.to_string(),
+                    display: DENOM.to_string(),
+                    name: DENOM.to_string(),
+                    symbol: DENOM.to_string(),
                 }),
                 initial_balances: vec![],
                 initial_dao_balance: None,
@@ -504,12 +505,12 @@ fn test_stake_new_denom() {
             token_info: TokenInfo::New(NewTokenInfo {
                 subdenom: DENOM.to_string(),
                 metadata: Some(Metadata {
-                    description: Some("Awesome token, get it now!".to_string()),
+                    description: "Awesome token, get it now!".to_string(),
                     denom_units: vec![],
-                    base: None,
-                    display: Some(DENOM.to_string()),
-                    name: Some(DENOM.to_string()),
-                    symbol: Some(DENOM.to_string()),
+                    base: DENOM.to_string(),
+                    display: DENOM.to_string(),
+                    name: DENOM.to_string(),
+                    symbol: DENOM.to_string(),
                 }),
                 initial_balances: vec![InitialBalance {
                     amount: Uint128::new(100),
