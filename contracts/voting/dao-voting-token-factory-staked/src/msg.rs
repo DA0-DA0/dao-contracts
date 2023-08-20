@@ -14,8 +14,6 @@ pub struct InitialBalance {
 
 #[cw_serde]
 pub struct NewTokenInfo {
-    // TODO
-    // pub token_issuer_code_id: u64,
     pub subdenom: String,
     pub metadata: Option<Metadata>,
     pub initial_balances: Vec<InitialBalance>,
@@ -24,22 +22,30 @@ pub struct NewTokenInfo {
 
 #[cw_serde]
 pub enum TokenInfo {
+    /// Uses an existing Token Factory token and creates a new issuer contract.
+    /// Full setup, such as transferring ownership or setting up MsgSetBeforeSendHook,
+    /// must be done manually.
+    /// Note, for chain controlled denoms or IBC tokens use dao-voting-native-staked.
     Existing {
-        /// Token denom e.g. ujuno, or some ibc denom.
+        /// Token factory denom
         denom: String,
     },
+    /// Creates a new Token Factory token via the issue contract with the DAO automatically
+    /// setup as admin and owner.
     New(NewTokenInfo),
 }
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    // Owner can update all configs including changing the owner. This will generally be a DAO.
+    /// The code id of the cw-tokenfactory-issuer contract
+    pub token_issuer_code_id: u64,
+    /// Owner can update all configs including changing the owner. This will generally be a DAO.
     pub owner: Option<Admin>,
-    // Manager can update all configs except changing the owner. This will generally be an operations multisig for a DAO.
+    /// Manager can update all configs except changing the owner. This will generally be an operations multisig for a DAO.
     pub manager: Option<String>,
-    // New or existing native token to use for voting power.
+    /// New or existing native token to use for voting power.
     pub token_info: TokenInfo,
-    // How long until the tokens become liquid again
+    /// How long until the tokens become liquid again
     pub unstaking_duration: Option<Duration>,
     /// The number or percentage of tokens that must be staked
     /// for the DAO to be active
@@ -72,6 +78,7 @@ pub enum ExecuteMsg {
     RemoveHook { addr: String },
 }
 
+// TODO query for getting cw-tokenfactory-issuer addr
 #[voting_module_query]
 #[active_query]
 #[cw_serde]
@@ -79,6 +86,7 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(crate::state::Config)]
     GetConfig {},
+    // TODO rename
     #[returns(DenomResponse)]
     GetDenom {},
     #[returns(cw_controllers::ClaimsResponse)]

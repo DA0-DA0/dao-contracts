@@ -8,7 +8,7 @@ use crate::msg::{
 use crate::state::Config;
 use crate::ContractError;
 use cosmwasm_std::testing::{mock_env, MockApi, MockQuerier, MockStorage};
-use cosmwasm_std::{coins, Addr, Coin, Decimal, Empty, OwnedDeps, Uint128};
+use cosmwasm_std::{coins, Addr, Coin, Decimal, OwnedDeps, Uint128};
 use cw_controllers::ClaimsResponse;
 use cw_multi_test::{
     next_block, AppResponse, BankSudo, Contract, ContractWrapper, Executor, SudoMsg,
@@ -29,7 +29,7 @@ const DENOM: &str = "ujuno";
 const INVALID_DENOM: &str = "uinvalid";
 const ODD_DENOM: &str = "uodd";
 
-fn issuer_contract() -> Box<dyn Contract<TokenFactoryMsg, Empty>> {
+fn issuer_contract() -> Box<dyn Contract<TokenFactoryMsg, TokenFactoryQuery>> {
     let contract = ContractWrapper::new(
         cw_tokenfactory_issuer::contract::execute,
         cw_tokenfactory_issuer::contract::instantiate,
@@ -236,14 +236,14 @@ fn get_balance(app: &mut App, address: &str, denom: &str) -> Uint128 {
 #[test]
 fn test_instantiate_existing() {
     let mut app = mock_app();
-    // TODO
-    // let issuer_id = app.store_code(issuer_contract());
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     // Populated fields
     let _addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::Address {
                 addr: DAO_ADDR.to_string(),
             }),
@@ -261,6 +261,7 @@ fn test_instantiate_existing() {
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: None,
             manager: None,
             token_info: TokenInfo::Existing {
@@ -275,6 +276,7 @@ fn test_instantiate_existing() {
 #[test]
 fn test_instantiate_new_denom() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
 
     // Populated fields
@@ -282,6 +284,7 @@ fn test_instantiate_new_denom() {
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::New(NewTokenInfo {
@@ -314,6 +317,7 @@ fn test_instantiate_new_denom() {
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: None,
             manager: None,
             token_info: TokenInfo::New(NewTokenInfo {
@@ -342,6 +346,7 @@ fn test_instantiate_new_denom() {
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: None,
             manager: None,
             token_info: TokenInfo::New(NewTokenInfo {
@@ -367,12 +372,14 @@ fn test_instantiate_new_denom() {
 #[test]
 fn test_instantiate_dao_owner() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     // Populated fields
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -392,12 +399,15 @@ fn test_instantiate_dao_owner() {
 #[should_panic(expected = "Invalid unstaking duration, unstaking duration cannot be 0")]
 fn test_instantiate_invalid_unstaking_duration() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
+
     // Populated fields
     let _addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::Address {
                 addr: DAO_ADDR.to_string(),
             }),
@@ -417,6 +427,7 @@ fn test_instantiate_invalid_unstaking_duration() {
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: None,
             manager: None,
             token_info: TokenInfo::Existing {
@@ -432,11 +443,13 @@ fn test_instantiate_invalid_unstaking_duration() {
 #[should_panic(expected = "Must send reserve token 'ujuno'")]
 fn test_stake_invalid_denom() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -454,11 +467,13 @@ fn test_stake_invalid_denom() {
 #[test]
 fn test_stake_valid_denom() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -477,11 +492,13 @@ fn test_stake_valid_denom() {
 #[test]
 fn test_stake_new_denom() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::New(NewTokenInfo {
@@ -515,11 +532,13 @@ fn test_stake_new_denom() {
 #[should_panic(expected = "Can only unstake less than or equal to the amount you have staked")]
 fn test_unstake_none_staked() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -537,11 +556,13 @@ fn test_unstake_none_staked() {
 #[should_panic(expected = "Amount being unstaked must be non-zero")]
 fn test_unstake_zero_tokens() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -559,11 +580,13 @@ fn test_unstake_zero_tokens() {
 #[should_panic(expected = "Can only unstake less than or equal to the amount you have staked")]
 fn test_unstake_invalid_balance() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -585,11 +608,13 @@ fn test_unstake_invalid_balance() {
 #[test]
 fn test_unstake() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -623,11 +648,13 @@ fn test_unstake() {
 #[test]
 fn test_unstake_no_unstaking_duration() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -663,11 +690,13 @@ fn test_unstake_no_unstaking_duration() {
 #[should_panic(expected = "Nothing to claim")]
 fn test_claim_no_claims() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -685,11 +714,13 @@ fn test_claim_no_claims() {
 #[should_panic(expected = "Nothing to claim")]
 fn test_claim_claim_not_reached() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -715,11 +746,13 @@ fn test_claim_claim_not_reached() {
 #[test]
 fn test_claim() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -769,11 +802,13 @@ fn test_claim() {
 #[should_panic(expected = "Unauthorized")]
 fn test_update_config_invalid_sender() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -800,11 +835,13 @@ fn test_update_config_invalid_sender() {
 #[should_panic(expected = "Only owner can change owner")]
 fn test_update_config_non_owner_changes_owner() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -822,11 +859,13 @@ fn test_update_config_non_owner_changes_owner() {
 #[test]
 fn test_update_config_as_owner() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -862,11 +901,13 @@ fn test_update_config_as_owner() {
 #[test]
 fn test_update_config_as_manager() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -903,11 +944,13 @@ fn test_update_config_as_manager() {
 #[should_panic(expected = "Invalid unstaking duration, unstaking duration cannot be 0")]
 fn test_update_config_invalid_duration() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -933,11 +976,13 @@ fn test_update_config_invalid_duration() {
 #[test]
 fn test_query_dao() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -956,11 +1001,13 @@ fn test_query_dao() {
 #[test]
 fn test_query_info() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -982,11 +1029,13 @@ fn test_query_info() {
 #[test]
 fn test_query_claims() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -1021,11 +1070,13 @@ fn test_query_claims() {
 #[test]
 fn test_query_get_config() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -1050,11 +1101,13 @@ fn test_query_get_config() {
 #[test]
 fn test_voting_power_queries() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -1159,11 +1212,13 @@ fn test_voting_power_queries() {
 #[test]
 fn test_query_list_stakers() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
@@ -1247,11 +1302,13 @@ fn test_query_list_stakers() {
 #[should_panic(expected = "Active threshold count must be greater than zero")]
 fn test_instantiate_zero_active_threshold_count() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::Address {
                 addr: DAO_ADDR.to_string(),
             }),
@@ -1270,12 +1327,14 @@ fn test_instantiate_zero_active_threshold_count() {
 #[test]
 fn test_active_threshold_absolute_count() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
 
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::Address {
                 addr: DAO_ADDR.to_string(),
             }),
@@ -1312,11 +1371,13 @@ fn test_active_threshold_absolute_count() {
 #[test]
 fn test_active_threshold_percent() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::Address {
                 addr: DAO_ADDR.to_string(),
             }),
@@ -1353,11 +1414,13 @@ fn test_active_threshold_percent() {
 #[test]
 fn test_active_threshold_percent_rounds_up() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::Address {
                 addr: DAO_ADDR.to_string(),
             }),
@@ -1403,11 +1466,13 @@ fn test_active_threshold_percent_rounds_up() {
 #[test]
 fn test_active_threshold_none() {
     let mut app = App::default();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::Address {
                 addr: DAO_ADDR.to_string(),
             }),
@@ -1431,11 +1496,13 @@ fn test_active_threshold_none() {
 #[test]
 fn test_update_active_threshold() {
     let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::Address {
                 addr: DAO_ADDR.to_string(),
             }),
@@ -1484,11 +1551,13 @@ fn test_update_active_threshold() {
 #[should_panic(expected = "Active threshold percentage must be greater than 0 and less than 1")]
 fn test_active_threshold_percentage_gt_100() {
     let mut app = App::default();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::Address {
                 addr: DAO_ADDR.to_string(),
             }),
@@ -1508,11 +1577,13 @@ fn test_active_threshold_percentage_gt_100() {
 #[should_panic(expected = "Active threshold percentage must be greater than 0 and less than 1")]
 fn test_active_threshold_percentage_lte_0() {
     let mut app = App::default();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::Address {
                 addr: DAO_ADDR.to_string(),
             }),
@@ -1532,11 +1603,13 @@ fn test_active_threshold_percentage_lte_0() {
 #[should_panic(expected = "Absolute count threshold cannot be greater than the total token supply")]
 fn test_active_threshold_absolute_count_invalid() {
     let mut app = App::default();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::Address {
                 addr: DAO_ADDR.to_string(),
             }),
@@ -1555,11 +1628,13 @@ fn test_active_threshold_absolute_count_invalid() {
 #[test]
 fn test_add_remove_hooks() {
     let mut app = App::default();
+    let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
+            token_issuer_code_id: issuer_id,
             owner: Some(Admin::Address {
                 addr: DAO_ADDR.to_string(),
             }),

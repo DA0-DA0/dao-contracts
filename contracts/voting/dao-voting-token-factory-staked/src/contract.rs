@@ -3,12 +3,15 @@ use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
     coins, to_binary, BankMsg, BankQuery, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Order, Reply, Response, StdResult, SubMsg, Uint128, Uint256,
+    MessageInfo, Order, Reply, Response, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_controllers::ClaimsResponse;
 use cw_storage_plus::Bound;
-use cw_utils::{maybe_addr, must_pay, Duration};
+use cw_tokenfactory_issuer::msg::{
+    ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg,
+};
+use cw_utils::{maybe_addr, must_pay, parse_reply_instantiate_data, Duration};
 use dao_interface::state::Admin;
 use dao_interface::voting::{
     IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
@@ -19,12 +22,12 @@ use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenQuerier};
 use crate::error::ContractError;
 use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 use crate::msg::{
-    DenomResponse, ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg,
-    QueryMsg, StakerBalanceResponse, TokenInfo,
+    DenomResponse, ExecuteMsg, GetHooksResponse, InitialBalance, InstantiateMsg,
+    ListStakersResponse, MigrateMsg, QueryMsg, StakerBalanceResponse, TokenInfo,
 };
 use crate::state::{
     Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, DENOM, HOOKS, MAX_CLAIMS, STAKED_BALANCES,
-    STAKED_TOTAL, TOKEN_INSTANTIATION_INFO,
+    STAKED_TOTAL, TOKEN_INSTANTIATION_INFO, TOKEN_ISSUER_CONTRACT,
 };
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-token-factory-staked";
@@ -34,7 +37,7 @@ pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 
-const CREATE_DENOM_REPLY_ID: u64 = 0;
+const INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID: u64 = 0;
 
 // We multiply by this when calculating needed power for being active
 // when using active threshold with percent
@@ -58,7 +61,6 @@ fn validate_duration(duration: Option<Duration>) -> Result<(), ContractError> {
     Ok(())
 }
 
-// TODO consider removing token factory msg and query dependencies
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut<TokenFactoryQuery>,
@@ -101,6 +103,9 @@ pub fn instantiate(
         ACTIVE_THRESHOLD.save(deps.storage, active_threshold)?;
     }
 
+    // Save new token info for use in reply
+    TOKEN_INSTANTIATION_INFO.save(deps.storage, &msg.token_info)?;
+
     match msg.token_info {
         TokenInfo::Existing { denom } => {
             if let Some(ActiveThreshold::AbsoluteCount { count }) = msg.active_threshold {
@@ -108,6 +113,22 @@ pub fn instantiate(
             }
 
             DENOM.save(deps.storage, &denom)?;
+
+            // Instantiate cw-token-factory-issuer contract
+            // DAO (sender) is set as admin
+            let issuer_instantiate_msg = SubMsg::reply_on_success(
+                WasmMsg::Instantiate {
+                    admin: Some(info.sender.to_string()),
+                    code_id: msg.token_issuer_code_id,
+                    msg: to_binary(&IssuerInstantiateMsg::ExistingToken {
+                        denom: denom.clone(),
+                    })?,
+                    /// TODO do funds need to be sent with this?
+                    funds: vec![],
+                    label: "cw-tokenfactory-issuer".to_string(),
+                },
+                INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID,
+            );
 
             Ok(Response::<TokenFactoryMsg>::new()
                 .add_attribute("action", "instantiate")
@@ -126,32 +147,45 @@ pub fn instantiate(
                         .manager
                         .map(|a| a.to_string())
                         .unwrap_or_else(|| "None".to_string()),
-                ))
+                )
+                .add_submessage(issuer_instantiate_msg))
         }
         TokenInfo::New(token) => {
-            if token.subdenom.eq("") {
-                return Err(ContractError::InvalidSubdenom {
-                    subdenom: token.subdenom,
-                });
-            }
-
-            // TODO instantiate token issuer instead
-            // TODO make sure to set contract admin as DAO
-            // Create Token Factory denom SubMsg
-            let create_denom_msg = SubMsg::reply_on_success(
-                TokenFactoryMsg::CreateDenom {
-                    subdenom: token.clone().subdenom,
-                    metadata: token.clone().metadata,
+            println!("New TOKEN: {:?}", token);
+            // Tnstantiate cw-token-factory-issuer contract
+            // DAO (sender) is set as contract admin
+            let issuer_instantiate_msg = SubMsg::reply_on_success(
+                WasmMsg::Instantiate {
+                    admin: Some(info.sender.to_string()),
+                    code_id: msg.token_issuer_code_id,
+                    msg: to_binary(&IssuerInstantiateMsg::NewToken {
+                        subdenom: token.subdenom.clone(),
+                    })?,
+                    /// TODO do funds need to be sent with this?
+                    funds: vec![],
+                    label: "cw-tokenfactory-issuer".to_string(),
                 },
-                CREATE_DENOM_REPLY_ID,
+                INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID,
             );
 
-            // Save new token info for use in reply
-            TOKEN_INSTANTIATION_INFO.save(deps.storage, &token)?;
-
             Ok(Response::<TokenFactoryMsg>::new()
-                .add_attribute("method", "create_denom")
-                .add_submessage(create_denom_msg))
+                .add_attribute("action", "instantiate")
+                .add_attribute("token", "new_token")
+                .add_attribute(
+                    "owner",
+                    config
+                        .owner
+                        .map(|a| a.to_string())
+                        .unwrap_or_else(|| "None".to_string()),
+                )
+                .add_attribute(
+                    "manager",
+                    config
+                        .manager
+                        .map(|a| a.to_string())
+                        .unwrap_or_else(|| "None".to_string()),
+                )
+                .add_submessage(issuer_instantiate_msg))
         }
     }
 }
@@ -613,74 +647,107 @@ pub fn reply(
     msg: Reply,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
     match msg.id {
-        CREATE_DENOM_REPLY_ID => {
-            // TODO get address of cw-tokenfactory-issuer
+        INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID => {
+            // Parse and save address of cw-tokenfactory-issuer
+            let issuer_addr = parse_reply_instantiate_data(msg)?.contract_address;
+            TOKEN_ISSUER_CONTRACT.save(deps.storage, &deps.api.addr_validate(&issuer_addr)?)?;
 
-            // Load info for new token and the DAO's address
-            let token = TOKEN_INSTANTIATION_INFO.load(deps.storage)?;
-            let dao = DAO.load(deps.storage)?;
-
-            // Get the new token factory denom
-            let querier = TokenQuerier::new(&deps.querier);
-            let denom = querier
-                .full_denom(env.contract.address.to_string(), token.subdenom)?
-                .denom;
-            DENOM.save(deps.storage, &denom)?;
-
-            // TODO if metadata, set it
-
-            let mut mint_msgs: Vec<TokenFactoryMsg> = vec![];
-
-            // Check supply is greater than zero, iterate through initial
-            // balances and sum them.
-            let initial_supply = token
-                .initial_balances
-                .iter()
-                .fold(Uint128::zero(), |previous, new_balance| {
-                    previous + new_balance.amount
-                });
-
-            // Cannot instantiate with no initial token owners because it would
-            // immediately lock the DAO.
-            if initial_supply.is_zero() {
-                return Err(ContractError::InitialBalancesError {});
-            }
-
-            // TODO Call issuer contract to mint tokens
-            // Mint initial balances
-            token.initial_balances.iter().for_each(|b| {
-                mint_msgs.push(TokenFactoryMsg::MintTokens {
-                    denom: denom.clone(),
-                    amount: b.amount,
-                    mint_to_address: b.address.clone(),
-                })
-            });
-
-            // Add initial DAO balance to initial_balances if nonzero.
-            if let Some(initial_dao_balance) = token.initial_dao_balance {
-                if !initial_dao_balance.is_zero() {
-                    mint_msgs.push(TokenFactoryMsg::MintTokens {
-                        denom: denom.clone(),
-                        amount: initial_dao_balance,
-                        mint_to_address: dao.to_string(),
-                    })
-                }
-            }
-
-            // Clear up unneeded storage.
+            // Load info for new token and remove temporary data
+            let token_info = TOKEN_INSTANTIATION_INFO.load(deps.storage)?;
             TOKEN_INSTANTIATION_INFO.remove(deps.storage);
 
-            // TODO update issuer contract admin
-            // Update token factory denom admin to be the DAO
-            let update_token_admin_msg = TokenFactoryMsg::ChangeAdmin {
-                denom: denom.clone(),
-                new_admin_address: dao.to_string(),
-            };
+            match token_info {
+                TokenInfo::Existing { .. } => {
+                    // Not much to do here.
+                    Ok(
+                        Response::new()
+                            .add_attribute("cw-tokenfactory-issuer-address", issuer_addr),
+                    )
+                }
+                TokenInfo::New(token) => {
+                    // Load the DAO address
+                    let dao = DAO.load(deps.storage)?;
 
-            Ok(Response::new()
-                .add_attribute("denom", denom)
-                .add_messages(mint_msgs)
-                .add_message(update_token_admin_msg))
+                    // TODO maybe use wasm query?
+                    // Get the new token factory denom and save it
+                    let querier = TokenQuerier::new(&deps.querier);
+                    let denom = querier
+                        .full_denom(env.contract.address.to_string(), token.subdenom)?
+                        .denom;
+                    DENOM.save(deps.storage, &denom)?;
+
+                    // Check supply is greater than zero, iterate through initial
+                    // balances and sum them.
+                    let initial_supply = token
+                        .initial_balances
+                        .iter()
+                        .fold(Uint128::zero(), |previous, new_balance| {
+                            previous + new_balance.amount
+                        });
+
+                    // Cannot instantiate with no initial token owners because it would
+                    // immediately lock the DAO.
+                    if initial_supply.is_zero() {
+                        return Err(ContractError::InitialBalancesError {});
+                    }
+
+                    // Msgs to be executed to finalize setup
+                    let mut msgs: Vec<WasmMsg> = vec![];
+
+                    // If metadata, set it by calling the contract
+                    if let Some(metadata) = token.metadata {
+                        msgs.push(WasmMsg::Execute {
+                            contract_addr: issuer_addr.clone(),
+                            msg: to_binary(&IssuerExecuteMsg::SetDenomMetadata { metadata })?,
+                            funds: vec![],
+                        });
+                    }
+
+                    // Call issuer contract to mint tokens for initial balances
+                    token
+                        .initial_balances
+                        .iter()
+                        .for_each(|b: &InitialBalance| {
+                            msgs.push(WasmMsg::Execute {
+                                contract_addr: issuer_addr.clone(),
+                                msg: to_binary(&IssuerExecuteMsg::Mint {
+                                    to_address: b.address.clone(),
+                                    amount: b.amount,
+                                })
+                                .unwrap_or_default(),
+                                funds: vec![],
+                            });
+                        });
+
+                    // Add initial DAO balance to initial_balances if nonzero.
+                    if let Some(initial_dao_balance) = token.initial_dao_balance {
+                        if !initial_dao_balance.is_zero() {
+                            msgs.push(WasmMsg::Execute {
+                                contract_addr: issuer_addr.clone(),
+                                msg: to_binary(&IssuerExecuteMsg::Mint {
+                                    to_address: dao.to_string().clone(),
+                                    amount: initial_dao_balance,
+                                })?,
+                                funds: vec![],
+                            });
+                        }
+                    }
+
+                    // Update issuer contract owner to be the DAO
+                    msgs.push(WasmMsg::Execute {
+                        contract_addr: issuer_addr.clone(),
+                        msg: to_binary(&IssuerExecuteMsg::ChangeContractOwner {
+                            new_owner: dao.to_string(),
+                        })?,
+                        funds: vec![],
+                    });
+
+                    Ok(Response::new()
+                        .add_attribute("cw-tokenfactory-issuer-address", issuer_addr)
+                        .add_attribute("denom", denom)
+                        .add_messages(msgs))
+                }
+            }
         }
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }
