@@ -8,10 +8,14 @@ use crate::{
 };
 
 use cosmwasm_std::{Coin, Uint128};
-use cw_tokenfactory_issuer::msg::DenomUnit;
+use cw_tokenfactory_issuer::msg::{DenomResponse, DenomUnit};
 use cw_utils::Duration;
-use dao_interface::state::Admin;
+use dao_interface::{
+    state::Admin,
+    voting::{IsActiveResponse, VotingPowerAtHeightResponse},
+};
 use dao_testing::test_tube::cw_tokenfactory_issuer::TokenfactoryIssuer;
+use dao_voting::threshold::ActiveThreshold;
 use osmosis_std::types::{
     cosmos::bank::v1beta1::QueryAllBalancesRequest, cosmwasm::wasm::v1::MsgExecuteContractResponse,
 };
@@ -43,6 +47,10 @@ impl<'a> TestEnv<'a> {
 
     pub fn get_tf_issuer_code_id(&self) -> u64 {
         self.tf_issuer.code_id
+    }
+
+    pub fn bank(&self) -> Bank<'_, OsmosisTestApp> {
+        Bank::new(self.app)
     }
 
     pub fn assert_account_balances(
@@ -133,7 +141,9 @@ impl TestEnvBuilder {
                     initial_dao_balance: Some(Uint128::new(900)),
                 }),
                 unstaking_duration: Some(Duration::Time(2)),
-                active_threshold: None,
+                active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                    count: Uint128::new(75),
+                }),
             },
             &accounts[0],
         )
@@ -279,12 +289,31 @@ impl<'a> TfDaoVotingContract<'a> {
         wasm.execute(&self.contract_addr, msg, funds, signer)
     }
 
-    pub fn query<Res>(&self, msg: &QueryMsg) -> RunnerResult<Res>
+    pub fn query<T>(&self, msg: &QueryMsg) -> RunnerResult<T>
     where
-        Res: ?Sized + DeserializeOwned,
+        T: ?Sized + DeserializeOwned,
     {
         let wasm = Wasm::new(self.app);
         wasm.query(&self.contract_addr, msg)
+    }
+
+    pub fn query_active(&self) -> RunnerResult<IsActiveResponse> {
+        self.query(&QueryMsg::IsActive {})
+    }
+
+    pub fn query_denom(&self) -> RunnerResult<DenomResponse> {
+        self.query(&QueryMsg::Denom {})
+    }
+
+    pub fn query_vp(
+        &self,
+        address: &str,
+        height: Option<u64>,
+    ) -> RunnerResult<VotingPowerAtHeightResponse> {
+        self.query(&QueryMsg::VotingPowerAtHeight {
+            address: address.to_string(),
+            height,
+        })
     }
 
     fn get_wasm_byte_code() -> Vec<u8> {
@@ -309,6 +338,15 @@ impl<'a> TfDaoVotingContract<'a> {
                     .join("dao_voting_token_factory_staked-aarch64.wasm"),
             )
             .unwrap(),
+        }
+    }
+
+    pub fn execute_error(err: ContractError) -> RunnerError {
+        RunnerError::ExecuteError {
+            msg: format!(
+                "failed to execute message; message index: 0: {}: execute wasm contract failed",
+                err
+            ),
         }
     }
 }

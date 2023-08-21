@@ -64,6 +64,7 @@ impl TestEnv {
     pub fn app(&self) -> &OsmosisTestApp {
         &self.cw_tokenfactory_issuer.app
     }
+
     pub fn tokenfactory(&self) -> TokenFactory<'_, OsmosisTestApp> {
         TokenFactory::new(self.app())
     }

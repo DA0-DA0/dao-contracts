@@ -681,8 +681,9 @@ pub fn reply(
                         .iter()
                         .fold(Uint128::zero(), |previous, new_balance| {
                             previous + new_balance.amount
-                        })
-                        + token.initial_dao_balance.unwrap_or_default();
+                        });
+                    let total_supply =
+                        initial_supply + token.initial_dao_balance.unwrap_or_default();
 
                     // Cannot instantiate with no initial token owners because it would
                     // immediately lock the DAO.
@@ -698,7 +699,7 @@ pub fn reply(
                         contract_addr: issuer_addr.clone(),
                         msg: to_binary(&IssuerExecuteMsg::SetMinterAllowance {
                             address: env.contract.address.to_string(),
-                            allowance: initial_supply,
+                            allowance: total_supply,
                         })?,
                         funds: vec![],
                     });
