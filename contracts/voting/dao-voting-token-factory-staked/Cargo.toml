@@ -37,6 +37,7 @@ token-bindings = { workspace = true }
 anyhow = { workspace = true }
 cw-multi-test = { workspace = true }
 cw-tokenfactory-issuer = { workspace = true }
+dao-testing = { workspace = true }
 osmosis-std = { workpsace = true }
 osmosis-test-tube = { workspace = true }
 serde = { workspace = true }

@@ -702,14 +702,23 @@ pub fn reply(
                         funds: vec![],
                     });
 
+                    // TODO doesn't use decimals yet
+
                     // If metadata, set it by calling the contract
                     if let Some(metadata) = token.metadata {
                         // The first denom_unit must be the same as the denom. Make a custom metadata type?
-                        let mut denom_units = vec![DenomUnit {
-                            denom: denom.clone(),
-                            exponent: 0,
-                            aliases: vec![metadata.symbol.clone()],
-                        }];
+                        let mut denom_units = vec![
+                            DenomUnit {
+                                denom: denom.clone(),
+                                exponent: 0,
+                                aliases: vec![],
+                            },
+                            DenomUnit {
+                                denom: metadata.display.clone(),
+                                exponent: 0,
+                                aliases: vec![],
+                            },
+                        ];
 
                         // Caller can optionally define additional units
                         if let Some(mut additional_units) = metadata.additional_denom_units {

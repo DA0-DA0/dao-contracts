@@ -1,25 +1,34 @@
-use std::{collections::HashMap, path::PathBuf};
+#![allow(dead_code)]
 
 use crate::{
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{ExecuteMsg, InitialBalance, InstantiateMsg, NewTokenInfo, QueryMsg, TokenInfo},
     ContractError,
 };
 
-use cosmwasm_std::Coin;
+use cosmwasm_std::{Coin, Uint128};
+use cw_tokenfactory_issuer::msg::DenomUnit;
+use cw_utils::Duration;
+use dao_interface::state::Admin;
+use dao_testing::test_tube::cw_tokenfactory_issuer::TokenfactoryIssuer;
 use osmosis_std::types::{
     cosmos::bank::v1beta1::QueryAllBalancesRequest, cosmwasm::wasm::v1::MsgExecuteContractResponse,
 };
-
 use osmosis_test_tube::{
     Account, Bank, Module, OsmosisTestApp, RunnerError, RunnerExecuteResult, RunnerResult,
     SigningAccount, Wasm,
 };
 use serde::de::DeserializeOwned;
+use std::{collections::HashMap, path::PathBuf};
+
+pub const DAO: &str = "dao";
+pub const DENOM: &str = "cat";
+pub const JUNO: &str = "ujuno";
 
 pub struct TestEnv<'a> {
     pub app: &'a OsmosisTestApp,
     pub creator: SigningAccount,
     pub contract: TfDaoVotingContract<'a>,
+    pub tf_issuer: TokenfactoryIssuer<'a>,
     pub accounts: HashMap<String, SigningAccount>,
 }
 
@@ -74,15 +83,72 @@ impl TestEnvBuilder {
         }
     }
 
-    pub fn with_instantiate_msg(mut self, msg: InstantiateMsg) -> Self {
-        self.instantiate_msg = Some(msg);
-        self
+    pub fn setup(self, app: &'_ OsmosisTestApp) -> TestEnv<'_> {
+        let accounts: HashMap<_, _> = self
+            .account_balances
+            .into_iter()
+            .map(|(account, balance)| {
+                let balance: Vec<_> = balance
+                    .into_iter()
+                    .chain(vec![Coin::new(1000000000000, "uosmo")])
+                    .collect();
+
+                (account, app.init_account(&balance).unwrap())
+            })
+            .collect();
+
+        let creator = app
+            .init_account(&[Coin::new(1000000000000000u128, "uosmo")])
+            .unwrap();
+        let issuer_id = TokenfactoryIssuer::upload(app, &creator).unwrap();
+
+        let contract = TfDaoVotingContract::deploy(
+            app,
+            &InstantiateMsg {
+                token_issuer_code_id: issuer_id,
+                owner: Some(Admin::CoreModule {}),
+                manager: Some(creator.address()),
+                token_info: TokenInfo::New(NewTokenInfo {
+                    subdenom: DENOM.to_string(),
+                    metadata: Some(crate::msg::NewDenomMetadata {
+                        description: "Awesome token, get it meow!".to_string(),
+                        additional_denom_units: Some(vec![DenomUnit {
+                            denom: "ncat".to_string(),
+                            exponent: 9,
+                            aliases: vec![],
+                        }]),
+                        display: DENOM.to_string(),
+                        name: DENOM.to_string(),
+                        symbol: DENOM.to_string(),
+                        decimals: 6,
+                    }),
+                    initial_balances: vec![InitialBalance {
+                        amount: Uint128::new(100),
+                        address: creator.address(),
+                    }],
+                    initial_dao_balance: Some(Uint128::new(900)),
+                }),
+                unstaking_duration: Some(Duration::Height(5)),
+                active_threshold: None,
+            },
+            &creator,
+        )
+        .unwrap();
+
+        let issuer_addr =
+            TfDaoVotingContract::query(&contract, &QueryMsg::TokenContract {}).unwrap();
+
+        let tf_issuer = TokenfactoryIssuer::new_with_values(app, issuer_id, issuer_addr).unwrap();
+
+        TestEnv {
+            app,
+            creator,
+            contract,
+            tf_issuer,
+            accounts,
+        }
     }
 
-    pub fn with_account(mut self, account: &str, balance: Vec<Coin>) -> Self {
-        self.account_balances.insert(account.to_string(), balance);
-        self
-    }
     pub fn build(self, app: &'_ OsmosisTestApp) -> TestEnv<'_> {
         let accounts: HashMap<_, _> = self
             .account_balances
@@ -103,8 +169,23 @@ impl TestEnvBuilder {
 
         let contract = TfDaoVotingContract::deploy(
             app,
-            &self.instantiate_msg.expect("instantiate msg not set"),
+            &self
+                .instantiate_msg
+                .as_ref()
+                .expect("instantiate msg not set"),
             &creator,
+        )
+        .unwrap();
+
+        let issuer_addr =
+            TfDaoVotingContract::query(&contract, &QueryMsg::TokenContract {}).unwrap();
+
+        let tf_issuer = TokenfactoryIssuer::new_with_values(
+            app,
+            self.instantiate_msg
+                .expect("instantiate msg not set")
+                .token_issuer_code_id,
+            issuer_addr,
         )
         .unwrap();
 
@@ -112,14 +193,30 @@ impl TestEnvBuilder {
             app,
             creator,
             contract,
+            tf_issuer,
             accounts,
         }
+    }
+
+    pub fn upload_issuer(self, app: &'_ OsmosisTestApp, signer: &SigningAccount) -> u64 {
+        TokenfactoryIssuer::upload(app, signer).unwrap()
+    }
+
+    pub fn with_account(mut self, account: &str, balance: Vec<Coin>) -> Self {
+        self.account_balances.insert(account.to_string(), balance);
+        self
+    }
+
+    pub fn with_instantiate_msg(mut self, msg: InstantiateMsg) -> Self {
+        self.instantiate_msg = Some(msg);
+        self
     }
 }
 
 pub struct TfDaoVotingContract<'a> {
-    app: &'a OsmosisTestApp,
+    pub app: &'a OsmosisTestApp,
     pub contract_addr: String,
+    pub code_id: u64,
 }
 
 impl<'a> TfDaoVotingContract<'a> {
@@ -128,45 +225,30 @@ impl<'a> TfDaoVotingContract<'a> {
         instantiate_msg: &InstantiateMsg,
         signer: &SigningAccount,
     ) -> Result<Self, RunnerError> {
-        unimplemented!()
-        //     let cp = CosmwasmPool::new(app);
-        //     let gov = GovWithAppAccess::new(app);
+        let wasm = Wasm::new(app);
 
-        //     let code_id = 1; // temporary solution
-        //     gov.propose_and_execute(
-        //         UploadCosmWasmPoolCodeAndWhiteListProposal::TYPE_URL.to_string(),
-        //         UploadCosmWasmPoolCodeAndWhiteListProposal {
-        //             title: String::from("store test cosmwasm pool code"),
-        //             description: String::from("test"),
-        //             wasm_byte_code: Self::get_wasm_byte_code(),
-        //         },
-        //         signer.address(),
-        //         false,
-        //         signer,
-        //     )?;
+        let code_id = wasm
+            .store_code(&Self::get_wasm_byte_code(), None, signer)?
+            .data
+            .code_id;
 
-        //     let res = cp.create_cosmwasm_pool(
-        //         MsgCreateCosmWasmPool {
-        //             code_id,
-        //             instantiate_msg: to_binary(instantiate_msg).unwrap().to_vec(),
-        //             sender: signer.address(),
-        //         },
-        //         signer,
-        //     )?;
+        let contract_addr = wasm
+            .instantiate(
+                code_id,
+                &instantiate_msg,
+                Some(&signer.address()),
+                None,
+                &[],
+                signer,
+            )?
+            .data
+            .address;
 
-        //     let pool_id = res.data.pool_id;
-
-        //     let ContractInfoByPoolIdResponse {
-        //         contract_address,
-        //         code_id: _,
-        //     } = cp.contract_info_by_pool_id(&ContractInfoByPoolIdRequest { pool_id })?;
-
-        //     Ok(Self {
-        //         app,
-        //         code_id,
-        //         pool_id,
-        //         contract_addr: contract_address,
-        //     })
+        Ok(Self {
+            app,
+            code_id,
+            contract_addr,
+        })
     }
 
     pub fn execute(
@@ -191,6 +273,7 @@ impl<'a> TfDaoVotingContract<'a> {
         let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         std::fs::read(
             manifest_path
+                .join("..")
                 .join("..")
                 .join("..")
                 .join("target")

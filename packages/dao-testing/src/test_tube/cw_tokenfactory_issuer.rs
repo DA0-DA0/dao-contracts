@@ -1,17 +1,9 @@
-// The code is used in tests but reported as dead code
-// see https://github.com/rust-lang/rust/issues/46379
-#![allow(dead_code)]
-
 use cosmwasm_std::Coin;
-
-use cw_tokenfactory_issuer::msg::{
-    BlacklisteesResponse, BlacklisterAllowancesResponse, Metadata, MigrateMsg,
-};
 use cw_tokenfactory_issuer::{
     msg::{
-        AllowanceResponse, AllowancesResponse, DenomResponse, ExecuteMsg,
-        FreezerAllowancesResponse, InstantiateMsg, IsFrozenResponse, OwnerResponse, QueryMsg,
-        StatusResponse,
+        AllowanceResponse, AllowancesResponse, BlacklisteesResponse, BlacklisterAllowancesResponse,
+        DenomResponse, ExecuteMsg, FreezerAllowancesResponse, InstantiateMsg, IsFrozenResponse,
+        Metadata, MigrateMsg, OwnerResponse, QueryMsg, StatusResponse,
     },
     ContractError,
 };
@@ -31,116 +23,27 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-pub struct TestEnv {
-    pub test_accs: Vec<SigningAccount>,
-    pub cw_tokenfactory_issuer: TokenfactoryIssuer,
-}
-
-impl TestEnv {
-    pub fn new(instantiate_msg: InstantiateMsg, signer_index: usize) -> Result<Self, RunnerError> {
-        let app = OsmosisTestApp::new();
-        let test_accs_count: u64 = 4;
-        let test_accs = Self::create_default_test_accs(&app, test_accs_count);
-
-        let cw_tokenfactory_issuer =
-            TokenfactoryIssuer::new(app, &instantiate_msg, &test_accs[signer_index])?;
-
-        Ok(Self {
-            test_accs,
-            cw_tokenfactory_issuer,
-        })
-    }
-
-    pub fn create_default_test_accs(
-        app: &OsmosisTestApp,
-        test_accs_count: u64,
-    ) -> Vec<SigningAccount> {
-        let default_initial_balance = [Coin::new(100_000_000_000, "uosmo")];
-
-        app.init_accounts(&default_initial_balance, test_accs_count)
-            .unwrap()
-    }
-
-    pub fn app(&self) -> &OsmosisTestApp {
-        &self.cw_tokenfactory_issuer.app
-    }
-    pub fn tokenfactory(&self) -> TokenFactory<'_, OsmosisTestApp> {
-        TokenFactory::new(self.app())
-    }
-
-    pub fn bank(&self) -> Bank<'_, OsmosisTestApp> {
-        Bank::new(self.app())
-    }
-
-    pub fn token_admin(&self, denom: &str) -> String {
-        self.tokenfactory()
-            .query_denom_authority_metadata(&QueryDenomAuthorityMetadataRequest {
-                denom: denom.to_string(),
-            })
-            .unwrap()
-            .authority_metadata
-            .unwrap()
-            .admin
-    }
-
-    pub fn send_tokens(
-        &self,
-        to: String,
-        coins: Vec<Coin>,
-        signer: &SigningAccount,
-    ) -> RunnerExecuteResult<MsgSendResponse> {
-        self.app().execute::<MsgSend, MsgSendResponse>(
-            MsgSend {
-                from_address: signer.address(),
-                to_address: to,
-                amount: coins
-                    .into_iter()
-                    .map(
-                        |c| osmosis_test_tube::osmosis_std::types::cosmos::base::v1beta1::Coin {
-                            denom: c.denom,
-                            amount: c.amount.to_string(),
-                        },
-                    )
-                    .collect(),
-            },
-            "/cosmos.bank.v1beta1.MsgSend",
-            signer,
-        )
-    }
-}
-
-impl Default for TestEnv {
-    fn default() -> Self {
-        Self::new(
-            InstantiateMsg::NewToken {
-                subdenom: "uusd".to_string(),
-            },
-            0,
-        )
-        .unwrap()
-    }
-}
-
 #[derive(Debug)]
-pub struct TokenfactoryIssuer {
-    pub app: OsmosisTestApp,
+pub struct TokenfactoryIssuer<'a> {
+    pub app: &'a OsmosisTestApp,
     pub code_id: u64,
     pub contract_addr: String,
 }
 
-impl TokenfactoryIssuer {
+impl<'a> TokenfactoryIssuer<'a> {
     pub fn new(
-        app: OsmosisTestApp,
+        app: &'a OsmosisTestApp,
         instantiate_msg: &InstantiateMsg,
         signer: &SigningAccount,
     ) -> Result<Self, RunnerError> {
-        let wasm = Wasm::new(&app);
+        let wasm = Wasm::new(app);
         let token_creation_fee = Coin::new(10000000, "uosmo");
 
         let code_id = wasm
             .store_code(&Self::get_wasm_byte_code(), None, signer)?
             .data
             .code_id;
+
         let contract_addr = wasm
             .instantiate(
                 code_id,
@@ -160,6 +63,30 @@ impl TokenfactoryIssuer {
         })
     }
 
+    pub fn new_with_values(
+        app: &'a OsmosisTestApp,
+        code_id: u64,
+        contract_addr: String,
+    ) -> Result<Self, RunnerError> {
+        Ok(Self {
+            app,
+            code_id,
+            contract_addr,
+        })
+    }
+
+    /// uploads contract and returns a code ID
+    pub fn upload(app: &OsmosisTestApp, signer: &SigningAccount) -> Result<u64, RunnerError> {
+        let wasm = Wasm::new(app);
+
+        let code_id = wasm
+            .store_code(&Self::get_wasm_byte_code(), None, signer)?
+            .data
+            .code_id;
+
+        Ok(code_id)
+    }
+
     // executes
     pub fn execute(
         &self,
@@ -167,7 +94,7 @@ impl TokenfactoryIssuer {
         funds: &[Coin],
         signer: &SigningAccount,
     ) -> RunnerExecuteResult<MsgExecuteContractResponse> {
-        let wasm = Wasm::new(&self.app);
+        let wasm = Wasm::new(self.app);
         wasm.execute(&self.contract_addr, execute_msg, funds, signer)
     }
 
@@ -184,6 +111,7 @@ impl TokenfactoryIssuer {
             signer,
         )
     }
+
     pub fn change_tokenfactory_admin(
         &self,
         new_admin: &str,
@@ -197,6 +125,7 @@ impl TokenfactoryIssuer {
             signer,
         )
     }
+
     pub fn set_denom_metadata(
         &self,
         metadata: Metadata,
@@ -220,6 +149,7 @@ impl TokenfactoryIssuer {
             signer,
         )
     }
+
     pub fn mint(
         &self,
         address: &str,
@@ -328,7 +258,7 @@ impl TokenfactoryIssuer {
     where
         T: DeserializeOwned,
     {
-        let wasm = Wasm::new(&self.app);
+        let wasm = Wasm::new(self.app);
         wasm.query(&self.contract_addr, query_msg)
     }
 
@@ -417,7 +347,7 @@ impl TokenfactoryIssuer {
         testdata: &str,
         signer: &SigningAccount,
     ) -> RunnerExecuteResult<MsgMigrateContractResponse> {
-        let wasm = Wasm::new(&self.app);
+        let wasm = Wasm::new(self.app);
         let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         let wasm_byte_code =
             std::fs::read(manifest_path.join("tests").join("testdata").join(testdata)).unwrap();
@@ -442,7 +372,6 @@ impl TokenfactoryIssuer {
             manifest_path
                 .join("..")
                 .join("..")
-                .join("..")
                 .join("target")
                 .join("wasm32-unknown-unknown")
                 .join("release")
@@ -459,120 +388,4 @@ impl TokenfactoryIssuer {
             ),
         }
     }
-}
-
-pub fn test_query_within_default_limit<QueryResult, SetStateClosure, QueryStateClosure>(
-    gen_result: impl FnMut((usize, &String)) -> QueryResult,
-    set_state: impl Fn(Rc<TestEnv>) -> SetStateClosure,
-    query_state: impl Fn(Rc<TestEnv>) -> QueryStateClosure,
-) where
-    QueryResult: PartialEq + Debug + Clone,
-    SetStateClosure: Fn(QueryResult),
-    QueryStateClosure: Fn(Option<String>, Option<u32>) -> Vec<QueryResult>,
-{
-    let env = Rc::new(TestEnv::default());
-    let test_accs_count = 10;
-    let test_accs_with_allowance =
-        TestEnv::create_default_test_accs(&env.cw_tokenfactory_issuer.app, test_accs_count);
-
-    let mut sorted_addrs = test_accs_with_allowance
-        .iter()
-        .map(|acc| acc.address())
-        .collect::<Vec<_>>();
-    sorted_addrs.sort();
-
-    let allowances = sorted_addrs
-        .iter()
-        .enumerate()
-        .map(gen_result)
-        .collect::<Vec<_>>();
-
-    allowances
-        .iter()
-        .for_each(|allowance| set_state(env.clone())(allowance.clone()));
-
-    let query = query_state(env);
-
-    // let <n> be allowance for the sorted_addrs with index n
-
-    // query from start with default limit
-    // = [<0>..<10>] (since test_accs_count is 10)
-    assert_eq!(query(None, None), allowances);
-
-    // query from start with limit 1
-    // = [<0>]
-    assert_eq!(query(None, Some(1)), allowances[0..1]);
-
-    // query start after sorted_addrs[1], limit 1
-    // = [<2>]
-    assert_eq!(
-        query(Some(sorted_addrs[1].clone()), Some(1)),
-        allowances[2..3]
-    );
-
-    // query start after sorted_addrs[1], limit 10
-    // = [<2>..<10>] (since test_accs_count is 10)
-    assert_eq!(
-        query(Some(sorted_addrs[1].clone()), Some(10)),
-        allowances[2..10]
-    );
-
-    // query start after sorted_addrs[9], with default limit
-    // = []
-    assert_eq!(query(Some(sorted_addrs[9].clone()), None), vec![]);
-}
-
-pub fn test_query_over_default_limit<QueryResult, SetStateClosure, QueryStateClosure>(
-    gen_result: impl FnMut((usize, &String)) -> QueryResult,
-    set_state: impl Fn(Rc<TestEnv>) -> SetStateClosure,
-    query_state: impl Fn(Rc<TestEnv>) -> QueryStateClosure,
-) where
-    QueryResult: PartialEq + Debug + Clone,
-    SetStateClosure: Fn(QueryResult),
-    QueryStateClosure: Fn(Option<String>, Option<u32>) -> Vec<QueryResult>,
-{
-    let env = Rc::new(TestEnv::default());
-    let test_accs_count = 40;
-    let test_accs_with_allowance =
-        TestEnv::create_default_test_accs(&env.cw_tokenfactory_issuer.app, test_accs_count);
-
-    let mut sorted_addrs = test_accs_with_allowance
-        .iter()
-        .map(|acc| acc.address())
-        .collect::<Vec<_>>();
-    sorted_addrs.sort();
-
-    let allowances = sorted_addrs
-        .iter()
-        .enumerate()
-        .map(gen_result)
-        .collect::<Vec<_>>();
-
-    allowances
-        .iter()
-        .for_each(|allowance| set_state(env.clone())(allowance.clone()));
-
-    let query = query_state(env);
-
-    // let <n> be allowance for the sorted_addrs with index n
-
-    // query from start with default limit
-    // = [<0>..<10>]
-    assert_eq!(query(None, None), allowances[..10]);
-
-    // query start after sorted_addrs[4] with default limit
-    // = [<5>..<15>] (<5> is after <4>, <15> is <5> + limit 10)
-    assert_eq!(
-        query(Some(sorted_addrs[4].clone()), None),
-        allowances[5..15]
-    );
-
-    // max limit = 30
-    assert_eq!(query(None, Some(40)), allowances[..30]);
-
-    // start after nth, get n+1 .. n+1+limit (30)
-    assert_eq!(
-        query(Some(sorted_addrs[4].clone()), Some(40)),
-        allowances[5..35]
-    );
 }
