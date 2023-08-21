@@ -20,30 +20,40 @@ use osmosis_test_tube::{
     SigningAccount, Wasm,
 };
 use serde::de::DeserializeOwned;
-use std::{collections::HashMap, path::PathBuf};
+use std::path::PathBuf;
 
-pub const DAO: &str = "dao";
 pub const DENOM: &str = "ucat";
 pub const JUNO: &str = "ujuno";
 
 pub struct TestEnv<'a> {
     pub app: &'a OsmosisTestApp,
-    pub creator: SigningAccount,
-    pub contract: TfDaoVotingContract<'a>,
+    pub vp_contract: TfDaoVotingContract<'a>,
     pub tf_issuer: TokenfactoryIssuer<'a>,
-    pub accounts: HashMap<String, SigningAccount>,
+    pub accounts: Vec<SigningAccount>,
 }
 
 impl<'a> TestEnv<'a> {
+    pub fn instantiate(
+        &self,
+        msg: &InstantiateMsg,
+        signer: SigningAccount,
+    ) -> Result<TfDaoVotingContract, RunnerError> {
+        TfDaoVotingContract::<'a>::instantiate(self.app, self.vp_contract.code_id, msg, &signer)
+    }
+
+    pub fn get_tf_issuer_code_id(&self) -> u64 {
+        self.tf_issuer.code_id
+    }
+
     pub fn assert_account_balances(
         &self,
-        account: &str,
+        account: SigningAccount,
         expected_balances: Vec<Coin>,
         ignore_denoms: Vec<&str>,
     ) {
         let account_balances: Vec<Coin> = Bank::new(self.app)
             .query_all_balances(&QueryAllBalancesRequest {
-                address: self.accounts.get(account).unwrap().address(),
+                address: account.address(),
                 pagination: None,
             })
             .unwrap()
@@ -59,7 +69,7 @@ impl<'a> TestEnv<'a> {
     pub fn assert_contract_balances(&self, expected_balances: &[Coin]) {
         let contract_balances: Vec<Coin> = Bank::new(self.app)
             .query_all_balances(&QueryAllBalancesRequest {
-                address: self.contract.contract_addr.clone(),
+                address: self.vp_contract.contract_addr.clone(),
                 pagination: None,
             })
             .unwrap()
@@ -73,43 +83,39 @@ impl<'a> TestEnv<'a> {
 }
 
 pub struct TestEnvBuilder {
-    account_balances: HashMap<String, Vec<Coin>>,
-    instantiate_msg: Option<InstantiateMsg>,
+    pub accounts: Vec<SigningAccount>,
+    pub instantiate_msg: Option<InstantiateMsg>,
 }
 
 impl TestEnvBuilder {
     pub fn new() -> Self {
         Self {
-            account_balances: HashMap::new(),
+            accounts: vec![],
             instantiate_msg: None,
         }
     }
 
-    pub fn setup(self, app: &'_ OsmosisTestApp) -> TestEnv<'_> {
-        let accounts: HashMap<_, _> = self
-            .account_balances
-            .into_iter()
-            .map(|(account, balance)| {
-                let balance: Vec<_> = balance
-                    .into_iter()
-                    .chain(vec![Coin::new(1000000000000, "uosmo")])
-                    .collect();
+    pub fn default_setup(self, app: &'_ OsmosisTestApp) -> TestEnv<'_> {
+        let accounts = app
+            .init_accounts(&[Coin::new(1000000000000000u128, "uosmo")], 10)
+            .unwrap();
 
-                (account, app.init_account(&balance).unwrap())
+        let initial_balances: Vec<InitialBalance> = accounts
+            .iter()
+            .map(|acc| InitialBalance {
+                address: acc.address(),
+                amount: Uint128::new(100),
             })
             .collect();
 
-        let creator = app
-            .init_account(&[Coin::new(1000000000000000u128, "uosmo")])
-            .unwrap();
-        let issuer_id = TokenfactoryIssuer::upload(app, &creator).unwrap();
+        let issuer_id = TokenfactoryIssuer::upload(app, &accounts[0]).unwrap();
 
-        let contract = TfDaoVotingContract::deploy(
+        let vp_contract = TfDaoVotingContract::deploy(
             app,
             &InstantiateMsg {
                 token_issuer_code_id: issuer_id,
                 owner: Some(Admin::CoreModule {}),
-                manager: Some(creator.address()),
+                manager: Some(accounts[0].address()),
                 token_info: TokenInfo::New(NewTokenInfo {
                     subdenom: DENOM.to_string(),
                     metadata: Some(crate::msg::NewDenomMetadata {
@@ -123,62 +129,43 @@ impl TestEnvBuilder {
                         name: "Cat Token".to_string(),
                         symbol: "CAT".to_string(),
                     }),
-                    initial_balances: vec![InitialBalance {
-                        amount: Uint128::new(100),
-                        address: creator.address(),
-                    }],
+                    initial_balances,
                     initial_dao_balance: Some(Uint128::new(900)),
                 }),
                 unstaking_duration: Some(Duration::Height(5)),
                 active_threshold: None,
             },
-            &creator,
+            &accounts[0],
         )
         .unwrap();
 
         let issuer_addr =
-            TfDaoVotingContract::query(&contract, &QueryMsg::TokenContract {}).unwrap();
+            TfDaoVotingContract::query(&vp_contract, &QueryMsg::TokenContract {}).unwrap();
 
         let tf_issuer = TokenfactoryIssuer::new_with_values(app, issuer_id, issuer_addr).unwrap();
 
         TestEnv {
             app,
-            creator,
-            contract,
+            vp_contract,
             tf_issuer,
             accounts,
         }
     }
 
     pub fn build(self, app: &'_ OsmosisTestApp) -> TestEnv<'_> {
-        let accounts: HashMap<_, _> = self
-            .account_balances
-            .into_iter()
-            .map(|(account, balance)| {
-                let balance: Vec<_> = balance
-                    .into_iter()
-                    .chain(vec![Coin::new(1000000000000, "uosmo")])
-                    .collect();
+        let accounts = self.accounts;
 
-                (account, app.init_account(&balance).unwrap())
-            })
-            .collect();
-
-        let creator = app
-            .init_account(&[Coin::new(1000000000000000u128, "uosmo")])
-            .unwrap();
-
-        let contract = TfDaoVotingContract::deploy(
+        let vp_contract = TfDaoVotingContract::deploy(
             app,
             self.instantiate_msg
                 .as_ref()
                 .expect("instantiate msg not set"),
-            &creator,
+            &accounts[0],
         )
         .unwrap();
 
         let issuer_addr =
-            TfDaoVotingContract::query(&contract, &QueryMsg::TokenContract {}).unwrap();
+            TfDaoVotingContract::query(&vp_contract, &QueryMsg::TokenContract {}).unwrap();
 
         let tf_issuer = TokenfactoryIssuer::new_with_values(
             app,
@@ -191,8 +178,7 @@ impl TestEnvBuilder {
 
         TestEnv {
             app,
-            creator,
-            contract,
+            vp_contract,
             tf_issuer,
             accounts,
         }
@@ -202,8 +188,13 @@ impl TestEnvBuilder {
         TokenfactoryIssuer::upload(app, signer).unwrap()
     }
 
-    pub fn with_account(mut self, account: &str, balance: Vec<Coin>) -> Self {
-        self.account_balances.insert(account.to_string(), balance);
+    pub fn set_accounts(mut self, accounts: Vec<SigningAccount>) -> Self {
+        self.accounts = accounts;
+        self
+    }
+
+    pub fn with_account(mut self, account: SigningAccount) -> Self {
+        self.accounts.push(account);
         self
     }
 
@@ -213,6 +204,7 @@ impl TestEnvBuilder {
     }
 }
 
+#[derive(Debug)]
 pub struct TfDaoVotingContract<'a> {
     pub app: &'a OsmosisTestApp,
     pub contract_addr: String,
@@ -232,6 +224,32 @@ impl<'a> TfDaoVotingContract<'a> {
             .data
             .code_id;
 
+        let contract_addr = wasm
+            .instantiate(
+                code_id,
+                &instantiate_msg,
+                Some(&signer.address()),
+                None,
+                &[],
+                signer,
+            )?
+            .data
+            .address;
+
+        Ok(Self {
+            app,
+            code_id,
+            contract_addr,
+        })
+    }
+
+    pub fn instantiate(
+        app: &'a OsmosisTestApp,
+        code_id: u64,
+        instantiate_msg: &InstantiateMsg,
+        signer: &SigningAccount,
+    ) -> Result<Self, RunnerError> {
+        let wasm = Wasm::new(app);
         let contract_addr = wasm
             .instantiate(
                 code_id,
