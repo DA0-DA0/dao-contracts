@@ -91,7 +91,7 @@ pub fn execute(
             amount,
             from_address,
             to_address,
-        } => execute::force_transfer(deps, info, amount, from_address, to_address),
+        } => execute::force_transfer(deps, env, info, amount, from_address, to_address),
 
         // Admin functions
         ExecuteMsg::ChangeTokenFactoryAdmin { new_admin } => {

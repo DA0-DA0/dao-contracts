@@ -1,7 +1,7 @@
 use cosmwasm_std::{coins, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, Uint128};
 use osmosis_std::types::cosmos::bank::v1beta1::Metadata;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{
-    MsgBurn, MsgSetBeforeSendHook, MsgSetDenomMetadata,
+    MsgBurn, MsgForceTransfer, MsgSetBeforeSendHook, MsgSetDenomMetadata,
 };
 use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 
@@ -380,6 +380,7 @@ pub fn blacklist(
 
 pub fn force_transfer(
     deps: DepsMut<TokenFactoryQuery>,
+    env: Env,
     info: MessageInfo,
     amount: Uint128,
     from_address: String,
@@ -392,10 +393,17 @@ pub fn force_transfer(
     let denom = DENOM.load(deps.storage)?;
 
     // Force transfer tokens
-    let force_transfer_msg =
-        TokenFactoryMsg::force_transfer_tokens(denom, amount, from_address, to_address);
+    let force_transfer_msg: CosmosMsg<TokenFactoryMsg> = MsgForceTransfer {
+        transfer_from_address: from_address.clone(),
+        transfer_to_address: to_address.clone(),
+        amount: Some(Coin::new(amount.u128(), denom.clone()).into()),
+        sender: env.contract.address.to_string(),
+    }
+    .into();
 
     Ok(Response::new()
-        .add_attribute("action", "change_contract_owner")
+        .add_attribute("action", "force_transfer")
+        .add_attribute("from_address", from_address)
+        .add_attribute("to_address", to_address)
         .add_message(force_transfer_msg))
 }
