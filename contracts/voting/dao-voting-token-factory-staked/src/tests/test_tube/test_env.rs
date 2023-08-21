@@ -132,7 +132,7 @@ impl TestEnvBuilder {
                     initial_balances,
                     initial_dao_balance: Some(Uint128::new(900)),
                 }),
-                unstaking_duration: Some(Duration::Height(5)),
+                unstaking_duration: Some(Duration::Time(2)),
                 active_threshold: None,
             },
             &accounts[0],

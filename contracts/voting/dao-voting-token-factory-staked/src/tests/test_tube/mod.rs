@@ -2,7 +2,5 @@
 // and also, tarpaulin will not be able read coverage out of wasm binary anyway
 #![cfg(not(tarpaulin))]
 
-#[cfg(feature = "test-tube")]
-mod cases;
-#[cfg(feature = "test-tube")]
+mod integration_tests;
 mod test_env;

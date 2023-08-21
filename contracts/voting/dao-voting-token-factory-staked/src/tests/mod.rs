@@ -1,5 +1,9 @@
+// Tests for the crate, using cw-multi-test
+// Most coverage lives here
 mod multitest;
-#[cfg(feature = "test-tube")]
-mod test_env;
+
+// Integrationg tests using an actual chain binary, requires
+// the "test-tube" feature to be enabled
+// cargo test --features test-tube
 #[cfg(feature = "test-tube")]
 mod test_tube;

@@ -19,7 +19,7 @@ library = []
 # cargo test --features "test-tube"
 test-tube = []
 # when writing tests you may wish to enable test-tube as a default feature
-# default = ["test-tube"]
+default = ["test-tube"]
 
 [dependencies]
 cosmwasm-std    = { workspace = true, features = ["cosmwasm_1_1"] }

@@ -1,5 +1,6 @@
 use cosmwasm_std::{Coin, Uint128};
 use cw_tokenfactory_issuer::msg::DenomUnit;
+use dao_interface::voting::VotingPowerAtHeightResponse;
 use osmosis_test_tube::{Account, OsmosisTestApp};
 
 use crate::msg::{
@@ -21,12 +22,40 @@ fn test_stake_unstake_new_denom() {
 
     let denom: DenomResponse = vp_contract.query(&QueryMsg::Denom {}).unwrap();
 
-    // Stake 1000 tokens
+    // Stake 100 tokens
     let stake_msg = ExecuteMsg::Stake {};
-    let stake_result = vp_contract
-        .execute(&stake_msg, &[Coin::new(90, denom.denom)], &accounts[0])
+    vp_contract
+        .execute(&stake_msg, &[Coin::new(100, denom.denom)], &accounts[0])
         .unwrap();
-    println!("stake_result: {:?}", stake_result);
+
+    // Query voting power
+    let voting_power: VotingPowerAtHeightResponse = vp_contract
+        .query(&QueryMsg::VotingPowerAtHeight {
+            address: accounts[0].address(),
+            height: None,
+        })
+        .unwrap();
+    assert_eq!(voting_power.power, Uint128::new(100));
+
+    // // Unstake 50 tokens
+    // let unstake_msg = ExecuteMsg::Unstake {
+    //     amount: Uint128::new(50),
+    // };
+    // vp_contract
+    //     .execute(&unstake_msg, &[], &accounts[0])
+    //     .unwrap();
+    // assert_eq!(voting_power.power, Uint128::new(50));
+
+    // // Can't claim before unstaking period (2 seconds)
+    // vp_contract
+    //     .execute(&ExecuteMsg::Claim {}, &[], &accounts[0])
+    //     .unwrap_err();
+
+    // // Pass time, unstaking duration is set to 2 seconds
+    // app.increase_time(5);
+    // vp_contract
+    //     .execute(&ExecuteMsg::Claim {}, &[], &accounts[0])
+    //     .unwrap();
 }
 
 #[test]
