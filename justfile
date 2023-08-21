@@ -54,6 +54,7 @@ download-deps:
 	wget https://github.com/CosmWasm/cw-nfts/releases/latest/download/cw721_base.wasm -O artifacts/cw721_base.wasm
 
 workspace-optimize:
+    #!/bin/bash
     if [[ $(uname -m) == 'arm64' ]]; then docker run --rm -v "$(pwd)":/code \
             --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
             --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
