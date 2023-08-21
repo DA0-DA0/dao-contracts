@@ -2,7 +2,7 @@
 // see https://github.com/rust-lang/rust/issues/46379
 #![allow(dead_code)]
 
-use cosmwasm_std::Coin;
+use cosmwasm_std::{Coin, Uint128, Uint64};
 
 use cw_tokenfactory_issuer::msg::{
     BlacklisteesResponse, BlacklisterAllowancesResponse, Metadata, MigrateMsg,
@@ -251,6 +251,7 @@ impl TokenfactoryIssuer {
             signer,
         )
     }
+
     pub fn burn(
         &self,
         address: &str,
@@ -283,6 +284,13 @@ impl TokenfactoryIssuer {
         )
     }
 
+    pub fn set_before_send_hook(
+        &self,
+        signer: &SigningAccount,
+    ) -> RunnerExecuteResult<MsgExecuteContractResponse> {
+        self.execute(&ExecuteMsg::SetBeforeSendHook {}, &[], signer)
+    }
+
     pub fn set_blacklister(
         &self,
         address: &str,
@@ -293,6 +301,24 @@ impl TokenfactoryIssuer {
             &ExecuteMsg::SetBlacklister {
                 address: address.to_string(),
                 status,
+            },
+            &[],
+            signer,
+        )
+    }
+
+    pub fn force_transfer(
+        &self,
+        signer: &SigningAccount,
+        amount: Uint128,
+        from_address: String,
+        to_address: String,
+    ) -> RunnerExecuteResult<MsgExecuteContractResponse> {
+        self.execute(
+            &ExecuteMsg::ForceTransfer {
+                amount,
+                from_address,
+                to_address,
             },
             &[],
             signer,
