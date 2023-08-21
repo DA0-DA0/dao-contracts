@@ -13,7 +13,7 @@ fn test_force_transfer() {
     // Give owner permission to mint tokens
     let allowance = 100000000000;
     env.cw_tokenfactory_issuer
-        .set_minter(&non_owner.address(), allowance, owner)
+        .set_minter(&owner.address(), allowance, owner)
         .unwrap();
 
     // Mint tokens for owner and non_owner

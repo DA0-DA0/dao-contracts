@@ -19,8 +19,14 @@ fn test_set_before_update_hook() {
         TokenfactoryIssuer::execute_error(ContractError::Unauthorized {})
     );
 
-    // Owner can set before update hook
-    env.cw_tokenfactory_issuer
+    // Owner can set before update hook, but hook is already set
+    let err = env
+        .cw_tokenfactory_issuer
         .set_before_send_hook(owner)
-        .unwrap();
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        TokenfactoryIssuer::execute_error(ContractError::BeforeSendHookAlreadyEnabled {})
+    );
 }
