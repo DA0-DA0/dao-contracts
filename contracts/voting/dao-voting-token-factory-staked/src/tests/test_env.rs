@@ -271,17 +271,27 @@ impl<'a> TfDaoVotingContract<'a> {
 
     fn get_wasm_byte_code() -> Vec<u8> {
         let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        std::fs::read(
+        let byte_code = std::fs::read(
             manifest_path
                 .join("..")
                 .join("..")
                 .join("..")
-                .join("target")
-                .join("wasm32-unknown-unknown")
-                .join("release")
+                .join("artifacts")
                 .join("dao_voting_token_factory_staked.wasm"),
-        )
-        .unwrap()
+        );
+        match byte_code {
+            Ok(byte_code) => byte_code,
+            // On arm processors, the above path is not found, so we try the following path
+            Err(_) => std::fs::read(
+                manifest_path
+                    .join("..")
+                    .join("..")
+                    .join("..")
+                    .join("artifacts")
+                    .join("dao_voting_token_factory_staked-aarch64.wasm"),
+            )
+            .unwrap(),
+        }
     }
 }
 

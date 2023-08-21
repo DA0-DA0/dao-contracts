@@ -19,6 +19,12 @@ gen-schema:
 integration-test: deploy-local workspace-optimize
 	RUST_LOG=info CONFIG={{orc_config}} cargo integration-test
 
+test-tube:
+    cargo test --features "test-tube"
+
+test-tube-dev: workspace-optimize
+    cargo test --features "test-tube"
+
 integration-test-dev test_name="":
 	SKIP_CONTRACT_STORE=true RUST_LOG=info CONFIG='{{`pwd`}}/ci/configs/cosm-orc/local.yaml' cargo integration-test {{test_name}}
 

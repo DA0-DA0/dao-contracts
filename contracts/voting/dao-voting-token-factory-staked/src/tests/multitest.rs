@@ -1,10 +1,9 @@
 use crate::contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::{
-    DenomResponse, ExecuteMsg, GetHooksResponse, InitialBalance, InstantiateMsg,
-    ListStakersResponse, MigrateMsg, NewTokenInfo, QueryMsg, StakerBalanceResponse, TokenInfo,
+    ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg,
+    StakerBalanceResponse, TokenInfo,
 };
 use crate::state::Config;
-use crate::ContractError;
 use cosmwasm_std::testing::{mock_env, MockApi, MockQuerier, MockStorage};
 use cosmwasm_std::{coins, Addr, Coin, Decimal, OwnedDeps, Uint128};
 use cw_controllers::ClaimsResponse;
@@ -111,20 +110,6 @@ fn instantiate_staking(app: &mut App, staking_id: u64, msg: InstantiateMsg) -> A
     .unwrap()
 }
 
-fn instantiate_staking_error(app: &mut App, staking_id: u64, msg: InstantiateMsg) -> ContractError {
-    app.instantiate_contract(
-        staking_id,
-        Addr::unchecked(DAO_ADDR),
-        &msg,
-        &[],
-        "Staking",
-        None,
-    )
-    .unwrap_err()
-    .downcast()
-    .unwrap()
-}
-
 fn stake_tokens(
     app: &mut App,
     staking_addr: Addr,
@@ -212,12 +197,6 @@ fn get_total_power_at_height(
 fn get_config(app: &mut App, staking_addr: Addr) -> Config {
     app.wrap()
         .query_wasm_smart(staking_addr, &QueryMsg::GetConfig {})
-        .unwrap()
-}
-
-fn get_denom(app: &mut App, staking_addr: Addr) -> DenomResponse {
-    app.wrap()
-        .query_wasm_smart(staking_addr, &QueryMsg::Denom {})
         .unwrap()
 }
 
