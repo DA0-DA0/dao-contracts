@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use crate::contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::{
     DenomResponse, ExecuteMsg, GetHooksResponse, InitialBalance, InstantiateMsg,
@@ -20,6 +18,7 @@ use dao_interface::voting::{
     InfoResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
+use std::marker::PhantomData;
 use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 use token_bindings_test::TokenFactoryApp as App;
 
@@ -300,7 +299,6 @@ fn test_instantiate_new_denom() {
                     display: DENOM.to_string(),
                     name: DENOM.to_string(),
                     symbol: DENOM.to_string(),
-                    decimals: 6,
                 }),
                 initial_balances: vec![InitialBalance {
                     amount: Uint128::new(100),
@@ -337,7 +335,6 @@ fn test_instantiate_new_denom() {
                     display: DENOM.to_string(),
                     name: DENOM.to_string(),
                     symbol: DENOM.to_string(),
-                    decimals: 6,
                 }),
                 initial_balances: vec![InitialBalance {
                     amount: Uint128::new(100),
@@ -370,7 +367,6 @@ fn test_instantiate_new_denom() {
                     display: DENOM.to_string(),
                     name: DENOM.to_string(),
                     symbol: DENOM.to_string(),
-                    decimals: 6,
                 }),
                 initial_balances: vec![],
                 initial_dao_balance: None,

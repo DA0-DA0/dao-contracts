@@ -21,7 +21,7 @@ use serde::de::DeserializeOwned;
 use std::{collections::HashMap, path::PathBuf};
 
 pub const DAO: &str = "dao";
-pub const DENOM: &str = "cat";
+pub const DENOM: &str = "ucat";
 pub const JUNO: &str = "ujuno";
 
 pub struct TestEnv<'a> {
@@ -113,14 +113,13 @@ impl TestEnvBuilder {
                     metadata: Some(crate::msg::NewDenomMetadata {
                         description: "Awesome token, get it meow!".to_string(),
                         additional_denom_units: Some(vec![DenomUnit {
-                            denom: "ncat".to_string(),
-                            exponent: 9,
+                            denom: "cat".to_string(),
+                            exponent: 6,
                             aliases: vec![],
                         }]),
-                        display: DENOM.to_string(),
-                        name: DENOM.to_string(),
-                        symbol: DENOM.to_string(),
-                        decimals: 6,
+                        display: "cat".to_string(),
+                        name: "Cat Token".to_string(),
+                        symbol: "CAT".to_string(),
                     }),
                     initial_balances: vec![InitialBalance {
                         amount: Uint128::new(100),

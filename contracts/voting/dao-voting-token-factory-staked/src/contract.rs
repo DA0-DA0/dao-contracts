@@ -23,7 +23,7 @@ use crate::error::ContractError;
 use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 use crate::msg::{
     DenomResponse, ExecuteMsg, GetHooksResponse, InitialBalance, InstantiateMsg,
-    ListStakersResponse, MigrateMsg, QueryMsg, StakerBalanceResponse, TokenInfo,
+    ListStakersResponse, MigrateMsg, NewDenomMetadata, QueryMsg, StakerBalanceResponse, TokenInfo,
 };
 use crate::state::{
     Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, DENOM, HOOKS, MAX_CLAIMS, STAKED_BALANCES,
@@ -670,18 +670,19 @@ pub fn reply(
                     // Get the new token factory denom and save it
                     let querier = TokenQuerier::new(&deps.querier);
                     let denom = querier
-                        .full_denom(env.contract.address.to_string(), token.subdenom)?
+                        .full_denom(env.contract.address.to_string(), token.subdenom.clone())?
                         .denom;
                     DENOM.save(deps.storage, &denom)?;
 
                     // Check supply is greater than zero, iterate through initial
-                    // balances and sum them.
+                    // balances and sum them, add DAO balance as well.
                     let initial_supply = token
                         .initial_balances
                         .iter()
                         .fold(Uint128::zero(), |previous, new_balance| {
                             previous + new_balance.amount
-                        });
+                        })
+                        + token.initial_dao_balance.unwrap_or_default();
 
                     // Cannot instantiate with no initial token owners because it would
                     // immediately lock the DAO.
@@ -702,28 +703,24 @@ pub fn reply(
                         funds: vec![],
                     });
 
-                    // TODO doesn't use decimals yet
-
                     // If metadata, set it by calling the contract
                     if let Some(metadata) = token.metadata {
-                        // The first denom_unit must be the same as the denom. Make a custom metadata type?
-                        let mut denom_units = vec![
-                            DenomUnit {
-                                denom: denom.clone(),
-                                exponent: 0,
-                                aliases: vec![],
-                            },
-                            DenomUnit {
-                                denom: metadata.display.clone(),
-                                exponent: 0,
-                                aliases: vec![],
-                            },
-                        ];
+                        // The first denom_unit must be the same as the tf and base denom.
+                        // It must have an exponent of 0. This the smallest unit of the token.
+                        // For more info: // https://docs.cosmos.network/main/architecture/adr-024-coin-metadata
+                        let mut denom_units = vec![DenomUnit {
+                            denom: denom.clone(),
+                            exponent: 0,
+                            aliases: vec![token.subdenom],
+                        }];
 
                         // Caller can optionally define additional units
                         if let Some(mut additional_units) = metadata.additional_denom_units {
                             denom_units.append(&mut additional_units);
                         }
+
+                        // Sort denom units by exponent, must be in ascending order
+                        denom_units.sort_by(|a, b| a.exponent.cmp(&b.exponent));
 
                         msgs.push(WasmMsg::Execute {
                             contract_addr: issuer_addr.clone(),
