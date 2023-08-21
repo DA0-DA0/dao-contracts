@@ -247,6 +247,6 @@ fn test_instantiate_no_initial_balances_fails() {
         .unwrap_err();
     assert_eq!(
         err,
-        TfDaoVotingContract::execute_error(ContractError::InitialBalancesError {})
+        TfDaoVotingContract::execute_submessage_error(ContractError::InitialBalancesError {})
     );
 }

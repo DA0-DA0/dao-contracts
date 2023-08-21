@@ -349,6 +349,15 @@ impl<'a> TfDaoVotingContract<'a> {
             ),
         }
     }
+
+    pub fn execute_submessage_error(err: ContractError) -> RunnerError {
+        RunnerError::ExecuteError {
+            msg: format!(
+                "failed to execute message; message index: 0: dispatch: submessages: reply: {}: execute wasm contract failed",
+                err
+            ),
+        }
+    }
 }
 
 pub fn assert_contract_err(expected: ContractError, actual: RunnerError) {
