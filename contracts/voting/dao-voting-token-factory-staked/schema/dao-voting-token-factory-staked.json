@@ -7,7 +7,8 @@
     "title": "InstantiateMsg",
     "type": "object",
     "required": [
-      "token_info"
+      "token_info",
+      "token_issuer_code_id"
     ],
     "properties": {
       "active_threshold": {
@@ -22,12 +23,14 @@
         ]
       },
       "manager": {
+        "description": "Manager can update all configs except changing the owner. This will generally be an operations multisig for a DAO.",
         "type": [
           "string",
           "null"
         ]
       },
       "owner": {
+        "description": "Owner can update all configs including changing the owner. This will generally be a DAO.",
         "anyOf": [
           {
             "$ref": "#/definitions/Admin"
@@ -38,9 +41,21 @@
         ]
       },
       "token_info": {
-        "$ref": "#/definitions/TokenInfo"
+        "description": "New or existing native token to use for voting power.",
+        "allOf": [
+          {
+            "$ref": "#/definitions/TokenInfo"
+          }
+        ]
+      },
+      "token_issuer_code_id": {
+        "description": "The code id of the cw-tokenfactory-issuer contract",
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
       },
       "unstaking_duration": {
+        "description": "How long until the tokens become liquid again",
         "anyOf": [
           {
             "$ref": "#/definitions/Duration"
@@ -148,7 +163,7 @@
         "type": "string"
       },
       "DenomUnit": {
-        "description": "This maps to cosmos.bank.v1beta1.DenomUnit protobuf struct",
+        "description": "DenomUnit represents a struct that describes a given denomination unit of the basic token.",
         "type": "object",
         "required": [
           "aliases",
@@ -173,8 +188,7 @@
             "format": "uint32",
             "minimum": 0.0
           }
-        },
-        "additionalProperties": false
+        }
       },
       "Duration": {
         "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
@@ -213,66 +227,53 @@
       "InitialBalance": {
         "type": "object",
         "required": [
-          "amount",
-          "address"
+          "address",
+          "amount"
         ],
         "properties": {
-          "amount": {
-            "$ref": "#/definitions/Uint128"
-          },
           "address": {
             "type": "string"
+          },
+          "amount": {
+            "$ref": "#/definitions/Uint128"
           }
         },
         "additionalProperties": false
       },
-      "Metadata": {
-        "description": "This maps to cosmos.bank.v1beta1.Metadata protobuf struct",
+      "NewDenomMetadata": {
         "type": "object",
         "required": [
-          "denom_units"
+          "description",
+          "display",
+          "name",
+          "symbol"
         ],
         "properties": {
-          "base": {
-            "description": "base represents the base denom (should be the DenomUnit with exponent = 0).",
+          "additional_denom_units": {
+            "description": "Used define additional units of the token (e.g. \"tiger\") These must have an exponent larger than 0.",
             "type": [
-              "string",
+              "array",
               "null"
-            ]
-          },
-          "denom_units": {
-            "description": "denom_units represents the list of DenomUnit's for a given coin",
-            "type": "array",
+            ],
             "items": {
               "$ref": "#/definitions/DenomUnit"
             }
           },
           "description": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "description": "The description of the token",
+            "type": "string"
           },
           "display": {
-            "description": "display indicates the suggested denom that should be displayed in clients.",
-            "type": [
-              "string",
-              "null"
-            ]
+            "description": "The unit commonly used in communication (e.g. \"cat\")",
+            "type": "string"
           },
           "name": {
-            "description": "name defines the name of the token (eg: Cosmos Atom)",
-            "type": [
-              "string",
-              "null"
-            ]
+            "description": "The name of the token (e.g. \"Cat Coin\")",
+            "type": "string"
           },
           "symbol": {
-            "description": "symbol is the token symbol usually shown on exchanges (eg: ATOM). This can be the same as the display.",
-            "type": [
-              "string",
-              "null"
-            ]
+            "description": "The ticker symbol of the token (e.g. \"CAT\")",
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -285,12 +286,14 @@
         ],
         "properties": {
           "initial_balances": {
+            "description": "The initial balances to set for the token, cannot be empty.",
             "type": "array",
             "items": {
               "$ref": "#/definitions/InitialBalance"
             }
           },
           "initial_dao_balance": {
+            "description": "Optional balance to mint for the DAO.",
             "anyOf": [
               {
                 "$ref": "#/definitions/Uint128"
@@ -301,9 +304,10 @@
             ]
           },
           "metadata": {
+            "description": "Optional metadata for the token, this can additionally be set later.",
             "anyOf": [
               {
-                "$ref": "#/definitions/Metadata"
+                "$ref": "#/definitions/NewDenomMetadata"
               },
               {
                 "type": "null"
@@ -311,6 +315,7 @@
             ]
           },
           "subdenom": {
+            "description": "The subdenom of the token to create, will also be used as an alias for the denom. The Token Factory denom will have the format of factory/{contract_address}/{subdenom}",
             "type": "string"
           }
         },
@@ -319,6 +324,7 @@
       "TokenInfo": {
         "oneOf": [
           {
+            "description": "Uses an existing Token Factory token and creates a new issuer contract. Full setup, such as transferring ownership or setting up MsgSetBeforeSendHook, must be done manually. Note, for chain controlled denoms or IBC tokens use dao-voting-native-staked.",
             "type": "object",
             "required": [
               "existing"
@@ -331,7 +337,7 @@
                 ],
                 "properties": {
                   "denom": {
-                    "description": "Token denom e.g. ujuno, or some ibc denom.",
+                    "description": "Token factory denom",
                     "type": "string"
                   }
                 },
@@ -341,6 +347,7 @@
             "additionalProperties": false
           },
           {
+            "description": "Creates a new Token Factory token via the issue contract with the DAO automatically setup as admin and owner.",
             "type": "object",
             "required": [
               "new"
@@ -637,10 +644,10 @@
       {
         "type": "object",
         "required": [
-          "get_denom"
+          "denom"
         ],
         "properties": {
-          "get_denom": {
+          "denom": {
             "type": "object",
             "additionalProperties": false
           }
@@ -717,6 +724,19 @@
         ],
         "properties": {
           "get_hooks": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "is_active"
+        ],
+        "properties": {
+          "is_active": {
             "type": "object",
             "additionalProperties": false
           }
@@ -808,10 +828,10 @@
       {
         "type": "object",
         "required": [
-          "is_active"
+          "token_contract"
         ],
         "properties": {
-          "is_active": {
+          "token_contract": {
             "type": "object",
             "additionalProperties": false
           }
@@ -1009,6 +1029,20 @@
       "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
       "type": "string"
     },
+    "denom": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DenomResponse",
+      "type": "object",
+      "required": [
+        "denom"
+      ],
+      "properties": {
+        "denom": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
     "get_config": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Config",
@@ -1086,20 +1120,6 @@
           ]
         }
       }
-    },
-    "get_denom": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "DenomResponse",
-      "type": "object",
-      "required": [
-        "denom"
-      ],
-      "properties": {
-        "denom": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
     },
     "get_hooks": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1195,6 +1215,12 @@
           "type": "string"
         }
       }
+    },
+    "token_contract": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Addr",
+      "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+      "type": "string"
     },
     "total_power_at_height": {
       "$schema": "http://json-schema.org/draft-07/schema#",

@@ -136,7 +136,7 @@ impl<'a> TokenfactoryIssuer<'a> {
         signer: &SigningAccount,
     ) -> RunnerExecuteResult<MsgExecuteContractResponse> {
         self.execute(
-            &ExecuteMsg::SetMinter {
+            &ExecuteMsg::SetMinterAllowance {
                 address: address.to_string(),
                 allowance: allowance.into(),
             },
@@ -168,7 +168,7 @@ impl<'a> TokenfactoryIssuer<'a> {
         signer: &SigningAccount,
     ) -> RunnerExecuteResult<MsgExecuteContractResponse> {
         self.execute(
-            &ExecuteMsg::SetBurner {
+            &ExecuteMsg::SetBurnerAllowance {
                 address: address.to_string(),
                 allowance: allowance.into(),
             },

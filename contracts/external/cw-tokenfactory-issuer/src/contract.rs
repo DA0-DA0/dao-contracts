@@ -100,10 +100,10 @@ pub fn execute(
         ExecuteMsg::ChangeContractOwner { new_owner } => {
             execute::change_contract_owner(deps, info, new_owner)
         }
-        ExecuteMsg::SetMinter { address, allowance } => {
+        ExecuteMsg::SetMinterAllowance { address, allowance } => {
             execute::set_minter(deps, info, address, allowance)
         }
-        ExecuteMsg::SetBurner { address, allowance } => {
+        ExecuteMsg::SetBurnerAllowance { address, allowance } => {
             execute::set_burner(deps, info, address, allowance)
         }
         ExecuteMsg::SetBeforeSendHook {} => execute::set_before_send_hook(deps, env, info),

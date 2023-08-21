@@ -40,7 +40,6 @@ fn issuer_contract() -> Box<dyn Contract<TokenFactoryMsg, TokenFactoryQuery>> {
 }
 
 fn staking_contract() -> Box<dyn Contract<TokenFactoryMsg, TokenFactoryQuery>> {
-    // TODO with empty, after removing the need for the extra message types
     let contract = ContractWrapper::new(
         crate::contract::execute,
         crate::contract::instantiate,

@@ -19,7 +19,6 @@ pub enum InstantiateMsg {
 #[cw_serde]
 pub struct MigrateMsg {}
 
-/// TODO add force transfer and msg before send hook
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Change the admin of the Token Factory denom itself.
@@ -32,10 +31,10 @@ pub enum ExecuteMsg {
     SetDenomMetadata { metadata: Metadata },
 
     /// Grant/revoke mint allowance.
-    SetMinter { address: String, allowance: Uint128 },
+    SetMinterAllowance { address: String, allowance: Uint128 },
 
     /// Grant/revoke burn allowance.
-    SetBurner { address: String, allowance: Uint128 },
+    SetBurnerAllowance { address: String, allowance: Uint128 },
 
     /// Grant/revoke permission to blacklist addresses
     SetBlacklister { address: String, status: bool },

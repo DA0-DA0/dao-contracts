@@ -123,8 +123,7 @@ pub fn instantiate(
                     msg: to_binary(&IssuerInstantiateMsg::ExistingToken {
                         denom: denom.clone(),
                     })?,
-                    /// TODO do funds need to be sent with this?
-                    funds: vec![],
+                    funds: info.funds,
                     label: "cw-tokenfactory-issuer".to_string(),
                 },
                 INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID,
@@ -697,7 +696,7 @@ pub fn reply(
                     // Grant an allowance to mint the initial supply
                     msgs.push(WasmMsg::Execute {
                         contract_addr: issuer_addr.clone(),
-                        msg: to_binary(&IssuerExecuteMsg::SetMinter {
+                        msg: to_binary(&IssuerExecuteMsg::SetMinterAllowance {
                             address: env.contract.address.to_string(),
                             allowance: initial_supply,
                         })?,
