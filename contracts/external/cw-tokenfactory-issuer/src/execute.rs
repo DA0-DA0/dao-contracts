@@ -1,13 +1,17 @@
-use cosmwasm_std::{coins, BankMsg, Coin, DepsMut, Env, MessageInfo, Response, Uint128};
+use cosmwasm_std::{coins, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, Uint128};
 use osmosis_std::types::cosmos::bank::v1beta1::Metadata;
-use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgSetDenomMetadata};
+use osmosis_std::types::osmosis::tokenfactory::v1beta1::{
+    MsgBurn, MsgSetBeforeSendHook, MsgSetDenomMetadata,
+};
 use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 
 use crate::error::ContractError;
-use crate::helpers::{check_bool_allowance, check_is_contract_owner};
+use crate::helpers::{
+    check_before_send_hook_features_enabled, check_bool_allowance, check_is_contract_owner,
+};
 use crate::state::{
-    BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, DENOM, FREEZER_ALLOWANCES,
-    IS_FROZEN, MINTER_ALLOWANCES, OWNER,
+    BEFORE_SEND_HOOK_FEATURES_ENABLED, BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES,
+    BURNER_ALLOWANCES, DENOM, FREEZER_ALLOWANCES, IS_FROZEN, MINTER_ALLOWANCES, OWNER,
 };
 
 pub fn mint(
@@ -184,6 +188,8 @@ pub fn set_blacklister(
     address: String,
     status: bool,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
+    check_before_send_hook_features_enabled(deps.as_ref())?;
+
     // Only allow current contract owner to set blacklister permission
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
@@ -211,6 +217,8 @@ pub fn set_freezer(
     address: String,
     status: bool,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
+    check_before_send_hook_features_enabled(deps.as_ref())?;
+
     // Only allow current contract owner to set freezer permission
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
@@ -230,6 +238,40 @@ pub fn set_freezer(
         .add_attribute("action", "set_freezer")
         .add_attribute("freezer", address)
         .add_attribute("status", status.to_string()))
+}
+
+pub fn set_before_send_hook(
+    deps: DepsMut<TokenFactoryQuery>,
+    env: Env,
+    info: MessageInfo,
+) -> Result<Response<TokenFactoryMsg>, ContractError> {
+    // Only allow current contract owner
+    check_is_contract_owner(deps.as_ref(), info.sender)?;
+
+    // Return error if BeforeSendHook already enabled
+    if BEFORE_SEND_HOOK_FEATURES_ENABLED.load(deps.storage)? {
+        return Err(ContractError::BeforeSendHookAlreadyEnabled {});
+    }
+
+    // Load the Token Factory denom
+    let denom = DENOM.load(deps.storage)?;
+
+    // SetBeforeSendHook to this contract
+    // this will trigger sudo endpoint before any bank send
+    // which makes blacklisting / freezing possible
+    let msg_set_beforesend_hook: CosmosMsg<TokenFactoryMsg> = MsgSetBeforeSendHook {
+        sender: env.contract.address.to_string(),
+        denom: denom.clone(),
+        cosmwasm_address: env.contract.address.to_string(),
+    }
+    .into();
+
+    // Enable BeforeSendHook features
+    BEFORE_SEND_HOOK_FEATURES_ENABLED.save(deps.storage, &true)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "set_before_send_hook")
+        .add_message(msg_set_beforesend_hook))
 }
 
 pub fn set_burner(
@@ -291,6 +333,8 @@ pub fn freeze(
     info: MessageInfo,
     status: bool,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
+    check_before_send_hook_features_enabled(deps.as_ref())?;
+
     // check to make sure that the sender has freezer permissions
     check_bool_allowance(deps.as_ref(), info, FREEZER_ALLOWANCES)?;
 
@@ -310,6 +354,8 @@ pub fn blacklist(
     address: String,
     status: bool,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
+    check_before_send_hook_features_enabled(deps.as_ref())?;
+
     // check to make sure that the sender has blacklister permissions
     check_bool_allowance(deps.as_ref(), info, BLACKLISTER_ALLOWANCES)?;
 
@@ -330,4 +376,26 @@ pub fn blacklist(
         .add_attribute("action", "blacklist")
         .add_attribute("address", address)
         .add_attribute("status", status.to_string()))
+}
+
+pub fn force_transfer(
+    deps: DepsMut<TokenFactoryQuery>,
+    info: MessageInfo,
+    amount: Uint128,
+    from_address: String,
+    to_address: String,
+) -> Result<Response<TokenFactoryMsg>, ContractError> {
+    // Only allow current contract owner to change owner
+    check_is_contract_owner(deps.as_ref(), info.sender)?;
+
+    // Load TF denom for this contract
+    let denom = DENOM.load(deps.storage)?;
+
+    // Force transfer tokens
+    let force_transfer_msg =
+        TokenFactoryMsg::force_transfer_tokens(denom, amount, from_address, to_address);
+
+    Ok(Response::new()
+        .add_attribute("action", "change_contract_owner")
+        .add_message(force_transfer_msg))
 }

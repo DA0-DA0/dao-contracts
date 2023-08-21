@@ -1,4 +1,6 @@
-use crate::state::{BLACKLISTED_ADDRESSES, DENOM, IS_FROZEN, OWNER};
+use crate::state::{
+    BEFORE_SEND_HOOK_FEATURES_ENABLED, BLACKLISTED_ADDRESSES, DENOM, IS_FROZEN, OWNER,
+};
 use crate::ContractError;
 use cosmwasm_std::{Addr, Coin, Deps, MessageInfo, Uint128};
 use cw_storage_plus::Map;
@@ -35,6 +37,17 @@ pub fn check_is_contract_owner(
     let owner = OWNER.load(deps.storage)?;
     if owner != sender {
         Err(ContractError::Unauthorized {})
+    } else {
+        Ok(())
+    }
+}
+
+pub fn check_before_send_hook_features_enabled(
+    deps: Deps<TokenFactoryQuery>,
+) -> Result<(), ContractError> {
+    let enabled = BEFORE_SEND_HOOK_FEATURES_ENABLED.load(deps.storage)?;
+    if !enabled {
+        Err(ContractError::BeforeSendHookFeaturesDisabled {})
     } else {
         Ok(())
     }

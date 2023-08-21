@@ -3,7 +3,7 @@ use std::convert::TryInto;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg,
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg, SubMsgResult,
 };
 use cosmwasm_std::{CosmosMsg, Reply};
 use cw2::set_contract_version;
@@ -17,13 +17,14 @@ use crate::execute;
 use crate::hooks;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, SudoMsg};
 use crate::queries;
-use crate::state::{DENOM, IS_FROZEN, OWNER};
+use crate::state::{BEFORE_SEND_HOOK_FEATURES_ENABLED, DENOM, IS_FROZEN, OWNER};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw-tokenfactory-issuer";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const CREATE_DENOM_REPLY_ID: u64 = 1;
+const BEFORE_SEND_HOOK_REPLY_ID: u64 = 2;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -66,49 +67,6 @@ pub fn instantiate(
     }
 }
 
-/// Allow contract to be able to migrate if admin is set.
-/// This provides option for migration, if admin is not set, this functionality will be disabled
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(
-    deps: DepsMut<TokenFactoryQuery>,
-    _env: Env,
-    _msg: MigrateMsg,
-) -> Result<Response, ContractError> {
-    // Set contract to version to latest
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    Ok(Response::new().add_attribute("action", "migrate"))
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(
-    deps: DepsMut<TokenFactoryQuery>,
-    env: Env,
-    msg: Reply,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
-    match msg.id {
-        CREATE_DENOM_REPLY_ID => {
-            let MsgCreateDenomResponse { new_token_denom } = msg.result.try_into()?;
-            DENOM.save(deps.storage, &new_token_denom)?;
-
-            // TODO maybe do error handling for this? Not every chain supports it.
-            // set beforesend listener to this contract
-            // this will trigger sudo endpoint before any bank send
-            // which makes blacklisting / freezing possible
-            let msg_set_beforesend_hook: CosmosMsg<TokenFactoryMsg> = MsgSetBeforeSendHook {
-                sender: env.contract.address.to_string(),
-                denom: new_token_denom.clone(),
-                cosmwasm_address: env.contract.address.to_string(),
-            }
-            .into();
-
-            Ok(Response::new()
-                .add_attribute("denom", new_token_denom)
-                .add_message(msg_set_beforesend_hook))
-        }
-        _ => Err(ContractError::UnknownReplyId { id: msg.id }),
-    }
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut<TokenFactoryQuery>,
@@ -129,6 +87,11 @@ pub fn execute(
             execute::blacklist(deps, info, address, status)
         }
         ExecuteMsg::Freeze { status } => execute::freeze(deps, info, status),
+        ExecuteMsg::ForceTransfer {
+            amount,
+            from_address,
+            to_address,
+        } => execute::force_transfer(deps, info, amount, from_address, to_address),
 
         // Admin functions
         ExecuteMsg::ChangeTokenFactoryAdmin { new_admin } => {
@@ -143,6 +106,7 @@ pub fn execute(
         ExecuteMsg::SetBurner { address, allowance } => {
             execute::set_burner(deps, info, address, allowance)
         }
+        ExecuteMsg::SetBeforeSendHook {} => execute::set_before_send_hook(deps, env, info),
         ExecuteMsg::SetBlacklister { address, status } => {
             execute::set_blacklister(deps, info, address, status)
         }
@@ -202,5 +166,62 @@ pub fn query(deps: Deps<TokenFactoryQuery>, _env: Env, msg: QueryMsg) -> StdResu
         QueryMsg::FreezerAllowances { start_after, limit } => to_binary(
             &queries::query_freezer_allowances(deps, start_after, limit)?,
         ),
+    }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(
+    deps: DepsMut<TokenFactoryQuery>,
+    _env: Env,
+    _msg: MigrateMsg,
+) -> Result<Response, ContractError> {
+    // Set contract to version to latest
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    Ok(Response::new().add_attribute("action", "migrate"))
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(
+    deps: DepsMut<TokenFactoryQuery>,
+    env: Env,
+    msg: Reply,
+) -> Result<Response<TokenFactoryMsg>, ContractError> {
+    match msg.id {
+        CREATE_DENOM_REPLY_ID => {
+            let MsgCreateDenomResponse { new_token_denom } = msg.result.try_into()?;
+            DENOM.save(deps.storage, &new_token_denom)?;
+
+            // SetBeforeSendHook to this contract
+            // this will trigger sudo endpoint before any bank send
+            // which makes blacklisting / freezing possible
+            let msg_set_beforesend_hook: CosmosMsg<TokenFactoryMsg> = MsgSetBeforeSendHook {
+                sender: env.contract.address.to_string(),
+                denom: new_token_denom.clone(),
+                cosmwasm_address: env.contract.address.to_string(),
+            }
+            .into();
+
+            Ok(Response::new()
+                .add_attribute("denom", new_token_denom)
+                .add_submessage(SubMsg::reply_always(
+                    msg_set_beforesend_hook,
+                    BEFORE_SEND_HOOK_REPLY_ID,
+                )))
+        }
+        BEFORE_SEND_HOOK_REPLY_ID => match msg.result {
+            SubMsgResult::Ok(_) => {
+                // Enable features with BeforeSendHook requirement
+                BEFORE_SEND_HOOK_FEATURES_ENABLED.save(deps.storage, &true)?;
+
+                Ok(Response::new().add_attribute("extra_features", "enabled"))
+            }
+            SubMsgResult::Err(_) => {
+                // MsgSetBeforeSendHook failed, disable extra features that require it
+                BEFORE_SEND_HOOK_FEATURES_ENABLED.save(deps.storage, &false)?;
+
+                Ok(Response::new().add_attribute("extra_features", "disabled"))
+            }
+        },
+        _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }
 }

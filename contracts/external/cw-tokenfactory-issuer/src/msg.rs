@@ -19,7 +19,7 @@ pub enum InstantiateMsg {
 #[cw_serde]
 pub struct MigrateMsg {}
 
-/// TODO add force transfer
+/// TODO add force transfer and msg before send hook
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Change the admin of the Token Factory denom itself.
@@ -40,6 +40,11 @@ pub enum ExecuteMsg {
     /// Grant/revoke permission to blacklist addresses
     SetBlacklister { address: String, status: bool },
 
+    /// Attempt to SetBeforeSendHook on the token attached to this contract.
+    /// This will fail if the token already has a SetBeforeSendHook or the chain
+    /// still does not support it.
+    SetBeforeSendHook {},
+
     /// Grant/revoke permission to freeze the token
     SetFreezer { address: String, status: bool },
 
@@ -59,6 +64,13 @@ pub enum ExecuteMsg {
     /// Block every token transfers of the token attached to this contract
     /// tokenfactory's beforesend listener must be set to this contract in order for it to work as intended.
     Freeze { status: bool },
+
+    /// Force transfer token from one address to another.
+    ForceTransfer {
+        amount: Uint128,
+        from_address: String,
+        to_address: String,
+    },
 }
 
 /// SudoMsg is only exposed for internal Cosmos SDK modules to call.

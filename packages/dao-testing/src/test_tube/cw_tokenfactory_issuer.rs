@@ -8,20 +8,15 @@ use cw_tokenfactory_issuer::{
     ContractError,
 };
 use osmosis_test_tube::{
-    osmosis_std::types::{
-        cosmos::bank::v1beta1::{MsgSend, MsgSendResponse},
-        cosmwasm::wasm::v1::{
-            MsgExecuteContractResponse, MsgMigrateContract, MsgMigrateContractResponse,
-        },
-        osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetadataRequest,
+    osmosis_std::types::cosmwasm::wasm::v1::{
+        MsgExecuteContractResponse, MsgMigrateContract, MsgMigrateContractResponse,
     },
-    Account, Bank, Module, OsmosisTestApp, Runner, RunnerError, RunnerExecuteResult,
-    SigningAccount, TokenFactory, Wasm,
+    Account, Module, OsmosisTestApp, Runner, RunnerError, RunnerExecuteResult, SigningAccount,
+    Wasm,
 };
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::path::PathBuf;
-use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct TokenfactoryIssuer<'a> {
