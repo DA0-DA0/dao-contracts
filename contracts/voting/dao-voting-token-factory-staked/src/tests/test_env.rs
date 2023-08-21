@@ -168,8 +168,7 @@ impl TestEnvBuilder {
 
         let contract = TfDaoVotingContract::deploy(
             app,
-            &self
-                .instantiate_msg
+            self.instantiate_msg
                 .as_ref()
                 .expect("instantiate msg not set"),
             &creator,

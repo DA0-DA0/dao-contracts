@@ -23,7 +23,7 @@ use crate::error::ContractError;
 use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 use crate::msg::{
     DenomResponse, ExecuteMsg, GetHooksResponse, InitialBalance, InstantiateMsg,
-    ListStakersResponse, MigrateMsg, NewDenomMetadata, QueryMsg, StakerBalanceResponse, TokenInfo,
+    ListStakersResponse, MigrateMsg, QueryMsg, StakerBalanceResponse, TokenInfo,
 };
 use crate::state::{
     Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, DENOM, HOOKS, MAX_CLAIMS, STAKED_BALANCES,
@@ -670,8 +670,9 @@ pub fn reply(
                     // Get the new token factory denom and save it
                     let querier = TokenQuerier::new(&deps.querier);
                     let denom = querier
-                        .full_denom(env.contract.address.to_string(), token.subdenom.clone())?
+                        .full_denom(issuer_addr.to_string(), token.subdenom.clone())?
                         .denom;
+
                     DENOM.save(deps.storage, &denom)?;
 
                     // Check supply is greater than zero, iterate through initial

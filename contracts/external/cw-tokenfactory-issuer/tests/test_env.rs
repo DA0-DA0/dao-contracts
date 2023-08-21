@@ -2,7 +2,7 @@
 // see https://github.com/rust-lang/rust/issues/46379
 #![allow(dead_code)]
 
-use cosmwasm_std::{Coin, Uint128, Uint64};
+use cosmwasm_std::{Coin, Uint128};
 
 use cw_tokenfactory_issuer::msg::{
     BlacklisteesResponse, BlacklisterAllowancesResponse, Metadata, MigrateMsg,
