@@ -24,7 +24,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           toolchain: stable
-          command: unit-test
+          command: all-test
           args: --locked
         env:
           RUST_BACKTRACE: 1
