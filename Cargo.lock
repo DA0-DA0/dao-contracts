@@ -321,9 +321,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.0.82"
+version = "1.0.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "305fe645edc1442a0fa8b6726ba61d422798d37a52e12eaecf4b022ebbb88f01"
+checksum = "f1174fb0b6ec23863f8b971027804a42614e347eafb0a95bf0b12cdae21fc4d0"
 dependencies = [
  "libc",
 ]
@@ -683,7 +683,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
@@ -809,7 +809,7 @@ version = "2.2.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw20 1.1.0",
  "cw20-base 1.1.0",
  "thiserror",
@@ -821,7 +821,7 @@ version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-paginate-storage 2.2.0",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
@@ -842,6 +842,25 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus 1.1.0",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-multi-test"
+version = "0.16.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "127c7bb95853b8e828bdab97065c81cb5ddc20f7339180b61b2300565aaa99d1"
+dependencies = [
+ "anyhow",
+ "cosmwasm-std",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "derivative",
+ "itertools 0.10.5",
+ "k256",
+ "prost 0.9.0",
+ "schemars",
+ "serde",
  "thiserror",
 ]
 
@@ -907,7 +926,7 @@ version = "2.2.0"
 dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-storage-plus 1.1.0",
  "serde",
 ]
@@ -919,7 +938,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-denom",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-ownable",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
@@ -1015,7 +1034,7 @@ version = "2.2.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
@@ -1031,7 +1050,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-storage-plus 1.1.0",
  "cw2 1.1.0",
  "osmosis-std 0.16.2",
@@ -1106,7 +1125,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-denom",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-ownable",
  "cw-paginate-storage 2.2.0",
  "cw-stake-tracker",
@@ -1298,7 +1317,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-controllers 1.1.0",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-ownable",
  "cw-paginate-storage 2.2.0",
  "cw-storage-plus 1.1.0",
@@ -1320,7 +1339,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-controllers 1.1.0",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-ownable",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
@@ -1339,7 +1358,7 @@ version = "2.2.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-ownable",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
@@ -1570,7 +1589,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-controllers 1.1.0",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-ownable",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
@@ -1602,7 +1621,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-core",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-paginate-storage 2.2.0",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
@@ -1654,7 +1673,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-core",
  "cw-core-interface 0.1.0 (git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0)",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-proposal-single",
  "cw-storage-plus 1.1.0",
  "cw-utils 0.13.4",
@@ -1686,7 +1705,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-denom",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-paginate-storage 2.2.0",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
@@ -1713,7 +1732,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-denom",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
@@ -1740,7 +1759,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-denom",
  "cw-hooks",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
@@ -1758,7 +1777,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-denom",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
  "cw20 1.1.0",
@@ -1783,7 +1802,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-denom",
  "cw-hooks",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
  "cw20 1.1.0",
@@ -1807,7 +1826,7 @@ dependencies = [
  "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
@@ -1829,7 +1848,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-hooks",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
@@ -1864,7 +1883,7 @@ dependencies = [
  "cosmwasm-storage",
  "cw-denom",
  "cw-hooks",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
@@ -1903,7 +1922,7 @@ dependencies = [
  "cw-core",
  "cw-denom",
  "cw-hooks",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-proposal-single",
  "cw-storage-plus 1.1.0",
  "cw-utils 0.13.4",
@@ -1941,7 +1960,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-storage-plus 1.1.0",
  "cw2 1.1.0",
  "dao-dao-macros",
@@ -1957,7 +1976,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-core",
  "cw-hooks",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-proposal-single",
  "cw-tokenfactory-issuer",
  "cw-utils 1.0.1",
@@ -2037,7 +2056,7 @@ version = "2.2.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
@@ -2055,7 +2074,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
@@ -2075,7 +2094,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "cw2 1.1.0",
@@ -2093,7 +2112,7 @@ dependencies = [
  "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-ownable",
  "cw-paginate-storage 2.2.0",
  "cw-storage-plus 1.1.0",
@@ -2119,7 +2138,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-controllers 1.1.0",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-paginate-storage 2.2.0",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
@@ -2131,6 +2150,10 @@ dependencies = [
  "dao-interface",
  "dao-testing",
  "dao-voting 2.2.0",
+ "sg-multi-test",
+ "sg-std",
+ "sg721",
+ "sg721-base",
  "thiserror",
 ]
 
@@ -2144,7 +2167,7 @@ dependencies = [
  "cosmwasm-storage",
  "cw-controllers 1.1.0",
  "cw-hooks",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-paginate-storage 2.2.0",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
@@ -2165,7 +2188,7 @@ dependencies = [
  "cosmwasm-storage",
  "cw-controllers 1.1.0",
  "cw-hooks",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-paginate-storage 2.2.0",
  "cw-storage-plus 1.1.0",
  "cw-tokenfactory-issuer",
@@ -3703,9 +3726,9 @@ checksum = "b0293b4b29daaf487284529cc2f5675b8e57c61f70167ba415a463651fd6a918"
 
 [[package]]
 name = "serde"
-version = "1.0.183"
+version = "1.0.185"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32ac8da02677876d532745a130fc9d8e6edfa81a269b107c5b00829b91d8eb3c"
+checksum = "be9b6f69f1dfd54c3b568ffa45c310d6973a5e5148fd40cf515acaf38cf5bc31"
 dependencies = [
  "serde_derive",
 ]
@@ -3739,9 +3762,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.183"
+version = "1.0.185"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aafe972d60b0b9bee71a91b92fee2d4fb3c9d7e8f6b179aa99f27203d99a4816"
+checksum = "dc59dfdcbad1437773485e0367fea4b090a2e0a16d9ffc46af47764536a298ec"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3792,6 +3815,71 @@ dependencies = [
  "ryu",
  "serde",
  "unsafe-libyaml",
+]
+
+[[package]]
+name = "sg-multi-test"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20744734b8049c64747bfb083bbc06a3c7204d1d34881ed3d89698e182aa9f97"
+dependencies = [
+ "anyhow",
+ "cosmwasm-std",
+ "cw-multi-test 0.16.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "schemars",
+ "serde",
+ "sg-std",
+]
+
+[[package]]
+name = "sg-std"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "171f97d3032b7d713dd16decaed06479e7ce5585147f387860ad2fb3f7b9ed94"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-utils 1.0.1",
+ "cw721 0.18.0",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "sg721"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e7d8f93b519c4c95973a68c7abee2de838497974d666dddb4dabd04d9c7cbf6"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-ownable",
+ "cw-utils 1.0.1",
+ "cw721-base 0.18.0",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "sg721-base"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af08801d6f50cb13be05a3d2e815fbdb9dbba82086bbab877599ed4d422e9441"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-ownable",
+ "cw-storage-plus 1.1.0",
+ "cw-utils 1.0.1",
+ "cw2 1.1.0",
+ "cw721 0.18.0",
+ "cw721-base 0.18.0",
+ "serde",
+ "sg-std",
+ "sg721",
+ "thiserror",
+ "url",
 ]
 
 [[package]]
@@ -4352,7 +4440,7 @@ source = "git+https://github.com/CosmosContracts/token-bindings.git?branch=updat
 dependencies = [
  "anyhow",
  "cosmwasm-std",
- "cw-multi-test",
+ "cw-multi-test 0.16.5 (git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support)",
  "cw-storage-plus 0.16.0",
  "itertools 0.11.0",
  "schemars",

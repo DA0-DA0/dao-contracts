@@ -1,24 +1,10 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Empty;
+use cosmwasm_std::Binary;
 use cw721::Cw721ReceiveMsg;
 use cw_utils::Duration;
 use dao_dao_macros::{active_query, voting_module_query};
 use dao_interface::state::Admin;
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
-
-#[cw_serde]
-pub struct NftMintMsg {
-    /// Unique ID of the NFT
-    pub token_id: String,
-    /// The owner of the newly minter NFT
-    pub owner: String,
-    /// Universal resource identifier for this NFT
-    /// Should point to a JSON file that conforms to the ERC721
-    /// Metadata JSON Schema
-    pub token_uri: Option<String>,
-    /// Any custom extension used by this contract
-    pub extension: Empty,
-}
 
 #[cw_serde]
 #[allow(clippy::large_enum_variant)]
@@ -32,13 +18,11 @@ pub enum NftContract {
         code_id: u64,
         /// Label to use for instantiated cw721 contract.
         label: String,
-        /// NFT collection name
-        name: String,
-        /// NFT collection symbol
-        symbol: String,
+        msg: Binary,
         /// Initial NFTs to mint when creating the NFT contract.
-        /// If empty, an error is thrown.
-        initial_nfts: Vec<NftMintMsg>,
+        /// If empty, an error is thrown. The binary should be a
+        /// valid mint message for the corresponding cw721 contract.
+        initial_nfts: Vec<Binary>,
     },
 }
 
