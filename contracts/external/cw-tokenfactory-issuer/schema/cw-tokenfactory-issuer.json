@@ -202,6 +202,32 @@
         "additionalProperties": false
       },
       {
+        "description": "Grant/revoke permission to blacklist addresses",
+        "type": "object",
+        "required": [
+          "set_whitelister"
+        ],
+        "properties": {
+          "set_whitelister": {
+            "type": "object",
+            "required": [
+              "address",
+              "status"
+            ],
+            "properties": {
+              "address": {
+                "type": "string"
+              },
+              "status": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "description": "Attempt to SetBeforeSendHook on the token attached to this contract. This will fail if the token already has a SetBeforeSendHook or the chain still does not support it.",
         "type": "object",
         "required": [
@@ -301,6 +327,32 @@
         ],
         "properties": {
           "blacklist": {
+            "type": "object",
+            "required": [
+              "address",
+              "status"
+            ],
+            "properties": {
+              "address": {
+                "type": "string"
+              },
+              "status": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Whitelist target address to be able to send tokens even if the token is frozen.",
+        "type": "object",
+        "required": [
+          "whitelist"
+        ],
+        "properties": {
+          "whitelist": {
             "type": "object",
             "required": [
               "address",
@@ -702,6 +754,110 @@
         "additionalProperties": false
       },
       {
+        "description": "IsWhitelisted returns wether the user is whitelisted or not. Response: StatusResponse",
+        "type": "object",
+        "required": [
+          "is_whitelisted"
+        ],
+        "properties": {
+          "is_whitelisted": {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Whitelistees enumerates over all addresses on the whitelist. Response: WhitelisteesResponse",
+        "type": "object",
+        "required": [
+          "whitelistees"
+        ],
+        "properties": {
+          "whitelistees": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "IsWhitelister returns if the addres has whitelister privileges. Response: StatusResponse",
+        "type": "object",
+        "required": [
+          "is_whitelister"
+        ],
+        "properties": {
+          "is_whitelister": {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Whitelisters Enumerates over all the addresses with whitelister privileges. Response: WhitelisterAllowancesResponse",
+        "type": "object",
+        "required": [
+          "whitelister_allowances"
+        ],
+        "properties": {
+          "whitelister_allowances": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "description": "IsFreezer returns whether the address has freezer status. Response: StatusResponse",
         "type": "object",
         "required": [
@@ -1048,6 +1204,34 @@
       },
       "additionalProperties": false
     },
+    "is_whitelisted": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "StatusResponse",
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "is_whitelister": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "StatusResponse",
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
     "mint_allowance": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AllowanceResponse",
@@ -1120,6 +1304,76 @@
         }
       },
       "additionalProperties": false
+    },
+    "whitelistees": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WhitelisteesResponse",
+      "type": "object",
+      "required": [
+        "whitelistees"
+      ],
+      "properties": {
+        "whitelistees": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/StatusInfo"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "StatusInfo": {
+          "type": "object",
+          "required": [
+            "address",
+            "status"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "status": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "whitelister_allowances": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WhitelisterAllowancesResponse",
+      "type": "object",
+      "required": [
+        "whitelisters"
+      ],
+      "properties": {
+        "whitelisters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/StatusInfo"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "StatusInfo": {
+          "type": "object",
+          "required": [
+            "address",
+            "status"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "status": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
     }
   }
 }
