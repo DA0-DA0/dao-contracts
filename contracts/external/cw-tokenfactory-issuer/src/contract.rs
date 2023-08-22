@@ -59,6 +59,10 @@ pub fn instantiate(
         InstantiateMsg::ExistingToken { denom } => {
             DENOM.save(deps.storage, &denom)?;
 
+            // BeforeSendHook cannot be set with existing tokens
+            // features that rely on it are disabled
+            BEFORE_SEND_HOOK_FEATURES_ENABLED.save(deps.storage, &false)?;
+
             Ok(Response::new()
                 .add_attribute("action", "instantiate")
                 .add_attribute("owner", info.sender)
