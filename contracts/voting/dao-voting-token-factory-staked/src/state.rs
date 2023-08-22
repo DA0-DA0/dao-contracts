@@ -10,8 +10,6 @@ use crate::msg::TokenInfo;
 
 #[cw_serde]
 pub struct Config {
-    pub owner: Option<Addr>,
-    pub manager: Option<Addr>,
     pub unstaking_duration: Option<Duration>,
 }
 

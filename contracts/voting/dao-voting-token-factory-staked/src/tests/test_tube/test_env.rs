@@ -10,10 +10,7 @@ use crate::{
 use cosmwasm_std::{Coin, Uint128};
 use cw_tokenfactory_issuer::msg::{DenomResponse, DenomUnit};
 use cw_utils::Duration;
-use dao_interface::{
-    state::Admin,
-    voting::{IsActiveResponse, VotingPowerAtHeightResponse},
-};
+use dao_interface::voting::{IsActiveResponse, VotingPowerAtHeightResponse};
 use dao_testing::test_tube::cw_tokenfactory_issuer::TokenfactoryIssuer;
 use dao_voting::threshold::ActiveThreshold;
 use osmosis_std::types::{
@@ -122,8 +119,6 @@ impl TestEnvBuilder {
             app,
             &InstantiateMsg {
                 token_issuer_code_id: issuer_id,
-                owner: Some(Admin::CoreModule {}),
-                manager: Some(accounts[0].address()),
                 token_info: TokenInfo::New(NewTokenInfo {
                     subdenom: DENOM.to_string(),
                     metadata: Some(crate::msg::NewDenomMetadata {

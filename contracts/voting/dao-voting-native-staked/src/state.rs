@@ -8,8 +8,6 @@ use dao_voting::threshold::ActiveThreshold;
 
 #[cw_serde]
 pub struct Config {
-    pub owner: Option<Addr>,
-    pub manager: Option<Addr>,
     pub denom: String,
     pub unstaking_duration: Option<Duration>,
 }

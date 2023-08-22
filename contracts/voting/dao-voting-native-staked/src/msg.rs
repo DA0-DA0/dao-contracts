@@ -2,16 +2,11 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw_utils::Duration;
 use dao_dao_macros::{active_query, voting_module_query};
-use dao_interface::state::Admin;
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    // Owner can update all configs including changing the owner. This will generally be a DAO.
-    pub owner: Option<Admin>,
-    // Manager can update all configs except changing the owner. This will generally be an operations multisig for a DAO.
-    pub manager: Option<String>,
-    // Token denom e.g. ujuno, or some ibc denom
+    /// Token denom e.g. ujuno, or some ibc denom
     pub denom: String,
     // How long until the tokens become liquid again
     pub unstaking_duration: Option<Duration>,
@@ -27,11 +22,7 @@ pub enum ExecuteMsg {
     /// Unstakes tokens so that they begin unbonding
     Unstake { amount: Uint128 },
     /// Updates the contract configuration
-    UpdateConfig {
-        owner: Option<String>,
-        manager: Option<String>,
-        duration: Option<Duration>,
-    },
+    UpdateConfig { duration: Option<Duration> },
     /// Claims unstaked tokens that have completed the unbonding period
     Claim {},
     /// Sets the active threshold to a new value. Only the

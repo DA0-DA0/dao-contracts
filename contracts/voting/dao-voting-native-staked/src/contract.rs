@@ -7,7 +7,6 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_controllers::ClaimsResponse;
 use cw_utils::{must_pay, Duration};
-use dao_interface::state::Admin;
 use dao_interface::voting::{
     IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
@@ -56,24 +55,9 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let owner = msg
-        .owner
-        .as_ref()
-        .map(|owner| match owner {
-            Admin::Address { addr } => deps.api.addr_validate(addr),
-            Admin::CoreModule {} => Ok(info.sender.clone()),
-        })
-        .transpose()?;
-    let manager = msg
-        .manager
-        .map(|manager| deps.api.addr_validate(&manager))
-        .transpose()?;
-
     validate_duration(msg.unstaking_duration)?;
 
     let config = Config {
-        owner,
-        manager,
         denom: msg.denom.clone(),
         unstaking_duration: msg.unstaking_duration,
     };
@@ -96,22 +80,7 @@ pub fn instantiate(
         ACTIVE_THRESHOLD.save(deps.storage, active_threshold)?;
     }
 
-    Ok(Response::new()
-        .add_attribute("action", "instantiate")
-        .add_attribute(
-            "owner",
-            config
-                .owner
-                .map(|a| a.to_string())
-                .unwrap_or_else(|| "None".to_string()),
-        )
-        .add_attribute(
-            "manager",
-            config
-                .manager
-                .map(|a| a.to_string())
-                .unwrap_or_else(|| "None".to_string()),
-        ))
+    Ok(Response::new().add_attribute("action", "instantiate"))
 }
 
 pub fn assert_valid_absolute_count_threshold(
@@ -139,11 +108,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::Stake {} => execute_stake(deps, env, info),
         ExecuteMsg::Unstake { amount } => execute_unstake(deps, env, info, amount),
-        ExecuteMsg::UpdateConfig {
-            owner,
-            manager,
-            duration,
-        } => execute_update_config(deps, info, owner, manager, duration),
+        ExecuteMsg::UpdateConfig { duration } => execute_update_config(deps, info, duration),
         ExecuteMsg::Claim {} => execute_claim(deps, env, info),
         ExecuteMsg::UpdateActiveThreshold { new_threshold } => {
             execute_update_active_threshold(deps, env, info, new_threshold)
@@ -249,50 +214,22 @@ pub fn execute_unstake(
 pub fn execute_update_config(
     deps: DepsMut,
     info: MessageInfo,
-    new_owner: Option<String>,
-    new_manager: Option<String>,
     duration: Option<Duration>,
 ) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
-    if Some(info.sender.clone()) != config.owner && Some(info.sender.clone()) != config.manager {
+
+    // Only the DAO can update the config
+    let dao = DAO.load(deps.storage)?;
+    if info.sender != dao {
         return Err(ContractError::Unauthorized {});
     }
 
-    let new_owner = new_owner
-        .map(|new_owner| deps.api.addr_validate(&new_owner))
-        .transpose()?;
-    let new_manager = new_manager
-        .map(|new_manager| deps.api.addr_validate(&new_manager))
-        .transpose()?;
-
     validate_duration(duration)?;
-
-    if Some(info.sender) != config.owner && new_owner != config.owner {
-        return Err(ContractError::OnlyOwnerCanChangeOwner {});
-    };
-
-    config.owner = new_owner;
-    config.manager = new_manager;
 
     config.unstaking_duration = duration;
 
     CONFIG.save(deps.storage, &config)?;
-    Ok(Response::new()
-        .add_attribute("action", "update_config")
-        .add_attribute(
-            "owner",
-            config
-                .owner
-                .map(|a| a.to_string())
-                .unwrap_or_else(|| "None".to_string()),
-        )
-        .add_attribute(
-            "manager",
-            config
-                .manager
-                .map(|a| a.to_string())
-                .unwrap_or_else(|| "None".to_string()),
-        ))
+    Ok(Response::new().add_attribute("action", "update_config"))
 }
 
 pub fn execute_claim(
@@ -355,8 +292,8 @@ pub fn execute_add_hook(
     info: MessageInfo,
     addr: String,
 ) -> Result<Response, ContractError> {
-    let config: Config = CONFIG.load(deps.storage)?;
-    if Some(info.sender.clone()) != config.owner && Some(info.sender) != config.manager {
+    let dao = DAO.load(deps.storage)?;
+    if info.sender != dao {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -373,8 +310,8 @@ pub fn execute_remove_hook(
     info: MessageInfo,
     addr: String,
 ) -> Result<Response, ContractError> {
-    let config: Config = CONFIG.load(deps.storage)?;
-    if Some(info.sender.clone()) != config.owner && Some(info.sender) != config.manager {
+    let dao = DAO.load(deps.storage)?;
+    if info.sender != dao {
         return Err(ContractError::Unauthorized {});
     }
 

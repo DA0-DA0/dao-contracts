@@ -3,7 +3,6 @@ use cosmwasm_std::Uint128;
 use cw_tokenfactory_issuer::msg::DenomUnit;
 use cw_utils::Duration;
 use dao_dao_macros::{active_query, token_query, voting_module_query};
-use dao_interface::state::Admin;
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
 #[cw_serde]
@@ -60,10 +59,6 @@ pub enum TokenInfo {
 pub struct InstantiateMsg {
     /// The code id of the cw-tokenfactory-issuer contract
     pub token_issuer_code_id: u64,
-    /// Owner can update all configs including changing the owner. This will generally be a DAO.
-    pub owner: Option<Admin>,
-    /// Manager can update all configs except changing the owner. This will generally be an operations multisig for a DAO.
-    pub manager: Option<String>,
     /// New or existing native token to use for voting power.
     pub token_info: TokenInfo,
     /// How long until the tokens become liquid again
@@ -80,11 +75,7 @@ pub enum ExecuteMsg {
     /// Unstakes tokens so that they begin unbonding
     Unstake { amount: Uint128 },
     /// Updates the contract configuration
-    UpdateConfig {
-        owner: Option<String>,
-        manager: Option<String>,
-        duration: Option<Duration>,
-    },
+    UpdateConfig { duration: Option<Duration> },
     /// Claims unstaked tokens that have completed the unbonding period
     Claim {},
     /// Sets the active threshold to a new value. Only the

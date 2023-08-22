@@ -11,7 +11,6 @@ use cw_multi_test::{
     next_block, AppResponse, BankSudo, Contract, ContractWrapper, Executor, SudoMsg,
 };
 use cw_utils::Duration;
-use dao_interface::state::Admin;
 use dao_interface::voting::{
     InfoResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
@@ -154,18 +153,12 @@ fn update_config(
     app: &mut App,
     staking_addr: Addr,
     sender: &str,
-    owner: Option<String>,
-    manager: Option<String>,
     duration: Option<Duration>,
 ) -> anyhow::Result<AppResponse> {
     app.execute_contract(
         Addr::unchecked(sender),
         staking_addr,
-        &ExecuteMsg::UpdateConfig {
-            owner,
-            manager,
-            duration,
-        },
+        &ExecuteMsg::UpdateConfig { duration },
         &[],
     )
 }
@@ -216,15 +209,11 @@ fn test_instantiate_existing() {
     let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
     // Populated fields
-    let _addr = instantiate_staking(
+    instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::Address {
-                addr: DAO_ADDR.to_string(),
-            }),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -234,13 +223,11 @@ fn test_instantiate_existing() {
     );
 
     // Non populated fields
-    let _addr = instantiate_staking(
+    let addr = instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: None,
-            manager: None,
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -248,51 +235,27 @@ fn test_instantiate_existing() {
             active_threshold: None,
         },
     );
-}
 
-#[test]
-fn test_instantiate_dao_owner() {
-    let mut app = mock_app();
-    let issuer_id = app.store_code(issuer_contract());
-    let staking_id = app.store_code(staking_contract());
-    // Populated fields
-    let addr = instantiate_staking(
-        &mut app,
-        staking_id,
-        InstantiateMsg {
-            token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
-            token_info: TokenInfo::Existing {
-                denom: DENOM.to_string(),
-            },
-            unstaking_duration: Some(Duration::Height(5)),
-            active_threshold: None,
-        },
-    );
-
-    let config = get_config(&mut app, addr);
-
-    assert_eq!(config.owner, Some(Addr::unchecked(DAO_ADDR)))
+    let token_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(addr, &QueryMsg::TokenContract {})
+        .unwrap();
+    assert_eq!(token_contract, Addr::unchecked("contract3"));
 }
 
 #[test]
 #[should_panic(expected = "Invalid unstaking duration, unstaking duration cannot be 0")]
-fn test_instantiate_invalid_unstaking_duration() {
+fn test_instantiate_invalid_unstaking_duration_height() {
     let mut app = mock_app();
     let issuer_id = app.store_code(issuer_contract());
     let staking_id = app.store_code(staking_contract());
 
     // Populated fields
-    let _addr = instantiate_staking(
+    instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::Address {
-                addr: DAO_ADDR.to_string(),
-            }),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -302,20 +265,28 @@ fn test_instantiate_invalid_unstaking_duration() {
             }),
         },
     );
+}
 
-    // Non populated fields
-    let _addr = instantiate_staking(
+#[test]
+#[should_panic(expected = "Invalid unstaking duration, unstaking duration cannot be 0")]
+fn test_instantiate_invalid_unstaking_duration_time() {
+    let mut app = mock_app();
+    let issuer_id = app.store_code(issuer_contract());
+    let staking_id = app.store_code(staking_contract());
+
+    // Populated fields with height
+    instantiate_staking(
         &mut app,
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: None,
-            manager: None,
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
-            unstaking_duration: None,
-            active_threshold: None,
+            unstaking_duration: Some(Duration::Time(0)),
+            active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                count: Uint128::new(1),
+            }),
         },
     );
 }
@@ -331,8 +302,6 @@ fn test_stake_invalid_denom() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -355,8 +324,6 @@ fn test_stake_valid_denom() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -381,8 +348,6 @@ fn test_unstake_none_staked() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -405,8 +370,6 @@ fn test_unstake_zero_tokens() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -429,8 +392,6 @@ fn test_unstake_invalid_balance() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -457,8 +418,6 @@ fn test_unstake() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -497,8 +456,6 @@ fn test_unstake_no_unstaking_duration() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -539,8 +496,6 @@ fn test_claim_no_claims() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -563,8 +518,6 @@ fn test_claim_claim_not_reached() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -595,8 +548,6 @@ fn test_claim() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -651,8 +602,6 @@ fn test_update_config_invalid_sender() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -662,40 +611,7 @@ fn test_update_config_invalid_sender() {
     );
 
     // From ADDR2, so not owner or manager
-    update_config(
-        &mut app,
-        addr,
-        ADDR2,
-        Some(ADDR1.to_string()),
-        Some(DAO_ADDR.to_string()),
-        Some(Duration::Height(10)),
-    )
-    .unwrap();
-}
-
-#[test]
-#[should_panic(expected = "Only owner can change owner")]
-fn test_update_config_non_owner_changes_owner() {
-    let mut app = mock_app();
-    let issuer_id = app.store_code(issuer_contract());
-    let staking_id = app.store_code(staking_contract());
-    let addr = instantiate_staking(
-        &mut app,
-        staking_id,
-        InstantiateMsg {
-            token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
-            token_info: TokenInfo::Existing {
-                denom: DENOM.to_string(),
-            },
-            unstaking_duration: Some(Duration::Height(5)),
-            active_threshold: None,
-        },
-    );
-
-    // ADDR1 is the manager so cannot change the owner
-    update_config(&mut app, addr, ADDR1, Some(ADDR2.to_string()), None, None).unwrap();
+    update_config(&mut app, addr, ADDR2, Some(Duration::Height(10))).unwrap();
 }
 
 #[test]
@@ -708,8 +624,6 @@ fn test_update_config_as_owner() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -719,63 +633,11 @@ fn test_update_config_as_owner() {
     );
 
     // Swap owner and manager, change duration
-    update_config(
-        &mut app,
-        addr.clone(),
-        DAO_ADDR,
-        Some(ADDR1.to_string()),
-        Some(DAO_ADDR.to_string()),
-        Some(Duration::Height(10)),
-    )
-    .unwrap();
+    update_config(&mut app, addr.clone(), DAO_ADDR, Some(Duration::Height(10))).unwrap();
 
     let config = get_config(&mut app, addr);
     assert_eq!(
         Config {
-            owner: Some(Addr::unchecked(ADDR1)),
-            manager: Some(Addr::unchecked(DAO_ADDR)),
-            unstaking_duration: Some(Duration::Height(10)),
-        },
-        config
-    );
-}
-
-#[test]
-fn test_update_config_as_manager() {
-    let mut app = mock_app();
-    let issuer_id = app.store_code(issuer_contract());
-    let staking_id = app.store_code(staking_contract());
-    let addr = instantiate_staking(
-        &mut app,
-        staking_id,
-        InstantiateMsg {
-            token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
-            token_info: TokenInfo::Existing {
-                denom: DENOM.to_string(),
-            },
-            unstaking_duration: Some(Duration::Height(5)),
-            active_threshold: None,
-        },
-    );
-
-    // Change duration and manager as manager cannot change owner
-    update_config(
-        &mut app,
-        addr.clone(),
-        ADDR1,
-        Some(DAO_ADDR.to_string()),
-        Some(ADDR2.to_string()),
-        Some(Duration::Height(10)),
-    )
-    .unwrap();
-
-    let config = get_config(&mut app, addr);
-    assert_eq!(
-        Config {
-            owner: Some(Addr::unchecked(DAO_ADDR)),
-            manager: Some(Addr::unchecked(ADDR2)),
             unstaking_duration: Some(Duration::Height(10)),
         },
         config
@@ -793,8 +655,6 @@ fn test_update_config_invalid_duration() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -804,15 +664,7 @@ fn test_update_config_invalid_duration() {
     );
 
     // Change duration and manager as manager cannot change owner
-    update_config(
-        &mut app,
-        addr,
-        ADDR1,
-        Some(DAO_ADDR.to_string()),
-        Some(ADDR2.to_string()),
-        Some(Duration::Height(0)),
-    )
-    .unwrap();
+    update_config(&mut app, addr, DAO_ADDR, Some(Duration::Height(0))).unwrap();
 }
 
 #[test]
@@ -825,8 +677,6 @@ fn test_query_dao() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -850,8 +700,6 @@ fn test_query_info() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -878,8 +726,6 @@ fn test_query_token_contract() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -903,8 +749,6 @@ fn test_query_claims() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -944,8 +788,6 @@ fn test_query_get_config() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -958,8 +800,6 @@ fn test_query_get_config() {
     assert_eq!(
         config,
         Config {
-            owner: Some(Addr::unchecked(DAO_ADDR)),
-            manager: Some(Addr::unchecked(ADDR1)),
             unstaking_duration: Some(Duration::Height(5)),
         }
     )
@@ -975,8 +815,6 @@ fn test_voting_power_queries() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -1086,8 +924,6 @@ fn test_query_list_stakers() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::CoreModule {}),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -1176,10 +1012,6 @@ fn test_instantiate_zero_active_threshold_count() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::Address {
-                addr: DAO_ADDR.to_string(),
-            }),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -1202,10 +1034,6 @@ fn test_active_threshold_absolute_count() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::Address {
-                addr: DAO_ADDR.to_string(),
-            }),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -1245,10 +1073,6 @@ fn test_active_threshold_percent() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::Address {
-                addr: DAO_ADDR.to_string(),
-            }),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -1288,10 +1112,6 @@ fn test_active_threshold_percent_rounds_up() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::Address {
-                addr: DAO_ADDR.to_string(),
-            }),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: ODD_DENOM.to_string(),
             },
@@ -1340,10 +1160,6 @@ fn test_active_threshold_none() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::Address {
-                addr: DAO_ADDR.to_string(),
-            }),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -1370,10 +1186,6 @@ fn test_update_active_threshold() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::Address {
-                addr: DAO_ADDR.to_string(),
-            }),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -1425,10 +1237,6 @@ fn test_active_threshold_percentage_gt_100() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::Address {
-                addr: DAO_ADDR.to_string(),
-            }),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -1451,10 +1259,6 @@ fn test_active_threshold_percentage_lte_0() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::Address {
-                addr: DAO_ADDR.to_string(),
-            }),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -1477,10 +1281,6 @@ fn test_active_threshold_absolute_count_invalid() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::Address {
-                addr: DAO_ADDR.to_string(),
-            }),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },
@@ -1502,10 +1302,6 @@ fn test_add_remove_hooks() {
         staking_id,
         InstantiateMsg {
             token_issuer_code_id: issuer_id,
-            owner: Some(Admin::Address {
-                addr: DAO_ADDR.to_string(),
-            }),
-            manager: Some(ADDR1.to_string()),
             token_info: TokenInfo::Existing {
                 denom: DENOM.to_string(),
             },

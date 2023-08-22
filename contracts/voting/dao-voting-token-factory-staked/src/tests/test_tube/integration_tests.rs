@@ -81,8 +81,6 @@ fn test_instantiate_no_dao_balance() {
         .instantiate(
             &InstantiateMsg {
                 token_issuer_code_id: tf_issuer_id,
-                owner: None,
-                manager: None,
                 token_info: TokenInfo::New(NewTokenInfo {
                     subdenom: "ucat".to_string(),
                     metadata: Some(NewDenomMetadata {
@@ -146,8 +144,6 @@ fn test_instantiate_no_metadata() {
     env.instantiate(
         &InstantiateMsg {
             token_issuer_code_id: tf_issuer_id,
-            owner: None,
-            manager: None,
             token_info: TokenInfo::New(NewTokenInfo {
                 subdenom: "ucat".to_string(),
                 metadata: None,
@@ -178,8 +174,6 @@ fn test_instantiate_invalid_metadata_fails() {
     env.instantiate(
         &InstantiateMsg {
             token_issuer_code_id: tf_issuer_id,
-            owner: None,
-            manager: None,
             token_info: TokenInfo::New(NewTokenInfo {
                 subdenom: "cat".to_string(),
                 metadata: Some(NewDenomMetadata {
@@ -221,8 +215,6 @@ fn test_instantiate_no_initial_balances_fails() {
         .instantiate(
             &InstantiateMsg {
                 token_issuer_code_id: tf_issuer_id,
-                owner: None,
-                manager: None,
                 token_info: TokenInfo::New(NewTokenInfo {
                     subdenom: "ucat".to_string(),
                     metadata: Some(NewDenomMetadata {

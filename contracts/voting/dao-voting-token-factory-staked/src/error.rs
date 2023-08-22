@@ -31,9 +31,6 @@ pub enum ContractError {
     #[error("Invalid unstaking duration, unstaking duration cannot be 0")]
     InvalidUnstakingDuration {},
 
-    #[error("Only owner can change owner")]
-    OnlyOwnerCanChangeOwner {},
-
     #[error("Nothing to claim")]
     NothingToClaim {},
 

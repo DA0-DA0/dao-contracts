@@ -25,9 +25,6 @@ pub enum ContractError {
     #[error("Too many outstanding claims. Claim some tokens before unstaking more.")]
     TooManyClaims {},
 
-    #[error("Only owner can change owner")]
-    OnlyOwnerCanChangeOwner {},
-
     #[error("Absolute count threshold cannot be greater than the total token supply")]
     InvalidAbsoluteCount {},
 
