@@ -1,5 +1,5 @@
 [package]
-authors = ["Maurits Bos <maurits.bos@gmail.com>", "Sunny Aggarwal <sunny@osmsosis.team>"]
+authors = ["Maurits Bos <maurits.bos@gmail.com>", "Sunny Aggarwal <sunny@osmsosis.team>", "Jake Hartnell <no-reply@no-reply.com>"]
 name = "cw-tokenfactory-issuer"
 description = "A CosmWasm contract that issues new Token Factory tokens on supported chains."
 version = { workspace = true }
