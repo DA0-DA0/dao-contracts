@@ -3108,11 +3108,11 @@ checksum = "4d5d9eb14b174ee9aa2ef96dc2b94637a2d4b6e7cb873c7e171f0c20c6cf3eac"
 [[package]]
 name = "osmosis-std"
 version = "0.16.2"
-source = "git+https://github.com/osmosis-labs/osmosis-rust?branch=main#3c9e6e48b5abb7362170305912ff0d57997b3b62"
+source = "git+https://github.com/osmosis-labs/osmosis-rust?branch=autobuild-v17.0.0-rc0#36ef03c6d61b860c6bd25cac56bc52144c4e6b9c"
 dependencies = [
  "chrono",
  "cosmwasm-std",
- "osmosis-std-derive 0.16.2 (git+https://github.com/osmosis-labs/osmosis-rust?branch=main)",
+ "osmosis-std-derive 0.16.2 (git+https://github.com/osmosis-labs/osmosis-rust?branch=autobuild-v17.0.0-rc0)",
  "prost 0.11.9",
  "prost-types",
  "schemars",
@@ -3152,7 +3152,7 @@ dependencies = [
 [[package]]
 name = "osmosis-std-derive"
 version = "0.16.2"
-source = "git+https://github.com/osmosis-labs/osmosis-rust?branch=main#3c9e6e48b5abb7362170305912ff0d57997b3b62"
+source = "git+https://github.com/osmosis-labs/osmosis-rust?branch=autobuild-v17.0.0-rc0#36ef03c6d61b860c6bd25cac56bc52144c4e6b9c"
 dependencies = [
  "itertools 0.10.5",
  "proc-macro2",

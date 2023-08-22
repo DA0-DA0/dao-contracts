@@ -25,6 +25,16 @@ jobs:
           target: wasm32-unknown-unknown
           override: true
 
+      - name: Clone libwasmv (needed for test-tube)
+        uses: actions/checkout@v2
+        with:
+          repository: CosmWasm/wasmvm
+          path: ../wasmvm
+          ref: v1.3.0
+
+      - name: Install libwasmv
+        run: cd ../wasmvm && make build-rust && popd
+
       - name: Rust Dependencies Cache
         uses: actions/cache@v3
         with:
