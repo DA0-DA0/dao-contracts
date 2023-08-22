@@ -6,7 +6,7 @@ This repo contains a set of contracts that when used in conjunction with the x/t
 - Creating a new Token Factory token or using an existing one
 - Granting and revoking allowances for the minting and burning of tokens
 - Updating token metadata
-- Freezing and unfreezing transfers
+- Freezing and unfreezing transfers, with a whitelist to allow some address to continue to transfer
 - Force transfering tokens via the contract owner
 - Updating the contract owner or Token Factory admin
 

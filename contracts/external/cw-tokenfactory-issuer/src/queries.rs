@@ -5,11 +5,11 @@ use token_bindings::TokenFactoryQuery;
 use crate::msg::{
     AllowanceInfo, AllowanceResponse, AllowancesResponse, BlacklisteesResponse,
     BlacklisterAllowancesResponse, DenomResponse, FreezerAllowancesResponse, IsFrozenResponse,
-    OwnerResponse, StatusInfo, StatusResponse,
+    OwnerResponse, StatusInfo, StatusResponse, WhitelisteesResponse, WhitelisterAllowancesResponse,
 };
 use crate::state::{
     BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, DENOM, FREEZER_ALLOWANCES,
-    IS_FROZEN, MINTER_ALLOWANCES, OWNER,
+    IS_FROZEN, MINTER_ALLOWANCES, OWNER, WHITELISTED_ADDRESSES, WHITELISTER_ALLOWANCES,
 };
 
 // Default settings for pagination
@@ -114,6 +114,16 @@ pub fn query_is_blacklisted(
     Ok(StatusResponse { status })
 }
 
+pub fn query_is_whitelisted(
+    deps: Deps<TokenFactoryQuery>,
+    address: String,
+) -> StdResult<StatusResponse> {
+    let status = WHITELISTED_ADDRESSES
+        .load(deps.storage, &deps.api.addr_validate(&address)?)
+        .unwrap_or(false);
+    Ok(StatusResponse { status })
+}
+
 pub fn query_status_map(
     deps: Deps<TokenFactoryQuery>,
     start_after: Option<String>,
@@ -169,6 +179,36 @@ pub fn query_blacklister_allowances(
 ) -> StdResult<BlacklisterAllowancesResponse> {
     Ok(BlacklisterAllowancesResponse {
         blacklisters: query_status_map(deps, start_after, limit, BLACKLISTER_ALLOWANCES)?,
+    })
+}
+
+pub fn query_whitelistees(
+    deps: Deps<TokenFactoryQuery>,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<WhitelisteesResponse> {
+    Ok(WhitelisteesResponse {
+        whitelistees: query_status_map(deps, start_after, limit, WHITELISTED_ADDRESSES)?,
+    })
+}
+
+pub fn query_is_whitelister(
+    deps: Deps<TokenFactoryQuery>,
+    address: String,
+) -> StdResult<StatusResponse> {
+    let status = WHITELISTER_ALLOWANCES
+        .load(deps.storage, &deps.api.addr_validate(&address)?)
+        .unwrap_or(false);
+    Ok(StatusResponse { status })
+}
+
+pub fn query_whitelister_allowances(
+    deps: Deps<TokenFactoryQuery>,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<WhitelisterAllowancesResponse> {
+    Ok(WhitelisterAllowancesResponse {
+        whitelisters: query_status_map(deps, start_after, limit, WHITELISTER_ALLOWANCES)?,
     })
 }
 

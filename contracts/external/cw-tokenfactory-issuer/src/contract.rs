@@ -90,6 +90,9 @@ pub fn execute(
         ExecuteMsg::Blacklist { address, status } => {
             execute::blacklist(deps, info, address, status)
         }
+        ExecuteMsg::Whitelist { address, status } => {
+            execute::whitelist(deps, info, address, status)
+        }
         ExecuteMsg::Freeze { status } => execute::freeze(deps, info, status),
         ExecuteMsg::ForceTransfer {
             amount,
@@ -113,6 +116,9 @@ pub fn execute(
         ExecuteMsg::SetBeforeSendHook {} => execute::set_before_send_hook(deps, env, info),
         ExecuteMsg::SetBlacklister { address, status } => {
             execute::set_blacklister(deps, info, address, status)
+        }
+        ExecuteMsg::SetWhitelister { address, status } => {
+            execute::set_whitelister(deps, info, address, status)
         }
         ExecuteMsg::SetFreezer { address, status } => {
             execute::set_freezer(deps, info, address, status)
@@ -165,6 +171,18 @@ pub fn query(deps: Deps<TokenFactoryQuery>, _env: Env, msg: QueryMsg) -> StdResu
         }
         QueryMsg::BlacklisterAllowances { start_after, limit } => to_binary(
             &queries::query_blacklister_allowances(deps, start_after, limit)?,
+        ),
+        QueryMsg::IsWhitelisted { address } => {
+            to_binary(&queries::query_is_whitelisted(deps, address)?)
+        }
+        QueryMsg::Whitelistees { start_after, limit } => {
+            to_binary(&queries::query_whitelistees(deps, start_after, limit)?)
+        }
+        QueryMsg::IsWhitelister { address } => {
+            to_binary(&queries::query_is_whitelister(deps, address)?)
+        }
+        QueryMsg::WhitelisterAllowances { start_after, limit } => to_binary(
+            &queries::query_whitelister_allowances(deps, start_after, limit)?,
         ),
         QueryMsg::IsFreezer { address } => to_binary(&queries::query_is_freezer(deps, address)?),
         QueryMsg::FreezerAllowances { start_after, limit } => to_binary(

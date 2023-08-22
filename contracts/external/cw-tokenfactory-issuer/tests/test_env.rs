@@ -6,6 +6,7 @@ use cosmwasm_std::{Coin, Uint128};
 
 use cw_tokenfactory_issuer::msg::{
     BlacklisteesResponse, BlacklisterAllowancesResponse, Metadata, MigrateMsg,
+    WhitelisteesResponse, WhitelisterAllowancesResponse,
 };
 use cw_tokenfactory_issuer::{
     msg::{
@@ -308,6 +309,22 @@ impl TokenfactoryIssuer {
         )
     }
 
+    pub fn set_whitelister(
+        &self,
+        address: &str,
+        status: bool,
+        signer: &SigningAccount,
+    ) -> RunnerExecuteResult<MsgExecuteContractResponse> {
+        self.execute(
+            &ExecuteMsg::SetWhitelister {
+                address: address.to_string(),
+                status,
+            },
+            &[],
+            signer,
+        )
+    }
+
     pub fn force_transfer(
         &self,
         signer: &SigningAccount,
@@ -350,6 +367,22 @@ impl TokenfactoryIssuer {
         )
     }
 
+    pub fn whitelist(
+        &self,
+        address: &str,
+        status: bool,
+        signer: &SigningAccount,
+    ) -> RunnerExecuteResult<MsgExecuteContractResponse> {
+        self.execute(
+            &ExecuteMsg::Whitelist {
+                address: address.to_string(),
+                status,
+            },
+            &[],
+            signer,
+        )
+    }
+
     // queries
     pub fn query<T>(&self, query_msg: &QueryMsg) -> Result<T, RunnerError>
     where
@@ -371,6 +404,12 @@ impl TokenfactoryIssuer {
 
     pub fn query_is_blacklister(&self, address: &str) -> Result<StatusResponse, RunnerError> {
         self.query(&QueryMsg::IsBlacklister {
+            address: address.to_string(),
+        })
+    }
+
+    pub fn query_is_whitelister(&self, address: &str) -> Result<StatusResponse, RunnerError> {
+        self.query(&QueryMsg::IsWhitelister {
             address: address.to_string(),
         })
     }
@@ -399,6 +438,22 @@ impl TokenfactoryIssuer {
         self.query(&QueryMsg::Blacklistees { start_after, limit })
     }
 
+    pub fn query_whitelister_allowances(
+        &self,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    ) -> Result<WhitelisterAllowancesResponse, RunnerError> {
+        self.query(&QueryMsg::WhitelisterAllowances { start_after, limit })
+    }
+
+    pub fn query_whitelistees(
+        &self,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    ) -> Result<WhitelisteesResponse, RunnerError> {
+        self.query(&QueryMsg::Whitelistees { start_after, limit })
+    }
+
     pub fn query_is_frozen(&self) -> Result<IsFrozenResponse, RunnerError> {
         self.query(&QueryMsg::IsFrozen {})
     }
@@ -408,9 +463,17 @@ impl TokenfactoryIssuer {
             address: address.to_string(),
         })
     }
+
+    pub fn query_is_whitelisted(&self, address: &str) -> Result<StatusResponse, RunnerError> {
+        self.query(&QueryMsg::IsWhitelisted {
+            address: address.to_string(),
+        })
+    }
+
     pub fn query_owner(&self) -> Result<OwnerResponse, RunnerError> {
         self.query(&QueryMsg::Owner {})
     }
+
     pub fn query_mint_allowance(&self, address: &str) -> Result<AllowanceResponse, RunnerError> {
         self.query(&QueryMsg::MintAllowance {
             address: address.to_string(),

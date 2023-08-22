@@ -9,3 +9,4 @@ mod instantiate;
 mod mint;
 mod set_before_update_hook;
 mod tokenfactory_admin;
+mod whitelist;

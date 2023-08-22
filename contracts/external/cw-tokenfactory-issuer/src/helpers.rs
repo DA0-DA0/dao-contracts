@@ -1,5 +1,6 @@
 use crate::state::{
     BEFORE_SEND_HOOK_FEATURES_ENABLED, BLACKLISTED_ADDRESSES, DENOM, IS_FROZEN, OWNER,
+    WHITELISTED_ADDRESSES,
 };
 use crate::ContractError;
 use cosmwasm_std::{Addr, Coin, Deps, MessageInfo, Uint128};
@@ -91,6 +92,7 @@ pub fn check_is_not_blacklisted(
 
 pub fn check_is_not_frozen(
     deps: Deps<TokenFactoryQuery>,
+    address: &str,
     denom: &str,
 ) -> Result<(), ContractError> {
     let is_frozen = IS_FROZEN.load(deps.storage)?;
@@ -102,6 +104,13 @@ pub fn check_is_not_frozen(
     // contract's denom.
     let is_denom_frozen = is_frozen && denom == contract_denom;
     if is_denom_frozen {
+        let addr = deps.api.addr_validate(address)?;
+        if let Some(is_whitelisted) = WHITELISTED_ADDRESSES.may_load(deps.storage, &addr)? {
+            if is_whitelisted {
+                return Ok(());
+            }
+        };
+
         return Err(ContractError::ContractFrozen {
             denom: contract_denom,
         });

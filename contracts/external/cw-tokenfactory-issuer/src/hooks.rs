@@ -11,7 +11,7 @@ pub fn beforesend_hook(
     coin: Coin,
 ) -> Result<Response, ContractError> {
     // assert that denom of this contract is not frozen
-    check_is_not_frozen(deps.as_ref(), &coin.denom)?;
+    check_is_not_frozen(deps.as_ref(), &from, &coin.denom)?;
 
     // assert that neither 'from' or 'to' address is blacklisted
     check_is_not_blacklisted(deps.as_ref(), from)?;

@@ -40,6 +40,9 @@ pub enum ExecuteMsg {
     /// Grant/revoke permission to blacklist addresses
     SetBlacklister { address: String, status: bool },
 
+    /// Grant/revoke permission to blacklist addresses
+    SetWhitelister { address: String, status: bool },
+
     /// Attempt to SetBeforeSendHook on the token attached to this contract.
     /// This will fail if the token already has a SetBeforeSendHook or the chain
     /// still does not support it.
@@ -60,6 +63,9 @@ pub enum ExecuteMsg {
     /// Block target address from sending/receiving token attached to this contract
     /// tokenfactory's beforesend listener must be set to this contract in order for it to work as intended.
     Blacklist { address: String, status: bool },
+
+    /// Whitelist target address to be able to send tokens even if the token is frozen.
+    Whitelist { address: String, status: bool },
 
     /// Block every token transfers of the token attached to this contract
     /// tokenfactory's beforesend listener must be set to this contract in order for it to work as intended.
@@ -133,6 +139,24 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    /// IsWhitelisted returns wether the user is whitelisted or not. Response: StatusResponse
+    #[returns(StatusResponse)]
+    IsWhitelisted { address: String },
+    /// Whitelistees enumerates over all addresses on the whitelist. Response: WhitelisteesResponse
+    #[returns(WhitelisteesResponse)]
+    Whitelistees {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    /// IsWhitelister returns if the addres has whitelister privileges. Response: StatusResponse
+    #[returns(StatusResponse)]
+    IsWhitelister { address: String },
+    /// Whitelisters Enumerates over all the addresses with whitelister privileges. Response: WhitelisterAllowancesResponse
+    #[returns(WhitelisterAllowancesResponse)]
+    WhitelisterAllowances {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
     /// IsFreezer returns whether the address has freezer status. Response: StatusResponse
     #[returns(StatusResponse)]
     IsFreezer { address: String },
@@ -196,6 +220,16 @@ pub struct BlacklisteesResponse {
 #[cw_serde]
 pub struct BlacklisterAllowancesResponse {
     pub blacklisters: Vec<StatusInfo>,
+}
+
+#[cw_serde]
+pub struct WhitelisteesResponse {
+    pub whitelistees: Vec<StatusInfo>,
+}
+
+#[cw_serde]
+pub struct WhitelisterAllowancesResponse {
+    pub whitelisters: Vec<StatusInfo>,
 }
 
 #[cw_serde]
