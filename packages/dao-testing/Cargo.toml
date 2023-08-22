@@ -7,6 +7,11 @@ license = { workspace = true }
 repository = { workspace = true }
 version = { workspace = true }
 
+[features]
+# use test tube feature to enable test-tube integration tests, for example
+# cargo test --features "test-tube"
+test-tube = []
+
 # This crate depends on multi-test and rand. These are not features in
 # wasm builds of cosmwasm. Despite this crate only being used as a dev
 # dependency, because it is part of the workspace it will always be
