@@ -10,7 +10,7 @@ members = [
 	"test-contracts/*",
 	"ci/*",
 ]
-exclude = ["ci/configs/"]
+exclude = ["ci/configs/", "wasmvm/libwasmvm"]
 
 [workspace.package]
 edition = "2021"

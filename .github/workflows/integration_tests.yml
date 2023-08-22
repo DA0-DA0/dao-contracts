@@ -29,11 +29,11 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: CosmWasm/wasmvm
-          path: ../wasmvm
+          path: ./wasmvm
           ref: v1.3.0
 
       - name: Install libwasmv
-        run: cd ../wasmvm && make build-rust && popd
+        run: cd ./wasmvm && make build-rust && cd ../
 
       - name: Rust Dependencies Cache
         uses: actions/cache@v3

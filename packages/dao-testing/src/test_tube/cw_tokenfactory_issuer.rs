@@ -1,8 +1,6 @@
 use cosmwasm_std::Coin;
 use cw_tokenfactory_issuer::{
-    msg::{
-        ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
-    },
+    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     ContractError,
 };
 use osmosis_test_tube::{
