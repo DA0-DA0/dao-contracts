@@ -72,8 +72,8 @@ syn = { version = "1.0", features = ["derive"] }
 test-context = "0.1"
 thiserror = { version = "1.0" }
 # TODO use upstream when PR merged and new release tagged: https://github.com/CosmWasm/cw-multi-test/pull/51
-token-bindings = { git = "https://github.com/CosmosContracts/token-bindings.git", branch = "update-token-bindings" }
-token-bindings-test = { git = "https://github.com/CosmosContracts/token-bindings.git", branch = "update-token-bindings" }
+token-bindings = { git = "https://github.com/CosmosContracts/token-bindings.git", rev = "0cd084b68172ffc9af29eb37fb915392ce351954" }
+token-bindings-test = { git = "https://github.com/CosmosContracts/token-bindings.git", rev = "0cd084b68172ffc9af29eb37fb915392ce351954" }
 wynd-utils = "0.4"
 
 # One commit ahead of version 0.3.0. Allows initialization with an
