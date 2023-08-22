@@ -16,7 +16,7 @@ use dao_interface::voting::{
     IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
-use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenQuerier};
+use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 
 use crate::error::ContractError;
 use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
@@ -122,7 +122,7 @@ pub fn instantiate(
         TokenInfo::New(token) => {
             // Tnstantiate cw-token-factory-issuer contract
             // DAO (sender) is set as contract admin
-            let issuer_instantiate_msg = SubMsg::reply_on_success(
+            let issuer_instantiate_msg = SubMsg::reply_always(
                 WasmMsg::Instantiate {
                     admin: Some(info.sender.to_string()),
                     code_id: msg.token_issuer_code_id,
@@ -590,11 +590,8 @@ pub fn reply(
                     // Load the DAO address
                     let dao = DAO.load(deps.storage)?;
 
-                    // Get the new token factory denom and save it
-                    let querier = TokenQuerier::new(&deps.querier);
-                    let denom = querier
-                        .full_denom(issuer_addr.to_string(), token.subdenom.clone())?
-                        .denom;
+                    // Format the denom and save it
+                    let denom = format!("factory/{}/{}", &issuer_addr, token.subdenom);
 
                     DENOM.save(deps.storage, &denom)?;
 
