@@ -18,6 +18,11 @@ pub enum ActiveThreshold {
     Percentage { percent: Decimal },
 }
 
+#[cw_serde]
+pub struct ActiveThresholdResponse {
+    pub active_threshold: Option<ActiveThreshold>,
+}
+
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum ThresholdError {
     #[error("Required threshold cannot be zero")]

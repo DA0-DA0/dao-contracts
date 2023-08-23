@@ -6,11 +6,11 @@ use cw2::ContractVersion;
 use cw20::{BalanceResponse, Cw20Coin, MinterResponse, TokenInfoResponse};
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 use dao_interface::voting::{InfoResponse, IsActiveResponse, VotingPowerAtHeightResponse};
-use dao_voting::threshold::ActiveThreshold;
+use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
 use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
-    msg::{ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StakingInfo},
+    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StakingInfo},
 };
 
 const DAO_ADDR: &str = "dao";
@@ -1108,7 +1108,7 @@ fn test_active_threshold_percent_rounds_up() {
     assert!(!is_active.active);
 
     // Stake 1 more token as creator, should now be active.
-    stake_tokens(&mut app, staking_addr, token_addr, CREATOR_ADDR, 2);
+    stake_tokens(&mut app, staking_addr, token_addr, CREATOR_ADDR, 1);
     app.update_block(next_block);
 
     let is_active: IsActiveResponse = app

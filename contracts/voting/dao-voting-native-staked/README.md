@@ -7,3 +7,4 @@ arbitrary height. This contract implements the interface needed to be a DAO
 DAO [voting
 module](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design#the-voting-module).
 
+If your chain uses Token Factory, consider using `dao-voting-token-factory-staked` for additional functionality including creating new tokens.

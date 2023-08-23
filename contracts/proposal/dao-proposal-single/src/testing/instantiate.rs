@@ -264,10 +264,9 @@ pub(crate) fn instantiate_with_native_staked_balances_governance(
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: native_stake_id,
             msg: to_binary(&dao_voting_native_staked::msg::InstantiateMsg {
-                owner: Some(Admin::CoreModule {}),
-                manager: None,
                 denom: "ujuno".to_string(),
                 unstaking_duration: None,
+                active_threshold: None,
             })
             .unwrap(),
             admin: None,

@@ -75,6 +75,19 @@ impl<'a> Hooks<'a> {
             .collect()
     }
 
+    pub fn prepare_hooks_custom_msg<F: FnMut(Addr) -> StdResult<SubMsg<T>>, T>(
+        &self,
+        storage: &dyn Storage,
+        prep: F,
+    ) -> StdResult<Vec<SubMsg<T>>> {
+        self.0
+            .may_load(storage)?
+            .unwrap_or_default()
+            .into_iter()
+            .map(prep)
+            .collect::<Result<Vec<SubMsg<T>>, _>>()
+    }
+
     pub fn hook_count(&self, storage: &dyn Storage) -> StdResult<u32> {
         // The WASM VM (as of version 1) is 32 bit and sets limits for
         // memory accordingly:
@@ -94,7 +107,7 @@ impl<'a> Hooks<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::{coins, testing::mock_dependencies, BankMsg};
+    use cosmwasm_std::{coins, testing::mock_dependencies, BankMsg, Empty};
 
     // Shorthand for an unchecked address.
     macro_rules! addr {
@@ -108,6 +121,20 @@ mod tests {
         let mut deps = mock_dependencies();
         let storage = &mut deps.storage;
         let hooks = Hooks::new("hooks");
+
+        // Prepare hooks doesn't through error if no hooks added
+        let msgs = hooks
+            .prepare_hooks(storage, |a| {
+                Ok(SubMsg::reply_always(
+                    BankMsg::Burn {
+                        amount: coins(a.as_str().len() as u128, "uekez"),
+                    },
+                    2,
+                ))
+            })
+            .unwrap();
+        assert_eq!(msgs, vec![]);
+
         hooks.add_hook(storage, addr!("ekez")).unwrap();
         hooks.add_hook(storage, addr!("meow")).unwrap();
 
@@ -138,8 +165,40 @@ mod tests {
             )]
         );
 
-        let HooksResponse { hooks: the_hooks } = hooks.query_hooks(deps.as_ref()).unwrap();
+        // Test prepare hooks with custom messages.
+        // In a real world scenario, you would be using something like
+        // TokenFactoryMsg.
+        let msgs = hooks
+            .prepare_hooks_custom_msg(storage, |a| {
+                Ok(SubMsg::<Empty>::reply_always(
+                    BankMsg::Burn {
+                        amount: coins(a.as_str().len() as u128, "uekez"),
+                    },
+                    2,
+                ))
+            })
+            .unwrap();
 
+        assert_eq!(
+            msgs,
+            vec![SubMsg::<Empty>::reply_always(
+                BankMsg::Burn {
+                    amount: coins(4, "uekez"),
+                },
+                2,
+            )]
+        );
+
+        // Query hooks returns all hooks added
+        let HooksResponse { hooks: the_hooks } = hooks.query_hooks(deps.as_ref()).unwrap();
         assert_eq!(the_hooks, vec![addr!("meow")]);
+
+        // Remove last hook
+        hooks.remove_hook(&mut deps.storage, addr!("meow")).unwrap();
+
+        // Query hooks returns empty vector if no hooks added
+        let HooksResponse { hooks: the_hooks } = hooks.query_hooks(deps.as_ref()).unwrap();
+        let no_hooks: Vec<String> = vec![];
+        assert_eq!(the_hooks, no_hooks);
     }
 }

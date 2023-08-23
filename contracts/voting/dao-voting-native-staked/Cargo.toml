@@ -1,7 +1,7 @@
 [package]
 name = "dao-voting-native-staked"
-authors = ["Callum Anderson <callumanderson745@gmail.com>"]
-description = "A DAO DAO voting module based on staked cw721 tokens."
+authors = ["Callum Anderson <callumanderson745@gmail.com>", "Jake Hartnell <no-reply@no-reply.com>"]
+description = "A DAO DAO voting module based on staked native tokens. If your chain uses Token Factory, consider using dao-voting-token-factory-staked for additional functionality including creating new tokens."
 edition = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
@@ -17,18 +17,19 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-cosmwasm-std = { workspace = true }
+cosmwasm-std    = { workspace = true, features = ["cosmwasm_1_1"] }
 cosmwasm-schema = { workspace = true }
 cosmwasm-storage = { workspace = true }
-cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
-cw-utils = { workspace = true }
 cw-controllers = { workspace = true }
-
-thiserror = { workspace = true }
+cw-hooks = { workspace = true }
+cw-paginate-storage = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-utils = { workspace = true }
 dao-dao-macros = { workspace = true }
 dao-interface = { workspace = true }
-cw-paginate-storage = { workspace = true }
+dao-voting = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }

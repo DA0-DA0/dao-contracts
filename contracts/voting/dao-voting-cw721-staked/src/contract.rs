@@ -1,6 +1,5 @@
 use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
-use crate::msg::{ActiveThresholdResponse, MigrateMsg, NftContract};
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, NftContract, QueryMsg};
 use crate::state::{
     register_staked_nft, register_unstaked_nfts, Config, ACTIVE_THRESHOLD, CONFIG, DAO, HOOKS,
     INITITIAL_NFTS, MAX_CLAIMS, NFT_BALANCES, NFT_CLAIMS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
@@ -19,7 +18,7 @@ use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration};
 use dao_interface::state::Admin;
 use dao_interface::voting::IsActiveResponse;
-use dao_voting::threshold::ActiveThreshold;
+use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw721-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");

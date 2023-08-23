@@ -7,14 +7,14 @@ use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 use cw_utils::Duration;
 use dao_interface::{state::Admin, voting::IsActiveResponse};
 use dao_testing::contracts::{cw721_base_contract, voting_cw721_staked_contract};
-use dao_voting::threshold::ActiveThreshold;
+use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 use sg721::CollectionInfo;
 use sg_multi_test::StargazeApp;
 use sg_std::StargazeMsgWrapper;
 
 use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
-    msg::{ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, NftContract, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, NftContract, QueryMsg},
     state::{Config, MAX_CLAIMS},
     testing::{
         execute::{

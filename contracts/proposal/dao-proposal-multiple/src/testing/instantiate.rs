@@ -1,11 +1,9 @@
 use cosmwasm_std::{to_binary, Addr, Coin, Empty, Uint128};
 use cw20::Cw20Coin;
-
 use cw_multi_test::{next_block, App, BankSudo, ContractWrapper, Executor, SudoMsg};
 use cw_utils::Duration;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_pre_propose_multiple as cppm;
-
 use dao_testing::contracts::{
     cw20_balances_voting_contract, cw20_base_contract, cw20_stake_contract,
     cw20_staked_balances_voting_contract, cw4_group_contract, cw721_base_contract,
@@ -268,10 +266,9 @@ pub fn _instantiate_with_native_staked_balances_governance(
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: native_stake_id,
             msg: to_binary(&dao_voting_native_staked::msg::InstantiateMsg {
-                owner: Some(Admin::CoreModule {}),
-                manager: None,
                 denom: "ujuno".to_string(),
                 unstaking_duration: None,
+                active_threshold: None,
             })
             .unwrap(),
             admin: None,
