@@ -1,5 +1,7 @@
 use cosmwasm_schema::cw_serde;
+use cosmwasm_std::Timestamp;
 
+// TODO add more timestamps for consistency?
 #[cw_serde]
 #[derive(Copy)]
 pub enum Status {
@@ -8,7 +10,7 @@ pub enum Status {
     /// The proposal has been rejected.
     Rejected,
     /// The proposal has been passed but has not been executed.
-    Passed,
+    Passed { at_time: Timestamp },
     /// The proposal has been passed and executed.
     Executed,
     /// The proposal has failed or expired and has been closed. A
@@ -16,9 +18,6 @@ pub enum Status {
     Closed,
     /// The proposal's execution failed.
     ExecutionFailed,
-    /// Timelocked proposals have delayed execution, this is only
-    /// a potential status if timelock is configured on a proposal module.
-    Timelocked,
     /// The proposal has been vetoed.
     Vetoed,
 }
@@ -28,11 +27,10 @@ impl std::fmt::Display for Status {
         match self {
             Status::Open => write!(f, "open"),
             Status::Rejected => write!(f, "rejected"),
-            Status::Passed => write!(f, "passed"),
+            Status::Passed { at_time } => write!(f, "passed {:?}", at_time),
             Status::Executed => write!(f, "executed"),
             Status::Closed => write!(f, "closed"),
             Status::ExecutionFailed => write!(f, "execution_failed"),
-            Status::Timelocked => write!(f, "timelocked"),
             Status::Vetoed => write!(f, "vetoed"),
         }
     }

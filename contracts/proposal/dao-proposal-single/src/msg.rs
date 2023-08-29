@@ -233,5 +233,9 @@ pub enum MigrateMsg {
         /// option allows for instantiating a prepropose module which will handle deposit verification and return logic.
         pre_propose_info: PreProposeInfo,
     },
+    FromV2 {
+        /// Optional delay on proposal execution
+        timelock: Option<Timelock>,
+    },
     FromCompatible {},
 }

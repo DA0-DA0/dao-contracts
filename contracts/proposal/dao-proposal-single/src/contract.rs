@@ -21,6 +21,7 @@ use dao_voting::reply::{
 };
 use dao_voting::status::Status;
 use dao_voting::threshold::Threshold;
+use dao_voting::timelock::{Timelock, TimelockError};
 use dao_voting::voting::{get_total_power, get_voting_power, validate_voting_period, Vote, Votes};
 
 use crate::msg::MigrateMsg;
@@ -74,6 +75,7 @@ pub fn instantiate(
         dao: dao.clone(),
         allow_revoting: msg.allow_revoting,
         close_proposal_on_execution_failure: msg.close_proposal_on_execution_failure,
+        timelock: msg.timelock,
     };
 
     // Initialize proposal count to zero so that queries return zero
@@ -121,6 +123,7 @@ pub fn execute(
             allow_revoting,
             dao,
             close_proposal_on_execution_failure,
+            timelock,
         } => execute_update_config(
             deps,
             info,
@@ -131,6 +134,7 @@ pub fn execute(
             allow_revoting,
             dao,
             close_proposal_on_execution_failure,
+            timelock,
         ),
         ExecuteMsg::UpdatePreProposeInfo { info: new_info } => {
             execute_update_proposal_creation_policy(deps, info, new_info)
@@ -145,6 +149,7 @@ pub fn execute(
         ExecuteMsg::RemoveVoteHook { address } => {
             execute_remove_vote_hook(deps, env, info, address)
         }
+        ExecuteMsg::Veto { proposal_id } => execute_veto(deps, env, info, proposal_id),
     }
 }
 
@@ -255,7 +260,6 @@ pub fn execute_propose(
         .add_attribute("status", proposal.status.to_string()))
 }
 
-// TODO veto
 pub fn execute_veto(
     deps: DepsMut,
     env: Env,
@@ -264,20 +268,34 @@ pub fn execute_veto(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
-    match config.timelock {
-        Some(timelock) => {
-            // Check if the proposal is timelocked
+    let mut prop = PROPOSALS
+        .may_load(deps.storage, proposal_id)?
+        .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
 
-            // Check sender is vetoer
+    match prop.status {
+        Status::Passed { at_time } => {
+            match config.timelock {
+                Some(timelock) => {
+                    // Check if the proposal is timelocked
+                    timelock.is_locked(at_time, env.block.time)?;
 
-            // Update proposal status to vetoed
+                    // Check sender is vetoer
+                    timelock.is_vetoer(&info)?;
 
-            unimplemented!()
+                    // Update proposal status to vetoed
+                    prop.status = Status::Vetoed;
+                    PROPOSALS.save(deps.storage, proposal_id, &prop)?;
+
+                    Ok(Response::new()
+                        .add_attribute("action", "veto")
+                        .add_attribute("proposal_id", proposal_id.to_string()))
+                }
+                // If timelock is not configured throw error.
+                None => Err(ContractError::TimelockError(TimelockError::NoTimelock {})),
+            }
         }
-        None => {
-            // TODO custom error message
-            Err(ContractError::Unauthorized {})
-        }
+        // Error if the proposal hasn't passed
+        _ => Err(ContractError::NotPassed {}),
     }
 }
 
@@ -304,25 +322,26 @@ pub fn execute_execute(
         }
     }
 
-    // Check proposal is not timelocked
-    if let Some(timelock) = config.timelock {
-        // TODO need to check if the proposal is timelocked
-        // start_height is the height the proposal was created...
-        // must refactor...
-        // if timelock.is_locked(prop.start_height, env.block.time) {
-        //     // TODO custom error message
-        //     return Err(ContractError::Unauthorized {});
-        // }
-        unimplemented!()
-    }
-
     // Check here that the proposal is passed. Allow it to be executed
     // even if it is expired so long as it passed during its voting
     // period.
     let old_status = prop.status;
     prop.update_status(&env.block);
-    if prop.status != Status::Passed {
-        return Err(ContractError::NotPassed {});
+    match prop.status {
+        Status::Passed { at_time } => {
+            if let Some(timelock) = config.timelock {
+                // Check proposal is not timelocked
+                timelock.is_locked(at_time, env.block.time)?;
+
+                // If the sender is the vetoer, check if they can execute early
+                if timelock.is_vetoer(&info).is_ok() {
+                    timelock.early_excute_enabled()?;
+                }
+            }
+        }
+        _ => {
+            return Err(ContractError::NotPassed {});
+        }
     }
 
     prop.status = Status::Executed;
@@ -588,6 +607,7 @@ pub fn execute_update_config(
     allow_revoting: bool,
     dao: String,
     close_proposal_on_execution_failure: bool,
+    timelock: Option<Timelock>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -601,6 +621,11 @@ pub fn execute_update_config(
     let (min_voting_period, max_voting_period) =
         validate_voting_period(min_voting_period, max_voting_period)?;
 
+    if let Some(ref timelock) = timelock {
+        // If timelock configured, validate the vetoer address
+        deps.api.addr_validate(&timelock.vetoer)?;
+    }
+
     CONFIG.save(
         deps.storage,
         &Config {
@@ -611,6 +636,7 @@ pub fn execute_update_config(
             allow_revoting,
             dao,
             close_proposal_on_execution_failure,
+            timelock,
         },
     )?;
 
@@ -918,6 +944,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                     allow_revoting: current_config.allow_revoting,
                     dao: current_config.dao.clone(),
                     close_proposal_on_execution_failure,
+                    timelock: None,
                 },
             )?;
 
@@ -926,7 +953,6 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
             CREATION_POLICY.save(deps.storage, &initial_policy)?;
 
             // Update the module's proposals to v2.
-
             let current_proposals = v1::state::PROPOSALS
                 .range(deps.storage, None, None, Order::Ascending)
                 .collect::<StdResult<Vec<(u64, v1::proposal::Proposal)>>>()?;
@@ -974,6 +1000,9 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                 .add_attribute("from", "v1")
                 .add_submessages(pre_propose_messages))
         }
+
+        // TODO migration from V2 contracts
+        MigrateMsg::FromV2 { .. } => todo!(),
 
         MigrateMsg::FromCompatible {} => Ok(Response::default()
             .add_attribute("action", "migrate")

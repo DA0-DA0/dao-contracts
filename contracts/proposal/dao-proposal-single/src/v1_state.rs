@@ -55,7 +55,8 @@ pub fn v1_status_to_v2(v1: voting_v1::Status) -> Status {
     match v1 {
         voting_v1::Status::Open => Status::Open,
         voting_v1::Status::Rejected => Status::Rejected,
-        voting_v1::Status::Passed => Status::Passed,
+        // TODO fix me and do proper migrations
+        voting_v1::Status::Passed => unimplemented!(),
         voting_v1::Status::Executed => Status::Executed,
         voting_v1::Status::Closed => Status::Closed,
     }
