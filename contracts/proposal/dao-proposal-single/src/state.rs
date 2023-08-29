@@ -3,7 +3,9 @@ use cosmwasm_std::{Addr, Uint128};
 use cw_hooks::Hooks;
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
-use dao_voting::{pre_propose::ProposalCreationPolicy, threshold::Threshold, voting::Vote};
+use dao_voting::{
+    pre_propose::ProposalCreationPolicy, threshold::Threshold, timelock::Timelock, voting::Vote,
+};
 
 use crate::proposal::SingleChoiceProposal;
 
@@ -21,6 +23,7 @@ pub struct Ballot {
     #[serde(default)]
     pub rationale: Option<String>,
 }
+
 /// The governance module's configuration.
 #[cw_serde]
 pub struct Config {
@@ -55,6 +58,8 @@ pub struct Config {
     /// remain open until the DAO's treasury was large enough for it to be
     /// executed.
     pub close_proposal_on_execution_failure: bool,
+    /// Optional time delay on proposal execution
+    pub timelock: Option<Timelock>,
 }
 
 /// The current top level config for the module.  The "config" key was

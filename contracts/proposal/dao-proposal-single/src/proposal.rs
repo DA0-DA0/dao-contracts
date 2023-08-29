@@ -62,7 +62,9 @@ impl SingleChoiceProposal {
     /// Gets the current status of the proposal.
     pub fn current_status(&self, block: &BlockInfo) -> Status {
         if self.status == Status::Open && self.is_passed(block) {
-            Status::Passed
+            Status::Passed {
+                at_time: block.time,
+            }
         } else if self.status == Status::Open
             && (self.expiration.is_expired(block) || self.is_rejected(block))
         {

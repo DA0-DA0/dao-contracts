@@ -126,3 +126,9 @@ cw20-staked-balance-voting-v1 = { package = "cw20-staked-balance-voting", versio
 cw4-voting-v1 = { package = "cw4-voting", version = "0.1.0" }
 voting-v1 = { package = "dao-voting", version = "0.1.0" }
 stake-cw20-v03 = { package = "stake-cw20", version = "0.2.6" }
+
+# v2 dependencies. used for state migrations
+cw-utils-v2 = { package = "cw-utils", version = "0.16" }
+dao-dao-core-v2 = { package = "dao-dao-core", version = "2.2.0" }
+dao-proposal-single-v2 = { package = "dao-proposal-single", version = "2.2.0" }
+voting-v2 = { package = "dao-voting", version = "2.2.0" }

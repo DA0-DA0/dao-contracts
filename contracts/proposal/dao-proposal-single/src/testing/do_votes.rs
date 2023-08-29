@@ -1,4 +1,6 @@
-use cosmwasm_std::{coins, Addr, Coin, Uint128};
+use std::mem::discriminant;
+
+use cosmwasm_std::{coins, Addr, Uint128};
 use cw20::Cw20Coin;
 
 use cw_multi_test::{App, BankSudo, Executor, SudoMsg};
@@ -132,6 +134,7 @@ where
 
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
+        timelock: None,
         threshold,
         max_voting_period,
         min_voting_period: None,
@@ -280,7 +283,11 @@ where
         .query_wasm_smart(proposal_single, &QueryMsg::Proposal { proposal_id: 1 })
         .unwrap();
 
-    assert_eq!(proposal.proposal.status, expected_status);
+    // We just care about getting the right variant
+    assert_eq!(
+        discriminant::<Status>(&proposal.proposal.status),
+        discriminant::<Status>(&expected_status)
+    );
 
     (app, core_addr)
 }

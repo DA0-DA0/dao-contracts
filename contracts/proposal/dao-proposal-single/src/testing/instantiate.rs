@@ -49,6 +49,7 @@ pub(crate) fn get_pre_propose_info(
 
 pub(crate) fn get_default_token_dao_proposal_module_instantiate(app: &mut App) -> InstantiateMsg {
     InstantiateMsg {
+        timelock: None,
         threshold: ThresholdQuorum {
             quorum: PercentageThreshold::Percent(Decimal::percent(15)),
             threshold: PercentageThreshold::Majority {},
@@ -75,6 +76,7 @@ pub(crate) fn get_default_non_token_dao_proposal_module_instantiate(
     app: &mut App,
 ) -> InstantiateMsg {
     InstantiateMsg {
+        timelock: None,
         threshold: ThresholdQuorum {
             threshold: PercentageThreshold::Percent(Decimal::percent(15)),
             quorum: PercentageThreshold::Majority {},

@@ -3,7 +3,7 @@ use std::u64;
 use cosmwasm_std::StdError;
 use cw_hooks::HookError;
 use cw_utils::ParseReplyError;
-use dao_voting::reply::error::TagError;
+use dao_voting::{reply::error::TagError, timelock::TimelockError};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -16,6 +16,9 @@ pub enum ContractError {
 
     #[error(transparent)]
     HookError(#[from] HookError),
+
+    #[error(transparent)]
+    TimelockError(#[from] TimelockError),
 
     #[error("unauthorized")]
     Unauthorized {},

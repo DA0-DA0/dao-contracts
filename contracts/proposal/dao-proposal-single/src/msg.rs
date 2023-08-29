@@ -3,7 +3,7 @@ use cw_utils::Duration;
 use dao_dao_macros::proposal_module_query;
 use dao_voting::{
     pre_propose::PreProposeInfo, proposal::SingleChoiceProposeMsg, threshold::Threshold,
-    voting::Vote,
+    timelock::Timelock, voting::Vote,
 };
 
 #[cw_serde]
@@ -38,6 +38,11 @@ pub struct InstantiateMsg {
     /// remain open until the DAO's treasury was large enough for it to be
     /// executed.
     pub close_proposal_on_execution_failure: bool,
+    /// Optional time delay on proposal execution
+    /// If set, proposals can only executed after the delay has passed
+    /// During this period an oversight account
+    /// can veto a proposal
+    pub timelock: Option<Timelock>,
 }
 
 #[cw_serde]
@@ -65,6 +70,11 @@ pub enum ExecuteMsg {
     /// Causes the messages associated with a passed proposal to be
     /// executed by the DAO.
     Execute {
+        /// The ID of the proposal to execute.
+        proposal_id: u64,
+    },
+    /// Callable only if timelock is configured
+    Veto {
         /// The ID of the proposal to execute.
         proposal_id: u64,
     },
@@ -110,6 +120,9 @@ pub enum ExecuteMsg {
         /// remain open until the DAO's treasury was large enough for it to be
         /// executed.
         close_proposal_on_execution_failure: bool,
+        /// Optional time delay on proposal execution, during which the
+        /// proposal maybe vetoed
+        timelock: Option<Timelock>,
     },
     /// Update's the proposal creation policy used for this
     /// module. Only the DAO may call this method.
@@ -199,26 +212,12 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub enum MigrateMsg {
-    FromV1 {
+    FromV2 {
         /// This field was not present in DAO DAO v1. To migrate, a
         /// value must be specified.
         ///
-        /// If set to true proposals will be closed if their execution
-        /// fails. Otherwise, proposals will remain open after execution
-        /// failure. For example, with this enabled a proposal to send 5
-        /// tokens out of a DAO's treasury with 4 tokens would be closed when
-        /// it is executed. With this disabled, that same proposal would
-        /// remain open until the DAO's treasury was large enough for it to be
-        /// executed.
-        close_proposal_on_execution_failure: bool,
-        /// This field was not present in DAO DAO v1. To migrate, a
-        /// value must be specified.
-        ///
-        /// This contains information about how a pre-propose module may be configured.
-        /// If set to "AnyoneMayPropose", there will be no pre-propose module and consequently,
-        /// no deposit or membership checks when submitting a proposal. The "ModuleMayPropose"
-        /// option allows for instantiating a prepropose module which will handle deposit verification and return logic.
-        pre_propose_info: PreProposeInfo,
+        /// Optional delay on proposal execution
+        timelock: Option<Timelock>,
     },
     FromCompatible {},
 }

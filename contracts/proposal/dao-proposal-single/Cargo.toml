@@ -34,9 +34,10 @@ dao-voting = { workspace = true }
 cw-hooks = { workspace = true }
 dao-hooks = { workspace = true }
 
-cw-utils-v1 = { workspace = true}
-voting-v1 = { workspace = true }
-cw-proposal-single-v1 = { workspace = true, features = ["library"] }
+# Deps required for v2 migration
+cw-utils-v2 = { workspace = true }
+voting-v2 = { workspace = true }
+dao-proposal-single-v2 = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }
@@ -55,4 +56,4 @@ cw20-base = { workspace = true }
 cw721-base = { workspace = true }
 cw4 = { workspace = true }
 cw4-group = { workspace = true }
-cw-core-v1 = { workspace = true, features = ["library"] }
+dao-dao-core-v2 = { workspace = true, features = ["library"] }
