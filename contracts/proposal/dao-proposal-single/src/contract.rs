@@ -255,6 +255,32 @@ pub fn execute_propose(
         .add_attribute("status", proposal.status.to_string()))
 }
 
+// TODO veto
+pub fn execute_veto(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    proposal_id: u64,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+
+    match config.timelock {
+        Some(timelock) => {
+            // Check if the proposal is timelocked
+
+            // Check sender is vetoer
+
+            // Update proposal status to vetoed
+
+            unimplemented!()
+        }
+        None => {
+            // TODO custom error message
+            Err(ContractError::Unauthorized {})
+        }
+    }
+}
+
 pub fn execute_execute(
     deps: DepsMut,
     env: Env,
@@ -276,6 +302,18 @@ pub fn execute_execute(
         if power.is_zero() {
             return Err(ContractError::Unauthorized {});
         }
+    }
+
+    // Check proposal is not timelocked
+    if let Some(timelock) = config.timelock {
+        // TODO need to check if the proposal is timelocked
+        // start_height is the height the proposal was created...
+        // must refactor...
+        // if timelock.is_locked(prop.start_height, env.block.time) {
+        //     // TODO custom error message
+        //     return Err(ContractError::Unauthorized {});
+        // }
+        unimplemented!()
     }
 
     // Check here that the proposal is passed. Allow it to be executed

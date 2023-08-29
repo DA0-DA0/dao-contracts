@@ -16,6 +16,11 @@ pub enum Status {
     Closed,
     /// The proposal's execution failed.
     ExecutionFailed,
+    /// Timelocked proposals have delayed execution, this is only
+    /// a potential status if timelock is configured on a proposal module.
+    Timelocked,
+    /// The proposal has been vetoed.
+    Vetoed,
 }
 
 impl std::fmt::Display for Status {
@@ -27,6 +32,8 @@ impl std::fmt::Display for Status {
             Status::Executed => write!(f, "executed"),
             Status::Closed => write!(f, "closed"),
             Status::ExecutionFailed => write!(f, "execution_failed"),
+            Status::Timelocked => write!(f, "timelocked"),
+            Status::Vetoed => write!(f, "vetoed"),
         }
     }
 }
