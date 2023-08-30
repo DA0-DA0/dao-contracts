@@ -732,13 +732,15 @@ dependencies = [
  "cw-address-like",
  "cw-multi-test",
  "cw-ownable",
- "cw-paginate-storage 2.3.0",
+ "cw-paginate-storage 2.4.1",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
+ "dao-testing",
  "getrandom",
  "integer-cbrt",
  "integer-sqrt",
+ "osmosis-test-tube",
  "rust_decimal",
  "speculoos",
  "thiserror",
@@ -2050,6 +2052,7 @@ version = "2.4.1"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-abc",
  "cw-core",
  "cw-hooks",
  "cw-multi-test",
@@ -4716,8 +4719,9 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "token-bindings"
-version = "0.9.0"
-source = "git+https://github.com/CosmosContracts/token-bindings?rev=1412b94#1412b9498347c3e2a1f80fd106fffd9cec697ca0"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9be1c893c90d2993320d9722516ece705460f464616313a62edadb9e71df4502"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",

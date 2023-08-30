@@ -8,7 +8,7 @@ use cosmwasm_std::{
 use cw_utils::must_pay;
 use std::collections::HashSet;
 use std::ops::Deref;
-use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenMsg};
+use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 
 use crate::state::{
     CURVE_STATE, DONATIONS, HATCHERS, HATCHER_ALLOWLIST, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
@@ -76,10 +76,14 @@ pub fn execute_buy(
 }
 
 /// Build a message to mint the supply token to the sender
-fn mint_supply_msg(storage: &dyn Storage, minted: Uint128, minter: &Addr) -> CwAbcResult<TokenMsg> {
+fn mint_supply_msg(
+    storage: &dyn Storage,
+    minted: Uint128,
+    minter: &Addr,
+) -> CwAbcResult<TokenFactoryMsg> {
     let denom = SUPPLY_DENOM.load(storage)?;
     // mint supply token
-    Ok(TokenMsg::mint_contract_tokens(
+    Ok(TokenFactoryMsg::mint_contract_tokens(
         denom,
         minted,
         minter.to_string(),
@@ -125,7 +129,8 @@ pub fn execute_sell(
     let supply_denom = SUPPLY_DENOM.load(deps.storage)?;
     let burn_amount = must_pay(&info, &supply_denom)?;
     // Burn the sent supply tokens
-    let burn_msg = TokenMsg::burn_contract_tokens(supply_denom, burn_amount, burner.to_string());
+    let burn_msg =
+        TokenFactoryMsg::burn_contract_tokens(supply_denom, burn_amount, burner.to_string());
 
     let taxed_amount = calculate_exit_tax(deps.storage, burn_amount)?;
 

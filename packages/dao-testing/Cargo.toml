@@ -34,6 +34,7 @@ rand = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
+cw-abc = { workspace = true }
 cw-core-v1 = { workspace = true, features = ["library"] }
 cw-hooks = { workspace = true }
 cw-proposal-single-v1 = { workspace = true }

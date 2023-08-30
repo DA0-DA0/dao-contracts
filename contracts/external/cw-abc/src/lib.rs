@@ -8,11 +8,17 @@ mod integration;
 pub mod msg;
 mod queries;
 pub mod state;
+
+// Integrationg tests using an actual chain binary, requires
+// the "test-tube" feature to be enabled
+// cargo test --features test-tube
 #[cfg(test)]
+#[cfg(feature = "test-tube")]
 mod testtube;
 
 pub use crate::error::ContractError;
 
+// TODO do we still want these?
 #[cfg(test)]
 pub(crate) mod testing {
     use crate::abc::{

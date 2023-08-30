@@ -35,18 +35,18 @@ rust_decimal = "1.14.3"
 integer-sqrt = "0.1.5"
 integer-cbrt = "0.1.2"
 getrandom = { version = "0.2", features = ["js"] }
-# TODO publish this and move to workspace
-token-bindings = { git = "https://github.com/CosmosContracts/token-bindings", rev = "1412b94" }
+token-bindings = { workspace = true }
 cw-ownable = { workspace = true }
 cw-paginate-storage = { workspace = true }
 # cw-orch = { version = "0.13.3", optional = true }
 
 [dev-dependencies]
-# TODO move to workspace
+# TODO move to workspace?
 speculoos = "0.11.0"
 anyhow = { workspace = true }
 cw-multi-test = { workspace = true }
-osmosis-test-tube = "16.0.0"
+dao-testing = { workspace = true }
+osmosis-test-tube = { workspace = true }
 
 [profile.release]
 rpath = false

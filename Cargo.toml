@@ -74,12 +74,14 @@ sg721-base = "3.1.0"
 syn = { version = "1.0", features = ["derive"] }
 test-context = "0.1"
 thiserror = { version = "1.0" }
+token-bindings = "0.11.0"
 wynd-utils = "0.4"
 
 # One commit ahead of version 0.3.0. Allows initialization with an
 # optional owner.
 cw-ownable = "0.5"
 
+cw-abc = { path = "./contracts/external/cw-abc", version = "*" }
 cw-admin-factory = { path = "./contracts/external/cw-admin-factory", version = "2.4.1" }
 cw-denom = { path = "./packages/cw-denom", version = "2.4.1" }
 cw-hooks = { path = "./packages/cw-hooks", version = "2.4.1" }
