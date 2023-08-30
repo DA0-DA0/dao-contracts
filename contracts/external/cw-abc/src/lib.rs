@@ -3,8 +3,6 @@ pub(crate) mod commands;
 pub mod contract;
 pub mod curves;
 mod error;
-#[cfg(test)]
-mod integration;
 pub mod msg;
 mod queries;
 pub mod state;
