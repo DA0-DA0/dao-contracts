@@ -1,5 +1,8 @@
 # CW20 Staked Balance Voting
 
+[![docs.rs (with version)](https://img.shields.io/docsrs/dao-voting-cw20-staked/2.2.0)](https://docs.rs/dao-voting-cw20-staked/2.2.0/dao_voting_cw20_staked/)
+
+
 A voting power module which determines voting power based on the
 staked token balance of specific addresses at given heights.
 

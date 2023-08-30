@@ -1,5 +1,7 @@
 # Proposal Approver Contract
 
+[![docs.rs (with version)](https://img.shields.io/docsrs/dao-pre-propose-approver/2.2.0)](https://docs.rs/dao-pre-propose-approver/2.2.0/dao_pre_propose_approver/)
+
 This contract works in conjuction with `cwd-pre-propose-approval-single` and allows for automatically creating approval proposals when a proposal is submitted for approval.
 
 ## Approver Logic

@@ -1,5 +1,7 @@
 ## dao-proposal-multiple
 
+[![docs.rs (with version)](https://img.shields.io/docsrs/dao-proposal-multiple/2.2.0)](https://docs.rs/dao-proposal-multiple/2.2.0/dao_proposal_multiple/)
+
 A proposal module for a DAO DAO DAO which allows the users to select
 their voting choice(s) from an array of `MultipleChoiceOption`.
 Each of the options may have associated messages which are to be

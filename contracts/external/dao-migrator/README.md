@@ -1,5 +1,7 @@
 # dao-migrator
 
+[![docs.rs (with version)](https://img.shields.io/docsrs/dao-migrator/2.2.0)](https://docs.rs/dao-migrator/2.2.0/dao_migrator/)
+
 Here is the [discussion](https://github.com/DA0-DA0/dao-contracts/discussions/607).
 
 A migrator module for a DAO DAO DAO which handles migration for DAO modules 
