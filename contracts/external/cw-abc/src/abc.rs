@@ -10,7 +10,7 @@ pub struct SupplyToken {
     /// The denom to create for the supply token
     pub subdenom: String,
     /// Metadata for the supply token to create
-    pub metadata: Metadata,
+    pub metadata: Option<Metadata>,
     /// Number of decimal places for the supply token, needed for proper curve math.
     /// Default for token factory is 6
     pub decimals: u8,

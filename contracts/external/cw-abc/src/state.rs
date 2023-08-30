@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use std::collections::HashSet;
 
-use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType};
+use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType, SupplyToken};
 use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 
@@ -60,3 +60,9 @@ pub static PHASE_CONFIG: Item<CommonsPhaseConfig> = Item::new("phase_config");
 
 /// The phase state of the Augmented Bonding Curve
 pub static PHASE: Item<CommonsPhase> = Item::new("phase");
+
+/// Temporarily holds token_instantiation_info when creating a new Token Factory denom
+pub const TOKEN_INSTANTIATION_INFO: Item<SupplyToken> = Item::new("token_instantiation_info");
+
+/// The address of the cw-tokenfactory-issuer contract
+pub const TOKEN_ISSUER_CONTRACT: Item<Addr> = Item::new("token_issuer_contract");

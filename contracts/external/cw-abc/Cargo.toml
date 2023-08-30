@@ -38,6 +38,7 @@ getrandom = { version = "0.2", features = ["js"] }
 token-bindings = { workspace = true }
 cw-ownable = { workspace = true }
 cw-paginate-storage = { workspace = true }
+cw-tokenfactory-issuer = { workspace = true, features = ["library"] }
 # cw-orch = { version = "0.13.3", optional = true }
 
 [dev-dependencies]

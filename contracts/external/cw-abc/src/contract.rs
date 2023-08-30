@@ -1,24 +1,32 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
+    Uint128, WasmMsg,
+};
 use cw2::set_contract_version;
+use cw_tokenfactory_issuer::msg::{
+    ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg,
+};
+use cw_utils::{nonpayable, parse_reply_instantiate_data};
 use std::collections::HashSet;
-
 use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 
 use crate::abc::{CommonsPhase, CurveFn};
 use crate::curves::DecimalPlaces;
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, UpdatePhaseConfigMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, UpdatePhaseConfigMsg};
 use crate::state::{
     CurveState, CURVE_STATE, CURVE_TYPE, HATCHER_ALLOWLIST, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
+    TOKEN_INSTANTIATION_INFO, TOKEN_ISSUER_CONTRACT,
 };
 use crate::{commands, queries};
-use cw_utils::nonpayable;
 
 // version info for migration info
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-abc";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID: u64 = 0;
 
 // By default, the prefix for token factory tokens is "factory"
 const DENOM_PREFIX: &str = "factory";
@@ -41,6 +49,7 @@ pub fn instantiate(
         curve_type,
         phase_config,
         hatcher_allowlist,
+        token_issuer_code_id,
     } = msg;
 
     if supply.subdenom.is_empty() {
@@ -51,27 +60,23 @@ pub fn instantiate(
 
     phase_config.validate()?;
 
-    // TODO utilize cw-tokenfactory-issuer?
-    // Create supply denom with metadata
-    let create_supply_denom_msg = TokenFactoryMsg::CreateDenom {
-        subdenom: supply.subdenom.clone(),
-        metadata: Some(supply.metadata),
-    };
-
     // Tnstantiate cw-token-factory-issuer contract
     // DAO (sender) is set as contract admin
-    // let issuer_instantiate_msg = SubMsg::reply_always(
-    //     WasmMsg::Instantiate {
-    //         admin: Some(info.sender.to_string()),
-    //         code_id: msg.token_issuer_code_id,
-    //         msg: to_binary(&IssuerInstantiateMsg::NewToken {
-    //             subdenom: supply.subdenom.clone(),
-    //         })?,
-    //         funds: info.funds,
-    //         label: "cw-tokenfactory-issuer".to_string(),
-    //     },
-    //     INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID,
-    // );
+    let issuer_instantiate_msg = SubMsg::reply_always(
+        WasmMsg::Instantiate {
+            admin: Some(info.sender.to_string()),
+            code_id: token_issuer_code_id,
+            msg: to_binary(&IssuerInstantiateMsg::NewToken {
+                subdenom: supply.subdenom.clone(),
+            })?,
+            funds: info.funds,
+            label: "cw-tokenfactory-issuer".to_string(),
+        },
+        INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID,
+    );
+
+    // Save new token info for use in reply
+    TOKEN_INSTANTIATION_INFO.save(deps.storage, &supply)?;
 
     // Save the denom
     SUPPLY_DENOM.save(
@@ -105,7 +110,7 @@ pub fn instantiate(
 
     cw_ownable::initialize_owner(deps.storage, deps.api, Some(info.sender.as_str()))?;
 
-    Ok(Response::default().add_message(create_supply_denom_msg))
+    Ok(Response::default().add_submessage(issuer_instantiate_msg))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -195,48 +200,126 @@ pub fn do_query(
     }
 }
 
-// fn validate_denom(
-//     deps: DepsMut<TokenFactoryQuery>,
-//     denom: String,
-// ) -> Result<(), TokenFactoryError> {
-//     let denom_to_split = denom.clone();
-//     let tokenfactory_denom_parts: Vec<&str> = denom_to_split.split('/').collect();
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(
+    deps: DepsMut<TokenFactoryQuery>,
+    _env: Env,
+    _msg: MigrateMsg,
+) -> Result<Response<TokenFactoryMsg>, ContractError> {
+    // Set contract to version to latest
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    Ok(Response::<TokenFactoryMsg>::default())
+}
 
-//     if tokenfactory_denom_parts.len() != 3 {
-//         return Result::Err(TokenFactoryError::InvalidDenom {
-//             denom,
-//             message: std::format!(
-//                 "denom must have 3 parts separated by /, had {}",
-//                 tokenfactory_denom_parts.len()
-//             ),
-//         });
-//     }
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(
+    deps: DepsMut<TokenFactoryQuery>,
+    env: Env,
+    msg: Reply,
+) -> Result<Response<TokenFactoryMsg>, ContractError> {
+    match msg.id {
+        INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID => {
+            // Parse and save address of cw-tokenfactory-issuer
+            let issuer_addr = parse_reply_instantiate_data(msg)?.contract_address;
+            TOKEN_ISSUER_CONTRACT.save(deps.storage, &deps.api.addr_validate(&issuer_addr)?)?;
 
-//     let prefix = tokenfactory_denom_parts[0];
-//     let creator_address = tokenfactory_denom_parts[1];
-//     let subdenom = tokenfactory_denom_parts[2];
+            // Load info for new token and remove temporary data
+            let token_info = TOKEN_INSTANTIATION_INFO.load(deps.storage)?;
+            TOKEN_INSTANTIATION_INFO.remove(deps.storage);
 
-//     if !prefix.eq_ignore_ascii_case("factory") {
-//         return Result::Err(TokenFactoryError::InvalidDenom {
-//             denom,
-//             message: std::format!("prefix must be 'factory', was {}", prefix),
-//         });
-//     }
+            // // Load the DAO address
+            // let dao = DAO.load(deps.storage)?;
 
-//     // Validate denom by attempting to query for full denom
-//     let response = TokenQuerier::new(&deps.querier)
-//         .full_denom(String::from(creator_address), String::from(subdenom));
-//     if response.is_err() {
-//         return Result::Err(TokenFactoryError::InvalidDenom {
-//             denom,
-//             message: response.err().unwrap().to_string(),
-//         });
-//     }
+            // Format the denom and save it
+            let denom = format!("factory/{}/{}", &issuer_addr, token_info.subdenom);
 
-//     Result::Ok(())
-// }
+            SUPPLY_DENOM.save(deps.storage, &denom)?;
 
-// // this is poor man's "skip" flag
+            // // Check supply is greater than zero, iterate through initial
+            // // balances and sum them, add DAO balance as well.
+            // let initial_supply = token
+            //     .initial_balances
+            //     .iter()
+            //     .fold(Uint128::zero(), |previous, new_balance| {
+            //         previous + new_balance.amount
+            //     });
+            // let total_supply = initial_supply + token.initial_dao_balance.unwrap_or_default();
+
+            // // Cannot instantiate with no initial token owners because it would
+            // // immediately lock the DAO.
+            // if initial_supply.is_zero() {
+            //     return Err(ContractError::InitialBalancesError {});
+            // }
+
+            // Msgs to be executed to finalize setup
+            let mut msgs: Vec<WasmMsg> = vec![];
+
+            // Grant an allowance to mint
+            msgs.push(WasmMsg::Execute {
+                contract_addr: issuer_addr.clone(),
+                msg: to_binary(&IssuerExecuteMsg::SetMinterAllowance {
+                    address: env.contract.address.to_string(),
+                    // TODO let this be capped
+                    allowance: Uint128::MAX,
+                })?,
+                funds: vec![],
+            });
+
+            // TODO fix metadata
+            // // If metadata, set it by calling the contract
+            // if let Some(metadata) = token_info.metadata {
+            //     // The first denom_unit must be the same as the tf and base denom.
+            //     // It must have an exponent of 0. This the smallest unit of the token.
+            //     // For more info: // https://docs.cosmos.network/main/architecture/adr-024-coin-metadata
+            //     let mut denom_units = vec![DenomUnit {
+            //         denom: denom.clone(),
+            //         exponent: 0,
+            //         aliases: vec![token_info.subdenom],
+            //     }];
+
+            //     // Caller can optionally define additional units
+            //     if let Some(mut additional_units) = metadata.additional_denom_units {
+            //         denom_units.append(&mut additional_units);
+            //     }
+
+            //     // Sort denom units by exponent, must be in ascending order
+            //     denom_units.sort_by(|a, b| a.exponent.cmp(&b.exponent));
+
+            //     msgs.push(WasmMsg::Execute {
+            //         contract_addr: issuer_addr.clone(),
+            //         msg: to_binary(&IssuerExecuteMsg::SetDenomMetadata {
+            //             metadata: Metadata {
+            //                 description: metadata.description,
+            //                 denom_units,
+            //                 base: denom.clone(),
+            //                 display: metadata.display,
+            //                 name: metadata.name,
+            //                 symbol: metadata.symbol,
+            //             },
+            //         })?,
+            //         funds: vec![],
+            //     });
+            // }
+
+            // TODO who should own the token contract?
+            // // Update issuer contract owner to be the DAO
+            // msgs.push(WasmMsg::Execute {
+            //     contract_addr: issuer_addr.clone(),
+            //     msg: to_binary(&IssuerExecuteMsg::ChangeContractOwner {
+            //         new_owner: dao.to_string(),
+            //     })?,
+            //     funds: vec![],
+            // });
+
+            Ok(Response::new()
+                .add_attribute("cw-tokenfactory-issuer-address", issuer_addr)
+                .add_attribute("denom", denom)
+                .add_messages(msgs))
+        }
+        _ => Err(ContractError::UnknownReplyId { id: msg.id }),
+    }
+}
+
 // #[cfg(test)]
 // pub(crate) mod tests {
 //     use super::*;

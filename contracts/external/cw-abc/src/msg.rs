@@ -5,19 +5,22 @@ use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType, MinMax, ReserveTok
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    // Supply token information
+    /// The code id of the cw-tokenfactory-issuer contract
+    pub token_issuer_code_id: u64,
+
+    /// Supply token information
     pub supply: SupplyToken,
 
-    // Reserve token information
+    /// Reserve token information
     pub reserve: ReserveToken,
 
-    // Curve type for this contract
+    /// Curve type for this contract
     pub curve_type: CurveType,
 
-    // Hatch configuration information
+    /// Hatch configuration information
     pub phase_config: CommonsPhaseConfig,
 
-    // Hatcher allowlist
+    /// Hatcher allowlist
     pub hatcher_allowlist: Option<Vec<String>>,
 }
 
@@ -59,6 +62,7 @@ pub enum ExecuteMsg {
     UpdatePhaseConfig(UpdatePhaseConfigMsg),
 }
 
+// TODO token contract query
 #[cw_ownable::cw_ownable_query]
 #[cw_serde]
 #[derive(QueryResponses)]
@@ -89,44 +93,44 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub struct CurveInfoResponse {
-    // how many reserve tokens have been received
+    /// How many reserve tokens have been received
     pub reserve: Uint128,
-    // how many supply tokens have been issued
+    /// How many supply tokens have been issued
     pub supply: Uint128,
-    // the amount of tokens in the funding pool
+    /// The amount of tokens in the funding pool
     pub funding: Uint128,
-    // current spot price of the token
+    /// Current spot price of the token
     pub spot_price: Decimal,
-    // current reserve denom
+    /// Current reserve denom
     pub reserve_denom: String,
 }
 
 #[cw_serde]
 pub struct HatcherAllowlistResponse {
-    // hatcher allowlist
+    /// Hatcher allowlist
     pub allowlist: Option<Vec<Addr>>,
 }
 
 #[cw_serde]
 pub struct CommonsPhaseConfigResponse {
-    // the phase configuration
+    /// The phase configuration
     pub phase_config: CommonsPhaseConfig,
 
-    // current phase
+    /// Current phase
     pub phase: CommonsPhase,
 }
 
 #[cw_serde]
 pub struct DonationsResponse {
-    // the donators mapped to their donation in the reserve token
+    /// The donators mapped to their donation in the reserve token
     pub donations: Vec<(Addr, Uint128)>,
 }
 
 #[cw_serde]
 pub struct HatchersResponse {
-    // the hatchers mapped to their contribution in the reserve token
+    /// The hatchers mapped to their contribution in the reserve token
     pub hatchers: Vec<(Addr, Uint128)>,
 }
 
 #[cw_serde]
-pub enum MigrateMsg {}
+pub struct MigrateMsg {}

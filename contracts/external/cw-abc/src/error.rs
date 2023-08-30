@@ -1,5 +1,5 @@
 use cosmwasm_std::StdError;
-use cw_utils::PaymentError;
+use cw_utils::{ParseReplyError, PaymentError};
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
@@ -7,8 +7,11 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error("{0}")]
+    #[error(transparent)]
     Payment(#[from] PaymentError),
+
+    #[error(transparent)]
+    ParseReplyError(#[from] ParseReplyError),
 
     #[error("Invalid subdenom: {subdenom:?}")]
     InvalidSubdenom { subdenom: String },
@@ -42,4 +45,7 @@ pub enum ContractError {
 
     #[error("Invalid phase, expected {expected:?}, actual {actual:?}")]
     InvalidPhase { expected: String, actual: String },
+
+    #[error("Got a submessage reply with unknown id: {id}")]
+    UnknownReplyId { id: u64 },
 }
