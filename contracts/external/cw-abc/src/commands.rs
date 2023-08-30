@@ -1,18 +1,20 @@
-use crate::abc::{CommonsPhase, CurveFn, MinMax};
-use crate::contract::CwAbcResult;
-use crate::ContractError;
 use cosmwasm_std::{
-    coins, ensure, Addr, BankMsg, Decimal as StdDecimal, DepsMut, Env, MessageInfo, QuerierWrapper,
-    Response, StdError, StdResult, Storage, Uint128,
+    coins, ensure, to_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal as StdDecimal, DepsMut, Env,
+    MessageInfo, QuerierWrapper, Response, StdError, StdResult, Storage, Uint128, WasmMsg,
 };
+use cw_tokenfactory_issuer::msg::ExecuteMsg as IssuerExecuteMsg;
 use cw_utils::must_pay;
 use std::collections::HashSet;
 use std::ops::Deref;
 use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 
+use crate::abc::{CommonsPhase, CurveFn, MinMax};
+use crate::contract::CwAbcResult;
 use crate::state::{
     CURVE_STATE, DONATIONS, HATCHERS, HATCHER_ALLOWLIST, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
+    TOKEN_ISSUER_CONTRACT,
 };
+use crate::ContractError;
 
 pub fn execute_buy(
     deps: DepsMut<TokenFactoryQuery>,
@@ -64,7 +66,16 @@ pub fn execute_buy(
     curve_state.supply = new_supply;
     CURVE_STATE.save(deps.storage, &curve_state)?;
 
-    let mint_msg = mint_supply_msg(deps.storage, minted, &info.sender)?;
+    // Mint tokens for sender by calling mint on the cw-tokenfactory-issuer contract
+    let issuer_addr = TOKEN_ISSUER_CONTRACT.load(deps.storage)?;
+    let mint_msg = WasmMsg::Execute {
+        contract_addr: issuer_addr.to_string(),
+        msg: to_binary(&IssuerExecuteMsg::Mint {
+            to_address: info.sender.to_string(),
+            amount: minted,
+        })?,
+        funds: vec![],
+    };
 
     Ok(Response::new()
         .add_message(mint_msg)
@@ -73,21 +84,6 @@ pub fn execute_buy(
         .add_attribute("reserved", reserved)
         .add_attribute("funded", funded)
         .add_attribute("supply", minted))
-}
-
-/// Build a message to mint the supply token to the sender
-fn mint_supply_msg(
-    storage: &dyn Storage,
-    minted: Uint128,
-    minter: &Addr,
-) -> CwAbcResult<TokenFactoryMsg> {
-    let denom = SUPPLY_DENOM.load(storage)?;
-    // mint supply token
-    Ok(TokenFactoryMsg::mint_contract_tokens(
-        denom,
-        minted,
-        minter.to_string(),
-    ))
 }
 
 /// Return the reserved and funded amounts based on the payment and the allocation ratio
@@ -128,9 +124,29 @@ pub fn execute_sell(
 
     let supply_denom = SUPPLY_DENOM.load(deps.storage)?;
     let burn_amount = must_pay(&info, &supply_denom)?;
+
+    let issuer_addr = TOKEN_ISSUER_CONTRACT.load(deps.storage)?;
+
     // Burn the sent supply tokens
-    let burn_msg =
-        TokenFactoryMsg::burn_contract_tokens(supply_denom, burn_amount, burner.to_string());
+    let burn_msgs: Vec<CosmosMsg<TokenFactoryMsg>> = vec![
+        // Send tokens to the issuer contract to be burned
+        CosmosMsg::<TokenFactoryMsg>::Bank(BankMsg::Send {
+            to_address: issuer_addr.to_string().clone(),
+            amount: vec![Coin {
+                amount: burn_amount,
+                denom: supply_denom,
+            }],
+        }),
+        // Execute burn on the cw-tokenfactory-issuer contract
+        CosmosMsg::<TokenFactoryMsg>::Wasm(WasmMsg::Execute {
+            contract_addr: issuer_addr.to_string(),
+            msg: to_binary(&IssuerExecuteMsg::Mint {
+                to_address: info.sender.to_string(),
+                amount: burn_amount,
+            })?,
+            funds: vec![],
+        }),
+    ];
 
     let taxed_amount = calculate_exit_tax(deps.storage, burn_amount)?;
 
@@ -156,14 +172,14 @@ pub fn execute_sell(
         .map_err(StdError::overflow)?;
 
     // Now send the tokens to the sender
-    let msg = BankMsg::Send {
+    let msg_send = BankMsg::Send {
         to_address: burner.to_string(),
         amount: coins(released_reserve.u128(), curve_state.reserve_denom),
     };
 
-    Ok(Response::new()
-        .add_message(msg)
-        .add_message(burn_msg)
+    Ok(Response::<TokenFactoryMsg>::new()
+        .add_messages(burn_msgs)
+        .add_message(msg_send)
         .add_attribute("action", "burn")
         .add_attribute("from", burner)
         .add_attribute("amount", burn_amount)

@@ -1,8 +1,11 @@
 use crate::abc::CurveFn;
 use crate::msg::{
-    CommonsPhaseConfigResponse, CurveInfoResponse, DonationsResponse, HatchersResponse,
+    CommonsPhaseConfigResponse, CurveInfoResponse, DenomResponse, DonationsResponse,
+    HatchersResponse,
 };
-use crate::state::{CurveState, CURVE_STATE, DONATIONS, HATCHERS, PHASE, PHASE_CONFIG};
+use crate::state::{
+    CurveState, CURVE_STATE, DONATIONS, HATCHERS, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
+};
 use cosmwasm_std::{Deps, Order, QuerierWrapper, StdResult};
 use std::ops::Deref;
 use token_bindings::TokenFactoryQuery;
@@ -43,19 +46,11 @@ pub fn query_phase_config(deps: Deps<TokenFactoryQuery>) -> StdResult<CommonsPha
     })
 }
 
-// // TODO, maybe we don't need this
-// pub fn get_denom(
-//     deps: Deps<TokenFactoryQuery>,
-//     creator_addr: String,
-//     subdenom: String,
-// ) -> GetDenomResponse {
-//     let querier = TokenQuerier::new(&deps.querier);
-//     let response = querier.full_denom(creator_addr, subdenom).unwrap();
-
-//     GetDenomResponse {
-//         denom: response.denom,
-//     }
-// }
+/// Returns information about the supply Denom
+pub fn get_denom(deps: Deps<TokenFactoryQuery>) -> StdResult<DenomResponse> {
+    let denom = SUPPLY_DENOM.load(deps.storage)?;
+    Ok(DenomResponse { denom })
+}
 
 pub fn query_donations(
     deps: Deps<TokenFactoryQuery>,

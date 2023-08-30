@@ -89,6 +89,12 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    /// Returns Token Factory Denom for the supply
+    #[returns(DenomResponse)]
+    Denom {},
+    /// Returns the address of the cw-tokenfactory-issuer contract
+    #[returns(::cosmwasm_std::Addr)]
+    TokenContract {},
 }
 
 #[cw_serde]
@@ -103,6 +109,11 @@ pub struct CurveInfoResponse {
     pub spot_price: Decimal,
     /// Current reserve denom
     pub reserve_denom: String,
+}
+
+#[cw_serde]
+pub struct DenomResponse {
+    pub denom: String,
 }
 
 #[cw_serde]

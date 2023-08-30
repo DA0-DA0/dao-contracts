@@ -192,11 +192,8 @@ pub fn do_query(
             to_binary(&queries::query_hatchers(deps, start_after, limit)?)
         }
         QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
-        // TODO get token contract
-        // QueryMsg::GetDenom {
-        //     creator_address,
-        //     subdenom,
-        // } => to_binary(&get_denom(deps, creator_address, subdenom)),
+        QueryMsg::Denom {} => to_binary(&queries::get_denom(deps)?),
+        QueryMsg::TokenContract {} => to_binary(&TOKEN_ISSUER_CONTRACT.load(deps.storage)?),
     }
 }
 
