@@ -1,10 +1,10 @@
 use cosmwasm_schema::schemars::JsonSchema;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg, WasmMsg,
+    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg,
+    Timestamp, WasmMsg,
 };
 
 use cw2::set_contract_version;
-
 use cw_denom::UncheckedDenom;
 use dao_interface::voting::{Query as CwCoreQuery, VotingPowerAtHeightResponse};
 use dao_voting::{
@@ -12,6 +12,7 @@ use dao_voting::{
     status::Status,
 };
 use serde::Serialize;
+use std::mem::discriminant;
 
 use crate::{
     error::PreProposeError,
@@ -280,12 +281,22 @@ where
             return Err(PreProposeError::NotModule {});
         }
 
+        // We match based on the enum variant while ignoring its
+        // exact value.
+        let status_variant = discriminant::<Status>(&new_status);
+        let executed_variant = discriminant::<Status>(&Status::Closed {
+            at_time: Timestamp::from_seconds(0),
+        });
+        let closed_variant = discriminant::<Status>(&Status::Closed {
+            at_time: Timestamp::from_seconds(0),
+        });
+
         // If we receive a proposal completed hook from a proposal
         // module, and it is not in one of these states, something
         // bizare has happened. In that event, this message errors
         // which ought to cause the proposal module to remove this
         // module and open proposal submission to anyone.
-        if new_status != Status::Closed && new_status != Status::Executed {
+        if status_variant != closed_variant && status_variant != executed_variant {
             return Err(PreProposeError::NotClosedOrExecuted { status: new_status });
         }
 
@@ -294,9 +305,9 @@ where
                 let messages = if let Some(ref deposit_info) = deposit_info {
                     // Refund can be issued if proposal if it is going to
                     // closed or executed.
-                    let should_refund_to_proposer = (new_status == Status::Closed
+                    let should_refund_to_proposer = (status_variant == closed_variant
                         && deposit_info.refund_policy == DepositRefundPolicy::Always)
-                        || (new_status == Status::Executed
+                        || (status_variant == executed_variant
                             && deposit_info.refund_policy != DepositRefundPolicy::Never);
 
                     if should_refund_to_proposer {

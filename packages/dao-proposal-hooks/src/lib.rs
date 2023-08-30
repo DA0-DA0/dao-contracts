@@ -13,6 +13,7 @@ pub enum ProposalHookMsg {
     },
     ProposalStatusChanged {
         id: u64,
+        // TODO make actual dao_voting::status::Status?
         old_status: String,
         new_status: String,
     },
