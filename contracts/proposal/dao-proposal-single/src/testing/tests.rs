@@ -2,7 +2,7 @@ use cosmwasm_std::{
     coins,
     testing::{mock_dependencies, mock_env},
     to_binary, Addr, Attribute, BankMsg, Binary, ContractInfoResponse, CosmosMsg, Decimal, Empty,
-    Reply, StdError, SubMsgResult, Uint128, WasmMsg, WasmQuery,
+    Reply, StdError, SubMsgResult, Timestamp, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::ContractVersion;
 use cw20::Cw20Coin;
@@ -25,6 +25,7 @@ use dao_voting::{
     },
     status::Status,
     threshold::{ActiveThreshold, PercentageThreshold, Threshold},
+    timelock::Timelock,
     voting::{Vote, Votes},
 };
 
@@ -349,7 +350,12 @@ fn test_proposal_message_execution() {
         Vote::Yes,
     );
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
-    assert_eq!(proposal.proposal.status, Status::Passed);
+    assert_eq!(
+        proposal.proposal.status,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1571797419879305533)
+        }
+    );
 
     // Can't use library function because we expect this to fail due
     // to insufficent balance in the bank module.
@@ -361,7 +367,12 @@ fn test_proposal_message_execution() {
     )
     .unwrap_err();
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
-    assert_eq!(proposal.proposal.status, Status::Passed);
+    assert_eq!(
+        proposal.proposal.status,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1571797419879305533)
+        }
+    );
 
     mint_natives(&mut app, core_addr.as_str(), coins(10, "ujuno"));
     execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
@@ -446,7 +457,12 @@ fn test_proposal_cant_close_after_expiry_is_passed() {
     // Expire the proposal. This should pass it.
     app.update_block(|b| b.time = b.time.plus_seconds(604800));
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
-    assert_eq!(proposal.proposal.status, Status::Passed);
+    assert_eq!(
+        proposal.proposal.status,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1572402219879305533)
+        }
+    );
 
     // Make sure it can't be closed.
     let err = close_proposal_should_fail(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
@@ -579,6 +595,11 @@ fn test_update_config() {
         vec![WasmMsg::Execute {
             contract_addr: proposal_module.to_string(),
             msg: to_binary(&ExecuteMsg::UpdateConfig {
+                timelock: Some(Timelock {
+                    delay: Timestamp::from_seconds(100),
+                    vetoer: CREATOR_ADDR.to_string(),
+                    early_execute: false,
+                }),
                 threshold: Threshold::AbsoluteCount {
                     threshold: Uint128::new(10_000),
                 },
@@ -607,6 +628,11 @@ fn test_update_config() {
     assert_eq!(
         config,
         Config {
+            timelock: Some(Timelock {
+                delay: Timestamp::from_seconds(100),
+                vetoer: CREATOR_ADDR.to_string(),
+                early_execute: false
+            }),
             threshold: Threshold::AbsoluteCount {
                 threshold: Uint128::new(10_000)
             },
@@ -625,6 +651,7 @@ fn test_update_config() {
             Addr::unchecked(CREATOR_ADDR),
             proposal_module,
             &&ExecuteMsg::UpdateConfig {
+                timelock: None,
                 threshold: Threshold::AbsoluteCount {
                     threshold: Uint128::new(10_000),
                 },
@@ -1052,7 +1079,12 @@ fn test_min_voting_period_no_early_pass() {
 
     app.update_block(|block| block.height += 10);
     let proposal_response = query_proposal(&app, &proposal_module, proposal_id);
-    assert_eq!(proposal_response.proposal.status, Status::Passed);
+    assert_eq!(
+        proposal_response.proposal.status,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1571797419879305533)
+        }
+    );
 }
 
 // Setting the min duration the same as the proposal duration just
@@ -1090,7 +1122,12 @@ fn test_min_duration_same_as_proposal_duration() {
 
     app.update_block(|b| b.height += 100);
     let proposal_response = query_proposal(&app, &proposal_module, proposal_id);
-    assert_eq!(proposal_response.proposal.status, Status::Passed);
+    assert_eq!(
+        proposal_response.proposal.status,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1571797419879305533)
+        }
+    );
 }
 
 #[test]
@@ -1149,7 +1186,12 @@ fn test_revoting_playthrough() {
     // Expire the proposal allowing the votes to be tallied.
     app.update_block(|b| b.time = b.time.plus_seconds(604800));
     let proposal_response = query_proposal(&app, &proposal_module, proposal_id);
-    assert_eq!(proposal_response.proposal.status, Status::Passed);
+    assert_eq!(
+        proposal_response.proposal.status,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1572402219879305533)
+        }
+    );
     execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
 
     // Can't vote once the proposal is passed.
@@ -1185,6 +1227,7 @@ fn test_allow_revoting_config_changes() {
         core_addr.clone(),
         proposal_module.clone(),
         &ExecuteMsg::UpdateConfig {
+            timelock: None,
             threshold: Threshold::ThresholdQuorum {
                 quorum: PercentageThreshold::Percent(Decimal::percent(15)),
                 threshold: PercentageThreshold::Majority {},
@@ -1221,7 +1264,12 @@ fn test_allow_revoting_config_changes() {
 
     // Proposal without revoting should have passed.
     let proposal_resp = query_proposal(&app, &proposal_module, no_revoting_proposal);
-    assert_eq!(proposal_resp.proposal.status, Status::Passed);
+    assert_eq!(
+        proposal_resp.proposal.status,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1571797419879305533)
+        }
+    );
 
     // Proposal with revoting should not have passed.
     let proposal_resp = query_proposal(&app, &proposal_module, revoting_proposal);
@@ -1299,7 +1347,12 @@ fn test_three_of_five_multisig() {
     vote_on_proposal(&mut app, &proposal_module, "three", proposal_id, Vote::Yes);
 
     let proposal: ProposalResponse = query_proposal(&app, &proposal_module, 1);
-    assert_eq!(proposal.proposal.status, Status::Passed);
+    assert_eq!(
+        proposal.proposal.status,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1571797419879305533)
+        }
+    );
 
     execute_proposal(&mut app, &proposal_module, "four", proposal_id);
 
@@ -1426,7 +1479,9 @@ fn test_absolute_count_threshold_non_multisig() {
         Threshold::AbsoluteCount {
             threshold: Uint128::new(11),
         },
-        Status::Passed,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1571797419879305533),
+        },
         None,
     );
 }
@@ -1488,6 +1543,7 @@ fn test_proposal_count_initialized_to_zero() {
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         InstantiateMsg {
+            timelock: None,
             threshold: Threshold::ThresholdQuorum {
                 threshold: PercentageThreshold::Majority {},
                 quorum: PercentageThreshold::Percent(Decimal::percent(10)),
@@ -1776,6 +1832,7 @@ fn test_migrate_from_v1() {
     assert_eq!(
         new_config,
         Config {
+            timelock: None,
             threshold: Threshold::AbsolutePercentage {
                 percentage: PercentageThreshold::Majority {}
             },
@@ -1910,6 +1967,7 @@ fn test_execution_failed() {
         core_addr,
         proposal_module.clone(),
         &ExecuteMsg::UpdateConfig {
+            timelock: None,
             threshold: config.threshold,
             max_voting_period: config.max_voting_period,
             min_voting_period: config.min_voting_period,
@@ -1945,7 +2003,12 @@ fn test_execution_failed() {
     // Even though this proposal was created before the config change
     // was made it still gets retroactively applied.
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
-    assert_eq!(proposal.proposal.status, Status::Passed);
+    assert_eq!(
+        proposal.proposal.status,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1571797419879305533)
+        }
+    );
 
     // This proposal's deposit should not have been returned. It will
     // not be returnable until this is executed, or close on execution

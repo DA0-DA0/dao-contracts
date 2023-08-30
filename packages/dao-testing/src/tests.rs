@@ -1,4 +1,4 @@
-use cosmwasm_std::{Decimal, Uint128};
+use cosmwasm_std::{Decimal, Timestamp, Uint128};
 use dao_voting::status::Status;
 use dao_voting::threshold::{PercentageThreshold, Threshold};
 use dao_voting::voting::Vote;
@@ -40,7 +40,9 @@ where
         Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Percent(Decimal::percent(100)),
         },
-        Status::Passed,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1572402219879305533),
+        },
         None,
     );
 
@@ -73,7 +75,9 @@ where
         Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Percent(Decimal::percent(100)),
         },
-        Status::Passed,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1572402219879305533),
+        },
         None,
     );
 }
@@ -92,7 +96,9 @@ where
         Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Percent(Decimal::percent(100)),
         },
-        Status::Passed,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1572402219879305533),
+        },
         None,
     );
 
@@ -114,7 +120,9 @@ where
         Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Percent(Decimal::percent(99)),
         },
-        Status::Passed,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1572402219879305533),
+        },
         None,
     )
 }
@@ -208,7 +216,9 @@ where
         Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Percent(Decimal::percent(1)),
         },
-        Status::Passed,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1572402219879305533),
+        },
         Some(Uint128::new(100)),
     );
 
@@ -222,7 +232,9 @@ where
         Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Percent(Decimal::percent(1)),
         },
-        Status::Passed,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1572402219879305533),
+        },
         Some(Uint128::new(1000)),
     );
 
@@ -318,7 +330,9 @@ where
         Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Percent(Decimal::percent(50)),
         },
-        Status::Passed,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1572402219879305533),
+        },
         None,
     );
 
@@ -340,7 +354,9 @@ where
         Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Percent(Decimal::percent(50)),
         },
-        Status::Passed,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1572402219879305533),
+        },
         None,
     );
 
@@ -369,7 +385,9 @@ where
         Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Percent(Decimal::percent(50)),
         },
-        Status::Passed,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1572402219879305533),
+        },
         None,
     );
 }
@@ -397,7 +415,9 @@ where
             threshold: PercentageThreshold::Percent(Decimal::percent(10)),
             quorum: PercentageThreshold::Majority {},
         },
-        Status::Passed,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1572402219879305533),
+        },
         None,
     );
 
@@ -427,7 +447,9 @@ where
             threshold: PercentageThreshold::Percent(Decimal::percent(10)),
             quorum: PercentageThreshold::Majority {},
         },
-        Status::Passed,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1572402219879305533),
+        },
         None,
     );
 }
@@ -455,7 +477,9 @@ where
             threshold: PercentageThreshold::Percent(Decimal::percent(50)),
             quorum: PercentageThreshold::Majority {},
         },
-        Status::Passed,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1572402219879305533),
+        },
         None,
     );
 
@@ -535,7 +559,9 @@ where
             threshold: PercentageThreshold::Majority {},
             quorum: PercentageThreshold::Percent(Decimal::percent(60)),
         },
-        Status::Passed,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1572402219879305533),
+        },
         Some(Uint128::new(100)),
     );
     do_votes(
@@ -564,7 +590,9 @@ where
             threshold: PercentageThreshold::Majority {},
             quorum: PercentageThreshold::Percent(Decimal::percent(60)),
         },
-        Status::Passed,
+        Status::Passed {
+            at_time: Timestamp::from_nanos(1572402219879305533),
+        },
         Some(Uint128::new(100)),
     );
     do_votes(
@@ -599,7 +627,9 @@ where
             std::cmp::Ordering::Less => Status::Rejected,
             // Depends on which reaches the threshold first. Ignore for now.
             std::cmp::Ordering::Equal => Status::Rejected,
-            std::cmp::Ordering::Greater => Status::Passed,
+            std::cmp::Ordering::Greater => Status::Passed {
+                at_time: Timestamp::from_nanos(1572402219879305533),
+            },
         };
 
         let yes = yes
