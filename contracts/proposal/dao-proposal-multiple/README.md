@@ -1,4 +1,4 @@
-## dao-proposal-multiple
+# dao-proposal-multiple
 
 [![docs.rs (with version)](https://img.shields.io/docsrs/dao-proposal-multiple/2.2.0)](https://docs.rs/dao-proposal-multiple/2.2.0/dao_proposal_multiple/)
 
