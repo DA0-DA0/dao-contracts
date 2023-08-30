@@ -10,6 +10,6 @@ pub mod query;
 mod testing;
 
 pub mod state;
-mod v1_state;
+mod v2_state;
 
 pub use crate::error::ContractError;
