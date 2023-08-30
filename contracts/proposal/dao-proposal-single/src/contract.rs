@@ -282,13 +282,46 @@ pub fn execute_veto(
                     // Check sender is vetoer
                     timelock.is_vetoer(&info)?;
 
+                    let old_status = prop.status;
+
                     // Update proposal status to vetoed
                     prop.status = Status::Vetoed;
                     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
+                    let hooks = proposal_status_changed_hooks(
+                        PROPOSAL_HOOKS,
+                        deps.storage,
+                        proposal_id,
+                        old_status.to_string(),
+                        prop.status.to_string(),
+                    )?;
+
+                    // Add prepropose / deposit module hook which will handle deposit refunds.
+                    let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
+                    let hooks = match proposal_creation_policy {
+                        ProposalCreationPolicy::Anyone {} => hooks,
+                        ProposalCreationPolicy::Module { addr } => {
+                            let msg = to_binary(&PreProposeHookMsg::ProposalCompletedHook {
+                                proposal_id,
+                                new_status: prop.status,
+                            })?;
+                            let mut hooks = hooks;
+                            hooks.push(SubMsg::reply_on_error(
+                                WasmMsg::Execute {
+                                    contract_addr: addr.into_string(),
+                                    msg,
+                                    funds: vec![],
+                                },
+                                failed_pre_propose_module_hook_id(),
+                            ));
+                            hooks
+                        }
+                    };
+
                     Ok(Response::new()
                         .add_attribute("action", "veto")
-                        .add_attribute("proposal_id", proposal_id.to_string()))
+                        .add_attribute("proposal_id", proposal_id.to_string())
+                        .add_submessages(hooks))
                 }
                 // If timelock is not configured throw error.
                 None => Err(ContractError::TimelockError(TimelockError::NoTimelock {})),
