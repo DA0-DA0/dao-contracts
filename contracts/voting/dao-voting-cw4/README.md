@@ -1,7 +1,6 @@
 # CW4 Group Voting
 
-[![docs.rs (with version)](https://img.shields.io/docsrs/dao-voting-cw4/2.2.0)
-](https://docs.rs/dao-voting-cw4/2.2.0/dao_voting_cw4/)
+[![docs.rs (with version)](https://img.shields.io/docsrs/dao-voting-cw4/2.2.0)](https://docs.rs/dao-voting-cw4/2.2.0/dao_voting_cw4/)
 
 A simple voting power module which determines voting power based on
 the weight of a user in a cw4-group contract. This allocates voting
