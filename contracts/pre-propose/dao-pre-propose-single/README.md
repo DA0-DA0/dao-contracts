@@ -1,6 +1,6 @@
 # Single choice proposal deposit contract
 
-[![docs.rs (with version)](https://img.shields.io/docsrs/dao-pre-propose-single/2.2.0)](https://docs.rs/dao-pre-propose-single/2.2.0/dao_pre_propose_single/)
+[![docs.rs](https://img.shields.io/docsrs/dao-pre-propose-single)](https://docs.rs/dao-pre-propose-single/latest/dao_pre_propose_single/)
 
 This is a pre-propose module that manages proposal deposits for the
 `cwd-proposal-single` proposal module.

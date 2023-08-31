@@ -1,6 +1,6 @@
 # cw-admin-factory
 
-[![docs.rs (with version)](https://img.shields.io/docsrs/cw-admin-factory/2.2.0)](https://docs.rs/cw-admin-factory/2.2.0/cw_admin_factory/)
+[![docs.rs](https://img.shields.io/docsrs/cw-admin-factory)](https://docs.rs/cw-admin-factory/latest/cw_admin_factory/)
 
 Serves as a factory that instantiates contracts and sets them as their
 own wasm admins.

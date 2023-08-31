@@ -1,6 +1,6 @@
 # dao-dao-core
 
-[![docs.rs (with version)](https://img.shields.io/docsrs/dao-dao-core/2.2.0)](https://docs.rs/dao-dao-core/2.2.0/dao_dao_core/index.html)
+[![docs.rs](https://img.shields.io/docsrs/dao-dao-core)](https://docs.rs/dao-dao-core/latest/dao_dao_core/index.html)
 
 This contract is the core module for all DAO DAO DAOs. It handles
 management of voting power and proposal modules, executes messages,

@@ -1,6 +1,6 @@
 # `dao-voting-cw721-staked`
 
-[![docs.rs (with version)](https://img.shields.io/docsrs/dao-voting-cw721-staked/2.2.0)](https://docs.rs/dao-voting-cw721-staked/2.2.0/dao_voting_cw721_staked/)
+[![docs.rs](https://img.shields.io/docsrs/dao-voting-cw721-staked)](https://docs.rs/dao-voting-cw721-staked/latest/dao_voting_cw721_staked/)
 
 This is a basic implementation of an NFT staking contract.
 

@@ -1,6 +1,6 @@
 # dao-proposal-single
 
-[![docs.rs (with version)](https://img.shields.io/docsrs/dao-proposal-single/2.2.0)](https://docs.rs/dao-proposal-single/2.2.0/dao_proposal_single/)
+[![docs.rs](https://img.shields.io/docsrs/dao-proposal-single)](https://docs.rs/dao-proposal-single/latest/dao_proposal_single/)
 
 A proposal module for a DAO DAO DAO which supports simple "yes", "no",
 "abstain" voting. Proposals may have associated messages which will be

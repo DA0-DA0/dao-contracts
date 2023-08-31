@@ -1,6 +1,6 @@
 # dao-migrator
 
-[![docs.rs (with version)](https://img.shields.io/docsrs/dao-migrator/2.2.0)](https://docs.rs/dao-migrator/2.2.0/dao_migrator/)
+[![docs.rs](https://img.shields.io/docsrs/dao-migrator)](https://docs.rs/dao-migrator/latest/dao_migrator/)
 
 Here is the [discussion](https://github.com/DA0-DA0/dao-contracts/discussions/607).
 
