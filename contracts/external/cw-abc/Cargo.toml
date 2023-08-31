@@ -20,7 +20,11 @@ crate-type = ["cdylib", "rlib"]
 backtraces = ["cosmwasm-std/backtraces"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
-# interface = ["dep:cw-orch"] # Adds the dependency when the feature is enabled
+# use test tube feature to enable test-tube integration tests, for example
+# cargo test --features "test-tube"
+test-tube = []
+# when writing tests you may wish to enable test-tube as a default feature
+default = ["test-tube"]
 
 [dependencies]
 cw-utils = { workspace = true }
@@ -39,15 +43,17 @@ token-bindings = { workspace = true }
 cw-ownable = { workspace = true }
 cw-paginate-storage = { workspace = true }
 cw-tokenfactory-issuer = { workspace = true, features = ["library"] }
-# cw-orch = { version = "0.13.3", optional = true }
 
 [dev-dependencies]
 # TODO move to workspace?
 speculoos = "0.11.0"
 anyhow = { workspace = true }
 cw-multi-test = { workspace = true }
-dao-testing = { workspace = true }
+dao-testing = { workspace = true, features = ["test-tube"] }
+osmosis-std = { workspace = true }
 osmosis-test-tube = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 [profile.release]
 rpath = false

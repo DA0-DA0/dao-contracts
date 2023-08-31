@@ -12,7 +12,7 @@ pub mod state;
 // cargo test --features test-tube
 #[cfg(test)]
 #[cfg(feature = "test-tube")]
-mod testtube;
+mod test_tube;
 
 #[cfg(test)]
 mod testing;

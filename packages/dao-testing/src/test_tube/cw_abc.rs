@@ -78,6 +78,32 @@ impl<'a> CwAbc<'a> {
         Ok(code_id)
     }
 
+    pub fn instantiate(
+        app: &'a OsmosisTestApp,
+        code_id: u64,
+        instantiate_msg: &InstantiateMsg,
+        signer: &SigningAccount,
+    ) -> Result<Self, RunnerError> {
+        let wasm = Wasm::new(app);
+        let contract_addr = wasm
+            .instantiate(
+                code_id,
+                &instantiate_msg,
+                Some(&signer.address()),
+                None,
+                &[],
+                signer,
+            )?
+            .data
+            .address;
+
+        Ok(Self {
+            app,
+            code_id,
+            contract_addr,
+        })
+    }
+
     // executes
     pub fn execute(
         &self,

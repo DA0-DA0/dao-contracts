@@ -3,24 +3,28 @@
 #![allow(dead_code)]
 
 use crate::{
-    msg::{ExecuteMsg, InitialBalance, InstantiateMsg, NewTokenInfo, QueryMsg, TokenInfo},
+    abc::{
+        ClosedConfig, CommonsPhaseConfig, CurveType, HatchConfig, MinMax, OpenConfig, ReserveToken,
+        SupplyToken,
+    },
+    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     ContractError,
 };
 
-use cosmwasm_std::{Coin, Uint128};
+use cosmwasm_std::{Coin, Decimal, Uint128};
 use cw_tokenfactory_issuer::msg::{DenomResponse, DenomUnit};
 use cw_utils::Duration;
-use dao_interface::voting::{IsActiveResponse, VotingPowerAtHeightResponse};
-use dao_testing::test_tube::{cw_abc::CwAbc, cw_tokenfactory_issuer::TokenfactoryIssuer};
-use dao_voting::threshold::ActiveThreshold;
-use osmosis_std::types::{
-    cosmos::bank::v1beta1::QueryAllBalancesRequest, cosmwasm::wasm::v1::MsgExecuteContractResponse,
-};
+use dao_testing::test_tube::cw_tokenfactory_issuer::TokenfactoryIssuer;
 use osmosis_test_tube::{
+    osmosis_std::types::cosmos::bank::v1beta1::QueryAllBalancesRequest,
+    osmosis_std::types::cosmwasm::wasm::v1::{
+        MsgExecuteContractResponse, MsgMigrateContract, MsgMigrateContractResponse,
+    },
     Account, Bank, Module, OsmosisTestApp, RunnerError, RunnerExecuteResult, RunnerResult,
     SigningAccount, Wasm,
 };
 use serde::de::DeserializeOwned;
+use std::fmt::Debug;
 use std::path::PathBuf;
 
 pub const DENOM: &str = "ucat";
@@ -28,7 +32,7 @@ pub const JUNO: &str = "ujuno";
 
 pub struct TestEnv<'a> {
     pub app: &'a OsmosisTestApp,
-    pub abc: TfDaoVotingContract<'a>,
+    pub abc: CwAbc<'a>,
     pub tf_issuer: TokenfactoryIssuer<'a>,
     pub accounts: Vec<SigningAccount>,
 }
@@ -105,17 +109,46 @@ impl TestEnvBuilder {
             .init_accounts(&[Coin::new(1000000000000000u128, "uosmo")], 10)
             .unwrap();
 
-        let initial_balances: Vec<InitialBalance> = accounts
-            .iter()
-            .map(|acc| InitialBalance {
-                address: acc.address(),
-                amount: Uint128::new(100),
-            })
-            .collect();
-
         let issuer_id = TokenfactoryIssuer::upload(app, &accounts[0]).unwrap();
 
-        let abc = CwAbc::deploy(app, &InstantiateMsg {}, &accounts[0]).unwrap();
+        let abc = CwAbc::deploy(
+            app,
+            &InstantiateMsg {
+                token_issuer_code_id: issuer_id,
+                supply: SupplyToken {
+                    subdenom: DENOM.to_string(),
+                    metadata: None,
+                    decimals: 6,
+                },
+                reserve: ReserveToken {
+                    denom: JUNO.to_string(),
+                    decimals: 6,
+                },
+                phase_config: CommonsPhaseConfig {
+                    hatch: HatchConfig {
+                        initial_raise: MinMax {
+                            min: Uint128::one(),
+                            max: Uint128::from(1000000u128),
+                        },
+                        initial_price: Uint128::one(),
+                        initial_allocation_ratio: Decimal::percent(10u64),
+                        exit_tax: Decimal::zero(),
+                    },
+                    open: OpenConfig {
+                        allocation_percentage: Decimal::percent(10u64),
+                        exit_tax: Decimal::percent(10u64),
+                    },
+                    closed: ClosedConfig {},
+                },
+                hatcher_allowlist: None,
+                curve_type: CurveType::Constant {
+                    value: Uint128::one(),
+                    scale: 1,
+                },
+            },
+            &accounts[0],
+        )
+        .unwrap();
 
         let issuer_addr = CwAbc::query(&abc, &QueryMsg::TokenContract {}).unwrap();
 
@@ -192,4 +225,170 @@ pub fn assert_contract_err(expected: ContractError, actual: RunnerError) {
         }
         _ => panic!("unexpected error, expect execute error but got: {}", actual),
     };
+}
+
+#[derive(Debug)]
+pub struct CwAbc<'a> {
+    pub app: &'a OsmosisTestApp,
+    pub code_id: u64,
+    pub contract_addr: String,
+}
+
+impl<'a> CwAbc<'a> {
+    pub fn deploy(
+        app: &'a OsmosisTestApp,
+        instantiate_msg: &InstantiateMsg,
+        signer: &SigningAccount,
+    ) -> Result<Self, RunnerError> {
+        let wasm = Wasm::new(app);
+        let token_creation_fee = Coin::new(10000000, "uosmo");
+
+        let code_id = wasm
+            .store_code(&Self::get_wasm_byte_code(), None, signer)?
+            .data
+            .code_id;
+
+        let contract_addr = wasm
+            .instantiate(
+                code_id,
+                &instantiate_msg,
+                Some(&signer.address()),
+                None,
+                &[token_creation_fee],
+                signer,
+            )?
+            .data
+            .address;
+
+        Ok(Self {
+            app,
+            code_id,
+            contract_addr,
+        })
+    }
+
+    pub fn new_with_values(
+        app: &'a OsmosisTestApp,
+        code_id: u64,
+        contract_addr: String,
+    ) -> Result<Self, RunnerError> {
+        Ok(Self {
+            app,
+            code_id,
+            contract_addr,
+        })
+    }
+
+    /// uploads contract and returns a code ID
+    pub fn upload(app: &OsmosisTestApp, signer: &SigningAccount) -> Result<u64, RunnerError> {
+        let wasm = Wasm::new(app);
+
+        let code_id = wasm
+            .store_code(&Self::get_wasm_byte_code(), None, signer)?
+            .data
+            .code_id;
+
+        Ok(code_id)
+    }
+
+    pub fn instantiate(
+        app: &'a OsmosisTestApp,
+        code_id: u64,
+        instantiate_msg: &InstantiateMsg,
+        signer: &SigningAccount,
+    ) -> Result<Self, RunnerError> {
+        let wasm = Wasm::new(app);
+        let contract_addr = wasm
+            .instantiate(
+                code_id,
+                &instantiate_msg,
+                Some(&signer.address()),
+                None,
+                &[],
+                signer,
+            )?
+            .data
+            .address;
+
+        Ok(Self {
+            app,
+            code_id,
+            contract_addr,
+        })
+    }
+
+    // executes
+    pub fn execute(
+        &self,
+        execute_msg: &ExecuteMsg,
+        funds: &[Coin],
+        signer: &SigningAccount,
+    ) -> RunnerExecuteResult<MsgExecuteContractResponse> {
+        let wasm = Wasm::new(self.app);
+        wasm.execute(&self.contract_addr, execute_msg, funds, signer)
+    }
+
+    // queries
+    pub fn query<T>(&self, query_msg: &QueryMsg) -> Result<T, RunnerError>
+    where
+        T: DeserializeOwned,
+    {
+        let wasm = Wasm::new(self.app);
+        wasm.query(&self.contract_addr, query_msg)
+    }
+
+    // pub fn migrate(
+    //     &self,
+    //     testdata: &str,
+    //     signer: &SigningAccount,
+    // ) -> RunnerExecuteResult<MsgMigrateContractResponse> {
+    //     let wasm = Wasm::new(self.app);
+    //     let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    //     let wasm_byte_code =
+    //         std::fs::read(manifest_path.join("tests").join("testdata").join(testdata)).unwrap();
+
+    //     let code_id = wasm.store_code(&wasm_byte_code, None, signer)?.data.code_id;
+    //     self.app.execute(
+    //         MsgMigrateContract {
+    //             sender: signer.address(),
+    //             contract: self.contract_addr.clone(),
+    //             code_id,
+    //             msg: serde_json::to_vec(&MigrateMsg {}).unwrap(),
+    //         },
+    //         "/cosmwasm.wasm.v1.MsgMigrateContract",
+    //         signer,
+    //     )
+    // }
+
+    fn get_wasm_byte_code() -> Vec<u8> {
+        let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let byte_code = std::fs::read(
+            manifest_path
+                .join("..")
+                .join("..")
+                .join("artifacts")
+                .join("cw_tokenfactory_issuer.wasm"),
+        );
+        match byte_code {
+            Ok(byte_code) => byte_code,
+            // On arm processors, the above path is not found, so we try the following path
+            Err(_) => std::fs::read(
+                manifest_path
+                    .join("..")
+                    .join("..")
+                    .join("artifacts")
+                    .join("cw_tokenfactory_issuer-aarch64.wasm"),
+            )
+            .unwrap(),
+        }
+    }
+
+    pub fn execute_error(err: ContractError) -> RunnerError {
+        RunnerError::ExecuteError {
+            msg: format!(
+                "failed to execute message; message index: 0: {}: execute wasm contract failed",
+                err
+            ),
+        }
+    }
 }
