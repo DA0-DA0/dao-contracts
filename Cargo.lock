@@ -741,7 +741,7 @@ dependencies = [
  "getrandom",
  "integer-cbrt",
  "integer-sqrt",
- "osmosis-std 0.16.2",
+ "osmosis-std",
  "osmosis-test-tube",
  "rust_decimal",
  "serde",
