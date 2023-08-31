@@ -1,6 +1,9 @@
 # DAO Contracts
 
+[![GitHub tag (with filter)](https://img.shields.io/github/v/tag/DA0-DA0/dao-contracts?label=Latest%20version&logo=github)](https://github.com/DA0-DA0/dao-contracts/releases/latest)
 [![codecov](https://codecov.io/gh/DA0-DA0/dao-contracts/branch/main/graph/badge.svg?token=SCKOIPYZPV)](https://codecov.io/gh/DA0-DA0/dao-contracts)
+[![Discord](https://img.shields.io/discord/895922260047720449?logo=discord&label=Discord)](https://discord.gg/MUBxdbwJDD)
+[![X (formerly Twitter) URL](https://img.shields.io/twitter/url?url=https%3A%2F%2Ftwitter.com%2FDA0_DA0&label=DA0_DA0)](https://twitter.com/DA0_DA0)
 
 This is a collection of smart contracts for building composable, modular, and upgradable DAOs.
 
