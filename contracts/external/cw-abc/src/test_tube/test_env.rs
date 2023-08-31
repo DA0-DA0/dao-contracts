@@ -12,8 +12,6 @@ use crate::{
 };
 
 use cosmwasm_std::{Coin, Decimal, Uint128};
-use cw_tokenfactory_issuer::msg::{DenomResponse, DenomUnit};
-use cw_utils::Duration;
 use dao_testing::test_tube::cw_tokenfactory_issuer::TokenfactoryIssuer;
 use osmosis_test_tube::{
     osmosis_std::types::cosmos::bank::v1beta1::QueryAllBalancesRequest,
@@ -28,7 +26,8 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 
 pub const DENOM: &str = "ucat";
-pub const JUNO: &str = "ujuno";
+// Needs to match what's configured for test-tube
+pub const RESERVE: &str = "uosmo";
 
 pub struct TestEnv<'a> {
     pub app: &'a OsmosisTestApp,
@@ -121,7 +120,7 @@ impl TestEnvBuilder {
                     decimals: 6,
                 },
                 reserve: ReserveToken {
-                    denom: JUNO.to_string(),
+                    denom: RESERVE.to_string(),
                     decimals: 6,
                 },
                 phase_config: CommonsPhaseConfig {
