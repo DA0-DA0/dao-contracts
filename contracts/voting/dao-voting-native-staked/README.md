@@ -1,6 +1,6 @@
 # CW Native Staked Balance Voting
 
-[![docs.rs](https://img.shields.io/docsrs/dao-voting-native-staked)](https://docs.rs/dao-voting-native-staked/latest/dao_voting_native_staked/)
+[![docs.rs](https://img.shields.io/docsrs/dao-voting-native-staked?logo=docsdotrs)](https://docs.rs/dao-voting-native-staked/latest/dao_voting_native_staked/)
 
 Simple native token voting contract which assumes the native denom
 provided is not used for staking for securing the network e.g. IBC

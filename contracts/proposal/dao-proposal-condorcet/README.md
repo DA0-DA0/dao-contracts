@@ -1,6 +1,6 @@
 # dao-proposal-condorcet
 
-[![docs.rs](https://img.shields.io/docsrs/dao-proposal-condorcet)](https://docs.rs/dao-proposal-condorcet/latest/dao_proposal_condorcet/)
+[![docs.rs](https://img.shields.io/docsrs/dao-proposal-condorcet?logo=docsdotrs)](https://docs.rs/dao-proposal-condorcet/latest/dao_proposal_condorcet/)
 
 This is a DAO DAO proposal module which implements The Condorcet
 Method.

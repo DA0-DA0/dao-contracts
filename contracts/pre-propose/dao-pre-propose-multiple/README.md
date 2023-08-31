@@ -1,6 +1,6 @@
 # Multiple choice proposal deposit contract
 
-[![docs.rs](https://img.shields.io/docsrs/dao-pre-propose-multiple)](https://docs.rs/dao-pre-propose-multiple/latest/dao_pre_propose_multiple/)
+[![docs.rs](https://img.shields.io/docsrs/dao-pre-propose-multiple?logo=docsdotrs)](https://docs.rs/dao-pre-propose-multiple/latest/dao_pre_propose_multiple/)
 
 This is a pre-propose module that manages proposal deposits for the
 `dao-proposal-multiple` proposal module.

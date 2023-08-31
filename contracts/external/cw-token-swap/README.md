@@ -1,6 +1,6 @@
 # cw-token-swap
 
-[![docs.rs](https://img.shields.io/docsrs/cw-token-swap)](https://docs.rs/cw-token-swap/latest/cw_token_swap/)
+[![docs.rs](https://img.shields.io/docsrs/cw-token-swap?logo=docsdotrs)](https://docs.rs/cw-token-swap/latest/cw_token_swap/)
 
 This is an escrow token swap contract for swapping between native and
 cw20 tokens. The contract is instantiated with two counterparties and

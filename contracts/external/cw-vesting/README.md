@@ -1,6 +1,6 @@
 # cw-vesting
 
-[![docs.rs](https://img.shields.io/docsrs/cw-vesting)](https://docs.rs/cw-vesting/latest/cw_vesting/)
+[![docs.rs](https://img.shields.io/docsrs/cw-vesting?logo=docsdotrs)](https://docs.rs/cw-vesting/latest/cw_vesting/)
 
 This contract enables the creation of native && cw20 token streams, which allows a payment to be vested continuously over time.
 

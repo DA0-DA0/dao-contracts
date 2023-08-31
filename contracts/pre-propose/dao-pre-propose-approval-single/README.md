@@ -1,6 +1,6 @@
 # Single choice proposal approval contract
 
-[![docs.rs](https://img.shields.io/docsrs/dao-pre-propose-approval-single)](https://docs.rs/dao-pre-propose-approval-single/latest/dao_pre_propose_approval_single/)
+[![docs.rs](https://img.shields.io/docsrs/dao-pre-propose-approval-single?logo=docsdotrs)](https://docs.rs/dao-pre-propose-approval-single/latest/dao_pre_propose_approval_single/)
 
 This contract implements an approval flow for proposals, it also handles deposit logic. It works with the `cwd-proposal-single` proposal module.
 
