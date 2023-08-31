@@ -1,5 +1,6 @@
 # dao-migrator
 
+[![dao-migrator on crates.io](https://img.shields.io/crates/v/dao-migrator.svg?logo=rust)](https://crates.io/crates/dao-migrator)
 [![docs.rs](https://img.shields.io/docsrs/dao-migrator?logo=docsdotrs)](https://docs.rs/dao-migrator/latest/dao_migrator/)
 
 Here is the [discussion](https://github.com/DA0-DA0/dao-contracts/discussions/607).

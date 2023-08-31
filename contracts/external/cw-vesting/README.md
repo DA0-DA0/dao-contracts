@@ -1,5 +1,6 @@
 # cw-vesting
 
+[![cw-vesting on crates.io](https://img.shields.io/crates/v/cw-vesting.svg?logo=rust)](https://crates.io/crates/cw-vesting)
 [![docs.rs](https://img.shields.io/docsrs/cw-vesting?logo=docsdotrs)](https://docs.rs/cw-vesting/latest/cw_vesting/)
 
 This contract enables the creation of native && cw20 token streams, which allows a payment to be vested continuously over time.

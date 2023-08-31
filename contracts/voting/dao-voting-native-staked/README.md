@@ -1,5 +1,6 @@
 # CW Native Staked Balance Voting
 
+[![dao-voting-native-staked on crates.io](https://img.shields.io/crates/v/dao-voting-native-staked.svg?logo=rust)](https://crates.io/crates/dao-voting-native-staked)
 [![docs.rs](https://img.shields.io/docsrs/dao-voting-native-staked?logo=docsdotrs)](https://docs.rs/dao-voting-native-staked/latest/dao_voting_native_staked/)
 
 Simple native token voting contract which assumes the native denom

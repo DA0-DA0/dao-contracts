@@ -1,5 +1,6 @@
 # Single choice proposal deposit contract
 
+[![dao-pre-propose-single on crates.io](https://img.shields.io/crates/v/dao-pre-propose-single.svg?logo=rust)](https://crates.io/crates/dao-pre-propose-single)
 [![docs.rs](https://img.shields.io/docsrs/dao-pre-propose-single?logo=docsdotrs)](https://docs.rs/dao-pre-propose-single/latest/dao_pre_propose_single/)
 
 This is a pre-propose module that manages proposal deposits for the

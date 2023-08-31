@@ -1,5 +1,6 @@
 # dao-proposal-multiple
 
+[![dao-proposal-multiple on crates.io](https://img.shields.io/crates/v/dao-proposal-multiple.svg?logo=rust)](https://crates.io/crates/dao-proposal-multiple)
 [![docs.rs](https://img.shields.io/docsrs/dao-proposal-multiple?logo=docsdotrs)](https://docs.rs/dao-proposal-multiple/latest/dao_proposal_multiple/)
 
 A proposal module for a DAO DAO DAO which allows the users to select

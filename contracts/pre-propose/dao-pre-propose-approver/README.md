@@ -1,5 +1,6 @@
 # Proposal Approver Contract
 
+[![dao-pre-propose-approver on crates.io](https://img.shields.io/crates/v/dao-pre-propose-approver.svg?logo=rust)](https://crates.io/crates/dao-pre-propose-approver)
 [![docs.rs](https://img.shields.io/docsrs/dao-pre-propose-approver?logo=docsdotrs)](https://docs.rs/dao-pre-propose-approver/latest/dao_pre_propose_approver/)
 
 This contract works in conjuction with `cwd-pre-propose-approval-single` and allows for automatically creating approval proposals when a proposal is submitted for approval.

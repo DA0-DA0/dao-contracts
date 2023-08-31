@@ -1,5 +1,6 @@
 # Multiple choice proposal deposit contract
 
+[![dao-pre-propose-multiple on crates.io](https://img.shields.io/crates/v/dao-pre-propose-multiple.svg?logo=rust)](https://crates.io/crates/dao-pre-propose-multiple)
 [![docs.rs](https://img.shields.io/docsrs/dao-pre-propose-multiple?logo=docsdotrs)](https://docs.rs/dao-pre-propose-multiple/latest/dao_pre_propose_multiple/)
 
 This is a pre-propose module that manages proposal deposits for the

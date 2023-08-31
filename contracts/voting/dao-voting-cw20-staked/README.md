@@ -1,5 +1,6 @@
 # CW20 Staked Balance Voting
 
+[![dao-voting-cw20-staked on crates.io](https://img.shields.io/crates/v/dao-voting-cw20-staked.svg?logo=rust)](https://crates.io/crates/dao-voting-cw20-staked)
 [![docs.rs](https://img.shields.io/docsrs/dao-voting-cw20-staked?logo=docsdotrs)](https://docs.rs/dao-voting-cw20-staked/latest/dao_voting_cw20_staked/)
 
 A voting power module which determines voting power based on the
