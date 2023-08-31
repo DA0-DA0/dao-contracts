@@ -8,7 +8,7 @@ use cw2::set_contract_version;
 use cw_tokenfactory_issuer::msg::{
     ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg,
 };
-use cw_utils::{nonpayable, parse_reply_instantiate_data};
+use cw_utils::parse_reply_instantiate_data;
 use std::collections::HashSet;
 use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 
@@ -40,7 +40,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> CwAbcResult {
-    nonpayable(&info)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let InstantiateMsg {
