@@ -99,7 +99,7 @@ pub fn instantiate(
 
             Ok(Response::new()
                 .add_attribute("action", "instantiate")
-                .add_attribute("group_contract", "address"))
+                .add_attribute("group_contract", group_contract.to_string()))
         }
     }
 }
