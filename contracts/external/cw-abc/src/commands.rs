@@ -140,8 +140,8 @@ pub fn execute_sell(
         // Execute burn on the cw-tokenfactory-issuer contract
         CosmosMsg::<TokenFactoryMsg>::Wasm(WasmMsg::Execute {
             contract_addr: issuer_addr.to_string(),
-            msg: to_binary(&IssuerExecuteMsg::Mint {
-                to_address: info.sender.to_string(),
+            msg: to_binary(&IssuerExecuteMsg::Burn {
+                from_address: info.sender.to_string(),
                 amount: burn_amount,
             })?,
             funds: vec![],
@@ -178,8 +178,8 @@ pub fn execute_sell(
     };
 
     Ok(Response::<TokenFactoryMsg>::new()
-        .add_messages(burn_msgs)
         .add_message(msg_send)
+        .add_messages(burn_msgs)
         .add_attribute("action", "burn")
         .add_attribute("from", burner)
         .add_attribute("amount", burn_amount)

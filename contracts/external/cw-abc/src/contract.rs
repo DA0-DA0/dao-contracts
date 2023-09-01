@@ -244,6 +244,17 @@ pub fn reply(
                 funds: vec![],
             });
 
+            // Grant an allowance to burn
+            msgs.push(WasmMsg::Execute {
+                contract_addr: issuer_addr.clone(),
+                msg: to_binary(&IssuerExecuteMsg::SetBurnerAllowance {
+                    address: env.contract.address.to_string(),
+                    // TODO let this be capped
+                    allowance: Uint128::MAX,
+                })?,
+                funds: vec![],
+            });
+
             // TODO fix metadata
             // // If metadata, set it by calling the contract
             // if let Some(metadata) = token_info.metadata {
