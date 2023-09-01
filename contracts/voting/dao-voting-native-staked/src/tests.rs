@@ -1261,7 +1261,48 @@ fn test_add_remove_hooks() {
 }
 
 #[test]
-pub fn test_migrate_update_version() {
+fn test_staking_hooks() {
+    let mut app = mock_app();
+    let staking_id = app.store_code(staking_contract());
+    let addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            denom: DENOM.to_string(),
+            unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: None,
+        },
+    );
+
+    // Add a staking hook.
+    app.execute_contract(
+        Addr::unchecked(DAO_ADDR),
+        addr.clone(),
+        &ExecuteMsg::AddHook {
+            addr: "hook".to_string(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // TODO need a contract to recieve the message
+    // Stake some tokens
+    let res = stake_tokens(&mut app, addr.clone(), ADDR1, 100, DENOM).unwrap();
+
+    // Make sure hook is included in response
+    println!("stake hooks {:?}", res);
+
+    app.update_block(next_block);
+
+    // Unstake some
+    let res = unstake_tokens(&mut app, addr.clone(), ADDR1, 75).unwrap();
+
+    // Make sure hook is included in response
+    println!("unstake hooks {:?}", res);
+}
+
+#[test]
+fn test_migrate_update_version() {
     let mut deps = mock_dependencies();
     cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
     migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();

@@ -13,6 +13,7 @@ use dao_interface::voting::{
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
 use crate::error::ContractError;
+use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 use crate::msg::{
     DenomResponse, ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg,
     QueryMsg, StakerBalanceResponse,
@@ -138,7 +139,11 @@ pub fn execute_stake(
         |total| -> StdResult<Uint128> { Ok(total.unwrap_or_default().checked_add(amount)?) },
     )?;
 
+    // Add stake hook messages
+    let hook_msgs = stake_hook_msgs(deps.storage, info.sender.clone(), amount)?;
+
     Ok(Response::new()
+        .add_submessages(hook_msgs)
         .add_attribute("action", "stake")
         .add_attribute("amount", amount.to_string())
         .add_attribute("from", info.sender))
@@ -176,6 +181,9 @@ pub fn execute_unstake(
         },
     )?;
 
+    // Add unstake hook messages
+    let hook_msgs = unstake_hook_msgs(deps.storage, info.sender.clone(), amount)?;
+
     let config = CONFIG.load(deps.storage)?;
     match config.unstaking_duration {
         None => {
@@ -185,6 +193,7 @@ pub fn execute_unstake(
             });
             Ok(Response::new()
                 .add_message(msg)
+                .add_submessages(hook_msgs)
                 .add_attribute("action", "unstake")
                 .add_attribute("from", info.sender)
                 .add_attribute("amount", amount)
@@ -203,6 +212,7 @@ pub fn execute_unstake(
                 duration.after(&env.block),
             )?;
             Ok(Response::new()
+                .add_submessages(hook_msgs)
                 .add_attribute("action", "unstake")
                 .add_attribute("from", info.sender)
                 .add_attribute("amount", amount)

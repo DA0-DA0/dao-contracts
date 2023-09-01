@@ -197,6 +197,8 @@ pub fn execute_stake(
         env.block.height,
         |total| -> StdResult<Uint128> { Ok(total.unwrap_or_default().checked_add(amount)?) },
     )?;
+
+    // Add stake hook messages
     let hook_msgs = stake_hook_msgs(deps.storage, info.sender.clone(), amount)?;
 
     Ok(Response::<TokenFactoryMsg>::new()
@@ -237,6 +239,8 @@ pub fn execute_unstake(
                 .map_err(|_e| ContractError::InvalidUnstakeAmount {})
         },
     )?;
+
+    // Add unstake hook messages
     let hook_msgs = unstake_hook_msgs(deps.storage, info.sender.clone(), amount)?;
 
     let config = CONFIG.load(deps.storage)?;
