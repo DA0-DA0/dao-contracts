@@ -19,48 +19,47 @@ pub fn mint(
     to_address: String,
     amount: Uint128,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
-    // validate that to_address is a valid address
+    // Validate that to_address is a valid address
     deps.api.addr_validate(&to_address)?;
 
-    // don't allow minting of 0 coins
+    // Don't allow minting of 0 coins
     if amount.is_zero() {
         return Err(ContractError::ZeroAmount {});
     }
 
-    // decrease minter allowance
+    // Decrease minter allowance
     let allowance = MINTER_ALLOWANCES
         .may_load(deps.storage, &info.sender)?
         .unwrap_or_else(Uint128::zero);
 
-    // if minter allowance goes negative, throw error
+    // If minter allowance goes negative, throw error
     let updated_allowance = allowance
         .checked_sub(amount)
         .map_err(|_| ContractError::not_enough_mint_allowance(amount, allowance))?;
 
-    // if minter allowance goes 0, remove from storage
+    // If minter allowance goes 0, remove from storage
     if updated_allowance.is_zero() {
         MINTER_ALLOWANCES.remove(deps.storage, &info.sender);
     } else {
         MINTER_ALLOWANCES.save(deps.storage, &info.sender, &updated_allowance)?;
     }
 
-    // get token denom from contract
+    // Get token denom from contract
     let denom = DENOM.load(deps.storage)?;
 
-    // create tokenfactory MsgMint which mints coins to the contract address
+    // Create tokenfactory MsgMint which mints coins to the contract address
     let mint_tokens_msg = TokenFactoryMsg::mint_contract_tokens(
         denom.clone(),
         amount,
         env.contract.address.into_string(),
     );
 
-    // send newly minted coins from contract to designated recipient
+    // Send newly minted coins from contract to designated recipient
     let send_tokens_msg = BankMsg::Send {
         to_address: to_address.clone(),
         amount: coins(amount.u128(), denom),
     };
 
-    // dispatch msgs
     Ok(Response::new()
         .add_message(mint_tokens_msg)
         .add_message(send_tokens_msg)
@@ -76,32 +75,32 @@ pub fn burn(
     amount: Uint128,
     address: String,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
-    // don't allow burning of 0 coins
+    // Don't allow burning of 0 coins
     if amount.is_zero() {
         return Err(ContractError::ZeroAmount {});
     }
 
-    // decrease burner allowance
+    // Decrease burner allowance
     let allowance = BURNER_ALLOWANCES
         .may_load(deps.storage, &info.sender)?
         .unwrap_or_else(Uint128::zero);
 
-    // if burner allowance goes negative, throw error
+    // If burner allowance goes negative, throw error
     let updated_allowance = allowance
         .checked_sub(amount)
         .map_err(|_| ContractError::not_enough_burn_allowance(amount, allowance))?;
 
-    // if burner allowance goes 0, remove from storage
+    // If burner allowance goes 0, remove from storage
     if updated_allowance.is_zero() {
         BURNER_ALLOWANCES.remove(deps.storage, &info.sender);
     } else {
         BURNER_ALLOWANCES.save(deps.storage, &info.sender, &updated_allowance)?;
     }
 
-    // get token denom from contract config
+    // Get token denom from contract config
     let denom = DENOM.load(deps.storage)?;
 
-    // create tokenfactory MsgBurn which burns coins from the contract address
+    // Create tokenfactory MsgBurn which burns coins from the contract address
     // NOTE: this requires the contract to own the tokens already
     let burn_from_address = deps.api.addr_validate(&address)?;
     let burn_tokens_msg: cosmwasm_std::CosmosMsg<TokenFactoryMsg> = MsgBurn {
@@ -111,7 +110,6 @@ pub fn burn(
     }
     .into();
 
-    // dispatch msg
     Ok(Response::new()
         .add_message(burn_tokens_msg)
         .add_attribute("action", "burn")
@@ -130,10 +128,10 @@ pub fn update_contract_owner(
 
     // TODO make sure it's possible to renounce ownership all together
     // TODO add test for NO OWNER
-    // validate that new owner is a valid address
+    // Validate that new owner is a valid address
     let new_owner_addr = deps.api.addr_validate(&new_owner)?;
 
-    // update the contract owner in the contract config
+    // Update the contract owner in the contract config
     OWNER.save(deps.storage, &new_owner_addr)?;
 
     Ok(Response::new()
@@ -151,18 +149,17 @@ pub fn update_tokenfactory_admin(
 
     // TODO make sure it's possible to renounce ownership all together
     // TODO add test for NO ADMIN
-    // validate that the new admin is a valid address
+    // Validate that the new admin is a valid address
     let new_admin_addr = deps.api.addr_validate(&new_admin)?;
 
-    // construct tokenfactory change admin msg
-    let change_admin_msg = TokenFactoryMsg::ChangeAdmin {
+    // Construct tokenfactory change admin msg
+    let update_admin_msg = TokenFactoryMsg::ChangeAdmin {
         denom: DENOM.load(deps.storage)?,
         new_admin_address: new_admin_addr.into(),
     };
 
-    // dispatch change admin msg
     Ok(Response::new()
-        .add_message(change_admin_msg)
+        .add_message(update_admin_msg)
         .add_attribute("action", "update_tokenfactory_admin")
         .add_attribute("new_admin", new_admin))
 }
@@ -173,7 +170,7 @@ pub fn set_denom_metadata(
     info: MessageInfo,
     metadata: Metadata,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
-    // only allow current contract owner to set denom metadata
+    // Only allow current contract owner to set denom metadata
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
     Ok(Response::new()
@@ -200,9 +197,9 @@ pub fn set_before_send_hook(
     // Load the Token Factory denom
     let denom = DENOM.load(deps.storage)?;
 
-    // SetBeforeSendHook to this contract
-    // this will trigger sudo endpoint before any bank send
-    // which makes denylisting / freezing possible
+    // SetBeforeSendHook to this contract.
+    // This will trigger sudo endpoint before any bank send,
+    // which makes denylisting / freezing possible.
     let msg_set_beforesend_hook: CosmosMsg<TokenFactoryMsg> = MsgSetBeforeSendHook {
         sender: env.contract.address.to_string(),
         denom,
@@ -227,11 +224,10 @@ pub fn set_burner(
     // Only allow current contract owner to set burner allowance
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
-    // validate that burner is a valid address
+    // Validate that burner is a valid address
     let address = deps.api.addr_validate(&address)?;
 
-    // update allowance of burner
-    // remove key from state if set to 0
+    // Update allowance of burner, remove key from state if set to 0
     if allowance.is_zero() {
         BURNER_ALLOWANCES.remove(deps.storage, &address);
     } else {
@@ -253,11 +249,10 @@ pub fn set_minter(
     // Only allow current contract owner to set minter allowance
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
-    // validate that minter is a valid address
+    // Validate that minter is a valid address
     let address = deps.api.addr_validate(&address)?;
 
-    // update allowance of minter
-    // remove key from state if set to 0
+    // Update allowance of minter, remove key from state if set to 0
     if allowance.is_zero() {
         MINTER_ALLOWANCES.remove(deps.storage, &address);
     } else {
@@ -308,8 +303,7 @@ pub fn deny(
         return Err(ContractError::CannotDenylistSelf {});
     }
 
-    // update denylist status
-    // validate that denylisteed is a valid address
+    // Update denylist status and validate that denylistee is a valid address
     // NOTE: Does not check if new status is same as old status
     // but if status is false, remove if exist to reduce space usage
     if status {
@@ -337,8 +331,7 @@ pub fn allow(
 
     let address = deps.api.addr_validate(&address)?;
 
-    // update denylist status
-    // validate that denylisteed is a valid address
+    // Update allowlist status and validate that allowlistee is a valid address
     // NOTE: Does not check if new status is same as old status
     // but if status is false, remove if exist to reduce space usage
     if status {

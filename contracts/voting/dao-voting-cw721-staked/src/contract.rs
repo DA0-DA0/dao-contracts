@@ -686,8 +686,8 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     // Clear space
                     INITIAL_NFTS.remove(deps.storage);
 
-                    // Last submessage updates owner.
-                    // The reply is used for validation after setup.
+                    // The last submessage updates the minter / owner of the NFT contract,
+                    // and triggers a reply. The reply is used for validation after setup.
                     submessages.push(SubMsg::reply_on_success(
                         WasmMsg::Execute {
                             contract_addr: nft_contract.clone(),
