@@ -1,9 +1,10 @@
 # DAO Contracts
 
 [![GitHub tag (with filter)](https://img.shields.io/github/v/tag/DA0-DA0/dao-contracts?label=Latest%20version&logo=github)](https://github.com/DA0-DA0/dao-contracts/releases/latest)
+[![GitHub contributors](https://img.shields.io/github/contributors/DA0-DA0/dao-contracts?logo=github)](https://github.com/DA0-DA0/dao-contracts/graphs/contributors)
+
+[![GitHub commit activity (branch)](https://img.shields.io/github/commit-activity/m/DA0-DA0/dao-contracts?logo=git)](https://github.com/DA0-DA0/dao-contracts/pulse/monthly)
 [![codecov](https://codecov.io/gh/DA0-DA0/dao-contracts/branch/main/graph/badge.svg?token=SCKOIPYZPV)](https://codecov.io/gh/DA0-DA0/dao-contracts)
-[![GitHub contributors](https://img.shields.io/github/contributors/DA0-DA0/dao-contracts)](https://github.com/DA0-DA0/dao-contracts/graphs/contributors)
-[![GitHub commit activity (branch)](https://img.shields.io/github/commit-activity/m/DA0-DA0/dao-contracts)](https://github.com/DA0-DA0/dao-contracts/pulse/monthly)
 
 [![Discord](https://img.shields.io/discord/895922260047720449?logo=discord&label=Discord)](https://discord.gg/MUBxdbwJDD)
 [![X (formerly Twitter) URL](https://img.shields.io/twitter/url?url=https%3A%2F%2Ftwitter.com%2FDA0_DA0&label=DA0_DA0)](https://twitter.com/DA0_DA0)
