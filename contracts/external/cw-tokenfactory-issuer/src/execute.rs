@@ -118,7 +118,8 @@ pub fn burn(
     Ok(Response::new()
         .add_message(burn_tokens_msg)
         .add_attribute("action", "burn")
-        .add_attribute("from", info.sender)
+        .add_attribute("burner", info.sender)
+        .add_attribute("burn_from_address", burn_from_address.to_string())
         .add_attribute("amount", amount))
 }
 
