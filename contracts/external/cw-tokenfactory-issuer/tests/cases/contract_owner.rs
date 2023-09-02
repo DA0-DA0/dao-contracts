@@ -23,7 +23,7 @@ fn change_owner_by_owner_should_work() {
         env.cw_tokenfactory_issuer.query_owner().unwrap().address
     );
 
-    // previous owner should not be able to execute owner action
+    // Previous owner should not be able to execute owner action
     assert_eq!(
         env.cw_tokenfactory_issuer
             .update_contract_owner(&prev_owner.address(), prev_owner)

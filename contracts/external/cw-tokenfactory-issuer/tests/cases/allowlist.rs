@@ -15,7 +15,7 @@ fn allowlist_by_owner_should_pass() {
         .allow(&allowlistee.address(), true, owner)
         .unwrap();
 
-    // should be allowlist after set true
+    // Should be allowlist after set true
     assert!(
         env.cw_tokenfactory_issuer
             .query_is_allowed(&allowlistee.address())
@@ -27,7 +27,7 @@ fn allowlist_by_owner_should_pass() {
         .allow(&allowlistee.address(), false, owner)
         .unwrap();
 
-    // should be unallowlist after set false
+    // Should be unallowlist after set false
     assert!(
         !env.cw_tokenfactory_issuer
             .query_is_allowed(&allowlistee.address())
@@ -52,7 +52,6 @@ fn allowlist_by_non_owern_should_fail() {
     );
 }
 
-// query allowlist
 #[test]
 fn query_allowlist_within_default_limit() {
     test_query_within_default_limit::<StatusInfo, _, _>(

@@ -15,7 +15,7 @@ fn denylist_by_owner_should_pass() {
         .deny(&denylistee.address(), true, owner)
         .unwrap();
 
-    // should be denylist after set true
+    // Should be denylist after set true
     assert!(
         env.cw_tokenfactory_issuer
             .query_is_denied(&denylistee.address())
@@ -27,7 +27,7 @@ fn denylist_by_owner_should_pass() {
         .deny(&denylistee.address(), false, owner)
         .unwrap();
 
-    // should be undenylist after set false
+    // Should be undenylist after set false
     assert!(
         !env.cw_tokenfactory_issuer
             .query_is_denied(&denylistee.address())
@@ -39,7 +39,7 @@ fn denylist_by_owner_should_pass() {
 #[test]
 fn denylist_by_non_denylister_should_fail() {
     let env = TestEnv::default();
-    let non_owner = &env.test_accs[0];
+    let non_owner = &env.test_accs[1];
     let denylistee = &env.test_accs[2];
     let err = env
         .cw_tokenfactory_issuer
@@ -56,15 +56,18 @@ fn denylist_by_non_denylister_should_fail() {
 fn set_denylist_to_issuer_itself_fails() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
-    let non_owner = &env.test_accs[1];
 
-    // TODO check the error message and make sure this is correct
-    env.cw_tokenfactory_issuer
+    let err = env
+        .cw_tokenfactory_issuer
         .deny(&env.cw_tokenfactory_issuer.contract_addr, true, owner)
         .unwrap_err();
+
+    assert_eq!(
+        err,
+        TokenfactoryIssuer::execute_error(ContractError::CannotDenylistSelf {})
+    );
 }
 
-// query denylist
 #[test]
 fn query_denylist_within_default_limit() {
     test_query_within_default_limit::<StatusInfo, _, _>(

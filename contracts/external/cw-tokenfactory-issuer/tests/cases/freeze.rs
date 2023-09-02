@@ -1,9 +1,6 @@
-use cw_tokenfactory_issuer::{msg::StatusInfo, ContractError};
-use osmosis_test_tube::Account;
+use cw_tokenfactory_issuer::ContractError;
 
-use crate::test_env::{
-    test_query_over_default_limit, test_query_within_default_limit, TestEnv, TokenfactoryIssuer,
-};
+use crate::test_env::{TestEnv, TokenfactoryIssuer};
 
 #[test]
 fn freeze_by_owener_should_pass() {
@@ -12,7 +9,7 @@ fn freeze_by_owener_should_pass() {
 
     env.cw_tokenfactory_issuer.freeze(true, owner).unwrap();
 
-    // should be frozen after set true
+    // Should be frozen after set true
     assert!(
         env.cw_tokenfactory_issuer
             .query_is_frozen()
@@ -22,7 +19,7 @@ fn freeze_by_owener_should_pass() {
 
     env.cw_tokenfactory_issuer.freeze(false, owner).unwrap();
 
-    // should be unfrozen after set false
+    // Should be unfrozen after set false
     assert!(
         !env.cw_tokenfactory_issuer
             .query_is_frozen()

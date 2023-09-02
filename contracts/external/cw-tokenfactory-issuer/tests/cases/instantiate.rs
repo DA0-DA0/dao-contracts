@@ -17,7 +17,7 @@ fn instantiate_with_new_token_shoud_set_initial_state_correctly() {
 
     let owner = &env.test_accs[0];
 
-    // check tokenfactory's token admin
+    // Check tokenfactory's token admin
     let denom = format!(
         "factory/{}/{}",
         env.cw_tokenfactory_issuer.contract_addr, subdenom
@@ -29,7 +29,7 @@ fn instantiate_with_new_token_shoud_set_initial_state_correctly() {
         "token admin must be tokenfactory-issuer contract"
     );
 
-    // check initial contract state
+    // Check initial contract state
     let contract_denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
     assert_eq!(
         denom, contract_denom,
@@ -71,7 +71,7 @@ fn instantiate_with_new_token_shoud_set_hook_correctly() {
 
     env.cw_tokenfactory_issuer.freeze(true, owner).unwrap();
 
-    // bank send should fail
+    // Bank send should fail
     let err = env
         .send_tokens(
             env.test_accs[1].address(),

@@ -9,7 +9,7 @@ use crate::test_env::{TestEnv, TokenfactoryIssuer};
 fn set_denom_metadata_by_contract_owner_should_work() {
     let subdenom = "usthb".to_string();
 
-    // set no metadata
+    // Set no metadata
     let env = TestEnv::new(InstantiateMsg::NewToken { subdenom }, 0).unwrap();
     let owner = &env.test_accs[0];
 
@@ -42,7 +42,7 @@ fn set_denom_metadata_by_contract_owner_should_work() {
 fn set_denom_metadata_by_contract_non_owner_should_fail() {
     let subdenom = "usthb".to_string();
 
-    // set no metadata
+    // Set no metadata
     let env = TestEnv::new(InstantiateMsg::NewToken { subdenom }, 0).unwrap();
     let non_owner = &env.test_accs[1];
 
@@ -67,7 +67,7 @@ fn set_denom_metadata_by_contract_non_owner_should_fail() {
         symbol: "STHB".to_string(),
     };
 
-    // set denom metadata
+    // Set denom metadata
     let err = env
         .cw_tokenfactory_issuer
         .set_denom_metadata(metadata, non_owner)
@@ -83,7 +83,7 @@ fn set_denom_metadata_by_contract_non_owner_should_fail() {
 fn set_denom_metadata_with_base_denom_unit_should_overides_default_base_denom_unit() {
     let subdenom = "usthb".to_string();
 
-    // set no metadata
+    // Set no metadata
     let env = TestEnv::new(InstantiateMsg::NewToken { subdenom }, 0).unwrap();
     let owner = &env.test_accs[0];
 
@@ -108,13 +108,13 @@ fn set_denom_metadata_with_base_denom_unit_should_overides_default_base_denom_un
         symbol: "STHB".to_string(),
     };
 
-    // set denom metadata
+    // Set denom metadata
     env.cw_tokenfactory_issuer
         .set_denom_metadata(metadata.clone(), owner)
         .unwrap();
 
-    // should update metadata
-
+    // // TODO fix up this metadata test
+    // Should update metadata
     // assert_eq!(
     //     env.bank()
     //         .query_denom_metadata(&QueryDenomMetadataRequest {
