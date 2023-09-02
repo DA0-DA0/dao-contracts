@@ -1046,7 +1046,7 @@ fn test_active_threshold_percent_rounds_up() {
 
 #[test]
 fn test_active_threshold_none() {
-    let mut app = App::default();
+    let mut app = mock_app();
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
@@ -1140,7 +1140,7 @@ fn test_update_active_threshold() {
 #[test]
 #[should_panic(expected = "Active threshold percentage must be greater than 0 and less than 1")]
 fn test_active_threshold_percentage_gt_100() {
-    let mut app = App::default();
+    let mut app = mock_app();
     let staking_id = app.store_code(staking_contract());
     instantiate_staking(
         &mut app,
@@ -1158,7 +1158,7 @@ fn test_active_threshold_percentage_gt_100() {
 #[test]
 #[should_panic(expected = "Active threshold percentage must be greater than 0 and less than 1")]
 fn test_active_threshold_percentage_lte_0() {
-    let mut app = App::default();
+    let mut app = mock_app();
     let staking_id = app.store_code(staking_contract());
     instantiate_staking(
         &mut app,
@@ -1176,7 +1176,7 @@ fn test_active_threshold_percentage_lte_0() {
 #[test]
 #[should_panic(expected = "Absolute count threshold cannot be greater than the total token supply")]
 fn test_active_threshold_absolute_count_invalid() {
-    let mut app = App::default();
+    let mut app = mock_app();
     let staking_id = app.store_code(staking_contract());
     instantiate_staking(
         &mut app,
@@ -1185,7 +1185,7 @@ fn test_active_threshold_absolute_count_invalid() {
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
             active_threshold: Some(ActiveThreshold::AbsoluteCount {
-                count: Uint128::new(301),
+                count: Uint128::new(3000000000000000000),
             }),
         },
     );
@@ -1193,7 +1193,7 @@ fn test_active_threshold_absolute_count_invalid() {
 
 #[test]
 fn test_add_remove_hooks() {
-    let mut app = App::default();
+    let mut app = mock_app();
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
         &mut app,
