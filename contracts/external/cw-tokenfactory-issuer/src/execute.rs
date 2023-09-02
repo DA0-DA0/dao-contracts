@@ -136,7 +136,6 @@ pub fn change_contract_owner(
     // update the contract owner in the contract config
     OWNER.save(deps.storage, &new_owner_addr)?;
 
-    // return OK
     Ok(Response::new()
         .add_attribute("action", "change_contract_owner")
         .add_attribute("new_owner", new_owner))
@@ -205,7 +204,6 @@ pub fn set_blacklister(
         BLACKLISTER_ALLOWANCES.remove(deps.storage, &address);
     }
 
-    // Return OK
     Ok(Response::new()
         .add_attribute("action", "set_blacklister")
         .add_attribute("blacklister", address)
@@ -263,7 +261,6 @@ pub fn set_freezer(
         FREEZER_ALLOWANCES.remove(deps.storage, &address);
     }
 
-    // return OK
     Ok(Response::new()
         .add_attribute("action", "set_freezer")
         .add_attribute("freezer", address)
@@ -324,7 +321,6 @@ pub fn set_burner(
         BURNER_ALLOWANCES.save(deps.storage, &address, &allowance)?;
     }
 
-    // return OK
     Ok(Response::new()
         .add_attribute("action", "set_burner")
         .add_attribute("burner", address)
@@ -351,7 +347,6 @@ pub fn set_minter(
         MINTER_ALLOWANCES.save(deps.storage, &address, &allowance)?;
     }
 
-    // return OK
     Ok(Response::new()
         .add_attribute("action", "set_minter")
         .add_attribute("minter", address)
@@ -372,7 +367,6 @@ pub fn freeze(
     // NOTE: Does not check if new status is same as old status
     IS_FROZEN.save(deps.storage, &status)?;
 
-    // return OK
     Ok(Response::new()
         .add_attribute("action", "freeze")
         .add_attribute("status", status.to_string()))
@@ -407,7 +401,6 @@ pub fn blacklist(
         BLACKLISTED_ADDRESSES.remove(deps.storage, &address);
     }
 
-    // return OK
     Ok(Response::new()
         .add_attribute("action", "blacklist")
         .add_attribute("address", address)
@@ -437,9 +430,8 @@ pub fn whitelist(
         WHITELISTED_ADDRESSES.remove(deps.storage, &address);
     }
 
-    // return OK
     Ok(Response::new()
-        .add_attribute("action", "blacklist")
+        .add_attribute("action", "whitelist")
         .add_attribute("address", address)
         .add_attribute("status", status.to_string()))
 }
