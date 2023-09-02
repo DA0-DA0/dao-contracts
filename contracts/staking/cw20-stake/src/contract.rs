@@ -8,7 +8,6 @@ use cosmwasm_std::{
 
 use cw20::{Cw20ReceiveMsg, TokenInfoResponse};
 
-use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 use crate::math;
 use crate::msg::{
     ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg,
@@ -32,6 +31,7 @@ pub use cw20_base::contract::{
 pub use cw20_base::enumerable::{query_all_accounts, query_owner_allowances};
 use cw_controllers::ClaimsResponse;
 use cw_utils::Duration;
+use dao_hooks::stake::{stake_hook_msgs, unstake_hook_msgs};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cw20-stake";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -182,7 +182,7 @@ pub fn execute_stake(
         deps.storage,
         &balance.checked_add(amount).map_err(StdError::overflow)?,
     )?;
-    let hook_msgs = stake_hook_msgs(deps.storage, sender.clone(), amount_to_stake)?;
+    let hook_msgs = stake_hook_msgs(HOOKS, deps.storage, sender.clone(), amount_to_stake)?;
     Ok(Response::new()
         .add_submessages(hook_msgs)
         .add_attribute("action", "stake")
@@ -230,7 +230,7 @@ pub fn execute_unstake(
             .checked_sub(amount_to_claim)
             .map_err(StdError::overflow)?,
     )?;
-    let hook_msgs = unstake_hook_msgs(deps.storage, info.sender.clone(), amount)?;
+    let hook_msgs = unstake_hook_msgs(HOOKS, deps.storage, info.sender.clone(), amount)?;
     match config.unstaking_duration {
         None => {
             let cw_send_msg = cw20::Cw20ExecuteMsg::Transfer {

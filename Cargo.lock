@@ -1291,6 +1291,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-controllers 1.1.0",
+ "cw-hooks",
  "cw-multi-test",
  "cw-ownable",
  "cw-paginate-storage 2.2.0",
@@ -1301,6 +1302,7 @@ dependencies = [
  "cw20 1.1.0",
  "cw20-base 1.1.0",
  "cw20-stake 0.2.6",
+ "dao-hooks",
  "thiserror",
 ]
 
@@ -1322,6 +1324,7 @@ dependencies = [
  "cw20 1.1.0",
  "cw20-base 1.1.0",
  "cw20-stake 2.2.0",
+ "dao-hooks",
  "stake-cw20-external-rewards",
  "thiserror",
 ]
@@ -2108,6 +2111,7 @@ dependencies = [
  "cw721-base 0.18.0",
  "cw721-controllers",
  "dao-dao-macros",
+ "dao-hooks",
  "dao-interface",
  "dao-testing",
  "dao-voting 2.2.0",
@@ -2134,6 +2138,7 @@ dependencies = [
  "cw-utils 1.0.1",
  "cw2 1.1.0",
  "dao-dao-macros",
+ "dao-hooks",
  "dao-interface",
  "dao-voting 2.2.0",
  "thiserror",

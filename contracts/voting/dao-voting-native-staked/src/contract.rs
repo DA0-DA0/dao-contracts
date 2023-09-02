@@ -7,13 +7,13 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_controllers::ClaimsResponse;
 use cw_utils::{must_pay, Duration};
+use dao_hooks::stake::{stake_hook_msgs, unstake_hook_msgs};
 use dao_interface::voting::{
     IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
 use crate::error::ContractError;
-use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 use crate::msg::{
     DenomResponse, ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg,
     QueryMsg, StakerBalanceResponse,
@@ -146,7 +146,7 @@ pub fn execute_stake(
     )?;
 
     // Add stake hook messages
-    let hook_msgs = stake_hook_msgs(deps.storage, info.sender.clone(), amount)?;
+    let hook_msgs = stake_hook_msgs(HOOKS, deps.storage, info.sender.clone(), amount)?;
 
     Ok(Response::new()
         .add_submessages(hook_msgs)
@@ -188,7 +188,7 @@ pub fn execute_unstake(
     )?;
 
     // Add unstake hook messages
-    let hook_msgs = unstake_hook_msgs(deps.storage, info.sender.clone(), amount)?;
+    let hook_msgs = unstake_hook_msgs(HOOKS, deps.storage, info.sender.clone(), amount)?;
 
     let config = CONFIG.load(deps.storage)?;
     match config.unstaking_duration {

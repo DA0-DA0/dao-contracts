@@ -1,10 +1,3 @@
-use crate::contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION};
-use crate::error::ContractError;
-use crate::msg::{
-    DenomResponse, ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg,
-    QueryMsg, StakerBalanceResponse,
-};
-use crate::state::Config;
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{coins, Addr, Coin, Decimal, Empty, Uint128};
 use cw_controllers::ClaimsResponse;
@@ -16,6 +9,14 @@ use dao_interface::voting::{
     InfoResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
+
+use crate::contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION};
+use crate::error::ContractError;
+use crate::msg::{
+    DenomResponse, ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg,
+    QueryMsg, StakerBalanceResponse,
+};
+use crate::state::Config;
 
 const DAO_ADDR: &str = "dao";
 const ADDR1: &str = "addr1";

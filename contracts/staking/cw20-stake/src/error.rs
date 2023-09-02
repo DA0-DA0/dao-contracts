@@ -10,7 +10,7 @@ pub enum ContractError {
     #[error(transparent)]
     Ownership(#[from] cw_ownable::OwnershipError),
     #[error(transparent)]
-    HookError(#[from] cw_controllers::HookError),
+    HookError(#[from] cw_hooks::HookError),
 
     #[error("Provided cw20 errored in response to TokenInfo query")]
     InvalidCw20 {},

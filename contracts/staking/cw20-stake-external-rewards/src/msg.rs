@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw20::{Cw20ReceiveMsg, Denom};
-use cw20_stake::hooks::StakeChangedHookMsg;
+use dao_hooks::stake::StakeChangedHookMsg;
 
 use crate::state::{Config, RewardConfig};
 

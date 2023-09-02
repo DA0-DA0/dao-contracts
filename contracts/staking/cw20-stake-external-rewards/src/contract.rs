@@ -19,7 +19,7 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw20::{Cw20ReceiveMsg, Denom};
-use cw20_stake::hooks::StakeChangedHookMsg;
+use dao_hooks::stake::StakeChangedHookMsg;
 
 use cw20::Denom::Cw20;
 use std::cmp::min;
