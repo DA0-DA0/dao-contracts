@@ -13,7 +13,7 @@ use cosmwasm_std::{
     MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw721::{Cw721ReceiveMsg, NumTokensResponse};
+use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NumTokensResponse};
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration};
 use dao_interface::state::Admin;
@@ -93,8 +93,19 @@ pub fn instantiate(
                 }
             }
             ActiveThreshold::AbsoluteCount { count } => {
+                // Check Absolute count is not zero
                 if count.is_zero() {
                     return Err(ContractError::ZeroActiveCount {});
+                }
+
+                // Check Absolute count is less than the supply of NFTs for existing NFT contracts
+                if let NftContract::Existing { ref address } = msg.nft_contract {
+                    let nft_supply: NumTokensResponse = deps
+                        .querier
+                        .query_wasm_smart(address, &Cw721QueryMsg::NumTokens {})?;
+                    if count > &Uint128::new(nft_supply.count.into()) {
+                        return Err(ContractError::InvalidActiveCount {});
+                    }
                 }
             }
         }
@@ -641,6 +652,15 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     CONFIG.save(deps.storage, &config)?;
 
                     let initial_nfts = INITITIAL_NFTS.load(deps.storage)?;
+
+                    // Check that absolute count is not greater than supply
+                    if let Some(active_threshold) = ACTIVE_THRESHOLD.may_load(deps.storage)? {
+                        if let ActiveThreshold::AbsoluteCount { count } = active_threshold {
+                            if count > Uint128::new(initial_nfts.len() as u128) {
+                                return Err(ContractError::InvalidActiveCount {});
+                            }
+                        }
+                    }
 
                     // Add mint submessages
                     let mint_submessages: Vec<SubMsg> = initial_nfts

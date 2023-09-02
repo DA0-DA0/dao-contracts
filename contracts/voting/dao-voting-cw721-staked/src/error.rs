@@ -12,6 +12,9 @@ pub enum ContractError {
     #[error(transparent)]
     HookError(#[from] cw_controllers::HookError),
 
+    #[error("Active threshold count is greater than supply")]
+    InvalidActiveCount {},
+
     #[error("Active threshold percentage must be greater than 0 and less than 1")]
     InvalidActivePercentage {},
 

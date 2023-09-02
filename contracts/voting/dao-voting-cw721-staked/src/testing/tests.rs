@@ -24,6 +24,7 @@ use crate::{
     },
 };
 
+use super::instantiate::instantiate_cw721_base;
 use super::{
     execute::{add_hook, remove_hook},
     is_error,
@@ -493,6 +494,79 @@ fn test_instantiate_zero_active_threshold_count() {
             unstaking_duration: None,
             active_threshold: Some(ActiveThreshold::AbsoluteCount {
                 count: Uint128::zero(),
+            }),
+        },
+        &[],
+        "cw721_voting",
+        None,
+    )
+    .unwrap();
+}
+
+#[test]
+#[should_panic(expected = "Active threshold count is greater than supply")]
+fn test_instantiate_invalid_active_threshold_count_new_nft() {
+    let mut app = App::default();
+    let cw721_id = app.store_code(cw721_base_contract());
+    let module_id = app.store_code(voting_cw721_staked_contract());
+
+    app.instantiate_contract(
+        module_id,
+        Addr::unchecked(CREATOR_ADDR),
+        &InstantiateMsg {
+            owner: Some(Admin::Address {
+                addr: CREATOR_ADDR.to_string(),
+            }),
+            nft_contract: NftContract::New {
+                code_id: cw721_id,
+                label: "Test NFT".to_string(),
+                msg: to_binary(&Cw721InstantiateMsg {
+                    name: "Test NFT".to_string(),
+                    symbol: "TEST".to_string(),
+                    minter: CREATOR_ADDR.to_string(),
+                })
+                .unwrap(),
+                initial_nfts: vec![to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                    owner: CREATOR_ADDR.to_string(),
+                    token_uri: Some("https://example.com".to_string()),
+                    token_id: "1".to_string(),
+                    extension: Empty {},
+                })
+                .unwrap()],
+            },
+            unstaking_duration: None,
+            active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                count: Uint128::new(100),
+            }),
+        },
+        &[],
+        "cw721_voting",
+        None,
+    )
+    .unwrap();
+}
+
+#[test]
+#[should_panic(expected = "Active threshold count is greater than supply")]
+fn test_instantiate_invalid_active_threshold_count_existing_nft() {
+    let mut app = App::default();
+    let cw721_id = app.store_code(cw721_base_contract());
+    let module_id = app.store_code(voting_cw721_staked_contract());
+    let cw721_addr = instantiate_cw721_base(&mut app, CREATOR_ADDR, CREATOR_ADDR);
+
+    app.instantiate_contract(
+        module_id,
+        Addr::unchecked(CREATOR_ADDR),
+        &InstantiateMsg {
+            owner: Some(Admin::Address {
+                addr: CREATOR_ADDR.to_string(),
+            }),
+            nft_contract: NftContract::Existing {
+                address: cw721_addr.to_string(),
+            },
+            unstaking_duration: None,
+            active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                count: Uint128::new(100),
             }),
         },
         &[],
