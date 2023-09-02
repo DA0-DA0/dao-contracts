@@ -127,7 +127,7 @@ pub fn instantiate(
         TokenInfo::New(token) => {
             // Tnstantiate cw-token-factory-issuer contract
             // DAO (sender) is set as contract admin
-            let issuer_instantiate_msg = SubMsg::reply_always(
+            let issuer_instantiate_msg = SubMsg::reply_on_success(
                 WasmMsg::Instantiate {
                     admin: Some(info.sender.to_string()),
                     code_id: msg.token_issuer_code_id,
