@@ -88,7 +88,7 @@ pub fn execute(
             from_address: address,
         } => execute::burn(deps, env, info, amount, address),
         ExecuteMsg::Blacklist { address, status } => {
-            execute::blacklist(deps, info, address, status)
+            execute::blacklist(deps, env, info, address, status)
         }
         ExecuteMsg::Whitelist { address, status } => {
             execute::whitelist(deps, info, address, status)

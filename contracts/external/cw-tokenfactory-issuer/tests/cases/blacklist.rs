@@ -147,6 +147,21 @@ fn blacklist_by_blacklister_should_pass() {
 }
 
 #[test]
+fn blacklist_issuer_itself_fails() {
+    let env = TestEnv::default();
+    let owner = &env.test_accs[0];
+    let non_owner = &env.test_accs[1];
+
+    env.cw_tokenfactory_issuer
+        .set_blacklister(&non_owner.address(), true, owner)
+        .unwrap();
+    // TODO check the error message and make sure this is correct
+    env.cw_tokenfactory_issuer
+        .blacklist(&env.cw_tokenfactory_issuer.address, true, non_owner)
+        .unwrap_err();
+}
+
+#[test]
 fn blacklist_by_non_blacklister_should_fail() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];

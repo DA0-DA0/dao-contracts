@@ -380,6 +380,7 @@ pub fn freeze(
 
 pub fn blacklist(
     deps: DepsMut<TokenFactoryQuery>,
+    env: Env,
     info: MessageInfo,
     address: String,
     status: bool,
@@ -390,6 +391,11 @@ pub fn blacklist(
     check_bool_allowance(deps.as_ref(), info, BLACKLISTER_ALLOWANCES)?;
 
     let address = deps.api.addr_validate(&address)?;
+
+    // Check this issuer contract is not blacklisting itself
+    if address == env.contract.address {
+        return Err(ContractError::CannotBlacklistSelf {});
+    }
 
     // update blacklisted status
     // validate that blacklisteed is a valid address

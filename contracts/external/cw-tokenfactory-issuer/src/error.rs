@@ -15,6 +15,9 @@ pub enum ContractError {
     #[error("The address '{address}' is blacklisted")]
     Blacklisted { address: String },
 
+    #[error("Cannot blacklist the issuer contract itself")]
+    CannotBlacklistSelf {},
+
     #[error("The contract is frozen for denom {denom:?}")]
     ContractFrozen { denom: String },
 
