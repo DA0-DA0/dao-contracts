@@ -1,6 +1,6 @@
+use cw_tokenfactory_issuer::msg::QueryMsg;
 use cw_tokenfactory_issuer::ContractError;
 
-use crate::msg::QueryMsg;
 use crate::test_env::{TestEnv, TokenfactoryIssuer};
 
 #[test]

@@ -1,0 +1,106 @@
+use cw_tokenfactory_issuer::{msg::StatusInfo, ContractError};
+use osmosis_test_tube::Account;
+
+use crate::test_env::{
+    test_query_over_default_limit, test_query_within_default_limit, TestEnv, TokenfactoryIssuer,
+};
+
+#[test]
+fn allowlist_by_owner_should_pass() {
+    let env = TestEnv::default();
+    let owner = &env.test_accs[0];
+    let allowlistee = &env.test_accs[2];
+
+    env.cw_tokenfactory_issuer
+        .allow(&allowlistee.address(), true, owner)
+        .unwrap();
+
+    // should be allowlist after set true
+    assert!(
+        env.cw_tokenfactory_issuer
+            .query_is_allowed(&allowlistee.address())
+            .unwrap()
+            .status
+    );
+
+    env.cw_tokenfactory_issuer
+        .allow(&allowlistee.address(), false, owner)
+        .unwrap();
+
+    // should be unallowlist after set false
+    assert!(
+        !env.cw_tokenfactory_issuer
+            .query_is_allowed(&allowlistee.address())
+            .unwrap()
+            .status
+    );
+}
+
+#[test]
+fn allowlist_by_non_owern_should_fail() {
+    let env = TestEnv::default();
+    let non_owner = &env.test_accs[1];
+    let allowlistee = &env.test_accs[2];
+    let err = env
+        .cw_tokenfactory_issuer
+        .allow(&allowlistee.address(), true, non_owner)
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        TokenfactoryIssuer::execute_error(ContractError::Unauthorized {})
+    );
+}
+
+// query allowlist
+#[test]
+fn query_allowlist_within_default_limit() {
+    test_query_within_default_limit::<StatusInfo, _, _>(
+        |(_, addr)| StatusInfo {
+            address: addr.to_string(),
+            status: true,
+        },
+        |env| {
+            move |expected_result| {
+                let owner = &env.test_accs[0];
+                env.cw_tokenfactory_issuer
+                    .allow(&expected_result.address, true, owner)
+                    .unwrap();
+            }
+        },
+        |env| {
+            move |start_after, limit| {
+                env.cw_tokenfactory_issuer
+                    .query_allowlist(start_after, limit)
+                    .unwrap()
+                    .allowlist
+            }
+        },
+    );
+}
+
+#[test]
+fn query_allowlist_over_default_limit() {
+    test_query_over_default_limit::<StatusInfo, _, _>(
+        |(_, addr)| StatusInfo {
+            address: addr.to_string(),
+            status: true,
+        },
+        |env| {
+            move |expected_result| {
+                let owner = &env.test_accs[0];
+                env.cw_tokenfactory_issuer
+                    .allow(&expected_result.address, true, owner)
+                    .unwrap();
+            }
+        },
+        |env| {
+            move |start_after, limit| {
+                env.cw_tokenfactory_issuer
+                    .query_allowlist(start_after, limit)
+                    .unwrap()
+                    .allowlist
+            }
+        },
+    );
+}

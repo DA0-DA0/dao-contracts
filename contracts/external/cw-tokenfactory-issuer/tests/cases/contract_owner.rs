@@ -15,7 +15,7 @@ fn change_owner_by_owner_should_work() {
     );
 
     env.cw_tokenfactory_issuer
-        .change_contract_owner(&new_owner.address(), prev_owner)
+        .update_contract_owner(&new_owner.address(), prev_owner)
         .unwrap();
 
     assert_eq!(
@@ -26,7 +26,7 @@ fn change_owner_by_owner_should_work() {
     // previous owner should not be able to execute owner action
     assert_eq!(
         env.cw_tokenfactory_issuer
-            .change_contract_owner(&prev_owner.address(), prev_owner)
+            .update_contract_owner(&prev_owner.address(), prev_owner)
             .unwrap_err(),
         TokenfactoryIssuer::execute_error(ContractError::Unauthorized {})
     );
@@ -39,7 +39,7 @@ fn change_owner_by_non_owner_should_fail() {
 
     let err = env
         .cw_tokenfactory_issuer
-        .change_contract_owner(&new_owner.address(), new_owner)
+        .update_contract_owner(&new_owner.address(), new_owner)
         .unwrap_err();
 
     assert_eq!(

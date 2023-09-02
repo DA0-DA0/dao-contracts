@@ -6,13 +6,10 @@ use osmosis_std::types::osmosis::tokenfactory::v1beta1::{
 use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 
 use crate::error::ContractError;
-use crate::helpers::{
-    check_before_send_hook_features_enabled, check_bool_allowance, check_is_contract_owner,
-};
+use crate::helpers::{check_before_send_hook_features_enabled, check_is_contract_owner};
 use crate::state::{
-    BEFORE_SEND_HOOK_FEATURES_ENABLED, BLACKLISTED_ADDRESSES, BLACKLISTERS, BURNER_ALLOWANCES,
-    DENOM, FREEZER_ALLOWANCES, IS_FROZEN, MINTER_ALLOWANCES, OWNER, WHITELISTED_ADDRESSES,
-    WHITELISTERS,
+    ALLOWLIST, BEFORE_SEND_HOOK_FEATURES_ENABLED, BURNER_ALLOWANCES, DENOM, DENYLIST, IS_FROZEN,
+    MINTER_ALLOWANCES, OWNER,
 };
 
 pub fn mint(
@@ -123,7 +120,7 @@ pub fn burn(
         .add_attribute("amount", amount))
 }
 
-pub fn change_contract_owner(
+pub fn update_contract_owner(
     deps: DepsMut<TokenFactoryQuery>,
     info: MessageInfo,
     new_owner: String,
@@ -131,6 +128,8 @@ pub fn change_contract_owner(
     // Only allow current contract owner to change owner
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
+    // TODO make sure it's possible to renounce ownership all together
+    // TODO add test for NO OWNER
     // validate that new owner is a valid address
     let new_owner_addr = deps.api.addr_validate(&new_owner)?;
 
@@ -138,11 +137,11 @@ pub fn change_contract_owner(
     OWNER.save(deps.storage, &new_owner_addr)?;
 
     Ok(Response::new()
-        .add_attribute("action", "change_contract_owner")
+        .add_attribute("action", "update_contract_owner")
         .add_attribute("new_owner", new_owner))
 }
 
-pub fn change_tokenfactory_admin(
+pub fn update_tokenfactory_admin(
     deps: DepsMut<TokenFactoryQuery>,
     info: MessageInfo,
     new_admin: String,
@@ -150,6 +149,8 @@ pub fn change_tokenfactory_admin(
     // Only allow current contract owner to change tokenfactory admin
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
+    // TODO make sure it's possible to renounce ownership all together
+    // TODO add test for NO ADMIN
     // validate that the new admin is a valid address
     let new_admin_addr = deps.api.addr_validate(&new_admin)?;
 
@@ -162,7 +163,7 @@ pub fn change_tokenfactory_admin(
     // dispatch change admin msg
     Ok(Response::new()
         .add_message(change_admin_msg)
-        .add_attribute("action", "change_tokenfactory_admin")
+        .add_attribute("action", "update_tokenfactory_admin")
         .add_attribute("new_admin", new_admin))
 }
 
@@ -183,91 +184,6 @@ pub fn set_denom_metadata(
         }))
 }
 
-pub fn set_blacklister(
-    deps: DepsMut<TokenFactoryQuery>,
-    info: MessageInfo,
-    address: String,
-    status: bool,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
-    check_before_send_hook_features_enabled(deps.as_ref())?;
-
-    // Only allow current contract owner to set blacklister permission
-    check_is_contract_owner(deps.as_ref(), info.sender)?;
-
-    let address = deps.api.addr_validate(&address)?;
-
-    // set blacklister status
-    // NOTE: Does not check if new status is same as old status
-    // but if status is false, remove if exist to reduce space usage
-    if status {
-        BLACKLISTERS.save(deps.storage, &address, &status)?;
-    } else {
-        BLACKLISTERS.remove(deps.storage, &address);
-    }
-
-    Ok(Response::new()
-        .add_attribute("action", "set_blacklister")
-        .add_attribute("blacklister", address)
-        .add_attribute("status", status.to_string()))
-}
-
-pub fn set_whitelister(
-    deps: DepsMut<TokenFactoryQuery>,
-    info: MessageInfo,
-    address: String,
-    status: bool,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
-    check_before_send_hook_features_enabled(deps.as_ref())?;
-
-    // Only allow current contract owner to set blacklister permission
-    check_is_contract_owner(deps.as_ref(), info.sender)?;
-
-    let address = deps.api.addr_validate(&address)?;
-
-    // set blacklister status
-    // NOTE: Does not check if new status is same as old status
-    // but if status is false, remove if exist to reduce space usage
-    if status {
-        WHITELISTERS.save(deps.storage, &address, &status)?;
-    } else {
-        WHITELISTERS.remove(deps.storage, &address);
-    }
-
-    // Return OK
-    Ok(Response::new()
-        .add_attribute("action", "set_blacklister")
-        .add_attribute("blacklister", address)
-        .add_attribute("status", status.to_string()))
-}
-
-pub fn set_freezer(
-    deps: DepsMut<TokenFactoryQuery>,
-    info: MessageInfo,
-    address: String,
-    status: bool,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
-    check_before_send_hook_features_enabled(deps.as_ref())?;
-
-    // Only allow current contract owner to set freezer permission
-    check_is_contract_owner(deps.as_ref(), info.sender)?;
-
-    let address = deps.api.addr_validate(&address)?;
-
-    // set freezer status
-    // NOTE: Does not check if new status is same as old status
-    // but if status is false, remove if exist to reduce space usage
-    if status {
-        FREEZER_ALLOWANCES.save(deps.storage, &address, &status)?;
-    } else {
-        FREEZER_ALLOWANCES.remove(deps.storage, &address);
-    }
-
-    Ok(Response::new()
-        .add_attribute("action", "set_freezer")
-        .add_attribute("freezer", address)
-        .add_attribute("status", status.to_string()))
-}
-
 pub fn set_before_send_hook(
     deps: DepsMut<TokenFactoryQuery>,
     env: Env,
@@ -286,10 +202,10 @@ pub fn set_before_send_hook(
 
     // SetBeforeSendHook to this contract
     // this will trigger sudo endpoint before any bank send
-    // which makes blacklisting / freezing possible
+    // which makes denylisting / freezing possible
     let msg_set_beforesend_hook: CosmosMsg<TokenFactoryMsg> = MsgSetBeforeSendHook {
         sender: env.contract.address.to_string(),
-        denom: denom.clone(),
+        denom,
         cosmwasm_address: env.contract.address.to_string(),
     }
     .into();
@@ -361,8 +277,8 @@ pub fn freeze(
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
     check_before_send_hook_features_enabled(deps.as_ref())?;
 
-    // check to make sure that the sender has freezer permissions
-    check_bool_allowance(deps.as_ref(), info, FREEZER_ALLOWANCES)?;
+    // Only allow current contract owner to call this method
+    check_is_contract_owner(deps.as_ref(), info.sender)?;
 
     // Update config frozen status
     // NOTE: Does not check if new status is same as old status
@@ -373,7 +289,7 @@ pub fn freeze(
         .add_attribute("status", status.to_string()))
 }
 
-pub fn blacklist(
+pub fn deny(
     deps: DepsMut<TokenFactoryQuery>,
     env: Env,
     info: MessageInfo,
@@ -382,33 +298,33 @@ pub fn blacklist(
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
     check_before_send_hook_features_enabled(deps.as_ref())?;
 
-    // check to make sure that the sender has blacklister permissions
-    check_bool_allowance(deps.as_ref(), info, BLACKLISTERS)?;
+    // Only allow current contract owner to call this method
+    check_is_contract_owner(deps.as_ref(), info.sender)?;
 
     let address = deps.api.addr_validate(&address)?;
 
-    // Check this issuer contract is not blacklisting itself
+    // Check this issuer contract is not denylisting itself
     if address == env.contract.address {
-        return Err(ContractError::CannotBlacklistSelf {});
+        return Err(ContractError::CannotDenylistSelf {});
     }
 
-    // update blacklisted status
-    // validate that blacklisteed is a valid address
+    // update denylist status
+    // validate that denylisteed is a valid address
     // NOTE: Does not check if new status is same as old status
     // but if status is false, remove if exist to reduce space usage
     if status {
-        BLACKLISTED_ADDRESSES.save(deps.storage, &address, &status)?;
+        DENYLIST.save(deps.storage, &address, &status)?;
     } else {
-        BLACKLISTED_ADDRESSES.remove(deps.storage, &address);
+        DENYLIST.remove(deps.storage, &address);
     }
 
     Ok(Response::new()
-        .add_attribute("action", "blacklist")
+        .add_attribute("action", "denylist")
         .add_attribute("address", address)
         .add_attribute("status", status.to_string()))
 }
 
-pub fn whitelist(
+pub fn allow(
     deps: DepsMut<TokenFactoryQuery>,
     info: MessageInfo,
     address: String,
@@ -416,23 +332,23 @@ pub fn whitelist(
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
     check_before_send_hook_features_enabled(deps.as_ref())?;
 
-    // check to make sure that the sender has blacklister permissions
-    check_bool_allowance(deps.as_ref(), info, WHITELISTERS)?;
+    // Only allow current contract owner to call this method
+    check_is_contract_owner(deps.as_ref(), info.sender)?;
 
     let address = deps.api.addr_validate(&address)?;
 
-    // update blacklisted status
-    // validate that blacklisteed is a valid address
+    // update denylist status
+    // validate that denylisteed is a valid address
     // NOTE: Does not check if new status is same as old status
     // but if status is false, remove if exist to reduce space usage
     if status {
-        WHITELISTED_ADDRESSES.save(deps.storage, &address, &status)?;
+        ALLOWLIST.save(deps.storage, &address, &status)?;
     } else {
-        WHITELISTED_ADDRESSES.remove(deps.storage, &address);
+        ALLOWLIST.remove(deps.storage, &address);
     }
 
     Ok(Response::new()
-        .add_attribute("action", "whitelist")
+        .add_attribute("action", "allowlist")
         .add_attribute("address", address)
         .add_attribute("status", status.to_string()))
 }
@@ -455,7 +371,7 @@ pub fn force_transfer(
     let force_transfer_msg: CosmosMsg<TokenFactoryMsg> = MsgForceTransfer {
         transfer_from_address: from_address.clone(),
         transfer_to_address: to_address.clone(),
-        amount: Some(Coin::new(amount.u128(), denom.clone()).into()),
+        amount: Some(Coin::new(amount.u128(), denom).into()),
         sender: env.contract.address.to_string(),
     }
     .into();

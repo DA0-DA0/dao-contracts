@@ -69,11 +69,6 @@ fn instantiate_with_new_token_shoud_set_hook_correctly() {
         env.cw_tokenfactory_issuer.contract_addr, subdenom
     );
 
-    // freeze
-    env.cw_tokenfactory_issuer
-        .set_freezer(&owner.address(), true, owner)
-        .unwrap();
-
     env.cw_tokenfactory_issuer.freeze(true, owner).unwrap();
 
     // bank send should fail

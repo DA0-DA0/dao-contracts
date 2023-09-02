@@ -714,7 +714,7 @@ pub fn reply(
                     // Update issuer contract owner to be the DAO
                     msgs.push(WasmMsg::Execute {
                         contract_addr: issuer_addr.clone(),
-                        msg: to_binary(&IssuerExecuteMsg::ChangeContractOwner {
+                        msg: to_binary(&IssuerExecuteMsg::UpdateContractOwner {
                             new_owner: dao.to_string(),
                         })?,
                         funds: vec![],

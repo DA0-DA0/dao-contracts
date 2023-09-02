@@ -87,12 +87,8 @@ pub fn execute(
             amount,
             from_address: address,
         } => execute::burn(deps, env, info, amount, address),
-        ExecuteMsg::Blacklist { address, status } => {
-            execute::blacklist(deps, env, info, address, status)
-        }
-        ExecuteMsg::Whitelist { address, status } => {
-            execute::whitelist(deps, info, address, status)
-        }
+        ExecuteMsg::Deny { address, status } => execute::deny(deps, env, info, address, status),
+        ExecuteMsg::Allow { address, status } => execute::allow(deps, info, address, status),
         ExecuteMsg::Freeze { status } => execute::freeze(deps, info, status),
         ExecuteMsg::ForceTransfer {
             amount,
@@ -101,11 +97,11 @@ pub fn execute(
         } => execute::force_transfer(deps, env, info, amount, from_address, to_address),
 
         // Admin functions
-        ExecuteMsg::ChangeTokenFactoryAdmin { new_admin } => {
-            execute::change_tokenfactory_admin(deps, info, new_admin)
+        ExecuteMsg::UpdateTokenFactoryAdmin { new_admin } => {
+            execute::update_tokenfactory_admin(deps, info, new_admin)
         }
-        ExecuteMsg::ChangeContractOwner { new_owner } => {
-            execute::change_contract_owner(deps, info, new_owner)
+        ExecuteMsg::UpdateContractOwner { new_owner } => {
+            execute::update_contract_owner(deps, info, new_owner)
         }
         ExecuteMsg::SetMinterAllowance { address, allowance } => {
             execute::set_minter(deps, info, address, allowance)
@@ -114,15 +110,6 @@ pub fn execute(
             execute::set_burner(deps, info, address, allowance)
         }
         ExecuteMsg::SetBeforeSendHook {} => execute::set_before_send_hook(deps, env, info),
-        ExecuteMsg::SetBlacklister { address, status } => {
-            execute::set_blacklister(deps, info, address, status)
-        }
-        ExecuteMsg::SetWhitelister { address, status } => {
-            execute::set_whitelister(deps, info, address, status)
-        }
-        ExecuteMsg::SetFreezer { address, status } => {
-            execute::set_freezer(deps, info, address, status)
-        }
         ExecuteMsg::SetDenomMetadata { metadata } => {
             execute::set_denom_metadata(deps, env, info, metadata)
         }
@@ -145,51 +132,31 @@ pub fn sudo(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps<TokenFactoryQuery>, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::IsFrozen {} => to_binary(&queries::query_is_frozen(deps)?),
-        QueryMsg::Denom {} => to_binary(&queries::query_denom(deps)?),
-        QueryMsg::Owner {} => to_binary(&queries::query_owner(deps)?),
+        QueryMsg::Allowlist { start_after, limit } => {
+            to_binary(&queries::query_allowlist(deps, start_after, limit)?)
+        }
+        QueryMsg::BeforeSendHookFeaturesEnabled {} => {
+            to_binary(&queries::query_before_send_hook_features(deps)?)
+        }
         QueryMsg::BurnAllowance { address } => {
             to_binary(&queries::query_burn_allowance(deps, address)?)
         }
         QueryMsg::BurnAllowances { start_after, limit } => {
             to_binary(&queries::query_burn_allowances(deps, start_after, limit)?)
         }
+        QueryMsg::Denom {} => to_binary(&queries::query_denom(deps)?),
+        QueryMsg::Denylist { start_after, limit } => {
+            to_binary(&queries::query_denylist(deps, start_after, limit)?)
+        }
+        QueryMsg::IsAllowed { address } => to_binary(&queries::query_is_allowed(deps, address)?),
+        QueryMsg::IsDenied { address } => to_binary(&queries::query_is_denied(deps, address)?),
+        QueryMsg::IsFrozen {} => to_binary(&queries::query_is_frozen(deps)?),
+        QueryMsg::Owner {} => to_binary(&queries::query_owner(deps)?),
         QueryMsg::MintAllowance { address } => {
             to_binary(&queries::query_mint_allowance(deps, address)?)
         }
         QueryMsg::MintAllowances { start_after, limit } => {
             to_binary(&queries::query_mint_allowances(deps, start_after, limit)?)
-        }
-        QueryMsg::IsBlacklisted { address } => {
-            to_binary(&queries::query_is_blacklisted(deps, address)?)
-        }
-        QueryMsg::Blacklistees { start_after, limit } => {
-            to_binary(&queries::query_blacklistees(deps, start_after, limit)?)
-        }
-        QueryMsg::IsBlacklister { address } => {
-            to_binary(&queries::query_is_blacklister(deps, address)?)
-        }
-        QueryMsg::Blacklisters { start_after, limit } => {
-            to_binary(&queries::query_blacklisters(deps, start_after, limit)?)
-        }
-        QueryMsg::IsWhitelisted { address } => {
-            to_binary(&queries::query_is_whitelisted(deps, address)?)
-        }
-        QueryMsg::Whitelistees { start_after, limit } => {
-            to_binary(&queries::query_whitelistees(deps, start_after, limit)?)
-        }
-        QueryMsg::IsWhitelister { address } => {
-            to_binary(&queries::query_is_whitelister(deps, address)?)
-        }
-        QueryMsg::Whitelisters { start_after, limit } => {
-            to_binary(&queries::query_whitelisters(deps, start_after, limit)?)
-        }
-        QueryMsg::IsFreezer { address } => to_binary(&queries::query_is_freezer(deps, address)?),
-        QueryMsg::FreezerAllowances { start_after, limit } => to_binary(
-            &queries::query_freezer_allowances(deps, start_after, limit)?,
-        ),
-        QueryMsg::BeforeSendHookFeaturesEnabled {} => {
-            to_binary(&queries::query_before_send_hook_features(deps)?)
         }
     }
 }
@@ -218,7 +185,7 @@ pub fn reply(
 
             // SetBeforeSendHook to this contract
             // this will trigger sudo endpoint before any bank send
-            // which makes blacklisting / freezing possible
+            // which makes denylisting / freezing possible
             let msg_set_beforesend_hook: CosmosMsg<TokenFactoryMsg> = MsgSetBeforeSendHook {
                 sender: env.contract.address.to_string(),
                 denom: new_token_denom.clone(),

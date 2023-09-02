@@ -12,11 +12,11 @@ pub enum ContractError {
     #[error("MsgBeforeSendHook is already configured. Features requiring it are already enabled.")]
     BeforeSendHookAlreadyEnabled {},
 
-    #[error("The address '{address}' is blacklisted")]
-    Blacklisted { address: String },
+    #[error("The address '{address}' is denied transfer abilities")]
+    Denied { address: String },
 
-    #[error("Cannot blacklist the issuer contract itself")]
-    CannotBlacklistSelf {},
+    #[error("Cannot denylist the issuer contract itself")]
+    CannotDenylistSelf {},
 
     #[error("The contract is frozen for denom {denom:?}")]
     ContractFrozen { denom: String },

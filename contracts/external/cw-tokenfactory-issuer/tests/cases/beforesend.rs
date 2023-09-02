@@ -29,10 +29,6 @@ fn before_send_should_block_on_frozen() {
     let denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
 
     // freeze
-    env.cw_tokenfactory_issuer
-        .set_freezer(&owner.address(), true, owner)
-        .unwrap();
-
     env.cw_tokenfactory_issuer.freeze(true, owner).unwrap();
 
     // bank send should fail
@@ -48,37 +44,31 @@ fn before_send_should_block_on_frozen() {
 }
 
 #[test]
-fn white_listed_addresses_can_transfer_when_token_frozen() {
+fn allowlisted_addresses_can_transfer_when_token_frozen() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
     let denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
-    let whitelistee = &env.test_accs[1];
+    let allowlistee = &env.test_accs[1];
     let other = &env.test_accs[2];
 
     // freeze
-    env.cw_tokenfactory_issuer
-        .set_freezer(&owner.address(), true, owner)
-        .unwrap();
     env.cw_tokenfactory_issuer.freeze(true, owner).unwrap();
 
     // bank send should fail
     let err = env
-        .send_tokens(whitelistee.address(), coins(10000, denom.clone()), owner)
+        .send_tokens(allowlistee.address(), coins(10000, denom.clone()), owner)
         .unwrap_err();
     assert_eq!(err, RunnerError::ExecuteError { msg:  format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The contract is frozen for denom \"{denom}\": execute wasm contract failed") });
 
-    // Whitelist address
+    // Allowlist address
     env.cw_tokenfactory_issuer
-        .set_whitelister(&owner.address(), true, owner)
-        .unwrap();
-    env.cw_tokenfactory_issuer
-        .whitelist(&whitelistee.address(), true, owner)
+        .allow(&allowlistee.address(), true, owner)
         .unwrap();
 
     // bank send should pass
-    env.send_tokens(other.address(), coins(10000, denom.clone()), whitelistee)
+    env.send_tokens(other.address(), coins(10000, denom.clone()), allowlistee)
         .unwrap_err();
-    // Non whitelisted address can't transfer, bank send should fail
+    // Non allowlist address can't transfer, bank send should fail
     let err = env
         .send_tokens(other.address(), coins(10000, denom.clone()), owner)
         .unwrap_err();
@@ -86,26 +76,23 @@ fn white_listed_addresses_can_transfer_when_token_frozen() {
 }
 
 #[test]
-fn before_send_should_block_sending_from_blacklisted_address() {
+fn before_send_should_block_sending_from_denylist_address() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
-    let blacklistee = &env.test_accs[1];
+    let denylistee = &env.test_accs[1];
     let denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
 
-    // mint to blacklistee
+    // mint to denylistee
     env.cw_tokenfactory_issuer
         .set_minter(&owner.address(), 20000, owner)
         .unwrap();
     env.cw_tokenfactory_issuer
-        .mint(&blacklistee.address(), 20000, owner)
+        .mint(&denylistee.address(), 20000, owner)
         .unwrap();
 
-    // blacklist
+    // denylist
     env.cw_tokenfactory_issuer
-        .set_blacklister(&owner.address(), true, owner)
-        .unwrap();
-    env.cw_tokenfactory_issuer
-        .blacklist(&blacklistee.address(), true, owner)
+        .deny(&denylistee.address(), true, owner)
         .unwrap();
 
     // bank send should fail
@@ -113,19 +100,19 @@ fn before_send_should_block_sending_from_blacklisted_address() {
         .send_tokens(
             env.test_accs[2].address(),
             coins(10000, denom.clone()),
-            blacklistee,
+            denylistee,
         )
         .unwrap_err();
 
-    let blacklistee_addr = blacklistee.address();
-    assert_eq!(err, RunnerError::ExecuteError { msg:  format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The address '{blacklistee_addr}' is blacklisted: execute wasm contract failed") });
+    let denylistee_addr = denylistee.address();
+    assert_eq!(err, RunnerError::ExecuteError { msg:  format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The address '{denylistee_addr}' is denylist: execute wasm contract failed") });
 }
 
 #[test]
-fn before_send_should_block_sending_to_blacklisted_address() {
+fn before_send_should_block_sending_to_denylist_address() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
-    let blacklistee = &env.test_accs[1];
+    let denylistee = &env.test_accs[1];
     let denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
 
     // mint to self
@@ -136,19 +123,16 @@ fn before_send_should_block_sending_to_blacklisted_address() {
         .mint(&owner.address(), 10000, owner)
         .unwrap();
 
-    // blacklist
+    // denylist
     env.cw_tokenfactory_issuer
-        .set_blacklister(&owner.address(), true, owner)
-        .unwrap();
-    env.cw_tokenfactory_issuer
-        .blacklist(&blacklistee.address(), true, owner)
+        .deny(&denylistee.address(), true, owner)
         .unwrap();
 
     // bank send should fail
     let err = env
-        .send_tokens(blacklistee.address(), coins(10000, denom.clone()), owner)
+        .send_tokens(denylistee.address(), coins(10000, denom.clone()), owner)
         .unwrap_err();
 
-    let blacklistee_addr = blacklistee.address();
-    assert_eq!(err, RunnerError::ExecuteError { msg:  format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The address '{blacklistee_addr}' is blacklisted: execute wasm contract failed") });
+    let denylistee_addr = denylistee.address();
+    assert_eq!(err, RunnerError::ExecuteError { msg:  format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The address '{denylistee_addr}' is denylist: execute wasm contract failed") });
 }

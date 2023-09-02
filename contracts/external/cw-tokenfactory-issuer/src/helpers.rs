@@ -1,10 +1,8 @@
 use crate::state::{
-    BEFORE_SEND_HOOK_FEATURES_ENABLED, BLACKLISTED_ADDRESSES, DENOM, IS_FROZEN, OWNER,
-    WHITELISTED_ADDRESSES,
+    ALLOWLIST, BEFORE_SEND_HOOK_FEATURES_ENABLED, DENOM, DENYLIST, IS_FROZEN, OWNER,
 };
 use crate::ContractError;
-use cosmwasm_std::{Addr, Coin, Deps, MessageInfo, Uint128};
-use cw_storage_plus::Map;
+use cosmwasm_std::{Addr, Coin, Deps, Uint128};
 use token_bindings::TokenFactoryQuery;
 
 pub fn check_contract_has_funds(
@@ -54,37 +52,14 @@ pub fn check_before_send_hook_features_enabled(
     }
 }
 
-pub fn check_bool_allowance(
-    deps: Deps<TokenFactoryQuery>,
-    info: MessageInfo,
-    allowances: Map<&Addr, bool>,
-) -> Result<(), ContractError> {
-    let res = allowances.load(deps.storage, &info.sender);
-    match res {
-        Ok(authorized) => {
-            if !authorized {
-                return Err(ContractError::Unauthorized {});
-            }
-        }
-        Err(error) => {
-            if let cosmwasm_std::StdError::NotFound { .. } = error {
-                return Err(ContractError::Unauthorized {});
-            } else {
-                return Err(ContractError::Std(error));
-            }
-        }
-    }
-    Ok(())
-}
-
-pub fn check_is_not_blacklisted(
+pub fn check_is_not_denied(
     deps: Deps<TokenFactoryQuery>,
     address: String,
 ) -> Result<(), ContractError> {
     let addr = deps.api.addr_validate(&address)?;
-    if let Some(is_blacklisted) = BLACKLISTED_ADDRESSES.may_load(deps.storage, &addr)? {
-        if is_blacklisted {
-            return Err(ContractError::Blacklisted { address });
+    if let Some(is_denied) = DENYLIST.may_load(deps.storage, &addr)? {
+        if is_denied {
+            return Err(ContractError::Denied { address });
         }
     };
     Ok(())
@@ -105,8 +80,8 @@ pub fn check_is_not_frozen(
     let is_denom_frozen = is_frozen && denom == contract_denom;
     if is_denom_frozen {
         let addr = deps.api.addr_validate(address)?;
-        if let Some(is_whitelisted) = WHITELISTED_ADDRESSES.may_load(deps.storage, &addr)? {
-            if is_whitelisted {
+        if let Some(is_allowed) = ALLOWLIST.may_load(deps.storage, &addr)? {
+            if is_allowed {
                 return Ok(());
             }
         };
