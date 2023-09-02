@@ -1,5 +1,8 @@
 # dao-proposal-single
 
+[![dao-proposal-single on crates.io](https://img.shields.io/crates/v/dao-proposal-single.svg?logo=rust)](https://crates.io/crates/dao-proposal-single)
+[![docs.rs](https://img.shields.io/docsrs/dao-proposal-single?logo=docsdotrs)](https://docs.rs/dao-proposal-single/latest/dao_proposal_single/)
+
 A proposal module for a DAO DAO DAO which supports simple "yes", "no",
 "abstain" voting. Proposals may have associated messages which will be
 executed by the core module upon the proposal being passed and

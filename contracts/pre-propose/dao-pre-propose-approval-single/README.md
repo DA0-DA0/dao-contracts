@@ -1,5 +1,8 @@
 # Single choice proposal approval contract
 
+[![dao-pre-propose-approval-single on crates.io](https://img.shields.io/crates/v/dao-pre-propose-approval-single.svg?logo=rust)](https://crates.io/crates/dao-pre-propose-approval-single)
+[![docs.rs](https://img.shields.io/docsrs/dao-pre-propose-approval-single?logo=docsdotrs)](https://docs.rs/dao-pre-propose-approval-single/latest/dao_pre_propose_approval_single/)
+
 This contract implements an approval flow for proposals, it also handles deposit logic. It works with the `cwd-proposal-single` proposal module.
 
 ## Approval Logic

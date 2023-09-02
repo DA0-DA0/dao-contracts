@@ -1,3 +1,8 @@
+# dao-proposal-condorcet
+
+[![dao-proposal-condorcet on crates.io](https://img.shields.io/crates/v/dao-proposal-condorcet.svg?logo=rust)](https://crates.io/crates/dao-proposal-condorcet)
+[![docs.rs](https://img.shields.io/docsrs/dao-proposal-condorcet?logo=docsdotrs)](https://docs.rs/dao-proposal-condorcet/latest/dao_proposal_condorcet/)
+
 This is a DAO DAO proposal module which implements The Condorcet
 Method.
 

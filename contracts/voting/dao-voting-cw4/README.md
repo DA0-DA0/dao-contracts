@@ -1,5 +1,8 @@
 # CW4 Group Voting
 
+[![dao-voting-cw4 on crates.io](https://img.shields.io/crates/v/dao-voting-cw4.svg?logo=rust)](https://crates.io/crates/dao-voting-cw4)
+[![docs.rs](https://img.shields.io/docsrs/dao-voting-cw4?logo=docsdotrs)](https://docs.rs/dao-voting-cw4/latest/dao_voting_cw4/)
+
 A simple voting power module which determines voting power based on
 the weight of a user in a cw4-group contract. This allocates voting
 power in the same way that one would expect a multisig to.

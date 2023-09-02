@@ -1,5 +1,8 @@
 # dao-dao-core
 
+[![dao-dao-core on crates.io](https://img.shields.io/crates/v/dao-dao-core.svg?logo=rust)](https://crates.io/crates/dao-dao-core)
+[![docs.rs](https://img.shields.io/docsrs/dao-dao-core?logo=docsdotrs)](https://docs.rs/dao-dao-core/latest/dao_dao_core/index.html)
+
 This contract is the core module for all DAO DAO DAOs. It handles
 management of voting power and proposal modules, executes messages,
 and holds the DAO's treasury.
