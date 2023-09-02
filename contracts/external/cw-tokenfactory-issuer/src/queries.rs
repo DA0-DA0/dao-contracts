@@ -4,13 +4,13 @@ use token_bindings::TokenFactoryQuery;
 
 use crate::msg::{
     AllowanceInfo, AllowanceResponse, AllowancesResponse, BlacklisteesResponse,
-    BlacklisterAllowancesResponse, DenomResponse, FreezerAllowancesResponse, IsFrozenResponse,
-    OwnerResponse, StatusInfo, StatusResponse, WhitelisteesResponse, WhitelisterAllowancesResponse,
+    BlacklistersResponse, DenomResponse, FreezerAllowancesResponse, IsFrozenResponse,
+    OwnerResponse, StatusInfo, StatusResponse, WhitelisteesResponse, WhitelistersResponse,
 };
 use crate::state::{
-    BEFORE_SEND_HOOK_FEATURES_ENABLED, BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES,
-    BURNER_ALLOWANCES, DENOM, FREEZER_ALLOWANCES, IS_FROZEN, MINTER_ALLOWANCES, OWNER,
-    WHITELISTED_ADDRESSES, WHITELISTER_ALLOWANCES,
+    BEFORE_SEND_HOOK_FEATURES_ENABLED, BLACKLISTED_ADDRESSES, BLACKLISTERS, BURNER_ALLOWANCES,
+    DENOM, FREEZER_ALLOWANCES, IS_FROZEN, MINTER_ALLOWANCES, OWNER, WHITELISTED_ADDRESSES,
+    WHITELISTERS,
 };
 
 // Default settings for pagination
@@ -167,19 +167,19 @@ pub fn query_is_blacklister(
     deps: Deps<TokenFactoryQuery>,
     address: String,
 ) -> StdResult<StatusResponse> {
-    let status = BLACKLISTER_ALLOWANCES
+    let status = BLACKLISTERS
         .load(deps.storage, &deps.api.addr_validate(&address)?)
         .unwrap_or(false);
     Ok(StatusResponse { status })
 }
 
-pub fn query_blacklister_allowances(
+pub fn query_blacklisters(
     deps: Deps<TokenFactoryQuery>,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> StdResult<BlacklisterAllowancesResponse> {
-    Ok(BlacklisterAllowancesResponse {
-        blacklisters: query_status_map(deps, start_after, limit, BLACKLISTER_ALLOWANCES)?,
+) -> StdResult<BlacklistersResponse> {
+    Ok(BlacklistersResponse {
+        blacklisters: query_status_map(deps, start_after, limit, BLACKLISTERS)?,
     })
 }
 
@@ -197,19 +197,19 @@ pub fn query_is_whitelister(
     deps: Deps<TokenFactoryQuery>,
     address: String,
 ) -> StdResult<StatusResponse> {
-    let status = WHITELISTER_ALLOWANCES
+    let status = WHITELISTERS
         .load(deps.storage, &deps.api.addr_validate(&address)?)
         .unwrap_or(false);
     Ok(StatusResponse { status })
 }
 
-pub fn query_whitelister_allowances(
+pub fn query_whitelisters(
     deps: Deps<TokenFactoryQuery>,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> StdResult<WhitelisterAllowancesResponse> {
-    Ok(WhitelisterAllowancesResponse {
-        whitelisters: query_status_map(deps, start_after, limit, WHITELISTER_ALLOWANCES)?,
+) -> StdResult<WhitelistersResponse> {
+    Ok(WhitelistersResponse {
+        whitelisters: query_status_map(deps, start_after, limit, WHITELISTERS)?,
     })
 }
 

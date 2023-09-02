@@ -9,15 +9,11 @@
       {
         "description": "`NewToken` will create a new token when instantiate the contract. Newly created token will have full denom as `factory/<contract_address>/<subdenom>`. It will be attached to the contract setup the beforesend listener automatically.",
         "type": "object",
-        "required": [
-          "new_token"
-        ],
+        "required": ["new_token"],
         "properties": {
           "new_token": {
             "type": "object",
-            "required": [
-              "subdenom"
-            ],
+            "required": ["subdenom"],
             "properties": {
               "subdenom": {
                 "description": "component of fulldenom (`factory/<contract_address>/<subdenom>`).",
@@ -32,15 +28,11 @@
       {
         "description": "`ExistingToken` will use already created token. So to set this up, Token Factory admin for the existing token needs trasfer admin over to this contract, and optionally set the `BeforeSendHook` manually.",
         "type": "object",
-        "required": [
-          "existing_token"
-        ],
+        "required": ["existing_token"],
         "properties": {
           "existing_token": {
             "type": "object",
-            "required": [
-              "denom"
-            ],
+            "required": ["denom"],
             "properties": {
               "denom": {
                 "type": "string"
@@ -60,15 +52,11 @@
       {
         "description": "Change the admin of the Token Factory denom itself.",
         "type": "object",
-        "required": [
-          "change_token_factory_admin"
-        ],
+        "required": ["change_token_factory_admin"],
         "properties": {
           "change_token_factory_admin": {
             "type": "object",
-            "required": [
-              "new_admin"
-            ],
+            "required": ["new_admin"],
             "properties": {
               "new_admin": {
                 "type": "string"
@@ -82,15 +70,11 @@
       {
         "description": "Change the owner of this contract who is allowed to call privileged methods.",
         "type": "object",
-        "required": [
-          "change_contract_owner"
-        ],
+        "required": ["change_contract_owner"],
         "properties": {
           "change_contract_owner": {
             "type": "object",
-            "required": [
-              "new_owner"
-            ],
+            "required": ["new_owner"],
             "properties": {
               "new_owner": {
                 "type": "string"
@@ -104,15 +88,11 @@
       {
         "description": "Set denom metadata. see: https://docs.cosmos.network/main/modules/bank#denom-metadata.",
         "type": "object",
-        "required": [
-          "set_denom_metadata"
-        ],
+        "required": ["set_denom_metadata"],
         "properties": {
           "set_denom_metadata": {
             "type": "object",
-            "required": [
-              "metadata"
-            ],
+            "required": ["metadata"],
             "properties": {
               "metadata": {
                 "$ref": "#/definitions/Metadata"
@@ -126,16 +106,11 @@
       {
         "description": "Grant/revoke mint allowance.",
         "type": "object",
-        "required": [
-          "set_minter_allowance"
-        ],
+        "required": ["set_minter_allowance"],
         "properties": {
           "set_minter_allowance": {
             "type": "object",
-            "required": [
-              "address",
-              "allowance"
-            ],
+            "required": ["address", "allowance"],
             "properties": {
               "address": {
                 "type": "string"
@@ -152,16 +127,11 @@
       {
         "description": "Grant/revoke burn allowance.",
         "type": "object",
-        "required": [
-          "set_burner_allowance"
-        ],
+        "required": ["set_burner_allowance"],
         "properties": {
           "set_burner_allowance": {
             "type": "object",
-            "required": [
-              "address",
-              "allowance"
-            ],
+            "required": ["address", "allowance"],
             "properties": {
               "address": {
                 "type": "string"
@@ -178,16 +148,11 @@
       {
         "description": "Grant/revoke permission to blacklist addresses",
         "type": "object",
-        "required": [
-          "set_blacklister"
-        ],
+        "required": ["set_blacklister"],
         "properties": {
           "set_blacklister": {
             "type": "object",
-            "required": [
-              "address",
-              "status"
-            ],
+            "required": ["address", "status"],
             "properties": {
               "address": {
                 "type": "string"
@@ -204,16 +169,11 @@
       {
         "description": "Grant/revoke permission to blacklist addresses",
         "type": "object",
-        "required": [
-          "set_whitelister"
-        ],
+        "required": ["set_whitelister"],
         "properties": {
           "set_whitelister": {
             "type": "object",
-            "required": [
-              "address",
-              "status"
-            ],
+            "required": ["address", "status"],
             "properties": {
               "address": {
                 "type": "string"
@@ -230,9 +190,7 @@
       {
         "description": "Attempt to SetBeforeSendHook on the token attached to this contract. This will fail if the token already has a SetBeforeSendHook or the chain still does not support it.",
         "type": "object",
-        "required": [
-          "set_before_send_hook"
-        ],
+        "required": ["set_before_send_hook"],
         "properties": {
           "set_before_send_hook": {
             "type": "object",
@@ -244,16 +202,11 @@
       {
         "description": "Grant/revoke permission to freeze the token",
         "type": "object",
-        "required": [
-          "set_freezer"
-        ],
+        "required": ["set_freezer"],
         "properties": {
           "set_freezer": {
             "type": "object",
-            "required": [
-              "address",
-              "status"
-            ],
+            "required": ["address", "status"],
             "properties": {
               "address": {
                 "type": "string"
@@ -270,16 +223,11 @@
       {
         "description": "Mint token to address. Mint allowance is required and wiil be deducted after successful mint.",
         "type": "object",
-        "required": [
-          "mint"
-        ],
+        "required": ["mint"],
         "properties": {
           "mint": {
             "type": "object",
-            "required": [
-              "amount",
-              "to_address"
-            ],
+            "required": ["amount", "to_address"],
             "properties": {
               "amount": {
                 "$ref": "#/definitions/Uint128"
@@ -296,16 +244,11 @@
       {
         "description": "Burn token to address. Burn allowance is required and wiil be deducted after successful burn.",
         "type": "object",
-        "required": [
-          "burn"
-        ],
+        "required": ["burn"],
         "properties": {
           "burn": {
             "type": "object",
-            "required": [
-              "amount",
-              "from_address"
-            ],
+            "required": ["amount", "from_address"],
             "properties": {
               "amount": {
                 "$ref": "#/definitions/Uint128"
@@ -322,16 +265,11 @@
       {
         "description": "Block target address from sending/receiving token attached to this contract tokenfactory's beforesend listener must be set to this contract in order for it to work as intended.",
         "type": "object",
-        "required": [
-          "blacklist"
-        ],
+        "required": ["blacklist"],
         "properties": {
           "blacklist": {
             "type": "object",
-            "required": [
-              "address",
-              "status"
-            ],
+            "required": ["address", "status"],
             "properties": {
               "address": {
                 "type": "string"
@@ -348,16 +286,11 @@
       {
         "description": "Whitelist target address to be able to send tokens even if the token is frozen.",
         "type": "object",
-        "required": [
-          "whitelist"
-        ],
+        "required": ["whitelist"],
         "properties": {
           "whitelist": {
             "type": "object",
-            "required": [
-              "address",
-              "status"
-            ],
+            "required": ["address", "status"],
             "properties": {
               "address": {
                 "type": "string"
@@ -374,15 +307,11 @@
       {
         "description": "Block every token transfers of the token attached to this contract tokenfactory's beforesend listener must be set to this contract in order for it to work as intended.",
         "type": "object",
-        "required": [
-          "freeze"
-        ],
+        "required": ["freeze"],
         "properties": {
           "freeze": {
             "type": "object",
-            "required": [
-              "status"
-            ],
+            "required": ["status"],
             "properties": {
               "status": {
                 "type": "boolean"
@@ -396,17 +325,11 @@
       {
         "description": "Force transfer token from one address to another.",
         "type": "object",
-        "required": [
-          "force_transfer"
-        ],
+        "required": ["force_transfer"],
         "properties": {
           "force_transfer": {
             "type": "object",
-            "required": [
-              "amount",
-              "from_address",
-              "to_address"
-            ],
+            "required": ["amount", "from_address", "to_address"],
             "properties": {
               "amount": {
                 "$ref": "#/definitions/Uint128"
@@ -428,11 +351,7 @@
       "DenomUnit": {
         "description": "DenomUnit represents a struct that describes a given denomination unit of the basic token.",
         "type": "object",
-        "required": [
-          "aliases",
-          "denom",
-          "exponent"
-        ],
+        "required": ["aliases", "denom", "exponent"],
         "properties": {
           "aliases": {
             "description": "aliases is a list of string aliases for the given denom",
@@ -506,9 +425,7 @@
       {
         "description": "IsFrozen returns if the entire token transfer functionality is frozen. Response: IsFrozenResponse",
         "type": "object",
-        "required": [
-          "is_frozen"
-        ],
+        "required": ["is_frozen"],
         "properties": {
           "is_frozen": {
             "type": "object",
@@ -520,9 +437,7 @@
       {
         "description": "Denom returns the token denom that this contract is the admin for. Response: DenomResponse",
         "type": "object",
-        "required": [
-          "denom"
-        ],
+        "required": ["denom"],
         "properties": {
           "denom": {
             "type": "object",
@@ -534,9 +449,7 @@
       {
         "description": "Owner returns the owner of the contract. Response: OwnerResponse",
         "type": "object",
-        "required": [
-          "owner"
-        ],
+        "required": ["owner"],
         "properties": {
           "owner": {
             "type": "object",
@@ -548,15 +461,11 @@
       {
         "description": "Allowance returns the allowance of the specified address. Response: AllowanceResponse",
         "type": "object",
-        "required": [
-          "burn_allowance"
-        ],
+        "required": ["burn_allowance"],
         "properties": {
           "burn_allowance": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
@@ -570,26 +479,18 @@
       {
         "description": "Allowances Enumerates over all allownances. Response: Vec<AllowanceResponse>",
         "type": "object",
-        "required": [
-          "burn_allowances"
-        ],
+        "required": ["burn_allowances"],
         "properties": {
           "burn_allowances": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -600,15 +501,11 @@
       {
         "description": "Allowance returns the allowance of the specified user. Response: AllowanceResponse",
         "type": "object",
-        "required": [
-          "mint_allowance"
-        ],
+        "required": ["mint_allowance"],
         "properties": {
           "mint_allowance": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
@@ -622,26 +519,18 @@
       {
         "description": "Allowances Enumerates over all allownances. Response: AllowancesResponse",
         "type": "object",
-        "required": [
-          "mint_allowances"
-        ],
+        "required": ["mint_allowances"],
         "properties": {
           "mint_allowances": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -652,15 +541,11 @@
       {
         "description": "IsBlacklisted returns wether the user is blacklisted or not. Response: StatusResponse",
         "type": "object",
-        "required": [
-          "is_blacklisted"
-        ],
+        "required": ["is_blacklisted"],
         "properties": {
           "is_blacklisted": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
@@ -674,26 +559,18 @@
       {
         "description": "Blacklistees enumerates over all addresses on the blacklist. Response: BlacklisteesResponse",
         "type": "object",
-        "required": [
-          "blacklistees"
-        ],
+        "required": ["blacklistees"],
         "properties": {
           "blacklistees": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -704,15 +581,11 @@
       {
         "description": "IsBlacklister returns if the addres has blacklister privileges. Response: StatusResponse",
         "type": "object",
-        "required": [
-          "is_blacklister"
-        ],
+        "required": ["is_blacklister"],
         "properties": {
           "is_blacklister": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
@@ -724,28 +597,20 @@
         "additionalProperties": false
       },
       {
-        "description": "Blacklisters Enumerates over all the addresses with blacklister privileges. Response: BlacklisterAllowancesResponse",
+        "description": "Blacklisters Enumerates over all the addresses with blacklister privileges. Response: BlacklistersResponse",
         "type": "object",
-        "required": [
-          "blacklister_allowances"
-        ],
+        "required": ["blacklisters"],
         "properties": {
-          "blacklister_allowances": {
+          "blacklisters": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -756,15 +621,11 @@
       {
         "description": "IsWhitelisted returns wether the user is whitelisted or not. Response: StatusResponse",
         "type": "object",
-        "required": [
-          "is_whitelisted"
-        ],
+        "required": ["is_whitelisted"],
         "properties": {
           "is_whitelisted": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
@@ -778,26 +639,18 @@
       {
         "description": "Whitelistees enumerates over all addresses on the whitelist. Response: WhitelisteesResponse",
         "type": "object",
-        "required": [
-          "whitelistees"
-        ],
+        "required": ["whitelistees"],
         "properties": {
           "whitelistees": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -808,15 +661,11 @@
       {
         "description": "IsWhitelister returns if the addres has whitelister privileges. Response: StatusResponse",
         "type": "object",
-        "required": [
-          "is_whitelister"
-        ],
+        "required": ["is_whitelister"],
         "properties": {
           "is_whitelister": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
@@ -828,28 +677,20 @@
         "additionalProperties": false
       },
       {
-        "description": "Whitelisters Enumerates over all the addresses with whitelister privileges. Response: WhitelisterAllowancesResponse",
+        "description": "Whitelisters Enumerates over all the addresses with whitelister privileges. Response: WhitelistersResponse",
         "type": "object",
-        "required": [
-          "whitelister_allowances"
-        ],
+        "required": ["whitelisters"],
         "properties": {
-          "whitelister_allowances": {
+          "whitelisters": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -860,15 +701,11 @@
       {
         "description": "IsFreezer returns whether the address has freezer status. Response: StatusResponse",
         "type": "object",
-        "required": [
-          "is_freezer"
-        ],
+        "required": ["is_freezer"],
         "properties": {
           "is_freezer": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
@@ -882,26 +719,18 @@
       {
         "description": "FreezerAllowances enumerates over all freezer addresses. Response: FreezerAllowancesResponse",
         "type": "object",
-        "required": [
-          "freezer_allowances"
-        ],
+        "required": ["freezer_allowances"],
         "properties": {
           "freezer_allowances": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -912,9 +741,7 @@
       {
         "description": "Returns whether features that require MsgBeforeSendHook are enabled Most Cosmos chains do not support this feature yet.",
         "type": "object",
-        "required": [
-          "before_send_hook_features_enabled"
-        ],
+        "required": ["before_send_hook_features_enabled"],
         "properties": {
           "before_send_hook_features_enabled": {
             "type": "object",
@@ -933,17 +760,11 @@
     "oneOf": [
       {
         "type": "object",
-        "required": [
-          "block_before_send"
-        ],
+        "required": ["block_before_send"],
         "properties": {
           "block_before_send": {
             "type": "object",
-            "required": [
-              "amount",
-              "from",
-              "to"
-            ],
+            "required": ["amount", "from", "to"],
             "properties": {
               "amount": {
                 "$ref": "#/definitions/Coin"
@@ -964,10 +785,7 @@
     "definitions": {
       "Coin": {
         "type": "object",
-        "required": [
-          "amount",
-          "denom"
-        ],
+        "required": ["amount", "denom"],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -993,9 +811,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "BlacklisteesResponse",
       "type": "object",
-      "required": [
-        "blacklistees"
-      ],
+      "required": ["blacklistees"],
       "properties": {
         "blacklistees": {
           "type": "array",
@@ -1008,10 +824,7 @@
       "definitions": {
         "StatusInfo": {
           "type": "object",
-          "required": [
-            "address",
-            "status"
-          ],
+          "required": ["address", "status"],
           "properties": {
             "address": {
               "type": "string"
@@ -1024,13 +837,11 @@
         }
       }
     },
-    "blacklister_allowances": {
+    "blacklisters": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "BlacklisterAllowancesResponse",
+      "title": "BlacklistersResponse",
       "type": "object",
-      "required": [
-        "blacklisters"
-      ],
+      "required": ["blacklisters"],
       "properties": {
         "blacklisters": {
           "type": "array",
@@ -1043,10 +854,7 @@
       "definitions": {
         "StatusInfo": {
           "type": "object",
-          "required": [
-            "address",
-            "status"
-          ],
+          "required": ["address", "status"],
           "properties": {
             "address": {
               "type": "string"
@@ -1063,9 +871,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AllowanceResponse",
       "type": "object",
-      "required": [
-        "allowance"
-      ],
+      "required": ["allowance"],
       "properties": {
         "allowance": {
           "$ref": "#/definitions/Uint128"
@@ -1083,9 +889,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AllowancesResponse",
       "type": "object",
-      "required": [
-        "allowances"
-      ],
+      "required": ["allowances"],
       "properties": {
         "allowances": {
           "type": "array",
@@ -1098,10 +902,7 @@
       "definitions": {
         "AllowanceInfo": {
           "type": "object",
-          "required": [
-            "address",
-            "allowance"
-          ],
+          "required": ["address", "allowance"],
           "properties": {
             "address": {
               "type": "string"
@@ -1122,9 +923,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "DenomResponse",
       "type": "object",
-      "required": [
-        "denom"
-      ],
+      "required": ["denom"],
       "properties": {
         "denom": {
           "type": "string"
@@ -1136,9 +935,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "FreezerAllowancesResponse",
       "type": "object",
-      "required": [
-        "freezers"
-      ],
+      "required": ["freezers"],
       "properties": {
         "freezers": {
           "type": "array",
@@ -1151,10 +948,7 @@
       "definitions": {
         "StatusInfo": {
           "type": "object",
-          "required": [
-            "address",
-            "status"
-          ],
+          "required": ["address", "status"],
           "properties": {
             "address": {
               "type": "string"
@@ -1171,9 +965,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "StatusResponse",
       "type": "object",
-      "required": [
-        "status"
-      ],
+      "required": ["status"],
       "properties": {
         "status": {
           "type": "boolean"
@@ -1185,9 +977,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "StatusResponse",
       "type": "object",
-      "required": [
-        "status"
-      ],
+      "required": ["status"],
       "properties": {
         "status": {
           "type": "boolean"
@@ -1199,9 +989,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "StatusResponse",
       "type": "object",
-      "required": [
-        "status"
-      ],
+      "required": ["status"],
       "properties": {
         "status": {
           "type": "boolean"
@@ -1213,9 +1001,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "IsFrozenResponse",
       "type": "object",
-      "required": [
-        "is_frozen"
-      ],
+      "required": ["is_frozen"],
       "properties": {
         "is_frozen": {
           "type": "boolean"
@@ -1227,9 +1013,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "StatusResponse",
       "type": "object",
-      "required": [
-        "status"
-      ],
+      "required": ["status"],
       "properties": {
         "status": {
           "type": "boolean"
@@ -1241,9 +1025,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "StatusResponse",
       "type": "object",
-      "required": [
-        "status"
-      ],
+      "required": ["status"],
       "properties": {
         "status": {
           "type": "boolean"
@@ -1255,9 +1037,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AllowanceResponse",
       "type": "object",
-      "required": [
-        "allowance"
-      ],
+      "required": ["allowance"],
       "properties": {
         "allowance": {
           "$ref": "#/definitions/Uint128"
@@ -1275,9 +1055,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AllowancesResponse",
       "type": "object",
-      "required": [
-        "allowances"
-      ],
+      "required": ["allowances"],
       "properties": {
         "allowances": {
           "type": "array",
@@ -1290,10 +1068,7 @@
       "definitions": {
         "AllowanceInfo": {
           "type": "object",
-          "required": [
-            "address",
-            "allowance"
-          ],
+          "required": ["address", "allowance"],
           "properties": {
             "address": {
               "type": "string"
@@ -1314,9 +1089,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "OwnerResponse",
       "type": "object",
-      "required": [
-        "address"
-      ],
+      "required": ["address"],
       "properties": {
         "address": {
           "type": "string"
@@ -1328,9 +1101,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "WhitelisteesResponse",
       "type": "object",
-      "required": [
-        "whitelistees"
-      ],
+      "required": ["whitelistees"],
       "properties": {
         "whitelistees": {
           "type": "array",
@@ -1343,10 +1114,7 @@
       "definitions": {
         "StatusInfo": {
           "type": "object",
-          "required": [
-            "address",
-            "status"
-          ],
+          "required": ["address", "status"],
           "properties": {
             "address": {
               "type": "string"
@@ -1359,13 +1127,11 @@
         }
       }
     },
-    "whitelister_allowances": {
+    "whitelisters": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "WhitelisterAllowancesResponse",
+      "title": "WhitelistersResponse",
       "type": "object",
-      "required": [
-        "whitelisters"
-      ],
+      "required": ["whitelisters"],
       "properties": {
         "whitelisters": {
           "type": "array",
@@ -1378,10 +1144,7 @@
       "definitions": {
         "StatusInfo": {
           "type": "object",
-          "required": [
-            "address",
-            "status"
-          ],
+          "required": ["address", "status"],
           "properties": {
             "address": {
               "type": "string"

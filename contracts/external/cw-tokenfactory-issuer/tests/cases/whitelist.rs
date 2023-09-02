@@ -73,7 +73,7 @@ fn set_whitelister_to_false_should_remove_it_from_storage() {
 
     assert_eq!(
         env.cw_tokenfactory_issuer
-            .query_whitelister_allowances(None, None)
+            .query_whitelisters(None, None)
             .unwrap()
             .whitelisters,
         vec![
@@ -94,7 +94,7 @@ fn set_whitelister_to_false_should_remove_it_from_storage() {
 
     assert_eq!(
         env.cw_tokenfactory_issuer
-            .query_whitelister_allowances(None, None)
+            .query_whitelisters(None, None)
             .unwrap()
             .whitelisters,
         vec![StatusInfo {
@@ -244,7 +244,7 @@ fn query_whitelister_within_default_limit() {
         |env| {
             move |start_after, limit| {
                 env.cw_tokenfactory_issuer
-                    .query_whitelister_allowances(start_after, limit)
+                    .query_whitelisters(start_after, limit)
                     .unwrap()
                     .whitelisters
             }
@@ -270,7 +270,7 @@ fn query_whitelister_over_default_limit() {
         |env| {
             move |start_after, limit| {
                 env.cw_tokenfactory_issuer
-                    .query_whitelister_allowances(start_after, limit)
+                    .query_whitelisters(start_after, limit)
                     .unwrap()
                     .whitelisters
             }

@@ -10,9 +10,9 @@ use crate::helpers::{
     check_before_send_hook_features_enabled, check_bool_allowance, check_is_contract_owner,
 };
 use crate::state::{
-    BEFORE_SEND_HOOK_FEATURES_ENABLED, BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES,
-    BURNER_ALLOWANCES, DENOM, FREEZER_ALLOWANCES, IS_FROZEN, MINTER_ALLOWANCES, OWNER,
-    WHITELISTED_ADDRESSES, WHITELISTER_ALLOWANCES,
+    BEFORE_SEND_HOOK_FEATURES_ENABLED, BLACKLISTED_ADDRESSES, BLACKLISTERS, BURNER_ALLOWANCES,
+    DENOM, FREEZER_ALLOWANCES, IS_FROZEN, MINTER_ALLOWANCES, OWNER, WHITELISTED_ADDRESSES,
+    WHITELISTERS,
 };
 
 pub fn mint(
@@ -200,9 +200,9 @@ pub fn set_blacklister(
     // NOTE: Does not check if new status is same as old status
     // but if status is false, remove if exist to reduce space usage
     if status {
-        BLACKLISTER_ALLOWANCES.save(deps.storage, &address, &status)?;
+        BLACKLISTERS.save(deps.storage, &address, &status)?;
     } else {
-        BLACKLISTER_ALLOWANCES.remove(deps.storage, &address);
+        BLACKLISTERS.remove(deps.storage, &address);
     }
 
     Ok(Response::new()
@@ -228,9 +228,9 @@ pub fn set_whitelister(
     // NOTE: Does not check if new status is same as old status
     // but if status is false, remove if exist to reduce space usage
     if status {
-        WHITELISTER_ALLOWANCES.save(deps.storage, &address, &status)?;
+        WHITELISTERS.save(deps.storage, &address, &status)?;
     } else {
-        WHITELISTER_ALLOWANCES.remove(deps.storage, &address);
+        WHITELISTERS.remove(deps.storage, &address);
     }
 
     // Return OK
@@ -383,7 +383,7 @@ pub fn blacklist(
     check_before_send_hook_features_enabled(deps.as_ref())?;
 
     // check to make sure that the sender has blacklister permissions
-    check_bool_allowance(deps.as_ref(), info, BLACKLISTER_ALLOWANCES)?;
+    check_bool_allowance(deps.as_ref(), info, BLACKLISTERS)?;
 
     let address = deps.api.addr_validate(&address)?;
 
@@ -417,7 +417,7 @@ pub fn whitelist(
     check_before_send_hook_features_enabled(deps.as_ref())?;
 
     // check to make sure that the sender has blacklister permissions
-    check_bool_allowance(deps.as_ref(), info, WHITELISTER_ALLOWANCES)?;
+    check_bool_allowance(deps.as_ref(), info, WHITELISTERS)?;
 
     let address = deps.api.addr_validate(&address)?;
 

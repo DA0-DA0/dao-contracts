@@ -133,9 +133,9 @@ pub enum QueryMsg {
     /// IsBlacklister returns if the addres has blacklister privileges. Response: StatusResponse
     #[returns(StatusResponse)]
     IsBlacklister { address: String },
-    /// Blacklisters Enumerates over all the addresses with blacklister privileges. Response: BlacklisterAllowancesResponse
-    #[returns(BlacklisterAllowancesResponse)]
-    BlacklisterAllowances {
+    /// Blacklisters Enumerates over all the addresses with blacklister privileges. Response: BlacklistersResponse
+    #[returns(BlacklistersResponse)]
+    Blacklisters {
         start_after: Option<String>,
         limit: Option<u32>,
     },
@@ -151,9 +151,9 @@ pub enum QueryMsg {
     /// IsWhitelister returns if the addres has whitelister privileges. Response: StatusResponse
     #[returns(StatusResponse)]
     IsWhitelister { address: String },
-    /// Whitelisters Enumerates over all the addresses with whitelister privileges. Response: WhitelisterAllowancesResponse
-    #[returns(WhitelisterAllowancesResponse)]
-    WhitelisterAllowances {
+    /// Whitelisters Enumerates over all the addresses with whitelister privileges. Response: WhitelistersResponse
+    #[returns(WhitelistersResponse)]
+    Whitelisters {
         start_after: Option<String>,
         limit: Option<u32>,
     },
@@ -222,7 +222,7 @@ pub struct BlacklisteesResponse {
 }
 
 #[cw_serde]
-pub struct BlacklisterAllowancesResponse {
+pub struct BlacklistersResponse {
     pub blacklisters: Vec<StatusInfo>,
 }
 
@@ -232,7 +232,7 @@ pub struct WhitelisteesResponse {
 }
 
 #[cw_serde]
-pub struct WhitelisterAllowancesResponse {
+pub struct WhitelistersResponse {
     pub whitelisters: Vec<StatusInfo>,
 }
 

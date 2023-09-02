@@ -5,8 +5,8 @@
 use cosmwasm_std::{Coin, Uint128};
 
 use cw_tokenfactory_issuer::msg::{
-    BlacklisteesResponse, BlacklisterAllowancesResponse, Metadata, MigrateMsg,
-    WhitelisteesResponse, WhitelisterAllowancesResponse,
+    BlacklisteesResponse, BlacklistersResponse, Metadata, MigrateMsg, WhitelisteesResponse,
+    WhitelistersResponse,
 };
 use cw_tokenfactory_issuer::{
     msg::{
@@ -422,12 +422,12 @@ impl TokenfactoryIssuer {
         self.query(&QueryMsg::FreezerAllowances { start_after, limit })
     }
 
-    pub fn query_blacklister_allowances(
+    pub fn query_blacklisters(
         &self,
         start_after: Option<String>,
         limit: Option<u32>,
-    ) -> Result<BlacklisterAllowancesResponse, RunnerError> {
-        self.query(&QueryMsg::BlacklisterAllowances { start_after, limit })
+    ) -> Result<BlacklistersResponse, RunnerError> {
+        self.query(&QueryMsg::Blacklisters { start_after, limit })
     }
 
     pub fn query_blacklistees(
@@ -438,12 +438,12 @@ impl TokenfactoryIssuer {
         self.query(&QueryMsg::Blacklistees { start_after, limit })
     }
 
-    pub fn query_whitelister_allowances(
+    pub fn query_whitelisters(
         &self,
         start_after: Option<String>,
         limit: Option<u32>,
-    ) -> Result<WhitelisterAllowancesResponse, RunnerError> {
-        self.query(&QueryMsg::WhitelisterAllowances { start_after, limit })
+    ) -> Result<WhitelistersResponse, RunnerError> {
+        self.query(&QueryMsg::Whitelisters { start_after, limit })
     }
 
     pub fn query_whitelistees(

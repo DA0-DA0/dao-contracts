@@ -17,9 +17,11 @@ pub const BEFORE_SEND_HOOK_FEATURES_ENABLED: Item<bool> = Item::new("hook_featur
 /// Whether or not token transfers are frozen
 pub const IS_FROZEN: Item<bool> = Item::new("is_frozen");
 
+// Address able to manange blacklists and whitelists
+pub const BLACKLISTERS: Map<&Addr, bool> = Map::new("blacklisters");
+pub const WHITELISTERS: Map<&Addr, bool> = Map::new("whitelisters");
+
 /// Allowances
-pub const BLACKLISTER_ALLOWANCES: Map<&Addr, bool> = Map::new("blacklister_allowances");
-pub const WHITELISTER_ALLOWANCES: Map<&Addr, bool> = Map::new("whitelister_allowances");
 pub const BURNER_ALLOWANCES: Map<&Addr, Uint128> = Map::new("burner_allowances");
 pub const FREEZER_ALLOWANCES: Map<&Addr, bool> = Map::new("freezer_allowances");
 pub const MINTER_ALLOWANCES: Map<&Addr, Uint128> = Map::new("minter_allowances");

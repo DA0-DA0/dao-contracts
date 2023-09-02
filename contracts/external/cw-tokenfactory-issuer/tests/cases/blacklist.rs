@@ -73,7 +73,7 @@ fn set_blacklister_to_false_should_remove_it_from_storage() {
 
     assert_eq!(
         env.cw_tokenfactory_issuer
-            .query_blacklister_allowances(None, None)
+            .query_blacklisters(None, None)
             .unwrap()
             .blacklisters,
         vec![
@@ -94,7 +94,7 @@ fn set_blacklister_to_false_should_remove_it_from_storage() {
 
     assert_eq!(
         env.cw_tokenfactory_issuer
-            .query_blacklister_allowances(None, None)
+            .query_blacklisters(None, None)
             .unwrap()
             .blacklisters,
         vec![StatusInfo {
@@ -259,7 +259,7 @@ fn query_blacklister_within_default_limit() {
         |env| {
             move |start_after, limit| {
                 env.cw_tokenfactory_issuer
-                    .query_blacklister_allowances(start_after, limit)
+                    .query_blacklisters(start_after, limit)
                     .unwrap()
                     .blacklisters
             }
@@ -285,7 +285,7 @@ fn query_blacklister_over_default_limit() {
         |env| {
             move |start_after, limit| {
                 env.cw_tokenfactory_issuer
-                    .query_blacklister_allowances(start_after, limit)
+                    .query_blacklisters(start_after, limit)
                     .unwrap()
                     .blacklisters
             }
