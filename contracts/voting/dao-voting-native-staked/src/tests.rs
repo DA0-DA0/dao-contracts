@@ -1314,7 +1314,7 @@ fn test_staking_hooks() {
     app.update_block(next_block);
 
     // Unstake some
-    let res = unstake_tokens(&mut app, addr.clone(), ADDR1, 75).unwrap();
+    let res = unstake_tokens(&mut app, addr, ADDR1, 75).unwrap();
 
     // Make sure hook is included in response
     println!("unstake hooks {:?}", res);

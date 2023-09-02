@@ -132,7 +132,7 @@ pub fn instantiate(
                     admin: Some(info.sender.to_string()),
                     code_id: msg.token_issuer_code_id,
                     msg: to_binary(&IssuerInstantiateMsg::NewToken {
-                        subdenom: token.subdenom.clone(),
+                        subdenom: token.subdenom,
                     })?,
                     funds: info.funds,
                     label: "cw-tokenfactory-issuer".to_string(),
@@ -703,7 +703,7 @@ pub fn reply(
                             msgs.push(WasmMsg::Execute {
                                 contract_addr: issuer_addr.clone(),
                                 msg: to_binary(&IssuerExecuteMsg::Mint {
-                                    to_address: dao.to_string().clone(),
+                                    to_address: dao.to_string(),
                                     amount: initial_dao_balance,
                                 })?,
                                 funds: vec![],

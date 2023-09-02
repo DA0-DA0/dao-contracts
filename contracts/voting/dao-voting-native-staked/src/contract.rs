@@ -291,7 +291,7 @@ pub fn execute_update_active_threshold(
             }
             ActiveThreshold::AbsoluteCount { count } => {
                 let denom = CONFIG.load(deps.storage)?.denom;
-                let supply: Coin = deps.querier.query_supply(denom.to_string())?;
+                let supply: Coin = deps.querier.query_supply(denom)?;
                 assert_valid_absolute_count_threshold(count, supply.amount)?;
             }
         }

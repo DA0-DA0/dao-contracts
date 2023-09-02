@@ -715,20 +715,20 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             // Check that absolute count is not greater than supply
             // NOTE: we have to check this in a reply as it is potentially possible
             // to include non-mint messages in `initial_nfts`.
-            if let Some(active_threshold) = ACTIVE_THRESHOLD.may_load(deps.storage)? {
-                if let ActiveThreshold::AbsoluteCount { count } = active_threshold {
-                    // Load config for nft contract address
-                    let collection_addr = CONFIG.load(deps.storage)?.nft_address;
+            if let Some(ActiveThreshold::AbsoluteCount { count }) =
+                ACTIVE_THRESHOLD.may_load(deps.storage)?
+            {
+                // Load config for nft contract address
+                let collection_addr = CONFIG.load(deps.storage)?.nft_address;
 
-                    // Query the total supply of the NFT contract
-                    let supply: NumTokensResponse = deps
-                        .querier
-                        .query_wasm_smart(collection_addr, &Cw721QueryMsg::NumTokens {})?;
+                // Query the total supply of the NFT contract
+                let supply: NumTokensResponse = deps
+                    .querier
+                    .query_wasm_smart(collection_addr, &Cw721QueryMsg::NumTokens {})?;
 
-                    // Chec the count is not greater than supply
-                    if count > Uint128::new(supply.count.into()) {
-                        return Err(ContractError::InvalidActiveCount {});
-                    }
+                // Chec the count is not greater than supply
+                if count > Uint128::new(supply.count.into()) {
+                    return Err(ContractError::InvalidActiveCount {});
                 }
             }
             Ok(Response::new())
