@@ -1,5 +1,6 @@
 use cosmwasm_std::{Coin, Uint128};
 use cw_tokenfactory_issuer::msg::DenomUnit;
+use dao_voting::threshold::ActiveThreshold;
 use osmosis_std::types::cosmos::bank::v1beta1::QueryBalanceRequest;
 use osmosis_test_tube::{Account, OsmosisTestApp};
 
@@ -196,6 +197,50 @@ fn test_instantiate_invalid_metadata_fails() {
             }),
             unstaking_duration: None,
             active_threshold: None,
+        },
+        dao,
+    )
+    .unwrap_err();
+}
+
+#[test]
+fn test_instantiate_invalid_active_threshold_count_fails() {
+    let app = OsmosisTestApp::new();
+    let env = TestEnvBuilder::new().default_setup(&app);
+    let tf_issuer_id = env.get_tf_issuer_code_id();
+
+    let dao = app
+        .init_account(&[Coin::new(100000000000, "uosmo")])
+        .unwrap();
+
+    // TODO verify error is correct
+    env.instantiate(
+        &InstantiateMsg {
+            token_issuer_code_id: tf_issuer_id,
+            token_info: TokenInfo::New(NewTokenInfo {
+                subdenom: "cat".to_string(),
+                metadata: Some(NewDenomMetadata {
+                    description: "Awesome token, get it meow!".to_string(),
+                    additional_denom_units: Some(vec![DenomUnit {
+                        denom: "cat".to_string(),
+                        // Exponent 0 is automatically set
+                        exponent: 0,
+                        aliases: vec![],
+                    }]),
+                    display: "cat".to_string(),
+                    name: "Cat Token".to_string(),
+                    symbol: "CAT".to_string(),
+                }),
+                initial_balances: vec![InitialBalance {
+                    amount: Uint128::new(100),
+                    address: env.accounts[0].address(),
+                }],
+                initial_dao_balance: None,
+            }),
+            unstaking_duration: None,
+            active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                count: Uint128::new(1000),
+            }),
         },
         dao,
     )

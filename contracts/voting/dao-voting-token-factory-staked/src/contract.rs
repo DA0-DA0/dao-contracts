@@ -78,7 +78,11 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
     DAO.save(deps.storage, &info.sender)?;
 
+    // Validate Active Threshold
     if let Some(active_threshold) = msg.active_threshold.as_ref() {
+        // Only check active threshold percentage as new tokens don't exist yet
+        // We will check Absolute count (if configured) later for both existing
+        // and new tokens.
         if let ActiveThreshold::Percentage { percent } = active_threshold {
             if *percent > Decimal::percent(100) || *percent <= Decimal::percent(0) {
                 return Err(ContractError::InvalidActivePercentage {});
@@ -92,6 +96,7 @@ pub fn instantiate(
 
     match msg.token_info {
         TokenInfo::Existing { denom } => {
+            // Validate active threshold absolute count if configured
             if let Some(ActiveThreshold::AbsoluteCount { count }) = msg.active_threshold {
                 assert_valid_absolute_count_threshold(deps.as_ref(), &denom, count)?;
             }
@@ -609,6 +614,18 @@ pub fn reply(
                         });
                     let total_supply =
                         initial_supply + token.initial_dao_balance.unwrap_or_default();
+
+                    // Validate active threshold absolute count if configured
+                    if let Some(ActiveThreshold::AbsoluteCount { count }) =
+                        ACTIVE_THRESHOLD.may_load(deps.storage)?
+                    {
+                        if count.is_zero() {
+                            return Err(ContractError::ZeroActiveCount {});
+                        }
+                        if count > initial_supply {
+                            return Err(ContractError::InvalidAbsoluteCount {});
+                        }
+                    }
 
                     // Cannot instantiate with no initial token owners because it would
                     // immediately lock the DAO.

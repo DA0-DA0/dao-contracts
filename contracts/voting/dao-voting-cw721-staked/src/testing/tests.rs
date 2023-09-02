@@ -550,7 +550,6 @@ fn test_instantiate_invalid_active_threshold_count_new_nft() {
 #[should_panic(expected = "Active threshold count is greater than supply")]
 fn test_instantiate_invalid_active_threshold_count_existing_nft() {
     let mut app = App::default();
-    let cw721_id = app.store_code(cw721_base_contract());
     let module_id = app.store_code(voting_cw721_staked_contract());
     let cw721_addr = instantiate_cw721_base(&mut app, CREATOR_ADDR, CREATOR_ADDR);
 
