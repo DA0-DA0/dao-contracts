@@ -24,6 +24,7 @@ pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw721-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const INSTANTIATE_NFT_CONTRACT_REPLY_ID: u64 = 0;
+const VALIDATE_ABSOLUTE_COUNT_FOR_NEW_NFT_CONTRACTS: u64 = 1;
 
 // We multiply by this when calculating needed power for being active
 // when using active threshold with percent
@@ -36,10 +37,19 @@ pub enum NftInstantiateMsg {
 }
 
 impl NftInstantiateMsg {
-    fn update_minter(&mut self, minter: &str) {
+    fn modify_instantiate_msg(&mut self, minter: &str, dao: &str) {
         match self {
+            // Update minter for cw721 NFTs
             NftInstantiateMsg::Cw721(msg) => msg.minter = minter.to_string(),
-            NftInstantiateMsg::Sg721(msg) => msg.minter = minter.to_string(),
+            NftInstantiateMsg::Sg721(msg) => {
+                // Update minter and collection creator for sg721 NFTs
+                // The collection creator is the only one able to call certain methods
+                // in sg721 contracts
+                msg.minter = minter.to_string();
+                // This should be the DAO, which will be able to control metadata about
+                // the collection as well as royalties
+                msg.collection_info.creator = dao.to_string();
+            }
         }
     }
 
@@ -141,8 +151,15 @@ pub fn instantiate(
         } => {
             // Deserialize the binary msg into either cw721 or sg721
             let mut instantiate_msg = try_deserialize_nft_instantiate_msg(instantiate_msg)?;
-            // Update the minter to be this contract
-            instantiate_msg.update_minter(env.contract.address.as_str());
+
+            // Modify the InstantiateMsg such that the minter is now this contract.
+            // We will update ownership of the NFT contract to be the DAO in the submessage reply.
+            //
+            // NOTE: sg721 also has a creator that is set in the `collection_info` field,
+            // we override this with the address of the DAO (the sender of this message).
+            // In sg721 the `creator` address controls metadata and royalties.
+            instantiate_msg
+                .modify_instantiate_msg(env.contract.address.as_str(), info.sender.as_str());
 
             // Check there is at least one NFT to initialize
             if initial_nfts.is_empty() {
@@ -653,17 +670,8 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
                     let initial_nfts = INITITIAL_NFTS.load(deps.storage)?;
 
-                    // Check that absolute count is not greater than supply
-                    if let Some(active_threshold) = ACTIVE_THRESHOLD.may_load(deps.storage)? {
-                        if let ActiveThreshold::AbsoluteCount { count } = active_threshold {
-                            if count > Uint128::new(initial_nfts.len() as u128) {
-                                return Err(ContractError::InvalidActiveCount {});
-                            }
-                        }
-                    }
-
                     // Add mint submessages
-                    let mint_submessages: Vec<SubMsg> = initial_nfts
+                    let mut submessages: Vec<SubMsg> = initial_nfts
                         .iter()
                         .flat_map(|nft| -> Result<SubMsg, ContractError> {
                             Ok(SubMsg::new(WasmMsg::Execute {
@@ -677,28 +685,53 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     // Clear space
                     INITITIAL_NFTS.remove(deps.storage);
 
-                    // Update minter message
-                    let update_minter_msg = WasmMsg::Execute {
-                        contract_addr: nft_contract.clone(),
-                        msg: to_binary(
-                            &cw721_base::msg::ExecuteMsg::<Empty, Empty>::UpdateOwnership(
-                                cw721_base::Action::TransferOwnership {
-                                    new_owner: dao.to_string(),
-                                    expiry: None,
-                                },
-                            ),
-                        )?,
-                        funds: vec![],
-                    };
+                    // Last submessage updates owner.
+                    // The reply is used for validation after setup.
+                    submessages.push(SubMsg::reply_on_success(
+                        WasmMsg::Execute {
+                            contract_addr: nft_contract.clone(),
+                            msg: to_binary(
+                                &cw721_base::msg::ExecuteMsg::<Empty, Empty>::UpdateOwnership(
+                                    cw721_base::Action::TransferOwnership {
+                                        new_owner: dao.to_string(),
+                                        expiry: None,
+                                    },
+                                ),
+                            )?,
+                            funds: vec![],
+                        },
+                        VALIDATE_ABSOLUTE_COUNT_FOR_NEW_NFT_CONTRACTS,
+                    ));
 
                     Ok(Response::default()
                         .add_attribute("method", "instantiate")
                         .add_attribute("nft_contract", nft_contract)
-                        .add_message(update_minter_msg)
-                        .add_submessages(mint_submessages))
+                        .add_submessages(submessages))
                 }
                 Err(_) => Err(ContractError::NftInstantiateError {}),
             }
+        }
+        VALIDATE_ABSOLUTE_COUNT_FOR_NEW_NFT_CONTRACTS => {
+            // Check that absolute count is not greater than supply
+            // NOTE: we have to check this in a reply as it is potentially possible
+            // to include non-mint messages in `initial_nfts`.
+            if let Some(active_threshold) = ACTIVE_THRESHOLD.may_load(deps.storage)? {
+                if let ActiveThreshold::AbsoluteCount { count } = active_threshold {
+                    // Load config for nft contract address
+                    let collection_addr = CONFIG.load(deps.storage)?.nft_address;
+
+                    // Query the total supply of the NFT contract
+                    let supply: NumTokensResponse = deps
+                        .querier
+                        .query_wasm_smart(collection_addr, &Cw721QueryMsg::NumTokens {})?;
+
+                    // Chec the count is not greater than supply
+                    if count > Uint128::new(supply.count.into()) {
+                        return Err(ContractError::InvalidActiveCount {});
+                    }
+                }
+            }
+            Ok(Response::new())
         }
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }
