@@ -61,12 +61,14 @@ pub fn instantiate(
                 return Err(ContractError::ZeroTotalWeight {});
             }
 
-            // We need to set ourself as the CW4 admin it is then transferred to the DAO in the reply
+            // Instantiate group contract, set DAO as admin.
+            // Voting module contracts are instantiated by the main dao-dao-core
+            // contract, so the Admin is set to info.sender.
             let msg = WasmMsg::Instantiate {
                 admin: Some(info.sender.to_string()),
                 code_id: cw4_group_code_id,
                 msg: to_binary(&cw4_group::msg::InstantiateMsg {
-                    admin: Some(env.contract.address.to_string()),
+                    admin: Some(info.sender.to_string()),
                     members: initial_members,
                 })?,
                 funds: vec![],
@@ -185,19 +187,8 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                         return Err(ContractError::DuplicateGroupContract {});
                     }
                     let group_contract = deps.api.addr_validate(&res.contract_address)?;
-                    let dao = DAO.load(deps.storage)?;
                     GROUP_CONTRACT.save(deps.storage, &group_contract)?;
-                    // Transfer admin status to the DAO
-                    let msg1 = WasmMsg::Execute {
-                        contract_addr: group_contract.to_string(),
-                        msg: to_binary(&cw4_group::msg::ExecuteMsg::UpdateAdmin {
-                            admin: Some(dao.to_string()),
-                        })?,
-                        funds: vec![],
-                    };
-                    Ok(Response::default()
-                        .add_attribute("group_contract", group_contract)
-                        .add_message(msg1))
+                    Ok(Response::default().add_attribute("group_contract", group_contract))
                 }
                 Err(_) => Err(ContractError::GroupContractInstantiateError {}),
             }
