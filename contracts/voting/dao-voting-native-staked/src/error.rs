@@ -16,6 +16,9 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
+    #[error("Denom does not exist on chain")]
+    InvalidDenom {},
+
     #[error("Invalid unstaking duration, unstaking duration cannot be 0")]
     InvalidUnstakingDuration {},
 

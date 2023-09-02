@@ -244,6 +244,25 @@ fn test_instantiate_invalid_unstaking_duration_height() {
 }
 
 #[test]
+#[should_panic(expected = "Denom does not exist on chain")]
+fn test_instantiate_invalid_denom() {
+    let mut app = mock_app();
+    let staking_id = app.store_code(staking_contract());
+
+    // Populated fields with height
+    instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            // This denom has zero supply
+            denom: "uinvalid2".to_string(),
+            unstaking_duration: None,
+            active_threshold: None,
+        },
+    );
+}
+
+#[test]
 #[should_panic(expected = "Invalid unstaking duration, unstaking duration cannot be 0")]
 fn test_instantiate_invalid_unstaking_duration_time() {
     let mut app = mock_app();

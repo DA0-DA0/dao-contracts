@@ -66,10 +66,18 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
     DAO.save(deps.storage, &info.sender)?;
 
+    // Validate denom by checking supply
+    let supply: Coin = deps.querier.query_supply(msg.denom.to_string())?;
+    println!("supply {:?}", supply);
+    if Uint128::is_zero(&supply.amount) {
+        return Err(ContractError::InvalidDenom {});
+    }
+
+    // Validate active threshold
     if let Some(active_threshold) = msg.active_threshold.as_ref() {
         match active_threshold {
             ActiveThreshold::AbsoluteCount { count } => {
-                assert_valid_absolute_count_threshold(deps.as_ref(), &msg.denom, *count)?;
+                assert_valid_absolute_count_threshold(*count, supply.amount)?;
             }
             ActiveThreshold::Percentage { percent } => {
                 if *percent > Decimal::percent(100) || *percent <= Decimal::percent(0) {
@@ -85,15 +93,13 @@ pub fn instantiate(
 }
 
 pub fn assert_valid_absolute_count_threshold(
-    deps: Deps,
-    token_denom: &str,
     count: Uint128,
+    supply: Uint128,
 ) -> Result<(), ContractError> {
     if count.is_zero() {
         return Err(ContractError::ZeroActiveCount {});
     }
-    let supply: Coin = deps.querier.query_supply(token_denom.to_string())?;
-    if count > supply.amount {
+    if count > supply {
         return Err(ContractError::InvalidAbsoluteCount {});
     }
     Ok(())
@@ -285,7 +291,8 @@ pub fn execute_update_active_threshold(
             }
             ActiveThreshold::AbsoluteCount { count } => {
                 let denom = CONFIG.load(deps.storage)?.denom;
-                assert_valid_absolute_count_threshold(deps.as_ref(), &denom, count)?;
+                let supply: Coin = deps.querier.query_supply(denom.to_string())?;
+                assert_valid_absolute_count_threshold(count, supply.amount)?;
             }
         }
         ACTIVE_THRESHOLD.save(deps.storage, &active_threshold)?;
