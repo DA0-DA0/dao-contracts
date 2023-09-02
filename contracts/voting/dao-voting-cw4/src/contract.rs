@@ -196,7 +196,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                         funds: vec![],
                     };
                     Ok(Response::default()
-                        .add_attribute("group_contract_address", group_contract)
+                        .add_attribute("group_contract", group_contract)
                         .add_message(msg1))
                 }
                 Err(_) => Err(ContractError::GroupContractInstantiateError {}),

@@ -351,7 +351,7 @@ pub fn set_minter(
     Ok(Response::new()
         .add_attribute("action", "set_minter")
         .add_attribute("minter", address)
-        .add_attribute("amount", allowance))
+        .add_attribute("allowance", allowance))
 }
 
 pub fn freeze(

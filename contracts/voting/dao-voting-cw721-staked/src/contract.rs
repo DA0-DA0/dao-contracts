@@ -135,13 +135,13 @@ pub fn instantiate(
 
             Ok(Response::default()
                 .add_attribute("method", "instantiate")
-                .add_attribute("nft_contract", address)
                 .add_attribute(
                     "owner",
                     owner
                         .map(|a| a.into_string())
                         .unwrap_or_else(|| "None".to_string()),
-                ))
+                )
+                .add_attribute("nft_contract", address))
         }
         NftContract::New {
             code_id,
@@ -190,13 +190,14 @@ pub fn instantiate(
             );
 
             Ok(Response::default()
-                .add_submessage(instantiate_msg)
+                .add_attribute("method", "instantiate")
                 .add_attribute(
                     "owner",
                     owner
                         .map(|a| a.into_string())
                         .unwrap_or_else(|| "None".to_string()),
-                ))
+                )
+                .add_submessage(instantiate_msg))
         }
     }
 }
@@ -704,7 +705,6 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     ));
 
                     Ok(Response::default()
-                        .add_attribute("method", "instantiate")
                         .add_attribute("nft_contract", nft_contract)
                         .add_submessages(submessages))
                 }

@@ -121,7 +121,7 @@ pub fn instantiate(
             Ok(Response::<TokenFactoryMsg>::new()
                 .add_attribute("action", "instantiate")
                 .add_attribute("token", "existing_token")
-                .add_attribute("token_denom", denom)
+                .add_attribute("denom", denom)
                 .add_submessage(issuer_instantiate_msg))
         }
         TokenInfo::New(token) => {
