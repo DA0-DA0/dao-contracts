@@ -2,8 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
-use dao_proposal_hooks::ProposalHookMsg;
-use dao_vote_hooks::VoteHookMsg;
+use dao_hooks::{proposal::ProposalHookMsg, vote::VoteHookMsg};
 
 use crate::error::ContractError;
 use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};

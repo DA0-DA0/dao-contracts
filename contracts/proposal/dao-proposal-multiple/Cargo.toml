@@ -38,8 +38,7 @@ dao-pre-propose-base = { workspace = true }
 dao-interface = { workspace = true }
 dao-voting = { workspace = true }
 cw-hooks = { workspace = true }
-dao-proposal-hooks = { workspace = true }
-dao-vote-hooks = { workspace = true }
+dao-hooks = { workspace = true }
 dao-pre-propose-multiple = { workspace = true }
 voting-v1 = { workspace = true }
 

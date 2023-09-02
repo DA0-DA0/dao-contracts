@@ -9,10 +9,10 @@ use cw2::set_contract_version;
 use cw_hooks::Hooks;
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration};
+use dao_hooks::proposal::{new_proposal_hooks, proposal_status_changed_hooks};
+use dao_hooks::vote::new_vote_hooks;
 use dao_interface::voting::IsActiveResponse;
 use dao_pre_propose_multiple::contract::ExecuteMsg as PreProposeMsg;
-use dao_proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
-use dao_vote_hooks::new_vote_hooks;
 use dao_voting::{
     multiple_choice::{
         MultipleChoiceOptions, MultipleChoiceVote, MultipleChoiceVotes, VotingStrategy,

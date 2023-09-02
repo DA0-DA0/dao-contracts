@@ -1,7 +1,7 @@
 [package]
-name = "dao-vote-hooks"
-authors = ["ekez ekez@withoutdoing.com"]
-description = "A package for managing vote hooks."
+name = "dao-hooks"
+authors = ["ekez ekez@withoutdoing.com", "Jake Hartnell <no-reply@no-reply.com>"]
+description = "A package for managing DAO vote, proposal, and stake hooks."
 edition = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }

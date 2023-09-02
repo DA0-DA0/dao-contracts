@@ -1,6 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use dao_proposal_hooks::ProposalHookMsg;
-use dao_vote_hooks::VoteHookMsg;
+use dao_hooks::{proposal::ProposalHookMsg, vote::VoteHookMsg};
 
 #[cw_serde]
 pub struct InstantiateMsg {

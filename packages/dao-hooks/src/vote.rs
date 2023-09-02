@@ -1,5 +1,3 @@
-#![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
-
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_binary, StdResult, Storage, SubMsg, WasmMsg};
 use cw_hooks::Hooks;

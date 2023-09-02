@@ -22,8 +22,7 @@ cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 thiserror = { workspace = true }
-dao-proposal-hooks = { workspace = true }
-dao-vote-hooks = { workspace = true }
+dao-hooks = { workspace = true }
 
 [dev-dependencies]
 cw-hooks = { workspace = true }

@@ -67,15 +67,11 @@ cd packages/dao-voting
 cargo publish
 cd "$START_DIR"
 
-cd packages/dao-vote-hooks
+cd packages/dao-hooks
 cargo publish
 cd "$START_DIR"
 
 sleep 120
-
-cd packages/dao-proposal-hooks
-cargo publish
-cd "$START_DIR"
 
 cd packages/dao-pre-propose-base
 cargo publish
