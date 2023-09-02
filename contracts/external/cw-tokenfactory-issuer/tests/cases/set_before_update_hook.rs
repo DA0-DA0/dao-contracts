@@ -1,5 +1,6 @@
 use cw_tokenfactory_issuer::ContractError;
 
+use crate::msg::QueryMsg;
 use crate::test_env::{TestEnv, TokenfactoryIssuer};
 
 #[test]
@@ -29,4 +30,11 @@ fn test_set_before_update_hook() {
         err,
         TokenfactoryIssuer::execute_error(ContractError::BeforeSendHookAlreadyEnabled {})
     );
+
+    // Query before update hook
+    let enabled: bool = env
+        .cw_tokenfactory_issuer
+        .query(&QueryMsg::BeforeSendHookFeaturesEnabled {})
+        .unwrap();
+    assert!(enabled);
 }

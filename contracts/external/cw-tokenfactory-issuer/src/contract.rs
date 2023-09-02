@@ -188,6 +188,9 @@ pub fn query(deps: Deps<TokenFactoryQuery>, _env: Env, msg: QueryMsg) -> StdResu
         QueryMsg::FreezerAllowances { start_after, limit } => to_binary(
             &queries::query_freezer_allowances(deps, start_after, limit)?,
         ),
+        QueryMsg::BeforeSendHookFeaturesEnabled {} => {
+            to_binary(&queries::query_before_send_hook_features(deps)?)
+        }
     }
 }
 

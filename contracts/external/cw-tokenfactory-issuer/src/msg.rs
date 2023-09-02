@@ -166,6 +166,10 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    /// Returns whether features that require MsgBeforeSendHook are enabled
+    /// Most Cosmos chains do not support this feature yet.
+    #[returns(bool)]
+    BeforeSendHookFeaturesEnabled {},
 }
 
 // We define a custom struct for each query response

@@ -908,6 +908,20 @@
           }
         },
         "additionalProperties": false
+      },
+      {
+        "description": "Returns whether features that require MsgBeforeSendHook are enabled Most Cosmos chains do not support this feature yet.",
+        "type": "object",
+        "required": [
+          "before_send_hook_features_enabled"
+        ],
+        "properties": {
+          "before_send_hook_features_enabled": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       }
     ]
   },
@@ -970,6 +984,11 @@
     }
   },
   "responses": {
+    "before_send_hook_features_enabled": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Boolean",
+      "type": "boolean"
+    },
     "blacklistees": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "BlacklisteesResponse",

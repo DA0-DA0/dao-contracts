@@ -8,8 +8,9 @@ use crate::msg::{
     OwnerResponse, StatusInfo, StatusResponse, WhitelisteesResponse, WhitelisterAllowancesResponse,
 };
 use crate::state::{
-    BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, DENOM, FREEZER_ALLOWANCES,
-    IS_FROZEN, MINTER_ALLOWANCES, OWNER, WHITELISTED_ADDRESSES, WHITELISTER_ALLOWANCES,
+    BEFORE_SEND_HOOK_FEATURES_ENABLED, BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES,
+    BURNER_ALLOWANCES, DENOM, FREEZER_ALLOWANCES, IS_FROZEN, MINTER_ALLOWANCES, OWNER,
+    WHITELISTED_ADDRESSES, WHITELISTER_ALLOWANCES,
 };
 
 // Default settings for pagination
@@ -230,6 +231,10 @@ pub fn query_is_freezer(
         .load(deps.storage, &deps.api.addr_validate(&address)?)
         .unwrap_or(false);
     Ok(StatusResponse { status })
+}
+
+pub fn query_before_send_hook_features(deps: Deps<TokenFactoryQuery>) -> StdResult<bool> {
+    BEFORE_SEND_HOOK_FEATURES_ENABLED.load(deps.storage)
 }
 
 // query inspiration see https://github.com/mars-protocol/fields-of-mars/blob/v1.0.0/packages/fields-of-mars/src/martian_field.rs#L465-L473
