@@ -2,32 +2,8 @@ use crate::state::{
     ALLOWLIST, BEFORE_SEND_HOOK_FEATURES_ENABLED, DENOM, DENYLIST, IS_FROZEN, OWNER,
 };
 use crate::ContractError;
-use cosmwasm_std::{Addr, Coin, Deps, Uint128};
+use cosmwasm_std::{Addr, Deps};
 use token_bindings::TokenFactoryQuery;
-
-pub fn check_contract_has_funds(
-    denom: String,
-    funds: &[Coin],
-    amount: Uint128,
-) -> Result<(), ContractError> {
-    if let Some(c) = funds.iter().find(|c| c.denom == denom) {
-        if c.amount < amount {
-            Err(ContractError::NotEnoughFunds {
-                denom,
-                funds: c.amount.u128(),
-                needed: amount.u128(),
-            })
-        } else {
-            Ok(())
-        }
-    } else {
-        Err(ContractError::NotEnoughFunds {
-            denom,
-            funds: 0u128,
-            needed: amount.u128(),
-        })
-    }
-}
 
 pub fn check_is_contract_owner(
     deps: Deps<TokenFactoryQuery>,
