@@ -5,7 +5,7 @@ use cosmwasm_std::{
     coins, to_binary, BankMsg, BankQuery, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
     MessageInfo, Order, Reply, Response, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
 };
-use cw2::set_contract_version;
+use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_controllers::ClaimsResponse;
 use cw_storage_plus::Bound;
 use cw_tokenfactory_issuer::msg::{
@@ -566,9 +566,15 @@ pub fn migrate(
     _env: Env,
     _msg: MigrateMsg,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
-    // Set contract to version to latest
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    Ok(Response::<TokenFactoryMsg>::default())
+    let storage_version: ContractVersion = get_contract_version(deps.storage)?;
+
+    // Only migrate if newer
+    if storage_version.version < CONTRACT_VERSION.to_string() {
+        // Set contract to version to latest
+        set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    }
+
+    Ok(Response::new().add_attribute("action", "migrate"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

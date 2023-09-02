@@ -28,6 +28,7 @@ pub enum NftContract {
 
 #[cw_serde]
 pub struct InstantiateMsg {
+    /// TODO use cw_ownable
     /// May change unstaking duration and add hooks.
     pub owner: Option<Admin>,
     /// Address of the cw721 NFT contract that may be staked.

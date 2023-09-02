@@ -1323,7 +1323,7 @@ fn test_staking_hooks() {
 #[test]
 fn test_migrate_update_version() {
     let mut deps = mock_dependencies();
-    cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
+    cw2::set_contract_version(&mut deps.storage, "my-contract", "1.0.0").unwrap();
     migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
     let version = cw2::get_contract_version(&deps.storage).unwrap();
     assert_eq!(version.version, CONTRACT_VERSION);
