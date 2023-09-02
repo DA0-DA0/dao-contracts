@@ -20,7 +20,7 @@ pub const CONFIG: Item<Config> = Item::new("config");
 pub const DAO: Item<Addr> = Item::new("dao");
 
 // Holds initial NFTs messages during instantiation.
-pub const INITITIAL_NFTS: Item<Vec<Binary>> = Item::new("initial_nfts");
+pub const INITIAL_NFTS: Item<Vec<Binary>> = Item::new("initial_nfts");
 
 /// The set of NFTs currently staked by each address. The existence of
 /// an `(address, token_id)` pair implies that `address` has staked

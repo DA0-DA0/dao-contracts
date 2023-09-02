@@ -2,7 +2,7 @@ use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, NftContract, QueryMsg};
 use crate::state::{
     register_staked_nft, register_unstaked_nfts, Config, ACTIVE_THRESHOLD, CONFIG, DAO, HOOKS,
-    INITITIAL_NFTS, MAX_CLAIMS, NFT_BALANCES, NFT_CLAIMS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
+    INITIAL_NFTS, MAX_CLAIMS, NFT_BALANCES, NFT_CLAIMS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
 };
 use crate::ContractError;
 use cosmwasm_schema::cw_serde;
@@ -175,7 +175,7 @@ pub fn instantiate(
             CONFIG.save(deps.storage, &config)?;
 
             // Save initial NFTs for use in reply
-            INITITIAL_NFTS.save(deps.storage, &initial_nfts)?;
+            INITIAL_NFTS.save(deps.storage, &initial_nfts)?;
 
             // Create instantiate submessage for NFT contract
             let instantiate_msg = SubMsg::reply_on_success(
@@ -669,7 +669,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     config.nft_address = deps.api.addr_validate(&nft_contract)?;
                     CONFIG.save(deps.storage, &config)?;
 
-                    let initial_nfts = INITITIAL_NFTS.load(deps.storage)?;
+                    let initial_nfts = INITIAL_NFTS.load(deps.storage)?;
 
                     // Add mint submessages
                     let mut submessages: Vec<SubMsg> = initial_nfts
@@ -684,7 +684,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                         .collect::<Vec<SubMsg>>();
 
                     // Clear space
-                    INITITIAL_NFTS.remove(deps.storage);
+                    INITIAL_NFTS.remove(deps.storage);
 
                     // Last submessage updates owner.
                     // The reply is used for validation after setup.
