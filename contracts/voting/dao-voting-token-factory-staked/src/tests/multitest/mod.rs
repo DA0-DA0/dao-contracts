@@ -4,8 +4,8 @@ use crate::msg::{
     StakerBalanceResponse, TokenInfo,
 };
 use crate::state::Config;
-use cosmwasm_std::testing::{mock_env, MockApi, MockQuerier, MockStorage};
-use cosmwasm_std::{coins, Addr, Coin, Decimal, OwnedDeps, Uint128};
+use cosmwasm_std::testing::{mock_dependencies, mock_env};
+use cosmwasm_std::{coins, Addr, Coin, Decimal, Empty, Uint128};
 use cw_controllers::ClaimsResponse;
 use cw_multi_test::{
     next_block, AppResponse, BankSudo, Contract, ContractWrapper, Executor, SudoMsg,
@@ -15,7 +15,6 @@ use dao_interface::voting::{
     InfoResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
-use std::marker::PhantomData;
 use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 use token_bindings_test::TokenFactoryApp as App;
 
@@ -37,12 +36,13 @@ fn issuer_contract() -> Box<dyn Contract<TokenFactoryMsg, TokenFactoryQuery>> {
 }
 
 fn staking_contract() -> Box<dyn Contract<TokenFactoryMsg, TokenFactoryQuery>> {
-    let contract = ContractWrapper::new(
+    let contract = ContractWrapper::new_with_empty(
         crate::contract::execute,
         crate::contract::instantiate,
         crate::contract::query,
     )
-    .with_reply(crate::contract::reply);
+    .with_reply_empty(crate::contract::reply)
+    .with_migrate_empty(crate::contract::migrate);
     Box::new(contract)
 }
 
@@ -1356,12 +1356,7 @@ fn test_add_remove_hooks() {
 
 #[test]
 pub fn test_migrate_update_version() {
-    let mut deps = OwnedDeps {
-        storage: MockStorage::default(),
-        api: MockApi::default(),
-        querier: MockQuerier::default(),
-        custom_query_type: PhantomData::<TokenFactoryQuery>,
-    };
+    let mut deps = mock_dependencies();
     cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
     migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
     let version = cw2::get_contract_version(&deps.storage).unwrap();

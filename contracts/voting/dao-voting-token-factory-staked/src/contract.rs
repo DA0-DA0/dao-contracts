@@ -12,14 +12,14 @@ use cw_tokenfactory_issuer::msg::{
     DenomUnit, ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg, Metadata,
 };
 use cw_utils::{maybe_addr, must_pay, parse_reply_instantiate_data, Duration};
+use dao_hooks::stake::{stake_hook_msgs, unstake_hook_msgs};
 use dao_interface::voting::{
     IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
-use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 
 use crate::error::ContractError;
-use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
+
 use crate::msg::{
     DenomResponse, ExecuteMsg, GetHooksResponse, InitialBalance, InstantiateMsg,
     ListStakersResponse, MigrateMsg, QueryMsg, StakerBalanceResponse, TokenInfo,
@@ -62,11 +62,11 @@ fn validate_duration(duration: Option<Duration>) -> Result<(), ContractError> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     validate_duration(msg.unstaking_duration)?;
@@ -118,7 +118,7 @@ pub fn instantiate(
                 INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID,
             );
 
-            Ok(Response::<TokenFactoryMsg>::new()
+            Ok(Response::new()
                 .add_attribute("action", "instantiate")
                 .add_attribute("token", "existing_token")
                 .add_attribute("denom", denom)
@@ -140,7 +140,7 @@ pub fn instantiate(
                 INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID,
             );
 
-            Ok(Response::<TokenFactoryMsg>::new()
+            Ok(Response::new()
                 .add_attribute("action", "instantiate")
                 .add_attribute("token", "new_token")
                 .add_submessage(issuer_instantiate_msg))
@@ -149,7 +149,7 @@ pub fn instantiate(
 }
 
 pub fn assert_valid_absolute_count_threshold(
-    deps: Deps<TokenFactoryQuery>,
+    deps: Deps,
     token_denom: &str,
     count: Uint128,
 ) -> Result<(), ContractError> {
@@ -165,11 +165,11 @@ pub fn assert_valid_absolute_count_threshold(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Stake {} => execute_stake(deps, env, info),
         ExecuteMsg::Unstake { amount } => execute_unstake(deps, env, info, amount),
@@ -184,10 +184,10 @@ pub fn execute(
 }
 
 pub fn execute_stake(
-    deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut,
     env: Env,
     info: MessageInfo,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     let denom = DENOM.load(deps.storage)?;
     let amount = must_pay(&info, &denom)?;
 
@@ -204,9 +204,9 @@ pub fn execute_stake(
     )?;
 
     // Add stake hook messages
-    let hook_msgs = stake_hook_msgs(deps.storage, info.sender.clone(), amount)?;
+    let hook_msgs = stake_hook_msgs(HOOKS, deps.storage, info.sender.clone(), amount)?;
 
-    Ok(Response::<TokenFactoryMsg>::new()
+    Ok(Response::new()
         .add_submessages(hook_msgs)
         .add_attribute("action", "stake")
         .add_attribute("amount", amount.to_string())
@@ -214,11 +214,11 @@ pub fn execute_stake(
 }
 
 pub fn execute_unstake(
-    deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut,
     env: Env,
     info: MessageInfo,
     amount: Uint128,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     if amount.is_zero() {
         return Err(ContractError::ZeroUnstake {});
     }
@@ -246,7 +246,7 @@ pub fn execute_unstake(
     )?;
 
     // Add unstake hook messages
-    let hook_msgs = unstake_hook_msgs(deps.storage, info.sender.clone(), amount)?;
+    let hook_msgs = unstake_hook_msgs(HOOKS, deps.storage, info.sender.clone(), amount)?;
 
     let config = CONFIG.load(deps.storage)?;
     let denom = DENOM.load(deps.storage)?;
@@ -256,7 +256,7 @@ pub fn execute_unstake(
                 to_address: info.sender.to_string(),
                 amount: coins(amount.u128(), denom),
             });
-            Ok(Response::<TokenFactoryMsg>::new()
+            Ok(Response::new()
                 .add_message(msg)
                 .add_submessages(hook_msgs)
                 .add_attribute("action", "unstake")
@@ -276,7 +276,7 @@ pub fn execute_unstake(
                 amount,
                 duration.after(&env.block),
             )?;
-            Ok(Response::<TokenFactoryMsg>::new()
+            Ok(Response::new()
                 .add_submessages(hook_msgs)
                 .add_attribute("action", "unstake")
                 .add_attribute("from", info.sender)
@@ -287,10 +287,10 @@ pub fn execute_unstake(
 }
 
 pub fn execute_update_config(
-    deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut,
     info: MessageInfo,
     duration: Option<Duration>,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
 
     // Only the DAO can update the config
@@ -304,26 +304,26 @@ pub fn execute_update_config(
     config.unstaking_duration = duration;
 
     CONFIG.save(deps.storage, &config)?;
-    Ok(Response::<TokenFactoryMsg>::new().add_attribute("action", "update_config"))
+    Ok(Response::new().add_attribute("action", "update_config"))
 }
 
 pub fn execute_claim(
-    deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut,
     env: Env,
     info: MessageInfo,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     let release = CLAIMS.claim_tokens(deps.storage, &info.sender, &env.block, None)?;
     if release.is_zero() {
         return Err(ContractError::NothingToClaim {});
     }
 
     let denom = DENOM.load(deps.storage)?;
-    let msg = CosmosMsg::<TokenFactoryMsg>::Bank(BankMsg::Send {
+    let msg = CosmosMsg::Bank(BankMsg::Send {
         to_address: info.sender.to_string(),
         amount: coins(release.u128(), denom),
     });
 
-    Ok(Response::<TokenFactoryMsg>::new()
+    Ok(Response::new()
         .add_message(msg)
         .add_attribute("action", "claim")
         .add_attribute("from", info.sender)
@@ -331,11 +331,11 @@ pub fn execute_claim(
 }
 
 pub fn execute_update_active_threshold(
-    deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     new_active_threshold: Option<ActiveThreshold>,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     let dao = DAO.load(deps.storage)?;
     if info.sender != dao {
         return Err(ContractError::Unauthorized {});
@@ -358,15 +358,15 @@ pub fn execute_update_active_threshold(
         ACTIVE_THRESHOLD.remove(deps.storage);
     }
 
-    Ok(Response::<TokenFactoryMsg>::new().add_attribute("action", "update_active_threshold"))
+    Ok(Response::new().add_attribute("action", "update_active_threshold"))
 }
 
 pub fn execute_add_hook(
-    deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     addr: String,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     let dao = DAO.load(deps.storage)?;
     if info.sender != dao {
         return Err(ContractError::Unauthorized {});
@@ -374,17 +374,17 @@ pub fn execute_add_hook(
 
     let hook = deps.api.addr_validate(&addr)?;
     HOOKS.add_hook(deps.storage, hook)?;
-    Ok(Response::<TokenFactoryMsg>::new()
+    Ok(Response::new()
         .add_attribute("action", "add_hook")
         .add_attribute("hook", addr))
 }
 
 pub fn execute_remove_hook(
-    deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     addr: String,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     let dao = DAO.load(deps.storage)?;
     if info.sender != dao {
         return Err(ContractError::Unauthorized {});
@@ -392,13 +392,13 @@ pub fn execute_remove_hook(
 
     let hook = deps.api.addr_validate(&addr)?;
     HOOKS.remove_hook(deps.storage, hook)?;
-    Ok(Response::<TokenFactoryMsg>::new()
+    Ok(Response::new()
         .add_attribute("action", "remove_hook")
         .add_attribute("hook", addr))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps<TokenFactoryQuery>, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::VotingPowerAtHeight { address, height } => {
             to_binary(&query_voting_power_at_height(deps, env, address, height)?)
@@ -424,7 +424,7 @@ pub fn query(deps: Deps<TokenFactoryQuery>, env: Env, msg: QueryMsg) -> StdResul
 }
 
 pub fn query_voting_power_at_height(
-    deps: Deps<TokenFactoryQuery>,
+    deps: Deps,
     env: Env,
     address: String,
     height: Option<u64>,
@@ -438,7 +438,7 @@ pub fn query_voting_power_at_height(
 }
 
 pub fn query_total_power_at_height(
-    deps: Deps<TokenFactoryQuery>,
+    deps: Deps,
     env: Env,
     height: Option<u64>,
 ) -> StdResult<TotalPowerAtHeightResponse> {
@@ -449,22 +449,22 @@ pub fn query_total_power_at_height(
     Ok(TotalPowerAtHeightResponse { power, height })
 }
 
-pub fn query_info(deps: Deps<TokenFactoryQuery>) -> StdResult<Binary> {
+pub fn query_info(deps: Deps) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
     to_binary(&dao_interface::voting::InfoResponse { info })
 }
 
-pub fn query_dao(deps: Deps<TokenFactoryQuery>) -> StdResult<Binary> {
+pub fn query_dao(deps: Deps) -> StdResult<Binary> {
     let dao = DAO.load(deps.storage)?;
     to_binary(&dao)
 }
 
-pub fn query_claims(deps: Deps<TokenFactoryQuery>, address: String) -> StdResult<ClaimsResponse> {
+pub fn query_claims(deps: Deps, address: String) -> StdResult<ClaimsResponse> {
     CLAIMS.query_claims(deps, &deps.api.addr_validate(&address)?)
 }
 
 pub fn query_list_stakers(
-    deps: Deps<TokenFactoryQuery>,
+    deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<Binary> {
@@ -486,7 +486,7 @@ pub fn query_list_stakers(
     to_binary(&ListStakersResponse { stakers })
 }
 
-pub fn query_is_active(deps: Deps<TokenFactoryQuery>) -> StdResult<Binary> {
+pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
     let threshold = ACTIVE_THRESHOLD.may_load(deps.storage)?;
     if let Some(threshold) = threshold {
         let denom = DENOM.load(deps.storage)?;
@@ -548,24 +548,20 @@ pub fn query_is_active(deps: Deps<TokenFactoryQuery>) -> StdResult<Binary> {
     }
 }
 
-pub fn query_active_threshold(deps: Deps<TokenFactoryQuery>) -> StdResult<Binary> {
+pub fn query_active_threshold(deps: Deps) -> StdResult<Binary> {
     to_binary(&ActiveThresholdResponse {
         active_threshold: ACTIVE_THRESHOLD.may_load(deps.storage)?,
     })
 }
 
-pub fn query_hooks(deps: Deps<TokenFactoryQuery>) -> StdResult<GetHooksResponse> {
+pub fn query_hooks(deps: Deps) -> StdResult<GetHooksResponse> {
     Ok(GetHooksResponse {
         hooks: HOOKS.query_hooks(deps)?.hooks,
     })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(
-    deps: DepsMut<TokenFactoryQuery>,
-    _env: Env,
-    _msg: MigrateMsg,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let storage_version: ContractVersion = get_contract_version(deps.storage)?;
 
     // Only migrate if newer
@@ -578,11 +574,7 @@ pub fn migrate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(
-    deps: DepsMut<TokenFactoryQuery>,
-    env: Env,
-    msg: Reply,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
         INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID => {
             // Parse and save address of cw-tokenfactory-issuer
