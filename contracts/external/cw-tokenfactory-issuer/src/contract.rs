@@ -162,7 +162,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     let storage_version: ContractVersion = get_contract_version(deps.storage)?;
 
     // Only migrate if newer
-    if storage_version.version < CONTRACT_VERSION.to_string() {
+    if storage_version.version.as_str() < CONTRACT_VERSION {
         // Set contract to version to latest
         set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     }

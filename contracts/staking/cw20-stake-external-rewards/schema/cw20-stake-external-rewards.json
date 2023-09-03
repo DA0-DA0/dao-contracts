@@ -286,6 +286,7 @@
         ]
       },
       "StakeChangedHookMsg": {
+        "description": "An enum representing staking hooks.",
         "oneOf": [
           {
             "type": "object",

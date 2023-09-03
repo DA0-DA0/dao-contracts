@@ -28,15 +28,13 @@ impl Module for TokenFactoryModule {
         _router: &dyn CosmosRouter<ExecC = ExecC, QueryC = QueryC>,
         _block: &BlockInfo,
         _sender: Addr,
-        msg: Self::ExecT,
+        _msg: Self::ExecT,
     ) -> AnyResult<AppResponse>
     where
         ExecC: Debug + Clone + PartialEq + JsonSchema + DeserializeOwned + 'static,
         QueryC: CustomQuery + DeserializeOwned + 'static,
     {
-        match msg {
-            _ => bail!("execute not implemented for TokenFactoryModule"),
-        }
+        bail!("execute not implemented for TokenFactoryModule")
     }
 
     fn sudo<ExecC, QueryC>(
