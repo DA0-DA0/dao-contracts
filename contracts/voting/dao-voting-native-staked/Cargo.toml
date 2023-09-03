@@ -33,5 +33,6 @@ dao-voting = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-cw-multi-test = { workspace = true }
 anyhow = { workspace = true }
+cw-multi-test = { workspace = true }
+dao-proposal-hook-counter = { workspace = true }

@@ -105,6 +105,7 @@ dao-proposal-condorcet = { path = "./contracts/proposal/dao-proposal-condorcet",
 dao-proposal-multiple = { path = "./contracts/proposal/dao-proposal-multiple", version = "2.2.0" }
 dao-proposal-single = { path = "./contracts/proposal/dao-proposal-single", version = "2.2.0" }
 dao-proposal-sudo = { path = "./test-contracts/dao-proposal-sudo", version = "2.2.0" }
+dao-proposal-hook-counter = { path = "./test-contracts/dao-proposal-hook-counter", version = "2.2.0" }
 dao-testing = { path = "./packages/dao-testing", version = "2.2.0" }
 dao-voting = { path = "./packages/dao-voting", version = "2.2.0" }
 dao-voting-cw20-balance = { path = "./test-contracts/dao-voting-cw20-balance", version = "2.2.0" }

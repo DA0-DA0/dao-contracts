@@ -2140,6 +2140,7 @@ dependencies = [
  "dao-dao-macros",
  "dao-hooks",
  "dao-interface",
+ "dao-proposal-hook-counter",
  "dao-voting 2.2.0",
  "thiserror",
 ]
@@ -2163,6 +2164,7 @@ dependencies = [
  "dao-dao-macros",
  "dao-hooks",
  "dao-interface",
+ "dao-proposal-hook-counter",
  "dao-testing",
  "dao-voting 2.2.0",
  "osmosis-std 0.17.0-rc0",

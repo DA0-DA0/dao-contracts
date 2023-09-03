@@ -1,4 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Uint128;
 use dao_hooks::{proposal::ProposalHookMsg, stake::StakeChangedHookMsg, vote::VoteHookMsg};
 
 #[cw_serde]
@@ -9,14 +10,14 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     ProposalHook(ProposalHookMsg),
-    StakeHook(StakeChangedHookMsg),
+    StakeChangeHook(StakeChangedHookMsg),
     VoteHook(VoteHookMsg),
 }
 
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(u64)]
+    #[returns(Uint128)]
     StakeCounter {},
     #[returns(u64)]
     VoteCounter {},

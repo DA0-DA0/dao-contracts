@@ -34,6 +34,15 @@ fn staking_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
+fn hook_counter_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new_with_empty(
+        dao_proposal_hook_counter::contract::execute,
+        dao_proposal_hook_counter::contract::instantiate,
+        dao_proposal_hook_counter::contract::query,
+    );
+    Box::new(contract)
+}
+
 fn mock_app() -> App {
     custom_app(|r, _a, s| {
         r.bank
@@ -1284,6 +1293,21 @@ fn test_add_remove_hooks() {
 fn test_staking_hooks() {
     let mut app = mock_app();
     let staking_id = app.store_code(staking_contract());
+    let hook_id = app.store_code(hook_counter_contract());
+
+    let hook = app
+        .instantiate_contract(
+            hook_id,
+            Addr::unchecked(DAO_ADDR),
+            &dao_proposal_hook_counter::msg::InstantiateMsg {
+                should_error: false,
+            },
+            &[],
+            "hook counter".to_string(),
+            None,
+        )
+        .unwrap();
+
     let addr = instantiate_staking(
         &mut app,
         staking_id,
@@ -1299,18 +1323,17 @@ fn test_staking_hooks() {
         Addr::unchecked(DAO_ADDR),
         addr.clone(),
         &ExecuteMsg::AddHook {
-            addr: "hook".to_string(),
+            addr: hook.to_string(),
         },
         &[],
     )
     .unwrap();
 
-    // TODO need a contract to recieve the message
     // Stake some tokens
     let res = stake_tokens(&mut app, addr.clone(), ADDR1, 100, DENOM).unwrap();
 
     // Make sure hook is included in response
-    println!("stake hooks {:?}", res);
+    assert_eq!("stake_hook", res.events.last().unwrap().attributes[1].value);
 
     app.update_block(next_block);
 
@@ -1318,7 +1341,7 @@ fn test_staking_hooks() {
     let res = unstake_tokens(&mut app, addr, ADDR1, 75).unwrap();
 
     // Make sure hook is included in response
-    println!("unstake hooks {:?}", res);
+    assert_eq!("stake_hook", res.events.last().unwrap().attributes[1].value);
 }
 
 #[test]

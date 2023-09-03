@@ -30,7 +30,7 @@
         ]
       },
       "owner": {
-        "description": "May change unstaking duration and add hooks.",
+        "description": "TODO use cw_ownable May change unstaking duration and add hooks.",
         "anyOf": [
           {
             "$ref": "#/definitions/Admin"

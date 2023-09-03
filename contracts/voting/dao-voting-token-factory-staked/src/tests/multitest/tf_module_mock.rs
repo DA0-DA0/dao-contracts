@@ -2,7 +2,7 @@ use anyhow::{bail, Result as AnyResult};
 use cosmwasm_schema::schemars::JsonSchema;
 use cosmwasm_std::testing::{MockApi, MockStorage};
 use cosmwasm_std::{
-    Addr, Api, Binary, BlockInfo, CustomQuery, Empty, Querier, QuerierResult, StdError, Storage,
+    Addr, Api, Binary, BlockInfo, CustomQuery, Empty, Querier, QuerierResult, Storage,
 };
 use cw_multi_test::{
     App, AppResponse, BankKeeper, BasicAppBuilder, CosmosRouter, Module, WasmKeeper,
