@@ -2,6 +2,9 @@
 This package provides an interface for managing and dispatching proposal, 
 staking, and voting related hooks. 
 
+### NFT Stake Hooks
+Staking hooks are fired when NFTs are staked or unstaked in a DAO.
+
 ### Proposal Hooks
 There are two types of proposal hooks:
 - **New Proposal Hook:** fired when a new proposal is created.
@@ -11,8 +14,6 @@ Our wiki contains more info on [Proposal Hooks](https://github.com/DA0-DA0/dao-c
 
 ### Stake Hooks
 Staking hooks are fired when tokens are staked or unstaked in a DAO.
-
-TODO document types of staking hooks
 
 ### Vote Hooks
 Vote hooks are fired when new votes are cast.

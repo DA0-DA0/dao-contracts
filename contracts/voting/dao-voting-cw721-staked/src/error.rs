@@ -10,7 +10,7 @@ pub enum ContractError {
     AlreadyStaked {},
 
     #[error(transparent)]
-    HookError(#[from] cw_controllers::HookError),
+    HookError(#[from] cw_hooks::HookError),
 
     #[error("Active threshold count is greater than supply")]
     InvalidActiveCount {},

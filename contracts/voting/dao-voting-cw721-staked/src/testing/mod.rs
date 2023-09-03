@@ -1,5 +1,6 @@
 mod adversarial;
 mod execute;
+mod hooks;
 mod instantiate;
 mod queries;
 mod tests;

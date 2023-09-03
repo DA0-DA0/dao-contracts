@@ -19,6 +19,7 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-controllers = { workspace = true }
+cw-hooks = { workspace = true }
 cw721 = { workspace = true }
 cw721-base = { workspace = true, features = ["library"] }
 cw721-controllers = { workspace = true }

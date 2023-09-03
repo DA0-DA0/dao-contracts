@@ -1,10 +1,3 @@
-use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
-use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, NftContract, QueryMsg};
-use crate::state::{
-    register_staked_nft, register_unstaked_nfts, Config, ACTIVE_THRESHOLD, CONFIG, DAO, HOOKS,
-    INITIAL_NFTS, MAX_CLAIMS, NFT_BALANCES, NFT_CLAIMS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
-};
-use crate::ContractError;
 use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -16,9 +9,17 @@ use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NumTokensResponse};
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration};
+use dao_hooks::nft_stake::{stake_nft_hook_msgs, unstake_nft_hook_msgs};
 use dao_interface::state::Admin;
 use dao_interface::voting::IsActiveResponse;
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
+
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, NftContract, QueryMsg};
+use crate::state::{
+    register_staked_nft, register_unstaked_nfts, Config, ACTIVE_THRESHOLD, CONFIG, DAO, HOOKS,
+    INITIAL_NFTS, MAX_CLAIMS, NFT_BALANCES, NFT_CLAIMS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
+};
+use crate::ContractError;
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw721-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -239,7 +240,12 @@ pub fn execute_stake(
     }
     let staker = deps.api.addr_validate(&wrapper.sender)?;
     register_staked_nft(deps.storage, env.block.height, &staker, &wrapper.token_id)?;
-    let hook_msgs = stake_hook_msgs(deps.storage, staker.clone(), wrapper.token_id.clone())?;
+    let hook_msgs = stake_nft_hook_msgs(
+        HOOKS,
+        deps.storage,
+        staker.clone(),
+        wrapper.token_id.clone(),
+    )?;
     Ok(Response::default()
         .add_submessages(hook_msgs)
         .add_attribute("action", "stake")
@@ -290,7 +296,8 @@ pub fn execute_unstake(
     // so if we reach this point in execution, we may safely create
     // claims.
 
-    let hook_msgs = unstake_hook_msgs(deps.storage, info.sender.clone(), token_ids.clone())?;
+    let hook_msgs =
+        unstake_nft_hook_msgs(HOOKS, deps.storage, info.sender.clone(), token_ids.clone())?;
 
     let config = CONFIG.load(deps.storage)?;
     match config.unstaking_duration {

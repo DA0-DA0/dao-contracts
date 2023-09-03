@@ -46,8 +46,7 @@ pub fn unstake_hook_msgs(
     })
 }
 
-// This is just a helper to properly serialize the above message
 #[cw_serde]
-enum StakeChangedExecuteMsg {
+pub enum StakeChangedExecuteMsg {
     StakeChangeHook(StakeChangedHookMsg),
 }

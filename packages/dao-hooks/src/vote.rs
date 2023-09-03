@@ -12,7 +12,6 @@ pub enum VoteHookMsg {
     },
 }
 
-// This is just a helper to properly serialize the above message
 #[cw_serde]
 pub enum VoteHookExecuteMsg {
     VoteHook(VoteHookMsg),
