@@ -48,4 +48,3 @@ dao-testing = { workspace = true, features = ["test-tube"] }
 osmosis-std = { workpsace = true }
 osmosis-test-tube = { workspace = true }
 serde = { workspace = true }
-token-bindings-test = { workspace = true }

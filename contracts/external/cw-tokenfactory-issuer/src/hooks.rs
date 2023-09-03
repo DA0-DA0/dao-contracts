@@ -1,11 +1,10 @@
 use cosmwasm_std::{Coin, DepsMut, Response};
-use token_bindings::TokenFactoryQuery;
 
 use crate::error::ContractError;
 use crate::helpers::{check_is_not_denied, check_is_not_frozen};
 
 pub fn beforesend_hook(
-    deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut,
     from: String,
     to: String,
     coin: Coin,

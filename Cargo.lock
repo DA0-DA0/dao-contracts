@@ -848,7 +848,7 @@ dependencies = [
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
  "derivative",
- "itertools 0.10.5",
+ "itertools",
  "k256",
  "prost 0.9.0",
  "schemars",
@@ -2161,6 +2161,7 @@ dependencies = [
  "cw-utils 1.0.1",
  "cw2 1.1.0",
  "dao-dao-macros",
+ "dao-hooks",
  "dao-interface",
  "dao-testing",
  "dao-voting 2.2.0",
@@ -2169,7 +2170,6 @@ dependencies = [
  "serde",
  "thiserror",
  "token-bindings 0.11.0 (git+https://github.com/CosmosContracts/token-bindings.git?rev=0cd084b68172ffc9af29eb37fb915392ce351954)",
- "token-bindings-test",
 ]
 
 [[package]]
@@ -2851,15 +2851,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "itertools"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
-dependencies = [
- "either",
-]
-
-[[package]]
 name = "itoa"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3126,7 +3117,7 @@ version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f47f0b2f22adb341bb59e5a3a1b464dde033181954bd055b9ae86d6511ba465b"
 dependencies = [
- "itertools 0.10.5",
+ "itertools",
  "proc-macro2",
  "prost-types",
  "quote",
@@ -3138,7 +3129,7 @@ name = "osmosis-std-derive"
 version = "0.16.2"
 source = "git+https://github.com/osmosis-labs/osmosis-rust?branch=autobuild-v17.0.0-rc0#36ef03c6d61b860c6bd25cac56bc52144c4e6b9c"
 dependencies = [
- "itertools 0.10.5",
+ "itertools",
  "proc-macro2",
  "prost-types",
  "quote",
@@ -3364,7 +3355,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9cc1a3263e07e0bf68e96268f37665207b49560d98739662cdfaae215c720fe"
 dependencies = [
  "anyhow",
- "itertools 0.10.5",
+ "itertools",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
@@ -3377,7 +3368,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5d2d8d10f3c6ded6da8b05b5fb3b8a5082514344d56c9f871412d29b4e075b4"
 dependencies = [
  "anyhow",
- "itertools 0.10.5",
+ "itertools",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
@@ -4397,22 +4388,6 @@ dependencies = [
  "cosmwasm-std",
  "schemars",
  "serde",
-]
-
-[[package]]
-name = "token-bindings-test"
-version = "0.11.0"
-source = "git+https://github.com/CosmosContracts/token-bindings.git?rev=0cd084b68172ffc9af29eb37fb915392ce351954#0cd084b68172ffc9af29eb37fb915392ce351954"
-dependencies = [
- "anyhow",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 0.16.0",
- "itertools 0.11.0",
- "schemars",
- "serde",
- "thiserror",
- "token-bindings 0.11.0 (git+https://github.com/CosmosContracts/token-bindings.git?rev=0cd084b68172ffc9af29eb37fb915392ce351954)",
 ]
 
 [[package]]

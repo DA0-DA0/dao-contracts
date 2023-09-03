@@ -3,12 +3,8 @@ use crate::state::{
 };
 use crate::ContractError;
 use cosmwasm_std::{Addr, Deps};
-use token_bindings::TokenFactoryQuery;
 
-pub fn check_is_contract_owner(
-    deps: Deps<TokenFactoryQuery>,
-    sender: Addr,
-) -> Result<(), ContractError> {
+pub fn check_is_contract_owner(deps: Deps, sender: Addr) -> Result<(), ContractError> {
     let owner = OWNER.load(deps.storage)?;
     if owner != sender {
         Err(ContractError::Unauthorized {})
@@ -17,9 +13,7 @@ pub fn check_is_contract_owner(
     }
 }
 
-pub fn check_before_send_hook_features_enabled(
-    deps: Deps<TokenFactoryQuery>,
-) -> Result<(), ContractError> {
+pub fn check_before_send_hook_features_enabled(deps: Deps) -> Result<(), ContractError> {
     let enabled = BEFORE_SEND_HOOK_FEATURES_ENABLED.load(deps.storage)?;
     if !enabled {
         Err(ContractError::BeforeSendHookFeaturesDisabled {})
@@ -28,10 +22,7 @@ pub fn check_before_send_hook_features_enabled(
     }
 }
 
-pub fn check_is_not_denied(
-    deps: Deps<TokenFactoryQuery>,
-    address: String,
-) -> Result<(), ContractError> {
+pub fn check_is_not_denied(deps: Deps, address: String) -> Result<(), ContractError> {
     let addr = deps.api.addr_validate(&address)?;
     if let Some(is_denied) = DENYLIST.may_load(deps.storage, &addr)? {
         if is_denied {
@@ -41,11 +32,7 @@ pub fn check_is_not_denied(
     Ok(())
 }
 
-pub fn check_is_not_frozen(
-    deps: Deps<TokenFactoryQuery>,
-    address: &str,
-    denom: &str,
-) -> Result<(), ContractError> {
+pub fn check_is_not_frozen(deps: Deps, address: &str, denom: &str) -> Result<(), ContractError> {
     let is_frozen = IS_FROZEN.load(deps.storage)?;
     let contract_denom = DENOM.load(deps.storage)?;
 

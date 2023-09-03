@@ -1,6 +1,5 @@
 use cosmwasm_std::{Addr, Deps, Order, StdResult, Uint128};
 use cw_storage_plus::{Bound, Map};
-use token_bindings::TokenFactoryQuery;
 
 use crate::msg::{
     AllowanceInfo, AllowanceResponse, AllowancesResponse, AllowlistResponse, DenomResponse,
@@ -15,37 +14,31 @@ use crate::state::{
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 
-pub fn query_denom(deps: Deps<TokenFactoryQuery>) -> StdResult<DenomResponse> {
+pub fn query_denom(deps: Deps) -> StdResult<DenomResponse> {
     let denom = DENOM.load(deps.storage)?;
     Ok(DenomResponse { denom })
 }
 
-pub fn query_is_frozen(deps: Deps<TokenFactoryQuery>) -> StdResult<IsFrozenResponse> {
+pub fn query_is_frozen(deps: Deps) -> StdResult<IsFrozenResponse> {
     let is_frozen = IS_FROZEN.load(deps.storage)?;
     Ok(IsFrozenResponse { is_frozen })
 }
 
-pub fn query_owner(deps: Deps<TokenFactoryQuery>) -> StdResult<OwnerResponse> {
+pub fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
     let owner = OWNER.load(deps.storage)?;
     Ok(OwnerResponse {
         address: owner.into_string(),
     })
 }
 
-pub fn query_mint_allowance(
-    deps: Deps<TokenFactoryQuery>,
-    address: String,
-) -> StdResult<AllowanceResponse> {
+pub fn query_mint_allowance(deps: Deps, address: String) -> StdResult<AllowanceResponse> {
     let allowance = MINTER_ALLOWANCES
         .may_load(deps.storage, &deps.api.addr_validate(&address)?)?
         .unwrap_or_else(Uint128::zero);
     Ok(AllowanceResponse { allowance })
 }
 
-pub fn query_burn_allowance(
-    deps: Deps<TokenFactoryQuery>,
-    address: String,
-) -> StdResult<AllowanceResponse> {
+pub fn query_burn_allowance(deps: Deps, address: String) -> StdResult<AllowanceResponse> {
     let allowance = BURNER_ALLOWANCES
         .may_load(deps.storage, &deps.api.addr_validate(&address)?)?
         .unwrap_or_else(Uint128::zero);
@@ -53,7 +46,7 @@ pub fn query_burn_allowance(
 }
 
 pub fn query_allowances(
-    deps: Deps<TokenFactoryQuery>,
+    deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
     allowances: Map<&Addr, Uint128>,
@@ -84,7 +77,7 @@ pub fn query_allowances(
 }
 
 pub fn query_mint_allowances(
-    deps: Deps<TokenFactoryQuery>,
+    deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<AllowancesResponse> {
@@ -94,7 +87,7 @@ pub fn query_mint_allowances(
 }
 
 pub fn query_burn_allowances(
-    deps: Deps<TokenFactoryQuery>,
+    deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<AllowancesResponse> {
@@ -103,32 +96,26 @@ pub fn query_burn_allowances(
     })
 }
 
-pub fn query_is_denied(
-    deps: Deps<TokenFactoryQuery>,
-    address: String,
-) -> StdResult<StatusResponse> {
+pub fn query_is_denied(deps: Deps, address: String) -> StdResult<StatusResponse> {
     let status = DENYLIST
         .load(deps.storage, &deps.api.addr_validate(&address)?)
         .unwrap_or(false);
     Ok(StatusResponse { status })
 }
 
-pub fn query_is_allowed(
-    deps: Deps<TokenFactoryQuery>,
-    address: String,
-) -> StdResult<StatusResponse> {
+pub fn query_is_allowed(deps: Deps, address: String) -> StdResult<StatusResponse> {
     let status = ALLOWLIST
         .load(deps.storage, &deps.api.addr_validate(&address)?)
         .unwrap_or(false);
     Ok(StatusResponse { status })
 }
 
-pub fn query_before_send_hook_features(deps: Deps<TokenFactoryQuery>) -> StdResult<bool> {
+pub fn query_before_send_hook_features(deps: Deps) -> StdResult<bool> {
     BEFORE_SEND_HOOK_FEATURES_ENABLED.load(deps.storage)
 }
 
 pub fn query_status_map(
-    deps: Deps<TokenFactoryQuery>,
+    deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
     map: Map<&Addr, bool>,
@@ -156,7 +143,7 @@ pub fn query_status_map(
 }
 
 pub fn query_allowlist(
-    deps: Deps<TokenFactoryQuery>,
+    deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<AllowlistResponse> {
@@ -166,7 +153,7 @@ pub fn query_allowlist(
 }
 
 pub fn query_denylist(
-    deps: Deps<TokenFactoryQuery>,
+    deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<DenylistResponse> {
