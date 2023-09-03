@@ -702,7 +702,7 @@ where
         let one_sum: u64 = one.iter().sum();
         let none_sum: u64 = none.iter().sum();
 
-        let mut sums = vec![zero_sum, one_sum, none_sum];
+        let mut sums = [zero_sum, one_sum, none_sum];
         sums.sort_unstable();
 
         // If none of the above wins or there is a tie between second and first choice.

@@ -26,7 +26,7 @@ fn merge_variants(metadata: TokenStream, left: TokenStream, right: TokenStream) 
         }),
     ) = (&mut left.data, right.data)
     {
-        variants.extend(to_add.into_iter());
+        variants.extend(to_add);
 
         quote! { #left }.into()
     } else {
