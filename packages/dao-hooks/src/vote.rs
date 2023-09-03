@@ -3,6 +3,7 @@ use cosmwasm_std::{to_binary, StdResult, Storage, SubMsg, WasmMsg};
 use cw_hooks::Hooks;
 use dao_voting::reply::mask_vote_hook_index;
 
+/// An enum representing vote hooks, fired when new votes are cast.
 #[cw_serde]
 pub enum VoteHookMsg {
     NewVote {
@@ -10,11 +11,6 @@ pub enum VoteHookMsg {
         voter: String,
         vote: String,
     },
-}
-
-#[cw_serde]
-pub enum VoteHookExecuteMsg {
-    VoteHook(VoteHookMsg),
 }
 
 /// Prepares new vote hook messages. These messages reply on error
@@ -44,4 +40,9 @@ pub fn new_vote_hooks(
         index += 1;
         Ok(tmp)
     })
+}
+
+#[cw_serde]
+pub enum VoteHookExecuteMsg {
+    VoteHook(VoteHookMsg),
 }

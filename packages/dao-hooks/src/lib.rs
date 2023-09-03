@@ -5,3 +5,6 @@ pub mod nft_stake;
 pub mod proposal;
 pub mod stake;
 pub mod vote;
+
+pub use all_hooks::DaoHooks;
+pub use cw4::MemberChangedHookMsg;

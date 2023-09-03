@@ -2,12 +2,15 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_binary, Addr, StdResult, Storage, SubMsg, Uint128, WasmMsg};
 use cw_hooks::Hooks;
 
+/// An enum representing staking hooks.
 #[cw_serde]
 pub enum StakeChangedHookMsg {
     Stake { addr: Addr, amount: Uint128 },
     Unstake { addr: Addr, amount: Uint128 },
 }
 
+/// Prepares StakeChangedHookMsg::Stake hook SubMsgs,
+/// containing the address and the amount staked.
 pub fn stake_hook_msgs(
     hooks: Hooks,
     storage: &dyn Storage,
@@ -27,6 +30,8 @@ pub fn stake_hook_msgs(
     })
 }
 
+/// Prepares StakeChangedHookMsg::Unstake hook SubMsgs,
+/// containing the address and the amount unstaked.
 pub fn unstake_hook_msgs(
     hooks: Hooks,
     storage: &dyn Storage,

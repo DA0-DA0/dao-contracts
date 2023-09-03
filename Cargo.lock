@@ -1635,6 +1635,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-hooks",
+ "cw4 1.1.0",
  "dao-voting 2.2.0",
 ]
 

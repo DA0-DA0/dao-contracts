@@ -10,5 +10,6 @@ version = { workspace = true }
 [dependencies]
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
+cw4 = { workspace = true }
 cw-hooks = { workspace = true }
 dao-voting = { workspace = true }

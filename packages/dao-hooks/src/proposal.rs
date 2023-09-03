@@ -3,6 +3,9 @@ use cosmwasm_std::{to_binary, StdResult, Storage, SubMsg, WasmMsg};
 use cw_hooks::Hooks;
 use dao_voting::reply::mask_proposal_hook_index;
 
+/// An enum representing proposal hook messages.
+/// Either a new propsoal hook, fired when a new proposal is created,
+/// or a proposal status hook, fired when a proposal changes status.
 #[cw_serde]
 pub enum ProposalHookMsg {
     NewProposal {
@@ -14,12 +17,6 @@ pub enum ProposalHookMsg {
         old_status: String,
         new_status: String,
     },
-}
-
-// This is just a helper to properly serialize the above message
-#[cw_serde]
-pub enum ProposalHookExecuteMsg {
-    ProposalHook(ProposalHookMsg),
 }
 
 /// Prepares new proposal hook messages. These messages reply on error
@@ -89,4 +86,9 @@ pub fn proposal_status_changed_hooks(
     })?;
 
     Ok(messages)
+}
+
+#[cw_serde]
+pub enum ProposalHookExecuteMsg {
+    ProposalHook(ProposalHookMsg),
 }
