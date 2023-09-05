@@ -13,14 +13,14 @@ pub enum ContractError {
     #[error(transparent)]
     HookError(#[from] cw_hooks::HookError),
 
+    #[error(transparent)]
+    UnstakingDurationError(#[from] dao_voting::duration::UnstakingDurationError),
+
     #[error("Unauthorized")]
     Unauthorized {},
 
     #[error("Denom does not exist on chain")]
     InvalidDenom {},
-
-    #[error("Invalid unstaking duration, unstaking duration cannot be 0")]
-    InvalidUnstakingDuration {},
 
     #[error("Nothing to claim")]
     NothingToClaim {},

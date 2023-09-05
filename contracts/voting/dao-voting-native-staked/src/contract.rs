@@ -11,7 +11,10 @@ use dao_hooks::stake::{stake_hook_msgs, unstake_hook_msgs};
 use dao_interface::voting::{
     IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
-use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
+use dao_voting::{
+    duration::validate_duration,
+    threshold::{ActiveThreshold, ActiveThresholdResponse},
+};
 
 use crate::error::ContractError;
 use crate::msg::{
@@ -28,24 +31,6 @@ pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 // We multiply by this when calculating needed power for being active
 // when using active threshold with percent
 const PRECISION_FACTOR: u128 = 10u128.pow(9);
-
-fn validate_duration(duration: Option<Duration>) -> Result<(), ContractError> {
-    if let Some(unstaking_duration) = duration {
-        match unstaking_duration {
-            Duration::Height(height) => {
-                if height == 0 {
-                    return Err(ContractError::InvalidUnstakingDuration {});
-                }
-            }
-            Duration::Time(time) => {
-                if time == 0 {
-                    return Err(ContractError::InvalidUnstakingDuration {});
-                }
-            }
-        }
-    }
-    Ok(())
-}
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(

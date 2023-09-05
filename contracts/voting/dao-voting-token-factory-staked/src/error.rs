@@ -16,6 +16,9 @@ pub enum ContractError {
     #[error(transparent)]
     HookError(#[from] cw_hooks::HookError),
 
+    #[error(transparent)]
+    UnstakingDurationError(#[from] dao_voting::duration::UnstakingDurationError),
+
     #[error("Absolute count threshold cannot be greater than the total token supply")]
     InvalidAbsoluteCount {},
 
@@ -27,9 +30,6 @@ pub enum ContractError {
 
     #[error("Can only unstake less than or equal to the amount you have staked")]
     InvalidUnstakeAmount {},
-
-    #[error("Invalid unstaking duration, unstaking duration cannot be 0")]
-    InvalidUnstakingDuration {},
 
     #[error("Nothing to claim")]
     NothingToClaim {},

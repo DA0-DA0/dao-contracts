@@ -1303,6 +1303,7 @@ dependencies = [
  "cw20-base 1.1.0",
  "cw20-stake 0.2.6",
  "dao-hooks",
+ "dao-voting 2.2.0",
  "thiserror",
 ]
 
