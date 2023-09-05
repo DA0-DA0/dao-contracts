@@ -18,7 +18,7 @@ pub enum ContractError {
     #[error("Cannot denylist the issuer contract itself")]
     CannotDenylistSelf {},
 
-    #[error("The contract is frozen for denom {denom:?}")]
+    #[error("The contract is frozen for denom {denom:?}. Addresses need to be added to the allowlist to enable transfers to or from an account.")]
     ContractFrozen { denom: String },
 
     #[error("Invalid subdenom: {subdenom:?}")]
