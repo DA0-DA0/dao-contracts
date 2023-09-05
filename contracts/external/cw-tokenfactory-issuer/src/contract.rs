@@ -109,7 +109,9 @@ pub fn execute(
         ExecuteMsg::SetBurnerAllowance { address, allowance } => {
             execute::set_burner(deps, info, address, allowance)
         }
-        ExecuteMsg::SetBeforeSendHook {} => execute::set_before_send_hook(deps, env, info),
+        ExecuteMsg::SetBeforeSendHook { cosmwasm_address } => {
+            execute::set_before_send_hook(deps, env, info, cosmwasm_address)
+        }
         ExecuteMsg::SetDenomMetadata { metadata } => {
             execute::set_denom_metadata(deps, env, info, metadata)
         }

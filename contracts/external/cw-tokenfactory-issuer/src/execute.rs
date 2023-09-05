@@ -196,6 +196,10 @@ pub fn set_denom_metadata(
 }
 
 /// Calls `MsgSetBeforeSendHook` and enables BeforeSendHook related features.
+/// Takes a `cosmwasm_address` argument which is the address of the contract enforcing
+/// the hook. Normally this will be the cw_tokenfactory_issuer contract address, but could
+/// be a 3rd party address for more advanced use cases.
+///
 /// As not all chains support the `BeforeSendHook` in the bank module, this
 /// is intended to be called should chains add this feature at a later date.
 ///
@@ -204,13 +208,27 @@ pub fn set_before_send_hook(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
+    cosmwasm_address: String,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
     // Only allow current contract owner
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
-    // Return error if BeforeSendHook already enabled
-    if BEFORE_SEND_HOOK_FEATURES_ENABLED.load(deps.storage)? {
-        return Err(ContractError::BeforeSendHookAlreadyEnabled {});
+    // The `cosmwasm_address` can be an empty string if setting the value to nil to
+    // disable the hook. If an empty string, we disable before send hook features.
+    // Otherwise, we validate the `cosmwasm_address` enable before send hook features.
+    //
+    // TODO if the address is not the same as the cw_tokenfactory_issuer contract address,
+    // before send hook features are also disabled. We should have a query that returns more
+    // contextual information.
+    if cosmwasm_address.is_empty() {
+        // Disable BeforeSendHook features
+        BEFORE_SEND_HOOK_FEATURES_ENABLED.save(deps.storage, &true)?;
+    } else {
+        // Validate that address is a valid address
+        deps.api.addr_validate(&cosmwasm_address)?;
+
+        // Enable BeforeSendHook features
+        BEFORE_SEND_HOOK_FEATURES_ENABLED.save(deps.storage, &true)?;
     }
 
     // Load the Token Factory denom
@@ -222,12 +240,9 @@ pub fn set_before_send_hook(
     let msg_set_beforesend_hook: CosmosMsg<TokenFactoryMsg> = MsgSetBeforeSendHook {
         sender: env.contract.address.to_string(),
         denom,
-        cosmwasm_address: env.contract.address.to_string(),
+        cosmwasm_address,
     }
     .into();
-
-    // Enable BeforeSendHook features
-    BEFORE_SEND_HOOK_FEATURES_ENABLED.save(deps.storage, &true)?;
 
     Ok(Response::new()
         .add_attribute("action", "set_before_send_hook")

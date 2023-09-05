@@ -40,7 +40,7 @@ fn before_send_should_block_on_frozen() {
         )
         .unwrap_err();
 
-    assert_eq!(err, RunnerError::ExecuteError { msg:  format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The contract is frozen for denom \"{denom}\": execute wasm contract failed") });
+    assert_eq!(err, RunnerError::ExecuteError { msg:  format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The contract is frozen for denom \"{denom}\". Addresses need to be added to the allowlist to enable transfers to or from an account.: execute wasm contract failed") });
 }
 
 #[test]
@@ -78,7 +78,7 @@ fn allowlisted_addresses_can_transfer_when_token_frozen() {
     let err = env
         .send_tokens(other.address(), coins(10000, denom.clone()), owner)
         .unwrap_err();
-    assert_eq!(err, RunnerError::ExecuteError { msg:  format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The contract is frozen for denom \"{denom}\": execute wasm contract failed") });
+    assert_eq!(err, RunnerError::ExecuteError { msg:  format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The contract is frozen for denom \"{denom}\". Addresses need to be added to the allowlist to enable transfers to or from an account.: execute wasm contract failed") });
 
     // Other assets are not affected
     env.send_tokens(other.address(), coins(10000, "uosmo"), owner)

@@ -5,7 +5,7 @@ use osmosis_test_tube::{Account, OsmosisTestApp, RunnerError};
 use crate::test_env::{TestEnv, TokenfactoryIssuer};
 
 #[test]
-fn instantiate_with_new_token_shoud_set_initial_state_correctly() {
+fn instantiate_with_new_token_should_set_initial_state_correctly() {
     let subdenom = "uthb".to_string();
     let env = TestEnv::new(
         InstantiateMsg::NewToken {
@@ -52,7 +52,7 @@ fn instantiate_with_new_token_shoud_set_initial_state_correctly() {
 }
 
 #[test]
-fn instantiate_with_new_token_shoud_set_hook_correctly() {
+fn instantiate_with_new_token_should_set_hook_correctly() {
     let subdenom = "uthb".to_string();
     let env = TestEnv::new(
         InstantiateMsg::NewToken {
@@ -80,7 +80,7 @@ fn instantiate_with_new_token_shoud_set_hook_correctly() {
         )
         .unwrap_err();
 
-    assert_eq!(err, RunnerError::ExecuteError { msg: format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The contract is frozen for denom \"{denom}\": execute wasm contract failed") });
+    assert_eq!(err, RunnerError::ExecuteError { msg: format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The contract is frozen for denom \"{denom}\". Addresses need to be added to the allowlist to enable transfers to or from an account.: execute wasm contract failed") });
 }
 
 #[test]

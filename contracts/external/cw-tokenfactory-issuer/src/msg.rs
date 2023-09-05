@@ -59,7 +59,15 @@ pub enum ExecuteMsg {
     /// Attempt to SetBeforeSendHook on the token attached to this contract.
     /// This will fail if the token already has a SetBeforeSendHook or the chain
     /// still does not support it.
-    SetBeforeSendHook {},
+    ///
+    /// This takes a cosmwasm_address as an argument, which is the address of the
+    /// contract that will be called before every token transfer. Normally, this
+    /// will be the issuer contract itself.
+    ///
+    /// Setting the address to an empty string will remove the SetBeforeSendHook.
+    ///
+    /// This method can only be called by the contract owner.
+    SetBeforeSendHook { cosmwasm_address: String },
 
     /// Grant/revoke burn allowance.
     SetBurnerAllowance { address: String, allowance: Uint128 },
