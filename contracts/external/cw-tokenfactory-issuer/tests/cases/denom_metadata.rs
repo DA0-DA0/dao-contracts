@@ -1,7 +1,4 @@
 use cw_tokenfactory_issuer::{msg::InstantiateMsg, ContractError};
-// use osmosis_test_tube::osmosis_std::types::cosmos::bank::v1beta1::{
-//     DenomUnit, Metadata, QueryDenomMetadataRequest,
-// };
 
 use crate::test_env::{TestEnv, TokenfactoryIssuer};
 
@@ -112,32 +109,4 @@ fn set_denom_metadata_with_base_denom_unit_should_overides_default_base_denom_un
     env.cw_tokenfactory_issuer
         .set_denom_metadata(metadata.clone(), owner)
         .unwrap();
-
-    // // TODO fix up this metadata test
-    // Should update metadata
-    // assert_eq!(
-    //     env.bank()
-    //         .query_denom_metadata(&QueryDenomMetadataRequest {
-    //             denom: denom.clone()
-    //         })
-    //         .unwrap()
-    //         .metadata
-    //         .unwrap(),
-    //     Metadata {
-    //         description: metadata.description,
-    //         denom_units: metadata
-    //             .denom_units
-    //             .into_iter()
-    //             .map(|d| DenomUnit {
-    //                 denom: d.denom,
-    //                 exponent: d.exponent,
-    //                 aliases: d.aliases,
-    //             })
-    //             .collect(),
-    //         base: denom,
-    //         display: metadata.display,
-    //         name: metadata.name,
-    //         symbol: metadata.symbol,
-    //     }
-    // );
 }
