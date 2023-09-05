@@ -41,8 +41,8 @@ token-bindings = { workspace = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }
-# TODO use upstream when PR merged and new release tagged: https://github.com/CosmWasm/cw-multi-test/pull/51
-cw-multi-test = { git = "https://github.com/JakeHartnell/cw-multi-test.git", branch = "bank-supply-support" }
+# TODO use upstream when new release is tagged
+cw-multi-test = { git = "https://github.com/CosmWasm/cw-multi-test.git", rev = "d38db7752b9f054c395d6108453f8b321e4cab02" }
 cw-tokenfactory-issuer = { workspace = true }
 dao-proposal-hook-counter = { workspace = true }
 dao-testing = { workspace = true, features = ["test-tube"] }

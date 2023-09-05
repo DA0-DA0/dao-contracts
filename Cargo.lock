@@ -841,7 +841,7 @@ dependencies = [
 [[package]]
 name = "cw-multi-test"
 version = "0.16.5"
-source = "git+https://github.com/JakeHartnell/cw-multi-test.git?branch=bank-supply-support#8c618c8dcc014dacf2cc10627805b36bbc0bfc6e"
+source = "git+https://github.com/CosmWasm/cw-multi-test.git?rev=d38db7752b9f054c395d6108453f8b321e4cab02#d38db7752b9f054c395d6108453f8b321e4cab02"
 dependencies = [
  "anyhow",
  "cosmwasm-std",
@@ -1034,7 +1034,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
- "token-bindings 0.11.0 (git+https://github.com/CosmosContracts/token-bindings.git?rev=0cd084b68172ffc9af29eb37fb915392ce351954)",
+ "token-bindings",
 ]
 
 [[package]]
@@ -1986,7 +1986,7 @@ dependencies = [
  "serde",
  "serde_json",
  "stake-cw20",
- "token-bindings 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "token-bindings",
 ]
 
 [[package]]
@@ -2174,7 +2174,7 @@ dependencies = [
  "osmosis-test-tube",
  "serde",
  "thiserror",
- "token-bindings 0.11.0 (git+https://github.com/CosmosContracts/token-bindings.git?rev=0cd084b68172ffc9af29eb37fb915392ce351954)",
+ "token-bindings",
 ]
 
 [[package]]
@@ -4377,17 +4377,6 @@ name = "token-bindings"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9be1c893c90d2993320d9722516ece705460f464616313a62edadb9e71df4502"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "schemars",
- "serde",
-]
-
-[[package]]
-name = "token-bindings"
-version = "0.11.0"
-source = "git+https://github.com/CosmosContracts/token-bindings.git?rev=0cd084b68172ffc9af29eb37fb915392ce351954#0cd084b68172ffc9af29eb37fb915392ce351954"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",

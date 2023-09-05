@@ -71,8 +71,7 @@ sg-multi-test = "3.1.0"
 syn = { version = "1.0", features = ["derive"] }
 test-context = "0.1"
 thiserror = { version = "1.0" }
-# TODO use upstream when PR merged and new release tagged: https://github.com/CosmWasm/cw-multi-test/pull/51
-token-bindings = { git = "https://github.com/CosmosContracts/token-bindings.git", rev = "0cd084b68172ffc9af29eb37fb915392ce351954" }
+token-bindings = "0.11.0"
 wynd-utils = "0.4"
 
 # One commit ahead of version 0.3.0. Allows initialization with an
@@ -128,6 +127,6 @@ cw4-voting-v1 = { package = "cw4-voting", version = "0.1.0" }
 voting-v1 = { package = "dao-voting", version = "0.1.0" }
 stake-cw20-v03 = { package = "stake-cw20", version = "0.2.6" }
 
-# TODO remove when upstream PR merged and new release tagged: https://github.com/CosmWasm/cw-multi-test/pull/51
+# TODO remove when new release is tagged upstream
 [patch.crates-io]
-cw-multi-test = { git = "https://github.com/JakeHartnell/cw-multi-test.git", branch = "bank-supply-support" }
+cw-multi-test = { git = "https://github.com/CosmWasm/cw-multi-test.git", rev = "d38db7752b9f054c395d6108453f8b321e4cab02" }
