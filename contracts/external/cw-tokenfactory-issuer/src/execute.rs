@@ -126,8 +126,6 @@ pub fn update_contract_owner(
     // Only allow current contract owner to change owner
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
-    // TODO make sure it's possible to renounce ownership all together
-    // TODO add test for NO OWNER
     // Validate that new owner is a valid address
     let new_owner_addr = deps.api.addr_validate(&new_owner)?;
 
@@ -147,8 +145,6 @@ pub fn update_tokenfactory_admin(
     // Only allow current contract owner to change tokenfactory admin
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
-    // TODO make sure it's possible to renounce ownership all together
-    // TODO add test for NO ADMIN
     // Validate that the new admin is a valid address
     let new_admin_addr = deps.api.addr_validate(&new_admin)?;
 
