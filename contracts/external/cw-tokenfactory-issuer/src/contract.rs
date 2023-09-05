@@ -24,7 +24,6 @@ const CONTRACT_NAME: &str = "CARGO_PKG_NAME";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const CREATE_DENOM_REPLY_ID: u64 = 1;
-const BEFORE_SEND_HOOK_REPLY_ID: u64 = 2;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -35,7 +34,11 @@ pub fn instantiate(
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
+    // Owner is the sender of the initial InstantiateMsg
     OWNER.save(deps.storage, &info.sender)?;
+
+    // BeforeSendHook features are disabled by default.
+    BEFORE_SEND_HOOK_FEATURES_ENABLED.save(deps.storage, &false)?;
     IS_FROZEN.save(deps.storage, &false)?;
 
     match msg {
@@ -58,10 +61,6 @@ pub fn instantiate(
         }
         InstantiateMsg::ExistingToken { denom } => {
             DENOM.save(deps.storage, &denom)?;
-
-            // BeforeSendHook cannot be set with existing tokens
-            // features that rely on it are disabled
-            BEFORE_SEND_HOOK_FEATURES_ENABLED.save(deps.storage, &false)?;
 
             Ok(Response::new()
                 .add_attribute("action", "instantiate")
@@ -175,7 +174,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     msg: Reply,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
     match msg.id {
@@ -183,37 +182,8 @@ pub fn reply(
             let MsgCreateDenomResponse { new_token_denom } = msg.result.try_into()?;
             DENOM.save(deps.storage, &new_token_denom)?;
 
-            // SetBeforeSendHook to this contract
-            // this will trigger sudo endpoint before any bank send
-            // which makes denylisting / freezing possible
-            let msg_set_beforesend_hook: CosmosMsg<TokenFactoryMsg> = MsgSetBeforeSendHook {
-                sender: env.contract.address.to_string(),
-                denom: new_token_denom.clone(),
-                cosmwasm_address: env.contract.address.to_string(),
-            }
-            .into();
-
-            Ok(Response::new()
-                .add_attribute("denom", new_token_denom)
-                .add_submessage(SubMsg::reply_always(
-                    msg_set_beforesend_hook,
-                    BEFORE_SEND_HOOK_REPLY_ID,
-                )))
+            Ok(Response::new().add_attribute("denom", new_token_denom))
         }
-        BEFORE_SEND_HOOK_REPLY_ID => match msg.result {
-            SubMsgResult::Ok(_) => {
-                // Enable features with BeforeSendHook requirement
-                BEFORE_SEND_HOOK_FEATURES_ENABLED.save(deps.storage, &true)?;
-
-                Ok(Response::new().add_attribute("extra_features", "enabled"))
-            }
-            SubMsgResult::Err(_) => {
-                // MsgSetBeforeSendHook failed, disable extra features that require it
-                BEFORE_SEND_HOOK_FEATURES_ENABLED.save(deps.storage, &false)?;
-
-                Ok(Response::new().add_attribute("extra_features", "disabled"))
-            }
-        },
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }
 }
