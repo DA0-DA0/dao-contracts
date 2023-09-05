@@ -12,6 +12,9 @@ use crate::state::{
     MINTER_ALLOWANCES, OWNER,
 };
 
+/// Mints new tokens. To mint new tokens, the address calling this method must
+/// have an allowance of tokens to mint. This allowance is set by the contract through
+/// the `ExecuteMsg::SetMinter { .. }` message.
 pub fn mint(
     deps: DepsMut,
     env: Env,
@@ -68,6 +71,11 @@ pub fn mint(
         .add_attribute("amount", amount))
 }
 
+/// Burns tokens. To burn tokens, the address calling this method must
+/// have an allowance of tokens to burn and the tokens to burn must belong
+/// to the `cw_tokenfactory_issuer` contract itself. The allowance is set by
+/// the contract through the `ExecuteMsg::SetBurner { .. }` message, and funds
+/// to be burnt must be sent to this contract prior to burning.
 pub fn burn(
     deps: DepsMut,
     env: Env,
@@ -118,6 +126,8 @@ pub fn burn(
         .add_attribute("amount", amount))
 }
 
+/// Updates the contract owner, must be the current contract owner to call
+/// this method.
 pub fn update_contract_owner(
     deps: DepsMut,
     info: MessageInfo,
@@ -137,6 +147,11 @@ pub fn update_contract_owner(
         .add_attribute("new_owner", new_owner))
 }
 
+/// Updates the Token Factory token admin. To set no admin, specify the `new_admin`
+/// argument to be either a null address or the address of the Cosmos SDK bank module
+/// for the chain.
+///
+/// Must be the contract owner to call this method.
 pub fn update_tokenfactory_admin(
     deps: DepsMut,
     info: MessageInfo,
@@ -160,6 +175,9 @@ pub fn update_tokenfactory_admin(
         .add_attribute("new_admin", new_admin))
 }
 
+/// Sets metadata related to the Token Factory denom.
+///
+/// Must be the contract owner to call this method.
 pub fn set_denom_metadata(
     deps: DepsMut,
     env: Env,
@@ -177,6 +195,11 @@ pub fn set_denom_metadata(
         }))
 }
 
+/// Calls `MsgSetBeforeSendHook` and enables BeforeSendHook related features.
+/// As not all chains support the `BeforeSendHook` in the bank module, this
+/// is intended to be called should chains add this feature at a later date.
+///
+/// Must be the contract owner to call this method.
 pub fn set_before_send_hook(
     deps: DepsMut,
     env: Env,
@@ -211,6 +234,10 @@ pub fn set_before_send_hook(
         .add_message(msg_set_beforesend_hook))
 }
 
+/// Specifies and sets a burn allowance to allow for the burning of tokens.
+/// To remove previously granted burn allowances, set this to zero.
+///
+/// Must be the contract owner to call this method.
 pub fn set_burner(
     deps: DepsMut,
     info: MessageInfo,
@@ -236,6 +263,10 @@ pub fn set_burner(
         .add_attribute("allowance", allowance))
 }
 
+/// Specifies and sets a burn allowance to allow for the minting of tokens.
+/// To remove previously granted mint allowances, set this to zero.
+///
+/// Must be the contract owner to call this method.
 pub fn set_minter(
     deps: DepsMut,
     info: MessageInfo,
@@ -261,6 +292,18 @@ pub fn set_minter(
         .add_attribute("allowance", allowance))
 }
 
+/// Freezes / unfreezes token transfers, meaning that address will not be
+/// able to send tokens until the token is unfrozen. This feature is dependent
+/// on the BeforeSendHook.
+///
+/// This feature works in conjunction with this contract's allowlist. For example,
+/// a DAO may wish to prevent its token from being liquid during its bootstrapping
+/// phase. It may wish to add its staking contract to the allowlist to allow users
+/// to stake their tokens (thus users would be able to transfer to the staking
+/// contract), or add an airdrop contract to the allowlist so users can claim
+/// their tokens (but not yet trade them).
+///
+/// Must be the contract owner to call this method.
 pub fn freeze(
     deps: DepsMut,
     info: MessageInfo,
@@ -280,6 +323,11 @@ pub fn freeze(
         .add_attribute("status", status.to_string()))
 }
 
+/// Adds or removes an address from the denylist, meaning they will not
+/// be able to transfer their tokens. This feature is dependent on
+/// the BeforeSendHook.
+///
+/// Must be the contract owner to call this method.
 pub fn deny(
     deps: DepsMut,
     env: Env,
@@ -314,6 +362,13 @@ pub fn deny(
         .add_attribute("status", status.to_string()))
 }
 
+/// Relevant only when the token is frozen. Addresses on the allowlist can
+/// transfer tokens as well as have tokens sent to them. This feature is
+/// dependent on the BeforeSendHook.
+///
+/// See the `freeze` method for more information.
+///
+/// Must be the contract owner to call this method.
 pub fn allow(
     deps: DepsMut,
     info: MessageInfo,
@@ -342,6 +397,11 @@ pub fn allow(
         .add_attribute("status", status.to_string()))
 }
 
+/// Force transfers tokens from one account to another. To disable this,
+/// DAOs will need to renounce Token Factory admin by setting the token
+/// admin to be a null address or the address of the bank module.
+///
+/// Must be the contract owner to call this method.
 pub fn force_transfer(
     deps: DepsMut,
     env: Env,

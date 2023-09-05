@@ -19,8 +19,8 @@ use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, SudoMsg};
 use crate::queries;
 use crate::state::{BEFORE_SEND_HOOK_FEATURES_ENABLED, DENOM, IS_FROZEN, OWNER};
 
-// version info for migration info
-const CONTRACT_NAME: &str = "crates.io:cw-tokenfactory-issuer";
+// Version info for migration
+const CONTRACT_NAME: &str = "CARGO_PKG_NAME";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const CREATE_DENOM_REPLY_ID: u64 = 1;

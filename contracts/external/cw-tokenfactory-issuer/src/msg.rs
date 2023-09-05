@@ -2,6 +2,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Uint128};
 pub use osmosis_std::types::cosmos::bank::v1beta1::{DenomUnit, Metadata};
 
+/// The message used to create a new instance of this smart contract.
 #[cw_serde]
 pub enum InstantiateMsg {
     /// `NewToken` will create a new token when instantiate the contract.
@@ -17,9 +18,7 @@ pub enum InstantiateMsg {
     ExistingToken { denom: String },
 }
 
-#[cw_serde]
-pub struct MigrateMsg {}
-
+/// State changing methods available to this smart contract.
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Allow adds the target address to the allowlist to be able to send or recieve tokens even if the token
@@ -85,6 +84,76 @@ pub enum ExecuteMsg {
     UpdateContractOwner { new_owner: String },
 }
 
+/// Used for smart contract migration.
+#[cw_serde]
+pub struct MigrateMsg {}
+
+/// Queries supported by this smart contract.
+#[cw_serde]
+#[derive(QueryResponses)]
+pub enum QueryMsg {
+    /// Returns if token transfer is disabled. Response: IsFrozenResponse
+    #[returns(IsFrozenResponse)]
+    IsFrozen {},
+
+    /// Returns the token denom that this contract is the admin for. Response: DenomResponse
+    #[returns(DenomResponse)]
+    Denom {},
+
+    /// Returns the owner of the contract. Response: OwnerResponse
+    #[returns(OwnerResponse)]
+    Owner {},
+
+    /// Returns the burn allowance of the specified address. Response: AllowanceResponse
+    #[returns(AllowanceResponse)]
+    BurnAllowance { address: String },
+
+    /// Enumerates over all burn allownances. Response: AllowancesResponse
+    #[returns(AllowancesResponse)]
+    BurnAllowances {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+
+    /// Returns the mint allowance of the specified user. Response: AllowanceResponse
+    #[returns(AllowanceResponse)]
+    MintAllowance { address: String },
+
+    /// Enumerates over all mint allownances. Response: AllowancesResponse
+    #[returns(AllowancesResponse)]
+    MintAllowances {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+
+    /// Returns wether the user is on denylist or not. Response: StatusResponse
+    #[returns(StatusResponse)]
+    IsDenied { address: String },
+
+    /// Enumerates over all addresses on the denylist. Response: DenylistResponse
+    #[returns(DenylistResponse)]
+    Denylist {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+
+    /// Returns wether the user is on the allowlist or not. Response: StatusResponse
+    #[returns(StatusResponse)]
+    IsAllowed { address: String },
+
+    /// Enumerates over all addresses on the allowlist. Response: AllowlistResponse
+    #[returns(AllowlistResponse)]
+    Allowlist {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+
+    /// Returns whether features that require MsgBeforeSendHook are enabled.
+    /// Most Cosmos chains do not support this feature yet.
+    #[returns(bool)]
+    BeforeSendHookFeaturesEnabled {},
+}
+
 /// SudoMsg is only exposed for internal Cosmos SDK modules to call.
 /// This is showing how we can expose "admin" functionality than can not be called by
 /// external users or contracts, but only trusted (native/Go) code in the blockchain
@@ -97,120 +166,68 @@ pub enum SudoMsg {
     },
 }
 
-#[cw_serde]
-#[derive(QueryResponses)]
-pub enum QueryMsg {
-    /// IsFrozen returns if the entire token transfer functionality is frozen. Response: IsFrozenResponse
-    #[returns(IsFrozenResponse)]
-    IsFrozen {},
-
-    /// Denom returns the token denom that this contract is the admin for. Response: DenomResponse
-    #[returns(DenomResponse)]
-    Denom {},
-
-    /// Owner returns the owner of the contract. Response: OwnerResponse
-    #[returns(OwnerResponse)]
-    Owner {},
-
-    /// Allowance returns the allowance of the specified address. Response: AllowanceResponse
-    #[returns(AllowanceResponse)]
-    BurnAllowance { address: String },
-
-    /// Allowances Enumerates over all allownances. Response: Vec<AllowanceResponse>
-    #[returns(AllowancesResponse)]
-    BurnAllowances {
-        start_after: Option<String>,
-        limit: Option<u32>,
-    },
-
-    /// Allowance returns the allowance of the specified user. Response: AllowanceResponse
-    #[returns(AllowanceResponse)]
-    MintAllowance { address: String },
-
-    /// Allowances Enumerates over all allownances. Response: AllowancesResponse
-    #[returns(AllowancesResponse)]
-    MintAllowances {
-        start_after: Option<String>,
-        limit: Option<u32>,
-    },
-
-    /// IsDenied returns wether the user is on denylist or not. Response: StatusResponse
-    #[returns(StatusResponse)]
-    IsDenied { address: String },
-
-    /// Denylist enumerates over all addresses on the denylist. Response: DenylistResponse
-    #[returns(DenylistResponse)]
-    Denylist {
-        start_after: Option<String>,
-        limit: Option<u32>,
-    },
-
-    /// IsAllowed returns wether the user is on the allowlist or not. Response: StatusResponse
-    #[returns(StatusResponse)]
-    IsAllowed { address: String },
-
-    /// Allowlist enumerates over all addresses on the allowlist. Response: AllowlistResponse
-    #[returns(AllowlistResponse)]
-    Allowlist {
-        start_after: Option<String>,
-        limit: Option<u32>,
-    },
-
-    /// Returns whether features that require MsgBeforeSendHook are enabled
-    /// Most Cosmos chains do not support this feature yet.
-    #[returns(bool)]
-    BeforeSendHookFeaturesEnabled {},
-}
-
-// We define a custom struct for each query response
+/// Returns whether or not the Token Factory token is frozen and transfers
+/// are disabled.
 #[cw_serde]
 pub struct IsFrozenResponse {
     pub is_frozen: bool,
 }
 
-// We define a custom struct for each query response
+/// Returns the full denomination for the Token Factory token. For example:
+/// `factory/{contract address}/{subdenom}`
 #[cw_serde]
 pub struct DenomResponse {
     pub denom: String,
 }
 
+/// Returns the current owner of this issuer contract who is allowed to
+/// call priviledged methods.
 #[cw_serde]
 pub struct OwnerResponse {
     pub address: String,
 }
 
+/// Returns a mint or burn allowance for a particular address, representing
+/// the amount of tokens the account is allowed to mint or burn
 #[cw_serde]
 pub struct AllowanceResponse {
     pub allowance: Uint128,
 }
 
+/// Information about a particular account and its mint / burn allowances.
+/// Used in list queries.
 #[cw_serde]
 pub struct AllowanceInfo {
     pub address: String,
     pub allowance: Uint128,
 }
 
+/// Returns a list of all mint or burn allowances
 #[cw_serde]
 pub struct AllowancesResponse {
     pub allowances: Vec<AllowanceInfo>,
 }
 
+/// Whether a particular account is allowed or denied
 #[cw_serde]
 pub struct StatusResponse {
     pub status: bool,
 }
 
+/// Account info for list queries related to allowlist and denylist
 #[cw_serde]
 pub struct StatusInfo {
     pub address: String,
     pub status: bool,
 }
 
+/// Returns a list of addresses currently on the denylist.
 #[cw_serde]
 pub struct DenylistResponse {
     pub denylist: Vec<StatusInfo>,
 }
 
+/// Returns a list of addresses currently on the allowlist
 #[cw_serde]
 pub struct AllowlistResponse {
     pub allowlist: Vec<StatusInfo>,

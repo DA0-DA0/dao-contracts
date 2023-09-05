@@ -14,16 +14,19 @@ use crate::state::{
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 
+/// Returns the token denom that this contract is the admin for. Response: DenomResponse
 pub fn query_denom(deps: Deps) -> StdResult<DenomResponse> {
     let denom = DENOM.load(deps.storage)?;
     Ok(DenomResponse { denom })
 }
 
+/// Returns if token transfer is disabled. Response: IsFrozenResponse
 pub fn query_is_frozen(deps: Deps) -> StdResult<IsFrozenResponse> {
     let is_frozen = IS_FROZEN.load(deps.storage)?;
     Ok(IsFrozenResponse { is_frozen })
 }
 
+/// Returns the owner of the contract. Response: OwnerResponse
 pub fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
     let owner = OWNER.load(deps.storage)?;
     Ok(OwnerResponse {
@@ -31,6 +34,7 @@ pub fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
     })
 }
 
+/// Returns the mint allowance of the specified user. Response: AllowanceResponse
 pub fn query_mint_allowance(deps: Deps, address: String) -> StdResult<AllowanceResponse> {
     let allowance = MINTER_ALLOWANCES
         .may_load(deps.storage, &deps.api.addr_validate(&address)?)?
@@ -38,6 +42,7 @@ pub fn query_mint_allowance(deps: Deps, address: String) -> StdResult<AllowanceR
     Ok(AllowanceResponse { allowance })
 }
 
+/// Returns the allowance of the specified address. Response: AllowanceResponse
 pub fn query_burn_allowance(deps: Deps, address: String) -> StdResult<AllowanceResponse> {
     let allowance = BURNER_ALLOWANCES
         .may_load(deps.storage, &deps.api.addr_validate(&address)?)?
@@ -45,6 +50,7 @@ pub fn query_burn_allowance(deps: Deps, address: String) -> StdResult<AllowanceR
     Ok(AllowanceResponse { allowance })
 }
 
+/// Helper function used in allowance list queries.
 pub fn query_allowances(
     deps: Deps,
     start_after: Option<String>,
@@ -76,6 +82,7 @@ pub fn query_allowances(
         .collect()
 }
 
+/// Enumerates over all allownances. Response: AllowancesResponse
 pub fn query_mint_allowances(
     deps: Deps,
     start_after: Option<String>,
@@ -86,6 +93,7 @@ pub fn query_mint_allowances(
     })
 }
 
+/// Enumerates over all burn allownances. Response: AllowancesResponse
 pub fn query_burn_allowances(
     deps: Deps,
     start_after: Option<String>,
@@ -96,6 +104,7 @@ pub fn query_burn_allowances(
     })
 }
 
+/// Returns wether the user is on denylist or not. Response: StatusResponse
 pub fn query_is_denied(deps: Deps, address: String) -> StdResult<StatusResponse> {
     let status = DENYLIST
         .load(deps.storage, &deps.api.addr_validate(&address)?)
@@ -103,6 +112,7 @@ pub fn query_is_denied(deps: Deps, address: String) -> StdResult<StatusResponse>
     Ok(StatusResponse { status })
 }
 
+/// Returns wether the user is on the allowlist or not. Response: StatusResponse
 pub fn query_is_allowed(deps: Deps, address: String) -> StdResult<StatusResponse> {
     let status = ALLOWLIST
         .load(deps.storage, &deps.api.addr_validate(&address)?)
@@ -110,10 +120,13 @@ pub fn query_is_allowed(deps: Deps, address: String) -> StdResult<StatusResponse
     Ok(StatusResponse { status })
 }
 
+/// Returns whether features that require MsgBeforeSendHook are enabled.
+/// Most Cosmos chains do not support this feature yet.
 pub fn query_before_send_hook_features(deps: Deps) -> StdResult<bool> {
     BEFORE_SEND_HOOK_FEATURES_ENABLED.load(deps.storage)
 }
 
+/// A helper function used in list queries
 pub fn query_status_map(
     deps: Deps,
     start_after: Option<String>,
@@ -142,6 +155,7 @@ pub fn query_status_map(
         .collect()
 }
 
+/// Enumerates over all addresses on the allowlist. Response: AllowlistResponse
 pub fn query_allowlist(
     deps: Deps,
     start_after: Option<String>,
@@ -152,6 +166,7 @@ pub fn query_allowlist(
     })
 }
 
+/// Enumerates over all addresses on the denylist. Response: DenylistResponse
 pub fn query_denylist(
     deps: Deps,
     start_after: Option<String>,

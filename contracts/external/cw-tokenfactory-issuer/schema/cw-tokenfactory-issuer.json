@@ -5,6 +5,7 @@
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
+    "description": "The message used to create a new instance of this smart contract.",
     "oneOf": [
       {
         "description": "`NewToken` will create a new token when instantiate the contract. Newly created token will have full denom as `factory/<contract_address>/<subdenom>`. It will be attached to the contract setup the beforesend listener automatically.",
@@ -56,9 +57,10 @@
   "execute": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "ExecuteMsg",
+    "description": "State changing methods available to this smart contract.",
     "oneOf": [
       {
-        "description": "Allow adds the target address to the allowlist to be able to send tokens even if the token is frozen.",
+        "description": "Allow adds the target address to the allowlist to be able to send or recieve tokens even if the token is frozen. Token Factory's BeforeSendHook listener must be set to this contract in order for this feature to work.\n\nThis functionality is intedended for DAOs who do not wish to have a their tokens liquid while bootstrapping their DAO. For example, a DAO may wish to white list a Token Staking contract (to allow users to stake their tokens in the DAO) or a Merkle Drop contract (to allow users to claim their tokens).",
         "type": "object",
         "required": [
           "allow"
@@ -424,9 +426,10 @@
   "query": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "QueryMsg",
+    "description": "Queries supported by this smart contract.",
     "oneOf": [
       {
-        "description": "IsFrozen returns if the entire token transfer functionality is frozen. Response: IsFrozenResponse",
+        "description": "Returns if token transfer is disabled. Response: IsFrozenResponse",
         "type": "object",
         "required": [
           "is_frozen"
@@ -440,7 +443,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Denom returns the token denom that this contract is the admin for. Response: DenomResponse",
+        "description": "Returns the token denom that this contract is the admin for. Response: DenomResponse",
         "type": "object",
         "required": [
           "denom"
@@ -454,7 +457,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Owner returns the owner of the contract. Response: OwnerResponse",
+        "description": "Returns the owner of the contract. Response: OwnerResponse",
         "type": "object",
         "required": [
           "owner"
@@ -468,7 +471,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Allowance returns the allowance of the specified address. Response: AllowanceResponse",
+        "description": "Returns the burn allowance of the specified address. Response: AllowanceResponse",
         "type": "object",
         "required": [
           "burn_allowance"
@@ -490,7 +493,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Allowances Enumerates over all allownances. Response: Vec<AllowanceResponse>",
+        "description": "Enumerates over all burn allownances. Response: AllowancesResponse",
         "type": "object",
         "required": [
           "burn_allowances"
@@ -520,7 +523,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Allowance returns the allowance of the specified user. Response: AllowanceResponse",
+        "description": "Returns the mint allowance of the specified user. Response: AllowanceResponse",
         "type": "object",
         "required": [
           "mint_allowance"
@@ -542,7 +545,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Allowances Enumerates over all allownances. Response: AllowancesResponse",
+        "description": "Enumerates over all mint allownances. Response: AllowancesResponse",
         "type": "object",
         "required": [
           "mint_allowances"
@@ -572,7 +575,7 @@
         "additionalProperties": false
       },
       {
-        "description": "IsDenied returns wether the user is on denylist or not. Response: StatusResponse",
+        "description": "Returns wether the user is on denylist or not. Response: StatusResponse",
         "type": "object",
         "required": [
           "is_denied"
@@ -594,7 +597,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Denylist enumerates over all addresses on the denylist. Response: DenylistResponse",
+        "description": "Enumerates over all addresses on the denylist. Response: DenylistResponse",
         "type": "object",
         "required": [
           "denylist"
@@ -624,7 +627,7 @@
         "additionalProperties": false
       },
       {
-        "description": "IsAllowed returns wether the user is on the allowlist or not. Response: StatusResponse",
+        "description": "Returns wether the user is on the allowlist or not. Response: StatusResponse",
         "type": "object",
         "required": [
           "is_allowed"
@@ -646,7 +649,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Allowlist enumerates over all addresses on the allowlist. Response: AllowlistResponse",
+        "description": "Enumerates over all addresses on the allowlist. Response: AllowlistResponse",
         "type": "object",
         "required": [
           "allowlist"
@@ -676,7 +679,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Returns whether features that require MsgBeforeSendHook are enabled Most Cosmos chains do not support this feature yet.",
+        "description": "Returns whether features that require MsgBeforeSendHook are enabled. Most Cosmos chains do not support this feature yet.",
         "type": "object",
         "required": [
           "before_send_hook_features_enabled"
@@ -753,6 +756,7 @@
     "allowlist": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AllowlistResponse",
+      "description": "Returns a list of addresses currently on the allowlist",
       "type": "object",
       "required": [
         "allowlist"
@@ -768,6 +772,7 @@
       "additionalProperties": false,
       "definitions": {
         "StatusInfo": {
+          "description": "Account info for list queries related to allowlist and denylist",
           "type": "object",
           "required": [
             "address",
@@ -793,6 +798,7 @@
     "burn_allowance": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AllowanceResponse",
+      "description": "Returns a mint or burn allowance for a particular address, representing the amount of tokens the account is allowed to mint or burn",
       "type": "object",
       "required": [
         "allowance"
@@ -813,6 +819,7 @@
     "burn_allowances": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AllowancesResponse",
+      "description": "Returns a list of all mint or burn allowances",
       "type": "object",
       "required": [
         "allowances"
@@ -828,6 +835,7 @@
       "additionalProperties": false,
       "definitions": {
         "AllowanceInfo": {
+          "description": "Information about a particular account and its mint / burn allowances. Used in list queries.",
           "type": "object",
           "required": [
             "address",
@@ -852,6 +860,7 @@
     "denom": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "DenomResponse",
+      "description": "Returns the full denomination for the Token Factory token. For example: `factory/{contract address}/{subdenom}`",
       "type": "object",
       "required": [
         "denom"
@@ -866,6 +875,7 @@
     "denylist": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "DenylistResponse",
+      "description": "Returns a list of addresses currently on the denylist.",
       "type": "object",
       "required": [
         "denylist"
@@ -881,6 +891,7 @@
       "additionalProperties": false,
       "definitions": {
         "StatusInfo": {
+          "description": "Account info for list queries related to allowlist and denylist",
           "type": "object",
           "required": [
             "address",
@@ -901,6 +912,7 @@
     "is_allowed": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "StatusResponse",
+      "description": "Whether a particular account is allowed or denied",
       "type": "object",
       "required": [
         "status"
@@ -915,6 +927,7 @@
     "is_denied": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "StatusResponse",
+      "description": "Whether a particular account is allowed or denied",
       "type": "object",
       "required": [
         "status"
@@ -929,6 +942,7 @@
     "is_frozen": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "IsFrozenResponse",
+      "description": "Returns whether or not the Token Factory token is frozen and transfers are disabled.",
       "type": "object",
       "required": [
         "is_frozen"
@@ -943,6 +957,7 @@
     "mint_allowance": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AllowanceResponse",
+      "description": "Returns a mint or burn allowance for a particular address, representing the amount of tokens the account is allowed to mint or burn",
       "type": "object",
       "required": [
         "allowance"
@@ -963,6 +978,7 @@
     "mint_allowances": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AllowancesResponse",
+      "description": "Returns a list of all mint or burn allowances",
       "type": "object",
       "required": [
         "allowances"
@@ -978,6 +994,7 @@
       "additionalProperties": false,
       "definitions": {
         "AllowanceInfo": {
+          "description": "Information about a particular account and its mint / burn allowances. Used in list queries.",
           "type": "object",
           "required": [
             "address",
@@ -1002,6 +1019,7 @@
     "owner": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "OwnerResponse",
+      "description": "Returns the current owner of this issuer contract who is allowed to call priviledged methods.",
       "type": "object",
       "required": [
         "address"
