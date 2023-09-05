@@ -7,7 +7,7 @@ This repo contains a set of contracts that when used in conjunction with the x/t
 - Creating a new Token Factory token or using an existing one
 - Granting and revoking allowances for the minting and burning of tokens
 - Updating token metadata
-- Freezing and unfreezing transfers, with an allowlist to allow specified addresses to continue to transfer
+- Freezing and unfreezing transfers, with an allowlist to allow specified addresses to allow transfer to or from
 - Denylist to prevent certain addresses from transferring
 - Force transfering tokens via the contract owner
 - Updating the contract owner or Token Factory admin
@@ -53,3 +53,20 @@ Example instantiate message:
   }
 }
 ```
+
+## Renouncing Token Factory Admin
+Some DAOs or protocols after the initial setup phase may wish to render their tokens immutable, permanently disabling features of this contract.
+
+To do so, they must execute a `ExcuteMessage::UpdateTokenFactoryAdmin {}` method, setting the Admin to a null address or the bank module for your respective chain.
+
+For example, on Juno this could be:
+
+``` json
+{
+  "update_token_factory_admin": {
+    "new_admin": "juno1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"
+  }
+}
+```
+
+The Token Factory standard requires a Token Factory admin per token, by setting to a null address the Token is rendered immutable and the `cw-tokenfactory-issuer` will be unable to make future updates. This is secure as the cryptography that underlies the chain enforces that even with the largest super computers in the world it would take an astonomically large amount of time to compute the private key for this address.
