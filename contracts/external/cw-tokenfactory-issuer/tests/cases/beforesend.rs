@@ -51,14 +51,19 @@ fn allowlisted_addresses_can_transfer_when_token_frozen() {
     let allowlistee = &env.test_accs[1];
     let other = &env.test_accs[2];
 
+    // Mint to owner and allowlistee
+    env.cw_tokenfactory_issuer
+        .set_minter(&owner.address(), 100000, owner)
+        .unwrap();
+    env.cw_tokenfactory_issuer
+        .mint(&owner.address(), 10000, owner)
+        .unwrap();
+    env.cw_tokenfactory_issuer
+        .mint(&allowlistee.address(), 10000, owner)
+        .unwrap();
+
     // Freeze
     env.cw_tokenfactory_issuer.freeze(true, owner).unwrap();
-
-    // Bank send should fail
-    let err = env
-        .send_tokens(allowlistee.address(), coins(10000, denom.clone()), owner)
-        .unwrap_err();
-    assert_eq!(err, RunnerError::ExecuteError { msg:  format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The contract is frozen for denom \"{denom}\": execute wasm contract failed") });
 
     // Allowlist address
     env.cw_tokenfactory_issuer
@@ -67,12 +72,46 @@ fn allowlisted_addresses_can_transfer_when_token_frozen() {
 
     // Bank send should pass
     env.send_tokens(other.address(), coins(10000, denom.clone()), allowlistee)
-        .unwrap_err();
+        .unwrap();
+
     // Non allowlist address can't transfer, bank send should fail
     let err = env
         .send_tokens(other.address(), coins(10000, denom.clone()), owner)
         .unwrap_err();
     assert_eq!(err, RunnerError::ExecuteError { msg:  format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The contract is frozen for denom \"{denom}\": execute wasm contract failed") });
+
+    // Other assets are not affected
+    env.send_tokens(other.address(), coins(10000, "uosmo"), owner)
+        .unwrap();
+}
+
+#[test]
+fn non_allowlisted_accounts_can_transfer_to_allowlisted_address_frozen() {
+    let env = TestEnv::default();
+    let owner = &env.test_accs[0];
+    let denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
+    let allowlistee = &env.test_accs[1];
+    let other = &env.test_accs[2];
+
+    // Mint to other
+    env.cw_tokenfactory_issuer
+        .set_minter(&owner.address(), 100000, owner)
+        .unwrap();
+    env.cw_tokenfactory_issuer
+        .mint(&other.address(), 10000, owner)
+        .unwrap();
+
+    // Freeze
+    env.cw_tokenfactory_issuer.freeze(true, owner).unwrap();
+
+    // Allowlist address
+    env.cw_tokenfactory_issuer
+        .allow(&allowlistee.address(), true, owner)
+        .unwrap();
+
+    // Bank send to allow listed address should pass
+    env.send_tokens(allowlistee.address(), coins(10000, denom.clone()), other)
+        .unwrap();
 }
 
 #[test]

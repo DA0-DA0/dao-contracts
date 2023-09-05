@@ -9,10 +9,11 @@ pub fn beforesend_hook(
     to: String,
     coin: Coin,
 ) -> Result<Response, ContractError> {
-    // assert that denom of this contract is not frozen
-    check_is_not_frozen(deps.as_ref(), &from, &coin.denom)?;
+    // Assert that denom of this contract is not frozen
+    // If it is frozen, check whether either 'from' or 'to' address is allowed
+    check_is_not_frozen(deps.as_ref(), &from, &to, &coin.denom)?;
 
-    // assert that neither 'from' or 'to' address is denylist
+    // Assert that neither 'from' or 'to' address is denylist
     check_is_not_denied(deps.as_ref(), from)?;
     check_is_not_denied(deps.as_ref(), to)?;
 

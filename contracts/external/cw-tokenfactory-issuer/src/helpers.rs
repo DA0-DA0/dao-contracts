@@ -32,7 +32,12 @@ pub fn check_is_not_denied(deps: Deps, address: String) -> Result<(), ContractEr
     Ok(())
 }
 
-pub fn check_is_not_frozen(deps: Deps, address: &str, denom: &str) -> Result<(), ContractError> {
+pub fn check_is_not_frozen(
+    deps: Deps,
+    from_address: &str,
+    to_address: &str,
+    denom: &str,
+) -> Result<(), ContractError> {
     let is_frozen = IS_FROZEN.load(deps.storage)?;
     let contract_denom = DENOM.load(deps.storage)?;
 
@@ -42,16 +47,21 @@ pub fn check_is_not_frozen(deps: Deps, address: &str, denom: &str) -> Result<(),
     // contract's denom.
     let is_denom_frozen = is_frozen && denom == contract_denom;
     if is_denom_frozen {
-        let addr = deps.api.addr_validate(address)?;
-        if let Some(is_allowed) = ALLOWLIST.may_load(deps.storage, &addr)? {
-            if is_allowed {
-                return Ok(());
-            }
-        };
+        let from = deps.api.addr_validate(from_address)?;
+        let to = deps.api.addr_validate(to_address)?;
 
-        return Err(ContractError::ContractFrozen {
-            denom: contract_denom,
-        });
+        // If either the from address or the to_address is allowed, then transaction proceeds
+        let is_from_allowed = ALLOWLIST.may_load(deps.storage, &from)?;
+        let is_to_allowed = ALLOWLIST.may_load(deps.storage, &to)?;
+        match (is_from_allowed, is_to_allowed) {
+            (Some(true), _) => return Ok(()),
+            (_, Some(true)) => return Ok(()),
+            _ => {
+                return Err(ContractError::ContractFrozen {
+                    denom: contract_denom,
+                })
+            }
+        }
     }
 
     Ok(())

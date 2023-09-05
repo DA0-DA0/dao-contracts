@@ -22,7 +22,13 @@ pub struct MigrateMsg {}
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    /// Allow adds the target address to the allowlist to be able to send tokens even if the token is frozen.
+    /// Allow adds the target address to the allowlist to be able to send or recieve tokens even if the token
+    /// is frozen. Token Factory's BeforeSendHook listener must be set to this contract in order for this feature
+    /// to work.
+    ///
+    /// This functionality is intedended for DAOs who do not wish to have a their tokens liquid while bootstrapping
+    /// their DAO. For example, a DAO may wish to white list a Token Staking contract (to allow users to stake their
+    /// tokens in the DAO) or a Merkle Drop contract (to allow users to claim their tokens).
     Allow { address: String, status: bool },
 
     /// Burn token to address. Burn allowance is required and wiil be deducted after successful burn.
