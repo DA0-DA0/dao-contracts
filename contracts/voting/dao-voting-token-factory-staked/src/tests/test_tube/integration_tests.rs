@@ -213,38 +213,43 @@ fn test_instantiate_invalid_active_threshold_count_fails() {
         .init_account(&[Coin::new(100000000000, "uosmo")])
         .unwrap();
 
-    // TODO verify error is correct
-    env.instantiate(
-        &InstantiateMsg {
-            token_issuer_code_id: tf_issuer_id,
-            token_info: TokenInfo::New(NewTokenInfo {
-                subdenom: "cat".to_string(),
-                metadata: Some(NewDenomMetadata {
-                    description: "Awesome token, get it meow!".to_string(),
-                    additional_denom_units: Some(vec![DenomUnit {
-                        denom: "cat".to_string(),
-                        // Exponent 0 is automatically set
-                        exponent: 0,
-                        aliases: vec![],
-                    }]),
-                    display: "cat".to_string(),
-                    name: "Cat Token".to_string(),
-                    symbol: "CAT".to_string(),
+    let err = env
+        .instantiate(
+            &InstantiateMsg {
+                token_issuer_code_id: tf_issuer_id,
+                token_info: TokenInfo::New(NewTokenInfo {
+                    subdenom: "cat".to_string(),
+                    metadata: Some(NewDenomMetadata {
+                        description: "Awesome token, get it meow!".to_string(),
+                        additional_denom_units: Some(vec![DenomUnit {
+                            denom: "cat".to_string(),
+                            // Exponent 0 is automatically set
+                            exponent: 0,
+                            aliases: vec![],
+                        }]),
+                        display: "cat".to_string(),
+                        name: "Cat Token".to_string(),
+                        symbol: "CAT".to_string(),
+                    }),
+                    initial_balances: vec![InitialBalance {
+                        amount: Uint128::new(100),
+                        address: env.accounts[0].address(),
+                    }],
+                    initial_dao_balance: None,
                 }),
-                initial_balances: vec![InitialBalance {
-                    amount: Uint128::new(100),
-                    address: env.accounts[0].address(),
-                }],
-                initial_dao_balance: None,
-            }),
-            unstaking_duration: None,
-            active_threshold: Some(ActiveThreshold::AbsoluteCount {
-                count: Uint128::new(1000),
-            }),
-        },
-        dao,
-    )
-    .unwrap_err();
+                unstaking_duration: None,
+                active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                    count: Uint128::new(1000),
+                }),
+            },
+            dao,
+        )
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        TfDaoVotingContract::execute_submessage_error(ContractError::InvalidAbsoluteCount {})
+    );
 }
 
 #[test]
