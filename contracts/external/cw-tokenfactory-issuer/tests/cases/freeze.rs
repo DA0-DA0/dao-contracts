@@ -7,6 +7,11 @@ fn freeze_by_owener_should_pass() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
 
+    // Owner sets before send hook to enable advanced features
+    env.cw_tokenfactory_issuer
+        .set_before_send_hook(env.cw_tokenfactory_issuer.contract_addr.clone(), owner)
+        .unwrap();
+
     env.cw_tokenfactory_issuer.freeze(true, owner).unwrap();
 
     // Should be frozen after set true
@@ -29,9 +34,17 @@ fn freeze_by_owener_should_pass() {
 }
 
 #[test]
-fn freeze_by_non_freezer_should_fail() {
+fn freeze_by_non_owner_should_fail() {
     let env = TestEnv::default();
+    let owner = &env.test_accs[0];
     let non_owner = &env.test_accs[1];
+
+    // Owner sets before send hook to enable advanced features
+    env.cw_tokenfactory_issuer
+        .set_before_send_hook(env.cw_tokenfactory_issuer.contract_addr.clone(), owner)
+        .unwrap();
+
+    // Non-owner cannot freeze
     let err = env
         .cw_tokenfactory_issuer
         .freeze(true, non_owner)

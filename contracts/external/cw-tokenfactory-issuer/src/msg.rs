@@ -2,6 +2,8 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Uint128};
 pub use osmosis_std::types::cosmos::bank::v1beta1::{DenomUnit, Metadata};
 
+use crate::state::BeforeSendHookInfo;
+
 /// The message used to create a new instance of this smart contract.
 #[cw_serde]
 pub enum InstantiateMsg {
@@ -57,12 +59,13 @@ pub enum ExecuteMsg {
     },
 
     /// Attempt to SetBeforeSendHook on the token attached to this contract.
-    /// This will fail if the token already has a SetBeforeSendHook or the chain
-    /// still does not support it.
+    /// This will fail if the chain does not support bank module hooks (many Token
+    /// Factory implementations do not yet support).
     ///
     /// This takes a cosmwasm_address as an argument, which is the address of the
     /// contract that will be called before every token transfer. Normally, this
-    /// will be the issuer contract itself.
+    /// will be the issuer contract itself, though it can be a custom contract for
+    /// greater flexibility.
     ///
     /// Setting the address to an empty string will remove the SetBeforeSendHook.
     ///
@@ -156,10 +159,16 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
 
-    /// Returns whether features that require MsgBeforeSendHook are enabled.
-    /// Most Cosmos chains do not support this feature yet.
-    #[returns(bool)]
-    BeforeSendHookFeaturesEnabled {},
+    /// Returns information about the BeforeSendHook for the token. Note: many Token
+    /// Factory chains do not yet support this feature.
+    ///
+    /// The information returned is:
+    /// - Whether features in this contract that require MsgBeforeSendHook are enabled.
+    /// - The address of the BeforeSendHook contract if configured.
+    ///
+    /// Response: BeforeSendHookInfo
+    #[returns(BeforeSendHookInfo)]
+    BeforeSendHookInfo {},
 }
 
 /// SudoMsg is only exposed for internal Cosmos SDK modules to call.

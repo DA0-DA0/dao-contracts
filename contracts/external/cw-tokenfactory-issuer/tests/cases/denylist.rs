@@ -11,6 +11,11 @@ fn denylist_by_owner_should_pass() {
     let owner = &env.test_accs[0];
     let denylistee = &env.test_accs[2];
 
+    // Owner sets before send hook to enable advanced features
+    env.cw_tokenfactory_issuer
+        .set_before_send_hook(env.cw_tokenfactory_issuer.contract_addr.clone(), owner)
+        .unwrap();
+
     env.cw_tokenfactory_issuer
         .deny(&denylistee.address(), true, owner)
         .unwrap();
@@ -39,8 +44,16 @@ fn denylist_by_owner_should_pass() {
 #[test]
 fn denylist_by_non_denylister_should_fail() {
     let env = TestEnv::default();
+    let owner = &env.test_accs[0];
     let non_owner = &env.test_accs[1];
     let denylistee = &env.test_accs[2];
+
+    // Owner sets before send hook to enable advanced features
+    env.cw_tokenfactory_issuer
+        .set_before_send_hook(env.cw_tokenfactory_issuer.contract_addr.clone(), owner)
+        .unwrap();
+
+    // Non-owner cannot add address to denylist
     let err = env
         .cw_tokenfactory_issuer
         .deny(&denylistee.address(), true, non_owner)
@@ -57,6 +70,12 @@ fn set_denylist_to_issuer_itself_fails() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
 
+    // Owner sets before send hook to enable advanced features
+    env.cw_tokenfactory_issuer
+        .set_before_send_hook(env.cw_tokenfactory_issuer.contract_addr.clone(), owner)
+        .unwrap();
+
+    // Owner cannot deny issuer itself
     let err = env
         .cw_tokenfactory_issuer
         .deny(&env.cw_tokenfactory_issuer.contract_addr, true, owner)
@@ -79,6 +98,12 @@ fn query_denylist_within_default_limit() {
             move |expected_result| {
                 let owner = &env.test_accs[0];
 
+                // Owner sets before send hook to enable advanced features
+                env.cw_tokenfactory_issuer
+                    .set_before_send_hook(env.cw_tokenfactory_issuer.contract_addr.clone(), owner)
+                    .unwrap();
+
+                // Deny address
                 env.cw_tokenfactory_issuer
                     .deny(&expected_result.address, true, owner)
                     .unwrap();
@@ -106,6 +131,12 @@ fn query_denylist_over_default_limit() {
             move |expected_result| {
                 let owner = &env.test_accs[0];
 
+                // Owner sets before send hook to enable advanced features
+                env.cw_tokenfactory_issuer
+                    .set_before_send_hook(env.cw_tokenfactory_issuer.contract_addr.clone(), owner)
+                    .unwrap();
+
+                // Deny address
                 env.cw_tokenfactory_issuer
                     .deny(&expected_result.address, true, owner)
                     .unwrap();

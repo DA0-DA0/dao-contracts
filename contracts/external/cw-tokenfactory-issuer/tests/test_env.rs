@@ -269,8 +269,8 @@ impl TokenfactoryIssuer {
 
     pub fn set_before_send_hook(
         &self,
-        signer: &SigningAccount,
         cosmwasm_address: String,
+        signer: &SigningAccount,
     ) -> RunnerExecuteResult<MsgExecuteContractResponse> {
         self.execute(
             &ExecuteMsg::SetBeforeSendHook { cosmwasm_address },

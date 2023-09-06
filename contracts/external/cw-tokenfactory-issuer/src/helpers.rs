@@ -1,6 +1,4 @@
-use crate::state::{
-    ALLOWLIST, BEFORE_SEND_HOOK_FEATURES_ENABLED, DENOM, DENYLIST, IS_FROZEN, OWNER,
-};
+use crate::state::{ALLOWLIST, BEFORE_SEND_HOOK_INFO, DENOM, DENYLIST, IS_FROZEN, OWNER};
 use crate::ContractError;
 use cosmwasm_std::{Addr, Deps};
 
@@ -16,8 +14,8 @@ pub fn check_is_contract_owner(deps: Deps, sender: Addr) -> Result<(), ContractE
 
 /// Checks wether the BeforeSendHookFeatures gated features are enabled
 pub fn check_before_send_hook_features_enabled(deps: Deps) -> Result<(), ContractError> {
-    let enabled = BEFORE_SEND_HOOK_FEATURES_ENABLED.load(deps.storage)?;
-    if !enabled {
+    let info = BEFORE_SEND_HOOK_INFO.load(deps.storage)?;
+    if !info.advanced_features_enabled {
         Err(ContractError::BeforeSendHookFeaturesDisabled {})
     } else {
         Ok(())

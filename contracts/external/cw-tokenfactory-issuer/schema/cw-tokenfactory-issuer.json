@@ -216,7 +216,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Attempt to SetBeforeSendHook on the token attached to this contract. This will fail if the token already has a SetBeforeSendHook or the chain still does not support it.",
+        "description": "Attempt to SetBeforeSendHook on the token attached to this contract. This will fail if the chain does not support bank module hooks (many Token Factory implementations do not yet support).\n\nThis takes a cosmwasm_address as an argument, which is the address of the contract that will be called before every token transfer. Normally, this will be the issuer contract itself, though it can be a custom contract for greater flexibility.\n\nSetting the address to an empty string will remove the SetBeforeSendHook.\n\nThis method can only be called by the contract owner.",
         "type": "object",
         "required": [
           "set_before_send_hook"
@@ -224,6 +224,14 @@
         "properties": {
           "set_before_send_hook": {
             "type": "object",
+            "required": [
+              "cosmwasm_address"
+            ],
+            "properties": {
+              "cosmwasm_address": {
+                "type": "string"
+              }
+            },
             "additionalProperties": false
           }
         },
@@ -679,13 +687,13 @@
         "additionalProperties": false
       },
       {
-        "description": "Returns whether features that require MsgBeforeSendHook are enabled. Most Cosmos chains do not support this feature yet.",
+        "description": "Returns information about the BeforeSendHook for the token. Note: many Token Factory chains do not yet support this feature.\n\nThe information returned is: - Whether features in this contract that require MsgBeforeSendHook are enabled. - The address of the BeforeSendHook contract if configured.\n\nResponse: BeforeSendHookInfo",
         "type": "object",
         "required": [
-          "before_send_hook_features_enabled"
+          "before_send_hook_info"
         ],
         "properties": {
-          "before_send_hook_features_enabled": {
+          "before_send_hook_info": {
             "type": "object",
             "additionalProperties": false
           }
@@ -790,10 +798,28 @@
         }
       }
     },
-    "before_send_hook_features_enabled": {
+    "before_send_hook_info": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Boolean",
-      "type": "boolean"
+      "title": "BeforeSendHookInfo",
+      "description": "Whether or not features that require MsgBeforeSendHook are enabled Many Token Factory chains do not yet support MsgBeforeSendHook",
+      "type": "object",
+      "required": [
+        "advanced_features_enabled"
+      ],
+      "properties": {
+        "advanced_features_enabled": {
+          "description": "Whether or not features in this contract that require MsgBeforeSendHook are enabled.",
+          "type": "boolean"
+        },
+        "hook_contract_address": {
+          "description": "The address of the contract that implements the BeforeSendHook interface. Most often this will be the cw_tokenfactory_issuer contract itself.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
     },
     "burn_allowance": {
       "$schema": "http://json-schema.org/draft-07/schema#",

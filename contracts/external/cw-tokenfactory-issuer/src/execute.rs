@@ -8,8 +8,8 @@ use token_bindings::TokenFactoryMsg;
 use crate::error::ContractError;
 use crate::helpers::{check_before_send_hook_features_enabled, check_is_contract_owner};
 use crate::state::{
-    ALLOWLIST, BEFORE_SEND_HOOK_FEATURES_ENABLED, BURNER_ALLOWANCES, DENOM, DENYLIST, IS_FROZEN,
-    MINTER_ALLOWANCES, OWNER,
+    BeforeSendHookInfo, ALLOWLIST, BEFORE_SEND_HOOK_INFO, BURNER_ALLOWANCES, DENOM, DENYLIST,
+    IS_FROZEN, MINTER_ALLOWANCES, OWNER,
 };
 
 /// Mints new tokens. To mint new tokens, the address calling this method must
@@ -216,19 +216,34 @@ pub fn set_before_send_hook(
     // The `cosmwasm_address` can be an empty string if setting the value to nil to
     // disable the hook. If an empty string, we disable before send hook features.
     // Otherwise, we validate the `cosmwasm_address` enable before send hook features.
-    //
-    // TODO if the address is not the same as the cw_tokenfactory_issuer contract address,
-    // before send hook features are also disabled. We should have a query that returns more
-    // contextual information.
     if cosmwasm_address.is_empty() {
         // Disable BeforeSendHook features
-        BEFORE_SEND_HOOK_FEATURES_ENABLED.save(deps.storage, &true)?;
+        BEFORE_SEND_HOOK_INFO.save(
+            deps.storage,
+            &BeforeSendHookInfo {
+                advanced_features_enabled: false,
+                hook_contract_address: None,
+            },
+        )?;
     } else {
         // Validate that address is a valid address
         deps.api.addr_validate(&cosmwasm_address)?;
 
-        // Enable BeforeSendHook features
-        BEFORE_SEND_HOOK_FEATURES_ENABLED.save(deps.storage, &true)?;
+        // If the `cosmwasm_address` is not the same as the cw_tokenfactory_issuer contract
+        // BeforeSendHook features are disabled.
+        let mut advanced_features_enabled = true;
+        if cosmwasm_address != env.contract.address {
+            advanced_features_enabled = false;
+        }
+
+        // Save the BeforeSendHookInfo
+        BEFORE_SEND_HOOK_INFO.save(
+            deps.storage,
+            &BeforeSendHookInfo {
+                advanced_features_enabled,
+                hook_contract_address: Some(cosmwasm_address.clone()),
+            },
+        )?;
     }
 
     // Load the Token Factory denom

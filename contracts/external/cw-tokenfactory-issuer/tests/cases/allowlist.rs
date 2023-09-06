@@ -11,6 +11,11 @@ fn allowlist_by_owner_should_pass() {
     let owner = &env.test_accs[0];
     let allowlistee = &env.test_accs[2];
 
+    // Owner sets before send hook to enable allowlist feature
+    env.cw_tokenfactory_issuer
+        .set_before_send_hook(env.cw_tokenfactory_issuer.contract_addr.clone(), owner)
+        .unwrap();
+
     env.cw_tokenfactory_issuer
         .allow(&allowlistee.address(), true, owner)
         .unwrap();
@@ -39,8 +44,16 @@ fn allowlist_by_owner_should_pass() {
 #[test]
 fn allowlist_by_non_owern_should_fail() {
     let env = TestEnv::default();
+    let owner = &env.test_accs[0];
     let non_owner = &env.test_accs[1];
     let allowlistee = &env.test_accs[2];
+
+    // Owner sets before send hook to enable allowlist feature
+    env.cw_tokenfactory_issuer
+        .set_before_send_hook(env.cw_tokenfactory_issuer.contract_addr.clone(), owner)
+        .unwrap();
+
+    // Non-owner cannot add address to allowlist
     let err = env
         .cw_tokenfactory_issuer
         .allow(&allowlistee.address(), true, non_owner)
@@ -62,6 +75,13 @@ fn query_allowlist_within_default_limit() {
         |env| {
             move |expected_result| {
                 let owner = &env.test_accs[0];
+
+                // Owner sets before send hook to enable allowlist feature
+                env.cw_tokenfactory_issuer
+                    .set_before_send_hook(env.cw_tokenfactory_issuer.contract_addr.clone(), owner)
+                    .unwrap();
+
+                // Allowlist the address
                 env.cw_tokenfactory_issuer
                     .allow(&expected_result.address, true, owner)
                     .unwrap();
@@ -88,6 +108,13 @@ fn query_allowlist_over_default_limit() {
         |env| {
             move |expected_result| {
                 let owner = &env.test_accs[0];
+
+                // Owner sets before send hook to enable allowlist feature
+                env.cw_tokenfactory_issuer
+                    .set_before_send_hook(env.cw_tokenfactory_issuer.contract_addr.clone(), owner)
+                    .unwrap();
+
+                // Allowlist the address
                 env.cw_tokenfactory_issuer
                     .allow(&expected_result.address, true, owner)
                     .unwrap();

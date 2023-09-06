@@ -6,8 +6,8 @@ use crate::msg::{
     DenylistResponse, IsFrozenResponse, OwnerResponse, StatusInfo, StatusResponse,
 };
 use crate::state::{
-    ALLOWLIST, BEFORE_SEND_HOOK_FEATURES_ENABLED, BURNER_ALLOWANCES, DENOM, DENYLIST, IS_FROZEN,
-    MINTER_ALLOWANCES, OWNER,
+    BeforeSendHookInfo, ALLOWLIST, BEFORE_SEND_HOOK_INFO, BURNER_ALLOWANCES, DENOM, DENYLIST,
+    IS_FROZEN, MINTER_ALLOWANCES, OWNER,
 };
 
 // Default settings for pagination
@@ -122,8 +122,8 @@ pub fn query_is_allowed(deps: Deps, address: String) -> StdResult<StatusResponse
 
 /// Returns whether features that require MsgBeforeSendHook are enabled.
 /// Most Cosmos chains do not support this feature yet.
-pub fn query_before_send_hook_features(deps: Deps) -> StdResult<bool> {
-    BEFORE_SEND_HOOK_FEATURES_ENABLED.load(deps.storage)
+pub fn query_before_send_hook_features(deps: Deps) -> StdResult<BeforeSendHookInfo> {
+    BEFORE_SEND_HOOK_INFO.load(deps.storage)
 }
 
 /// A helper function used in list queries

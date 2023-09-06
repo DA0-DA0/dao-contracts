@@ -3,13 +3,11 @@ use std::convert::TryInto;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg, SubMsgResult,
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg,
 };
 use cosmwasm_std::{CosmosMsg, Reply};
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
-use osmosis_std::types::osmosis::tokenfactory::v1beta1::{
-    MsgCreateDenom, MsgCreateDenomResponse, MsgSetBeforeSendHook,
-};
+use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgCreateDenom, MsgCreateDenomResponse};
 use token_bindings::TokenFactoryMsg;
 
 use crate::error::ContractError;
@@ -17,7 +15,7 @@ use crate::execute;
 use crate::hooks;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, SudoMsg};
 use crate::queries;
-use crate::state::{BEFORE_SEND_HOOK_FEATURES_ENABLED, DENOM, IS_FROZEN, OWNER};
+use crate::state::{BeforeSendHookInfo, BEFORE_SEND_HOOK_INFO, DENOM, IS_FROZEN, OWNER};
 
 // Version info for migration
 const CONTRACT_NAME: &str = "CARGO_PKG_NAME";
@@ -38,7 +36,13 @@ pub fn instantiate(
     OWNER.save(deps.storage, &info.sender)?;
 
     // BeforeSendHook features are disabled by default.
-    BEFORE_SEND_HOOK_FEATURES_ENABLED.save(deps.storage, &false)?;
+    BEFORE_SEND_HOOK_INFO.save(
+        deps.storage,
+        &BeforeSendHookInfo {
+            advanced_features_enabled: false,
+            hook_contract_address: None,
+        },
+    )?;
     IS_FROZEN.save(deps.storage, &false)?;
 
     match msg {
@@ -132,7 +136,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Allowlist { start_after, limit } => {
             to_binary(&queries::query_allowlist(deps, start_after, limit)?)
         }
-        QueryMsg::BeforeSendHookFeaturesEnabled {} => {
+        QueryMsg::BeforeSendHookInfo {} => {
             to_binary(&queries::query_before_send_hook_features(deps)?)
         }
         QueryMsg::BurnAllowance { address } => {

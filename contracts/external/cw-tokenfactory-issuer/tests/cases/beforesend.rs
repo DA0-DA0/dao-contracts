@@ -28,6 +28,11 @@ fn before_send_should_block_on_frozen() {
     let owner = &env.test_accs[0];
     let denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
 
+    // Owner sets before send hook to enable advanced features
+    env.cw_tokenfactory_issuer
+        .set_before_send_hook(env.cw_tokenfactory_issuer.contract_addr.clone(), owner)
+        .unwrap();
+
     // Freeze
     env.cw_tokenfactory_issuer.freeze(true, owner).unwrap();
 
@@ -50,6 +55,11 @@ fn allowlisted_addresses_can_transfer_when_token_frozen() {
     let denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
     let allowlistee = &env.test_accs[1];
     let other = &env.test_accs[2];
+
+    // Owner sets before send hook to enable advanced features
+    env.cw_tokenfactory_issuer
+        .set_before_send_hook(env.cw_tokenfactory_issuer.contract_addr.clone(), owner)
+        .unwrap();
 
     // Mint to owner and allowlistee
     env.cw_tokenfactory_issuer
@@ -93,6 +103,11 @@ fn non_allowlisted_accounts_can_transfer_to_allowlisted_address_frozen() {
     let allowlistee = &env.test_accs[1];
     let other = &env.test_accs[2];
 
+    // Owner sets before send hook to enable advanced features
+    env.cw_tokenfactory_issuer
+        .set_before_send_hook(env.cw_tokenfactory_issuer.contract_addr.clone(), owner)
+        .unwrap();
+
     // Mint to other
     env.cw_tokenfactory_issuer
         .set_minter(&owner.address(), 100000, owner)
@@ -120,6 +135,11 @@ fn before_send_should_block_sending_from_denylist_address() {
     let owner = &env.test_accs[0];
     let denylistee = &env.test_accs[1];
     let denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
+
+    // Owner sets before send hook to enable advanced features
+    env.cw_tokenfactory_issuer
+        .set_before_send_hook(env.cw_tokenfactory_issuer.contract_addr.clone(), owner)
+        .unwrap();
 
     // Mint to denylistee
     env.cw_tokenfactory_issuer
@@ -153,6 +173,11 @@ fn before_send_should_block_sending_to_denylist_address() {
     let owner = &env.test_accs[0];
     let denylistee = &env.test_accs[1];
     let denom = env.cw_tokenfactory_issuer.query_denom().unwrap().denom;
+
+    // Owner sets before send hook to enable advanced features
+    env.cw_tokenfactory_issuer
+        .set_before_send_hook(env.cw_tokenfactory_issuer.contract_addr.clone(), owner)
+        .unwrap();
 
     // Mint to self
     env.cw_tokenfactory_issuer
