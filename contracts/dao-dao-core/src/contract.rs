@@ -107,9 +107,16 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     // No actions can be performed while the DAO is paused.
-    if let Some(expiration) = PAUSED.may_load(deps.storage)? {
-        if !expiration.is_expired(&env.block) {
-            return Err(ContractError::Paused {});
+    match &msg {
+        &ExecuteMsg::Unpause {} => {
+            // Allow the unpause action to pass through
+        }
+        _ => {
+            if let Some(expiration) = PAUSED.may_load(deps.storage)? {
+                if !expiration.is_expired(&env.block) {
+                    return Err(ContractError::Paused {});
+                }
+            }
         }
     }
 
@@ -121,6 +128,7 @@ pub fn execute(
             execute_proposal_hook(deps.as_ref(), info.sender, msgs)
         }
         ExecuteMsg::Pause { duration } => execute_pause(deps, env, info.sender, duration),
+        ExecuteMsg::Unpause {} => execute_unpause(deps, env, info.sender),
         ExecuteMsg::Receive(_) => execute_receive_cw20(deps, info.sender),
         ExecuteMsg::ReceiveNft(_) => execute_receive_cw721(deps, info.sender),
         ExecuteMsg::RemoveItem { key } => execute_remove_item(deps, env, info.sender, key),
@@ -159,8 +167,10 @@ pub fn execute_pause(
     sender: Addr,
     pause_duration: Duration,
 ) -> Result<Response, ContractError> {
-    // Only the core contract may call this method.
-    if sender != env.contract.address {
+    let admin = ADMIN.load(deps.storage)?;
+
+    // Only the core contract or admin may call this method.
+    if sender != env.contract.address && sender != admin {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -172,6 +182,21 @@ pub fn execute_pause(
         .add_attribute("action", "execute_pause")
         .add_attribute("sender", sender)
         .add_attribute("until", until.to_string()))
+}
+
+pub fn execute_unpause(deps: DepsMut, env: Env, sender: Addr) -> Result<Response, ContractError> {
+    let admin = ADMIN.load(deps.storage)?;
+
+    // Only the admin may call this method excluding the core contract.
+    if sender != admin || sender == env.contract.address {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    PAUSED.remove(deps.storage);
+
+    Ok(Response::new()
+        .add_attribute("action", "execute_unpause")
+        .add_attribute("sender", sender))
 }
 
 pub fn execute_admin_msgs(

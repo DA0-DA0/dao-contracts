@@ -1044,7 +1044,7 @@ fn test_admin_permissions() {
     );
     res.unwrap_err();
 
-    // Proposal mdoule can't call ExecuteAdminMsgs
+    // Proposal module can't call ExecuteAdminMsgs
     let res = app.execute_contract(
         proposal_module.address.clone(),
         core_addr.clone(),
@@ -1117,7 +1117,7 @@ fn test_admin_permissions() {
     );
     res.unwrap_err();
 
-    // Admin can call ExecuteAdminMsgs, here an admin pasues the DAO
+    // Admin can call ExecuteAdminMsgs, here an admin pauses the DAO
     let res = app.execute_contract(
         Addr::unchecked("admin"),
         core_with_admin_addr.clone(),
@@ -1149,6 +1149,52 @@ fn test_admin_permissions() {
 
     // DAO unpauses after 10 blocks
     app.update_block(|block| block.height += 11);
+
+    // Admin can directly pause the DAO
+    let res = app.execute_contract(
+        Addr::unchecked("admin"),
+        core_with_admin_addr.clone(),
+        &ExecuteMsg::Pause {
+            duration: Duration::Height(10),
+        },
+        &[],
+    );
+    res.unwrap();
+
+    let paused: PauseInfoResponse = app
+        .wrap()
+        .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::PauseInfo {})
+        .unwrap();
+    assert_eq!(
+        paused,
+        PauseInfoResponse::Paused {
+            expiration: Expiration::AtHeight(start_height + 21)
+        }
+    );
+
+    // Admin can unpause the DAO
+    let res = app.execute_contract(
+        Addr::unchecked("admin"),
+        core_with_admin_addr.clone(),
+        &ExecuteMsg::Unpause {},
+        &[],
+    );
+    res.unwrap();
+
+    let paused: PauseInfoResponse = app
+        .wrap()
+        .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::PauseInfo {})
+        .unwrap();
+    assert_eq!(paused, PauseInfoResponse::Unpaused {});
+
+    // DAO cannot unpause itself
+    let res = app.execute_contract(
+        core_with_admin_addr.clone(),
+        core_with_admin_addr.clone(),
+        &ExecuteMsg::Unpause {},
+        &[],
+    );
+    assert!(res.is_err());
 
     // Admin can nominate a new admin.
     let res = app.execute_contract(
