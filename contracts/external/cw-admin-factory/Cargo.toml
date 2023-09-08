@@ -24,6 +24,7 @@ cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 thiserror = { workspace = true }
 cw-utils = { workspace = true }
+cw-ownable = { workspace = true }
 
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }

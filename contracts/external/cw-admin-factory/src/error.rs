@@ -1,4 +1,5 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{CoinsError, StdError};
+use cw_ownable::OwnershipError;
 use cw_utils::ParseReplyError;
 use thiserror::Error;
 
@@ -6,6 +7,12 @@ use thiserror::Error;
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
+
+    #[error("{0}")]
+    Coins(#[from] CoinsError),
+
+    #[error("{0}")]
+    Ownership(#[from] OwnershipError),
 
     #[error("Unauthorized")]
     Unauthorized {},
