@@ -2,7 +2,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
 use cw_controllers::Claims;
 use cw_hooks::Hooks;
-use cw_storage_plus::{Item, SnapshotItem, SnapshotMap, Strategy};
+use cw_storage_plus::{Item, Map, SnapshotItem, SnapshotMap, Strategy};
 use cw_utils::Duration;
 use dao_voting::threshold::ActiveThreshold;
 
@@ -25,6 +25,9 @@ pub const STAKED_BALANCES: SnapshotMap<&Addr, Uint128> = SnapshotMap::new(
     "staked_balance__changelog",
     Strategy::EveryBlock,
 );
+
+/// Keeps track of limits by address
+pub const LIMITS: Map<&Addr, Uint128> = Map::new("limits");
 
 /// Keeps track of staked total over time
 pub const STAKED_TOTAL: SnapshotItem<Uint128> = SnapshotItem::new(

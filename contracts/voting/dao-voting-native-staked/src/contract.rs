@@ -18,7 +18,8 @@ use crate::msg::{
     QueryMsg, StakerBalanceResponse,
 };
 use crate::state::{
-    Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, HOOKS, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL,
+    Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, HOOKS, LIMITS, MAX_CLAIMS, STAKED_BALANCES,
+    STAKED_TOTAL,
 };
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-native-staked";
@@ -115,6 +116,7 @@ pub fn execute(
         }
         ExecuteMsg::AddHook { addr } => execute_add_hook(deps, env, info, addr),
         ExecuteMsg::RemoveHook { addr } => execute_remove_hook(deps, env, info, addr),
+        ExecuteMsg::UpdateLimit { addr, limit } => execute_update_limit(deps, info, addr, limit),
     }
 }
 
@@ -125,6 +127,13 @@ pub fn execute_stake(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let amount = must_pay(&info, &config.denom)?;
+    let limit = LIMITS.may_load(deps.storage, &info.sender)?;
+
+    if let Some(limit) = limit {
+        if amount > limit {
+            return Err(ContractError::LimitExceeded { limit });
+        }
+    }
 
     STAKED_BALANCES.update(
         deps.storage,
@@ -322,6 +331,36 @@ pub fn execute_remove_hook(
         .add_attribute("hook", addr))
 }
 
+pub fn execute_update_limit(
+    deps: DepsMut,
+    info: MessageInfo,
+    addr: String,
+    limit: Option<Uint128>,
+) -> Result<Response, ContractError> {
+    let dao = DAO.load(deps.storage)?;
+    if info.sender != dao {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let addr = deps.api.addr_validate(&addr)?;
+
+    if let Some(limit) = limit {
+        LIMITS.save(deps.storage, &addr, &limit)?;
+    } else {
+        LIMITS.remove(deps.storage, &addr);
+    }
+
+    Ok(Response::new()
+        .add_attribute("action", "update_limit")
+        .add_attribute("addr", addr.to_string())
+        .add_attribute(
+            "limit",
+            limit
+                .as_ref()
+                .map_or("None".to_owned(), ToString::to_string),
+        ))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -342,6 +381,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::IsActive {} => query_is_active(deps),
         QueryMsg::ActiveThreshold {} => query_active_threshold(deps),
         QueryMsg::GetHooks {} => to_binary(&query_hooks(deps)?),
+        QueryMsg::Limit { addr } => {
+            to_binary(&LIMITS.may_load(deps.storage, &deps.api.addr_validate(&addr)?)?)
+        }
     }
 }
 

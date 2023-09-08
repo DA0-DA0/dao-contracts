@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{StdError, Uint128};
 use cw_utils::PaymentError;
 use thiserror::Error;
 
@@ -39,4 +39,7 @@ pub enum ContractError {
 
     #[error("Amount being unstaked must be non-zero")]
     ZeroUnstake {},
+
+    #[error("Limit cannot be exceeded")]
+    LimitExceeded { limit: Uint128 },
 }

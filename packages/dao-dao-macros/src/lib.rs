@@ -26,7 +26,7 @@ fn merge_variants(metadata: TokenStream, left: TokenStream, right: TokenStream) 
         }),
     ) = (&mut left.data, right.data)
     {
-        variants.extend(to_add.into_iter());
+        variants.extend(to_add);
 
         quote! { #left }.into()
     } else {
@@ -396,4 +396,41 @@ pub fn limit_variant_count(metadata: TokenStream, input: TokenStream) -> TokenSt
     #ast
     }
     .into()
+}
+
+/// Limits the voting power for an address
+#[proc_macro_attribute]
+pub fn limitable_voting_module(metadata: TokenStream, input: TokenStream) -> TokenStream {
+    merge_variants(
+        metadata,
+        input,
+        quote! {
+        enum Right {
+            UpdateLimit {
+                addr: ::std::string::String,
+                limit: ::std::option::Option<::cosmwasm_std::Uint128>
+            }
+        }
+        }
+        .into(),
+    )
+}
+
+/// Allows querying voting module limits
+#[proc_macro_attribute]
+pub fn limitable_voting_module_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
+    merge_variants(
+        metadata,
+        input,
+        quote! {
+        enum Right {
+            /// Returns the voting power limit for an address at a given height.
+            #[returns(::std::option::Option<::cosmwasm_std::Uint128>)]
+            Limit {
+                addr: ::std::string::String
+            }
+        }
+        }
+        .into(),
+    )
 }
