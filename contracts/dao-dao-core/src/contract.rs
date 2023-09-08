@@ -128,7 +128,7 @@ pub fn execute(
             execute_proposal_hook(deps.as_ref(), info.sender, msgs)
         }
         ExecuteMsg::Pause { duration } => execute_pause(deps, env, info.sender, duration),
-        ExecuteMsg::Unpause {} => execute_unpause(deps, env, info.sender),
+        ExecuteMsg::Unpause {} => execute_unpause(deps, info.sender),
         ExecuteMsg::Receive(_) => execute_receive_cw20(deps, info.sender),
         ExecuteMsg::ReceiveNft(_) => execute_receive_cw721(deps, info.sender),
         ExecuteMsg::RemoveItem { key } => execute_remove_item(deps, env, info.sender, key),
@@ -184,11 +184,11 @@ pub fn execute_pause(
         .add_attribute("until", until.to_string()))
 }
 
-pub fn execute_unpause(deps: DepsMut, env: Env, sender: Addr) -> Result<Response, ContractError> {
+pub fn execute_unpause(deps: DepsMut, sender: Addr) -> Result<Response, ContractError> {
     let admin = ADMIN.load(deps.storage)?;
 
-    // Only the admin may call this method excluding the core contract.
-    if sender != admin || sender == env.contract.address {
+    // Only the admin may call this method.
+    if sender != admin {
         return Err(ContractError::Unauthorized {});
     }
 
