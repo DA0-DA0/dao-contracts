@@ -424,7 +424,7 @@ pub fn limitable_voting_module_query(metadata: TokenStream, input: TokenStream) 
         input,
         quote! {
         enum Right {
-            /// Returns the voting power limit for an address at a given height.
+            /// Returns the voting power limit for an address
             #[returns(::std::option::Option<::cosmwasm_std::Uint128>)]
             Limit {
                 addr: ::std::string::String
