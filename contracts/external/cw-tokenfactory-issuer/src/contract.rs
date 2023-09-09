@@ -52,8 +52,7 @@ pub fn instantiate(
                 .add_attribute("owner", info.sender)
                 .add_attribute("subdenom", subdenom.clone())
                 .add_submessage(
-                    // create new denom, if denom is created successfully,
-                    // set beforesend listener to this contract on reply
+                    // Create new denom, denom info is saved in the reply
                     SubMsg::reply_on_success(
                         <CosmosMsg<TokenFactoryMsg>>::from(MsgCreateDenom {
                             sender: env.contract.address.to_string(),
