@@ -2,8 +2,8 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    coins, to_binary, BankMsg, BankQuery, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Order, Reply, Response, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
+    coins, to_binary, BankMsg, BankQuery, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Order, Reply, Response, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_controllers::ClaimsResponse;
@@ -18,7 +18,10 @@ use dao_interface::voting::{
 };
 use dao_voting::{
     duration::validate_duration,
-    threshold::{ActiveThreshold, ActiveThresholdResponse},
+    threshold::{
+        assert_valid_absolute_count_threshold, assert_valid_percentage_threshold, ActiveThreshold,
+        ActiveThresholdResponse,
+    },
 };
 
 use crate::error::ContractError;
@@ -68,9 +71,7 @@ pub fn instantiate(
         // We will check Absolute count (if configured) later for both existing
         // and new tokens.
         if let ActiveThreshold::Percentage { percent } = active_threshold {
-            if *percent > Decimal::percent(100) || *percent <= Decimal::percent(0) {
-                return Err(ContractError::InvalidActivePercentage {});
-            }
+            assert_valid_percentage_threshold(*percent)?;
         }
         ACTIVE_THRESHOLD.save(deps.storage, active_threshold)?;
     }
@@ -82,7 +83,8 @@ pub fn instantiate(
         TokenInfo::Existing { denom } => {
             // Validate active threshold absolute count if configured
             if let Some(ActiveThreshold::AbsoluteCount { count }) = msg.active_threshold {
-                assert_valid_absolute_count_threshold(deps.as_ref(), &denom, count)?;
+                let supply: Coin = deps.querier.query_supply(denom.clone())?;
+                assert_valid_absolute_count_threshold(count, supply.amount)?;
             }
 
             DENOM.save(deps.storage, &denom)?;
@@ -130,21 +132,6 @@ pub fn instantiate(
                 .add_submessage(issuer_instantiate_msg))
         }
     }
-}
-
-pub fn assert_valid_absolute_count_threshold(
-    deps: Deps,
-    token_denom: &str,
-    count: Uint128,
-) -> Result<(), ContractError> {
-    if count.is_zero() {
-        return Err(ContractError::ZeroActiveCount {});
-    }
-    let supply: Coin = deps.querier.query_supply(token_denom.to_string())?;
-    if count > supply.amount {
-        return Err(ContractError::InvalidAbsoluteCount {});
-    }
-    Ok(())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -328,13 +315,12 @@ pub fn execute_update_active_threshold(
     if let Some(active_threshold) = new_active_threshold {
         match active_threshold {
             ActiveThreshold::Percentage { percent } => {
-                if percent > Decimal::percent(100) || percent.is_zero() {
-                    return Err(ContractError::InvalidActivePercentage {});
-                }
+                assert_valid_percentage_threshold(percent)?;
             }
             ActiveThreshold::AbsoluteCount { count } => {
                 let denom = DENOM.load(deps.storage)?;
-                assert_valid_absolute_count_threshold(deps.as_ref(), &denom, count)?;
+                let supply: Coin = deps.querier.query_supply(denom.to_string())?;
+                assert_valid_absolute_count_threshold(count, supply.amount)?;
             }
         }
         ACTIVE_THRESHOLD.save(deps.storage, &active_threshold)?;
@@ -601,12 +587,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     if let Some(ActiveThreshold::AbsoluteCount { count }) =
                         ACTIVE_THRESHOLD.may_load(deps.storage)?
                     {
-                        if count.is_zero() {
-                            return Err(ContractError::ZeroActiveCount {});
-                        }
-                        if count > initial_supply {
-                            return Err(ContractError::InvalidAbsoluteCount {});
-                        }
+                        // We use initial_supply here because the DAO balance is not
+                        // able to be staked by users.
+                        assert_valid_absolute_count_threshold(count, initial_supply)?;
                     }
 
                     // Cannot instantiate with no initial token owners because it would

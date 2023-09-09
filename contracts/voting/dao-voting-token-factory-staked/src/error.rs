@@ -1,5 +1,6 @@
 use cosmwasm_std::StdError;
 use cw_utils::{ParseReplyError, PaymentError};
+use dao_voting::threshold::ActiveThresholdError;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
@@ -8,22 +9,19 @@ pub enum ContractError {
     Std(#[from] StdError),
 
     #[error(transparent)]
+    ActiveThresholdError(#[from] ActiveThresholdError),
+
+    #[error(transparent)]
+    HookError(#[from] cw_hooks::HookError),
+
+    #[error(transparent)]
     PaymentError(#[from] PaymentError),
 
     #[error(transparent)]
     ParseReplyError(#[from] ParseReplyError),
 
     #[error(transparent)]
-    HookError(#[from] cw_hooks::HookError),
-
-    #[error(transparent)]
     UnstakingDurationError(#[from] dao_voting::duration::UnstakingDurationError),
-
-    #[error("Absolute count threshold cannot be greater than the total token supply")]
-    InvalidAbsoluteCount {},
-
-    #[error("Active threshold percentage must be greater than 0 and less than 1")]
-    InvalidActivePercentage {},
 
     #[error("Initial governance token balances must not be empty")]
     InitialBalancesError {},
@@ -42,9 +40,6 @@ pub enum ContractError {
 
     #[error("Got a submessage reply with unknown id: {id}")]
     UnknownReplyId { id: u64 },
-
-    #[error("Active threshold count must be greater than zero")]
-    ZeroActiveCount {},
 
     #[error("Amount being unstaked must be non-zero")]
     ZeroUnstake {},
