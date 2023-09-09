@@ -11,7 +11,7 @@ use crate::state::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env, Fraction, MessageInfo,
-    Order, Response, StdError, StdResult, Uint128, WasmMsg,
+    Order, Response, StdError, StdResult, Storage, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_paginate_storage::paginate_map;
@@ -382,10 +382,10 @@ pub fn execute_claim_all(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::VotingContract {} => query_voting_contract(deps),
-        QueryMsg::TotalPower {} => query_total_power(deps),
-        QueryMsg::NativeDenoms {} => query_native_denoms(deps),
-        QueryMsg::CW20Tokens {} => query_cw20_tokens(deps),
+        QueryMsg::VotingContract {} => query_voting_contract(deps.storage),
+        QueryMsg::TotalPower {} => query_total_power(deps.storage),
+        QueryMsg::NativeDenoms {} => query_native_denoms(deps.storage),
+        QueryMsg::CW20Tokens {} => query_cw20_tokens(deps.storage),
         QueryMsg::NativeEntitlement { sender, denom } => {
             query_native_entitlement(deps, sender, denom)
         }
@@ -403,22 +403,22 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub fn query_voting_contract(deps: Deps) -> StdResult<Binary> {
-    let contract = VOTING_CONTRACT.load(deps.storage)?;
-    let distribution_height = DISTRIBUTION_HEIGHT.load(deps.storage)?;
+pub fn query_voting_contract(storage: &dyn Storage) -> StdResult<Binary> {
+    let contract = VOTING_CONTRACT.load(storage)?;
+    let distribution_height = DISTRIBUTION_HEIGHT.load(storage)?;
     to_binary(&VotingContractResponse {
         contract,
         distribution_height,
     })
 }
 
-pub fn query_total_power(deps: Deps) -> StdResult<Binary> {
-    let total_power: Uint128 = TOTAL_POWER.may_load(deps.storage)?.unwrap_or_default();
+pub fn query_total_power(storage: &dyn Storage) -> StdResult<Binary> {
+    let total_power: Uint128 = TOTAL_POWER.may_load(storage)?.unwrap_or_default();
     to_binary(&TotalPowerResponse { total_power })
 }
 
-pub fn query_native_denoms(deps: Deps) -> StdResult<Binary> {
-    let native_balances = NATIVE_BALANCES.range(deps.storage, None, None, Order::Ascending);
+pub fn query_native_denoms(storage: &dyn Storage) -> StdResult<Binary> {
+    let native_balances = NATIVE_BALANCES.range(storage, None, None, Order::Ascending);
 
     let mut denom_responses: Vec<DenomResponse> = vec![];
     for entry in native_balances {
@@ -432,8 +432,8 @@ pub fn query_native_denoms(deps: Deps) -> StdResult<Binary> {
     to_binary(&denom_responses)
 }
 
-pub fn query_cw20_tokens(deps: Deps) -> StdResult<Binary> {
-    let cw20_balances = CW20_BALANCES.range(deps.storage, None, None, Order::Ascending);
+pub fn query_cw20_tokens(storage: &dyn Storage) -> StdResult<Binary> {
+    let cw20_balances = CW20_BALANCES.range(storage, None, None, Order::Ascending);
 
     let mut cw20_responses: Vec<CW20Response> = vec![];
     for cw20 in cw20_balances {
@@ -497,7 +497,13 @@ pub fn query_native_entitlements(
 ) -> StdResult<Binary> {
     let address = deps.api.addr_validate(sender.as_ref())?;
     let relative_share = get_relative_share(&deps, sender)?;
-    let natives = paginate_map(deps, &NATIVE_BALANCES, start_at, limit, Order::Descending)?;
+    let natives = paginate_map(
+        deps.storage,
+        &NATIVE_BALANCES,
+        start_at,
+        limit,
+        Order::Descending,
+    )?;
 
     let mut entitlements: Vec<NativeEntitlementResponse> = vec![];
     for (denom, amount) in natives {
@@ -526,7 +532,13 @@ pub fn query_cw20_entitlements(
     let address = deps.api.addr_validate(sender.as_ref())?;
     let relative_share = get_relative_share(&deps, sender)?;
     let start_at = start_at.map(|h| deps.api.addr_validate(&h)).transpose()?;
-    let cw20s = paginate_map(deps, &CW20_BALANCES, start_at, limit, Order::Descending)?;
+    let cw20s = paginate_map(
+        deps.storage,
+        &CW20_BALANCES,
+        start_at,
+        limit,
+        Order::Descending,
+    )?;
 
     let mut entitlements: Vec<CW20EntitlementResponse> = vec![];
     for (token, amount) in cw20s {

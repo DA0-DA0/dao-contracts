@@ -3,7 +3,7 @@
 use thiserror::Error;
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, CustomQuery, Deps, StdError, StdResult, Storage, SubMsg};
+use cosmwasm_std::{Addr, StdError, StdResult, Storage, SubMsg};
 use cw_storage_plus::Item;
 
 #[cw_serde]
@@ -97,8 +97,8 @@ impl<'a> Hooks<'a> {
         Ok(self.0.may_load(storage)?.unwrap_or_default().len() as u32)
     }
 
-    pub fn query_hooks<Q: CustomQuery>(&self, deps: Deps<Q>) -> StdResult<HooksResponse> {
-        let hooks = self.0.may_load(deps.storage)?.unwrap_or_default();
+    pub fn query_hooks(&self, storage: &dyn Storage) -> StdResult<HooksResponse> {
+        let hooks = self.0.may_load(storage)?.unwrap_or_default();
         let hooks = hooks.into_iter().map(String::from).collect();
         Ok(HooksResponse { hooks })
     }
@@ -190,14 +190,14 @@ mod tests {
         );
 
         // Query hooks returns all hooks added
-        let HooksResponse { hooks: the_hooks } = hooks.query_hooks(deps.as_ref()).unwrap();
+        let HooksResponse { hooks: the_hooks } = hooks.query_hooks(&deps.storage).unwrap();
         assert_eq!(the_hooks, vec![addr!("meow")]);
 
         // Remove last hook
         hooks.remove_hook(&mut deps.storage, addr!("meow")).unwrap();
 
         // Query hooks returns empty vector if no hooks added
-        let HooksResponse { hooks: the_hooks } = hooks.query_hooks(deps.as_ref()).unwrap();
+        let HooksResponse { hooks: the_hooks } = hooks.query_hooks(&deps.storage).unwrap();
         let no_hooks: Vec<String> = vec![];
         assert_eq!(the_hooks, no_hooks);
     }

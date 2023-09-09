@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Deps, Order, StdResult, Uint128};
+use cosmwasm_std::{Addr, Deps, Order, StdResult, Storage, Uint128};
 use cw_storage_plus::{Bound, Map};
 use token_bindings::TokenFactoryQuery;
 
@@ -16,18 +16,18 @@ use crate::state::{
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 
-pub fn query_denom(deps: Deps<TokenFactoryQuery>) -> StdResult<DenomResponse> {
-    let denom = DENOM.load(deps.storage)?;
+pub fn query_denom(storage: &dyn Storage) -> StdResult<DenomResponse> {
+    let denom = DENOM.load(storage)?;
     Ok(DenomResponse { denom })
 }
 
-pub fn query_is_frozen(deps: Deps<TokenFactoryQuery>) -> StdResult<IsFrozenResponse> {
-    let is_frozen = IS_FROZEN.load(deps.storage)?;
+pub fn query_is_frozen(storage: &dyn Storage) -> StdResult<IsFrozenResponse> {
+    let is_frozen = IS_FROZEN.load(storage)?;
     Ok(IsFrozenResponse { is_frozen })
 }
 
-pub fn query_owner(deps: Deps<TokenFactoryQuery>) -> StdResult<OwnerResponse> {
-    let owner = OWNER.load(deps.storage)?;
+pub fn query_owner(storage: &dyn Storage) -> StdResult<OwnerResponse> {
+    let owner = OWNER.load(storage)?;
     Ok(OwnerResponse {
         address: owner.into_string(),
     })

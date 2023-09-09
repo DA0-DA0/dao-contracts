@@ -710,48 +710,48 @@ pub fn execute_remove_vote_hook(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Config {} => query_config(deps),
-        QueryMsg::Dao {} => query_dao(deps),
-        QueryMsg::Proposal { proposal_id } => query_proposal(deps, env, proposal_id),
+        QueryMsg::Config {} => query_config(deps.storage),
+        QueryMsg::Dao {} => query_dao(deps.storage),
+        QueryMsg::Proposal { proposal_id } => query_proposal(deps.storage, env, proposal_id),
         QueryMsg::ListProposals { start_after, limit } => {
             query_list_proposals(deps, env, start_after, limit)
         }
-        QueryMsg::NextProposalId {} => query_next_proposal_id(deps),
-        QueryMsg::ProposalCount {} => query_proposal_count(deps),
+        QueryMsg::NextProposalId {} => query_next_proposal_id(deps.storage),
+        QueryMsg::ProposalCount {} => query_proposal_count(deps.storage),
         QueryMsg::GetVote { proposal_id, voter } => query_vote(deps, proposal_id, voter),
         QueryMsg::ListVotes {
             proposal_id,
             start_after,
             limit,
         } => query_list_votes(deps, proposal_id, start_after, limit),
-        QueryMsg::Info {} => query_info(deps),
+        QueryMsg::Info {} => query_info(deps.storage),
         QueryMsg::ReverseProposals {
             start_before,
             limit,
         } => query_reverse_proposals(deps, env, start_before, limit),
-        QueryMsg::ProposalCreationPolicy {} => query_creation_policy(deps),
-        QueryMsg::ProposalHooks {} => to_binary(&PROPOSAL_HOOKS.query_hooks(deps)?),
-        QueryMsg::VoteHooks {} => to_binary(&VOTE_HOOKS.query_hooks(deps)?),
+        QueryMsg::ProposalCreationPolicy {} => query_creation_policy(deps.storage),
+        QueryMsg::ProposalHooks {} => to_binary(&PROPOSAL_HOOKS.query_hooks(deps.storage)?),
+        QueryMsg::VoteHooks {} => to_binary(&VOTE_HOOKS.query_hooks(deps.storage)?),
     }
 }
 
-pub fn query_config(deps: Deps) -> StdResult<Binary> {
-    let config = CONFIG.load(deps.storage)?;
+pub fn query_config(storage: &dyn Storage) -> StdResult<Binary> {
+    let config = CONFIG.load(storage)?;
     to_binary(&config)
 }
 
-pub fn query_dao(deps: Deps) -> StdResult<Binary> {
-    let config = CONFIG.load(deps.storage)?;
+pub fn query_dao(storage: &dyn Storage) -> StdResult<Binary> {
+    let config = CONFIG.load(storage)?;
     to_binary(&config.dao)
 }
 
-pub fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<Binary> {
-    let proposal = PROPOSALS.load(deps.storage, id)?;
+pub fn query_proposal(storage: &dyn Storage, env: Env, id: u64) -> StdResult<Binary> {
+    let proposal = PROPOSALS.load(storage, id)?;
     to_binary(&proposal.into_response(&env.block, id))
 }
 
-pub fn query_creation_policy(deps: Deps) -> StdResult<Binary> {
-    let policy = CREATION_POLICY.load(deps.storage)?;
+pub fn query_creation_policy(storage: &dyn Storage) -> StdResult<Binary> {
+    let policy = CREATION_POLICY.load(storage)?;
     to_binary(&policy)
 }
 
@@ -793,13 +793,13 @@ pub fn query_reverse_proposals(
     to_binary(&ProposalListResponse { proposals: props })
 }
 
-pub fn query_proposal_count(deps: Deps) -> StdResult<Binary> {
-    let proposal_count = PROPOSAL_COUNT.load(deps.storage)?;
+pub fn query_proposal_count(storage: &dyn Storage) -> StdResult<Binary> {
+    let proposal_count = PROPOSAL_COUNT.load(storage)?;
     to_binary(&proposal_count)
 }
 
-pub fn query_next_proposal_id(deps: Deps) -> StdResult<Binary> {
-    to_binary(&next_proposal_id(deps.storage)?)
+pub fn query_next_proposal_id(storage: &dyn Storage) -> StdResult<Binary> {
+    to_binary(&next_proposal_id(storage)?)
 }
 
 pub fn query_vote(deps: Deps, proposal_id: u64, voter: String) -> StdResult<Binary> {
@@ -844,8 +844,8 @@ pub fn query_list_votes(
     to_binary(&VoteListResponse { votes })
 }
 
-pub fn query_info(deps: Deps) -> StdResult<Binary> {
-    let info = cw2::get_contract_version(deps.storage)?;
+pub fn query_info(storage: &dyn Storage) -> StdResult<Binary> {
+    let info = cw2::get_contract_version(storage)?;
     to_binary(&dao_interface::voting::InfoResponse { info })
 }
 

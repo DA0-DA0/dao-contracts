@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Addr, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
-    SubMsg, Uint128, Uint256, WasmMsg,
+    Storage, SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw20::{Cw20Coin, TokenInfoResponse};
@@ -230,26 +230,26 @@ pub fn execute_update_active_threshold(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::TokenContract {} => query_token_contract(deps),
-        QueryMsg::StakingContract {} => query_staking_contract(deps),
+        QueryMsg::TokenContract {} => query_token_contract(deps.storage),
+        QueryMsg::StakingContract {} => query_staking_contract(deps.storage),
         QueryMsg::VotingPowerAtHeight { address, height } => {
             query_voting_power_at_height(deps, env, address, height)
         }
         QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, env, height),
-        QueryMsg::Info {} => query_info(deps),
-        QueryMsg::Dao {} => query_dao(deps),
+        QueryMsg::Info {} => query_info(deps.storage),
+        QueryMsg::Dao {} => query_dao(deps.storage),
         QueryMsg::IsActive {} => query_is_active(deps),
         QueryMsg::ActiveThreshold {} => query_active_threshold(deps),
     }
 }
 
-pub fn query_token_contract(deps: Deps) -> StdResult<Binary> {
-    let token = TOKEN.load(deps.storage)?;
+pub fn query_token_contract(storage: &dyn Storage) -> StdResult<Binary> {
+    let token = TOKEN.load(storage)?;
     to_binary(&token)
 }
 
-pub fn query_staking_contract(deps: Deps) -> StdResult<Binary> {
-    let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
+pub fn query_staking_contract(storage: &dyn Storage) -> StdResult<Binary> {
+    let staking_contract = STAKING_CONTRACT.load(storage)?;
     to_binary(&staking_contract)
 }
 
@@ -290,13 +290,13 @@ pub fn query_total_power_at_height(
     })
 }
 
-pub fn query_info(deps: Deps) -> StdResult<Binary> {
-    let info = cw2::get_contract_version(deps.storage)?;
+pub fn query_info(storage: &dyn Storage) -> StdResult<Binary> {
+    let info = cw2::get_contract_version(storage)?;
     to_binary(&dao_interface::voting::InfoResponse { info })
 }
 
-pub fn query_dao(deps: Deps) -> StdResult<Binary> {
-    let dao = DAO.load(deps.storage)?;
+pub fn query_dao(storage: &dyn Storage) -> StdResult<Binary> {
+    let dao = DAO.load(storage)?;
     to_binary(&dao)
 }
 

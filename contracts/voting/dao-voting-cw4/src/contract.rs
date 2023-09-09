@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
-    Uint128, WasmMsg,
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, Storage,
+    SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw4::{MemberListResponse, MemberResponse, TotalWeightResponse};
@@ -121,7 +121,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             query_voting_power_at_height(deps, env, address, height)
         }
         QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, env, height),
-        QueryMsg::Info {} => query_info(deps),
+        QueryMsg::Info {} => query_info(deps.storage),
         QueryMsg::GroupContract {} => to_binary(&GROUP_CONTRACT.load(deps.storage)?),
         QueryMsg::Dao {} => to_binary(&DAO.load(deps.storage)?),
     }
@@ -161,8 +161,8 @@ pub fn query_total_power_at_height(deps: Deps, env: Env, height: Option<u64>) ->
     })
 }
 
-pub fn query_info(deps: Deps) -> StdResult<Binary> {
-    let info = cw2::get_contract_version(deps.storage)?;
+pub fn query_info(storage: &dyn Storage) -> StdResult<Binary> {
+    let info = cw2::get_contract_version(storage)?;
     to_binary(&dao_interface::voting::InfoResponse { info })
 }
 

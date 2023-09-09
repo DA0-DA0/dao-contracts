@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_binary, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
-    Reply, Response, StdError, StdResult, SubMsg, WasmMsg,
+    Reply, Response, StdError, StdResult, Storage, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_paginate_storage::{paginate_map, paginate_map_keys, paginate_map_values};
@@ -121,8 +121,8 @@ pub fn execute(
             execute_proposal_hook(deps.as_ref(), info.sender, msgs)
         }
         ExecuteMsg::Pause { duration } => execute_pause(deps, env, info.sender, duration),
-        ExecuteMsg::Receive(_) => execute_receive_cw20(deps, info.sender),
-        ExecuteMsg::ReceiveNft(_) => execute_receive_cw721(deps, info.sender),
+        ExecuteMsg::Receive(_) => execute_receive_cw20(deps.storage, info.sender),
+        ExecuteMsg::ReceiveNft(_) => execute_receive_cw721(deps.storage, info.sender),
         ExecuteMsg::RemoveItem { key } => execute_remove_item(deps, env, info.sender, key),
         ExecuteMsg::SetItem { key, value } => execute_set_item(deps, env, info.sender, key, value),
         ExecuteMsg::UpdateConfig { config } => {
@@ -516,24 +516,30 @@ pub fn execute_update_sub_daos_list(
         .add_attribute("sender", sender))
 }
 
-pub fn execute_receive_cw20(deps: DepsMut, sender: Addr) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
+pub fn execute_receive_cw20(
+    storage: &mut dyn Storage,
+    sender: Addr,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(storage)?;
     if !config.automatically_add_cw20s {
         Ok(Response::new())
     } else {
-        CW20_LIST.save(deps.storage, sender.clone(), &Empty {})?;
+        CW20_LIST.save(storage, sender.clone(), &Empty {})?;
         Ok(Response::new()
             .add_attribute("action", "receive_cw20")
             .add_attribute("token", sender))
     }
 }
 
-pub fn execute_receive_cw721(deps: DepsMut, sender: Addr) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
+pub fn execute_receive_cw721(
+    storage: &mut dyn Storage,
+    sender: Addr,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(storage)?;
     if !config.automatically_add_cw721s {
         Ok(Response::new())
     } else {
-        CW721_LIST.save(deps.storage, sender.clone(), &Empty {})?;
+        CW721_LIST.save(storage, sender.clone(), &Empty {})?;
         Ok(Response::new()
             .add_attribute("action", "receive_cw721")
             .add_attribute("token", sender))
@@ -543,9 +549,9 @@ pub fn execute_receive_cw721(deps: DepsMut, sender: Addr) -> Result<Response, Co
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Admin {} => query_admin(deps),
-        QueryMsg::AdminNomination {} => query_admin_nomination(deps),
-        QueryMsg::Config {} => query_config(deps),
+        QueryMsg::Admin {} => query_admin(deps.storage),
+        QueryMsg::AdminNomination {} => query_admin_nomination(deps.storage),
+        QueryMsg::Config {} => query_config(deps.storage),
         QueryMsg::Cw20TokenList { start_after, limit } => query_cw20_list(deps, start_after, limit),
         QueryMsg::Cw20Balances { start_after, limit } => {
             query_cw20_balances(deps, env, start_after, limit)
@@ -553,17 +559,17 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Cw721TokenList { start_after, limit } => {
             query_cw721_list(deps, start_after, limit)
         }
-        QueryMsg::DumpState {} => query_dump_state(deps, env),
-        QueryMsg::GetItem { key } => query_get_item(deps, key),
-        QueryMsg::Info {} => query_info(deps),
+        QueryMsg::DumpState {} => query_dump_state(deps.storage, env),
+        QueryMsg::GetItem { key } => query_get_item(deps.storage, key),
+        QueryMsg::Info {} => query_info(deps.storage),
         QueryMsg::ListItems { start_after, limit } => query_list_items(deps, start_after, limit),
-        QueryMsg::PauseInfo {} => query_paused(deps, env),
+        QueryMsg::PauseInfo {} => query_paused(deps.storage, env),
         QueryMsg::ProposalModules { start_after, limit } => {
             query_proposal_modules(deps, start_after, limit)
         }
         QueryMsg::ProposalModuleCount {} => query_proposal_module_count(deps),
         QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, height),
-        QueryMsg::VotingModule {} => query_voting_module(deps),
+        QueryMsg::VotingModule {} => query_voting_module(deps.storage),
         QueryMsg::VotingPowerAtHeight { address, height } => {
             query_voting_power_at_height(deps, address, height)
         }
@@ -573,27 +579,27 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::ListSubDaos { start_after, limit } => {
             query_list_sub_daos(deps, start_after, limit)
         }
-        QueryMsg::DaoURI {} => query_dao_uri(deps),
+        QueryMsg::DaoURI {} => query_dao_uri(deps.storage),
     }
 }
 
-pub fn query_admin(deps: Deps) -> StdResult<Binary> {
-    let admin = ADMIN.load(deps.storage)?;
+pub fn query_admin(storage: &dyn Storage) -> StdResult<Binary> {
+    let admin = ADMIN.load(storage)?;
     to_binary(&admin)
 }
 
-pub fn query_admin_nomination(deps: Deps) -> StdResult<Binary> {
-    let nomination = NOMINATED_ADMIN.may_load(deps.storage)?;
+pub fn query_admin_nomination(storage: &dyn Storage) -> StdResult<Binary> {
+    let nomination = NOMINATED_ADMIN.may_load(storage)?;
     to_binary(&AdminNominationResponse { nomination })
 }
 
-pub fn query_config(deps: Deps) -> StdResult<Binary> {
-    let config = CONFIG.load(deps.storage)?;
+pub fn query_config(storage: &dyn Storage) -> StdResult<Binary> {
+    let config = CONFIG.load(storage)?;
     to_binary(&config)
 }
 
-pub fn query_voting_module(deps: Deps) -> StdResult<Binary> {
-    let voting_module = VOTING_MODULE.load(deps.storage)?;
+pub fn query_voting_module(storage: &dyn Storage) -> StdResult<Binary> {
+    let voting_module = VOTING_MODULE.load(storage)?;
     to_binary(&voting_module)
 }
 
@@ -654,8 +660,8 @@ pub fn query_active_proposal_modules(
     )
 }
 
-fn get_pause_info(deps: Deps, env: Env) -> StdResult<PauseInfoResponse> {
-    Ok(match PAUSED.may_load(deps.storage)? {
+fn get_pause_info(storage: &dyn Storage, env: Env) -> StdResult<PauseInfoResponse> {
+    Ok(match PAUSED.may_load(storage)? {
         Some(expiration) => {
             if expiration.is_expired(&env.block) {
                 PauseInfoResponse::Unpaused {}
@@ -667,22 +673,22 @@ fn get_pause_info(deps: Deps, env: Env) -> StdResult<PauseInfoResponse> {
     })
 }
 
-pub fn query_paused(deps: Deps, env: Env) -> StdResult<Binary> {
-    to_binary(&get_pause_info(deps, env)?)
+pub fn query_paused(storage: &dyn Storage, env: Env) -> StdResult<Binary> {
+    to_binary(&get_pause_info(storage, env)?)
 }
 
-pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
-    let admin = ADMIN.load(deps.storage)?;
-    let config = CONFIG.load(deps.storage)?;
-    let voting_module = VOTING_MODULE.load(deps.storage)?;
+pub fn query_dump_state(storage: &dyn Storage, env: Env) -> StdResult<Binary> {
+    let admin = ADMIN.load(storage)?;
+    let config = CONFIG.load(storage)?;
+    let voting_module = VOTING_MODULE.load(storage)?;
     let proposal_modules = PROPOSAL_MODULES
-        .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+        .range(storage, None, None, cosmwasm_std::Order::Ascending)
         .map(|kv| Ok(kv?.1))
         .collect::<StdResult<Vec<ProposalModule>>>()?;
-    let pause_info = get_pause_info(deps, env)?;
-    let version = get_contract_version(deps.storage)?;
-    let active_proposal_module_count = ACTIVE_PROPOSAL_MODULE_COUNT.load(deps.storage)?;
-    let total_proposal_module_count = TOTAL_PROPOSAL_MODULE_COUNT.load(deps.storage)?;
+    let pause_info = get_pause_info(storage, env)?;
+    let version = get_contract_version(storage)?;
+    let active_proposal_module_count = ACTIVE_PROPOSAL_MODULE_COUNT.load(storage)?;
+    let total_proposal_module_count = TOTAL_PROPOSAL_MODULE_COUNT.load(storage)?;
     to_binary(&DumpStateResponse {
         admin,
         config,
@@ -716,13 +722,13 @@ pub fn query_total_power_at_height(deps: Deps, height: Option<u64>) -> StdResult
     to_binary(&total_power)
 }
 
-pub fn query_get_item(deps: Deps, item: String) -> StdResult<Binary> {
-    let item = ITEMS.may_load(deps.storage, item)?;
+pub fn query_get_item(storage: &dyn Storage, item: String) -> StdResult<Binary> {
+    let item = ITEMS.may_load(storage, item)?;
     to_binary(&GetItemResponse { item })
 }
 
-pub fn query_info(deps: Deps) -> StdResult<Binary> {
-    let info = cw2::get_contract_version(deps.storage)?;
+pub fn query_info(storage: &dyn Storage) -> StdResult<Binary> {
+    let info = cw2::get_contract_version(storage)?;
     to_binary(&dao_interface::voting::InfoResponse { info })
 }
 
@@ -732,7 +738,7 @@ pub fn query_list_items(
     limit: Option<u32>,
 ) -> StdResult<Binary> {
     to_binary(&paginate_map(
-        deps,
+        deps.storage,
         &ITEMS,
         start_after,
         limit,
@@ -815,7 +821,7 @@ pub fn query_list_sub_daos(
         .transpose()?;
 
     let subdaos = cw_paginate_storage::paginate_map(
-        deps,
+        deps.storage,
         &SUBDAO_LIST,
         start_at.as_ref(),
         limit,
@@ -833,8 +839,8 @@ pub fn query_list_sub_daos(
     to_binary(&subdaos)
 }
 
-pub fn query_dao_uri(deps: Deps) -> StdResult<Binary> {
-    let config = CONFIG.load(deps.storage)?;
+pub fn query_dao_uri(storage: &dyn Storage) -> StdResult<Binary> {
+    let config = CONFIG.load(storage)?;
     to_binary(&DaoURIResponse {
         dao_uri: config.dao_uri,
     })

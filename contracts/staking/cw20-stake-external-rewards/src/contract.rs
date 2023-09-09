@@ -15,7 +15,7 @@ use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
     from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
-    MessageInfo, Response, StdError, StdResult, Uint128, Uint256, WasmMsg,
+    MessageInfo, Response, StdError, StdResult, Storage, Uint128, Uint256, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw20::{Cw20ReceiveMsg, Denom};
@@ -311,7 +311,7 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr) -> StdResult<(
     })?;
 
     USER_REWARD_PER_TOKEN.save(deps.storage, addr.clone(), &reward_per_token)?;
-    let last_time_reward_applicable = get_last_time_reward_applicable(deps.as_ref(), env)?;
+    let last_time_reward_applicable = get_last_time_reward_applicable(deps.storage, env)?;
     LAST_UPDATE_BLOCK.save(deps.storage, &last_time_reward_applicable)?;
     Ok(())
 }
@@ -319,7 +319,7 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr) -> StdResult<(
 pub fn get_reward_per_token(deps: Deps, env: &Env, staking_contract: &Addr) -> StdResult<Uint256> {
     let reward_config = REWARD_CONFIG.load(deps.storage)?;
     let total_staked = get_total_staked(deps, staking_contract)?;
-    let last_time_reward_applicable = get_last_time_reward_applicable(deps, env)?;
+    let last_time_reward_applicable = get_last_time_reward_applicable(deps.storage, env)?;
     let last_update_block = LAST_UPDATE_BLOCK.load(deps.storage).unwrap_or_default();
     let prev_reward_per_token = REWARD_PER_TOKEN.load(deps.storage).unwrap_or_default();
     let additional_reward_per_token = if total_staked == Uint128::zero() {
@@ -359,8 +359,8 @@ pub fn get_rewards_earned(
         .try_into()?)
 }
 
-fn get_last_time_reward_applicable(deps: Deps, env: &Env) -> StdResult<u64> {
-    let reward_config = REWARD_CONFIG.load(deps.storage)?;
+fn get_last_time_reward_applicable(storage: &dyn Storage, env: &Env) -> StdResult<u64> {
+    let reward_config = REWARD_CONFIG.load(storage)?;
     Ok(min(env.block.height, reward_config.period_finish))
 }
 
@@ -414,7 +414,7 @@ fn scale_factor() -> Uint256 {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Info {} => Ok(to_binary(&query_info(deps, env)?)?),
+        QueryMsg::Info {} => Ok(to_binary(&query_info(deps.storage, env)?)?),
         QueryMsg::GetPendingRewards { address } => {
             Ok(to_binary(&query_pending_rewards(deps, env, address)?)?)
         }
@@ -422,9 +422,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub fn query_info(deps: Deps, _env: Env) -> StdResult<InfoResponse> {
-    let config = CONFIG.load(deps.storage)?;
-    let reward = REWARD_CONFIG.load(deps.storage)?;
+pub fn query_info(storage: &dyn Storage, _env: Env) -> StdResult<InfoResponse> {
+    let config = CONFIG.load(storage)?;
+    let reward = REWARD_CONFIG.load(storage)?;
     Ok(InfoResponse { config, reward })
 }
 

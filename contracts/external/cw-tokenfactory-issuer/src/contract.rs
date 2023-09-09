@@ -145,9 +145,9 @@ pub fn sudo(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps<TokenFactoryQuery>, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::IsFrozen {} => to_binary(&queries::query_is_frozen(deps)?),
-        QueryMsg::Denom {} => to_binary(&queries::query_denom(deps)?),
-        QueryMsg::Owner {} => to_binary(&queries::query_owner(deps)?),
+        QueryMsg::IsFrozen {} => to_binary(&queries::query_is_frozen(deps.storage)?),
+        QueryMsg::Denom {} => to_binary(&queries::query_denom(deps.storage)?),
+        QueryMsg::Owner {} => to_binary(&queries::query_owner(deps.storage)?),
         QueryMsg::BurnAllowance { address } => {
             to_binary(&queries::query_burn_allowance(deps, address)?)
         }

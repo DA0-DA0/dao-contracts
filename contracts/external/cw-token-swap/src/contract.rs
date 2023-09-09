@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Storage, Uint128,
 };
 use cw2::set_contract_version;
 use cw_storage_plus::Item;
@@ -232,13 +232,13 @@ pub fn execute_withdraw(deps: DepsMut, info: MessageInfo) -> Result<Response, Co
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Status {} => query_status(deps),
+        QueryMsg::Status {} => query_status(deps.storage),
     }
 }
 
-pub fn query_status(deps: Deps) -> StdResult<Binary> {
-    let counterparty_one = COUNTERPARTY_ONE.load(deps.storage)?;
-    let counterparty_two = COUNTERPARTY_TWO.load(deps.storage)?;
+pub fn query_status(storage: &dyn Storage) -> StdResult<Binary> {
+    let counterparty_one = COUNTERPARTY_ONE.load(storage)?;
+    let counterparty_two = COUNTERPARTY_TWO.load(storage)?;
 
     to_binary(&StatusResponse {
         counterparty_one,
