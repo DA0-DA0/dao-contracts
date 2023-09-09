@@ -265,7 +265,7 @@ pub fn _instantiate_with_native_staked_balances_governance(
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: native_stake_id,
-            msg: to_binary(&dao_voting_native_staked::msg::InstantiateMsg {
+            msg: to_binary(&dao_voting_token_staked::msg::InstantiateMsg {
                 denom: "ujuno".to_string(),
                 unstaking_duration: None,
                 active_threshold: None,
@@ -316,7 +316,7 @@ pub fn _instantiate_with_native_staked_balances_governance(
         app.execute_contract(
             Addr::unchecked(&address),
             native_staking_addr.clone(),
-            &dao_voting_native_staked::msg::ExecuteMsg::Stake {},
+            &dao_voting_token_staked::msg::ExecuteMsg::Stake {},
             &[Coin {
                 amount,
                 denom: "ujuno".to_string(),

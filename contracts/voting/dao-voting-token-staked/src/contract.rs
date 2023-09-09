@@ -34,7 +34,7 @@ use crate::state::{
     STAKED_TOTAL, TOKEN_INSTANTIATION_INFO, TOKEN_ISSUER_CONTRACT,
 };
 
-pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-token-factory-staked";
+pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-token-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // Settings for query pagination

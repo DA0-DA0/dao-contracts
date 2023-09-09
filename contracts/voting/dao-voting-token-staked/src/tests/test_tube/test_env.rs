@@ -319,7 +319,7 @@ impl<'a> TfDaoVotingContract<'a> {
                 .join("..")
                 .join("..")
                 .join("artifacts")
-                .join("dao_voting_token_factory_staked.wasm"),
+                .join("dao_voting_token_staked.wasm"),
         );
         match byte_code {
             Ok(byte_code) => byte_code,
@@ -330,7 +330,7 @@ impl<'a> TfDaoVotingContract<'a> {
                     .join("..")
                     .join("..")
                     .join("artifacts")
-                    .join("dao_voting_token_factory_staked-aarch64.wasm"),
+                    .join("dao_voting_token_staked-aarch64.wasm"),
             )
             .unwrap(),
         }

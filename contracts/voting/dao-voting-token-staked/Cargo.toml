@@ -1,5 +1,5 @@
 [package]
-name = "dao-voting-token-factory-staked"
+name = "dao-voting-token-staked"
 authors = ["Callum Anderson <callumanderson745@gmail.com>", "Noah Saso <no-reply@no-reply.com>", "Jake Hartnell <no-reply@no-reply.com>"]
 description = "A DAO DAO voting module based on staked token factory or native tokens. Only works with chains that support Token Factory."
 edition = { workspace = true }

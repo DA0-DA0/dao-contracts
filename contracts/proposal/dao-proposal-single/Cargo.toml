@@ -45,7 +45,7 @@ dao-dao-core = { workspace = true }
 dao-voting-cw4 = { workspace = true }
 dao-voting-cw20-balance = { workspace = true }
 dao-voting-cw20-staked = { workspace = true }
-dao-voting-native-staked = { workspace = true }
+dao-voting-token-staked = { workspace = true }
 dao-voting-cw721-staked = { workspace = true }
 dao-pre-propose-single = { workspace = true }
 cw-denom = { workspace = true }

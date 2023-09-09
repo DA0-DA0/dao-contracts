@@ -45,7 +45,6 @@ pub enum TokenInfo {
     /// Uses an existing Token Factory token and creates a new issuer contract.
     /// Full setup, such as transferring ownership or setting up MsgSetBeforeSendHook,
     /// must be done manually.
-    /// Note, for chain controlled denoms or IBC tokens use dao-voting-native-staked.
     Existing {
         /// Token factory denom
         denom: String,

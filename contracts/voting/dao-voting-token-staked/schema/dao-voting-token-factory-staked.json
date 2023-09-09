@@ -1,5 +1,5 @@
 {
-  "contract_name": "dao-voting-token-factory-staked",
+  "contract_name": "dao-voting-token-staked",
   "contract_version": "2.2.0",
   "idl_version": "1.0.0",
   "instantiate": {
@@ -265,7 +265,7 @@
       "TokenInfo": {
         "oneOf": [
           {
-            "description": "Uses an existing Token Factory token and creates a new issuer contract. Full setup, such as transferring ownership or setting up MsgSetBeforeSendHook, must be done manually. Note, for chain controlled denoms or IBC tokens use dao-voting-native-staked.",
+            "description": "Uses an existing Token Factory token and creates a new issuer contract. Full setup, such as transferring ownership or setting up MsgSetBeforeSendHook, must be done manually. Note, for chain controlled denoms or IBC tokens use dao-voting-token-staked.",
             "type": "object",
             "required": [
               "existing"

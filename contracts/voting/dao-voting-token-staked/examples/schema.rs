@@ -1,5 +1,5 @@
 use cosmwasm_schema::write_api;
-use dao_voting_token_factory_staked::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use dao_voting_token_staked::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
 fn main() {
     write_api! {
