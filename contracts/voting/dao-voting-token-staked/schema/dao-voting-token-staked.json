@@ -7,8 +7,7 @@
     "title": "InstantiateMsg",
     "type": "object",
     "required": [
-      "token_info",
-      "token_issuer_code_id"
+      "token_info"
     ],
     "properties": {
       "active_threshold": {
@@ -29,12 +28,6 @@
             "$ref": "#/definitions/TokenInfo"
           }
         ]
-      },
-      "token_issuer_code_id": {
-        "description": "The code id of the cw-tokenfactory-issuer contract",
-        "type": "integer",
-        "format": "uint64",
-        "minimum": 0.0
       },
       "unstaking_duration": {
         "description": "How long until the tokens become liquid again",
@@ -223,7 +216,8 @@
         "type": "object",
         "required": [
           "initial_balances",
-          "subdenom"
+          "subdenom",
+          "token_issuer_code_id"
         ],
         "properties": {
           "initial_balances": {
@@ -258,6 +252,12 @@
           "subdenom": {
             "description": "The subdenom of the token to create, will also be used as an alias for the denom. The Token Factory denom will have the format of factory/{contract_address}/{subdenom}",
             "type": "string"
+          },
+          "token_issuer_code_id": {
+            "description": "The code id of the cw-tokenfactory-issuer contract",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
           }
         },
         "additionalProperties": false
@@ -265,7 +265,7 @@
       "TokenInfo": {
         "oneOf": [
           {
-            "description": "Uses an existing Token Factory token and creates a new issuer contract. Full setup, such as transferring ownership or setting up MsgSetBeforeSendHook, must be done manually. Note, for chain controlled denoms or IBC tokens use dao-voting-token-staked.",
+            "description": "Uses an existing Token Factory token and creates a new issuer contract. Full setup, such as transferring ownership or setting up MsgSetBeforeSendHook, must be done manually.",
             "type": "object",
             "required": [
               "existing"
