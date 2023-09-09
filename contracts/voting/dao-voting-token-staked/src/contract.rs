@@ -76,6 +76,7 @@ pub fn instantiate(
         ACTIVE_THRESHOLD.save(deps.storage, active_threshold)?;
     }
 
+    // TODO only needed for new tokens
     // Save new token info for use in reply
     TOKEN_INSTANTIATION_INFO.save(deps.storage, &msg.token_info)?;
 
@@ -100,7 +101,7 @@ pub fn instantiate(
             let issuer_instantiate_msg = SubMsg::reply_on_success(
                 WasmMsg::Instantiate {
                     admin: Some(info.sender.to_string()),
-                    code_id: msg.token_issuer_code_id,
+                    code_id: token.token_issuer_code_id,
                     msg: to_binary(&IssuerInstantiateMsg::NewToken {
                         subdenom: token.subdenom,
                     })?,

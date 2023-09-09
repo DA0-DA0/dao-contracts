@@ -37,7 +37,6 @@ dao-interface = { workspace = true }
 dao-voting = { workspace = true }
 cw-paginate-storage = { workspace = true }
 cw-tokenfactory-issuer = { workspace = true, features = ["library"] }
-token-bindings = { workspace = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }

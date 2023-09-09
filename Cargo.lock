@@ -2168,7 +2168,6 @@ dependencies = [
  "osmosis-test-tube",
  "serde",
  "thiserror",
- "token-bindings",
 ]
 
 [[package]]

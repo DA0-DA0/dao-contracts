@@ -28,6 +28,8 @@ pub struct NewDenomMetadata {
 
 #[cw_serde]
 pub struct NewTokenInfo {
+    /// The code id of the cw-tokenfactory-issuer contract
+    pub token_issuer_code_id: u64,
     /// The subdenom of the token to create, will also be used as an alias
     /// for the denom. The Token Factory denom will have the format of
     /// factory/{contract_address}/{subdenom}
@@ -56,8 +58,6 @@ pub enum TokenInfo {
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    /// The code id of the cw-tokenfactory-issuer contract
-    pub token_issuer_code_id: u64,
     /// New or existing native token to use for voting power.
     pub token_info: TokenInfo,
     /// How long until the tokens become liquid again
