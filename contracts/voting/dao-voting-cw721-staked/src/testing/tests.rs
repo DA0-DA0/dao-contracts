@@ -815,7 +815,6 @@ fn test_active_threshold_percent_rounds_up() {
         .wrap()
         .query_wasm_smart(voting_addr.clone(), &QueryMsg::IsActive {})
         .unwrap();
-    println!("{:?}", is_active);
     assert!(!is_active.active);
 
     // Stake 1 more token as creator, should now be active.

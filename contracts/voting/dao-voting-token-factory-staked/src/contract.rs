@@ -89,26 +89,10 @@ pub fn instantiate(
 
             DENOM.save(deps.storage, &denom)?;
 
-            // Instantiate cw-token-factory-issuer contract
-            // DAO (sender) is set as admin
-            let issuer_instantiate_msg = SubMsg::reply_on_success(
-                WasmMsg::Instantiate {
-                    admin: Some(info.sender.to_string()),
-                    code_id: msg.token_issuer_code_id,
-                    msg: to_binary(&IssuerInstantiateMsg::ExistingToken {
-                        denom: denom.clone(),
-                    })?,
-                    funds: info.funds,
-                    label: "cw-tokenfactory-issuer".to_string(),
-                },
-                INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID,
-            );
-
             Ok(Response::new()
                 .add_attribute("action", "instantiate")
                 .add_attribute("token", "existing_token")
-                .add_attribute("denom", denom)
-                .add_submessage(issuer_instantiate_msg))
+                .add_attribute("denom", denom))
         }
         TokenInfo::New(token) => {
             // Tnstantiate cw-token-factory-issuer contract
@@ -557,7 +541,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
             match token_info {
                 TokenInfo::Existing { .. } => {
-                    // Not much to do here.
+                    // TODO this should never be called? Throw error? Unreachable?
                     Ok(
                         Response::new()
                             .add_attribute("cw-tokenfactory-issuer-address", issuer_addr),

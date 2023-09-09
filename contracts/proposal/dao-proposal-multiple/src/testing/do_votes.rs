@@ -240,7 +240,6 @@ where
         match should_execute {
             ShouldExecute::Yes => {
                 if res.is_err() {
-                    println!("{:?}", res.err());
                     panic!()
                 }
                 // Check that the vote was recorded correctly.

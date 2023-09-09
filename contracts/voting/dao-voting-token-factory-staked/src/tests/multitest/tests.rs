@@ -1,7 +1,7 @@
 use crate::contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::{
-    ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg,
-    StakerBalanceResponse, TokenInfo,
+    DenomResponse, ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg,
+    QueryMsg, StakerBalanceResponse, TokenInfo,
 };
 use crate::state::Config;
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
@@ -246,11 +246,16 @@ fn test_instantiate_existing() {
         },
     );
 
-    let token_contract: Addr = app
+    let denom: DenomResponse = app
         .wrap()
-        .query_wasm_smart(addr, &QueryMsg::TokenContract {})
+        .query_wasm_smart(addr, &QueryMsg::Denom {})
         .unwrap();
-    assert_eq!(token_contract, Addr::unchecked("contract3"));
+    assert_eq!(
+        denom,
+        DenomResponse {
+            denom: DENOM.to_string()
+        }
+    );
 }
 
 #[test]
@@ -724,29 +729,6 @@ fn test_query_info() {
         resp.info.contract,
         "crates.io:dao-voting-token-factory-staked"
     );
-}
-
-#[test]
-fn test_query_token_contract() {
-    let mut app = mock_app();
-    let issuer_id = app.store_code(issuer_contract());
-    let staking_id = app.store_code(staking_contract());
-    let addr = instantiate_staking(
-        &mut app,
-        staking_id,
-        InstantiateMsg {
-            token_issuer_code_id: issuer_id,
-            token_info: TokenInfo::Existing {
-                denom: DENOM.to_string(),
-            },
-            unstaking_duration: Some(Duration::Height(5)),
-            active_threshold: None,
-        },
-    );
-
-    let msg = QueryMsg::TokenContract {};
-    let res: Addr = app.wrap().query_wasm_smart(addr, &msg).unwrap();
-    assert_eq!(res, Addr::unchecked("contract1"));
 }
 
 #[test]

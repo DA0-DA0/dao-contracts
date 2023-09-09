@@ -53,7 +53,6 @@ pub fn instantiate(
 
     // Validate denom by checking supply
     let supply: Coin = deps.querier.query_supply(msg.denom.to_string())?;
-    println!("supply {:?}", supply);
     if Uint128::is_zero(&supply.amount) {
         return Err(ContractError::InvalidDenom {});
     }
