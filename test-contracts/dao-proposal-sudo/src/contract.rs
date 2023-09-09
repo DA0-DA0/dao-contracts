@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-    WasmMsg,
+    Storage, WasmMsg,
 };
 use cw2::set_contract_version;
 
@@ -71,21 +71,21 @@ pub fn execute_execute(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Admin {} => query_admin(deps),
-        QueryMsg::Dao {} => query_dao(deps),
-        QueryMsg::Info {} => query_info(deps),
+        QueryMsg::Admin {} => query_admin(deps.storage),
+        QueryMsg::Dao {} => query_dao(deps.storage),
+        QueryMsg::Info {} => query_info(deps.storage),
     }
 }
 
-pub fn query_admin(deps: Deps) -> StdResult<Binary> {
-    to_binary(&ROOT.load(deps.storage)?)
+pub fn query_admin(storage: &dyn Storage) -> StdResult<Binary> {
+    to_binary(&ROOT.load(storage)?)
 }
 
-pub fn query_dao(deps: Deps) -> StdResult<Binary> {
-    to_binary(&DAO.load(deps.storage)?)
+pub fn query_dao(storage: &dyn Storage) -> StdResult<Binary> {
+    to_binary(&DAO.load(storage)?)
 }
 
-pub fn query_info(deps: Deps) -> StdResult<Binary> {
-    let info = cw2::get_contract_version(deps.storage)?;
+pub fn query_info(storage: &dyn Storage) -> StdResult<Binary> {
+    let info = cw2::get_contract_version(storage)?;
     to_binary(&dao_interface::voting::InfoResponse { info })
 }

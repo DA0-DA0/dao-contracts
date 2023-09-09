@@ -360,7 +360,7 @@ where
                 })
             }
             QueryMsg::ProposalSubmittedHooks {} => {
-                to_binary(&self.proposal_submitted_hooks.query_hooks(deps)?)
+                to_binary(&self.proposal_submitted_hooks.query_hooks(deps.storage)?)
             }
             QueryMsg::QueryExtension { .. } => Ok(Binary::default()),
         }

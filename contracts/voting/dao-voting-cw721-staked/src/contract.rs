@@ -10,7 +10,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_binary, to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Empty, Env,
-    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
+    MessageInfo, Reply, Response, StdError, StdResult, Storage, SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ReceiveMsg, NumTokensResponse};
@@ -457,9 +457,9 @@ pub fn execute_update_active_threshold(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::ActiveThreshold {} => query_active_threshold(deps),
-        QueryMsg::Config {} => query_config(deps),
-        QueryMsg::Dao {} => query_dao(deps),
-        QueryMsg::Info {} => query_info(deps),
+        QueryMsg::Config {} => query_config(deps.storage),
+        QueryMsg::Dao {} => query_dao(deps.storage),
+        QueryMsg::Info {} => query_info(deps.storage),
         QueryMsg::IsActive {} => query_is_active(deps, env),
         QueryMsg::NftClaims { address } => query_nft_claims(deps, address),
         QueryMsg::Hooks {} => query_hooks(deps),
@@ -572,13 +572,13 @@ pub fn query_total_power_at_height(deps: Deps, env: Env, height: Option<u64>) ->
     to_binary(&dao_interface::voting::TotalPowerAtHeightResponse { power, height })
 }
 
-pub fn query_config(deps: Deps) -> StdResult<Binary> {
-    let config = CONFIG.load(deps.storage)?;
+pub fn query_config(storage: &dyn Storage) -> StdResult<Binary> {
+    let config = CONFIG.load(storage)?;
     to_binary(&config)
 }
 
-pub fn query_dao(deps: Deps) -> StdResult<Binary> {
-    let dao = DAO.load(deps.storage)?;
+pub fn query_dao(storage: &dyn Storage) -> StdResult<Binary> {
+    let dao = DAO.load(storage)?;
     to_binary(&dao)
 }
 
@@ -590,8 +590,8 @@ pub fn query_hooks(deps: Deps) -> StdResult<Binary> {
     to_binary(&HOOKS.query_hooks(deps)?)
 }
 
-pub fn query_info(deps: Deps) -> StdResult<Binary> {
-    let info = cw2::get_contract_version(deps.storage)?;
+pub fn query_info(storage: &dyn Storage) -> StdResult<Binary> {
+    let info = cw2::get_contract_version(storage)?;
     to_binary(&dao_interface::voting::InfoResponse { info })
 }
 

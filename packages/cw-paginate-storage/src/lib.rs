@@ -1,6 +1,6 @@
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
 
-use cosmwasm_std::{Deps, Order, StdResult};
+use cosmwasm_std::{Deps, Order, StdResult, Storage};
 
 #[allow(unused_imports)]
 use cw_storage_plus::{Bound, Bounder, KeyDeserialize, Map, SnapshotMap, Strategy};
@@ -8,7 +8,7 @@ use cw_storage_plus::{Bound, Bounder, KeyDeserialize, Map, SnapshotMap, Strategy
 /// Generic function for paginating a list of (K, V) pairs in a
 /// CosmWasm Map.
 pub fn paginate_map<'a, 'b, K, V, R: 'static>(
-    deps: Deps,
+    storage: &dyn Storage,
     map: &Map<'a, K, V>,
     start_after: Option<K>,
     limit: Option<u32>,
@@ -23,7 +23,7 @@ where
         Order::Descending => (None, start_after.map(Bound::exclusive)),
     };
 
-    let items = map.range(deps.storage, range_min, range_max, order);
+    let items = map.range(storage, range_min, range_max, order);
     match limit {
         Some(limit) => Ok(items
             .take(limit.try_into().unwrap())
@@ -156,7 +156,7 @@ mod tests {
                 .unwrap();
         }
 
-        let items = paginate_map(deps.as_ref(), &map, None, None, Order::Descending).unwrap();
+        let items = paginate_map(&deps.storage, &map, None, None, Order::Descending).unwrap();
         assert_eq!(
             items,
             vec![
@@ -165,7 +165,7 @@ mod tests {
             ]
         );
 
-        let items = paginate_map(deps.as_ref(), &map, None, None, Order::Ascending).unwrap();
+        let items = paginate_map(&deps.storage, &map, None, None, Order::Ascending).unwrap();
         assert_eq!(
             items,
             vec![
@@ -175,7 +175,7 @@ mod tests {
         );
 
         let items = paginate_map(
-            deps.as_ref(),
+            &deps.storage,
             &map,
             Some("1".to_string()),
             None,
@@ -184,7 +184,7 @@ mod tests {
         .unwrap();
         assert_eq!(items, vec![("2".to_string(), "4".to_string())]);
 
-        let items = paginate_map(deps.as_ref(), &map, None, Some(1), Order::Ascending).unwrap();
+        let items = paginate_map(&deps.storage, &map, None, Some(1), Order::Ascending).unwrap();
         assert_eq!(items, vec![("1".to_string(), "2".to_string())]);
     }
 
@@ -417,13 +417,13 @@ mod tests {
         map.save(&mut deps.storage, 4, &66).unwrap();
         map.save(&mut deps.storage, 5, &0).unwrap();
 
-        let items = paginate_map(deps.as_ref(), &map, None, None, Order::Descending).unwrap();
+        let items = paginate_map(&deps.storage, &map, None, None, Order::Descending).unwrap();
         assert_eq!(items, vec![(5, 0), (4, 66), (3, 77), (2, 22), (1, 40)]);
 
-        let items = paginate_map(deps.as_ref(), &map, Some(3), None, Order::Descending).unwrap();
+        let items = paginate_map(&deps.storage, &map, Some(3), None, Order::Descending).unwrap();
         assert_eq!(items, vec![(2, 22), (1, 40)]);
 
-        let items = paginate_map(deps.as_ref(), &map, Some(1), None, Order::Descending).unwrap();
+        let items = paginate_map(&deps.storage, &map, Some(1), None, Order::Descending).unwrap();
         assert_eq!(items, vec![]);
     }
 
@@ -515,7 +515,7 @@ mod tests {
         )
         .unwrap();
 
-        let items = paginate_map(deps.as_ref(), &map, None, None, Order::Descending).unwrap();
+        let items = paginate_map(&deps.storage, &map, None, None, Order::Descending).unwrap();
         assert_eq!(
             items[1],
             (Addr::unchecked(format!("test_addr{:0>3}", 4)), 66)
@@ -527,7 +527,7 @@ mod tests {
 
         let addr: Addr = Addr::unchecked(format!("test_addr{:0>3}", 3));
         let items =
-            paginate_map(deps.as_ref(), &map, Some(&addr), Some(2), Order::Ascending).unwrap();
+            paginate_map(&deps.storage, &map, Some(&addr), Some(2), Order::Ascending).unwrap();
         let test_vec: Vec<(Addr, u32)> = vec![
             (Addr::unchecked(format!("test_addr{:0>3}", 4)), 66),
             (Addr::unchecked(format!("test_addr{:0>3}", 6)), 0),

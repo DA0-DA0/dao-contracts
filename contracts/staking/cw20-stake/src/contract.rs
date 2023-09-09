@@ -3,7 +3,7 @@ use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
     from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdError, StdResult, Uint128,
+    StdError, StdResult, Storage, Uint128,
 };
 
 use cw20::{Cw20ReceiveMsg, TokenInfoResponse};
@@ -354,7 +354,7 @@ pub fn execute_update_owner(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetConfig {} => to_binary(&query_config(deps)?),
+        QueryMsg::GetConfig {} => to_binary(&query_config(deps.storage)?),
         QueryMsg::StakedBalanceAtHeight { address, height } => {
             to_binary(&query_staked_balance_at_height(deps, env, address, height)?)
         }
@@ -362,7 +362,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_binary(&query_total_staked_at_height(deps, env, height)?)
         }
         QueryMsg::StakedValue { address } => to_binary(&query_staked_value(deps, env, address)?),
-        QueryMsg::TotalValue {} => to_binary(&query_total_value(deps, env)?),
+        QueryMsg::TotalValue {} => to_binary(&query_total_value(deps.storage, env)?),
         QueryMsg::Claims { address } => to_binary(&query_claims(deps, address)?),
         QueryMsg::GetHooks {} => to_binary(&query_hooks(deps)?),
         QueryMsg::ListStakers { start_after, limit } => {
@@ -423,13 +423,13 @@ pub fn query_staked_value(
     }
 }
 
-pub fn query_total_value(deps: Deps, _env: Env) -> StdResult<TotalValueResponse> {
-    let balance = BALANCE.load(deps.storage)?;
+pub fn query_total_value(storage: &dyn Storage, _env: Env) -> StdResult<TotalValueResponse> {
+    let balance = BALANCE.load(storage)?;
     Ok(TotalValueResponse { total: balance })
 }
 
-pub fn query_config(deps: Deps) -> StdResult<Config> {
-    let config = CONFIG.load(deps.storage)?;
+pub fn query_config(storage: &dyn Storage) -> StdResult<Config> {
+    let config = CONFIG.load(storage)?;
     Ok(config)
 }
 

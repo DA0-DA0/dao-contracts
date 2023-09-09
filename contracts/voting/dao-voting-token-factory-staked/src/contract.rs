@@ -3,7 +3,7 @@ use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
     coins, to_binary, BankMsg, BankQuery, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Order, Reply, Response, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
+    MessageInfo, Order, Reply, Response, StdResult, Storage, SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_controllers::ClaimsResponse;
@@ -397,8 +397,8 @@ pub fn query(deps: Deps<TokenFactoryQuery>, env: Env, msg: QueryMsg) -> StdResul
         QueryMsg::TotalPowerAtHeight { height } => {
             to_binary(&query_total_power_at_height(deps, env, height)?)
         }
-        QueryMsg::Info {} => query_info(deps),
-        QueryMsg::Dao {} => query_dao(deps),
+        QueryMsg::Info {} => query_info(deps.storage),
+        QueryMsg::Dao {} => query_dao(deps.storage),
         QueryMsg::Claims { address } => to_binary(&query_claims(deps, address)?),
         QueryMsg::GetConfig {} => to_binary(&CONFIG.load(deps.storage)?),
         QueryMsg::Denom {} => to_binary(&DenomResponse {
@@ -408,8 +408,8 @@ pub fn query(deps: Deps<TokenFactoryQuery>, env: Env, msg: QueryMsg) -> StdResul
             query_list_stakers(deps, start_after, limit)
         }
         QueryMsg::IsActive {} => query_is_active(deps),
-        QueryMsg::ActiveThreshold {} => query_active_threshold(deps),
-        QueryMsg::GetHooks {} => to_binary(&query_hooks(deps)?),
+        QueryMsg::ActiveThreshold {} => query_active_threshold(deps.storage),
+        QueryMsg::GetHooks {} => to_binary(&query_hooks(deps.storage)?),
         QueryMsg::TokenContract {} => to_binary(&TOKEN_ISSUER_CONTRACT.load(deps.storage)?),
     }
 }
@@ -440,13 +440,13 @@ pub fn query_total_power_at_height(
     Ok(TotalPowerAtHeightResponse { power, height })
 }
 
-pub fn query_info(deps: Deps<TokenFactoryQuery>) -> StdResult<Binary> {
-    let info = cw2::get_contract_version(deps.storage)?;
+pub fn query_info(storage: &dyn Storage) -> StdResult<Binary> {
+    let info = cw2::get_contract_version(storage)?;
     to_binary(&dao_interface::voting::InfoResponse { info })
 }
 
-pub fn query_dao(deps: Deps<TokenFactoryQuery>) -> StdResult<Binary> {
-    let dao = DAO.load(deps.storage)?;
+pub fn query_dao(storage: &dyn Storage) -> StdResult<Binary> {
+    let dao = DAO.load(storage)?;
     to_binary(&dao)
 }
 
@@ -539,15 +539,15 @@ pub fn query_is_active(deps: Deps<TokenFactoryQuery>) -> StdResult<Binary> {
     }
 }
 
-pub fn query_active_threshold(deps: Deps<TokenFactoryQuery>) -> StdResult<Binary> {
+pub fn query_active_threshold(storage: &dyn Storage) -> StdResult<Binary> {
     to_binary(&ActiveThresholdResponse {
-        active_threshold: ACTIVE_THRESHOLD.may_load(deps.storage)?,
+        active_threshold: ACTIVE_THRESHOLD.may_load(storage)?,
     })
 }
 
-pub fn query_hooks(deps: Deps<TokenFactoryQuery>) -> StdResult<GetHooksResponse> {
+pub fn query_hooks(storage: &dyn Storage) -> StdResult<GetHooksResponse> {
     Ok(GetHooksResponse {
-        hooks: HOOKS.query_hooks(deps)?.hooks,
+        hooks: HOOKS.query_hooks(storage)?.hooks,
     })
 }
 

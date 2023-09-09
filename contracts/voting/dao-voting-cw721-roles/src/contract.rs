@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
-    WasmMsg,
+    to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response, StdResult, Storage,
+    SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw4::{MemberResponse, TotalWeightResponse};
@@ -94,13 +94,13 @@ pub fn execute(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Config {} => query_config(deps),
-        QueryMsg::Dao {} => query_dao(deps),
+        QueryMsg::Config {} => query_config(deps.storage),
+        QueryMsg::Dao {} => query_dao(deps.storage),
         QueryMsg::VotingPowerAtHeight { address, height } => {
             query_voting_power_at_height(deps, env, address, height)
         }
         QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, env, height),
-        QueryMsg::Info {} => query_info(deps),
+        QueryMsg::Info {} => query_info(deps.storage),
     }
 }
 
@@ -146,18 +146,18 @@ pub fn query_total_power_at_height(
     })
 }
 
-pub fn query_config(deps: Deps) -> StdResult<Binary> {
-    let config = CONFIG.load(deps.storage)?;
+pub fn query_config(storage: &dyn Storage) -> StdResult<Binary> {
+    let config = CONFIG.load(storage)?;
     to_binary(&config)
 }
 
-pub fn query_dao(deps: Deps) -> StdResult<Binary> {
-    let dao = DAO.load(deps.storage)?;
+pub fn query_dao(storage: &dyn Storage) -> StdResult<Binary> {
+    let dao = DAO.load(storage)?;
     to_binary(&dao)
 }
 
-pub fn query_info(deps: Deps) -> StdResult<Binary> {
-    let info = cw2::get_contract_version(deps.storage)?;
+pub fn query_info(storage: &dyn Storage) -> StdResult<Binary> {
+    let info = cw2::get_contract_version(storage)?;
     to_binary(&dao_interface::voting::InfoResponse { info })
 }
 

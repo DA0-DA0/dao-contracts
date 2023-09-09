@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     coins, to_binary, BankMsg, BankQuery, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Response, StdResult, Uint128, Uint256,
+    MessageInfo, Response, StdResult, Storage, Uint128, Uint256,
 };
 use cw2::set_contract_version;
 use cw_controllers::ClaimsResponse;
@@ -331,14 +331,14 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::TotalPowerAtHeight { height } => {
             to_binary(&query_total_power_at_height(deps, env, height)?)
         }
-        QueryMsg::Info {} => query_info(deps),
-        QueryMsg::Dao {} => query_dao(deps),
+        QueryMsg::Info {} => query_info(deps.storage),
+        QueryMsg::Dao {} => query_dao(deps.storage),
         QueryMsg::Claims { address } => to_binary(&query_claims(deps, address)?),
         QueryMsg::GetConfig {} => to_binary(&CONFIG.load(deps.storage)?),
         QueryMsg::ListStakers { start_after, limit } => {
             query_list_stakers(deps, start_after, limit)
         }
-        QueryMsg::GetDenom {} => query_denom(deps),
+        QueryMsg::GetDenom {} => query_denom(deps.storage),
         QueryMsg::IsActive {} => query_is_active(deps),
         QueryMsg::ActiveThreshold {} => query_active_threshold(deps),
         QueryMsg::GetHooks {} => to_binary(&query_hooks(deps)?),
@@ -371,18 +371,18 @@ pub fn query_total_power_at_height(
     Ok(TotalPowerAtHeightResponse { power, height })
 }
 
-pub fn query_info(deps: Deps) -> StdResult<Binary> {
-    let info = cw2::get_contract_version(deps.storage)?;
+pub fn query_info(storage: &dyn Storage) -> StdResult<Binary> {
+    let info = cw2::get_contract_version(storage)?;
     to_binary(&dao_interface::voting::InfoResponse { info })
 }
 
-pub fn query_dao(deps: Deps) -> StdResult<Binary> {
-    let dao = DAO.load(deps.storage)?;
+pub fn query_dao(storage: &dyn Storage) -> StdResult<Binary> {
+    let dao = DAO.load(storage)?;
     to_binary(&dao)
 }
 
-pub fn query_denom(deps: Deps) -> StdResult<Binary> {
-    let config = CONFIG.load(deps.storage)?;
+pub fn query_denom(storage: &dyn Storage) -> StdResult<Binary> {
+    let config = CONFIG.load(storage)?;
     to_binary(&DenomResponse {
         denom: config.denom,
     })
@@ -490,7 +490,7 @@ pub fn query_active_threshold(deps: Deps) -> StdResult<Binary> {
 
 pub fn query_hooks(deps: Deps) -> StdResult<GetHooksResponse> {
     Ok(GetHooksResponse {
-        hooks: HOOKS.query_hooks(deps)?.hooks,
+        hooks: HOOKS.query_hooks(deps.storage)?.hooks,
     })
 }
 

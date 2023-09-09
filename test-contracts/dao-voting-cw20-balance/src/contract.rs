@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
-    Uint128, WasmMsg,
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, Storage,
+    SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
@@ -92,23 +92,23 @@ pub fn execute(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::TokenContract {} => query_token_contract(deps),
+        QueryMsg::TokenContract {} => query_token_contract(deps.storage),
         QueryMsg::VotingPowerAtHeight { address, height: _ } => {
             query_voting_power_at_height(deps, env, address)
         }
         QueryMsg::TotalPowerAtHeight { height: _ } => query_total_power_at_height(deps, env),
-        QueryMsg::Info {} => query_info(deps),
-        QueryMsg::Dao {} => query_dao(deps),
+        QueryMsg::Info {} => query_info(deps.storage),
+        QueryMsg::Dao {} => query_dao(deps.storage),
     }
 }
 
-pub fn query_dao(deps: Deps) -> StdResult<Binary> {
-    let dao = DAO.load(deps.storage)?;
+pub fn query_dao(storage: &dyn Storage) -> StdResult<Binary> {
+    let dao = DAO.load(storage)?;
     to_binary(&dao)
 }
 
-pub fn query_token_contract(deps: Deps) -> StdResult<Binary> {
-    let token = TOKEN.load(deps.storage)?;
+pub fn query_token_contract(storage: &dyn Storage) -> StdResult<Binary> {
+    let token = TOKEN.load(storage)?;
     to_binary(&token)
 }
 
@@ -138,8 +138,8 @@ pub fn query_total_power_at_height(deps: Deps, env: Env) -> StdResult<Binary> {
     })
 }
 
-pub fn query_info(deps: Deps) -> StdResult<Binary> {
-    let info = cw2::get_contract_version(deps.storage)?;
+pub fn query_info(storage: &dyn Storage) -> StdResult<Binary> {
+    let info = cw2::get_contract_version(storage)?;
     to_binary(&dao_interface::voting::InfoResponse { info })
 }
 
