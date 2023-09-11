@@ -118,8 +118,8 @@ impl TestEnvBuilder {
         let vp_contract = TfDaoVotingContract::deploy(
             app,
             &InstantiateMsg {
-                token_issuer_code_id: issuer_id,
                 token_info: TokenInfo::New(NewTokenInfo {
+                    token_issuer_code_id: issuer_id,
                     subdenom: DENOM.to_string(),
                     metadata: Some(crate::msg::NewDenomMetadata {
                         description: "Awesome token, get it meow!".to_string(),
@@ -172,14 +172,18 @@ impl TestEnvBuilder {
         let issuer_addr =
             TfDaoVotingContract::query(&vp_contract, &QueryMsg::TokenContract {}).unwrap();
 
-        let tf_issuer = TokenfactoryIssuer::new_with_values(
-            app,
-            self.instantiate_msg
-                .expect("instantiate msg not set")
-                .token_issuer_code_id,
-            issuer_addr,
-        )
-        .unwrap();
+        let issuer_id: u64;
+        if let TokenInfo::New(token) = self
+            .instantiate_msg
+            .expect("instantiate msg not set")
+            .token_info
+        {
+            issuer_id = token.token_issuer_code_id;
+        } else {
+            panic!("TokenInfo is not New");
+        }
+
+        let tf_issuer = TokenfactoryIssuer::new_with_values(app, issuer_id, issuer_addr).unwrap();
 
         TestEnv {
             app,

@@ -1,6 +1,6 @@
 use cosmwasm_std::{Coin, Uint128};
 use cw_tokenfactory_issuer::msg::DenomUnit;
-use dao_voting::threshold::ActiveThreshold;
+use dao_voting::threshold::{ActiveThreshold, ActiveThresholdError};
 use osmosis_std::types::cosmos::bank::v1beta1::QueryBalanceRequest;
 use osmosis_test_tube::{Account, OsmosisTestApp};
 
@@ -81,8 +81,8 @@ fn test_instantiate_no_dao_balance() {
     let vp_contract = env
         .instantiate(
             &InstantiateMsg {
-                token_issuer_code_id: tf_issuer_id,
                 token_info: TokenInfo::New(NewTokenInfo {
+                    token_issuer_code_id: tf_issuer_id,
                     subdenom: "ucat".to_string(),
                     metadata: Some(NewDenomMetadata {
                         description: "Awesome token, get it meow!".to_string(),
@@ -144,8 +144,8 @@ fn test_instantiate_no_metadata() {
 
     env.instantiate(
         &InstantiateMsg {
-            token_issuer_code_id: tf_issuer_id,
             token_info: TokenInfo::New(NewTokenInfo {
+                token_issuer_code_id: tf_issuer_id,
                 subdenom: "ucat".to_string(),
                 metadata: None,
                 initial_balances: vec![InitialBalance {
@@ -174,8 +174,8 @@ fn test_instantiate_invalid_metadata_fails() {
 
     env.instantiate(
         &InstantiateMsg {
-            token_issuer_code_id: tf_issuer_id,
             token_info: TokenInfo::New(NewTokenInfo {
+                token_issuer_code_id: tf_issuer_id,
                 subdenom: "cat".to_string(),
                 metadata: Some(NewDenomMetadata {
                     description: "Awesome token, get it meow!".to_string(),
@@ -216,8 +216,8 @@ fn test_instantiate_invalid_active_threshold_count_fails() {
     let err = env
         .instantiate(
             &InstantiateMsg {
-                token_issuer_code_id: tf_issuer_id,
                 token_info: TokenInfo::New(NewTokenInfo {
+                    token_issuer_code_id: tf_issuer_id,
                     subdenom: "cat".to_string(),
                     metadata: Some(NewDenomMetadata {
                         description: "Awesome token, get it meow!".to_string(),
@@ -248,7 +248,9 @@ fn test_instantiate_invalid_active_threshold_count_fails() {
 
     assert_eq!(
         err,
-        TfDaoVotingContract::execute_submessage_error(ContractError::InvalidAbsoluteCount {})
+        TfDaoVotingContract::execute_submessage_error(ContractError::ActiveThresholdError(
+            ActiveThresholdError::InvalidAbsoluteCount {}
+        ))
     );
 }
 
@@ -264,8 +266,8 @@ fn test_instantiate_no_initial_balances_fails() {
     let err = env
         .instantiate(
             &InstantiateMsg {
-                token_issuer_code_id: tf_issuer_id,
                 token_info: TokenInfo::New(NewTokenInfo {
+                    token_issuer_code_id: tf_issuer_id,
                     subdenom: "ucat".to_string(),
                     metadata: Some(NewDenomMetadata {
                         description: "Awesome token, get it meow!".to_string(),
