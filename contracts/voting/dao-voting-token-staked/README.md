@@ -5,9 +5,11 @@ Simple native or Token Factory based token voting / staking contract which assum
 ### Token Factory support
 `dao_voting_token_staked` leverages the `cw_tokenfactory_issuer` contract for tokenfactory functionality. When instantiated, `dao_voting_token_staked` creates a new `cw_tokenfactory_issuer` contract to manage the new Token, with the DAO as admin and owner (these can be renounced or updated by vote of the DAO).
 
+The `cw_tokenfactory_issuer` contract supports many features, see the [cw_tokenfactory_issuer contract README](../../external/cw-tokenfactory-issuer/README.md) for more information.
+
 ## Instantiation
 When instantiating a new `dao_voting_token_staked` contract there are two required fields:
-- `token_info`: you have the option to leverage an `existing` token or creating a `new` one.
+- `token_info`: you have the option to leverage an `existing` native token or creating a `new` one using the Token Factory module.
 
 There are a few optional fields:
 - `unstaking_duration`: can be set to `height` or `time` (in seconds), this is the amount of time that must elapse before a user can claim fully unstaked tokens. If not set, they are instantly claimable.
@@ -15,9 +17,11 @@ There are a few optional fields:
 
 ### Create a New Token
 - `token_issuer_code_id`: must be set to a valid Code ID for the `cw_tokenfactory_issuer` contract.
+- `initial_balances`: the initial distribution of the new token, there must be at least 1 account with a balance so as the DAO is not locked.
+
 Creating a token has a few additional optional fields:
 - `metadata`: information about the token. See [Cosmos SDK Coin metadata documentation](https://docs.cosmos.network/main/architecture/adr-024-coin-metadata) for more info on coin metadata.
-- `initial_dao_balance`: the initial balance created for the DAO.
+- `initial_dao_balance`: the initial balance created for the DAO treasury. 
 
 Example insantiation mesggage:
 ``` json
@@ -60,13 +64,19 @@ Example insantiation mesggage:
 ```
 
 ### Use Existing Native Token
+`dao-voting-token-staked` can also be used with existing native tokens. They could be in the form of a native denom like `ion`, an IBC token, or a Token Factory token.
+
 Example insantiation mesggage:
 
 ``` json
 {
     "token_info": {
-      "new": {
-        "subdenom": "uion",
+      "existing": {
+        "denom": "uion",
       }
+    }
 }
 ```
+
+NOTE: if using an existing Token Factory token, double check the Token Factory admin and consider changing the Token Factory to be the DAO after the DAO is created.
+
