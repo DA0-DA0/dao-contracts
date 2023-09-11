@@ -10,7 +10,6 @@ use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NumTokensResponse};
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration};
 use dao_hooks::nft_stake::{stake_nft_hook_msgs, unstake_nft_hook_msgs};
-use dao_interface::state::Admin;
 use dao_interface::voting::IsActiveResponse;
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
@@ -87,15 +86,6 @@ pub fn instantiate(
 
     DAO.save(deps.storage, &info.sender)?;
 
-    let owner = msg
-        .owner
-        .as_ref()
-        .map(|owner| match owner {
-            Admin::Address { addr } => deps.api.addr_validate(addr),
-            Admin::CoreModule {} => Ok(info.sender.clone()),
-        })
-        .transpose()?;
-
     if let Some(active_threshold) = msg.active_threshold.as_ref() {
         match active_threshold {
             ActiveThreshold::Percentage { percent } => {
@@ -128,7 +118,6 @@ pub fn instantiate(
     match msg.nft_contract {
         NftContract::Existing { address } => {
             let config = Config {
-                owner: owner.clone(),
                 nft_address: deps.api.addr_validate(&address)?,
                 unstaking_duration: msg.unstaking_duration,
             };
@@ -136,12 +125,6 @@ pub fn instantiate(
 
             Ok(Response::default()
                 .add_attribute("method", "instantiate")
-                .add_attribute(
-                    "owner",
-                    owner
-                        .map(|a| a.into_string())
-                        .unwrap_or_else(|| "None".to_string()),
-                )
                 .add_attribute("nft_contract", address))
         }
         NftContract::New {
@@ -169,7 +152,6 @@ pub fn instantiate(
 
             // Save config with empty nft_address
             let config = Config {
-                owner: owner.clone(),
                 nft_address: Addr::unchecked(""),
                 unstaking_duration: msg.unstaking_duration,
             };
@@ -192,12 +174,6 @@ pub fn instantiate(
 
             Ok(Response::default()
                 .add_attribute("method", "instantiate")
-                .add_attribute(
-                    "owner",
-                    owner
-                        .map(|a| a.into_string())
-                        .unwrap_or_else(|| "None".to_string()),
-                )
                 .add_submessage(instantiate_msg))
         }
     }
@@ -214,9 +190,7 @@ pub fn execute(
         ExecuteMsg::ReceiveNft(msg) => execute_stake(deps, env, info, msg),
         ExecuteMsg::Unstake { token_ids } => execute_unstake(deps, env, info, token_ids),
         ExecuteMsg::ClaimNfts {} => execute_claim_nfts(deps, env, info),
-        ExecuteMsg::UpdateConfig { owner, duration } => {
-            execute_update_config(info, deps, owner, duration)
-        }
+        ExecuteMsg::UpdateConfig { duration } => execute_update_config(info, deps, duration),
         ExecuteMsg::AddHook { addr } => execute_add_hook(deps, info, addr),
         ExecuteMsg::RemoveHook { addr } => execute_remove_hook(deps, info, addr),
         ExecuteMsg::UpdateActiveThreshold { new_threshold } => {
@@ -386,32 +360,21 @@ pub fn execute_claim_nfts(
 pub fn execute_update_config(
     info: MessageInfo,
     deps: DepsMut,
-    new_owner: Option<String>,
     duration: Option<Duration>,
 ) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
+    let dao = DAO.load(deps.storage)?;
 
-    if config.owner.map_or(true, |owner| owner != info.sender) {
-        return Err(ContractError::NotOwner {});
+    // Only the DAO can update the config.
+    if info.sender != dao {
+        return Err(ContractError::Unauthorized {});
     }
 
-    let new_owner = new_owner
-        .map(|new_owner| deps.api.addr_validate(&new_owner))
-        .transpose()?;
-
-    config.owner = new_owner;
     config.unstaking_duration = duration;
     CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::default()
         .add_attribute("action", "update_config")
-        .add_attribute(
-            "owner",
-            config
-                .owner
-                .map(|a| a.to_string())
-                .unwrap_or_else(|| "none".to_string()),
-        )
         .add_attribute(
             "unstaking_duration",
             config
@@ -426,9 +389,11 @@ pub fn execute_add_hook(
     info: MessageInfo,
     addr: String,
 ) -> Result<Response, ContractError> {
-    let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner.map_or(true, |owner| owner != info.sender) {
-        return Err(ContractError::NotOwner {});
+    let dao = DAO.load(deps.storage)?;
+
+    // Only the DAO can add a hook
+    if info.sender != dao {
+        return Err(ContractError::Unauthorized {});
     }
 
     let hook = deps.api.addr_validate(&addr)?;
@@ -444,9 +409,11 @@ pub fn execute_remove_hook(
     info: MessageInfo,
     addr: String,
 ) -> Result<Response, ContractError> {
-    let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner.map_or(true, |owner| owner != info.sender) {
-        return Err(ContractError::NotOwner {});
+    let dao = DAO.load(deps.storage)?;
+
+    // Only the DAO can remove a hook
+    if info.sender != dao {
+        return Err(ContractError::Unauthorized {});
     }
 
     let hook = deps.api.addr_validate(&addr)?;

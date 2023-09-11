@@ -8,8 +8,6 @@ mod tests;
 use cosmwasm_std::Addr;
 use cw_multi_test::{App, Executor};
 use cw_utils::Duration;
-
-use dao_interface::state::Admin;
 use dao_testing::contracts::voting_cw721_staked_contract;
 
 use crate::msg::{InstantiateMsg, NftContract};
@@ -25,7 +23,7 @@ pub(crate) struct CommonTest {
     nft: Addr,
 }
 
-pub(crate) fn setup_test(owner: Option<Admin>, unstaking_duration: Option<Duration>) -> CommonTest {
+pub(crate) fn setup_test(unstaking_duration: Option<Duration>) -> CommonTest {
     let mut app = App::default();
     let module_id = app.store_code(voting_cw721_staked_contract());
 
@@ -35,7 +33,6 @@ pub(crate) fn setup_test(owner: Option<Admin>, unstaking_duration: Option<Durati
             module_id,
             Addr::unchecked(CREATOR_ADDR),
             &InstantiateMsg {
-                owner,
                 nft_contract: NftContract::Existing {
                     address: nft.to_string(),
                 },

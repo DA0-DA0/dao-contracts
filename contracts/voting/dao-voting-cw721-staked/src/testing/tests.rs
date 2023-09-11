@@ -5,7 +5,7 @@ use cw721_base::msg::{ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721Inst
 use cw721_controllers::{NftClaim, NftClaimsResponse};
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 use cw_utils::Duration;
-use dao_interface::{state::Admin, voting::IsActiveResponse};
+use dao_interface::voting::IsActiveResponse;
 use dao_testing::contracts::{cw721_base_contract, voting_cw721_staked_contract};
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 use sg721::{CollectionInfo, RoyaltyInfoResponse, UpdateCollectionInfoMsg};
@@ -45,9 +45,6 @@ fn test_instantiate_with_new_cw721_collection() -> anyhow::Result<()> {
             module_id,
             Addr::unchecked(CREATOR_ADDR),
             &InstantiateMsg {
-                owner: Some(Admin::Address {
-                    addr: CREATOR_ADDR.to_string(),
-                }),
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
                     label: "Test NFT".to_string(),
@@ -90,7 +87,7 @@ fn test_stake_tokens() -> anyhow::Result<()> {
         mut app,
         module,
         nft,
-    } = setup_test(None, None);
+    } = setup_test(None);
 
     let total_power = query_total_power(&app, &module, None)?;
     let voting_power = query_voting_power(&app, &module, CREATOR_ADDR, None)?;
@@ -127,7 +124,7 @@ fn test_unstake_tokens_no_claims() -> anyhow::Result<()> {
         mut app,
         module,
         nft,
-    } = setup_test(None, None);
+    } = setup_test(None);
 
     let friend = "friend";
 
@@ -185,7 +182,7 @@ fn test_update_config() -> anyhow::Result<()> {
         mut app,
         module,
         nft,
-    } = setup_test(Some(Admin::CoreModule {}), Some(Duration::Height(3)));
+    } = setup_test(Some(Duration::Height(3)));
 
     mint_and_stake_nft(&mut app, &nft, &module, CREATOR_ADDR, "1")?;
     mint_and_stake_nft(&mut app, &nft, &module, CREATOR_ADDR, "2")?;
@@ -203,14 +200,8 @@ fn test_update_config() -> anyhow::Result<()> {
         }
     );
 
-    // Make friend the new owner.
-    update_config(
-        &mut app,
-        &module,
-        CREATOR_ADDR,
-        Some("friend"),
-        Some(Duration::Time(1)),
-    )?;
+    // Update duration
+    update_config(&mut app, &module, CREATOR_ADDR, Some(Duration::Time(1)))?;
 
     // Existing claims should remain unchanged.
     let claims = query_claims(&app, &module, CREATOR_ADDR)?;
@@ -258,39 +249,6 @@ fn test_update_config() -> anyhow::Result<()> {
     let claims = query_claims(&app, &module, CREATOR_ADDR)?;
     assert_eq!(claims, NftClaimsResponse { nft_claims: vec![] });
 
-    // Creator can no longer do config updates.
-    let res = update_config(
-        &mut app,
-        &module,
-        CREATOR_ADDR,
-        Some("friend"),
-        Some(Duration::Time(1)),
-    );
-    is_error!(res => "Only the owner of this contract my execute this message");
-
-    // Friend can still do config updates, and even remove themselves
-    // as the owner.
-    update_config(&mut app, &module, "friend", None, None)?;
-    let config = query_config(&app, &module)?;
-    assert_eq!(
-        config,
-        Config {
-            owner: None,
-            nft_address: nft,
-            unstaking_duration: None
-        }
-    );
-
-    // Friend has removed themselves.
-    let res = update_config(
-        &mut app,
-        &module,
-        "friend",
-        Some("friend"),
-        Some(Duration::Time(1)),
-    );
-    is_error!(res => "Only the owner of this contract my execute this message");
-
     Ok(())
 }
 
@@ -303,7 +261,7 @@ fn test_claims() -> anyhow::Result<()> {
         mut app,
         module,
         nft,
-    } = setup_test(Some(Admin::CoreModule {}), Some(Duration::Height(1)));
+    } = setup_test(Some(Duration::Height(1)));
 
     mint_and_stake_nft(&mut app, &nft, &module, CREATOR_ADDR, "1")?;
     mint_and_stake_nft(&mut app, &nft, &module, CREATOR_ADDR, "2")?;
@@ -346,7 +304,7 @@ fn test_max_claims() -> anyhow::Result<()> {
         mut app,
         module,
         nft,
-    } = setup_test(None, Some(Duration::Height(1)));
+    } = setup_test(Some(Duration::Height(1)));
 
     for i in 0..MAX_CLAIMS {
         let i_str = &i.to_string();
@@ -368,7 +326,7 @@ fn test_list_staked_nfts() -> anyhow::Result<()> {
         mut app,
         module,
         nft,
-    } = setup_test(Some(Admin::CoreModule {}), Some(Duration::Height(1)));
+    } = setup_test(Some(Duration::Height(1)));
 
     mint_and_stake_nft(&mut app, &nft, &module, CREATOR_ADDR, "1")?;
     mint_and_stake_nft(&mut app, &nft, &module, CREATOR_ADDR, "2")?;
@@ -413,7 +371,7 @@ fn test_list_staked_nfts() -> anyhow::Result<()> {
 
 #[test]
 fn test_info_query_works() -> anyhow::Result<()> {
-    let CommonTest { app, module, .. } = setup_test(None, None);
+    let CommonTest { app, module, .. } = setup_test(None);
     let info = query_info(&app, &module)?;
     assert_eq!(info.info.version, env!("CARGO_PKG_VERSION").to_string());
     Ok(())
@@ -426,12 +384,7 @@ fn test_add_remove_hooks() -> anyhow::Result<()> {
         mut app,
         module,
         nft,
-    } = setup_test(
-        Some(Admin::Address {
-            addr: CREATOR_ADDR.to_string(),
-        }),
-        None,
-    );
+    } = setup_test(None);
 
     add_hook(&mut app, &module, CREATOR_ADDR, "meow")?;
     remove_hook(&mut app, &module, CREATOR_ADDR, "meow")?;
@@ -456,7 +409,7 @@ fn test_add_remove_hooks() -> anyhow::Result<()> {
     is_error!(res => "Given address not registered as a hook");
 
     let res = add_hook(&mut app, &module, "ekez", "evil");
-    is_error!(res => "Only the owner of this contract my execute this message");
+    is_error!(res => "Unauthorized");
 
     Ok(())
 }
@@ -472,9 +425,6 @@ fn test_instantiate_zero_active_threshold_count() {
         module_id,
         Addr::unchecked(CREATOR_ADDR),
         &InstantiateMsg {
-            owner: Some(Admin::Address {
-                addr: CREATOR_ADDR.to_string(),
-            }),
             nft_contract: NftContract::New {
                 code_id: cw721_id,
                 label: "Test NFT".to_string(),
@@ -515,9 +465,6 @@ fn test_instantiate_invalid_active_threshold_count_new_nft() {
         module_id,
         Addr::unchecked(CREATOR_ADDR),
         &InstantiateMsg {
-            owner: Some(Admin::Address {
-                addr: CREATOR_ADDR.to_string(),
-            }),
             nft_contract: NftContract::New {
                 code_id: cw721_id,
                 label: "Test NFT".to_string(),
@@ -558,9 +505,6 @@ fn test_instantiate_invalid_active_threshold_count_existing_nft() {
         module_id,
         Addr::unchecked(CREATOR_ADDR),
         &InstantiateMsg {
-            owner: Some(Admin::Address {
-                addr: CREATOR_ADDR.to_string(),
-            }),
             nft_contract: NftContract::Existing {
                 address: cw721_addr.to_string(),
             },
@@ -587,9 +531,6 @@ fn test_active_threshold_absolute_count() {
             module_id,
             Addr::unchecked(CREATOR_ADDR),
             &InstantiateMsg {
-                owner: Some(Admin::Address {
-                    addr: CREATOR_ADDR.to_string(),
-                }),
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
                     label: "Test NFT".to_string(),
@@ -670,9 +611,6 @@ fn test_active_threshold_percent() {
             module_id,
             Addr::unchecked(CREATOR_ADDR),
             &InstantiateMsg {
-                owner: Some(Admin::Address {
-                    addr: CREATOR_ADDR.to_string(),
-                }),
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
                     label: "Test NFT".to_string(),
@@ -734,9 +672,6 @@ fn test_active_threshold_percent_rounds_up() {
             module_id,
             Addr::unchecked(CREATOR_ADDR),
             &InstantiateMsg {
-                owner: Some(Admin::Address {
-                    addr: CREATOR_ADDR.to_string(),
-                }),
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
                     label: "Test NFT".to_string(),
@@ -839,9 +774,6 @@ fn test_update_active_threshold() {
             module_id,
             Addr::unchecked(CREATOR_ADDR),
             &InstantiateMsg {
-                owner: Some(Admin::Address {
-                    addr: CREATOR_ADDR.to_string(),
-                }),
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
                     label: "Test NFT".to_string(),
@@ -916,9 +848,6 @@ fn test_active_threshold_percentage_gt_100() {
         module_id,
         Addr::unchecked(CREATOR_ADDR),
         &InstantiateMsg {
-            owner: Some(Admin::Address {
-                addr: CREATOR_ADDR.to_string(),
-            }),
             nft_contract: NftContract::New {
                 code_id: cw721_id,
                 label: "Test NFT".to_string(),
@@ -959,9 +888,6 @@ fn test_active_threshold_percentage_lte_0() {
         module_id,
         Addr::unchecked(CREATOR_ADDR),
         &InstantiateMsg {
-            owner: Some(Admin::Address {
-                addr: CREATOR_ADDR.to_string(),
-            }),
             nft_contract: NftContract::New {
                 code_id: cw721_id,
                 label: "Test NFT".to_string(),
@@ -1002,9 +928,6 @@ fn test_invalid_instantiate_msg() {
             module_id,
             Addr::unchecked(CREATOR_ADDR),
             &InstantiateMsg {
-                owner: Some(Admin::Address {
-                    addr: CREATOR_ADDR.to_string(),
-                }),
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
                     label: "Test NFT".to_string(),
@@ -1044,9 +967,6 @@ fn test_no_initial_nfts_fails() {
             module_id,
             Addr::unchecked(CREATOR_ADDR),
             &InstantiateMsg {
-                owner: Some(Admin::Address {
-                    addr: CREATOR_ADDR.to_string(),
-                }),
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
                     label: "Test NFT".to_string(),
@@ -1107,9 +1027,6 @@ fn test_instantiate_with_new_sg721_collection() -> anyhow::Result<()> {
             module_id,
             Addr::unchecked(CREATOR_ADDR),
             &InstantiateMsg {
-                owner: Some(Admin::Address {
-                    addr: CREATOR_ADDR.to_string(),
-                }),
                 nft_contract: NftContract::New {
                     code_id: sg721_id,
                     label: "Test NFT".to_string(),
@@ -1180,9 +1097,6 @@ fn test_instantiate_with_new_sg721_collection_abs_count_validation() {
         module_id,
         Addr::unchecked("contract0"),
         &InstantiateMsg {
-            owner: Some(Admin::Address {
-                addr: "contract0".to_string(),
-            }),
             nft_contract: NftContract::New {
                 code_id: sg721_id,
                 label: "Test NFT".to_string(),

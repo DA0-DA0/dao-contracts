@@ -10,7 +10,6 @@ use crate::ContractError;
 
 #[cw_serde]
 pub struct Config {
-    pub owner: Option<Addr>,
     pub nft_address: Addr,
     pub unstaking_duration: Option<Duration>,
 }

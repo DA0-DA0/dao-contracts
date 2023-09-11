@@ -6,7 +6,7 @@ use dao_hooks::nft_stake::{stake_nft_hook_msgs, unstake_nft_hook_msgs};
 
 use crate::{
     contract::execute,
-    state::{Config, CONFIG, HOOKS},
+    state::{Config, CONFIG, DAO, HOOKS},
 };
 
 #[test]
@@ -31,12 +31,15 @@ fn test_hooks() {
     .unwrap();
     assert_eq!(messages.len(), 0);
 
+    // Save a DAO address for the execute messages we're testing.
+    DAO.save(deps.as_mut().storage, &Addr::unchecked("ekez"))
+        .unwrap();
+
     // Save a config for the execute messages we're testing.
     CONFIG
         .save(
             deps.as_mut().storage,
             &Config {
-                owner: Some(Addr::unchecked("ekez")),
                 nft_address: Addr::unchecked("ekez-token"),
                 unstaking_duration: None,
             },
