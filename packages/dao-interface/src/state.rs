@@ -40,6 +40,15 @@ pub enum ProposalModuleStatus {
     Disabled,
 }
 
+impl std::fmt::Display for ProposalModuleStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            ProposalModuleStatus::Enabled => write!(f, "Enabled"),
+            ProposalModuleStatus::Disabled => write!(f, "Disabled"),
+        }
+    }
+}
+
 /// Information about the CosmWasm level admin of a contract. Used in
 /// conjunction with `ModuleInstantiateInfo` to instantiate modules.
 #[cw_serde]

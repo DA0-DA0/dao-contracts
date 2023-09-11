@@ -29,6 +29,8 @@ dao-interface = { workspace = true }
 dao-dao-macros = { workspace = true }
 cw-paginate-storage = { workspace = true }
 cw-core-v1 = { workspace = true, features = ["library"] }
+cw-core-v2 = { workspace = true, features = ["library"] }
+dao-interface-v2 = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true, features = ["stargate"] }

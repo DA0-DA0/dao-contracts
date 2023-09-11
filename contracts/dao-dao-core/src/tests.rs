@@ -20,7 +20,7 @@ use dao_interface::{
 
 use crate::{
     contract::{derive_proposal_module_prefix, migrate, CONTRACT_NAME, CONTRACT_VERSION},
-    state::PROPOSAL_MODULES,
+    state::proposal_modules,
     ContractError,
 };
 
@@ -281,6 +281,7 @@ fn test_update_config() {
             &QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
+                include_disabled: Some(true),
             },
         )
         .unwrap();
@@ -378,6 +379,7 @@ fn test_swap_governance(swaps: Vec<(u32, u32)>) {
             &QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
+                include_disabled: Some(true),
             },
         )
         .unwrap();
@@ -407,6 +409,7 @@ fn test_swap_governance(swaps: Vec<(u32, u32)>) {
                 &QueryMsg::ProposalModules {
                     start_after: None,
                     limit: None,
+                    include_disabled: Some(true),
                 },
             )
             .unwrap();
@@ -554,6 +557,7 @@ fn test_removed_modules_can_not_execute() {
             &QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
+                include_disabled: Some(true),
             },
         )
         .unwrap();
@@ -634,9 +638,10 @@ fn test_removed_modules_can_not_execute() {
         .wrap()
         .query_wasm_smart(
             &gov_addr,
-            &QueryMsg::ActiveProposalModules {
+            &QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
+                include_disabled: None,
             },
         )
         .unwrap();
@@ -711,6 +716,7 @@ fn test_module_already_disabled() {
             &QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
+                include_disabled: Some(true),
             },
         )
         .unwrap();
@@ -815,6 +821,7 @@ fn test_swap_voting_module() {
             &QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
+                include_disabled: Some(true),
             },
         )
         .unwrap();
@@ -1018,6 +1025,7 @@ fn test_admin_permissions() {
             &QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
+                include_disabled: Some(true),
             },
         )
         .unwrap();
@@ -2285,6 +2293,7 @@ fn test_pause() {
             &QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
+                include_disabled: Some(true),
             },
         )
         .unwrap();
@@ -2518,6 +2527,7 @@ fn test_dump_state_proposal_modules() {
             &QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
+                include_disabled: Some(true),
             },
         )
         .unwrap();
@@ -2782,7 +2792,7 @@ fn test_migrate_mock() {
     // Migrate to v2
     migrate(deps.as_mut(), env, msg).unwrap();
 
-    let new_path = PROPOSAL_MODULES.key(proposal_modules_key);
+    let new_path = proposal_modules().key(proposal_modules_key);
     let prop_module_bytes = deps.storage.get(&new_path).unwrap();
     let module: ProposalModule = from_slice(&prop_module_bytes).unwrap();
     assert_eq!(module.address, Addr::unchecked("addr"));
@@ -2815,6 +2825,7 @@ fn test_execute_stargate_msg() {
             &QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
+                include_disabled: Some(true),
             },
         )
         .unwrap();
@@ -2902,6 +2913,7 @@ fn test_module_prefixes() {
             &QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
+                include_disabled: Some(true),
             },
         )
         .unwrap();
@@ -2932,14 +2944,12 @@ fn get_active_modules(app: &App, gov_addr: Addr) -> Vec<ProposalModule> {
             &QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
+                include_disabled: None,
             },
         )
         .unwrap();
 
     modules
-        .into_iter()
-        .filter(|module: &ProposalModule| module.status == ProposalModuleStatus::Enabled)
-        .collect()
 }
 
 fn query_proposal_module_count(app: &App, core_addr: &Addr) -> ProposalModuleCountResponse {

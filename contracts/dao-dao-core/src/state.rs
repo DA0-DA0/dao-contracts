@@ -1,5 +1,5 @@
 use cosmwasm_std::{Addr, Empty};
-use cw_storage_plus::{Item, Map};
+use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 use cw_utils::Expiration;
 use dao_interface::state::{Config, ProposalModule};
 
@@ -30,10 +30,30 @@ pub const PAUSED: Item<Expiration> = Item::new("paused");
 /// The voting module associated with this contract.
 pub const VOTING_MODULE: Item<Addr> = Item::new("voting_module");
 
+pub struct ProposalModulesIndexes<'a> {
+    pub status: MultiIndex<'a, String, ProposalModule, Addr>,
+}
+
+impl<'a> IndexList<ProposalModule> for ProposalModulesIndexes<'a> {
+    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<ProposalModule>> + '_> {
+        let v: Vec<&dyn Index<ProposalModule>> = vec![&self.status];
+        Box::new(v.into_iter())
+    }
+}
+
 /// The proposal modules associated with this contract.
-/// When we change the data format of this map, we update the key (previously "proposal_modules")
+/// When we change the data format of this map, we update the key (previously "proposal_modules" or "proposal_modules_v2")
 /// to create a new namespace for the changed state.
-pub const PROPOSAL_MODULES: Map<Addr, ProposalModule> = Map::new("proposal_modules_v2");
+pub fn proposal_modules<'a>() -> IndexedMap<'a, Addr, ProposalModule, ProposalModulesIndexes<'a>> {
+    let indexes = ProposalModulesIndexes {
+        status: MultiIndex::new(
+            |_x, d: &ProposalModule| d.status.to_string(),
+            "proposal_modules_v3",
+            "proposal_modules_v3__status",
+        ),
+    };
+    IndexedMap::new("proposal_modules_v3", indexes)
+}
 
 /// The count of active proposal modules associated with this contract.
 pub const ACTIVE_PROPOSAL_MODULE_COUNT: Item<u32> = Item::new("active_proposal_module_count");

@@ -190,13 +190,7 @@ pub enum QueryMsg {
     ProposalModules {
         start_after: Option<String>,
         limit: Option<u32>,
-    },
-    /// Gets the active proposal modules associated with the
-    /// contract.
-    #[returns(Vec<crate::state::ProposalModule>)]
-    ActiveProposalModules {
-        start_after: Option<String>,
-        limit: Option<u32>,
+        include_disabled: Option<bool>,
     },
     /// Gets the number of active and total proposal modules
     /// registered with this module.
@@ -236,5 +230,6 @@ pub enum MigrateMsg {
         dao_uri: Option<String>,
         params: Option<MigrateParams>,
     },
+    FromV2 {},
     FromCompatible {},
 }

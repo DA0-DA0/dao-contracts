@@ -230,6 +230,7 @@ fn execute_migration_v1_v2(
         &dao_interface::msg::QueryMsg::ProposalModules {
             start_after: None,
             limit: None,
+            include_disabled: Some(true),
         },
     )?;
 
