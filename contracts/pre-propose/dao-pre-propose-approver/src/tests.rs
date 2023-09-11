@@ -201,6 +201,7 @@ fn setup_default_test(
             &dao_interface::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
+                include_disabled: Some(true),
             },
         )
         .unwrap();
@@ -255,6 +256,7 @@ fn setup_default_test(
             &dao_interface::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
+                include_disabled: Some(true),
             },
         )
         .unwrap();

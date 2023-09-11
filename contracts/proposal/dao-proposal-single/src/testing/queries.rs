@@ -142,6 +142,7 @@ pub(crate) fn query_single_proposal_module(app: &App, core_addr: &Addr) -> Addr 
             &dao_interface::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
+                include_disabled: Some(true),
             },
         )
         .unwrap();

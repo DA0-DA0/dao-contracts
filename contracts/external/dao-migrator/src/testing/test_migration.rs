@@ -78,6 +78,7 @@ pub fn basic_test(voting_type: VotingType, from_core: bool) {
             &dao_interface::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
+                include_disabled: Some(true),
             },
         )
         .unwrap();
@@ -146,6 +147,7 @@ fn test_migrator_address_is_first() {
             &dao_interface::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
+                include_disabled: Some(true),
             },
         )
         .unwrap();
