@@ -1172,6 +1172,26 @@ fn test_admin_permissions() {
         }
     );
 
+    // DAO cannot unpause itself
+    let res = app.execute_contract(
+        core_with_admin_addr.clone(),
+        core_with_admin_addr.clone(),
+        &ExecuteMsg::Unpause {},
+        &[],
+    );
+    assert!(res.is_err());
+
+    // Random person cannot pause the DAO
+    let res = app.execute_contract(
+        Addr::unchecked("random"),
+        core_with_admin_addr.clone(),
+        &ExecuteMsg::Pause {
+            duration: Duration::Height(10),
+        },
+        &[],
+    );
+    assert!(res.is_err());
+
     // Admin can unpause the DAO
     let res = app.execute_contract(
         Addr::unchecked("admin"),
@@ -1186,15 +1206,6 @@ fn test_admin_permissions() {
         .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::PauseInfo {})
         .unwrap();
     assert_eq!(paused, PauseInfoResponse::Unpaused {});
-
-    // DAO cannot unpause itself
-    let res = app.execute_contract(
-        core_with_admin_addr.clone(),
-        core_with_admin_addr.clone(),
-        &ExecuteMsg::Unpause {},
-        &[],
-    );
-    assert!(res.is_err());
 
     // Admin can nominate a new admin.
     let res = app.execute_contract(
