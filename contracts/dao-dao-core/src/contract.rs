@@ -637,13 +637,11 @@ pub fn query_proposal_modules(
         )
     };
 
-    let items: Vec<_> = if let Some(l) = limit {
-        items_iter.take(l as usize).collect::<StdResult<Vec<_>>>()?
+    if let Some(l) = limit {
+        items_iter.take(l as usize).collect()
     } else {
-        items_iter.collect::<StdResult<Vec<_>>>()?
-    };
-
-    Ok(items)
+        items_iter.collect()
+    }
 }
 
 fn get_pause_info(deps: Deps, env: Env) -> StdResult<PauseInfoResponse> {
