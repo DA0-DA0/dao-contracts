@@ -7,11 +7,22 @@ use crate::{
     ContractError,
 };
 
-use cosmwasm_std::{Coin, Uint128};
+use cosmwasm_std::{to_binary, Addr, Coin, Decimal, Uint128};
 use cw_tokenfactory_issuer::msg::{DenomResponse, DenomUnit};
 use cw_utils::Duration;
-use dao_interface::voting::{IsActiveResponse, VotingPowerAtHeightResponse};
-use dao_testing::test_tube::cw_tokenfactory_issuer::TokenfactoryIssuer;
+use dao_interface::{
+    msg::QueryMsg as DaoQueryMsg,
+    state::{Admin, ModuleInstantiateInfo, ProposalModule},
+    voting::{IsActiveResponse, VotingPowerAtHeightResponse},
+};
+use dao_voting::{
+    pre_propose::PreProposeInfo, threshold::PercentageThreshold, threshold::Threshold,
+};
+
+use dao_testing::test_tube::{
+    cw_tokenfactory_issuer::TokenfactoryIssuer, dao_dao_core::DaoCore,
+    dao_proposal_single::DaoProposalSingle,
+};
 use dao_voting::threshold::ActiveThreshold;
 use osmosis_std::types::{
     cosmos::bank::v1beta1::QueryAllBalancesRequest, cosmwasm::wasm::v1::MsgExecuteContractResponse,
@@ -28,7 +39,9 @@ pub const JUNO: &str = "ujuno";
 
 pub struct TestEnv<'a> {
     pub app: &'a OsmosisTestApp,
-    pub vp_contract: TfDaoVotingContract<'a>,
+    pub dao: Option<DaoCore<'a>>,
+    pub proposal_single: Option<DaoProposalSingle<'a>>,
+    pub vp_contract: TokenVotingContract<'a>,
     pub tf_issuer: TokenfactoryIssuer<'a>,
     pub accounts: Vec<SigningAccount>,
 }
@@ -38,8 +51,8 @@ impl<'a> TestEnv<'a> {
         &self,
         msg: &InstantiateMsg,
         signer: SigningAccount,
-    ) -> Result<TfDaoVotingContract, RunnerError> {
-        TfDaoVotingContract::<'a>::instantiate(self.app, self.vp_contract.code_id, msg, &signer)
+    ) -> Result<TokenVotingContract, RunnerError> {
+        TokenVotingContract::<'a>::instantiate(self.app, self.vp_contract.code_id, msg, &signer)
     }
 
     pub fn get_tf_issuer_code_id(&self) -> u64 {
@@ -100,6 +113,7 @@ impl TestEnvBuilder {
         }
     }
 
+    // Minimal default setup with just the key contracts
     pub fn default_setup(self, app: &'_ OsmosisTestApp) -> TestEnv<'_> {
         let accounts = app
             .init_accounts(&[Coin::new(1000000000000000u128, "uosmo")], 10)
@@ -115,7 +129,7 @@ impl TestEnvBuilder {
 
         let issuer_id = TokenfactoryIssuer::upload(app, &accounts[0]).unwrap();
 
-        let vp_contract = TfDaoVotingContract::deploy(
+        let vp_contract = TokenVotingContract::deploy(
             app,
             &InstantiateMsg {
                 token_info: TokenInfo::New(NewTokenInfo {
@@ -145,49 +159,129 @@ impl TestEnvBuilder {
         .unwrap();
 
         let issuer_addr =
-            TfDaoVotingContract::query(&vp_contract, &QueryMsg::TokenContract {}).unwrap();
+            TokenVotingContract::query(&vp_contract, &QueryMsg::TokenContract {}).unwrap();
 
         let tf_issuer = TokenfactoryIssuer::new_with_values(app, issuer_id, issuer_addr).unwrap();
 
         TestEnv {
             app,
-            vp_contract,
-            tf_issuer,
             accounts,
+            dao: None,
+            proposal_single: None,
+            tf_issuer,
+            vp_contract,
         }
     }
 
-    pub fn build(self, app: &'_ OsmosisTestApp) -> TestEnv<'_> {
-        let accounts = self.accounts;
+    // Full DAO setup
+    pub fn full_dao_setup(self, app: &'_ OsmosisTestApp) -> TestEnv<'_> {
+        let accounts = app
+            .init_accounts(&[Coin::new(1000000000000000u128, "uosmo")], 10)
+            .unwrap();
 
-        let vp_contract = TfDaoVotingContract::deploy(
+        let initial_balances: Vec<InitialBalance> = accounts
+            .iter()
+            .map(|acc| InitialBalance {
+                address: acc.address(),
+                amount: Uint128::new(100),
+            })
+            .collect();
+
+        // Upload all needed code ids
+        let issuer_id = TokenfactoryIssuer::upload(app, &accounts[0]).unwrap();
+        let vp_contract_id = TokenVotingContract::upload(app, &accounts[0]).unwrap();
+        let proposal_single_id = DaoProposalSingle::upload(app, &accounts[0]).unwrap();
+
+        let msg = dao_interface::msg::InstantiateMsg {
+            dao_uri: None,
+            admin: None,
+            name: "DAO DAO".to_string(),
+            description: "A DAO that makes DAO tooling".to_string(),
+            image_url: None,
+            automatically_add_cw20s: false,
+            automatically_add_cw721s: false,
+            voting_module_instantiate_info: ModuleInstantiateInfo {
+                code_id: vp_contract_id,
+                msg: to_binary(&InstantiateMsg {
+                    token_info: TokenInfo::New(NewTokenInfo {
+                        token_issuer_code_id: issuer_id,
+                        subdenom: DENOM.to_string(),
+                        metadata: Some(crate::msg::NewDenomMetadata {
+                            description: "Awesome token, get it meow!".to_string(),
+                            additional_denom_units: Some(vec![DenomUnit {
+                                denom: "cat".to_string(),
+                                exponent: 6,
+                                aliases: vec![],
+                            }]),
+                            display: "cat".to_string(),
+                            name: "Cat Token".to_string(),
+                            symbol: "CAT".to_string(),
+                        }),
+                        initial_balances,
+                        initial_dao_balance: Some(Uint128::new(900)),
+                    }),
+                    unstaking_duration: Some(Duration::Time(2)),
+                    active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                        count: Uint128::new(75),
+                    }),
+                })
+                .unwrap(),
+                admin: Some(Admin::CoreModule {}),
+                label: "DAO DAO Voting Module".to_string(),
+            },
+            proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
+                code_id: proposal_single_id,
+                msg: to_binary(&dao_proposal_single::msg::InstantiateMsg {
+                    min_voting_period: None,
+                    threshold: Threshold::ThresholdQuorum {
+                        threshold: PercentageThreshold::Majority {},
+                        quorum: PercentageThreshold::Percent(Decimal::percent(35)),
+                    },
+                    max_voting_period: Duration::Time(432000),
+                    allow_revoting: false,
+                    only_members_execute: true,
+                    close_proposal_on_execution_failure: false,
+                    pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+                })
+                .unwrap(),
+                admin: Some(Admin::CoreModule {}),
+                label: "DAO DAO Proposal Module".to_string(),
+            }],
+            initial_items: None,
+        };
+
+        // Instantiate DAO
+        let dao = DaoCore::new(app, &msg, &accounts[0]).unwrap();
+
+        // Get voting module address, setup vp_contract helper
+        let vp_addr: Addr = dao.query(&DaoQueryMsg::VotingModule {}).unwrap();
+        let vp_contract =
+            TokenVotingContract::new_with_values(app, vp_contract_id, vp_addr.to_string()).unwrap();
+
+        // Get proposal module address, setup proposal_single helper
+        let proposal_modules: Vec<ProposalModule> = dao
+            .query(&DaoQueryMsg::ProposalModules {
+                limit: None,
+                start_after: None,
+            })
+            .unwrap();
+        let proposal_single = DaoProposalSingle::new_with_values(
             app,
-            self.instantiate_msg
-                .as_ref()
-                .expect("instantiate msg not set"),
-            &accounts[0],
+            proposal_single_id,
+            proposal_modules[0].address.to_string(),
         )
         .unwrap();
 
+        // Get issuer address, setup tf_issuer helper
         let issuer_addr =
-            TfDaoVotingContract::query(&vp_contract, &QueryMsg::TokenContract {}).unwrap();
-
-        let issuer_id: u64;
-        if let TokenInfo::New(token) = self
-            .instantiate_msg
-            .expect("instantiate msg not set")
-            .token_info
-        {
-            issuer_id = token.token_issuer_code_id;
-        } else {
-            panic!("TokenInfo is not New");
-        }
-
+            TokenVotingContract::query(&vp_contract, &QueryMsg::TokenContract {}).unwrap();
         let tf_issuer = TokenfactoryIssuer::new_with_values(app, issuer_id, issuer_addr).unwrap();
 
         TestEnv {
             app,
+            dao: Some(dao),
             vp_contract,
+            proposal_single: Some(proposal_single),
             tf_issuer,
             accounts,
         }
@@ -214,13 +308,13 @@ impl TestEnvBuilder {
 }
 
 #[derive(Debug)]
-pub struct TfDaoVotingContract<'a> {
+pub struct TokenVotingContract<'a> {
     pub app: &'a OsmosisTestApp,
     pub contract_addr: String,
     pub code_id: u64,
 }
 
-impl<'a> TfDaoVotingContract<'a> {
+impl<'a> TokenVotingContract<'a> {
     pub fn deploy(
         app: &'a OsmosisTestApp,
         instantiate_msg: &InstantiateMsg,
@@ -250,6 +344,30 @@ impl<'a> TfDaoVotingContract<'a> {
             code_id,
             contract_addr,
         })
+    }
+
+    pub fn new_with_values(
+        app: &'a OsmosisTestApp,
+        code_id: u64,
+        contract_addr: String,
+    ) -> Result<Self, RunnerError> {
+        Ok(Self {
+            app,
+            code_id,
+            contract_addr,
+        })
+    }
+
+    /// uploads contract and returns a code ID
+    pub fn upload(app: &OsmosisTestApp, signer: &SigningAccount) -> Result<u64, RunnerError> {
+        let wasm = Wasm::new(app);
+
+        let code_id = wasm
+            .store_code(&Self::get_wasm_byte_code(), None, signer)?
+            .data
+            .code_id;
+
+        Ok(code_id)
     }
 
     pub fn instantiate(

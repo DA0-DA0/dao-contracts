@@ -6,10 +6,10 @@ use osmosis_std::types::osmosis::tokenfactory::v1beta1::{
 use token_bindings::TokenFactoryMsg;
 
 use crate::error::ContractError;
-use crate::helpers::{check_before_send_hook_features_enabled, check_is_contract_owner};
+use crate::helpers::check_before_send_hook_features_enabled;
 use crate::state::{
     BeforeSendHookInfo, ALLOWLIST, BEFORE_SEND_HOOK_INFO, BURNER_ALLOWANCES, DENOM, DENYLIST,
-    IS_FROZEN, MINTER_ALLOWANCES, OWNER,
+    IS_FROZEN, MINTER_ALLOWANCES,
 };
 
 /// Mints new tokens. To mint new tokens, the address calling this method must
@@ -130,21 +130,13 @@ pub fn burn(
 /// this method.
 pub fn update_contract_owner(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
-    new_owner: String,
+    action: cw_ownable::Action,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
-    // Only allow current contract owner to change owner
-    check_is_contract_owner(deps.as_ref(), info.sender)?;
-
-    // Validate that new owner is a valid address
-    let new_owner_addr = deps.api.addr_validate(&new_owner)?;
-
-    // Update the contract owner in the contract config
-    OWNER.save(deps.storage, &new_owner_addr)?;
-
-    Ok(Response::new()
-        .add_attribute("action", "update_contract_owner")
-        .add_attribute("new_owner", new_owner))
+    // cw-ownable performs all validation and ownership checks for us
+    let ownership = cw_ownable::update_ownership(deps, &env.block, &info.sender, action)?;
+    Ok(Response::default().add_attributes(ownership.into_attributes()))
 }
 
 /// Updates the Token Factory token admin. To set no admin, specify the `new_admin`
@@ -158,7 +150,7 @@ pub fn update_tokenfactory_admin(
     new_admin: String,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
     // Only allow current contract owner to change tokenfactory admin
-    check_is_contract_owner(deps.as_ref(), info.sender)?;
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     // Validate that the new admin is a valid address
     let new_admin_addr = deps.api.addr_validate(&new_admin)?;
@@ -185,7 +177,7 @@ pub fn set_denom_metadata(
     metadata: Metadata,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
     // Only allow current contract owner to set denom metadata
-    check_is_contract_owner(deps.as_ref(), info.sender)?;
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     Ok(Response::new()
         .add_attribute("action", "set_denom_metadata")
@@ -211,7 +203,7 @@ pub fn set_before_send_hook(
     cosmwasm_address: String,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
     // Only allow current contract owner
-    check_is_contract_owner(deps.as_ref(), info.sender)?;
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     // The `cosmwasm_address` can be an empty string if setting the value to nil to
     // disable the hook. If an empty string, we disable before send hook features.
@@ -275,7 +267,7 @@ pub fn set_burner(
     allowance: Uint128,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
     // Only allow current contract owner to set burner allowance
-    check_is_contract_owner(deps.as_ref(), info.sender)?;
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     // Validate that burner is a valid address
     let address = deps.api.addr_validate(&address)?;
@@ -304,7 +296,7 @@ pub fn set_minter(
     allowance: Uint128,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
     // Only allow current contract owner to set minter allowance
-    check_is_contract_owner(deps.as_ref(), info.sender)?;
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     // Validate that minter is a valid address
     let address = deps.api.addr_validate(&address)?;
@@ -342,7 +334,7 @@ pub fn freeze(
     check_before_send_hook_features_enabled(deps.as_ref())?;
 
     // Only allow current contract owner to call this method
-    check_is_contract_owner(deps.as_ref(), info.sender)?;
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     // Update config frozen status
     // NOTE: Does not check if new status is same as old status
@@ -368,7 +360,7 @@ pub fn deny(
     check_before_send_hook_features_enabled(deps.as_ref())?;
 
     // Only allow current contract owner to call this method
-    check_is_contract_owner(deps.as_ref(), info.sender)?;
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     let address = deps.api.addr_validate(&address)?;
 
@@ -408,7 +400,7 @@ pub fn allow(
     check_before_send_hook_features_enabled(deps.as_ref())?;
 
     // Only allow current contract owner to call this method
-    check_is_contract_owner(deps.as_ref(), info.sender)?;
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     let address = deps.api.addr_validate(&address)?;
 
@@ -441,7 +433,7 @@ pub fn force_transfer(
     to_address: String,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
     // Only allow current contract owner to change owner
-    check_is_contract_owner(deps.as_ref(), info.sender)?;
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     // Load TF denom for this contract
     let denom = DENOM.load(deps.storage)?;

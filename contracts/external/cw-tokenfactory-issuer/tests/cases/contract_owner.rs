@@ -1,3 +1,4 @@
+use cosmwasm_std::Addr;
 use cw_tokenfactory_issuer::ContractError;
 use osmosis_test_tube::Account;
 
@@ -10,25 +11,27 @@ fn change_owner_by_owner_should_work() {
     let new_owner = &env.test_accs[1];
 
     assert_eq!(
-        prev_owner.address(),
-        env.cw_tokenfactory_issuer.query_owner().unwrap().address
+        Some(Addr::unchecked(prev_owner.address())),
+        env.cw_tokenfactory_issuer.query_owner().unwrap().owner,
     );
 
     env.cw_tokenfactory_issuer
-        .update_contract_owner(&new_owner.address(), prev_owner)
+        .update_contract_owner(new_owner, prev_owner)
         .unwrap();
 
     assert_eq!(
-        new_owner.address(),
-        env.cw_tokenfactory_issuer.query_owner().unwrap().address
+        env.cw_tokenfactory_issuer.query_owner().unwrap().owner,
+        Some(Addr::unchecked(new_owner.address())),
     );
 
     // Previous owner should not be able to execute owner action
     assert_eq!(
         env.cw_tokenfactory_issuer
-            .update_contract_owner(&prev_owner.address(), prev_owner)
+            .update_contract_owner(prev_owner, prev_owner)
             .unwrap_err(),
-        TokenfactoryIssuer::execute_error(ContractError::Unauthorized {})
+        TokenfactoryIssuer::execute_error(ContractError::Ownership(
+            cw_ownable::OwnershipError::NotOwner
+        ))
     );
 }
 
@@ -39,11 +42,13 @@ fn change_owner_by_non_owner_should_fail() {
 
     let err = env
         .cw_tokenfactory_issuer
-        .update_contract_owner(&new_owner.address(), new_owner)
+        .update_contract_owner(new_owner, new_owner)
         .unwrap_err();
 
     assert_eq!(
         err,
-        TokenfactoryIssuer::execute_error(ContractError::Unauthorized {})
+        TokenfactoryIssuer::execute_error(ContractError::Ownership(
+            cw_ownable::OwnershipError::NotOwner
+        ))
     );
 }

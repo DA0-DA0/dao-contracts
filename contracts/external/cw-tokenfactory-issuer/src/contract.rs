@@ -15,7 +15,7 @@ use crate::execute;
 use crate::hooks;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, SudoMsg};
 use crate::queries;
-use crate::state::{BeforeSendHookInfo, BEFORE_SEND_HOOK_INFO, DENOM, IS_FROZEN, OWNER};
+use crate::state::{BeforeSendHookInfo, BEFORE_SEND_HOOK_INFO, DENOM, IS_FROZEN};
 
 // Version info for migration
 const CONTRACT_NAME: &str = "CARGO_PKG_NAME";
@@ -33,7 +33,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     // Owner is the sender of the initial InstantiateMsg
-    OWNER.save(deps.storage, &info.sender)?;
+    cw_ownable::initialize_owner(deps.storage, deps.api, Some(info.sender.as_str()))?;
 
     // BeforeSendHook features are disabled by default.
     BEFORE_SEND_HOOK_INFO.save(
@@ -102,8 +102,8 @@ pub fn execute(
         ExecuteMsg::UpdateTokenFactoryAdmin { new_admin } => {
             execute::update_tokenfactory_admin(deps, info, new_admin)
         }
-        ExecuteMsg::UpdateContractOwner { new_owner } => {
-            execute::update_contract_owner(deps, info, new_owner)
+        ExecuteMsg::UpdateOwnership(action) => {
+            execute::update_contract_owner(deps, env, info, action)
         }
         ExecuteMsg::SetMinterAllowance { address, allowance } => {
             execute::set_minter(deps, info, address, allowance)
@@ -151,7 +151,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::IsAllowed { address } => to_binary(&queries::query_is_allowed(deps, address)?),
         QueryMsg::IsDenied { address } => to_binary(&queries::query_is_denied(deps, address)?),
         QueryMsg::IsFrozen {} => to_binary(&queries::query_is_frozen(deps)?),
-        QueryMsg::Owner {} => to_binary(&queries::query_owner(deps)?),
+        QueryMsg::Ownership {} => to_binary(&queries::query_owner(deps)?),
         QueryMsg::MintAllowance { address } => {
             to_binary(&queries::query_mint_allowance(deps, address)?)
         }

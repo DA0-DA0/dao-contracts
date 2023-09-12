@@ -1,4 +1,4 @@
-use cosmwasm_std::{Coin, Uint128};
+use cosmwasm_std::{Addr, Coin, Uint128};
 use cw_tokenfactory_issuer::msg::DenomUnit;
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdError};
 use osmosis_std::types::cosmos::bank::v1beta1::QueryBalanceRequest;
@@ -6,11 +6,28 @@ use osmosis_test_tube::{Account, OsmosisTestApp};
 
 use crate::{
     msg::{ExecuteMsg, InitialBalance, InstantiateMsg, NewDenomMetadata, NewTokenInfo, TokenInfo},
-    tests::test_tube::test_env::TfDaoVotingContract,
+    tests::test_tube::test_env::TokenVotingContract,
     ContractError,
 };
 
 use super::test_env::{TestEnv, TestEnvBuilder};
+
+#[test]
+fn test_full_integration_correct_setup() {
+    let app = OsmosisTestApp::new();
+    let env = TestEnvBuilder::new();
+    let TestEnv { dao, tf_issuer, .. } = env.full_dao_setup(&app);
+
+    // Issuer owner should be set to the DAO
+    let issuer_admin = tf_issuer
+        .query::<cw_ownable::Ownership<Addr>>(&cw_tokenfactory_issuer::msg::QueryMsg::Ownership {})
+        .unwrap()
+        .owner;
+    assert_eq!(
+        issuer_admin,
+        Some(Addr::unchecked(dao.unwrap().contract_addr))
+    );
+}
 
 #[test]
 fn test_stake_unstake_new_denom() {
@@ -20,7 +37,7 @@ fn test_stake_unstake_new_denom() {
         vp_contract,
         accounts,
         ..
-    } = env.default_setup(&app);
+    } = env.full_dao_setup(&app);
 
     let denom = vp_contract.query_denom().unwrap().denom;
 
@@ -248,7 +265,7 @@ fn test_instantiate_invalid_active_threshold_count_fails() {
 
     assert_eq!(
         err,
-        TfDaoVotingContract::execute_submessage_error(ContractError::ActiveThresholdError(
+        TokenVotingContract::execute_submessage_error(ContractError::ActiveThresholdError(
             ActiveThresholdError::InvalidAbsoluteCount {}
         ))
     );
@@ -291,6 +308,6 @@ fn test_instantiate_no_initial_balances_fails() {
         .unwrap_err();
     assert_eq!(
         err,
-        TfDaoVotingContract::execute_submessage_error(ContractError::InitialBalancesError {})
+        TokenVotingContract::execute_submessage_error(ContractError::InitialBalancesError {})
     );
 }

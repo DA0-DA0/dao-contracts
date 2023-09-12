@@ -42,7 +42,7 @@ fn denylist_by_owner_should_pass() {
 }
 
 #[test]
-fn denylist_by_non_denylister_should_fail() {
+fn denylist_by_non_owner_should_fail() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
     let non_owner = &env.test_accs[1];
@@ -61,7 +61,9 @@ fn denylist_by_non_denylister_should_fail() {
 
     assert_eq!(
         err,
-        TokenfactoryIssuer::execute_error(ContractError::Unauthorized {})
+        TokenfactoryIssuer::execute_error(ContractError::Ownership(
+            cw_ownable::OwnershipError::NotOwner
+        ))
     );
 }
 

@@ -72,7 +72,9 @@ fn set_denom_metadata_by_contract_non_owner_should_fail() {
 
     assert_eq!(
         err,
-        TokenfactoryIssuer::execute_error(ContractError::Unauthorized {})
+        TokenfactoryIssuer::execute_error(ContractError::Ownership(
+            cw_ownable::OwnershipError::NotOwner
+        ))
     )
 }
 

@@ -1,16 +1,6 @@
-use crate::state::{ALLOWLIST, BEFORE_SEND_HOOK_INFO, DENOM, DENYLIST, IS_FROZEN, OWNER};
+use crate::state::{ALLOWLIST, BEFORE_SEND_HOOK_INFO, DENOM, DENYLIST, IS_FROZEN};
 use crate::ContractError;
-use cosmwasm_std::{Addr, Deps};
-
-/// Checks wether the sender is the owner of the contract
-pub fn check_is_contract_owner(deps: Deps, sender: Addr) -> Result<(), ContractError> {
-    let owner = OWNER.load(deps.storage)?;
-    if owner != sender {
-        Err(ContractError::Unauthorized {})
-    } else {
-        Ok(())
-    }
-}
+use cosmwasm_std::Deps;
 
 /// Checks wether the BeforeSendHookFeatures gated features are enabled
 pub fn check_before_send_hook_features_enabled(deps: Deps) -> Result<(), ContractError> {

@@ -6,6 +6,9 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
+    #[error(transparent)]
+    Ownership(#[from] cw_ownable::OwnershipError),
+
     #[error("BeforeSendHook not set. Features requiring it are disabled.")]
     BeforeSendHookFeaturesDisabled {},
 

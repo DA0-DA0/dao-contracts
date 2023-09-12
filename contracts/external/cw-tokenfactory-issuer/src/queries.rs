@@ -3,11 +3,11 @@ use cw_storage_plus::{Bound, Map};
 
 use crate::msg::{
     AllowanceInfo, AllowanceResponse, AllowancesResponse, AllowlistResponse, DenomResponse,
-    DenylistResponse, IsFrozenResponse, OwnerResponse, StatusInfo, StatusResponse,
+    DenylistResponse, IsFrozenResponse, StatusInfo, StatusResponse,
 };
 use crate::state::{
     BeforeSendHookInfo, ALLOWLIST, BEFORE_SEND_HOOK_INFO, BURNER_ALLOWANCES, DENOM, DENYLIST,
-    IS_FROZEN, MINTER_ALLOWANCES, OWNER,
+    IS_FROZEN, MINTER_ALLOWANCES,
 };
 
 // Default settings for pagination
@@ -26,12 +26,9 @@ pub fn query_is_frozen(deps: Deps) -> StdResult<IsFrozenResponse> {
     Ok(IsFrozenResponse { is_frozen })
 }
 
-/// Returns the owner of the contract. Response: OwnerResponse
-pub fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
-    let owner = OWNER.load(deps.storage)?;
-    Ok(OwnerResponse {
-        address: owner.into_string(),
-    })
+/// Returns the owner of the contract. Response: Ownership
+pub fn query_owner(deps: Deps) -> StdResult<cw_ownable::Ownership<::cosmwasm_std::Addr>> {
+    cw_ownable::get_ownership(deps.storage)
 }
 
 /// Returns the mint allowance of the specified user. Response: AllowanceResponse

@@ -2,13 +2,12 @@
 // see https://github.com/rust-lang/rust/issues/46379
 #![allow(dead_code)]
 
-use cosmwasm_std::{Coin, Uint128};
-
+use cosmwasm_std::{Addr, Coin, Uint128};
 use cw_tokenfactory_issuer::msg::{AllowlistResponse, DenylistResponse, Metadata, MigrateMsg};
 use cw_tokenfactory_issuer::{
     msg::{
         AllowanceResponse, AllowancesResponse, DenomResponse, ExecuteMsg, InstantiateMsg,
-        IsFrozenResponse, OwnerResponse, QueryMsg, StatusResponse,
+        IsFrozenResponse, QueryMsg, StatusResponse,
     },
     ContractError,
 };
@@ -171,15 +170,21 @@ impl TokenfactoryIssuer {
 
     pub fn update_contract_owner(
         &self,
-        new_owner: &str,
+        new_owner: &SigningAccount,
         signer: &SigningAccount,
     ) -> RunnerExecuteResult<MsgExecuteContractResponse> {
         self.execute(
-            &ExecuteMsg::UpdateContractOwner {
-                new_owner: new_owner.to_string(),
-            },
+            &ExecuteMsg::UpdateOwnership(cw_ownable::Action::TransferOwnership {
+                new_owner: new_owner.address(),
+                expiry: None,
+            }),
             &[],
             signer,
+        )?;
+        self.execute(
+            &ExecuteMsg::UpdateOwnership(cw_ownable::Action::AcceptOwnership {}),
+            &[],
+            new_owner,
         )
     }
     pub fn update_tokenfactory_admin(
@@ -366,8 +371,8 @@ impl TokenfactoryIssuer {
         })
     }
 
-    pub fn query_owner(&self) -> Result<OwnerResponse, RunnerError> {
-        self.query(&QueryMsg::Owner {})
+    pub fn query_owner(&self) -> Result<cw_ownable::Ownership<Addr>, RunnerError> {
+        self.query(&QueryMsg::Ownership {})
     }
 
     pub fn query_mint_allowance(&self, address: &str) -> Result<AllowanceResponse, RunnerError> {

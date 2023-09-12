@@ -13,6 +13,7 @@ use cw_tokenfactory_issuer::msg::{
 };
 use cw_utils::{maybe_addr, must_pay, parse_reply_instantiate_data, Duration};
 use dao_hooks::stake::{stake_hook_msgs, unstake_hook_msgs};
+use dao_interface::state::ModuleInstantiateCallback;
 use dao_interface::voting::{
     IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
@@ -661,19 +662,37 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         }
                     }
 
-                    // Update issuer contract owner to be the DAO
+                    // Begin update issuer contract owner to be the DAO, this is a
+                    // two-step ownership transfer.
                     msgs.push(WasmMsg::Execute {
                         contract_addr: issuer_addr.clone(),
-                        msg: to_binary(&IssuerExecuteMsg::UpdateContractOwner {
-                            new_owner: dao.to_string(),
-                        })?,
+                        msg: to_binary(&IssuerExecuteMsg::UpdateOwnership(
+                            cw_ownable::Action::TransferOwnership {
+                                new_owner: dao.to_string(),
+                                expiry: None,
+                            },
+                        ))?,
                         funds: vec![],
                     });
+
+                    // On setup success, have the DAO complete the second part of
+                    // ownership transfer by accepting ownership in a
+                    // ModuleInstantiateCallback.
+                    let callback = to_binary(&ModuleInstantiateCallback {
+                        msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
+                            contract_addr: issuer_addr.clone(),
+                            msg: to_binary(&IssuerExecuteMsg::UpdateOwnership(
+                                cw_ownable::Action::AcceptOwnership {},
+                            ))?,
+                            funds: vec![],
+                        })],
+                    })?;
 
                     Ok(Response::new()
                         .add_attribute("cw-tokenfactory-issuer-address", issuer_addr)
                         .add_attribute("denom", denom)
-                        .add_messages(msgs))
+                        .add_messages(msgs)
+                        .set_data(callback))
                 }
             }
         }

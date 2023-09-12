@@ -92,7 +92,10 @@ pub enum ExecuteMsg {
     /// at all, it needs to the be the Token Factory token admin.
     ///
     /// Normally, the contract owner will be a DAO.
-    UpdateContractOwner { new_owner: String },
+    ///
+    /// The `action` to be provided can be either to propose transferring ownership to an
+    /// account, accept a pending ownership transfer, or renounce the ownership permanently.
+    UpdateOwnership(cw_ownable::Action),
 }
 
 /// Used for smart contract migration.
@@ -111,9 +114,8 @@ pub enum QueryMsg {
     #[returns(DenomResponse)]
     Denom {},
 
-    /// Returns the owner of the contract. Response: OwnerResponse
-    #[returns(OwnerResponse)]
-    Owner {},
+    #[returns(::cw_ownable::Ownership<::cosmwasm_std::Addr>)]
+    Ownership {},
 
     /// Returns the burn allowance of the specified address. Response: AllowanceResponse
     #[returns(AllowanceResponse)]

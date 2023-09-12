@@ -11,9 +11,11 @@ This repo contains a set of contracts that when used in conjunction with the x/t
 
 It is intended to work on multiple chains supporting Token Factory, and has been tested on Juno Network and Osmosis.
 
-The contract has an owner (which can be removed or updated via `ExecuteMsg::UpdateContractOwner {}`), but it can delegate capabilities to other acccounts. For example, the owner of a contract can delegate minting allowance of 1000 tokens to a new address.
+The contract has an owner (which can be removed or updated via `ExecuteMsg::UpdateOwnership {}`), but it can delegate capabilities to other acccounts. For example, the owner of a contract can delegate minting allowance of 1000 tokens to a new address. 
 
-The contract is also the admin of the newly created Token Factory denom. For minting and burning, users then interact with the contract using its own ExecuteMsgs which trigger the contract's access control logic, and the contract then dispatches tokenfactory sdk.Msgs from its own contract account.
+Ownership functionality for this contract is implemented using the `cw-ownable` library.
+
+The `cw_tokenfactory_issuer` contract is also the admin of newly created Token Factory denoms. For minting and burning, users then interact with the contract using its own ExecuteMsgs which trigger the contract's access control logic, and the contract then dispatches tokenfactory sdk.Msgs from its own contract account.
 
 ## Instantiation
 

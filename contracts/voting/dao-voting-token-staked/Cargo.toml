@@ -25,6 +25,7 @@ test-tube = []
 cosmwasm-std    = { workspace = true, features = ["cosmwasm_1_1"] }
 cosmwasm-schema = { workspace = true }
 cosmwasm-storage = { workspace = true }
+cw-ownable = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 cw-utils = { workspace = true }
@@ -43,6 +44,7 @@ anyhow = { workspace = true }
 # TODO use upstream when new release is tagged
 cw-multi-test = { git = "https://github.com/CosmWasm/cw-multi-test.git", rev = "d38db7752b9f054c395d6108453f8b321e4cab02" }
 cw-tokenfactory-issuer = { workspace = true }
+dao-proposal-single = { workspace = true }
 dao-proposal-hook-counter = { workspace = true }
 dao-testing = { workspace = true, features = ["test-tube"] }
 osmosis-std = { workpsace = true }

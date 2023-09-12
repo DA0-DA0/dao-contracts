@@ -2,9 +2,6 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 
-/// Holds the owner of this contract
-pub const OWNER: Item<Addr> = Item::new("owner");
-
 /// Holds the Token Factory denom managed by this contract
 pub const DENOM: Item<String> = Item::new("denom");
 

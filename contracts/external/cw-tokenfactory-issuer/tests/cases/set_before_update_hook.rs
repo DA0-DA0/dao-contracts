@@ -19,7 +19,9 @@ fn test_set_before_send_hook() {
 
     assert_eq!(
         err,
-        TokenfactoryIssuer::execute_error(ContractError::Unauthorized {})
+        TokenfactoryIssuer::execute_error(ContractError::Ownership(
+            cw_ownable::OwnershipError::NotOwner
+        ))
     );
 
     // Owner can set before update hook, but hook is already set

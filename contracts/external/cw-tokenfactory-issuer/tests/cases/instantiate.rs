@@ -1,3 +1,4 @@
+use cosmwasm_std::Addr;
 use cw_tokenfactory_issuer::{
     msg::{InstantiateMsg, QueryMsg},
     state::BeforeSendHookInfo,
@@ -53,10 +54,10 @@ fn instantiate_with_new_token_should_set_initial_state_correctly() {
         .unwrap();
     assert!(!info.advanced_features_enabled);
 
-    let owner_addr = env.cw_tokenfactory_issuer.query_owner().unwrap().address;
+    let owner_addr = env.cw_tokenfactory_issuer.query_owner().unwrap().owner;
     assert_eq!(
         owner_addr,
-        owner.address(),
+        Some(Addr::unchecked(owner.address())),
         "owner must be contract instantiate tx signer"
     );
 }
@@ -96,10 +97,10 @@ fn instantiate_with_existing_token_should_set_initial_state_correctly() {
         .is_frozen;
     assert!(!is_frozen, "newly instantiated contract must not be frozen");
 
-    let owner_addr = env.cw_tokenfactory_issuer.query_owner().unwrap().address;
+    let owner_addr = env.cw_tokenfactory_issuer.query_owner().unwrap().owner;
     assert_eq!(
         owner_addr,
-        owner.address(),
+        Some(Addr::unchecked(owner.address())),
         "owner must be contract instantiate tx signer"
     );
 }
