@@ -28,7 +28,7 @@ use dao_voting::{
 use crate::error::ContractError;
 use crate::msg::{
     DenomResponse, ExecuteMsg, GetHooksResponse, InitialBalance, InstantiateMsg,
-    ListStakersResponse, MigrateMsg, QueryMsg, StakerBalanceResponse, TokenInfo,
+    ListStakersResponse, MigrateMsg, NewTokenInfo, QueryMsg, StakerBalanceResponse, TokenInfo,
 };
 use crate::state::{
     Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, DENOM, HOOKS, MAX_CLAIMS, STAKED_BALANCES,
@@ -77,10 +77,6 @@ pub fn instantiate(
         ACTIVE_THRESHOLD.save(deps.storage, active_threshold)?;
     }
 
-    // TODO only needed for new tokens
-    // Save new token info for use in reply
-    TOKEN_INSTANTIATION_INFO.save(deps.storage, &msg.token_info)?;
-
     match msg.token_info {
         TokenInfo::Existing { denom } => {
             // Validate active threshold absolute count if configured
@@ -96,15 +92,24 @@ pub fn instantiate(
                 .add_attribute("token", "existing_token")
                 .add_attribute("denom", denom))
         }
-        TokenInfo::New(token) => {
+        TokenInfo::New(ref token) => {
+            let NewTokenInfo {
+                subdenom,
+                token_issuer_code_id,
+                ..
+            } = token;
+
+            // Save new token info for use in reply
+            TOKEN_INSTANTIATION_INFO.save(deps.storage, &msg.token_info)?;
+
             // Tnstantiate cw-token-factory-issuer contract
             // DAO (sender) is set as contract admin
             let issuer_instantiate_msg = SubMsg::reply_on_success(
                 WasmMsg::Instantiate {
                     admin: Some(info.sender.to_string()),
-                    code_id: token.token_issuer_code_id,
+                    code_id: *token_issuer_code_id,
                     msg: to_binary(&IssuerInstantiateMsg::NewToken {
-                        subdenom: token.subdenom,
+                        subdenom: subdenom.to_string(),
                     })?,
                     funds: info.funds,
                     label: "cw-tokenfactory-issuer".to_string(),
@@ -542,13 +547,6 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             TOKEN_INSTANTIATION_INFO.remove(deps.storage);
 
             match token_info {
-                TokenInfo::Existing { .. } => {
-                    // TODO this should never be called? Throw error? Unreachable?
-                    Ok(
-                        Response::new()
-                            .add_attribute("cw-tokenfactory-issuer-address", issuer_addr),
-                    )
-                }
                 TokenInfo::New(token) => {
                     // Load the DAO address
                     let dao = DAO.load(deps.storage)?;
@@ -694,6 +692,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         .add_messages(msgs)
                         .set_data(callback))
                 }
+                _ => unreachable!(),
             }
         }
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),
