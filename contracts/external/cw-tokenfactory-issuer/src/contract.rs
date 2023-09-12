@@ -18,7 +18,7 @@ use crate::queries;
 use crate::state::{BeforeSendHookInfo, BEFORE_SEND_HOOK_INFO, DENOM, IS_FROZEN};
 
 // Version info for migration
-const CONTRACT_NAME: &str = "CARGO_PKG_NAME";
+const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const CREATE_DENOM_REPLY_ID: u64 = 1;
