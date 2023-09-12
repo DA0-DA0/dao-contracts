@@ -112,7 +112,7 @@ fn renounce_ownership() {
     assert_eq!(
         env.cw_tokenfactory_issuer
             .set_before_send_hook(hook.address(), owner)
-            .unwrap(),
+            .unwrap_err(),
         TokenfactoryIssuer::execute_error(ContractError::Ownership(
             cw_ownable::OwnershipError::NoOwner
         ))
