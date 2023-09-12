@@ -8,5 +8,5 @@ mod force_transfer;
 mod freeze;
 mod instantiate;
 mod mint;
-mod set_before_update_hook;
+mod set_before_send_hook;
 mod tokenfactory_admin;
