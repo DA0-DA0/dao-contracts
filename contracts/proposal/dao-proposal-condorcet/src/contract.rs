@@ -271,8 +271,10 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             let mut proposal = PROPOSAL.load(deps.storage, proposal_id as u32)?;
             proposal.set_execution_failed();
             PROPOSAL.save(deps.storage, proposal_id as u32, &proposal)?;
+
             Ok(Response::default()
-                .add_attribute("proposal_execution_failed", proposal_id.to_string()))
+                .add_attribute("proposal_execution_failed", proposal_id.to_string())
+                .add_attribute("error", msg.result.unwrap_err()))
         }
         _ => unimplemented!("pre-propose and hooks not yet supported"),
     }

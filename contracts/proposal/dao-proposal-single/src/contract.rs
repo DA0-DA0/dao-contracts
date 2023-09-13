@@ -957,7 +957,9 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                 None => Err(ContractError::NoSuchProposal { id: proposal_id }),
             })?;
 
-            Ok(Response::new().add_attribute("proposal_execution_failed", proposal_id.to_string()))
+            Ok(Response::new()
+                .add_attribute("proposal_execution_failed", proposal_id.to_string())
+                .add_attribute("error", msg.result.unwrap_err()))
         }
         TaggedReplyId::FailedProposalHook(idx) => {
             let addr = PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?;
