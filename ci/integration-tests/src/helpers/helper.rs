@@ -59,6 +59,7 @@ pub fn create_dao(
             })?,
             admin: Some(Admin::CoreModule {}),
             label: "DAO DAO Voting Module".to_string(),
+            funds: vec![],
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: chain.orc.contract_map.code_id("dao_proposal_single")?,
@@ -86,11 +87,13 @@ pub fn create_dao(
                         })
                         .unwrap(),
                         admin: Some(Admin::CoreModule {}),
+                        funds: vec![],
                         label: "DAO DAO Pre-Propose Module".to_string(),
                     },
                 },
             })?,
             admin: Some(Admin::CoreModule {}),
+            funds: vec![],
             label: "DAO DAO Proposal Module".to_string(),
         }],
         initial_items: None,

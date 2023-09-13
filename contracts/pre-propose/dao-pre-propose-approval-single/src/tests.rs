@@ -71,6 +71,7 @@ fn get_default_proposal_module_instantiate(
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
+                funds: vec![],
                 label: "baby's first pre-propose module".to_string(),
             },
         },
@@ -1200,6 +1201,7 @@ fn test_instantiate_with_zero_native_deposit() {
                     })
                     .unwrap(),
                     admin: Some(Admin::CoreModule {}),
+                    funds: vec![],
                     label: "baby's first pre-propose module".to_string(),
                 },
             },
@@ -1263,6 +1265,7 @@ fn test_instantiate_with_zero_cw20_deposit() {
                     })
                     .unwrap(),
                     admin: Some(Admin::CoreModule {}),
+                    funds: vec![],
                     label: "baby's first pre-propose module".to_string(),
                 },
             },

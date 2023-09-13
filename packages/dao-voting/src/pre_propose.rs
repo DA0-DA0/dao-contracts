@@ -116,6 +116,7 @@ mod tests {
                 code_id: 42,
                 msg: to_binary("foo").unwrap(),
                 admin: None,
+                funds: vec![],
                 label: "pre-propose-9000".to_string(),
             },
         };

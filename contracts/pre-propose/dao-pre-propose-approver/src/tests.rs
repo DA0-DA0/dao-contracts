@@ -95,6 +95,7 @@ fn get_proposal_module_approval_single_instantiate(
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
+                funds: vec![],
                 label: "baby's first pre-propose module, needs supervision".to_string(),
             },
         },
@@ -126,6 +127,7 @@ fn get_proposal_module_approver_instantiate(
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
+                funds: vec![],
                 label: "approver module".to_string(),
             },
         },

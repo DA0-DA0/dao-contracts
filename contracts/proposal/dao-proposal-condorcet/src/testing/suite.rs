@@ -96,12 +96,14 @@ impl SuiteBuilder {
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
+                funds: vec![],
                 label: "voting module".to_string(),
             },
             proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
                 code_id: condorcet_id,
                 msg: to_binary(&self.instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
+                funds: vec![],
                 label: "condorcet module".to_string(),
             }],
             initial_items: None,

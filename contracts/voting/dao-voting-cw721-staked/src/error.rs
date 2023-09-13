@@ -1,10 +1,14 @@
 use cosmwasm_std::{Addr, StdError};
+use cw_utils::ParseReplyError;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error(transparent)]
     Std(#[from] StdError),
+
+    #[error(transparent)]
+    ParseReplyError(#[from] ParseReplyError),
 
     #[error("Can not stake that which has already been staked")]
     AlreadyStaked {},
@@ -44,6 +48,9 @@ pub enum ContractError {
 
     #[error("Got a submessage reply with unknown id: {id}")]
     UnknownReplyId { id: u64 },
+
+    #[error("Factory message must serialize to WasmMsg::Execute")]
+    UnsupportedFactoryMsg {},
 
     #[error("Active threshold count must be greater than zero")]
     ZeroActiveCount {},

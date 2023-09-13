@@ -8,7 +8,7 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NumTokensResponse};
 use cw_storage_plus::Bound;
-use cw_utils::{parse_reply_instantiate_data, Duration};
+use cw_utils::{parse_reply_execute_data, parse_reply_instantiate_data, Duration};
 use dao_hooks::nft_stake::{stake_nft_hook_msgs, unstake_nft_hook_msgs};
 use dao_interface::voting::IsActiveResponse;
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
@@ -25,6 +25,7 @@ pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const INSTANTIATE_NFT_CONTRACT_REPLY_ID: u64 = 0;
 const VALIDATE_ABSOLUTE_COUNT_FOR_NEW_NFT_CONTRACTS: u64 = 1;
+const FACTORY_EXECUTE_REPLY_ID: u64 = 2;
 
 // We multiply by this when calculating needed power for being active
 // when using active threshold with percent
@@ -176,6 +177,25 @@ pub fn instantiate(
                 .add_attribute("method", "instantiate")
                 .add_submessage(instantiate_msg))
         }
+        NftContract::Factory(binary) => match from_binary(&binary)? {
+            WasmMsg::Execute {
+                msg,
+                contract_addr,
+                funds,
+            } => Ok(Response::new()
+                .add_attribute("action", "intantiate")
+                .add_submessage(SubMsg::reply_on_success(
+                    WasmMsg::Execute {
+                        contract_addr,
+                        msg,
+                        // TODO what to do with funds for fair burn?
+                        // Need to pass them along to the factory
+                        funds,
+                    },
+                    FACTORY_EXECUTE_REPLY_ID,
+                ))),
+            _ => return Err(ContractError::UnsupportedFactoryMsg {}),
+        },
     }
 }
 
@@ -712,6 +732,21 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                 }
             }
             Ok(Response::new())
+        }
+        FACTORY_EXECUTE_REPLY_ID => {
+            let res = parse_reply_execute_data(msg)?;
+
+            // TODO validate active threshold is set. Some contracts such as a minter,
+            // contract may not have any supply until tokens are minted.
+
+            match res.data {
+                Some(data) => {
+                    // TODO parse data and save token contract address / denom
+                    unimplemented!()
+                }
+                // TODO better error
+                None => return Err(ContractError::Unauthorized {}),
+            }
         }
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }

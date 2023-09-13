@@ -1964,6 +1964,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "dao-test-custom-factory"
+version = "2.2.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-multi-test",
+ "cw-storage-plus 1.1.0",
+ "cw2 1.1.0",
+ "dao-dao-macros",
+ "dao-interface",
+ "thiserror",
+]
+
+[[package]]
 name = "dao-testing"
 version = "2.2.0"
 dependencies = [

@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Binary, Uint128};
 use cw_tokenfactory_issuer::msg::DenomUnit;
 use cw_utils::Duration;
 use dao_dao_macros::{active_query, token_query, voting_module_query};
@@ -54,6 +54,9 @@ pub enum TokenInfo {
     /// Creates a new Token Factory token via the issue contract with the DAO automatically
     /// setup as admin and owner.
     New(NewTokenInfo),
+    /// Uses a factory pattern that must return the denom, optionally a Token Contract address.
+    /// The binary must serialize to a `WasmMsg::Execute` message.
+    Factory(Binary),
 }
 
 #[cw_serde]

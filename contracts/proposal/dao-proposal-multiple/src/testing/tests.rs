@@ -96,6 +96,7 @@ pub fn get_pre_propose_info(
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
+            funds: vec![],
             label: "pre_propose_contract".to_string(),
         },
     }

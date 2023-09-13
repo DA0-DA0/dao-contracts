@@ -2,8 +2,8 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    coins, to_binary, BankMsg, BankQuery, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Order, Reply, Response, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
+    coins, from_binary, to_binary, BankMsg, BankQuery, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Order, Reply, Response, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_controllers::ClaimsResponse;
@@ -11,7 +11,9 @@ use cw_storage_plus::Bound;
 use cw_tokenfactory_issuer::msg::{
     DenomUnit, ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg, Metadata,
 };
-use cw_utils::{maybe_addr, must_pay, parse_reply_instantiate_data, Duration};
+use cw_utils::{
+    maybe_addr, must_pay, parse_reply_execute_data, parse_reply_instantiate_data, Duration,
+};
 use dao_hooks::stake::{stake_hook_msgs, unstake_hook_msgs};
 use dao_interface::state::ModuleInstantiateCallback;
 use dao_interface::voting::{
@@ -43,6 +45,7 @@ const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 
 const INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID: u64 = 0;
+const FACTORY_EXECUTE_REPLY_ID: u64 = 2;
 
 // We multiply by this when calculating needed power for being active
 // when using active threshold with percent
@@ -122,6 +125,23 @@ pub fn instantiate(
                 .add_attribute("token", "new_token")
                 .add_submessage(issuer_instantiate_msg))
         }
+        TokenInfo::Factory(binary) => match from_binary(&binary)? {
+            WasmMsg::Execute {
+                msg, contract_addr, ..
+            } => Ok(Response::new()
+                .add_attribute("action", "intantiate")
+                .add_submessage(SubMsg::reply_on_success(
+                    WasmMsg::Execute {
+                        contract_addr,
+                        msg,
+                        // TODO what to do with funds for fair burn?
+                        // Need to pass them along to the factory
+                        funds: vec![],
+                    },
+                    FACTORY_EXECUTE_REPLY_ID,
+                ))),
+            _ => return Err(ContractError::UnsupportedFactoryMsg {}),
+        },
     }
 }
 
@@ -693,6 +713,21 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         .set_data(callback))
                 }
                 _ => unreachable!(),
+            }
+        }
+        FACTORY_EXECUTE_REPLY_ID => {
+            let res = parse_reply_execute_data(msg)?;
+
+            // TODO validate active threshold is set. Some contracts such as a minter,
+            // contract may not have any supply until tokens are minted.
+
+            match res.data {
+                Some(data) => {
+                    // TODO parse data and save token contract address / denom
+                    unimplemented!()
+                }
+                // TODO better error
+                None => return Err(ContractError::Unauthorized {}),
             }
         }
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),
