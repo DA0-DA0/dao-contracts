@@ -130,6 +130,7 @@ pub fn instantiate(
                 msg, contract_addr, ..
             } => Ok(Response::new()
                 .add_attribute("action", "intantiate")
+                .add_attribute("token", "custom_factory")
                 .add_submessage(SubMsg::reply_on_success(
                     WasmMsg::Execute {
                         contract_addr,
@@ -707,8 +708,8 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     })?;
 
                     Ok(Response::new()
-                        .add_attribute("cw-tokenfactory-issuer-address", issuer_addr)
                         .add_attribute("denom", denom)
+                        .add_attribute("token_contract", issuer_addr)
                         .add_messages(msgs)
                         .set_data(callback))
                 }
@@ -728,7 +729,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     DENOM.save(deps.storage, &info.denom)?;
 
                     // Save token issuer contract if one is returned
-                    if let Some(token_contract) = info.token_contract {
+                    if let Some(ref token_contract) = info.token_contract {
                         TOKEN_ISSUER_CONTRACT
                             .save(deps.storage, &deps.api.addr_validate(&token_contract)?)?;
                     }
@@ -736,8 +737,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     // TODO validate active threshold is set? Some contracts such as a minter,
                     // contract may not have any supply until tokens are minted.
 
-                    // TODO also include token contract
-                    Ok(Response::new().add_attribute("denom", info.denom))
+                    Ok(Response::new()
+                        .add_attribute("denom", info.denom)
+                        .add_attribute("token_contract", info.token_contract.unwrap_or_default()))
                 }
                 // TODO better error
                 None => return Err(ContractError::Unauthorized {}),

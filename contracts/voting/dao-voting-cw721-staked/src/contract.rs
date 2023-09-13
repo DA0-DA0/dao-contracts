@@ -13,7 +13,7 @@ use dao_hooks::nft_stake::{stake_nft_hook_msgs, unstake_nft_hook_msgs};
 use dao_interface::voting::IsActiveResponse;
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
-use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, NftContract, QueryMsg};
+use crate::msg::{ExecuteMsg, FactoryCallback, InstantiateMsg, MigrateMsg, NftContract, QueryMsg};
 use crate::state::{
     register_staked_nft, register_unstaked_nfts, Config, ACTIVE_THRESHOLD, CONFIG, DAO, HOOKS,
     INITIAL_NFTS, MAX_CLAIMS, NFT_BALANCES, NFT_CLAIMS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
@@ -736,13 +736,24 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
         FACTORY_EXECUTE_REPLY_ID => {
             let res = parse_reply_execute_data(msg)?;
 
-            // TODO validate active threshold is set. Some contracts such as a minter,
-            // contract may not have any supply until tokens are minted.
-
             match res.data {
                 Some(data) => {
-                    // TODO parse data and save token contract address / denom
-                    unimplemented!()
+                    // TODO validate active threshold is set? Some contracts such as a minter,
+                    // contract may not have any supply until tokens are minted.
+
+                    let mut config = CONFIG.load(deps.storage)?;
+
+                    // Parse info from the callback, this will fail
+                    // if incorrectly formatted.
+                    let info: FactoryCallback = from_binary(&data)?;
+
+                    // TODO validate that this is an NFT with a query
+
+                    // Update NFT contract
+                    config.nft_address = deps.api.addr_validate(&info.nft_contract)?;
+                    CONFIG.save(deps.storage, &config)?;
+
+                    Ok(Response::new().add_attribute("nft_contract", info.nft_contract))
                 }
                 // TODO better error
                 None => return Err(ContractError::Unauthorized {}),

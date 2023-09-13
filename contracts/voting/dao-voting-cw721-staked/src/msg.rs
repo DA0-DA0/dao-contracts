@@ -94,3 +94,8 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub struct MigrateMsg {}
+
+#[cw_serde]
+pub struct FactoryCallback {
+    pub nft_contract: String,
+}
