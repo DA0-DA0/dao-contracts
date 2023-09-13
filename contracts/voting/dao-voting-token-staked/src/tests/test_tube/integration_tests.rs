@@ -1,6 +1,12 @@
-use cosmwasm_std::{Addr, Coin, Uint128};
+use cosmwasm_std::{to_binary, Addr, Coin, Decimal, Uint128, WasmMsg};
 use cw_tokenfactory_issuer::msg::DenomUnit;
-use dao_voting::threshold::{ActiveThreshold, ActiveThresholdError};
+use cw_utils::Duration;
+use dao_interface::state::{Admin, ModuleInstantiateInfo};
+use dao_testing::test_tube::dao_dao_core::DaoCore;
+use dao_voting::{
+    pre_propose::PreProposeInfo,
+    threshold::{ActiveThreshold, ActiveThresholdError, PercentageThreshold, Threshold},
+};
 use osmosis_std::types::cosmos::bank::v1beta1::QueryBalanceRequest;
 use osmosis_test_tube::{Account, OsmosisTestApp};
 
@@ -10,7 +16,7 @@ use crate::{
     ContractError,
 };
 
-use super::test_env::{TestEnv, TestEnvBuilder};
+use super::test_env::{TestEnv, TestEnvBuilder, DENOM};
 
 #[test]
 fn test_full_integration_correct_setup() {
@@ -310,4 +316,96 @@ fn test_instantiate_no_initial_balances_fails() {
         err,
         TokenVotingContract::execute_submessage_error(ContractError::InitialBalancesError {})
     );
+}
+
+#[test]
+fn test_factory() {
+    let app = OsmosisTestApp::new();
+    let env = TestEnvBuilder::new();
+    let TestEnv {
+        tf_issuer,
+        vp_contract,
+        proposal_single,
+        custom_factory,
+        accounts,
+        ..
+    } = env.full_dao_setup(&app);
+
+    // TODO refactor so there is a function that just takes the message
+    // Instantiate a new voting contract using the factory pattern
+    let msg = dao_interface::msg::InstantiateMsg {
+        dao_uri: None,
+        admin: None,
+        name: "DAO DAO".to_string(),
+        description: "A DAO that makes DAO tooling".to_string(),
+        image_url: None,
+        automatically_add_cw20s: false,
+        automatically_add_cw721s: false,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: vp_contract.code_id,
+            msg: to_binary(&InstantiateMsg {
+                token_info: TokenInfo::Factory(
+                    to_binary(&WasmMsg::Execute {
+                        contract_addr: custom_factory.unwrap().contract_addr.to_string(),
+                        msg: to_binary(
+                            &dao_test_custom_factory::msg::ExecuteMsg::TokenFactoryFactory(
+                                dao_test_custom_factory::NewTokenInfo {
+                                    token_issuer_code_id: tf_issuer.code_id,
+                                    subdenom: DENOM.to_string(),
+                                    metadata: None,
+                                    initial_balances: vec![
+                                        dao_test_custom_factory::InitialBalance {
+                                            address: accounts[0].address(),
+                                            amount: Uint128::new(100),
+                                        },
+                                    ],
+                                    initial_dao_balance: None,
+                                },
+                            ),
+                        )
+                        .unwrap(),
+                        funds: vec![],
+                    })
+                    .unwrap(),
+                ),
+                unstaking_duration: Some(Duration::Time(2)),
+                active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                    count: Uint128::new(75),
+                }),
+            })
+            .unwrap(),
+            admin: Some(Admin::CoreModule {}),
+            funds: vec![],
+            label: "DAO DAO Voting Module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
+            code_id: proposal_single.unwrap().code_id,
+            msg: to_binary(&dao_proposal_single::msg::InstantiateMsg {
+                min_voting_period: None,
+                threshold: Threshold::ThresholdQuorum {
+                    threshold: PercentageThreshold::Majority {},
+                    quorum: PercentageThreshold::Percent(Decimal::percent(35)),
+                },
+                max_voting_period: Duration::Time(432000),
+                allow_revoting: false,
+                only_members_execute: true,
+                close_proposal_on_execution_failure: false,
+                pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+            })
+            .unwrap(),
+            admin: Some(Admin::CoreModule {}),
+            funds: vec![],
+            label: "DAO DAO Proposal Module".to_string(),
+        }],
+        initial_items: None,
+    };
+
+    // Instantiate DAO
+    let dao = DaoCore::new(&app, &msg, &accounts[0]).unwrap();
+
+    // TODO query voting module
+
+    // TODO query denom
+
+    // TODO query token contract
 }

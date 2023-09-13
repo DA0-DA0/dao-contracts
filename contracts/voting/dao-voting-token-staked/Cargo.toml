@@ -19,7 +19,7 @@ library = []
 # cargo test --features "test-tube"
 test-tube = []
 # when writing tests you may wish to enable test-tube as a default feature
-# default = ["test-tube"]
+default = ["test-tube"]
 
 [dependencies]
 cosmwasm-std    = { workspace = true, features = ["cosmwasm_1_1"] }
@@ -46,6 +46,7 @@ cw-multi-test = { git = "https://github.com/CosmWasm/cw-multi-test.git", rev = "
 cw-tokenfactory-issuer = { workspace = true }
 dao-proposal-single = { workspace = true }
 dao-proposal-hook-counter = { workspace = true }
+dao-test-custom-factory = { workspace = true }
 dao-testing = { workspace = true, features = ["test-tube"] }
 osmosis-std = { workpsace = true }
 osmosis-test-tube = { workspace = true }

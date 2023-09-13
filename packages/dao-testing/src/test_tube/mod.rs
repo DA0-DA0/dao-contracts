@@ -13,3 +13,6 @@ pub mod dao_dao_core;
 
 #[cfg(feature = "test-tube")]
 pub mod dao_proposal_single;
+
+#[cfg(feature = "test-tube")]
+pub mod dao_test_custom_factory;

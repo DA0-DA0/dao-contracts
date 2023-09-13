@@ -29,7 +29,7 @@ use dao_voting::{
 
 use crate::error::ContractError;
 use crate::msg::{
-    DenomResponse, ExecuteMsg, GetHooksResponse, InitialBalance, InstantiateMsg,
+    DenomResponse, ExecuteMsg, FactoryCallback, GetHooksResponse, InitialBalance, InstantiateMsg,
     ListStakersResponse, MigrateMsg, NewTokenInfo, QueryMsg, StakerBalanceResponse, TokenInfo,
 };
 use crate::state::{
@@ -716,15 +716,28 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             }
         }
         FACTORY_EXECUTE_REPLY_ID => {
+            // Parse reply
             let res = parse_reply_execute_data(msg)?;
-
-            // TODO validate active threshold is set. Some contracts such as a minter,
-            // contract may not have any supply until tokens are minted.
-
             match res.data {
                 Some(data) => {
-                    // TODO parse data and save token contract address / denom
-                    unimplemented!()
+                    // Parse info from the callback, this will fail
+                    // if incorrectly formatted.
+                    let info: FactoryCallback = from_binary(&data)?;
+
+                    // Save Denom
+                    DENOM.save(deps.storage, &info.denom)?;
+
+                    // Save token issuer contract if one is returned
+                    if let Some(token_contract) = info.token_contract {
+                        TOKEN_ISSUER_CONTRACT
+                            .save(deps.storage, &deps.api.addr_validate(&token_contract)?)?;
+                    }
+
+                    // TODO validate active threshold is set? Some contracts such as a minter,
+                    // contract may not have any supply until tokens are minted.
+
+                    // TODO also include token contract
+                    Ok(Response::new().add_attribute("denom", info.denom))
                 }
                 // TODO better error
                 None => return Err(ContractError::Unauthorized {}),

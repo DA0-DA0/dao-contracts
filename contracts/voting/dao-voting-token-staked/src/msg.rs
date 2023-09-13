@@ -138,3 +138,9 @@ pub struct DenomResponse {
 pub struct GetHooksResponse {
     pub hooks: Vec<String>,
 }
+
+#[cw_serde]
+pub struct FactoryCallback {
+    pub denom: String,
+    pub token_contract: Option<String>,
+}

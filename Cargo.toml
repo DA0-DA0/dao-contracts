@@ -72,6 +72,8 @@ syn = { version = "1.0", features = ["derive"] }
 test-context = "0.1"
 thiserror = { version = "1.0" }
 token-bindings = "0.11.0"
+vending-factory = "2.4.0"
+vending-minter = "2.4.0"
 wynd-utils = "0.4"
 
 # One commit ahead of version 0.3.0. Allows initialization with an

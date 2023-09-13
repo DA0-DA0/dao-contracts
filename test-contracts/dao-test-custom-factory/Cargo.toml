@@ -20,11 +20,19 @@ library = []
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cosmwasm-storage = { workspace = true }
-cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
+cw-ownable = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-utils = { workspace = true }
 thiserror = { workspace = true }
 dao-dao-macros = { workspace = true }
 dao-interface = { workspace = true }
+dao-voting-cw721-staked = { workspace = true, features = ["library"] }
+dao-voting-token-staked = { workspace = true, features = ["library"] }
+vending-factory = { workspace = true, features = ["library"] }
+vending-minter = { workspace = true, features = ["library"] }
+cw-tokenfactory-issuer = { workspace = true, features = ["library"] }
+sg721-base = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
