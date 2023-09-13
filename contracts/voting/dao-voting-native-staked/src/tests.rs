@@ -13,7 +13,8 @@ use cw_multi_test::{
 };
 use cw_utils::Duration;
 use dao_interface::voting::{
-    InfoResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
+    InfoResponse, IsActiveResponse, LimitAtHeightResponse, TotalPowerAtHeightResponse,
+    VotingPowerAtHeightResponse,
 };
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
@@ -1282,6 +1283,7 @@ pub fn test_limit() {
         },
     );
 
+    let staked = Uint128::from(5000u128);
     let limit = Uint128::from(100u128);
 
     // Non-owner cannot update limits
@@ -1307,12 +1309,88 @@ pub fn test_limit() {
         &[],
     )
     .unwrap();
-
-    // Stake 6000 tokens - should fail from limit
-    let res = stake_tokens(&mut app, addr.clone(), ADDR1, 6000, DENOM);
-    assert!(res.is_err());
-
-    // Stake limit of tokens - success
-    stake_tokens(&mut app, addr.clone(), ADDR1, limit.u128(), DENOM).unwrap();
     app.update_block(next_block);
+
+    // Assert that the limit was set
+    let limit_response: LimitAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            addr.clone(),
+            &QueryMsg::LimitAtHeight {
+                address: ADDR1.to_string(),
+                height: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(limit_response.limit, Some(limit.clone()));
+
+    // Stake 5000 tokens which is over the limit of 100
+    stake_tokens(&mut app, addr.clone(), ADDR1, staked.u128(), DENOM).unwrap();
+    app.update_block(next_block);
+
+    // Query voting power
+    let voting_power_response: VotingPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            addr.clone(),
+            &QueryMsg::VotingPowerAtHeight {
+                address: ADDR1.to_string(),
+                height: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(voting_power_response.power, limit.clone());
+
+    // Query total power
+    let total_power_response: TotalPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(addr.clone(), &QueryMsg::TotalPowerAtHeight { height: None })
+        .unwrap();
+    assert_eq!(total_power_response.power, limit.clone());
+
+    // Owner can remove limit
+    app.execute_contract(
+        Addr::unchecked(DAO_ADDR),
+        addr.clone(),
+        &ExecuteMsg::UpdateLimit {
+            addr: ADDR1.to_string(),
+            limit: None,
+        },
+        &[],
+    )
+    .unwrap();
+    app.update_block(next_block);
+
+    // Assert that the limit was removed
+    let limit_response: LimitAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            addr.clone(),
+            &QueryMsg::LimitAtHeight {
+                address: ADDR1.to_string(),
+                height: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(limit_response.limit, None);
+
+    // Query voting power without limit
+    let voting_power_response: VotingPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            addr.clone(),
+            &QueryMsg::VotingPowerAtHeight {
+                address: ADDR1.to_string(),
+                height: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(voting_power_response.power, staked.clone());
+
+    // Query total power without limit
+    let total_power_response: TotalPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(addr.clone(), &QueryMsg::TotalPowerAtHeight { height: None })
+        .unwrap();
+    assert_eq!(total_power_response.power, staked.clone());
 }

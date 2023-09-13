@@ -419,15 +419,18 @@ pub fn limitable_voting_module(metadata: TokenStream, input: TokenStream) -> Tok
 /// Allows querying voting module limits
 #[proc_macro_attribute]
 pub fn limitable_voting_module_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
+    let l = dao_interface_path("voting::LimitAtHeightResponse");
+
     merge_variants(
         metadata,
         input,
         quote! {
         enum Right {
             /// Returns the voting power limit for an address
-            #[returns(::std::option::Option<::cosmwasm_std::Uint128>)]
-            Limit {
-                addr: ::std::string::String
+            #[returns(#l)]
+            LimitAtHeight {
+                address: ::std::string::String,
+                height: ::std::option::Option<::std::primitive::u64>
             }
         }
         }

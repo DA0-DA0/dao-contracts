@@ -8,7 +8,8 @@ use cw2::set_contract_version;
 use cw_controllers::ClaimsResponse;
 use cw_utils::{must_pay, Duration};
 use dao_interface::voting::{
-    IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
+    IsActiveResponse, LimitAtHeightResponse, TotalPowerAtHeightResponse,
+    VotingPowerAtHeightResponse,
 };
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
@@ -116,7 +117,9 @@ pub fn execute(
         }
         ExecuteMsg::AddHook { addr } => execute_add_hook(deps, env, info, addr),
         ExecuteMsg::RemoveHook { addr } => execute_remove_hook(deps, env, info, addr),
-        ExecuteMsg::UpdateLimit { addr, limit } => execute_update_limit(deps, info, addr, limit),
+        ExecuteMsg::UpdateLimit { addr, limit } => {
+            execute_update_limit(deps, env, info, addr, limit)
+        }
     }
 }
 
@@ -127,13 +130,6 @@ pub fn execute_stake(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let amount = must_pay(&info, &config.denom)?;
-    let limit = LIMITS.may_load(deps.storage, &info.sender)?;
-
-    if let Some(limit) = limit {
-        if amount > limit {
-            return Err(ContractError::LimitExceeded { limit });
-        }
-    }
 
     STAKED_BALANCES.update(
         deps.storage,
@@ -333,6 +329,7 @@ pub fn execute_remove_hook(
 
 pub fn execute_update_limit(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     addr: String,
     limit: Option<Uint128>,
@@ -345,9 +342,9 @@ pub fn execute_update_limit(
     let addr = deps.api.addr_validate(&addr)?;
 
     if let Some(limit) = limit {
-        LIMITS.save(deps.storage, &addr, &limit)?;
+        LIMITS.save(deps.storage, &addr, &limit, env.block.height)?;
     } else {
-        LIMITS.remove(deps.storage, &addr);
+        LIMITS.remove(deps.storage, &addr, env.block.height)?;
     }
 
     Ok(Response::new()
@@ -381,10 +378,23 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::IsActive {} => query_is_active(deps),
         QueryMsg::ActiveThreshold {} => query_active_threshold(deps),
         QueryMsg::GetHooks {} => to_binary(&query_hooks(deps)?),
-        QueryMsg::Limit { addr } => {
-            to_binary(&LIMITS.may_load(deps.storage, &deps.api.addr_validate(&addr)?)?)
+        QueryMsg::LimitAtHeight { address, height } => {
+            to_binary(&query_limit_at_height(deps, env, address, height)?)
         }
     }
+}
+
+pub fn query_limit_at_height(
+    deps: Deps,
+    env: Env,
+    address: String,
+    height: Option<u64>,
+) -> StdResult<LimitAtHeightResponse> {
+    let height = height.unwrap_or(env.block.height);
+    let address = deps.api.addr_validate(&address)?;
+    let limit = LIMITS.may_load_at_height(deps.storage, &address, height)?;
+
+    Ok(LimitAtHeightResponse { limit, height })
 }
 
 pub fn query_voting_power_at_height(
@@ -395,9 +405,16 @@ pub fn query_voting_power_at_height(
 ) -> StdResult<VotingPowerAtHeightResponse> {
     let height = height.unwrap_or(env.block.height);
     let address = deps.api.addr_validate(&address)?;
-    let power = STAKED_BALANCES
+    let mut power = STAKED_BALANCES
         .may_load_at_height(deps.storage, &address, height)?
         .unwrap_or_default();
+
+    // Apply limit
+    let limit = LIMITS.may_load_at_height(deps.storage, &address, height)?;
+    if let Some(limit) = limit {
+        power = Uint128::min(power, limit);
+    }
+
     Ok(VotingPowerAtHeightResponse { power, height })
 }
 
@@ -407,9 +424,24 @@ pub fn query_total_power_at_height(
     height: Option<u64>,
 ) -> StdResult<TotalPowerAtHeightResponse> {
     let height = height.unwrap_or(env.block.height);
-    let power = STAKED_TOTAL
+    let mut power = STAKED_TOTAL
         .may_load_at_height(deps.storage, height)?
         .unwrap_or_default();
+
+    // Adjust power according to limits
+    for entry in LIMITS.range(deps.storage, None, None, cosmwasm_std::Order::Ascending) {
+        let user_limit = entry?;
+
+        let user_power = STAKED_BALANCES
+            .may_load_at_height(deps.storage, &user_limit.0, height)?
+            .unwrap_or_default();
+
+        if user_power > user_limit.1 {
+            let reduced_power = user_power.checked_sub(user_limit.1)?;
+            power = power.checked_sub(reduced_power)?;
+        }
+    }
+
     Ok(TotalPowerAtHeightResponse { power, height })
 }
 
