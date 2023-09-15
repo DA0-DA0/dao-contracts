@@ -1371,7 +1371,9 @@ pub fn test_limit() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            denom: DENOM.to_string(),
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
             unstaking_duration: Some(Duration::Height(5)),
             active_threshold: Some(ActiveThreshold::Percentage {
                 percent: Decimal::percent(20),

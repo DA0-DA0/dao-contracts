@@ -38,6 +38,14 @@ pub const STAKED_TOTAL: SnapshotItem<Uint128> = SnapshotItem::new(
     Strategy::EveryBlock,
 );
 
+/// Keeps track of voting power limits by address
+pub const LIMITS: SnapshotMap<&Addr, Uint128> = SnapshotMap::new(
+    "limits",
+    "limits__checkpoints",
+    "limits__changelog",
+    Strategy::EveryBlock,
+);
+
 /// The maximum number of claims that may be outstanding.
 pub const MAX_CLAIMS: u64 = 100;
 
