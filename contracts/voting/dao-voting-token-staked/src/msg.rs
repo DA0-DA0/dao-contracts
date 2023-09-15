@@ -1,46 +1,9 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Uint128};
-use cw_tokenfactory_issuer::msg::DenomUnit;
 use cw_utils::Duration;
 use dao_dao_macros::{active_query, token_query, voting_module_query};
+use dao_interface::token::NewTokenInfo;
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
-
-#[cw_serde]
-pub struct InitialBalance {
-    pub amount: Uint128,
-    pub address: String,
-}
-
-#[cw_serde]
-pub struct NewDenomMetadata {
-    /// The name of the token (e.g. "Cat Coin")
-    pub name: String,
-    /// The description of the token
-    pub description: String,
-    /// The ticker symbol of the token (e.g. "CAT")
-    pub symbol: String,
-    /// The unit commonly used in communication (e.g. "cat")
-    pub display: String,
-    /// Used define additional units of the token (e.g. "tiger")
-    /// These must have an exponent larger than 0.
-    pub additional_denom_units: Option<Vec<DenomUnit>>,
-}
-
-#[cw_serde]
-pub struct NewTokenInfo {
-    /// The code id of the cw-tokenfactory-issuer contract
-    pub token_issuer_code_id: u64,
-    /// The subdenom of the token to create, will also be used as an alias
-    /// for the denom. The Token Factory denom will have the format of
-    /// factory/{contract_address}/{subdenom}
-    pub subdenom: String,
-    /// Optional metadata for the token, this can additionally be set later.
-    pub metadata: Option<NewDenomMetadata>,
-    /// The initial balances to set for the token, cannot be empty.
-    pub initial_balances: Vec<InitialBalance>,
-    /// Optional balance to mint for the DAO.
-    pub initial_dao_balance: Option<Uint128>,
-}
 
 #[cw_serde]
 pub enum TokenInfo {
@@ -137,10 +100,4 @@ pub struct DenomResponse {
 #[cw_serde]
 pub struct GetHooksResponse {
     pub hooks: Vec<String>,
-}
-
-#[cw_serde]
-pub struct FactoryCallback {
-    pub denom: String,
-    pub token_contract: Option<String>,
 }

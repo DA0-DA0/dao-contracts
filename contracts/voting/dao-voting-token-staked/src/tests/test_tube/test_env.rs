@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 use crate::{
-    msg::{ExecuteMsg, InitialBalance, InstantiateMsg, NewTokenInfo, QueryMsg, TokenInfo},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenInfo},
     ContractError,
 };
 
@@ -13,6 +13,7 @@ use cw_utils::Duration;
 use dao_interface::{
     msg::QueryMsg as DaoQueryMsg,
     state::{Admin, ModuleInstantiateInfo, ProposalModule},
+    token::{InitialBalance, NewDenomMetadata, NewTokenInfo},
     voting::{IsActiveResponse, VotingPowerAtHeightResponse},
 };
 use dao_voting::{
@@ -136,7 +137,7 @@ impl TestEnvBuilder {
                 token_info: TokenInfo::New(NewTokenInfo {
                     token_issuer_code_id: issuer_id,
                     subdenom: DENOM.to_string(),
-                    metadata: Some(crate::msg::NewDenomMetadata {
+                    metadata: Some(NewDenomMetadata {
                         description: "Awesome token, get it meow!".to_string(),
                         additional_denom_units: Some(vec![DenomUnit {
                             denom: "cat".to_string(),
@@ -208,7 +209,7 @@ impl TestEnvBuilder {
                     token_info: TokenInfo::New(NewTokenInfo {
                         token_issuer_code_id: issuer_id,
                         subdenom: DENOM.to_string(),
-                        metadata: Some(crate::msg::NewDenomMetadata {
+                        metadata: Some(NewDenomMetadata {
                             description: "Awesome token, get it meow!".to_string(),
                             additional_denom_units: Some(vec![DenomUnit {
                                 denom: "cat".to_string(),

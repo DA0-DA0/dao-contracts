@@ -1,6 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::WasmMsg;
-use dao_voting_token_staked::msg::NewTokenInfo;
+use dao_interface::token::NewTokenInfo;
 
 #[cw_serde]
 pub struct InstantiateMsg {}

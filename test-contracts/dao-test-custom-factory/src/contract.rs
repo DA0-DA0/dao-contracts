@@ -10,8 +10,9 @@ use cw_tokenfactory_issuer::msg::{
     ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg,
 };
 use cw_utils::parse_reply_instantiate_data;
-use dao_voting_token_staked::msg::{
-    FactoryCallback, InitialBalance, NewTokenInfo, QueryMsg as TokenVotingQueryMsg,
+use dao_interface::{
+    token::{FactoryCallback, InitialBalance, NewTokenInfo},
+    voting::Query as VotingModuleQueryMsg,
 };
 
 use crate::{
@@ -32,8 +33,8 @@ const TOKEN_INFO: Item<NewTokenInfo> = Item::new("token_info");
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
-    info: MessageInfo,
-    msg: InstantiateMsg,
+    _info: MessageInfo,
+    _msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -69,7 +70,7 @@ pub fn execute_token_factory_factory(
     // Query for DAO
     let dao: Addr = deps
         .querier
-        .query_wasm_smart(info.sender, &TokenVotingQueryMsg::Dao {})?;
+        .query_wasm_smart(info.sender, &VotingModuleQueryMsg::Dao {})?;
 
     // Save DAO and TOKEN_INFO for use in replies
     DAO.save(deps.storage, &dao)?;

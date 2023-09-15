@@ -66,12 +66,12 @@ pub fn execute_proposal_hook(
     match proposal_hook {
         ProposalHookMsg::NewProposal { .. } => {
             let mut count = PROPOSAL_COUNTER.load(deps.storage)?;
-            count += 1;
+            count = count.checked_add(1).unwrap_or_default();
             PROPOSAL_COUNTER.save(deps.storage, &count)?;
         }
         ProposalHookMsg::ProposalStatusChanged { .. } => {
             let mut count = STATUS_CHANGED_COUNTER.load(deps.storage)?;
-            count += 1;
+            count = count.checked_add(1).unwrap_or_default();
             STATUS_CHANGED_COUNTER.save(deps.storage, &count)?;
         }
     }
@@ -88,12 +88,12 @@ pub fn execute_stake_hook(
     match stake_hook {
         StakeChangedHookMsg::Stake { .. } => {
             let mut count = STAKE_COUNTER.load(deps.storage)?;
-            count += Uint128::new(1);
+            count = count.checked_add(Uint128::new(1))?;
             STAKE_COUNTER.save(deps.storage, &count)?;
         }
         StakeChangedHookMsg::Unstake { .. } => {
             let mut count = STAKE_COUNTER.load(deps.storage)?;
-            count += Uint128::new(1);
+            count = count.checked_add(Uint128::new(1))?;
             STAKE_COUNTER.save(deps.storage, &count)?;
         }
     }
@@ -110,7 +110,7 @@ pub fn execute_vote_hook(
     match vote_hook {
         VoteHookMsg::NewVote { .. } => {
             let mut count = VOTE_COUNTER.load(deps.storage)?;
-            count += 1;
+            count = count.checked_add(1).unwrap_or_default();
             VOTE_COUNTER.save(deps.storage, &count)?;
         }
     }

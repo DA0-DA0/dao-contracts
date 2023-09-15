@@ -15,9 +15,10 @@ use cw_utils::{
     maybe_addr, must_pay, parse_reply_execute_data, parse_reply_instantiate_data, Duration,
 };
 use dao_hooks::stake::{stake_hook_msgs, unstake_hook_msgs};
-use dao_interface::state::ModuleInstantiateCallback;
-use dao_interface::voting::{
-    IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
+use dao_interface::{
+    state::ModuleInstantiateCallback,
+    token::{FactoryCallback, InitialBalance, NewTokenInfo},
+    voting::{IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse},
 };
 use dao_voting::{
     duration::validate_duration,
@@ -29,8 +30,8 @@ use dao_voting::{
 
 use crate::error::ContractError;
 use crate::msg::{
-    DenomResponse, ExecuteMsg, FactoryCallback, GetHooksResponse, InitialBalance, InstantiateMsg,
-    ListStakersResponse, MigrateMsg, NewTokenInfo, QueryMsg, StakerBalanceResponse, TokenInfo,
+    DenomResponse, ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg,
+    QueryMsg, StakerBalanceResponse, TokenInfo,
 };
 use crate::state::{
     Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, DENOM, HOOKS, MAX_CLAIMS, STAKED_BALANCES,

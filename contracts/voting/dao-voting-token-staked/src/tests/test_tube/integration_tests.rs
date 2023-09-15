@@ -1,7 +1,10 @@
 use cosmwasm_std::{to_binary, Addr, Coin, Decimal, Uint128, WasmMsg};
 use cw_tokenfactory_issuer::msg::DenomUnit;
 use cw_utils::Duration;
-use dao_interface::state::{Admin, ModuleInstantiateInfo};
+use dao_interface::{
+    state::{Admin, ModuleInstantiateInfo},
+    token::{InitialBalance, NewDenomMetadata, NewTokenInfo},
+};
 use dao_testing::test_tube::dao_dao_core::DaoCore;
 use dao_voting::{
     pre_propose::PreProposeInfo,
@@ -11,7 +14,7 @@ use osmosis_std::types::cosmos::bank::v1beta1::QueryBalanceRequest;
 use osmosis_test_tube::{Account, OsmosisTestApp};
 
 use crate::{
-    msg::{ExecuteMsg, InitialBalance, InstantiateMsg, NewDenomMetadata, NewTokenInfo, TokenInfo},
+    msg::{ExecuteMsg, InstantiateMsg, TokenInfo},
     tests::test_tube::test_env::TokenVotingContract,
     ContractError,
 };
@@ -349,16 +352,14 @@ fn test_factory() {
                         contract_addr: custom_factory.unwrap().contract_addr.to_string(),
                         msg: to_binary(
                             &dao_test_custom_factory::msg::ExecuteMsg::TokenFactoryFactory(
-                                dao_test_custom_factory::NewTokenInfo {
+                                NewTokenInfo {
                                     token_issuer_code_id: tf_issuer.code_id,
                                     subdenom: DENOM.to_string(),
                                     metadata: None,
-                                    initial_balances: vec![
-                                        dao_test_custom_factory::InitialBalance {
-                                            address: accounts[0].address(),
-                                            amount: Uint128::new(100),
-                                        },
-                                    ],
+                                    initial_balances: vec![InitialBalance {
+                                        address: accounts[0].address(),
+                                        amount: Uint128::new(100),
+                                    }],
                                     initial_dao_balance: None,
                                 },
                             ),
