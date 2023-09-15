@@ -1,12 +1,12 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use dao_interface::token::NewTokenInfo;
+use cosmwasm_std::WasmMsg;
 
 #[cw_serde]
 pub struct InstantiateMsg {}
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    TokenFactoryFactory(NewTokenInfo),
+    StargazeBaseMinterFactory(WasmMsg),
 }
 
 #[cw_serde]

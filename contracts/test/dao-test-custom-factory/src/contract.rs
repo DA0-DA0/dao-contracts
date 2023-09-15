@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
-    Uint128, WasmMsg,
+    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_storage_plus::Item;
@@ -23,8 +23,7 @@ use crate::{
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const INSTANTIATE_BASE_MINTER_REPLY_ID: u64 = 1;
-const INSTANTIATE_ISSUER_REPLY_ID: u64 = 2;
+const INSTANTIATE_ISSUER_REPLY_ID: u64 = 1;
 
 const DAO: Item<Addr> = Item::new("dao");
 const TOKEN_INFO: Item<NewTokenInfo> = Item::new("token_info");
@@ -33,8 +32,8 @@ const TOKEN_INFO: Item<NewTokenInfo> = Item::new("token_info");
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
-    _info: MessageInfo,
-    _msg: InstantiateMsg,
+    info: MessageInfo,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -49,9 +48,6 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::StargazeBaseMinterFactory(msg) => {
-            execute_stargaze_base_minter_factory(deps, env, info, msg)
-        }
         ExecuteMsg::TokenFactoryFactory(token) => {
             execute_token_factory_factory(deps, env, info, token)
         }
@@ -94,24 +90,6 @@ pub fn execute_token_factory_factory(
     Ok(Response::new().add_submessage(msg))
 }
 
-/// Example Stargaze factory.
-pub fn execute_stargaze_base_minter_factory(
-    _deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
-    _msg: WasmMsg,
-) -> Result<Response, ContractError> {
-    // TODO query voting contract (the sender) for the DAO address
-    // TODO replace the Stargaze info to set the DAO address
-
-    // TODO call base-factory to create minter
-
-    // TODO this create a base-minter contract and a sg721 contract
-
-    // in submsg reply, parse the response and save the contract address
-    unimplemented!()
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -127,9 +105,6 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
-        INSTANTIATE_BASE_MINTER_REPLY_ID => {
-            unimplemented!()
-        }
         INSTANTIATE_ISSUER_REPLY_ID => {
             // Load DAO address and TOKEN_INFO
             let dao = DAO.load(deps.storage)?;
@@ -149,7 +124,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 });
             let total_supply = initial_supply + token.initial_dao_balance.unwrap_or_default();
 
-            // TODO query active threshold and validate the count
+            // TODO query active threshold and validate the count?
 
             // Msgs to be executed to finalize setup
             let mut msgs: Vec<WasmMsg> = vec![];
