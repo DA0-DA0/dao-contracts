@@ -15,7 +15,8 @@ use cw_utils::{maybe_addr, must_pay, parse_reply_instantiate_data, Duration};
 use dao_hooks::stake::{stake_hook_msgs, unstake_hook_msgs};
 use dao_interface::state::ModuleInstantiateCallback;
 use dao_interface::voting::{
-    IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
+    IsActiveResponse, LimitAtHeightResponse, TotalPowerAtHeightResponse,
+    VotingPowerAtHeightResponse,
 };
 use dao_voting::{
     duration::validate_duration,
@@ -31,8 +32,8 @@ use crate::msg::{
     ListStakersResponse, MigrateMsg, NewTokenInfo, QueryMsg, StakerBalanceResponse, TokenInfo,
 };
 use crate::state::{
-    Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, DENOM, HOOKS, MAX_CLAIMS, STAKED_BALANCES,
-    STAKED_TOTAL, TOKEN_INSTANTIATION_INFO, TOKEN_ISSUER_CONTRACT,
+    Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, DENOM, HOOKS, LIMITS, MAX_CLAIMS,
+    STAKED_BALANCES, STAKED_TOTAL, TOKEN_INSTANTIATION_INFO, TOKEN_ISSUER_CONTRACT,
 };
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-token-staked";
@@ -142,6 +143,9 @@ pub fn execute(
         }
         ExecuteMsg::AddHook { addr } => execute_add_hook(deps, env, info, addr),
         ExecuteMsg::RemoveHook { addr } => execute_remove_hook(deps, env, info, addr),
+        ExecuteMsg::UpdateLimit { addr, limit } => {
+            execute_update_limit(deps, env, info, addr, limit)
+        }
     }
 }
 
@@ -358,6 +362,37 @@ pub fn execute_remove_hook(
         .add_attribute("hook", addr))
 }
 
+pub fn execute_update_limit(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    addr: String,
+    limit: Option<Uint128>,
+) -> Result<Response, ContractError> {
+    let dao = DAO.load(deps.storage)?;
+    if info.sender != dao {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let addr = deps.api.addr_validate(&addr)?;
+
+    if let Some(limit) = limit {
+        LIMITS.save(deps.storage, &addr, &limit, env.block.height)?;
+    } else {
+        LIMITS.remove(deps.storage, &addr, env.block.height)?;
+    }
+
+    Ok(Response::new()
+        .add_attribute("action", "update_limit")
+        .add_attribute("addr", addr.to_string())
+        .add_attribute(
+            "limit",
+            limit
+                .as_ref()
+                .map_or("None".to_owned(), ToString::to_string),
+        ))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -380,8 +415,24 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::IsActive {} => query_is_active(deps),
         QueryMsg::ActiveThreshold {} => query_active_threshold(deps),
         QueryMsg::GetHooks {} => to_binary(&query_hooks(deps)?),
+        QueryMsg::LimitAtHeight { address, height } => {
+            to_binary(&query_limit_at_height(deps, env, address, height)?)
+        }
         QueryMsg::TokenContract {} => to_binary(&TOKEN_ISSUER_CONTRACT.load(deps.storage)?),
     }
+}
+
+pub fn query_limit_at_height(
+    deps: Deps,
+    env: Env,
+    address: String,
+    height: Option<u64>,
+) -> StdResult<LimitAtHeightResponse> {
+    let height = height.unwrap_or(env.block.height);
+    let address = deps.api.addr_validate(&address)?;
+    let limit = LIMITS.may_load_at_height(deps.storage, &address, height)?;
+
+    Ok(LimitAtHeightResponse { limit, height })
 }
 
 pub fn query_voting_power_at_height(
@@ -392,9 +443,16 @@ pub fn query_voting_power_at_height(
 ) -> StdResult<VotingPowerAtHeightResponse> {
     let height = height.unwrap_or(env.block.height);
     let address = deps.api.addr_validate(&address)?;
-    let power = STAKED_BALANCES
+    let mut power = STAKED_BALANCES
         .may_load_at_height(deps.storage, &address, height)?
         .unwrap_or_default();
+
+    // Apply limit
+    let limit = LIMITS.may_load_at_height(deps.storage, &address, height)?;
+    if let Some(limit) = limit {
+        power = Uint128::min(power, limit);
+    }
+
     Ok(VotingPowerAtHeightResponse { power, height })
 }
 
@@ -404,9 +462,24 @@ pub fn query_total_power_at_height(
     height: Option<u64>,
 ) -> StdResult<TotalPowerAtHeightResponse> {
     let height = height.unwrap_or(env.block.height);
-    let power = STAKED_TOTAL
+    let mut power = STAKED_TOTAL
         .may_load_at_height(deps.storage, height)?
         .unwrap_or_default();
+
+    // Adjust power according to limits
+    for entry in LIMITS.range(deps.storage, None, None, cosmwasm_std::Order::Ascending) {
+        let user_limit = entry?;
+
+        let user_power = STAKED_BALANCES
+            .may_load_at_height(deps.storage, &user_limit.0, height)?
+            .unwrap_or_default();
+
+        if user_power > user_limit.1 {
+            let reduced_power = user_power.checked_sub(user_limit.1)?;
+            power = power.checked_sub(reduced_power)?;
+        }
+    }
+
     Ok(TotalPowerAtHeightResponse { power, height })
 }
 

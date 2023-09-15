@@ -43,6 +43,12 @@ pub struct TotalPowerAtHeightResponse {
 }
 
 #[cw_serde]
+pub struct LimitAtHeightResponse {
+    pub limit: Option<Uint128>,
+    pub height: u64,
+}
+
+#[cw_serde]
 pub struct InfoResponse {
     pub info: ContractVersion,
 }

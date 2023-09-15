@@ -2,7 +2,10 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw_tokenfactory_issuer::msg::DenomUnit;
 use cw_utils::Duration;
-use dao_dao_macros::{active_query, token_query, voting_module_query};
+use dao_dao_macros::{
+    active_query, limitable_voting_module, limitable_voting_module_query, token_query,
+    voting_module_query,
+};
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
 #[cw_serde]
@@ -67,6 +70,7 @@ pub struct InstantiateMsg {
     pub active_threshold: Option<ActiveThreshold>,
 }
 
+#[limitable_voting_module]
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Stakes tokens with the contract to get voting power in the DAO
@@ -89,6 +93,7 @@ pub enum ExecuteMsg {
     RemoveHook { addr: String },
 }
 
+#[limitable_voting_module_query]
 #[active_query]
 #[voting_module_query]
 #[token_query]

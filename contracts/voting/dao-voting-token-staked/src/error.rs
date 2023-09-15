@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{StdError, Uint128};
 use cw_utils::{ParseReplyError, PaymentError};
 use dao_voting::threshold::ActiveThresholdError;
 use thiserror::Error;
@@ -43,4 +43,7 @@ pub enum ContractError {
 
     #[error("Amount being unstaked must be non-zero")]
     ZeroUnstake {},
+
+    #[error("Limit cannot be exceeded")]
+    LimitExceeded { limit: Uint128 },
 }

@@ -397,3 +397,43 @@ pub fn limit_variant_count(metadata: TokenStream, input: TokenStream) -> TokenSt
     }
     .into()
 }
+
+/// Limits the voting power for an address
+#[proc_macro_attribute]
+pub fn limitable_voting_module(metadata: TokenStream, input: TokenStream) -> TokenStream {
+    merge_variants(
+        metadata,
+        input,
+        quote! {
+        enum Right {
+            UpdateLimit {
+                addr: ::std::string::String,
+                limit: ::std::option::Option<::cosmwasm_std::Uint128>
+            }
+        }
+        }
+        .into(),
+    )
+}
+
+/// Allows querying voting module limits
+#[proc_macro_attribute]
+pub fn limitable_voting_module_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
+    let l = dao_interface_path("voting::LimitAtHeightResponse");
+
+    merge_variants(
+        metadata,
+        input,
+        quote! {
+        enum Right {
+            /// Returns the voting power limit for an address
+            #[returns(#l)]
+            LimitAtHeight {
+                address: ::std::string::String,
+                height: ::std::option::Option<::std::primitive::u64>
+            }
+        }
+        }
+        .into(),
+    )
+}

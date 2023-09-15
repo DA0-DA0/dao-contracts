@@ -12,7 +12,8 @@ use cw_multi_test::{
 };
 use cw_utils::Duration;
 use dao_interface::voting::{
-    InfoResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
+    InfoResponse, IsActiveResponse, LimitAtHeightResponse, TotalPowerAtHeightResponse,
+    VotingPowerAtHeightResponse,
 };
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
@@ -161,7 +162,7 @@ fn update_config(
 }
 
 fn get_voting_power_at_height(
-    app: &mut App,
+    app: &App,
     staking_addr: Addr,
     address: String,
     height: Option<u64>,
@@ -175,7 +176,7 @@ fn get_voting_power_at_height(
 }
 
 fn get_total_power_at_height(
-    app: &mut App,
+    app: &App,
     staking_addr: Addr,
     height: Option<u64>,
 ) -> TotalPowerAtHeightResponse {
@@ -184,19 +185,19 @@ fn get_total_power_at_height(
         .unwrap()
 }
 
-fn get_config(app: &mut App, staking_addr: Addr) -> Config {
+fn get_config(app: &App, staking_addr: Addr) -> Config {
     app.wrap()
         .query_wasm_smart(staking_addr, &QueryMsg::GetConfig {})
         .unwrap()
 }
 
-fn get_claims(app: &mut App, staking_addr: Addr, address: String) -> ClaimsResponse {
+fn get_claims(app: &App, staking_addr: Addr, address: String) -> ClaimsResponse {
     app.wrap()
         .query_wasm_smart(staking_addr, &QueryMsg::Claims { address })
         .unwrap()
 }
 
-fn get_balance(app: &mut App, address: &str, denom: &str) -> Uint128 {
+fn get_balance(app: &App, address: &str, denom: &str) -> Uint128 {
     app.wrap().query_balance(address, denom).unwrap().amount
 }
 
@@ -426,7 +427,7 @@ fn test_unstake() {
     unstake_tokens(&mut app, addr.clone(), ADDR1, 75).unwrap();
 
     // Query claims
-    let claims = get_claims(&mut app, addr.clone(), ADDR1.to_string());
+    let claims = get_claims(&app, addr.clone(), ADDR1.to_string());
     assert_eq!(claims.claims.len(), 1);
     app.update_block(next_block);
 
@@ -434,7 +435,7 @@ fn test_unstake() {
     unstake_tokens(&mut app, addr.clone(), ADDR1, 25).unwrap();
 
     // Query claims
-    let claims = get_claims(&mut app, addr, ADDR1.to_string());
+    let claims = get_claims(&app, addr, ADDR1.to_string());
     assert_eq!(claims.claims.len(), 2);
 }
 
@@ -464,14 +465,14 @@ fn test_unstake_no_unstaking_duration() {
 
     app.update_block(next_block);
 
-    let balance = get_balance(&mut app, ADDR1, DENOM);
+    let balance = get_balance(&app, ADDR1, DENOM);
     // 10000 (initial bal) - 100 (staked) + 75 (unstaked) = 9975
     assert_eq!(balance, Uint128::new(9975));
 
     // Unstake the rest
     unstake_tokens(&mut app, addr, ADDR1, 25).unwrap();
 
-    let balance = get_balance(&mut app, ADDR1, DENOM);
+    let balance = get_balance(&app, ADDR1, DENOM);
     // 10000 (initial bal) - 100 (staked) + 75 (unstaked 1) + 25 (unstaked 2) = 10000
     assert_eq!(balance, Uint128::new(10000))
 }
@@ -559,7 +560,7 @@ fn test_claim() {
     claim(&mut app, addr.clone(), ADDR1).unwrap();
 
     // Query balance
-    let balance = get_balance(&mut app, ADDR1, DENOM);
+    let balance = get_balance(&app, ADDR1, DENOM);
     // 10000 (initial bal) - 100 (staked) + 75 (unstaked) = 9975
     assert_eq!(balance, Uint128::new(9975));
 
@@ -574,7 +575,7 @@ fn test_claim() {
     claim(&mut app, addr, ADDR1).unwrap();
 
     // Query balance
-    let balance = get_balance(&mut app, ADDR1, DENOM);
+    let balance = get_balance(&app, ADDR1, DENOM);
     // 10000 (initial bal) - 100 (staked) + 75 (unstaked 1) + 25 (unstaked 2) = 10000
     assert_eq!(balance, Uint128::new(10000));
 }
@@ -621,7 +622,7 @@ fn test_update_config_as_owner() {
     // Swap owner and manager, change duration
     update_config(&mut app, addr.clone(), DAO_ADDR, Some(Duration::Height(10))).unwrap();
 
-    let config = get_config(&mut app, addr);
+    let config = get_config(&app, addr);
     assert_eq!(
         Config {
             unstaking_duration: Some(Duration::Height(10)),
@@ -713,7 +714,7 @@ fn test_query_claims() {
         },
     );
 
-    let claims = get_claims(&mut app, addr.clone(), ADDR1.to_string());
+    let claims = get_claims(&app, addr.clone(), ADDR1.to_string());
     assert_eq!(claims.claims.len(), 0);
 
     // Stake some tokens
@@ -724,13 +725,13 @@ fn test_query_claims() {
     unstake_tokens(&mut app, addr.clone(), ADDR1, 25).unwrap();
     app.update_block(next_block);
 
-    let claims = get_claims(&mut app, addr.clone(), ADDR1.to_string());
+    let claims = get_claims(&app, addr.clone(), ADDR1.to_string());
     assert_eq!(claims.claims.len(), 1);
 
     unstake_tokens(&mut app, addr.clone(), ADDR1, 25).unwrap();
     app.update_block(next_block);
 
-    let claims = get_claims(&mut app, addr, ADDR1.to_string());
+    let claims = get_claims(&app, addr, ADDR1.to_string());
     assert_eq!(claims.claims.len(), 2);
 }
 
@@ -751,7 +752,7 @@ fn test_query_get_config() {
         },
     );
 
-    let config = get_config(&mut app, addr);
+    let config = get_config(&app, addr);
     assert_eq!(
         config,
         Config {
@@ -778,11 +779,11 @@ fn test_voting_power_queries() {
     );
 
     // Total power is 0
-    let resp = get_total_power_at_height(&mut app, addr.clone(), None);
+    let resp = get_total_power_at_height(&app, addr.clone(), None);
     assert!(resp.power.is_zero());
 
     // ADDR1 has no power, none staked
-    let resp = get_voting_power_at_height(&mut app, addr.clone(), ADDR1.to_string(), None);
+    let resp = get_voting_power_at_height(&app, addr.clone(), ADDR1.to_string(), None);
     assert!(resp.power.is_zero());
 
     // ADDR1 stakes
@@ -790,15 +791,15 @@ fn test_voting_power_queries() {
     app.update_block(next_block);
 
     // Total power is 100
-    let resp = get_total_power_at_height(&mut app, addr.clone(), None);
+    let resp = get_total_power_at_height(&app, addr.clone(), None);
     assert_eq!(resp.power, Uint128::new(100));
 
     // ADDR1 has 100 power
-    let resp = get_voting_power_at_height(&mut app, addr.clone(), ADDR1.to_string(), None);
+    let resp = get_voting_power_at_height(&app, addr.clone(), ADDR1.to_string(), None);
     assert_eq!(resp.power, Uint128::new(100));
 
     // ADDR2 still has 0 power
-    let resp = get_voting_power_at_height(&mut app, addr.clone(), ADDR2.to_string(), None);
+    let resp = get_voting_power_at_height(&app, addr.clone(), ADDR2.to_string(), None);
     assert!(resp.power.is_zero());
 
     // ADDR2 stakes
@@ -808,30 +809,28 @@ fn test_voting_power_queries() {
 
     // Query the previous height, total 100, ADDR1 100, ADDR2 0
     // Total power is 100
-    let resp = get_total_power_at_height(&mut app, addr.clone(), Some(prev_height));
+    let resp = get_total_power_at_height(&app, addr.clone(), Some(prev_height));
     assert_eq!(resp.power, Uint128::new(100));
 
     // ADDR1 has 100 power
-    let resp =
-        get_voting_power_at_height(&mut app, addr.clone(), ADDR1.to_string(), Some(prev_height));
+    let resp = get_voting_power_at_height(&app, addr.clone(), ADDR1.to_string(), Some(prev_height));
     assert_eq!(resp.power, Uint128::new(100));
 
     // ADDR2 still has 0 power
-    let resp =
-        get_voting_power_at_height(&mut app, addr.clone(), ADDR2.to_string(), Some(prev_height));
+    let resp = get_voting_power_at_height(&app, addr.clone(), ADDR2.to_string(), Some(prev_height));
     assert!(resp.power.is_zero());
 
     // For current height, total 150, ADDR1 100, ADDR2 50
     // Total power is 150
-    let resp = get_total_power_at_height(&mut app, addr.clone(), None);
+    let resp = get_total_power_at_height(&app, addr.clone(), None);
     assert_eq!(resp.power, Uint128::new(150));
 
     // ADDR1 has 100 power
-    let resp = get_voting_power_at_height(&mut app, addr.clone(), ADDR1.to_string(), None);
+    let resp = get_voting_power_at_height(&app, addr.clone(), ADDR1.to_string(), None);
     assert_eq!(resp.power, Uint128::new(100));
 
     // ADDR2 now has 50 power
-    let resp = get_voting_power_at_height(&mut app, addr.clone(), ADDR2.to_string(), None);
+    let resp = get_voting_power_at_height(&app, addr.clone(), ADDR2.to_string(), None);
     assert_eq!(resp.power, Uint128::new(50));
 
     // ADDR1 unstakes half
@@ -841,30 +840,28 @@ fn test_voting_power_queries() {
 
     // Query the previous height, total 150, ADDR1 100, ADDR2 50
     // Total power is 100
-    let resp = get_total_power_at_height(&mut app, addr.clone(), Some(prev_height));
+    let resp = get_total_power_at_height(&app, addr.clone(), Some(prev_height));
     assert_eq!(resp.power, Uint128::new(150));
 
     // ADDR1 has 100 power
-    let resp =
-        get_voting_power_at_height(&mut app, addr.clone(), ADDR1.to_string(), Some(prev_height));
+    let resp = get_voting_power_at_height(&app, addr.clone(), ADDR1.to_string(), Some(prev_height));
     assert_eq!(resp.power, Uint128::new(100));
 
     // ADDR2 still has 0 power
-    let resp =
-        get_voting_power_at_height(&mut app, addr.clone(), ADDR2.to_string(), Some(prev_height));
+    let resp = get_voting_power_at_height(&app, addr.clone(), ADDR2.to_string(), Some(prev_height));
     assert_eq!(resp.power, Uint128::new(50));
 
     // For current height, total 100, ADDR1 50, ADDR2 50
     // Total power is 100
-    let resp = get_total_power_at_height(&mut app, addr.clone(), None);
+    let resp = get_total_power_at_height(&app, addr.clone(), None);
     assert_eq!(resp.power, Uint128::new(100));
 
     // ADDR1 has 50 power
-    let resp = get_voting_power_at_height(&mut app, addr.clone(), ADDR1.to_string(), None);
+    let resp = get_voting_power_at_height(&app, addr.clone(), ADDR1.to_string(), None);
     assert_eq!(resp.power, Uint128::new(50));
 
     // ADDR2 now has 50 power
-    let resp = get_voting_power_at_height(&mut app, addr, ADDR2.to_string(), None);
+    let resp = get_voting_power_at_height(&app, addr, ADDR2.to_string(), None);
     assert_eq!(resp.power, Uint128::new(50));
 }
 
@@ -1364,4 +1361,134 @@ pub fn test_migrate_update_version() {
     let version = cw2::get_contract_version(&deps.storage).unwrap();
     assert_eq!(version.version, CONTRACT_VERSION);
     assert_eq!(version.contract, CONTRACT_NAME);
+}
+
+#[test]
+pub fn test_limit() {
+    let mut app = mock_app();
+    let staking_id = app.store_code(staking_contract());
+    let addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            token_info: TokenInfo::Existing {
+                denom: DENOM.to_string(),
+            },
+            unstaking_duration: Some(Duration::Height(5)),
+            active_threshold: Some(ActiveThreshold::Percentage {
+                percent: Decimal::percent(20),
+            }),
+        },
+    );
+
+    let staked = Uint128::from(5000u128);
+    let limit = Uint128::from(100u128);
+
+    // Non-owner cannot update limits
+    let res = app.execute_contract(
+        Addr::unchecked("random"),
+        addr.clone(),
+        &ExecuteMsg::UpdateLimit {
+            addr: ADDR1.to_string(),
+            limit: Some(Uint128::from(100u128)),
+        },
+        &[],
+    );
+    assert!(res.is_err());
+
+    // Owner can update limits
+    app.execute_contract(
+        Addr::unchecked(DAO_ADDR),
+        addr.clone(),
+        &ExecuteMsg::UpdateLimit {
+            addr: ADDR1.to_string(),
+            limit: Some(limit.clone()),
+        },
+        &[],
+    )
+    .unwrap();
+    app.update_block(next_block);
+
+    // Assert that the limit was set
+    let limit_response: LimitAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            addr.clone(),
+            &QueryMsg::LimitAtHeight {
+                address: ADDR1.to_string(),
+                height: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(limit_response.limit, Some(limit.clone()));
+
+    // Stake 5000 tokens which is over the limit of 100
+    stake_tokens(&mut app, addr.clone(), ADDR1, staked.u128(), DENOM).unwrap();
+    app.update_block(next_block);
+
+    // Query voting power
+    let voting_power_response: VotingPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            addr.clone(),
+            &QueryMsg::VotingPowerAtHeight {
+                address: ADDR1.to_string(),
+                height: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(voting_power_response.power, limit.clone());
+
+    // Query total power
+    let total_power_response: TotalPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(addr.clone(), &QueryMsg::TotalPowerAtHeight { height: None })
+        .unwrap();
+    assert_eq!(total_power_response.power, limit.clone());
+
+    // Owner can remove limit
+    app.execute_contract(
+        Addr::unchecked(DAO_ADDR),
+        addr.clone(),
+        &ExecuteMsg::UpdateLimit {
+            addr: ADDR1.to_string(),
+            limit: None,
+        },
+        &[],
+    )
+    .unwrap();
+    app.update_block(next_block);
+
+    // Assert that the limit was removed
+    let limit_response: LimitAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            addr.clone(),
+            &QueryMsg::LimitAtHeight {
+                address: ADDR1.to_string(),
+                height: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(limit_response.limit, None);
+
+    // Query voting power without limit
+    let voting_power_response: VotingPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            addr.clone(),
+            &QueryMsg::VotingPowerAtHeight {
+                address: ADDR1.to_string(),
+                height: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(voting_power_response.power, staked.clone());
+
+    // Query total power without limit
+    let total_power_response: TotalPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(addr.clone(), &QueryMsg::TotalPowerAtHeight { height: None })
+        .unwrap();
+    assert_eq!(total_power_response.power, staked.clone());
 }
