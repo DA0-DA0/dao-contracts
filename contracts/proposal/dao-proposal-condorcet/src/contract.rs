@@ -274,7 +274,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
             Ok(Response::default()
                 .add_attribute("proposal_execution_failed", proposal_id.to_string())
-                .add_attribute("error", msg.result.unwrap_err()))
+                .add_attribute("error", msg.result.into_result().err().unwrap_or_default()))
         }
         _ => unimplemented!("pre-propose and hooks not yet supported"),
     }
