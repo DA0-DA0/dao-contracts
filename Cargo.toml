@@ -34,8 +34,8 @@ overflow-checks = true
 [workspace.dependencies]
 anyhow = { version = "1.0" }
 assert_matches = "1.5"
-base-factory = "3.1.0"
-base-minter = "3.1.0"
+base-factory = "2.4.0"
+base-minter = "2.4.0"
 cosm-orc = { version = "4.0" }
 cosm-tome = "0.2"
 cosmos-sdk-proto = "0.19"
@@ -79,8 +79,8 @@ syn = { version = "1.0", features = ["derive"] }
 test-context = "0.1"
 thiserror = { version = "1.0" }
 token-bindings = "0.11.0"
-vending-factory = "3.1.0"
-vending-minter = "3.1.0"
+vending-factory = "2.4.0"
+vending-minter = "2.4.0"
 wynd-utils = "0.4"
 
 # One commit ahead of version 0.3.0. Allows initialization with an
