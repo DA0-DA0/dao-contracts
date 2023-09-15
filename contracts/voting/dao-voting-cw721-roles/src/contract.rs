@@ -14,7 +14,7 @@ use cw_utils::parse_reply_instantiate_data;
 use dao_cw721_extensions::roles::{ExecuteExt, MetadataExt, QueryExt};
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, NftContract, QueryMsg};
-use crate::state::{Config, CONFIG, DAO, INITITIAL_NFTS};
+use crate::state::{Config, CONFIG, DAO, INITIAL_NFTS};
 use crate::ContractError;
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw721-roles";
@@ -57,7 +57,7 @@ pub fn instantiate(
             }
 
             // Save initial NFTs for use in reply
-            INITITIAL_NFTS.save(deps.storage, &initial_nfts)?;
+            INITIAL_NFTS.save(deps.storage, &initial_nfts)?;
 
             // Create instantiate submessage for NFT roles contract
             let msg = SubMsg::reply_on_success(
@@ -177,7 +177,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     };
                     CONFIG.save(deps.storage, &config)?;
 
-                    let initial_nfts = INITITIAL_NFTS.load(deps.storage)?;
+                    let initial_nfts = INITIAL_NFTS.load(deps.storage)?;
 
                     // Add mint submessages
                     let mint_submessages: Vec<SubMsg> = initial_nfts
@@ -202,7 +202,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                         .collect::<Vec<SubMsg>>();
 
                     // Clear space
-                    INITITIAL_NFTS.remove(deps.storage);
+                    INITIAL_NFTS.remove(deps.storage);
 
                     // Update minter message
                     let update_minter_msg = WasmMsg::Execute {

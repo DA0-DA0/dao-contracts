@@ -24,6 +24,38 @@ pub struct ActiveThresholdResponse {
 }
 
 #[derive(Error, Debug, PartialEq, Eq)]
+pub enum ActiveThresholdError {
+    #[error("Absolute count threshold cannot be greater than the total token supply")]
+    InvalidAbsoluteCount {},
+
+    #[error("Active threshold percentage must be greater than 0 and less than 1")]
+    InvalidActivePercentage {},
+
+    #[error("Active threshold count must be greater than zero")]
+    ZeroActiveCount {},
+}
+
+pub fn assert_valid_absolute_count_threshold(
+    count: Uint128,
+    supply: Uint128,
+) -> Result<(), ActiveThresholdError> {
+    if count.is_zero() {
+        return Err(ActiveThresholdError::ZeroActiveCount {});
+    }
+    if count > supply {
+        return Err(ActiveThresholdError::InvalidAbsoluteCount {});
+    }
+    Ok(())
+}
+
+pub fn assert_valid_percentage_threshold(percent: Decimal) -> Result<(), ActiveThresholdError> {
+    if percent.is_zero() || percent > Decimal::one() {
+        return Err(ActiveThresholdError::InvalidActivePercentage {});
+    }
+    Ok(())
+}
+
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum ThresholdError {
     #[error("Required threshold cannot be zero")]
     ZeroThreshold {},

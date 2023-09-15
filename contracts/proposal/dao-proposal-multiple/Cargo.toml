@@ -38,8 +38,7 @@ dao-pre-propose-base = { workspace = true }
 dao-interface = { workspace = true }
 dao-voting = { workspace = true }
 cw-hooks = { workspace = true }
-dao-proposal-hooks = { workspace = true }
-dao-vote-hooks = { workspace = true }
+dao-hooks = { workspace = true }
 dao-pre-propose-multiple = { workspace = true }
 voting-v1 = { workspace = true }
 
@@ -48,7 +47,7 @@ cw-multi-test = { workspace = true }
 dao-voting-cw4 = { workspace = true }
 dao-voting-cw20-balance = { workspace = true }
 dao-voting-cw20-staked = { workspace = true }
-dao-voting-native-staked = { workspace = true }
+dao-voting-token-staked = { workspace = true }
 dao-voting-cw721-staked = { workspace = true }
 cw-denom = { workspace = true }
 dao-testing = { workspace = true }

@@ -1,7 +1,6 @@
 use cosm_orc::orchestrator::{ExecReq, SigningKey};
 use cosmwasm_std::{Binary, Empty, Uint128};
 use cw_utils::Duration;
-use dao_interface::state::Admin;
 use test_context::test_context;
 
 use dao_voting_cw721_staked as module;
@@ -38,7 +37,6 @@ pub fn instantiate_cw721_base(chain: &mut Chain, key: &SigningKey, minter: &str)
 
 fn setup_test(
     chain: &mut Chain,
-    owner: Option<Admin>,
     unstaking_duration: Option<Duration>,
     key: &SigningKey,
     minter: &str,
@@ -50,7 +48,6 @@ fn setup_test(
             CONTRACT_NAME,
             "instantiate_dao_voting_cw721_staked",
             &module::msg::InstantiateMsg {
-                owner,
                 nft_contract: module::msg::NftContract::Existing {
                     address: cw721.clone(),
                 },
@@ -169,7 +166,7 @@ fn cw721_stake_tokens(chain: &mut Chain) {
     let user_addr = chain.users["user1"].account.address.clone();
     let user_key = chain.users["user1"].key.clone();
 
-    let CommonTest { module, .. } = setup_test(chain, None, None, &user_key, &user_addr);
+    let CommonTest { module, .. } = setup_test(chain, None, &user_key, &user_addr);
 
     mint_and_stake_nft(chain, &user_key, &user_addr, &module, "a");
 
@@ -202,13 +199,8 @@ fn cw721_stake_max_claims_works(chain: &mut Chain) {
     let user_addr = chain.users["user1"].account.address.clone();
     let user_key = chain.users["user1"].key.clone();
 
-    let CommonTest { module, .. } = setup_test(
-        chain,
-        None,
-        Some(Duration::Height(1)),
-        &user_key,
-        &user_addr,
-    );
+    let CommonTest { module, .. } =
+        setup_test(chain, Some(Duration::Height(1)), &user_key, &user_addr);
 
     // Create `MAX_CLAIMS` claims.
 

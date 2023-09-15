@@ -110,9 +110,9 @@ pub fn cw20_balances_voting_contract() -> Box<dyn Contract<Empty>> {
 
 pub fn native_staked_balances_voting_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        dao_voting_native_staked::contract::execute,
-        dao_voting_native_staked::contract::instantiate,
-        dao_voting_native_staked::contract::query,
+        dao_voting_token_staked::contract::execute,
+        dao_voting_token_staked::contract::instantiate,
+        dao_voting_token_staked::contract::query,
     );
     Box::new(contract)
 }

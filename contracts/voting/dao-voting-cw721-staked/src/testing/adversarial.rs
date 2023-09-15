@@ -27,7 +27,7 @@ fn test_circular_stake() -> anyhow::Result<()> {
         mut app,
         module,
         nft,
-    } = setup_test(None, None);
+    } = setup_test(None);
 
     mint_and_stake_nft(&mut app, &nft, &module, CREATOR_ADDR, "1")?;
     mint_and_stake_nft(&mut app, &nft, &module, CREATOR_ADDR, "2")?;
@@ -72,7 +72,7 @@ fn test_immediate_unstake() -> anyhow::Result<()> {
         mut app,
         module,
         nft,
-    } = setup_test(None, None);
+    } = setup_test(None);
 
     mint_and_stake_nft(&mut app, &nft, &module, CREATOR_ADDR, "1")?;
     mint_and_stake_nft(&mut app, &nft, &module, CREATOR_ADDR, "2")?;
@@ -94,7 +94,7 @@ fn test_immediate_unstake() -> anyhow::Result<()> {
 fn test_stake_wrong_nft() -> anyhow::Result<()> {
     let CommonTest {
         mut app, module, ..
-    } = setup_test(None, None);
+    } = setup_test(None);
     let other_nft = instantiate_cw721_base(&mut app, CREATOR_ADDR, CREATOR_ADDR);
 
     let res = mint_and_stake_nft(&mut app, &other_nft, &module, CREATOR_ADDR, "1");
@@ -115,7 +115,7 @@ fn test_query_the_future() -> anyhow::Result<()> {
         mut app,
         module,
         nft,
-    } = setup_test(None, None);
+    } = setup_test(None);
 
     mint_and_stake_nft(&mut app, &nft, &module, CREATOR_ADDR, "1")?;
 
@@ -154,7 +154,7 @@ fn test_bypass_max_claims() -> anyhow::Result<()> {
         mut app,
         module,
         nft,
-    } = setup_test(None, Some(Duration::Height(1)));
+    } = setup_test(Some(Duration::Height(1)));
     let mut to_stake = vec![];
     for i in 1..(MAX_CLAIMS + 10) {
         let i_str = &i.to_string();

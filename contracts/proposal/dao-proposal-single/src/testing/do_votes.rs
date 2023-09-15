@@ -1,7 +1,7 @@
-use cosmwasm_std::{coins, Addr, Uint128};
+use cosmwasm_std::{coins, Addr, Coin, Uint128};
 use cw20::Cw20Coin;
 
-use cw_multi_test::{App, BankSudo, Executor};
+use cw_multi_test::{App, BankSudo, Executor, SudoMsg};
 use dao_interface::state::ProposalModule;
 use dao_pre_propose_single as cppbps;
 
@@ -95,6 +95,17 @@ where
     F: Fn(&mut App, InstantiateMsg, Option<Vec<Cw20Coin>>) -> Addr,
 {
     let mut app = App::default();
+
+    // Mint some ujuno so that it exists for native staking tests
+    // Otherwise denom validation will fail
+    app.sudo(SudoMsg::Bank(BankSudo::Mint {
+        to_address: "sodenomexists".to_string(),
+        amount: vec![Coin {
+            amount: Uint128::new(10),
+            denom: "ujuno".to_string(),
+        }],
+    }))
+    .unwrap();
 
     let mut initial_balances = votes
         .iter()

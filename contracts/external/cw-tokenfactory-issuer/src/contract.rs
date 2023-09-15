@@ -3,39 +3,46 @@ use std::convert::TryInto;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg, SubMsgResult,
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg,
 };
 use cosmwasm_std::{CosmosMsg, Reply};
-use cw2::set_contract_version;
-use osmosis_std::types::osmosis::tokenfactory::v1beta1::{
-    MsgCreateDenom, MsgCreateDenomResponse, MsgSetBeforeSendHook,
-};
-use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
+use cw2::{get_contract_version, set_contract_version, ContractVersion};
+use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgCreateDenom, MsgCreateDenomResponse};
+use token_bindings::TokenFactoryMsg;
 
 use crate::error::ContractError;
 use crate::execute;
 use crate::hooks;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, SudoMsg};
 use crate::queries;
-use crate::state::{BEFORE_SEND_HOOK_FEATURES_ENABLED, DENOM, IS_FROZEN, OWNER};
+use crate::state::{BeforeSendHookInfo, BEFORE_SEND_HOOK_INFO, DENOM, IS_FROZEN};
 
-// version info for migration info
-const CONTRACT_NAME: &str = "crates.io:cw-tokenfactory-issuer";
+// Version info for migration
+const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const CREATE_DENOM_REPLY_ID: u64 = 1;
-const BEFORE_SEND_HOOK_REPLY_ID: u64 = 2;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    OWNER.save(deps.storage, &info.sender)?;
+    // Owner is the sender of the initial InstantiateMsg
+    cw_ownable::initialize_owner(deps.storage, deps.api, Some(info.sender.as_str()))?;
+
+    // BeforeSendHook features are disabled by default.
+    BEFORE_SEND_HOOK_INFO.save(
+        deps.storage,
+        &BeforeSendHookInfo {
+            advanced_features_enabled: false,
+            hook_contract_address: None,
+        },
+    )?;
     IS_FROZEN.save(deps.storage, &false)?;
 
     match msg {
@@ -45,8 +52,7 @@ pub fn instantiate(
                 .add_attribute("owner", info.sender)
                 .add_attribute("subdenom", subdenom.clone())
                 .add_submessage(
-                    // create new denom, if denom is created successfully,
-                    // set beforesend listener to this contract on reply
+                    // Create new denom, denom info is saved in the reply
                     SubMsg::reply_on_success(
                         <CosmosMsg<TokenFactoryMsg>>::from(MsgCreateDenom {
                             sender: env.contract.address.to_string(),
@@ -59,10 +65,6 @@ pub fn instantiate(
         InstantiateMsg::ExistingToken { denom } => {
             DENOM.save(deps.storage, &denom)?;
 
-            // BeforeSendHook cannot be set with existing tokens
-            // features that rely on it are disabled
-            BEFORE_SEND_HOOK_FEATURES_ENABLED.save(deps.storage, &false)?;
-
             Ok(Response::new()
                 .add_attribute("action", "instantiate")
                 .add_attribute("owner", info.sender)
@@ -73,7 +75,7 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
@@ -87,12 +89,8 @@ pub fn execute(
             amount,
             from_address: address,
         } => execute::burn(deps, env, info, amount, address),
-        ExecuteMsg::Blacklist { address, status } => {
-            execute::blacklist(deps, info, address, status)
-        }
-        ExecuteMsg::Whitelist { address, status } => {
-            execute::whitelist(deps, info, address, status)
-        }
+        ExecuteMsg::Deny { address, status } => execute::deny(deps, env, info, address, status),
+        ExecuteMsg::Allow { address, status } => execute::allow(deps, info, address, status),
         ExecuteMsg::Freeze { status } => execute::freeze(deps, info, status),
         ExecuteMsg::ForceTransfer {
             amount,
@@ -101,11 +99,11 @@ pub fn execute(
         } => execute::force_transfer(deps, env, info, amount, from_address, to_address),
 
         // Admin functions
-        ExecuteMsg::ChangeTokenFactoryAdmin { new_admin } => {
-            execute::change_tokenfactory_admin(deps, info, new_admin)
+        ExecuteMsg::UpdateTokenFactoryAdmin { new_admin } => {
+            execute::update_tokenfactory_admin(deps, info, new_admin)
         }
-        ExecuteMsg::ChangeContractOwner { new_owner } => {
-            execute::change_contract_owner(deps, info, new_owner)
+        ExecuteMsg::UpdateOwnership(action) => {
+            execute::update_contract_owner(deps, env, info, action)
         }
         ExecuteMsg::SetMinterAllowance { address, allowance } => {
             execute::set_minter(deps, info, address, allowance)
@@ -113,15 +111,8 @@ pub fn execute(
         ExecuteMsg::SetBurnerAllowance { address, allowance } => {
             execute::set_burner(deps, info, address, allowance)
         }
-        ExecuteMsg::SetBeforeSendHook {} => execute::set_before_send_hook(deps, env, info),
-        ExecuteMsg::SetBlacklister { address, status } => {
-            execute::set_blacklister(deps, info, address, status)
-        }
-        ExecuteMsg::SetWhitelister { address, status } => {
-            execute::set_whitelister(deps, info, address, status)
-        }
-        ExecuteMsg::SetFreezer { address, status } => {
-            execute::set_freezer(deps, info, address, status)
+        ExecuteMsg::SetBeforeSendHook { cosmwasm_address } => {
+            execute::set_before_send_hook(deps, env, info, cosmwasm_address)
         }
         ExecuteMsg::SetDenomMetadata { metadata } => {
             execute::set_denom_metadata(deps, env, info, metadata)
@@ -130,11 +121,7 @@ pub fn execute(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn sudo(
-    deps: DepsMut<TokenFactoryQuery>,
-    _env: Env,
-    msg: SudoMsg,
-) -> Result<Response, ContractError> {
+pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
     match msg {
         SudoMsg::BlockBeforeSend { from, to, amount } => {
             hooks::beforesend_hook(deps, from, to, amount)
@@ -143,69 +130,54 @@ pub fn sudo(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps<TokenFactoryQuery>, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::IsFrozen {} => to_binary(&queries::query_is_frozen(deps)?),
-        QueryMsg::Denom {} => to_binary(&queries::query_denom(deps)?),
-        QueryMsg::Owner {} => to_binary(&queries::query_owner(deps)?),
+        QueryMsg::Allowlist { start_after, limit } => {
+            to_binary(&queries::query_allowlist(deps, start_after, limit)?)
+        }
+        QueryMsg::BeforeSendHookInfo {} => {
+            to_binary(&queries::query_before_send_hook_features(deps)?)
+        }
         QueryMsg::BurnAllowance { address } => {
             to_binary(&queries::query_burn_allowance(deps, address)?)
         }
         QueryMsg::BurnAllowances { start_after, limit } => {
             to_binary(&queries::query_burn_allowances(deps, start_after, limit)?)
         }
+        QueryMsg::Denom {} => to_binary(&queries::query_denom(deps)?),
+        QueryMsg::Denylist { start_after, limit } => {
+            to_binary(&queries::query_denylist(deps, start_after, limit)?)
+        }
+        QueryMsg::IsAllowed { address } => to_binary(&queries::query_is_allowed(deps, address)?),
+        QueryMsg::IsDenied { address } => to_binary(&queries::query_is_denied(deps, address)?),
+        QueryMsg::IsFrozen {} => to_binary(&queries::query_is_frozen(deps)?),
+        QueryMsg::Ownership {} => to_binary(&queries::query_owner(deps)?),
         QueryMsg::MintAllowance { address } => {
             to_binary(&queries::query_mint_allowance(deps, address)?)
         }
         QueryMsg::MintAllowances { start_after, limit } => {
             to_binary(&queries::query_mint_allowances(deps, start_after, limit)?)
         }
-        QueryMsg::IsBlacklisted { address } => {
-            to_binary(&queries::query_is_blacklisted(deps, address)?)
-        }
-        QueryMsg::Blacklistees { start_after, limit } => {
-            to_binary(&queries::query_blacklistees(deps, start_after, limit)?)
-        }
-        QueryMsg::IsBlacklister { address } => {
-            to_binary(&queries::query_is_blacklister(deps, address)?)
-        }
-        QueryMsg::BlacklisterAllowances { start_after, limit } => to_binary(
-            &queries::query_blacklister_allowances(deps, start_after, limit)?,
-        ),
-        QueryMsg::IsWhitelisted { address } => {
-            to_binary(&queries::query_is_whitelisted(deps, address)?)
-        }
-        QueryMsg::Whitelistees { start_after, limit } => {
-            to_binary(&queries::query_whitelistees(deps, start_after, limit)?)
-        }
-        QueryMsg::IsWhitelister { address } => {
-            to_binary(&queries::query_is_whitelister(deps, address)?)
-        }
-        QueryMsg::WhitelisterAllowances { start_after, limit } => to_binary(
-            &queries::query_whitelister_allowances(deps, start_after, limit)?,
-        ),
-        QueryMsg::IsFreezer { address } => to_binary(&queries::query_is_freezer(deps, address)?),
-        QueryMsg::FreezerAllowances { start_after, limit } => to_binary(
-            &queries::query_freezer_allowances(deps, start_after, limit)?,
-        ),
     }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(
-    deps: DepsMut<TokenFactoryQuery>,
-    _env: Env,
-    _msg: MigrateMsg,
-) -> Result<Response, ContractError> {
-    // Set contract to version to latest
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    Ok(Response::new().add_attribute("action", "migrate"))
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let storage_version: ContractVersion = get_contract_version(deps.storage)?;
+
+    // Only migrate if newer
+    if storage_version.version.as_str() < CONTRACT_VERSION {
+        // Set contract to version to latest
+        set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    }
+
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(
-    deps: DepsMut<TokenFactoryQuery>,
-    env: Env,
+    deps: DepsMut,
+    _env: Env,
     msg: Reply,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
     match msg.id {
@@ -213,37 +185,8 @@ pub fn reply(
             let MsgCreateDenomResponse { new_token_denom } = msg.result.try_into()?;
             DENOM.save(deps.storage, &new_token_denom)?;
 
-            // SetBeforeSendHook to this contract
-            // this will trigger sudo endpoint before any bank send
-            // which makes blacklisting / freezing possible
-            let msg_set_beforesend_hook: CosmosMsg<TokenFactoryMsg> = MsgSetBeforeSendHook {
-                sender: env.contract.address.to_string(),
-                denom: new_token_denom.clone(),
-                cosmwasm_address: env.contract.address.to_string(),
-            }
-            .into();
-
-            Ok(Response::new()
-                .add_attribute("denom", new_token_denom)
-                .add_submessage(SubMsg::reply_always(
-                    msg_set_beforesend_hook,
-                    BEFORE_SEND_HOOK_REPLY_ID,
-                )))
+            Ok(Response::new().add_attribute("denom", new_token_denom))
         }
-        BEFORE_SEND_HOOK_REPLY_ID => match msg.result {
-            SubMsgResult::Ok(_) => {
-                // Enable features with BeforeSendHook requirement
-                BEFORE_SEND_HOOK_FEATURES_ENABLED.save(deps.storage, &true)?;
-
-                Ok(Response::new().add_attribute("extra_features", "enabled"))
-            }
-            SubMsgResult::Err(_) => {
-                // MsgSetBeforeSendHook failed, disable extra features that require it
-                BEFORE_SEND_HOOK_FEATURES_ENABLED.save(deps.storage, &false)?;
-
-                Ok(Response::new().add_attribute("extra_features", "disabled"))
-            }
-        },
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }
 }

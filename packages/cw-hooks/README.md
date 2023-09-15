@@ -1,7 +1,7 @@
 # CosmWasm DAO Hooks
 
 This package provides shared hook functionality used for
-[proposal](../dao-proposal-hooks) and [vote](../dao-vote-hooks) hooks.
+[dao-hooks](../dao-hooks).
 
 It deviates from other CosmWasm hook packages in that hooks can be
 modified based on their index in the hook list AND based on the

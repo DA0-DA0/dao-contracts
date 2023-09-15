@@ -9,9 +9,9 @@ use cw_hooks::Hooks;
 use cw_proposal_single_v1 as v1;
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration};
+use dao_hooks::proposal::{new_proposal_hooks, proposal_status_changed_hooks};
+use dao_hooks::vote::new_vote_hooks;
 use dao_interface::voting::IsActiveResponse;
-use dao_proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
-use dao_vote_hooks::new_vote_hooks;
 use dao_voting::pre_propose::{PreProposeInfo, ProposalCreationPolicy};
 use dao_voting::proposal::{
     SingleChoiceProposeMsg as ProposeMsg, DEFAULT_LIMIT, MAX_PROPOSAL_SIZE,

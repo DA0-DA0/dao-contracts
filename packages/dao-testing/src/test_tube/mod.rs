@@ -7,3 +7,9 @@
 // cargo test --features test-tube
 #[cfg(feature = "test-tube")]
 pub mod cw_tokenfactory_issuer;
+
+#[cfg(feature = "test-tube")]
+pub mod dao_dao_core;
+
+#[cfg(feature = "test-tube")]
+pub mod dao_proposal_single;

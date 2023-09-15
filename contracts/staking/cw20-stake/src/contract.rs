@@ -5,21 +5,8 @@ use cosmwasm_std::{
     from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
     StdError, StdResult, Uint128,
 };
-
-use cw20::{Cw20ReceiveMsg, TokenInfoResponse};
-
-use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
-use crate::math;
-use crate::msg::{
-    ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg,
-    ReceiveMsg, StakedBalanceAtHeightResponse, StakedValueResponse, StakerBalanceResponse,
-    TotalStakedAtHeightResponse, TotalValueResponse,
-};
-use crate::state::{
-    Config, BALANCE, CLAIMS, CONFIG, HOOKS, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL,
-};
-use crate::ContractError;
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
+use cw20::{Cw20ReceiveMsg, TokenInfoResponse};
 pub use cw20_base::allowances::{
     execute_burn_from, execute_decrease_allowance, execute_increase_allowance, execute_send_from,
     execute_transfer_from, query_allowance,
@@ -32,27 +19,22 @@ pub use cw20_base::contract::{
 pub use cw20_base::enumerable::{query_all_accounts, query_owner_allowances};
 use cw_controllers::ClaimsResponse;
 use cw_utils::Duration;
+use dao_hooks::stake::{stake_hook_msgs, unstake_hook_msgs};
+use dao_voting::duration::validate_duration;
+
+use crate::math;
+use crate::msg::{
+    ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg,
+    ReceiveMsg, StakedBalanceAtHeightResponse, StakedValueResponse, StakerBalanceResponse,
+    TotalStakedAtHeightResponse, TotalValueResponse,
+};
+use crate::state::{
+    Config, BALANCE, CLAIMS, CONFIG, HOOKS, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL,
+};
+use crate::ContractError;
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cw20-stake";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-fn validate_duration(duration: Option<Duration>) -> Result<(), ContractError> {
-    if let Some(unstaking_duration) = duration {
-        match unstaking_duration {
-            Duration::Height(height) => {
-                if height == 0 {
-                    return Err(ContractError::InvalidUnstakingDuration {});
-                }
-            }
-            Duration::Time(time) => {
-                if time == 0 {
-                    return Err(ContractError::InvalidUnstakingDuration {});
-                }
-            }
-        }
-    }
-    Ok(())
-}
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -182,7 +164,7 @@ pub fn execute_stake(
         deps.storage,
         &balance.checked_add(amount).map_err(StdError::overflow)?,
     )?;
-    let hook_msgs = stake_hook_msgs(deps.storage, sender.clone(), amount_to_stake)?;
+    let hook_msgs = stake_hook_msgs(HOOKS, deps.storage, sender.clone(), amount_to_stake)?;
     Ok(Response::new()
         .add_submessages(hook_msgs)
         .add_attribute("action", "stake")
@@ -230,7 +212,7 @@ pub fn execute_unstake(
             .checked_sub(amount_to_claim)
             .map_err(StdError::overflow)?,
     )?;
-    let hook_msgs = unstake_hook_msgs(deps.storage, info.sender.clone(), amount)?;
+    let hook_msgs = unstake_hook_msgs(HOOKS, deps.storage, info.sender.clone(), amount)?;
     match config.unstaking_duration {
         None => {
             let cw_send_msg = cw20::Cw20ExecuteMsg::Transfer {

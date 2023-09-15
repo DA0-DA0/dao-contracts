@@ -4,7 +4,7 @@ use cosmwasm_std::{
     to_binary, Addr, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
     SubMsg, Uint128, Uint256, WasmMsg,
 };
-use cw2::set_contract_version;
+use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw20::{Cw20Coin, TokenInfoResponse};
 use cw_utils::parse_reply_instantiate_data;
 use dao_interface::voting::IsActiveResponse;
@@ -372,9 +372,15 @@ pub fn query_active_threshold(deps: Deps) -> StdResult<Binary> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // Set contract to version to latest
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    Ok(Response::default())
+    let storage_version: ContractVersion = get_contract_version(deps.storage)?;
+
+    // Only migrate if newer
+    if storage_version.version.as_str() < CONTRACT_VERSION {
+        // Set contract to version to latest
+        set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    }
+
+    Ok(Response::new().add_attribute("action", "migrate"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -67,15 +67,11 @@ cd packages/dao-voting
 cargo publish
 cd "$START_DIR"
 
-cd packages/dao-vote-hooks
+cd packages/dao-hooks
 cargo publish
 cd "$START_DIR"
 
 sleep 120
-
-cd packages/dao-proposal-hooks
-cargo publish
-cd "$START_DIR"
 
 cd packages/dao-pre-propose-base
 cargo publish
@@ -167,7 +163,7 @@ cd contracts/voting/dao-voting-cw721-staked
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
 
-cd contracts/voting/dao-voting-native-staked
+cd contracts/voting/dao-voting-token-staked
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
 

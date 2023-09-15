@@ -40,7 +40,9 @@ fn set_minter_performed_by_non_contract_owner_should_fail() {
 
     assert_eq!(
         err,
-        TokenfactoryIssuer::execute_error(ContractError::Unauthorized {})
+        TokenfactoryIssuer::execute_error(ContractError::Ownership(
+            cw_ownable::OwnershipError::NotOwner
+        ))
     );
 }
 
@@ -50,18 +52,18 @@ fn set_allowance_to_0_should_remove_it_from_storage() {
     let owner = &env.test_accs[0];
     let minter = &env.test_accs[1];
 
-    // set allowance to some value
+    // Set allowance to some value
     let allowance = 1000000;
     env.cw_tokenfactory_issuer
         .set_minter(&minter.address(), allowance, owner)
         .unwrap();
 
-    // set allowance to 0
+    // Set allowance to 0
     env.cw_tokenfactory_issuer
         .set_minter(&minter.address(), 0, owner)
         .unwrap();
 
-    // check if key for the minter address is removed
+    // Check if key for the minter address is removed
     assert_eq!(
         env.cw_tokenfactory_issuer
             .query_mint_allowances(None, None)
@@ -77,18 +79,18 @@ fn used_up_allowance_should_be_removed_from_storage() {
     let owner = &env.test_accs[0];
     let minter = &env.test_accs[1];
 
-    // set allowance to some value
+    // Set allowance to some value
     let allowance = 1000000;
     env.cw_tokenfactory_issuer
         .set_minter(&minter.address(), allowance, owner)
         .unwrap();
 
-    // use all allowance
+    // Use all allowance
     env.cw_tokenfactory_issuer
         .mint(&minter.address(), allowance, minter)
         .unwrap();
 
-    // check if key for the minter address is removed
+    // Check if key for the minter address is removed
     assert_eq!(
         env.cw_tokenfactory_issuer
             .query_mint_allowances(None, None)
@@ -124,7 +126,7 @@ fn mint_less_than_or_eq_allowance_should_pass_and_deduct_allowance() {
             .mint(&mint_to.address(), mint_amount, minter)
             .unwrap();
 
-        // check if allowance is deducted properly
+        // Check if allowance is deducted properly
         let resulted_allowance = env
             .cw_tokenfactory_issuer
             .query_mint_allowance(&minter.address())
@@ -177,7 +179,7 @@ fn mint_over_allowance_should_fail_and_not_deduct_allowance() {
             ))
         );
 
-        // check if allowance stays the same
+        // Check if allowance stays the same
         let resulted_allowance = env
             .cw_tokenfactory_issuer
             .query_mint_allowance(&minter.address())
@@ -214,7 +216,7 @@ fn mint_0_should_fail_and_not_deduct_allowance() {
             TokenfactoryIssuer::execute_error(ContractError::ZeroAmount {})
         );
 
-        // check if allowance stays the same
+        // Check if allowance stays the same
         let resulted_allowance = env
             .cw_tokenfactory_issuer
             .query_mint_allowance(&minter.address())
