@@ -402,7 +402,7 @@ fn test_factory() {
     };
 
     // Instantiate DAO
-    let dao = DaoCore::new(&app, &msg, &accounts[0]).unwrap();
+    let _dao = DaoCore::new(&app, &msg, &accounts[0]).unwrap();
 
     // TODO query voting module
 

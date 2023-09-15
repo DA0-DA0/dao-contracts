@@ -194,7 +194,7 @@ pub fn instantiate(
                     },
                     FACTORY_EXECUTE_REPLY_ID,
                 ))),
-            _ => return Err(ContractError::UnsupportedFactoryMsg {}),
+            _ => Err(ContractError::UnsupportedFactoryMsg {}),
         },
     }
 }
@@ -756,7 +756,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     Ok(Response::new().add_attribute("nft_contract", info.nft_contract))
                 }
                 // TODO better error
-                None => return Err(ContractError::Unauthorized {}),
+                None => Err(ContractError::Unauthorized {}),
             }
         }
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),

@@ -142,7 +142,7 @@ pub fn instantiate(
                     },
                     FACTORY_EXECUTE_REPLY_ID,
                 ))),
-            _ => return Err(ContractError::UnsupportedFactoryMsg {}),
+            _ => Err(ContractError::UnsupportedFactoryMsg {}),
         },
     }
 }
@@ -732,7 +732,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     // Save token issuer contract if one is returned
                     if let Some(ref token_contract) = info.token_contract {
                         TOKEN_ISSUER_CONTRACT
-                            .save(deps.storage, &deps.api.addr_validate(&token_contract)?)?;
+                            .save(deps.storage, &deps.api.addr_validate(token_contract)?)?;
                     }
 
                     // TODO validate active threshold is set? Some contracts such as a minter,
@@ -743,7 +743,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         .add_attribute("token_contract", info.token_contract.unwrap_or_default()))
                 }
                 // TODO better error
-                None => return Err(ContractError::Unauthorized {}),
+                None => Err(ContractError::Unauthorized {}),
             }
         }
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),
