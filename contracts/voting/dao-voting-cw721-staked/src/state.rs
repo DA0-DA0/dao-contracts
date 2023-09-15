@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary, Empty, StdError, StdResult, Storage, Uint128};
 use cw721_controllers::NftClaims;
-use cw_controllers::Hooks;
+use cw_hooks::Hooks;
 use cw_storage_plus::{Item, Map, SnapshotItem, SnapshotMap, Strategy};
 use cw_utils::Duration;
 use dao_voting::threshold::ActiveThreshold;
@@ -10,7 +10,6 @@ use crate::ContractError;
 
 #[cw_serde]
 pub struct Config {
-    pub owner: Option<Addr>,
     pub nft_address: Addr,
     pub unstaking_duration: Option<Duration>,
 }
@@ -20,7 +19,7 @@ pub const CONFIG: Item<Config> = Item::new("config");
 pub const DAO: Item<Addr> = Item::new("dao");
 
 // Holds initial NFTs messages during instantiation.
-pub const INITITIAL_NFTS: Item<Vec<Binary>> = Item::new("initial_nfts");
+pub const INITIAL_NFTS: Item<Vec<Binary>> = Item::new("initial_nfts");
 
 /// The set of NFTs currently staked by each address. The existence of
 /// an `(address, token_id)` pair implies that `address` has staked

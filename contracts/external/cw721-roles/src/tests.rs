@@ -260,7 +260,6 @@ fn test_send_permissions() {
             dao_voting_cw721_staked_id,
             Addr::unchecked(DAO),
             &Cw721StakedInstantiateMsg {
-                owner: None,
                 nft_contract: NftContract::Existing {
                     address: cw721_addr.to_string(),
                 },

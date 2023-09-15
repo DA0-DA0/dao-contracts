@@ -3,7 +3,6 @@ use cosmwasm_std::Binary;
 use cw721::Cw721ReceiveMsg;
 use cw_utils::Duration;
 use dao_dao_macros::{active_query, voting_module_query};
-use dao_interface::state::Admin;
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
 #[cw_serde]
@@ -28,8 +27,6 @@ pub enum NftContract {
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    /// May change unstaking duration and add hooks.
-    pub owner: Option<Admin>,
     /// Address of the cw721 NFT contract that may be staked.
     pub nft_contract: NftContract,
     /// Amount of time between unstaking and tokens being
@@ -54,7 +51,6 @@ pub enum ExecuteMsg {
     },
     ClaimNfts {},
     UpdateConfig {
-        owner: Option<String>,
         duration: Option<Duration>,
     },
     AddHook {

@@ -19,14 +19,16 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-controllers = { workspace = true }
-dao-dao-macros = { workspace = true }
-dao-interface = { workspace = true }
+cw-hooks = { workspace = true }
 cw721 = { workspace = true }
 cw721-base = { workspace = true, features = ["library"] }
 cw721-controllers = { workspace = true }
 cw-paginate-storage = { workspace = true }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
+dao-dao-macros = { workspace = true }
+dao-hooks = { workspace = true }
+dao-interface = { workspace = true }
 dao-voting = { workspace = true }
 sg-std = { workspace = true }
 sg721 = { workspace = true }

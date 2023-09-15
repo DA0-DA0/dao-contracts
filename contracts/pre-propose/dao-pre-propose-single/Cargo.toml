@@ -36,6 +36,6 @@ dao-voting = { workspace = true }
 cw-denom = { workspace = true }
 dao-interface = { workspace = true }
 dao-testing = { workspace = true }
-dao-proposal-hooks = { workspace = true }
+dao-hooks = { workspace = true }
 dao-proposal-single = { workspace = true }
 cw-hooks = { workspace = true }

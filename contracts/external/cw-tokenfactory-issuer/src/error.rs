@@ -6,16 +6,19 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error("The chain you are using does not support MsgBeforeSendHook at this time. Features requiring it are disabled.")]
+    #[error(transparent)]
+    Ownership(#[from] cw_ownable::OwnershipError),
+
+    #[error("BeforeSendHook not set. Features requiring it are disabled.")]
     BeforeSendHookFeaturesDisabled {},
 
-    #[error("MsgBeforeSendHook is already configured. Features requiring it are already enabled.")]
-    BeforeSendHookAlreadyEnabled {},
+    #[error("The address '{address}' is denied transfer abilities")]
+    Denied { address: String },
 
-    #[error("The address '{address}' is blacklisted")]
-    Blacklisted { address: String },
+    #[error("Cannot denylist the issuer contract itself")]
+    CannotDenylistSelf {},
 
-    #[error("The contract is frozen for denom {denom:?}")]
+    #[error("The contract is frozen for denom {denom:?}. Addresses need to be added to the allowlist to enable transfers to or from an account.")]
     ContractFrozen { denom: String },
 
     #[error("Invalid subdenom: {subdenom:?}")]

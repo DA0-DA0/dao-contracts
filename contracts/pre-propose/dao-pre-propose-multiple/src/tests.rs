@@ -1021,7 +1021,7 @@ fn test_execute_extension_does_nothing() {
     assert_eq!(res.events[0].attributes.len(), 1);
     assert_eq!(
         res.events[0].attributes[0].key,
-        "_contract_addr".to_string()
+        "_contract_address".to_string()
     )
 }
 

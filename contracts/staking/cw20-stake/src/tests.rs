@@ -1,3 +1,13 @@
+use anyhow::Result as AnyResult;
+use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+use cosmwasm_std::{to_binary, Addr, Empty, MessageInfo, Uint128, WasmMsg};
+use cw20::Cw20Coin;
+use cw_controllers::{Claim, ClaimsResponse};
+use cw_multi_test::{next_block, App, AppResponse, Contract, ContractWrapper, Executor};
+use cw_ownable::{Action, Ownership, OwnershipError};
+use cw_utils::Duration;
+use cw_utils::Expiration::AtHeight;
+use dao_voting::duration::UnstakingDurationError;
 use std::borrow::BorrowMut;
 
 use crate::msg::{
@@ -7,19 +17,8 @@ use crate::msg::{
 };
 use crate::state::{Config, MAX_CLAIMS};
 use crate::ContractError;
-use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{to_binary, Addr, Empty, MessageInfo, Uint128, WasmMsg};
-use cw20::Cw20Coin;
-use cw_ownable::{Action, Ownership, OwnershipError};
-use cw_utils::Duration;
 
-use cw_multi_test::{next_block, App, AppResponse, Contract, ContractWrapper, Executor};
-
-use anyhow::Result as AnyResult;
 use cw20_stake_v1 as v1;
-
-use cw_controllers::{Claim, ClaimsResponse};
-use cw_utils::Expiration::AtHeight;
 
 const ADDR1: &str = "addr0001";
 const ADDR2: &str = "addr0002";
@@ -273,14 +272,20 @@ fn test_update_config() {
             .unwrap_err()
             .downcast()
             .unwrap();
-    assert_eq!(err, ContractError::InvalidUnstakingDuration {});
+    assert_eq!(
+        err,
+        ContractError::UnstakingDurationError(UnstakingDurationError::InvalidUnstakingDuration {})
+    );
 
     let info = mock_info(OWNER, &[]);
     let err: ContractError = update_config(&mut app, &staking_addr, info, Some(Duration::Time(0)))
         .unwrap_err()
         .downcast()
         .unwrap();
-    assert_eq!(err, ContractError::InvalidUnstakingDuration {});
+    assert_eq!(
+        err,
+        ContractError::UnstakingDurationError(UnstakingDurationError::InvalidUnstakingDuration {})
+    );
 }
 
 #[test]

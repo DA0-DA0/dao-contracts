@@ -54,8 +54,8 @@ cw721 = "0.18"
 cw721-base = "0.18"
 env_logger = "0.10"
 once_cell = "1.18"
-osmosis-std = { git = "https://github.com/osmosis-labs/osmosis-rust", branch = "autobuild-v17.0.0-rc0" }
-osmosis-test-tube = "17.0.0-rc0"
+osmosis-std = "0.19.0"
+osmosis-test-tube = "19.0.0"
 proc-macro2 = "1.0"
 prost = "0.11"
 quote = "1.0"
@@ -71,9 +71,7 @@ sg-multi-test = "3.1.0"
 syn = { version = "1.0", features = ["derive"] }
 test-context = "0.1"
 thiserror = { version = "1.0" }
-# TODO use upstream when PR merged and new release tagged: https://github.com/CosmWasm/cw-multi-test/pull/51
-token-bindings = { git = "https://github.com/CosmosContracts/token-bindings.git", rev = "0cd084b68172ffc9af29eb37fb915392ce351954" }
-token-bindings-test = { git = "https://github.com/CosmosContracts/token-bindings.git", rev = "0cd084b68172ffc9af29eb37fb915392ce351954" }
+token-bindings = "0.11.0"
 wynd-utils = "0.4"
 
 # One commit ahead of version 0.3.0. Allows initialization with an
@@ -94,28 +92,27 @@ cw721-controllers = { path = "./packages/cw721-controllers", version = "2.2.0" }
 cw721-roles = { path = "./contracts/external/cw721-roles", version = "*" }
 dao-cw721-extensions = { path = "./packages/dao-cw721-extensions", version = "*" }
 dao-dao-core = { path = "./contracts/dao-dao-core", version = "2.2.0" }
-dao-interface = { path = "./packages/dao-interface", version = "2.2.0" }
 dao-dao-macros = { path = "./packages/dao-dao-macros", version = "2.2.0" }
+dao-hooks = { path = "./packages/dao-hooks", version = "*" }
+dao-interface = { path = "./packages/dao-interface", version = "2.2.0" }
 dao-pre-propose-approval-single = { path = "./contracts/pre-propose/dao-pre-propose-approval-single", version = "2.2.0" }
 dao-pre-propose-approver = { path = "./contracts/pre-propose/dao-pre-propose-approver", version = "2.2.0" }
 dao-pre-propose-base = { path = "./packages/dao-pre-propose-base", version = "2.2.0" }
 dao-pre-propose-multiple = { path = "./contracts/pre-propose/dao-pre-propose-multiple", version = "2.2.0" }
 dao-pre-propose-single = { path = "./contracts/pre-propose/dao-pre-propose-single", version = "2.2.0" }
 dao-proposal-condorcet = { path = "./contracts/proposal/dao-proposal-condorcet", version = "2.2.0" }
-dao-proposal-hooks = { path = "./packages/dao-proposal-hooks", version = "2.2.0" }
 dao-proposal-multiple = { path = "./contracts/proposal/dao-proposal-multiple", version = "2.2.0" }
 dao-proposal-single = { path = "./contracts/proposal/dao-proposal-single", version = "2.2.0" }
 dao-proposal-sudo = { path = "./test-contracts/dao-proposal-sudo", version = "2.2.0" }
+dao-proposal-hook-counter = { path = "./test-contracts/dao-proposal-hook-counter", version = "2.2.0" }
 dao-testing = { path = "./packages/dao-testing", version = "2.2.0" }
-dao-vote-hooks = { path = "./packages/dao-vote-hooks", version = "2.2.0" }
 dao-voting = { path = "./packages/dao-voting", version = "2.2.0" }
 dao-voting-cw20-balance = { path = "./test-contracts/dao-voting-cw20-balance", version = "2.2.0" }
 dao-voting-cw20-staked = { path = "./contracts/voting/dao-voting-cw20-staked", version = "2.2.0" }
 dao-voting-cw4 = { path = "./contracts/voting/dao-voting-cw4", version = "2.2.0" }
 dao-voting-cw721-roles = { path = "./contracts/voting/dao-voting-cw721-roles", version = "*" }
 dao-voting-cw721-staked = { path = "./contracts/voting/dao-voting-cw721-staked", version = "2.2.0" }
-dao-voting-native-staked = { path = "./contracts/voting/dao-voting-native-staked", version = "2.2.0" }
-dao-voting-token-factory-staked = { path = "./contracts/voting/dao-voting-token-factory-staked", version = "2.2.0" }
+dao-voting-token-staked = { path = "./contracts/voting/dao-voting-token-staked", version = "2.2.0" }
 
 # v1 dependencies. used for state migrations.
 cw-core-v1 = { package = "cw-core", version = "0.1.0" }
@@ -129,6 +126,6 @@ cw4-voting-v1 = { package = "cw4-voting", version = "0.1.0" }
 voting-v1 = { package = "dao-voting", version = "0.1.0" }
 stake-cw20-v03 = { package = "stake-cw20", version = "0.2.6" }
 
-# TODO remove when upstream PR merged and new release tagged: https://github.com/CosmWasm/cw-multi-test/pull/51
+# TODO remove when new release is tagged upstream
 [patch.crates-io]
-cw-multi-test = { git = "https://github.com/JakeHartnell/cw-multi-test.git", branch = "bank-supply-support" }
+cw-multi-test = { git = "https://github.com/CosmWasm/cw-multi-test.git", rev = "d38db7752b9f054c395d6108453f8b321e4cab02" }

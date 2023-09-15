@@ -29,17 +29,6 @@
           }
         ]
       },
-      "owner": {
-        "description": "May change unstaking duration and add hooks.",
-        "anyOf": [
-          {
-            "$ref": "#/definitions/Admin"
-          },
-          {
-            "type": "null"
-          }
-        ]
-      },
       "unstaking_duration": {
         "description": "Amount of time between unstaking and tokens being avaliable. To unstake with no delay, leave as `None`.",
         "anyOf": [
@@ -96,47 +85,6 @@
                     "$ref": "#/definitions/Decimal"
                   }
                 },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          }
-        ]
-      },
-      "Admin": {
-        "description": "Information about the CosmWasm level admin of a contract. Used in conjunction with `ModuleInstantiateInfo` to instantiate modules.",
-        "oneOf": [
-          {
-            "description": "Set the admin to a specified address.",
-            "type": "object",
-            "required": [
-              "address"
-            ],
-            "properties": {
-              "address": {
-                "type": "object",
-                "required": [
-                  "addr"
-                ],
-                "properties": {
-                  "addr": {
-                    "type": "string"
-                  }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "description": "Sets the admin as the core module address.",
-            "type": "object",
-            "required": [
-              "core_module"
-            ],
-            "properties": {
-              "core_module": {
-                "type": "object",
                 "additionalProperties": false
               }
             },
@@ -331,12 +279,6 @@
                   {
                     "type": "null"
                   }
-                ]
-              },
-              "owner": {
-                "type": [
-                  "string",
-                  "null"
                 ]
               }
             },
@@ -819,16 +761,6 @@
       "properties": {
         "nft_address": {
           "$ref": "#/definitions/Addr"
-        },
-        "owner": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Addr"
-            },
-            {
-              "type": "null"
-            }
-          ]
         },
         "unstaking_duration": {
           "anyOf": [

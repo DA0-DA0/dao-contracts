@@ -37,7 +37,9 @@ fn test_force_transfer() {
 
     assert_eq!(
         err,
-        TokenfactoryIssuer::execute_error(ContractError::Unauthorized {})
+        TokenfactoryIssuer::execute_error(ContractError::Ownership(
+            cw_ownable::OwnershipError::NotOwner
+        ))
     );
 
     // Owner can force transfer tokens

@@ -24,7 +24,7 @@ cw-denom = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }
 cw-hooks = { workspace = true }
-dao-proposal-hooks = { workspace = true }
+dao-hooks = { workspace = true }
 dao-interface = { workspace = true }
 dao-voting = { workspace = true }
 serde = { workspace = true }

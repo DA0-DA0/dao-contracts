@@ -4,7 +4,7 @@ use cosmwasm_std::{
     to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
     Uint128, WasmMsg,
 };
-use cw2::set_contract_version;
+use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw4::{MemberListResponse, MemberResponse, TotalWeightResponse};
 use cw_utils::parse_reply_instantiate_data;
 
@@ -61,12 +61,14 @@ pub fn instantiate(
                 return Err(ContractError::ZeroTotalWeight {});
             }
 
-            // We need to set ourself as the CW4 admin it is then transferred to the DAO in the reply
+            // Instantiate group contract, set DAO as admin.
+            // Voting module contracts are instantiated by the main dao-dao-core
+            // contract, so the Admin is set to info.sender.
             let msg = WasmMsg::Instantiate {
                 admin: Some(info.sender.to_string()),
                 code_id: cw4_group_code_id,
                 msg: to_binary(&cw4_group::msg::InstantiateMsg {
-                    admin: Some(env.contract.address.to_string()),
+                    admin: Some(info.sender.to_string()),
                     members: initial_members,
                 })?,
                 funds: vec![],
@@ -99,7 +101,7 @@ pub fn instantiate(
 
             Ok(Response::new()
                 .add_attribute("action", "instantiate")
-                .add_attribute("group_contract", "address"))
+                .add_attribute("group_contract", group_contract.to_string()))
         }
     }
 }
@@ -168,9 +170,15 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // Set contract to version to latest
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    Ok(Response::default())
+    let storage_version: ContractVersion = get_contract_version(deps.storage)?;
+
+    // Only migrate if newer
+    if storage_version.version.as_str() < CONTRACT_VERSION {
+        // Set contract to version to latest
+        set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    }
+
+    Ok(Response::new().add_attribute("action", "migrate"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -185,19 +193,8 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                         return Err(ContractError::DuplicateGroupContract {});
                     }
                     let group_contract = deps.api.addr_validate(&res.contract_address)?;
-                    let dao = DAO.load(deps.storage)?;
                     GROUP_CONTRACT.save(deps.storage, &group_contract)?;
-                    // Transfer admin status to the DAO
-                    let msg1 = WasmMsg::Execute {
-                        contract_addr: group_contract.to_string(),
-                        msg: to_binary(&cw4_group::msg::ExecuteMsg::UpdateAdmin {
-                            admin: Some(dao.to_string()),
-                        })?,
-                        funds: vec![],
-                    };
-                    Ok(Response::default()
-                        .add_attribute("group_contract_address", group_contract)
-                        .add_message(msg1))
+                    Ok(Response::default().add_attribute("group_contract", group_contract))
                 }
                 Err(_) => Err(ContractError::GroupContractInstantiateError {}),
             }

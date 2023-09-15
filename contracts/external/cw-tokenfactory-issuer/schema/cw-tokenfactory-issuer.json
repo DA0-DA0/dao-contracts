@@ -5,6 +5,7 @@
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
+    "description": "The message used to create a new instance of this smart contract.",
     "oneOf": [
       {
         "description": "`NewToken` will create a new token when instantiate the contract. Newly created token will have full denom as `factory/<contract_address>/<subdenom>`. It will be attached to the contract setup the beforesend listener automatically.",
@@ -56,21 +57,52 @@
   "execute": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "ExecuteMsg",
+    "description": "State changing methods available to this smart contract.",
     "oneOf": [
       {
-        "description": "Change the admin of the Token Factory denom itself.",
+        "description": "Allow adds the target address to the allowlist to be able to send or recieve tokens even if the token is frozen. Token Factory's BeforeSendHook listener must be set to this contract in order for this feature to work.\n\nThis functionality is intedended for DAOs who do not wish to have a their tokens liquid while bootstrapping their DAO. For example, a DAO may wish to white list a Token Staking contract (to allow users to stake their tokens in the DAO) or a Merkle Drop contract (to allow users to claim their tokens).",
         "type": "object",
         "required": [
-          "change_token_factory_admin"
+          "allow"
         ],
         "properties": {
-          "change_token_factory_admin": {
+          "allow": {
             "type": "object",
             "required": [
-              "new_admin"
+              "address",
+              "status"
             ],
             "properties": {
-              "new_admin": {
+              "address": {
+                "type": "string"
+              },
+              "status": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Burn token to address. Burn allowance is required and wiil be deducted after successful burn.",
+        "type": "object",
+        "required": [
+          "burn"
+        ],
+        "properties": {
+          "burn": {
+            "type": "object",
+            "required": [
+              "amount",
+              "from_address"
+            ],
+            "properties": {
+              "amount": {
+                "$ref": "#/definitions/Uint128"
+              },
+              "from_address": {
                 "type": "string"
               }
             },
@@ -80,20 +112,150 @@
         "additionalProperties": false
       },
       {
-        "description": "Change the owner of this contract who is allowed to call privileged methods.",
+        "description": "Mint token to address. Mint allowance is required and wiil be deducted after successful mint.",
         "type": "object",
         "required": [
-          "change_contract_owner"
+          "mint"
         ],
         "properties": {
-          "change_contract_owner": {
+          "mint": {
             "type": "object",
             "required": [
-              "new_owner"
+              "amount",
+              "to_address"
             ],
             "properties": {
-              "new_owner": {
+              "amount": {
+                "$ref": "#/definitions/Uint128"
+              },
+              "to_address": {
                 "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Deny adds the target address to the denylist, whis prevents them from sending/receiving the token attached to this contract tokenfactory's BeforeSendHook listener must be set to this contract in order for this feature to work as intended.",
+        "type": "object",
+        "required": [
+          "deny"
+        ],
+        "properties": {
+          "deny": {
+            "type": "object",
+            "required": [
+              "address",
+              "status"
+            ],
+            "properties": {
+              "address": {
+                "type": "string"
+              },
+              "status": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Block every token transfers of the token attached to this contract. Token Factory's BeforeSendHook listener must be set to this contract in order for this feature to work as intended.",
+        "type": "object",
+        "required": [
+          "freeze"
+        ],
+        "properties": {
+          "freeze": {
+            "type": "object",
+            "required": [
+              "status"
+            ],
+            "properties": {
+              "status": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Force transfer token from one address to another.",
+        "type": "object",
+        "required": [
+          "force_transfer"
+        ],
+        "properties": {
+          "force_transfer": {
+            "type": "object",
+            "required": [
+              "amount",
+              "from_address",
+              "to_address"
+            ],
+            "properties": {
+              "amount": {
+                "$ref": "#/definitions/Uint128"
+              },
+              "from_address": {
+                "type": "string"
+              },
+              "to_address": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Attempt to SetBeforeSendHook on the token attached to this contract. This will fail if the chain does not support bank module hooks (many Token Factory implementations do not yet support).\n\nThis takes a cosmwasm_address as an argument, which is the address of the contract that will be called before every token transfer. Normally, this will be the issuer contract itself, though it can be a custom contract for greater flexibility.\n\nSetting the address to an empty string will remove the SetBeforeSendHook.\n\nThis method can only be called by the contract owner.",
+        "type": "object",
+        "required": [
+          "set_before_send_hook"
+        ],
+        "properties": {
+          "set_before_send_hook": {
+            "type": "object",
+            "required": [
+              "cosmwasm_address"
+            ],
+            "properties": {
+              "cosmwasm_address": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Grant/revoke burn allowance.",
+        "type": "object",
+        "required": [
+          "set_burner_allowance"
+        ],
+        "properties": {
+          "set_burner_allowance": {
+            "type": "object",
+            "required": [
+              "address",
+              "allowance"
+            ],
+            "properties": {
+              "address": {
+                "type": "string"
+              },
+              "allowance": {
+                "$ref": "#/definitions/Uint128"
               }
             },
             "additionalProperties": false
@@ -150,141 +312,19 @@
         "additionalProperties": false
       },
       {
-        "description": "Grant/revoke burn allowance.",
+        "description": "Updates the admin of the Token Factory token. Normally this is the cw-tokenfactory-issuer contract itself. This is intended to be used only if you seek to transfer ownership of the Token somewhere else (i.e. to another management contract).",
         "type": "object",
         "required": [
-          "set_burner_allowance"
+          "update_token_factory_admin"
         ],
         "properties": {
-          "set_burner_allowance": {
+          "update_token_factory_admin": {
             "type": "object",
             "required": [
-              "address",
-              "allowance"
+              "new_admin"
             ],
             "properties": {
-              "address": {
-                "type": "string"
-              },
-              "allowance": {
-                "$ref": "#/definitions/Uint128"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "Grant/revoke permission to blacklist addresses",
-        "type": "object",
-        "required": [
-          "set_blacklister"
-        ],
-        "properties": {
-          "set_blacklister": {
-            "type": "object",
-            "required": [
-              "address",
-              "status"
-            ],
-            "properties": {
-              "address": {
-                "type": "string"
-              },
-              "status": {
-                "type": "boolean"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "Grant/revoke permission to blacklist addresses",
-        "type": "object",
-        "required": [
-          "set_whitelister"
-        ],
-        "properties": {
-          "set_whitelister": {
-            "type": "object",
-            "required": [
-              "address",
-              "status"
-            ],
-            "properties": {
-              "address": {
-                "type": "string"
-              },
-              "status": {
-                "type": "boolean"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "Attempt to SetBeforeSendHook on the token attached to this contract. This will fail if the token already has a SetBeforeSendHook or the chain still does not support it.",
-        "type": "object",
-        "required": [
-          "set_before_send_hook"
-        ],
-        "properties": {
-          "set_before_send_hook": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "Grant/revoke permission to freeze the token",
-        "type": "object",
-        "required": [
-          "set_freezer"
-        ],
-        "properties": {
-          "set_freezer": {
-            "type": "object",
-            "required": [
-              "address",
-              "status"
-            ],
-            "properties": {
-              "address": {
-                "type": "string"
-              },
-              "status": {
-                "type": "boolean"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "Mint token to address. Mint allowance is required and wiil be deducted after successful mint.",
-        "type": "object",
-        "required": [
-          "mint"
-        ],
-        "properties": {
-          "mint": {
-            "type": "object",
-            "required": [
-              "amount",
-              "to_address"
-            ],
-            "properties": {
-              "amount": {
-                "$ref": "#/definitions/Uint128"
-              },
-              "to_address": {
+              "new_admin": {
                 "type": "string"
               }
             },
@@ -294,137 +334,71 @@
         "additionalProperties": false
       },
       {
-        "description": "Burn token to address. Burn allowance is required and wiil be deducted after successful burn.",
+        "description": "Updates the owner of this contract who is allowed to call privileged methods. NOTE: this is separate from the Token Factory token admin, for this contract to work at all, it needs to the be the Token Factory token admin.\n\nNormally, the contract owner will be a DAO.\n\nThe `action` to be provided can be either to propose transferring ownership to an account, accept a pending ownership transfer, or renounce the ownership permanently.",
         "type": "object",
         "required": [
-          "burn"
+          "update_ownership"
         ],
         "properties": {
-          "burn": {
-            "type": "object",
-            "required": [
-              "amount",
-              "from_address"
-            ],
-            "properties": {
-              "amount": {
-                "$ref": "#/definitions/Uint128"
-              },
-              "from_address": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "Block target address from sending/receiving token attached to this contract tokenfactory's beforesend listener must be set to this contract in order for it to work as intended.",
-        "type": "object",
-        "required": [
-          "blacklist"
-        ],
-        "properties": {
-          "blacklist": {
-            "type": "object",
-            "required": [
-              "address",
-              "status"
-            ],
-            "properties": {
-              "address": {
-                "type": "string"
-              },
-              "status": {
-                "type": "boolean"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "Whitelist target address to be able to send tokens even if the token is frozen.",
-        "type": "object",
-        "required": [
-          "whitelist"
-        ],
-        "properties": {
-          "whitelist": {
-            "type": "object",
-            "required": [
-              "address",
-              "status"
-            ],
-            "properties": {
-              "address": {
-                "type": "string"
-              },
-              "status": {
-                "type": "boolean"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "Block every token transfers of the token attached to this contract tokenfactory's beforesend listener must be set to this contract in order for it to work as intended.",
-        "type": "object",
-        "required": [
-          "freeze"
-        ],
-        "properties": {
-          "freeze": {
-            "type": "object",
-            "required": [
-              "status"
-            ],
-            "properties": {
-              "status": {
-                "type": "boolean"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "Force transfer token from one address to another.",
-        "type": "object",
-        "required": [
-          "force_transfer"
-        ],
-        "properties": {
-          "force_transfer": {
-            "type": "object",
-            "required": [
-              "amount",
-              "from_address",
-              "to_address"
-            ],
-            "properties": {
-              "amount": {
-                "$ref": "#/definitions/Uint128"
-              },
-              "from_address": {
-                "type": "string"
-              },
-              "to_address": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
+          "update_ownership": {
+            "$ref": "#/definitions/Action"
           }
         },
         "additionalProperties": false
       }
     ],
     "definitions": {
+      "Action": {
+        "description": "Actions that can be taken to alter the contract's ownership",
+        "oneOf": [
+          {
+            "description": "Propose to transfer the contract's ownership to another account, optionally with an expiry time.\n\nCan only be called by the contract's current owner.\n\nAny existing pending ownership transfer is overwritten.",
+            "type": "object",
+            "required": [
+              "transfer_ownership"
+            ],
+            "properties": {
+              "transfer_ownership": {
+                "type": "object",
+                "required": [
+                  "new_owner"
+                ],
+                "properties": {
+                  "expiry": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Expiration"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "new_owner": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Accept the pending ownership transfer.\n\nCan only be called by the pending owner.",
+            "type": "string",
+            "enum": [
+              "accept_ownership"
+            ]
+          },
+          {
+            "description": "Give up the contract's ownership and the possibility of appointing a new owner.\n\nCan only be invoked by the contract's current owner.\n\nAny existing pending ownership transfer is canceled.",
+            "type": "string",
+            "enum": [
+              "renounce_ownership"
+            ]
+          }
+        ]
+      },
       "DenomUnit": {
         "description": "DenomUnit represents a struct that describes a given denomination unit of the basic token.",
         "type": "object",
@@ -452,6 +426,53 @@
             "minimum": 0.0
           }
         }
+      },
+      "Expiration": {
+        "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
+        "oneOf": [
+          {
+            "description": "AtHeight will expire when `env.block.height` >= height",
+            "type": "object",
+            "required": [
+              "at_height"
+            ],
+            "properties": {
+              "at_height": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "AtTime will expire when `env.block.time` >= time",
+            "type": "object",
+            "required": [
+              "at_time"
+            ],
+            "properties": {
+              "at_time": {
+                "$ref": "#/definitions/Timestamp"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Never will never expire. Used to express the empty variant",
+            "type": "object",
+            "required": [
+              "never"
+            ],
+            "properties": {
+              "never": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
       },
       "Metadata": {
         "description": "Metadata represents a struct that describes a basic token.",
@@ -493,8 +514,20 @@
           }
         }
       },
+      "Timestamp": {
+        "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+        "allOf": [
+          {
+            "$ref": "#/definitions/Uint64"
+          }
+        ]
+      },
       "Uint128": {
         "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+        "type": "string"
+      },
+      "Uint64": {
+        "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
         "type": "string"
       }
     }
@@ -502,9 +535,10 @@
   "query": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "QueryMsg",
+    "description": "Queries supported by this smart contract.",
     "oneOf": [
       {
-        "description": "IsFrozen returns if the entire token transfer functionality is frozen. Response: IsFrozenResponse",
+        "description": "Returns if token transfer is disabled. Response: IsFrozenResponse",
         "type": "object",
         "required": [
           "is_frozen"
@@ -518,7 +552,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Denom returns the token denom that this contract is the admin for. Response: DenomResponse",
+        "description": "Returns the token denom that this contract is the admin for. Response: DenomResponse",
         "type": "object",
         "required": [
           "denom"
@@ -532,13 +566,12 @@
         "additionalProperties": false
       },
       {
-        "description": "Owner returns the owner of the contract. Response: OwnerResponse",
         "type": "object",
         "required": [
-          "owner"
+          "ownership"
         ],
         "properties": {
-          "owner": {
+          "ownership": {
             "type": "object",
             "additionalProperties": false
           }
@@ -546,7 +579,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Allowance returns the allowance of the specified address. Response: AllowanceResponse",
+        "description": "Returns the burn allowance of the specified address. Response: AllowanceResponse",
         "type": "object",
         "required": [
           "burn_allowance"
@@ -568,7 +601,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Allowances Enumerates over all allownances. Response: Vec<AllowanceResponse>",
+        "description": "Enumerates over all burn allownances. Response: AllowancesResponse",
         "type": "object",
         "required": [
           "burn_allowances"
@@ -598,7 +631,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Allowance returns the allowance of the specified user. Response: AllowanceResponse",
+        "description": "Returns the mint allowance of the specified user. Response: AllowanceResponse",
         "type": "object",
         "required": [
           "mint_allowance"
@@ -620,7 +653,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Allowances Enumerates over all allownances. Response: AllowancesResponse",
+        "description": "Enumerates over all mint allownances. Response: AllowancesResponse",
         "type": "object",
         "required": [
           "mint_allowances"
@@ -650,13 +683,13 @@
         "additionalProperties": false
       },
       {
-        "description": "IsBlacklisted returns wether the user is blacklisted or not. Response: StatusResponse",
+        "description": "Returns wether the user is on denylist or not. Response: StatusResponse",
         "type": "object",
         "required": [
-          "is_blacklisted"
+          "is_denied"
         ],
         "properties": {
-          "is_blacklisted": {
+          "is_denied": {
             "type": "object",
             "required": [
               "address"
@@ -672,13 +705,13 @@
         "additionalProperties": false
       },
       {
-        "description": "Blacklistees enumerates over all addresses on the blacklist. Response: BlacklisteesResponse",
+        "description": "Enumerates over all addresses on the denylist. Response: DenylistResponse",
         "type": "object",
         "required": [
-          "blacklistees"
+          "denylist"
         ],
         "properties": {
-          "blacklistees": {
+          "denylist": {
             "type": "object",
             "properties": {
               "limit": {
@@ -702,13 +735,13 @@
         "additionalProperties": false
       },
       {
-        "description": "IsBlacklister returns if the addres has blacklister privileges. Response: StatusResponse",
+        "description": "Returns wether the user is on the allowlist or not. Response: StatusResponse",
         "type": "object",
         "required": [
-          "is_blacklister"
+          "is_allowed"
         ],
         "properties": {
-          "is_blacklister": {
+          "is_allowed": {
             "type": "object",
             "required": [
               "address"
@@ -724,13 +757,13 @@
         "additionalProperties": false
       },
       {
-        "description": "Blacklisters Enumerates over all the addresses with blacklister privileges. Response: BlacklisterAllowancesResponse",
+        "description": "Enumerates over all addresses on the allowlist. Response: AllowlistResponse",
         "type": "object",
         "required": [
-          "blacklister_allowances"
+          "allowlist"
         ],
         "properties": {
-          "blacklister_allowances": {
+          "allowlist": {
             "type": "object",
             "properties": {
               "limit": {
@@ -754,156 +787,14 @@
         "additionalProperties": false
       },
       {
-        "description": "IsWhitelisted returns wether the user is whitelisted or not. Response: StatusResponse",
+        "description": "Returns information about the BeforeSendHook for the token. Note: many Token Factory chains do not yet support this feature.\n\nThe information returned is: - Whether features in this contract that require MsgBeforeSendHook are enabled. - The address of the BeforeSendHook contract if configured.\n\nResponse: BeforeSendHookInfo",
         "type": "object",
         "required": [
-          "is_whitelisted"
+          "before_send_hook_info"
         ],
         "properties": {
-          "is_whitelisted": {
+          "before_send_hook_info": {
             "type": "object",
-            "required": [
-              "address"
-            ],
-            "properties": {
-              "address": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "Whitelistees enumerates over all addresses on the whitelist. Response: WhitelisteesResponse",
-        "type": "object",
-        "required": [
-          "whitelistees"
-        ],
-        "properties": {
-          "whitelistees": {
-            "type": "object",
-            "properties": {
-              "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "IsWhitelister returns if the addres has whitelister privileges. Response: StatusResponse",
-        "type": "object",
-        "required": [
-          "is_whitelister"
-        ],
-        "properties": {
-          "is_whitelister": {
-            "type": "object",
-            "required": [
-              "address"
-            ],
-            "properties": {
-              "address": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "Whitelisters Enumerates over all the addresses with whitelister privileges. Response: WhitelisterAllowancesResponse",
-        "type": "object",
-        "required": [
-          "whitelister_allowances"
-        ],
-        "properties": {
-          "whitelister_allowances": {
-            "type": "object",
-            "properties": {
-              "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "IsFreezer returns whether the address has freezer status. Response: StatusResponse",
-        "type": "object",
-        "required": [
-          "is_freezer"
-        ],
-        "properties": {
-          "is_freezer": {
-            "type": "object",
-            "required": [
-              "address"
-            ],
-            "properties": {
-              "address": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "FreezerAllowances enumerates over all freezer addresses. Response: FreezerAllowancesResponse",
-        "type": "object",
-        "required": [
-          "freezer_allowances"
-        ],
-        "properties": {
-          "freezer_allowances": {
-            "type": "object",
-            "properties": {
-              "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            },
             "additionalProperties": false
           }
         },
@@ -970,15 +861,16 @@
     }
   },
   "responses": {
-    "blacklistees": {
+    "allowlist": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "BlacklisteesResponse",
+      "title": "AllowlistResponse",
+      "description": "Returns a list of addresses currently on the allowlist",
       "type": "object",
       "required": [
-        "blacklistees"
+        "allowlist"
       ],
       "properties": {
-        "blacklistees": {
+        "allowlist": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/StatusInfo"
@@ -988,6 +880,7 @@
       "additionalProperties": false,
       "definitions": {
         "StatusInfo": {
+          "description": "Account info for list queries related to allowlist and denylist",
           "type": "object",
           "required": [
             "address",
@@ -1005,44 +898,33 @@
         }
       }
     },
-    "blacklister_allowances": {
+    "before_send_hook_info": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "BlacklisterAllowancesResponse",
+      "title": "BeforeSendHookInfo",
+      "description": "Whether or not features that require MsgBeforeSendHook are enabled Many Token Factory chains do not yet support MsgBeforeSendHook",
       "type": "object",
       "required": [
-        "blacklisters"
+        "advanced_features_enabled"
       ],
       "properties": {
-        "blacklisters": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/StatusInfo"
-          }
+        "advanced_features_enabled": {
+          "description": "Whether or not features in this contract that require MsgBeforeSendHook are enabled.",
+          "type": "boolean"
+        },
+        "hook_contract_address": {
+          "description": "The address of the contract that implements the BeforeSendHook interface. Most often this will be the cw_tokenfactory_issuer contract itself.",
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
-      "additionalProperties": false,
-      "definitions": {
-        "StatusInfo": {
-          "type": "object",
-          "required": [
-            "address",
-            "status"
-          ],
-          "properties": {
-            "address": {
-              "type": "string"
-            },
-            "status": {
-              "type": "boolean"
-            }
-          },
-          "additionalProperties": false
-        }
-      }
+      "additionalProperties": false
     },
     "burn_allowance": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AllowanceResponse",
+      "description": "Returns a mint or burn allowance for a particular address, representing the amount of tokens the account is allowed to mint or burn",
       "type": "object",
       "required": [
         "allowance"
@@ -1063,6 +945,7 @@
     "burn_allowances": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AllowancesResponse",
+      "description": "Returns a list of all mint or burn allowances",
       "type": "object",
       "required": [
         "allowances"
@@ -1078,6 +961,7 @@
       "additionalProperties": false,
       "definitions": {
         "AllowanceInfo": {
+          "description": "Information about a particular account and its mint / burn allowances. Used in list queries.",
           "type": "object",
           "required": [
             "address",
@@ -1102,6 +986,7 @@
     "denom": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "DenomResponse",
+      "description": "Returns the full denomination for the Token Factory token. For example: `factory/{contract address}/{subdenom}`",
       "type": "object",
       "required": [
         "denom"
@@ -1113,15 +998,16 @@
       },
       "additionalProperties": false
     },
-    "freezer_allowances": {
+    "denylist": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "FreezerAllowancesResponse",
+      "title": "DenylistResponse",
+      "description": "Returns a list of addresses currently on the denylist.",
       "type": "object",
       "required": [
-        "freezers"
+        "denylist"
       ],
       "properties": {
-        "freezers": {
+        "denylist": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/StatusInfo"
@@ -1131,6 +1017,7 @@
       "additionalProperties": false,
       "definitions": {
         "StatusInfo": {
+          "description": "Account info for list queries related to allowlist and denylist",
           "type": "object",
           "required": [
             "address",
@@ -1148,9 +1035,10 @@
         }
       }
     },
-    "is_blacklisted": {
+    "is_allowed": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "StatusResponse",
+      "description": "Whether a particular account is allowed or denied",
       "type": "object",
       "required": [
         "status"
@@ -1162,23 +1050,10 @@
       },
       "additionalProperties": false
     },
-    "is_blacklister": {
+    "is_denied": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "StatusResponse",
-      "type": "object",
-      "required": [
-        "status"
-      ],
-      "properties": {
-        "status": {
-          "type": "boolean"
-        }
-      },
-      "additionalProperties": false
-    },
-    "is_freezer": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "StatusResponse",
+      "description": "Whether a particular account is allowed or denied",
       "type": "object",
       "required": [
         "status"
@@ -1193,6 +1068,7 @@
     "is_frozen": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "IsFrozenResponse",
+      "description": "Returns whether or not the Token Factory token is frozen and transfers are disabled.",
       "type": "object",
       "required": [
         "is_frozen"
@@ -1204,37 +1080,10 @@
       },
       "additionalProperties": false
     },
-    "is_whitelisted": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "StatusResponse",
-      "type": "object",
-      "required": [
-        "status"
-      ],
-      "properties": {
-        "status": {
-          "type": "boolean"
-        }
-      },
-      "additionalProperties": false
-    },
-    "is_whitelister": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "StatusResponse",
-      "type": "object",
-      "required": [
-        "status"
-      ],
-      "properties": {
-        "status": {
-          "type": "boolean"
-        }
-      },
-      "additionalProperties": false
-    },
     "mint_allowance": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AllowanceResponse",
+      "description": "Returns a mint or burn allowance for a particular address, representing the amount of tokens the account is allowed to mint or burn",
       "type": "object",
       "required": [
         "allowance"
@@ -1255,6 +1104,7 @@
     "mint_allowances": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AllowancesResponse",
+      "description": "Returns a list of all mint or burn allowances",
       "type": "object",
       "required": [
         "allowances"
@@ -1270,6 +1120,7 @@
       "additionalProperties": false,
       "definitions": {
         "AllowanceInfo": {
+          "description": "Information about a particular account and its mint / burn allowances. Used in list queries.",
           "type": "object",
           "required": [
             "address",
@@ -1291,87 +1142,110 @@
         }
       }
     },
-    "owner": {
+    "ownership": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "OwnerResponse",
+      "title": "Ownership_for_Addr",
+      "description": "The contract's ownership info",
       "type": "object",
-      "required": [
-        "address"
-      ],
       "properties": {
-        "address": {
+        "owner": {
+          "description": "The contract's current owner. `None` if the ownership has been renounced.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pending_expiry": {
+          "description": "The deadline for the pending owner to accept the ownership. `None` if there isn't a pending ownership transfer, or if a transfer exists and it doesn't have a deadline.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expiration"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pending_owner": {
+          "description": "The account who has been proposed to take over the ownership. `None` if there isn't a pending ownership transfer.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
           "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
-    "whitelistees": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "WhitelisteesResponse",
-      "type": "object",
-      "required": [
-        "whitelistees"
-      ],
-      "properties": {
-        "whitelistees": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/StatusInfo"
-          }
-        }
-      },
-      "additionalProperties": false,
-      "definitions": {
-        "StatusInfo": {
-          "type": "object",
-          "required": [
-            "address",
-            "status"
-          ],
-          "properties": {
-            "address": {
-              "type": "string"
+        },
+        "Expiration": {
+          "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
+          "oneOf": [
+            {
+              "description": "AtHeight will expire when `env.block.height` >= height",
+              "type": "object",
+              "required": [
+                "at_height"
+              ],
+              "properties": {
+                "at_height": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
             },
-            "status": {
-              "type": "boolean"
-            }
-          },
-          "additionalProperties": false
-        }
-      }
-    },
-    "whitelister_allowances": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "WhitelisterAllowancesResponse",
-      "type": "object",
-      "required": [
-        "whitelisters"
-      ],
-      "properties": {
-        "whitelisters": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/StatusInfo"
-          }
-        }
-      },
-      "additionalProperties": false,
-      "definitions": {
-        "StatusInfo": {
-          "type": "object",
-          "required": [
-            "address",
-            "status"
-          ],
-          "properties": {
-            "address": {
-              "type": "string"
+            {
+              "description": "AtTime will expire when `env.block.time` >= time",
+              "type": "object",
+              "required": [
+                "at_time"
+              ],
+              "properties": {
+                "at_time": {
+                  "$ref": "#/definitions/Timestamp"
+                }
+              },
+              "additionalProperties": false
             },
-            "status": {
-              "type": "boolean"
+            {
+              "description": "Never will never expire. Used to express the empty variant",
+              "type": "object",
+              "required": [
+                "never"
+              ],
+              "properties": {
+                "never": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
             }
-          },
-          "additionalProperties": false
+          ]
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
         }
       }
     }

@@ -96,16 +96,12 @@ pub fn update_config(
     app: &mut App,
     module: &Addr,
     sender: &str,
-    owner: Option<&str>,
     duration: Option<Duration>,
 ) -> AnyResult<AppResponse> {
     app.execute_contract(
         addr!(sender),
         module.clone(),
-        &ExecuteMsg::UpdateConfig {
-            owner: owner.map(str::to_string),
-            duration,
-        },
+        &ExecuteMsg::UpdateConfig { duration },
         &[],
     )
 }
