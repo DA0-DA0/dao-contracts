@@ -5,6 +5,7 @@ use cosmwasm_std::{
     StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
+use cw721_base::InstantiateMsg as Cw721InstantiateMsg;
 use cw_storage_plus::Item;
 use cw_tokenfactory_issuer::msg::{
     ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg,
@@ -24,6 +25,7 @@ const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const INSTANTIATE_ISSUER_REPLY_ID: u64 = 1;
+const INSTANTIATE_NFT_REPLY_ID: u64 = 2;
 
 const DAO: Item<Addr> = Item::new("dao");
 const TOKEN_INFO: Item<NewTokenInfo> = Item::new("token_info");
@@ -32,8 +34,8 @@ const TOKEN_INFO: Item<NewTokenInfo> = Item::new("token_info");
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
-    info: MessageInfo,
-    msg: InstantiateMsg,
+    _info: MessageInfo,
+    _msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -51,7 +53,42 @@ pub fn execute(
         ExecuteMsg::TokenFactoryFactory(token) => {
             execute_token_factory_factory(deps, env, info, token)
         }
+        ExecuteMsg::NftFactory(cw721_msg) => execute_nft_factory(deps, env, info, cw721_msg),
     }
+}
+
+/// An example factory that instantiates a new NFT contract
+/// A more realistic example would be something like a minter contract that creates
+/// an NFT along with a minter contract for sales like on Stargaze.
+pub fn execute_nft_factory(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    cw721_msg: Cw721InstantiateMsg,
+) -> Result<Response, ContractError> {
+    // Query for DAO
+    let dao: Addr = deps
+        .querier
+        .query_wasm_smart(info.sender, &VotingModuleQueryMsg::Dao {})?;
+
+    // Save DAO and TOKEN_INFO for use in replies
+    DAO.save(deps.storage, &dao)?;
+
+    // Instantiate new contract, further setup is handled in the
+    // SubMsg reply.
+    let msg = SubMsg::reply_on_success(
+        WasmMsg::Instantiate {
+            admin: Some(dao.to_string()),
+            // TODO, need to pass this in
+            code_id: 0,
+            msg: to_binary(&cw721_msg)?,
+            funds: vec![],
+            label: "cw_tokenfactory_issuer".to_string(),
+        },
+        INSTANTIATE_NFT_REPLY_ID,
+    );
+
+    Ok(Response::new().add_submessage(msg))
 }
 
 /// An example factory that instantiates a cw_tokenfactory_issuer contract
@@ -189,6 +226,16 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     denom,
                     token_contract: Some(issuer_addr.to_string()),
                 })?))
+        }
+        INSTANTIATE_NFT_REPLY_ID => {
+            // Parse issuer address from instantiate reply
+            let nft_address = parse_reply_instantiate_data(msg)?.contract_address;
+
+            // Mint an NFT (in reality, the factory would likely be used in conjunction with a minter contract)
+
+            // Set reply data
+
+            unimplemented!()
         }
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }
