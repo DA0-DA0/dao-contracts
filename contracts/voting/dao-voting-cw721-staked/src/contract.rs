@@ -159,19 +159,28 @@ pub fn instantiate(
         }
         NftContract::Factory(binary) => match from_binary(&binary)? {
             WasmMsg::Execute {
-                msg,
+                msg: wasm_msg,
                 contract_addr,
                 funds,
-            } => Ok(Response::new()
-                .add_attribute("action", "intantiate")
-                .add_submessage(SubMsg::reply_on_success(
-                    WasmMsg::Execute {
-                        contract_addr,
-                        msg,
-                        funds,
-                    },
-                    FACTORY_EXECUTE_REPLY_ID,
-                ))),
+            } => {
+                // Save config with empty nft_address
+                let config = Config {
+                    nft_address: Addr::unchecked(""),
+                    unstaking_duration: msg.unstaking_duration,
+                };
+                CONFIG.save(deps.storage, &config)?;
+
+                Ok(Response::new()
+                    .add_attribute("action", "intantiate")
+                    .add_submessage(SubMsg::reply_on_success(
+                        WasmMsg::Execute {
+                            contract_addr,
+                            msg: wasm_msg,
+                            funds,
+                        },
+                        FACTORY_EXECUTE_REPLY_ID,
+                    )))
+            }
             _ => Err(ContractError::UnsupportedFactoryMsg {}),
         },
     }
@@ -712,8 +721,8 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             Ok(Response::new())
         }
         FACTORY_EXECUTE_REPLY_ID => {
+            // Parse reply data
             let res = parse_reply_execute_data(msg)?;
-
             match res.data {
                 Some(data) => {
                     let mut config = CONFIG.load(deps.storage)?;
@@ -726,8 +735,10 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     let nft_address = deps.api.addr_validate(&info.nft_contract)?;
 
                     // Validate that this is an NFT with a query
-                    deps.querier
-                        .query_wasm_smart(nft_address.clone(), &Cw721QueryMsg::NumTokens {})?;
+                    deps.querier.query_wasm_smart::<NumTokensResponse>(
+                        nft_address.clone(),
+                        &Cw721QueryMsg::NumTokens {},
+                    )?;
 
                     // Update NFT contract
                     config.nft_address = nft_address;

@@ -1040,7 +1040,7 @@ fn test_factory() {
         "cw721_voting",
         None,
     )
-    .unwrap_err();
+    .unwrap();
 }
 
 #[test]
