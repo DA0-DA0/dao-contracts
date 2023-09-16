@@ -128,7 +128,9 @@ pub fn instantiate(
         }
         TokenInfo::Factory(binary) => match from_binary(&binary)? {
             WasmMsg::Execute {
-                msg, contract_addr, ..
+                msg,
+                contract_addr,
+                funds,
             } => Ok(Response::new()
                 .add_attribute("action", "intantiate")
                 .add_attribute("token", "custom_factory")
@@ -136,7 +138,7 @@ pub fn instantiate(
                     WasmMsg::Execute {
                         contract_addr,
                         msg,
-                        funds: vec![],
+                        funds,
                     },
                     FACTORY_EXECUTE_REPLY_ID,
                 ))),

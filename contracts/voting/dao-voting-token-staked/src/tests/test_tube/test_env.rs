@@ -256,7 +256,7 @@ impl TestEnvBuilder {
         };
 
         // Instantiate DAO
-        let dao = DaoCore::new(app, &msg, &accounts[0]).unwrap();
+        let dao = DaoCore::new(app, &msg, &accounts[0], &vec![]).unwrap();
 
         // Get voting module address, setup vp_contract helper
         let vp_addr: Addr = dao.query(&DaoQueryMsg::VotingModule {}).unwrap();

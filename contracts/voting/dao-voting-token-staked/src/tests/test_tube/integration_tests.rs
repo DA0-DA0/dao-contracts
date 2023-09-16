@@ -12,7 +12,7 @@ use dao_voting::{
     threshold::{ActiveThreshold, ActiveThresholdError, PercentageThreshold, Threshold},
 };
 use osmosis_std::types::cosmos::bank::v1beta1::QueryBalanceRequest;
-use osmosis_test_tube::{Account, OsmosisTestApp};
+use osmosis_test_tube::{Account, OsmosisTestApp, RunnerError};
 
 use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenInfo},
@@ -335,8 +335,10 @@ fn test_factory() {
         ..
     } = env.full_dao_setup(&app);
 
+    let factory_addr = custom_factory.unwrap().contract_addr.to_string();
+
     // Instantiate a new voting contract using the factory pattern
-    let msg = dao_interface::msg::InstantiateMsg {
+    let mut msg = dao_interface::msg::InstantiateMsg {
         dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
@@ -349,7 +351,7 @@ fn test_factory() {
             msg: to_binary(&InstantiateMsg {
                 token_info: TokenInfo::Factory(
                     to_binary(&WasmMsg::Execute {
-                        contract_addr: custom_factory.unwrap().contract_addr.to_string(),
+                        contract_addr: factory_addr.clone(),
                         msg: to_binary(
                             &dao_test_custom_factory::msg::ExecuteMsg::TokenFactoryFactory(
                                 NewTokenInfo {
@@ -401,8 +403,60 @@ fn test_factory() {
         initial_items: None,
     };
 
-    // Instantiate DAO
-    let dao = DaoCore::new(&app, &msg, &accounts[0]).unwrap();
+    // Instantiate DAO fails because no funds to create the token were sent
+    let err = DaoCore::new(&app, &msg, &accounts[0], &vec![]).unwrap_err();
+
+    // Check error is no funds sent
+    assert_eq!(
+        err,
+        RunnerError::ExecuteError {
+            msg: "failed to execute message; message index: 0: dispatch: submessages: dispatch: submessages: No funds sent: execute wasm contract failed".to_string(),
+        }
+    );
+
+    // Include funds in ModuleInstantiateInfo
+    let funds = vec![Coin {
+        denom: "uosmo".to_string(),
+        amount: Uint128::new(100),
+    }];
+    msg.voting_module_instantiate_info = ModuleInstantiateInfo {
+        code_id: vp_contract.code_id,
+        msg: to_binary(&InstantiateMsg {
+            token_info: TokenInfo::Factory(
+                to_binary(&WasmMsg::Execute {
+                    contract_addr: factory_addr,
+                    msg: to_binary(
+                        &dao_test_custom_factory::msg::ExecuteMsg::TokenFactoryFactory(
+                            NewTokenInfo {
+                                token_issuer_code_id: tf_issuer.code_id,
+                                subdenom: DENOM.to_string(),
+                                metadata: None,
+                                initial_balances: vec![InitialBalance {
+                                    address: accounts[0].address(),
+                                    amount: Uint128::new(100),
+                                }],
+                                initial_dao_balance: None,
+                            },
+                        ),
+                    )
+                    .unwrap(),
+                    funds: funds.clone(),
+                })
+                .unwrap(),
+            ),
+            unstaking_duration: Some(Duration::Time(2)),
+            active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                count: Uint128::new(75),
+            }),
+        })
+        .unwrap(),
+        admin: Some(Admin::CoreModule {}),
+        funds: funds.clone(),
+        label: "DAO DAO Voting Module".to_string(),
+    };
+
+    // Creating the DAO now succeeds
+    let dao = DaoCore::new(&app, &msg, &accounts[0], &funds).unwrap();
 
     // Query voting module
     let voting_module: Addr = dao.query(&DaoQueryMsg::VotingModule {}).unwrap();
@@ -416,5 +470,6 @@ fn test_factory() {
     // Query token contract
     let token_contract: Addr = voting.query(&QueryMsg::TokenContract {}).unwrap();
 
+    // Check the TF denom is as expected
     assert_eq!(denom, format!("factory/{}/{}", token_contract, DENOM));
 }
