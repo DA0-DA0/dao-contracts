@@ -17,7 +17,7 @@ use cw_utils::{
 use dao_hooks::stake::{stake_hook_msgs, unstake_hook_msgs};
 use dao_interface::{
     state::ModuleInstantiateCallback,
-    token::{FactoryCallback, InitialBalance, NewTokenInfo},
+    token::{InitialBalance, NewTokenInfo, TokenFactoryCallback},
     voting::{IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse},
 };
 use dao_voting::{
@@ -722,7 +722,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 Some(data) => {
                     // Parse info from the callback, this will fail
                     // if incorrectly formatted.
-                    let info: FactoryCallback = from_binary(&data)?;
+                    let info: TokenFactoryCallback = from_binary(&data)?;
 
                     // Save Denom
                     DENOM.save(deps.storage, &info.denom)?;

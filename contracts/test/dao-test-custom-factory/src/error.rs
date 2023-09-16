@@ -1,5 +1,5 @@
 use cosmwasm_std::StdError;
-use cw_utils::ParseReplyError;
+use cw_utils::{ParseReplyError, PaymentError};
 use dao_voting::threshold::ActiveThresholdError;
 use thiserror::Error;
 
@@ -13,6 +13,9 @@ pub enum ContractError {
 
     #[error(transparent)]
     ParseReplyError(#[from] ParseReplyError),
+
+    #[error(transparent)]
+    PaymentError(#[from] PaymentError),
 
     #[error("Unauthorized")]
     Unauthorized {},

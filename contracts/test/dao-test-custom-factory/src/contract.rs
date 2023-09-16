@@ -10,10 +10,10 @@ use cw_storage_plus::Item;
 use cw_tokenfactory_issuer::msg::{
     ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg,
 };
-use cw_utils::parse_reply_instantiate_data;
+use cw_utils::{one_coin, parse_reply_instantiate_data};
 use dao_interface::{
     nft::NftFactoryCallback,
-    token::{FactoryCallback, InitialBalance, NewTokenInfo},
+    token::{InitialBalance, NewTokenInfo, TokenFactoryCallback},
     voting::{ActiveThresholdQuery, Query as VotingModuleQueryMsg},
 };
 use dao_voting::threshold::{
@@ -109,6 +109,9 @@ pub fn execute_token_factory_factory(
     info: MessageInfo,
     token: NewTokenInfo,
 ) -> Result<Response, ContractError> {
+    // Validate one coin was sent
+    one_coin(&info)?;
+
     // Save voting module address
     VOTING_MODULE.save(deps.storage, &info.sender)?;
 
@@ -250,13 +253,13 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
             Ok(Response::new()
                 .add_messages(msgs)
-                .set_data(to_binary(&FactoryCallback {
+                .set_data(to_binary(&TokenFactoryCallback {
                     denom,
                     token_contract: Some(issuer_addr.to_string()),
                 })?))
         }
         INSTANTIATE_NFT_REPLY_ID => {
-            // Parse issuer address from instantiate reply
+            // Parse nft address from instantiate reply
             let nft_address = parse_reply_instantiate_data(msg)?.contract_address;
 
             Ok(Response::new().set_data(to_binary(&NftFactoryCallback {

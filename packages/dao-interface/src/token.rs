@@ -43,7 +43,7 @@ pub struct NewTokenInfo {
 }
 
 #[cw_serde]
-pub struct FactoryCallback {
+pub struct TokenFactoryCallback {
     pub denom: String,
     pub token_contract: Option<String>,
 }

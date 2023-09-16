@@ -29,7 +29,7 @@ pub enum ContractError {
     #[error("Can only unstake less than or equal to the amount you have staked")]
     InvalidUnstakeAmount {},
 
-    #[error("Factory contract did not implment the required NftFactoryCallback interface")]
+    #[error("Factory contract did not implment the required TokenFactoryCallback interface")]
     NoFactoryCallback {},
 
     #[error("Nothing to claim")]
