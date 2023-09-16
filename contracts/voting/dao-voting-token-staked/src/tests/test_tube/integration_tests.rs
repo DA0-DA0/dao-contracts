@@ -416,12 +416,5 @@ fn test_factory() {
     // Query token contract
     let token_contract: Addr = voting.query(&QueryMsg::TokenContract {}).unwrap();
 
-    assert_eq!(
-        denom,
-        format!(
-            "factory/{}/{}",
-            token_contract.to_string(),
-            DENOM.to_string()
-        )
-    );
+    assert_eq!(denom, format!("factory/{}/{}", token_contract, DENOM));
 }

@@ -2159,10 +2159,6 @@ dependencies = [
  "dao-test-custom-factory",
  "dao-testing",
  "dao-voting 2.2.0",
- "sg-multi-test",
- "sg-std",
- "sg721",
- "sg721-base",
  "thiserror",
 ]
 
@@ -3893,71 +3889,6 @@ dependencies = [
  "ryu",
  "serde",
  "unsafe-libyaml",
-]
-
-[[package]]
-name = "sg-multi-test"
-version = "3.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20744734b8049c64747bfb083bbc06a3c7204d1d34881ed3d89698e182aa9f97"
-dependencies = [
- "anyhow",
- "cosmwasm-std",
- "cw-multi-test",
- "schemars",
- "serde",
- "sg-std",
-]
-
-[[package]]
-name = "sg-std"
-version = "3.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4db53aebc2b4f981dc20a51213544adde8beaace6880345627f4babe2e1bc3ab"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-utils 1.0.1",
- "cw721 0.18.0",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
-name = "sg721"
-version = "3.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e7d8f93b519c4c95973a68c7abee2de838497974d666dddb4dabd04d9c7cbf6"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-ownable",
- "cw-utils 1.0.1",
- "cw721-base 0.18.0",
- "serde",
- "thiserror",
-]
-
-[[package]]
-name = "sg721-base"
-version = "3.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af08801d6f50cb13be05a3d2e815fbdb9dbba82086bbab877599ed4d422e9441"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-ownable",
- "cw-storage-plus 1.1.0",
- "cw-utils 1.0.1",
- "cw2 1.1.0",
- "cw721 0.18.0",
- "cw721-base 0.18.0",
- "serde",
- "sg-std",
- "sg721",
- "thiserror",
- "url",
 ]
 
 [[package]]

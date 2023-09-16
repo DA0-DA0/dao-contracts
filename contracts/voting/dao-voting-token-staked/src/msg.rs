@@ -17,8 +17,10 @@ pub enum TokenInfo {
     /// Creates a new Token Factory token via the issue contract with the DAO automatically
     /// setup as admin and owner.
     New(NewTokenInfo),
-    /// Uses a factory pattern that must return the denom, optionally a Token Contract address.
+    /// Uses a factory contract that must return the denom, optionally a Token Contract address.
     /// The binary must serialize to a `WasmMsg::Execute` message.
+    /// Validation happens in the factory contract itself, so be sure to use a
+    /// trusted factory contract.
     Factory(Binary),
 }
 

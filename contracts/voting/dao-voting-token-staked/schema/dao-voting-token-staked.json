@@ -305,7 +305,7 @@
             "additionalProperties": false
           },
           {
-            "description": "Uses a factory pattern that must return the denom, optionally a Token Contract address. The binary must serialize to a `WasmMsg::Execute` message.",
+            "description": "Uses a factory contract that must return the denom, optionally a Token Contract address. The binary must serialize to a `WasmMsg::Execute` message. Validation happens in the factory contract itself, so be sure to use a trusted factory contract.",
             "type": "object",
             "required": [
               "factory"

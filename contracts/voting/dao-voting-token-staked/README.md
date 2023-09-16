@@ -80,3 +80,11 @@ Example insantiation mesggage:
 
 NOTE: if using an existing Token Factory token, double check the Token Factory admin and consider changing the Token Factory to be the DAO after the DAO is created.
 
+### Use a factory
+Occassionally, more customization is needed. Maybe you want to have an Augmented Bonding Curve contract or LP pool that requires additional setup? It's possible with factory contracts!
+
+The `factory` pattern takes a single `WasmMsg::Execute` message that calls into a custom factory contract.
+
+**NOTE:** when using the factory pattern, it is important to only use a trusted factory contract, as all validation happens in the factory contract.
+
+The [dao-test-custom-factory contract](../test/dao-test-custom-factory) provides an example of how this can be done and is used for tests. It is NOT production ready, but meant to serve as an example for building factory contracts.
