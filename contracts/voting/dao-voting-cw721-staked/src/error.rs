@@ -31,6 +31,9 @@ pub enum ContractError {
     #[error("New NFT contract must be instantiated with at least one NFT")]
     NoInitialNfts {},
 
+    #[error("Factory contract did not implment the required NftFactoryCallback interface")]
+    NoFactoryCallback {},
+
     #[error("Nothing to claim")]
     NothingToClaim {},
 

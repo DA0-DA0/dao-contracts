@@ -1,22 +1,19 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
-use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128};
-use cw721::OwnerOfResponse;
+use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128, WasmMsg};
 use cw721_base::msg::{ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg};
 use cw721_controllers::{NftClaim, NftClaimsResponse};
-use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
+use cw_multi_test::{next_block, App, Executor};
 use cw_utils::Duration;
 use dao_interface::voting::IsActiveResponse;
-use dao_testing::contracts::{cw721_base_contract, voting_cw721_staked_contract};
+use dao_testing::contracts::{
+    cw721_base_contract, dao_test_custom_factory, voting_cw721_staked_contract,
+};
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
-use sg721::{CollectionInfo, RoyaltyInfoResponse, UpdateCollectionInfoMsg};
-use sg721_base::msg::CollectionInfoResponse;
-use sg_multi_test::StargazeApp;
-use sg_std::StargazeMsgWrapper;
 
 use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, NftContract, QueryMsg},
-    state::{Config, MAX_CLAIMS},
+    state::MAX_CLAIMS,
     testing::{
         execute::{
             claim_nfts, mint_and_stake_nft, mint_nft, stake_nft, unstake_nfts, update_config,
@@ -994,157 +991,56 @@ fn test_no_initial_nfts_fails() {
     );
 }
 
-// Setup Stargaze contracts for multi-test
-fn sg721_base_contract() -> Box<dyn Contract<StargazeMsgWrapper>> {
-    let contract = ContractWrapper::new(
-        sg721_base::entry::execute,
-        sg721_base::entry::instantiate,
-        sg721_base::entry::query,
-    );
-    Box::new(contract)
-}
-
-// Stargze contracts need a custom message wrapper
-fn voting_sg721_staked_contract() -> Box<dyn Contract<StargazeMsgWrapper>> {
-    let contract = ContractWrapper::new_with_empty(
-        crate::contract::execute,
-        crate::contract::instantiate,
-        crate::contract::query,
-    )
-    .with_reply_empty(crate::contract::reply);
-    Box::new(contract)
-}
-
-// I can create new Stargaze NFT collection when creating a dao-voting-cw721-staked contract
 #[test]
-fn test_instantiate_with_new_sg721_collection() -> anyhow::Result<()> {
-    let mut app = StargazeApp::default();
-    let module_id = app.store_code(voting_sg721_staked_contract());
-    let sg721_id = app.store_code(sg721_base_contract());
+fn test_factory() {
+    let mut app = App::default();
+    let module_id = app.store_code(voting_cw721_staked_contract());
+    let cw721_id = app.store_code(cw721_base_contract());
+    let factory_id = app.store_code(dao_test_custom_factory());
 
-    let module_addr = app
+    // Instantiate factory
+    let factory_addr = app
         .instantiate_contract(
-            module_id,
+            factory_id,
             Addr::unchecked(CREATOR_ADDR),
-            &InstantiateMsg {
-                nft_contract: NftContract::New {
-                    code_id: sg721_id,
-                    label: "Test NFT".to_string(),
-                    msg: to_binary(&sg721::InstantiateMsg {
-                        name: "Test NFT".to_string(),
-                        symbol: "TEST".to_string(),
-                        minter: CREATOR_ADDR.to_string(),
-                        collection_info: CollectionInfo {
-                            creator: CREATOR_ADDR.to_string(),
-                            description: "Test NFT".to_string(),
-                            image: "https://example.com/image.jpg".to_string(),
-                            external_link: None,
-                            explicit_content: None,
-                            start_trading_time: None,
-                            royalty_info: None,
-                        },
-                    })?,
-                    initial_nfts: vec![to_binary(&sg721::ExecuteMsg::<Empty, Empty>::Mint {
-                        owner: CREATOR_ADDR.to_string(),
-                        token_uri: Some("https://example.com".to_string()),
-                        token_id: "1".to_string(),
-                        extension: Empty {},
-                    })?],
-                },
-                unstaking_duration: None,
-                active_threshold: None,
-            },
+            &dao_test_custom_factory::msg::InstantiateMsg {},
             &[],
-            "cw721_voting",
+            "test factory".to_string(),
             None,
         )
         .unwrap();
 
-    let config: Config = app
-        .wrap()
-        .query_wasm_smart(module_addr, &QueryMsg::Config {})?;
-    let sg721_addr = config.nft_address;
-
-    // Check that the NFT contract was created
-    let owner: OwnerOfResponse = app.wrap().query_wasm_smart(
-        sg721_addr.clone(),
-        &cw721::Cw721QueryMsg::OwnerOf {
-            token_id: "1".to_string(),
-            include_expired: None,
-        },
-    )?;
-    assert_eq!(owner.owner, CREATOR_ADDR);
-
-    // Check that collection info creator is set to the DAO (in this case CREATOR_ADDR)
-    // Normally the DAO would instantiate this contract
-    let creator: CollectionInfoResponse = app
-        .wrap()
-        .query_wasm_smart(sg721_addr, &sg721_base::msg::QueryMsg::CollectionInfo {})?;
-    assert_eq!(creator.creator, CREATOR_ADDR.to_string());
-
-    Ok(())
-}
-
-#[test]
-#[should_panic(expected = "Active threshold count is greater than supply")]
-fn test_instantiate_with_new_sg721_collection_abs_count_validation() {
-    let mut app = StargazeApp::default();
-    let module_id = app.store_code(voting_sg721_staked_contract());
-    let sg721_id = app.store_code(sg721_base_contract());
-
-    // Test edge case
+    // Instantiate using factory succeeds
     app.instantiate_contract(
         module_id,
-        Addr::unchecked("contract0"),
+        Addr::unchecked(CREATOR_ADDR),
         &InstantiateMsg {
-            nft_contract: NftContract::New {
-                code_id: sg721_id,
-                label: "Test NFT".to_string(),
-                msg: to_binary(&sg721::InstantiateMsg {
-                    name: "Test NFT".to_string(),
-                    symbol: "TEST".to_string(),
-                    minter: "contract0".to_string(),
-                    collection_info: CollectionInfo {
-                        creator: "contract0".to_string(),
-                        description: "Test NFT".to_string(),
-                        image: "https://example.com/image.jpg".to_string(),
-                        external_link: None,
-                        explicit_content: None,
-                        start_trading_time: None,
-                        royalty_info: None,
-                    },
-                })
-                .unwrap(),
-                initial_nfts: vec![
-                    to_binary(&sg721::ExecuteMsg::<Empty, Empty>::Mint {
-                        owner: "contract0".to_string(),
-                        token_uri: Some("https://example.com".to_string()),
-                        token_id: "1".to_string(),
-                        extension: Empty {},
-                    })
-                    .unwrap(),
-                    to_binary(&sg721::ExecuteMsg::<Empty, Empty>::UpdateCollectionInfo {
-                        collection_info: UpdateCollectionInfoMsg::<RoyaltyInfoResponse> {
-                            description: None,
-                            image: None,
-                            external_link: None,
-                            explicit_content: None,
-                            royalty_info: None,
+            nft_contract: NftContract::Factory(
+                to_binary(&WasmMsg::Execute {
+                    contract_addr: factory_addr.to_string(),
+                    msg: to_binary(&dao_test_custom_factory::msg::ExecuteMsg::NftFactory {
+                        code_id: cw721_id,
+                        cw721_instantiate_msg: Cw721InstantiateMsg {
+                            name: "Test NFT".to_string(),
+                            symbol: "TEST".to_string(),
+                            minter: CREATOR_ADDR.to_string(),
                         },
                     })
                     .unwrap(),
-                ],
-            },
+                    funds: vec![],
+                })
+                .unwrap(),
+            ),
             unstaking_duration: None,
-            active_threshold: Some(ActiveThreshold::AbsoluteCount {
-                count: Uint128::new(2),
+            active_threshold: Some(ActiveThreshold::Percentage {
+                percent: Decimal::percent(1),
             }),
         },
         &[],
         "cw721_voting",
         None,
     )
-    .unwrap();
+    .unwrap_err();
 }
 
 #[test]

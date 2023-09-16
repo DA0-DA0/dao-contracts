@@ -10,12 +10,10 @@ use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NumTokensResponse};
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_execute_data, parse_reply_instantiate_data, Duration};
 use dao_hooks::nft_stake::{stake_nft_hook_msgs, unstake_nft_hook_msgs};
-use dao_interface::voting::IsActiveResponse;
+use dao_interface::{nft::NftFactoryCallback, voting::IsActiveResponse};
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
-use crate::msg::{
-    ExecuteMsg, InstantiateMsg, MigrateMsg, NftContract, NftFactoryCallback, QueryMsg,
-};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, NftContract, QueryMsg};
 use crate::state::{
     register_staked_nft, register_unstaked_nfts, Config, ACTIVE_THRESHOLD, CONFIG, DAO, HOOKS,
     INITIAL_NFTS, MAX_CLAIMS, NFT_BALANCES, NFT_CLAIMS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
@@ -759,8 +757,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
                     Ok(Response::new().add_attribute("nft_contract", info.nft_contract))
                 }
-                // TODO better error
-                None => Err(ContractError::Unauthorized {}),
+                None => Err(ContractError::NoFactoryCallback {}),
             }
         }
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),

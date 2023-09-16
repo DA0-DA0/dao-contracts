@@ -8,7 +8,10 @@ pub struct InstantiateMsg {}
 #[cw_serde]
 pub enum ExecuteMsg {
     TokenFactoryFactory(NewTokenInfo),
-    NftFactory(Cw721InstantiateMsg),
+    NftFactory {
+        code_id: u64,
+        cw721_instantiate_msg: Cw721InstantiateMsg,
+    },
 }
 
 #[cw_serde]

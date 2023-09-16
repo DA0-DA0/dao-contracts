@@ -196,3 +196,13 @@ pub fn stake_cw20_v03_contract() -> Box<dyn Contract<Empty>> {
     );
     Box::new(contract)
 }
+
+pub fn dao_test_custom_factory() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        dao_test_custom_factory::contract::execute,
+        dao_test_custom_factory::contract::instantiate,
+        dao_test_custom_factory::contract::query,
+    )
+    .with_reply(dao_test_custom_factory::contract::reply);
+    Box::new(contract)
+}

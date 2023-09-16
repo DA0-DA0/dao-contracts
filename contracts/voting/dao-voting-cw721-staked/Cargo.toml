@@ -40,3 +40,4 @@ dao-testing = { workspace = true }
 sg721-base = { workspace = true, features = ["library"] }
 sg-std = { workspace = true }
 sg-multi-test = { workspace = true }
+dao-test-custom-factory = { workspace = true }

@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdResult, SubMsg, Uint128, WasmMsg,
+    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
+    Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721_base::InstantiateMsg as Cw721InstantiateMsg;
@@ -12,6 +12,7 @@ use cw_tokenfactory_issuer::msg::{
 };
 use cw_utils::parse_reply_instantiate_data;
 use dao_interface::{
+    nft::NftFactoryCallback,
     token::{FactoryCallback, InitialBalance, NewTokenInfo},
     voting::Query as VotingModuleQueryMsg,
 };
@@ -53,7 +54,10 @@ pub fn execute(
         ExecuteMsg::TokenFactoryFactory(token) => {
             execute_token_factory_factory(deps, env, info, token)
         }
-        ExecuteMsg::NftFactory(cw721_msg) => execute_nft_factory(deps, env, info, cw721_msg),
+        ExecuteMsg::NftFactory {
+            code_id,
+            cw721_instantiate_msg,
+        } => execute_nft_factory(deps, env, info, cw721_instantiate_msg, code_id),
     }
 }
 
@@ -64,7 +68,8 @@ pub fn execute_nft_factory(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    cw721_msg: Cw721InstantiateMsg,
+    cw721_instantiate_msg: Cw721InstantiateMsg,
+    code_id: u64,
 ) -> Result<Response, ContractError> {
     // Query for DAO
     let dao: Addr = deps
@@ -79,9 +84,8 @@ pub fn execute_nft_factory(
     let msg = SubMsg::reply_on_success(
         WasmMsg::Instantiate {
             admin: Some(dao.to_string()),
-            // TODO, need to pass this in
-            code_id: 0,
-            msg: to_binary(&cw721_msg)?,
+            code_id,
+            msg: to_binary(&cw721_instantiate_msg)?,
             funds: vec![],
             label: "cw_tokenfactory_issuer".to_string(),
         },
@@ -231,11 +235,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             // Parse issuer address from instantiate reply
             let nft_address = parse_reply_instantiate_data(msg)?.contract_address;
 
-            // Mint an NFT (in reality, the factory would likely be used in conjunction with a minter contract)
-
-            // Set reply data
-
-            unimplemented!()
+            Ok(Response::new().set_data(to_binary(&NftFactoryCallback {
+                nft_contract: nft_address.to_string(),
+            })?))
         }
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }
