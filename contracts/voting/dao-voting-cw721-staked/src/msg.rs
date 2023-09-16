@@ -25,8 +25,10 @@ pub enum NftContract {
         /// valid mint message for the corresponding cw721 contract.
         initial_nfts: Vec<Binary>,
     },
-    /// Uses a factory pattern that must return the denom, optionally a Token Contract address,
-    /// and any setup messages. The binary must serialize to a `WasmMsg::Execute` message.
+    /// Uses a factory contract that must return the address of the NFT contract.
+    /// The binary must serialize to a `WasmMsg::Execute` message.
+    /// Validation happens in the factory contract itself, so be sure to use a
+    /// trusted factory contract.
     Factory(Binary),
 }
 
@@ -94,8 +96,3 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub struct MigrateMsg {}
-
-#[cw_serde]
-pub struct NftFactoryCallback {
-    pub nft_contract: String,
-}

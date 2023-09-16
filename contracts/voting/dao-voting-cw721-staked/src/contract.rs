@@ -34,30 +34,19 @@ const PRECISION_FACTOR: u128 = 10u128.pow(9);
 #[cw_serde]
 pub enum NftInstantiateMsg {
     Cw721(cw721_base::InstantiateMsg),
-    Sg721(sg721::InstantiateMsg),
 }
 
 impl NftInstantiateMsg {
-    fn modify_instantiate_msg(&mut self, minter: &str, dao: &str) {
+    fn modify_instantiate_msg(&mut self, minter: &str) {
         match self {
             // Update minter for cw721 NFTs
             NftInstantiateMsg::Cw721(msg) => msg.minter = minter.to_string(),
-            NftInstantiateMsg::Sg721(msg) => {
-                // Update minter and collection creator for sg721 NFTs
-                // The collection creator is the only one able to call certain methods
-                // in sg721 contracts
-                msg.minter = minter.to_string();
-                // This should be the DAO, which will be able to control metadata about
-                // the collection as well as royalties
-                msg.collection_info.creator = dao.to_string();
-            }
         }
     }
 
     fn to_binary(&self) -> Result<Binary, StdError> {
         match self {
             NftInstantiateMsg::Cw721(msg) => to_binary(&msg),
-            NftInstantiateMsg::Sg721(msg) => to_binary(&msg),
         }
     }
 }
@@ -67,10 +56,6 @@ pub fn try_deserialize_nft_instantiate_msg(
 ) -> Result<NftInstantiateMsg, ContractError> {
     if let Ok(cw721_msg) = from_binary::<cw721_base::msg::InstantiateMsg>(&instantiate_msg) {
         return Ok(NftInstantiateMsg::Cw721(cw721_msg));
-    }
-
-    if let Ok(sg721_msg) = from_binary::<sg721::InstantiateMsg>(&instantiate_msg) {
-        return Ok(NftInstantiateMsg::Sg721(sg721_msg));
     }
 
     Err(ContractError::NftInstantiateError {})
@@ -134,17 +119,12 @@ pub fn instantiate(
             msg: instantiate_msg,
             initial_nfts,
         } => {
-            // Deserialize the binary msg into either cw721 or sg721
+            // Deserialize the binary msg into cw721
             let mut instantiate_msg = try_deserialize_nft_instantiate_msg(instantiate_msg)?;
 
             // Modify the InstantiateMsg such that the minter is now this contract.
             // We will update ownership of the NFT contract to be the DAO in the submessage reply.
-            //
-            // NOTE: sg721 also has a creator that is set in the `collection_info` field,
-            // we override this with the address of the DAO (the sender of this message).
-            // In sg721 the `creator` address controls metadata and royalties.
-            instantiate_msg
-                .modify_instantiate_msg(env.contract.address.as_str(), info.sender.as_str());
+            instantiate_msg.modify_instantiate_msg(env.contract.address.as_str());
 
             // Check there is at least one NFT to initialize
             if initial_nfts.is_empty() {

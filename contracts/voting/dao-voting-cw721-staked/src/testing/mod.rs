@@ -3,7 +3,6 @@ mod execute;
 mod hooks;
 mod instantiate;
 mod queries;
-mod stargaze;
 mod tests;
 
 use cosmwasm_std::Addr;

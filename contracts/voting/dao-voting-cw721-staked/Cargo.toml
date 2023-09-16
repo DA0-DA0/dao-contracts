@@ -1,6 +1,6 @@
 [package]
 name = "dao-voting-cw721-staked"
-authors = ["CypherApe cypherape@protonmail.com"]
+authors = ["CypherApe cypherape@protonmail.com", "Jake Hartnell", "ekez"]
 description = "A DAO DAO voting module based on staked cw721 tokens."
 edition = { workspace = true }
 license = { workspace = true }
@@ -30,14 +30,10 @@ dao-dao-macros = { workspace = true }
 dao-hooks = { workspace = true }
 dao-interface = { workspace = true }
 dao-voting = { workspace = true }
-sg721 = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }
 cw-multi-test = { workspace = true }
 dao-testing = { workspace = true }
-sg721-base = { workspace = true, features = ["library"] }
-sg-std = { workspace = true }
-sg-multi-test = { workspace = true }
 dao-test-custom-factory = { workspace = true }
