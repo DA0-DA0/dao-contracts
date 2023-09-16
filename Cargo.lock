@@ -1980,6 +1980,7 @@ dependencies = [
  "cw721-base 0.18.0",
  "dao-dao-macros",
  "dao-interface",
+ "dao-voting 2.2.0",
  "thiserror",
 ]
 

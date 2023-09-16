@@ -136,8 +136,6 @@ pub fn instantiate(
                     WasmMsg::Execute {
                         contract_addr,
                         msg,
-                        // TODO what to do with funds for fair burn?
-                        // Need to pass them along to the factory
                         funds: vec![],
                     },
                     FACTORY_EXECUTE_REPLY_ID,
@@ -735,15 +733,11 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                             .save(deps.storage, &deps.api.addr_validate(token_contract)?)?;
                     }
 
-                    // TODO validate active threshold is set? Some contracts such as a minter,
-                    // contract may not have any supply until tokens are minted.
-
                     Ok(Response::new()
                         .add_attribute("denom", info.denom)
                         .add_attribute("token_contract", info.token_contract.unwrap_or_default()))
                 }
-                // TODO better error
-                None => Err(ContractError::Unauthorized {}),
+                None => Err(ContractError::NoFactoryCallback {}),
             }
         }
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),

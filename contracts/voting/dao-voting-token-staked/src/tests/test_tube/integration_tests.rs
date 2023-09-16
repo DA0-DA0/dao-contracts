@@ -2,6 +2,7 @@ use cosmwasm_std::{to_binary, Addr, Coin, Decimal, Uint128, WasmMsg};
 use cw_tokenfactory_issuer::msg::DenomUnit;
 use cw_utils::Duration;
 use dao_interface::{
+    msg::QueryMsg as DaoQueryMsg,
     state::{Admin, ModuleInstantiateInfo},
     token::{InitialBalance, NewDenomMetadata, NewTokenInfo},
 };
@@ -14,7 +15,7 @@ use osmosis_std::types::cosmos::bank::v1beta1::QueryBalanceRequest;
 use osmosis_test_tube::{Account, OsmosisTestApp};
 
 use crate::{
-    msg::{ExecuteMsg, InstantiateMsg, TokenInfo},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenInfo},
     tests::test_tube::test_env::TokenVotingContract,
     ContractError,
 };
@@ -334,7 +335,6 @@ fn test_factory() {
         ..
     } = env.full_dao_setup(&app);
 
-    // TODO refactor so there is a function that just takes the message
     // Instantiate a new voting contract using the factory pattern
     let msg = dao_interface::msg::InstantiateMsg {
         dao_uri: None,
@@ -402,11 +402,26 @@ fn test_factory() {
     };
 
     // Instantiate DAO
-    let _dao = DaoCore::new(&app, &msg, &accounts[0]).unwrap();
+    let dao = DaoCore::new(&app, &msg, &accounts[0]).unwrap();
 
-    // TODO query voting module
+    // Query voting module
+    let voting_module: Addr = dao.query(&DaoQueryMsg::VotingModule {}).unwrap();
+    let voting =
+        TokenVotingContract::new_with_values(&app, vp_contract.code_id, voting_module.to_string())
+            .unwrap();
 
-    // TODO query denom
+    // Query denom
+    let denom = voting.query_denom().unwrap().denom;
 
-    // TODO query token contract
+    // Query token contract
+    let token_contract: Addr = voting.query(&QueryMsg::TokenContract {}).unwrap();
+
+    assert_eq!(
+        denom,
+        format!(
+            "factory/{}/{}",
+            token_contract.to_string(),
+            DENOM.to_string()
+        )
+    );
 }

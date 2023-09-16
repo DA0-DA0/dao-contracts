@@ -14,7 +14,11 @@ use cw_utils::parse_reply_instantiate_data;
 use dao_interface::{
     nft::NftFactoryCallback,
     token::{FactoryCallback, InitialBalance, NewTokenInfo},
-    voting::Query as VotingModuleQueryMsg,
+    voting::{ActiveThresholdQuery, Query as VotingModuleQueryMsg},
+};
+use dao_voting::threshold::{
+    assert_valid_absolute_count_threshold, assert_valid_percentage_threshold, ActiveThreshold,
+    ActiveThresholdResponse,
 };
 
 use crate::{
@@ -29,6 +33,7 @@ const INSTANTIATE_ISSUER_REPLY_ID: u64 = 1;
 const INSTANTIATE_NFT_REPLY_ID: u64 = 2;
 
 const DAO: Item<Addr> = Item::new("dao");
+const VOTING_MODULE: Item<Addr> = Item::new("voting_module");
 const TOKEN_INFO: Item<NewTokenInfo> = Item::new("token_info");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -104,6 +109,9 @@ pub fn execute_token_factory_factory(
     info: MessageInfo,
     token: NewTokenInfo,
 ) -> Result<Response, ContractError> {
+    // Save voting module address
+    VOTING_MODULE.save(deps.storage, &info.sender)?;
+
     // Query for DAO
     let dao: Addr = deps
         .querier
@@ -150,6 +158,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             // Load DAO address and TOKEN_INFO
             let dao = DAO.load(deps.storage)?;
             let token = TOKEN_INFO.load(deps.storage)?;
+            let voting_module = VOTING_MODULE.load(deps.storage)?;
 
             // Parse issuer address from instantiate reply
             let issuer_addr = parse_reply_instantiate_data(msg)?.contract_address;
@@ -165,7 +174,22 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 });
             let total_supply = initial_supply + token.initial_dao_balance.unwrap_or_default();
 
-            // TODO query active threshold and validate the count?
+            // Here we validate the active threshold to show how validation should be done
+            // in a factory contract.
+            let active_threshold: ActiveThresholdResponse = deps
+                .querier
+                .query_wasm_smart(voting_module, &ActiveThresholdQuery::ActiveThreshold {})?;
+
+            if let Some(threshold) = active_threshold.active_threshold {
+                match threshold {
+                    ActiveThreshold::Percentage { percent } => {
+                        assert_valid_percentage_threshold(percent)?;
+                    }
+                    ActiveThreshold::AbsoluteCount { count } => {
+                        assert_valid_absolute_count_threshold(count, initial_supply)?;
+                    }
+                }
+            }
 
             // Msgs to be executed to finalize setup
             let mut msgs: Vec<WasmMsg> = vec![];

@@ -188,8 +188,6 @@ pub fn instantiate(
                     WasmMsg::Execute {
                         contract_addr,
                         msg,
-                        // TODO what to do with funds for fair burn?
-                        // Need to pass them along to the factory
                         funds,
                     },
                     FACTORY_EXECUTE_REPLY_ID,

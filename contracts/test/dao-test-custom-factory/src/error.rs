@@ -1,11 +1,15 @@
 use cosmwasm_std::StdError;
 use cw_utils::ParseReplyError;
+use dao_voting::threshold::ActiveThresholdError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
+
+    #[error(transparent)]
+    ActiveThresholdError(#[from] ActiveThresholdError),
 
     #[error(transparent)]
     ParseReplyError(#[from] ParseReplyError),
