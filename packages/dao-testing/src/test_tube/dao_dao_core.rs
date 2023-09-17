@@ -21,7 +21,7 @@ impl<'a> DaoCore<'a> {
         app: &'a OsmosisTestApp,
         instantiate_msg: &InstantiateMsg,
         signer: &SigningAccount,
-        funds: &Vec<Coin>,
+        funds: &[Coin],
     ) -> Result<Self, RunnerError> {
         let wasm = Wasm::new(app);
         let code_id = wasm

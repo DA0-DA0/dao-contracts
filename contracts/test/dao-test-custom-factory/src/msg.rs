@@ -8,10 +8,19 @@ pub struct InstantiateMsg {}
 #[cw_serde]
 pub enum ExecuteMsg {
     TokenFactoryFactory(NewTokenInfo),
+    TokenFactoryFactoryWithFunds(NewTokenInfo),
+    TokenFactoryFactoryNoCallback {},
+    TokenFactoryFactoryWrongCallback {},
     NftFactory {
         code_id: u64,
         cw721_instantiate_msg: Cw721InstantiateMsg,
     },
+    NftFactoryWithFunds {
+        code_id: u64,
+        cw721_instantiate_msg: Cw721InstantiateMsg,
+    },
+    NftFactoryNoCallback {},
+    NftFactoryWrongCallback {},
 }
 
 #[cw_serde]

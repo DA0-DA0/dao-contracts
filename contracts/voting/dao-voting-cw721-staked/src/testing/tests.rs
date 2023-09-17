@@ -1,8 +1,8 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
-use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128, WasmMsg};
+use cosmwasm_std::{to_binary, Addr, Coin, Decimal, Empty, Uint128, WasmMsg};
 use cw721_base::msg::{ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg};
 use cw721_controllers::{NftClaim, NftClaimsResponse};
-use cw_multi_test::{next_block, App, Executor};
+use cw_multi_test::{next_block, App, BankSudo, Executor, SudoMsg};
 use cw_utils::Duration;
 use dao_interface::voting::IsActiveResponse;
 use dao_testing::contracts::{
@@ -1026,6 +1026,248 @@ fn test_factory() {
                             minter: CREATOR_ADDR.to_string(),
                         },
                     })
+                    .unwrap(),
+                    funds: vec![],
+                })
+                .unwrap(),
+            ),
+            unstaking_duration: None,
+            active_threshold: Some(ActiveThreshold::Percentage {
+                percent: Decimal::percent(1),
+            }),
+        },
+        &[],
+        "cw721_voting",
+        None,
+    )
+    .unwrap();
+}
+
+#[test]
+fn test_factory_with_funds_pass_through() {
+    let mut app = App::default();
+    let module_id = app.store_code(voting_cw721_staked_contract());
+    let cw721_id = app.store_code(cw721_base_contract());
+    let factory_id = app.store_code(dao_test_custom_factory());
+
+    // Mint some tokens to creator
+    app.sudo(SudoMsg::Bank(BankSudo::Mint {
+        to_address: CREATOR_ADDR.to_string(),
+        amount: vec![Coin {
+            denom: "ujuno".to_string(),
+            amount: Uint128::new(10000),
+        }],
+    }))
+    .unwrap();
+
+    // Instantiate factory
+    let factory_addr = app
+        .instantiate_contract(
+            factory_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &dao_test_custom_factory::msg::InstantiateMsg {},
+            &[],
+            "test factory".to_string(),
+            None,
+        )
+        .unwrap();
+
+    // Instantiate without funds fails
+    app.instantiate_contract(
+        module_id,
+        Addr::unchecked(CREATOR_ADDR),
+        &InstantiateMsg {
+            nft_contract: NftContract::Factory(
+                to_binary(&WasmMsg::Execute {
+                    contract_addr: factory_addr.to_string(),
+                    msg: to_binary(
+                        &dao_test_custom_factory::msg::ExecuteMsg::NftFactoryWithFunds {
+                            code_id: cw721_id,
+                            cw721_instantiate_msg: Cw721InstantiateMsg {
+                                name: "Test NFT".to_string(),
+                                symbol: "TEST".to_string(),
+                                minter: CREATOR_ADDR.to_string(),
+                            },
+                        },
+                    )
+                    .unwrap(),
+                    funds: vec![],
+                })
+                .unwrap(),
+            ),
+            unstaking_duration: None,
+            active_threshold: Some(ActiveThreshold::Percentage {
+                percent: Decimal::percent(1),
+            }),
+        },
+        &[],
+        "cw721_voting",
+        None,
+    )
+    .unwrap_err();
+
+    // Instantiate using factory succeeds
+    let funds = vec![Coin {
+        denom: "ujuno".to_string(),
+        amount: Uint128::new(100),
+    }];
+    app.instantiate_contract(
+        module_id,
+        Addr::unchecked(CREATOR_ADDR),
+        &InstantiateMsg {
+            nft_contract: NftContract::Factory(
+                to_binary(&WasmMsg::Execute {
+                    contract_addr: factory_addr.to_string(),
+                    msg: to_binary(
+                        &dao_test_custom_factory::msg::ExecuteMsg::NftFactoryWithFunds {
+                            code_id: cw721_id,
+                            cw721_instantiate_msg: Cw721InstantiateMsg {
+                                name: "Test NFT".to_string(),
+                                symbol: "TEST".to_string(),
+                                minter: CREATOR_ADDR.to_string(),
+                            },
+                        },
+                    )
+                    .unwrap(),
+                    funds: funds.clone(),
+                })
+                .unwrap(),
+            ),
+            unstaking_duration: None,
+            active_threshold: Some(ActiveThreshold::Percentage {
+                percent: Decimal::percent(1),
+            }),
+        },
+        &funds,
+        "cw721_voting",
+        None,
+    )
+    .unwrap();
+}
+
+#[test]
+#[should_panic(expected = "Factory message must serialize to WasmMsg::Execute")]
+fn test_unsupported_factory_msg() {
+    let mut app = App::default();
+    let module_id = app.store_code(voting_cw721_staked_contract());
+    let cw721_id = app.store_code(cw721_base_contract());
+
+    // Instantiate using factory succeeds
+    app.instantiate_contract(
+        module_id,
+        Addr::unchecked(CREATOR_ADDR),
+        &InstantiateMsg {
+            nft_contract: NftContract::Factory(
+                to_binary(&WasmMsg::Instantiate {
+                    code_id: cw721_id,
+                    msg: to_binary(&dao_test_custom_factory::msg::ExecuteMsg::NftFactory {
+                        code_id: cw721_id,
+                        cw721_instantiate_msg: Cw721InstantiateMsg {
+                            name: "Test NFT".to_string(),
+                            symbol: "TEST".to_string(),
+                            minter: CREATOR_ADDR.to_string(),
+                        },
+                    })
+                    .unwrap(),
+                    admin: None,
+                    label: "Test NFT".to_string(),
+                    funds: vec![],
+                })
+                .unwrap(),
+            ),
+            unstaking_duration: None,
+            active_threshold: Some(ActiveThreshold::Percentage {
+                percent: Decimal::percent(1),
+            }),
+        },
+        &[],
+        "cw721_voting",
+        None,
+    )
+    .unwrap();
+}
+
+#[test]
+#[should_panic(
+    expected = "Error parsing into type dao_interface::nft::NftFactoryCallback: unknown field `denom`, expected `nft_contract`"
+)]
+fn test_factory_wrong_callback() {
+    let mut app = App::default();
+    let module_id = app.store_code(voting_cw721_staked_contract());
+    let _cw721_id = app.store_code(cw721_base_contract());
+    let factory_id = app.store_code(dao_test_custom_factory());
+
+    // Instantiate factory
+    let factory_addr = app
+        .instantiate_contract(
+            factory_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &dao_test_custom_factory::msg::InstantiateMsg {},
+            &[],
+            "test factory".to_string(),
+            None,
+        )
+        .unwrap();
+
+    // Instantiate using factory succeeds
+    app.instantiate_contract(
+        module_id,
+        Addr::unchecked(CREATOR_ADDR),
+        &InstantiateMsg {
+            nft_contract: NftContract::Factory(
+                to_binary(&WasmMsg::Execute {
+                    contract_addr: factory_addr.to_string(),
+                    msg: to_binary(
+                        &dao_test_custom_factory::msg::ExecuteMsg::NftFactoryWrongCallback {},
+                    )
+                    .unwrap(),
+                    funds: vec![],
+                })
+                .unwrap(),
+            ),
+            unstaking_duration: None,
+            active_threshold: Some(ActiveThreshold::Percentage {
+                percent: Decimal::percent(1),
+            }),
+        },
+        &[],
+        "cw721_voting",
+        None,
+    )
+    .unwrap();
+}
+
+#[test]
+#[should_panic(expected = "Invalid reply from sub-message: Missing reply data")]
+fn test_factory_no_callback() {
+    let mut app = App::default();
+    let module_id = app.store_code(voting_cw721_staked_contract());
+    let _cw721_id = app.store_code(cw721_base_contract());
+    let factory_id = app.store_code(dao_test_custom_factory());
+
+    // Instantiate factory
+    let factory_addr = app
+        .instantiate_contract(
+            factory_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &dao_test_custom_factory::msg::InstantiateMsg {},
+            &[],
+            "test factory".to_string(),
+            None,
+        )
+        .unwrap();
+
+    // Instantiate using factory succeeds
+    app.instantiate_contract(
+        module_id,
+        Addr::unchecked(CREATOR_ADDR),
+        &InstantiateMsg {
+            nft_contract: NftContract::Factory(
+                to_binary(&WasmMsg::Execute {
+                    contract_addr: factory_addr.to_string(),
+                    msg: to_binary(
+                        &dao_test_custom_factory::msg::ExecuteMsg::NftFactoryNoCallback {},
+                    )
                     .unwrap(),
                     funds: vec![],
                 })

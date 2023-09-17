@@ -1,4 +1,3 @@
-use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -31,7 +30,7 @@ const FACTORY_EXECUTE_REPLY_ID: u64 = 2;
 // when using active threshold with percent
 const PRECISION_FACTOR: u128 = 10u128.pow(9);
 
-#[cw_serde]
+// Supported NFT instantiation messages
 pub enum NftInstantiateMsg {
     Cw721(cw721_base::InstantiateMsg),
 }

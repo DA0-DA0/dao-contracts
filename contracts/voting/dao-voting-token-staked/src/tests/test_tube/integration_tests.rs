@@ -338,7 +338,7 @@ fn test_factory() {
     let factory_addr = custom_factory.unwrap().contract_addr.to_string();
 
     // Instantiate a new voting contract using the factory pattern
-    let mut msg = dao_interface::msg::InstantiateMsg {
+    let msg = dao_interface::msg::InstantiateMsg {
         dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
@@ -354,6 +354,106 @@ fn test_factory() {
                         contract_addr: factory_addr.clone(),
                         msg: to_binary(
                             &dao_test_custom_factory::msg::ExecuteMsg::TokenFactoryFactory(
+                                NewTokenInfo {
+                                    token_issuer_code_id: tf_issuer.code_id,
+                                    subdenom: DENOM.to_string(),
+                                    metadata: None,
+                                    initial_balances: vec![InitialBalance {
+                                        address: accounts[0].address(),
+                                        amount: Uint128::new(100),
+                                    }],
+                                    initial_dao_balance: None,
+                                },
+                            ),
+                        )
+                        .unwrap(),
+                        funds: vec![],
+                    })
+                    .unwrap(),
+                ),
+                unstaking_duration: Some(Duration::Time(2)),
+                active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                    count: Uint128::new(75),
+                }),
+            })
+            .unwrap(),
+            admin: Some(Admin::CoreModule {}),
+            funds: vec![],
+            label: "DAO DAO Voting Module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
+            code_id: proposal_single.unwrap().code_id,
+            msg: to_binary(&dao_proposal_single::msg::InstantiateMsg {
+                min_voting_period: None,
+                threshold: Threshold::ThresholdQuorum {
+                    threshold: PercentageThreshold::Majority {},
+                    quorum: PercentageThreshold::Percent(Decimal::percent(35)),
+                },
+                max_voting_period: Duration::Time(432000),
+                allow_revoting: false,
+                only_members_execute: true,
+                close_proposal_on_execution_failure: false,
+                pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+            })
+            .unwrap(),
+            admin: Some(Admin::CoreModule {}),
+            funds: vec![],
+            label: "DAO DAO Proposal Module".to_string(),
+        }],
+        initial_items: None,
+    };
+
+    // Instantiate DAO succeeds
+    let dao = DaoCore::new(&app, &msg, &accounts[0], &vec![]).unwrap();
+
+    // Query voting module
+    let voting_module: Addr = dao.query(&DaoQueryMsg::VotingModule {}).unwrap();
+    let voting =
+        TokenVotingContract::new_with_values(&app, vp_contract.code_id, voting_module.to_string())
+            .unwrap();
+
+    // Query denom
+    let denom = voting.query_denom().unwrap().denom;
+
+    // Query token contract
+    let token_contract: Addr = voting.query(&QueryMsg::TokenContract {}).unwrap();
+
+    // Check the TF denom is as expected
+    assert_eq!(denom, format!("factory/{}/{}", token_contract, DENOM));
+}
+
+#[test]
+fn test_factory_funds_pass_through() {
+    let app = OsmosisTestApp::new();
+    let env = TestEnvBuilder::new();
+    let TestEnv {
+        tf_issuer,
+        vp_contract,
+        proposal_single,
+        custom_factory,
+        accounts,
+        ..
+    } = env.full_dao_setup(&app);
+
+    let factory_addr = custom_factory.unwrap().contract_addr.to_string();
+
+    // Instantiate a new voting contract using the factory pattern
+    let mut msg = dao_interface::msg::InstantiateMsg {
+        dao_uri: None,
+        admin: None,
+        name: "DAO DAO".to_string(),
+        description: "A DAO that makes DAO tooling".to_string(),
+        image_url: None,
+        automatically_add_cw20s: false,
+        automatically_add_cw721s: false,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: vp_contract.code_id,
+            msg: to_binary(&InstantiateMsg {
+                token_info: TokenInfo::Factory(
+                    to_binary(&WasmMsg::Execute {
+                        contract_addr: factory_addr.clone(),
+                        msg: to_binary(
+                            &dao_test_custom_factory::msg::ExecuteMsg::TokenFactoryFactoryWithFunds(
                                 NewTokenInfo {
                                     token_issuer_code_id: tf_issuer.code_id,
                                     subdenom: DENOM.to_string(),
@@ -426,7 +526,7 @@ fn test_factory() {
                 to_binary(&WasmMsg::Execute {
                     contract_addr: factory_addr,
                     msg: to_binary(
-                        &dao_test_custom_factory::msg::ExecuteMsg::TokenFactoryFactory(
+                        &dao_test_custom_factory::msg::ExecuteMsg::TokenFactoryFactoryWithFunds(
                             NewTokenInfo {
                                 token_issuer_code_id: tf_issuer.code_id,
                                 subdenom: DENOM.to_string(),
@@ -456,20 +556,169 @@ fn test_factory() {
     };
 
     // Creating the DAO now succeeds
-    let dao = DaoCore::new(&app, &msg, &accounts[0], &funds).unwrap();
+    DaoCore::new(&app, &msg, &accounts[0], &funds).unwrap();
+}
 
-    // Query voting module
-    let voting_module: Addr = dao.query(&DaoQueryMsg::VotingModule {}).unwrap();
-    let voting =
-        TokenVotingContract::new_with_values(&app, vp_contract.code_id, voting_module.to_string())
-            .unwrap();
+#[test]
+fn test_factory_no_callback() {
+    let app = OsmosisTestApp::new();
+    let env = TestEnvBuilder::new();
+    let TestEnv {
+        tf_issuer,
+        vp_contract,
+        proposal_single,
+        custom_factory,
+        accounts,
+        ..
+    } = env.full_dao_setup(&app);
 
-    // Query denom
-    let denom = voting.query_denom().unwrap().denom;
+    let factory_addr = custom_factory.unwrap().contract_addr.to_string();
 
-    // Query token contract
-    let token_contract: Addr = voting.query(&QueryMsg::TokenContract {}).unwrap();
+    // Instantiate a new voting contract using the factory pattern
+    let msg = dao_interface::msg::InstantiateMsg {
+        dao_uri: None,
+        admin: None,
+        name: "DAO DAO".to_string(),
+        description: "A DAO that makes DAO tooling".to_string(),
+        image_url: None,
+        automatically_add_cw20s: false,
+        automatically_add_cw721s: false,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: vp_contract.code_id,
+            msg: to_binary(&InstantiateMsg {
+                token_info: TokenInfo::Factory(
+                    to_binary(&WasmMsg::Execute {
+                        contract_addr: factory_addr.clone(),
+                        msg: to_binary(
+                            &dao_test_custom_factory::msg::ExecuteMsg::TokenFactoryFactoryNoCallback{},
+                        )
+                        .unwrap(),
+                        funds: vec![],
+                    })
+                    .unwrap(),
+                ),
+                unstaking_duration: Some(Duration::Time(2)),
+                active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                    count: Uint128::new(75),
+                }),
+            })
+            .unwrap(),
+            admin: Some(Admin::CoreModule {}),
+            funds: vec![],
+            label: "DAO DAO Voting Module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
+            code_id: proposal_single.unwrap().code_id,
+            msg: to_binary(&dao_proposal_single::msg::InstantiateMsg {
+                min_voting_period: None,
+                threshold: Threshold::ThresholdQuorum {
+                    threshold: PercentageThreshold::Majority {},
+                    quorum: PercentageThreshold::Percent(Decimal::percent(35)),
+                },
+                max_voting_period: Duration::Time(432000),
+                allow_revoting: false,
+                only_members_execute: true,
+                close_proposal_on_execution_failure: false,
+                pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+            })
+            .unwrap(),
+            admin: Some(Admin::CoreModule {}),
+            funds: vec![],
+            label: "DAO DAO Proposal Module".to_string(),
+        }],
+        initial_items: None,
+    };
 
-    // Check the TF denom is as expected
-    assert_eq!(denom, format!("factory/{}/{}", token_contract, DENOM));
+    // Instantiate DAO fails because no funds to create the token were sent
+    let err = DaoCore::new(&app, &msg, &accounts[0], &vec![]).unwrap_err();
+
+    // Check error is no reply data
+    assert_eq!(
+        err,
+        RunnerError::ExecuteError {
+            msg: "failed to execute message; message index: 0: dispatch: submessages: dispatch: submessages: reply: Invalid reply from sub-message: Missing reply data: execute wasm contract failed".to_string(),
+        }
+    );
+}
+
+#[test]
+fn test_factory_wrong_callback() {
+    let app = OsmosisTestApp::new();
+    let env = TestEnvBuilder::new();
+    let TestEnv {
+        tf_issuer,
+        vp_contract,
+        proposal_single,
+        custom_factory,
+        accounts,
+        ..
+    } = env.full_dao_setup(&app);
+
+    let factory_addr = custom_factory.unwrap().contract_addr.to_string();
+
+    // Instantiate a new voting contract using the factory pattern
+    let msg = dao_interface::msg::InstantiateMsg {
+        dao_uri: None,
+        admin: None,
+        name: "DAO DAO".to_string(),
+        description: "A DAO that makes DAO tooling".to_string(),
+        image_url: None,
+        automatically_add_cw20s: false,
+        automatically_add_cw721s: false,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: vp_contract.code_id,
+            msg: to_binary(&InstantiateMsg {
+                token_info: TokenInfo::Factory(
+                    to_binary(&WasmMsg::Execute {
+                        contract_addr: factory_addr.clone(),
+                        msg: to_binary(
+                            &dao_test_custom_factory::msg::ExecuteMsg::TokenFactoryFactoryWrongCallback{},
+                        )
+                        .unwrap(),
+                        funds: vec![],
+                    })
+                    .unwrap(),
+                ),
+                unstaking_duration: Some(Duration::Time(2)),
+                active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                    count: Uint128::new(75),
+                }),
+            })
+            .unwrap(),
+            admin: Some(Admin::CoreModule {}),
+            funds: vec![],
+            label: "DAO DAO Voting Module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
+            code_id: proposal_single.unwrap().code_id,
+            msg: to_binary(&dao_proposal_single::msg::InstantiateMsg {
+                min_voting_period: None,
+                threshold: Threshold::ThresholdQuorum {
+                    threshold: PercentageThreshold::Majority {},
+                    quorum: PercentageThreshold::Percent(Decimal::percent(35)),
+                },
+                max_voting_period: Duration::Time(432000),
+                allow_revoting: false,
+                only_members_execute: true,
+                close_proposal_on_execution_failure: false,
+                pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+            })
+            .unwrap(),
+            admin: Some(Admin::CoreModule {}),
+            funds: vec![],
+            label: "DAO DAO Proposal Module".to_string(),
+        }],
+        initial_items: None,
+    };
+
+    // Instantiate DAO fails because no funds to create the token were sent
+    let err = DaoCore::new(&app, &msg, &accounts[0], &vec![]).unwrap_err();
+
+    // Check error is wrong reply type
+    assert_eq!(
+        err,
+        RunnerError::ExecuteError {
+            msg: "failed to execute message; message index: 0: dispatch: submessages: dispatch: submessages: reply: Error parsing into type dao_interface::token::TokenFactoryCallback: unknown field `nft_contract`, expected `denom` or `token_contract`: execute wasm contract failed".to_string(),
+        }
+    );
 }

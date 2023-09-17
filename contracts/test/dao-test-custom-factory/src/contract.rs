@@ -56,13 +56,30 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::TokenFactoryFactory(token) => {
-            execute_token_factory_factory(deps, env, info, token)
-        }
         ExecuteMsg::NftFactory {
             code_id,
             cw721_instantiate_msg,
         } => execute_nft_factory(deps, env, info, cw721_instantiate_msg, code_id),
+        ExecuteMsg::NftFactoryWithFunds {
+            code_id,
+            cw721_instantiate_msg,
+        } => execute_nft_factory_with_funds(deps, env, info, cw721_instantiate_msg, code_id),
+        ExecuteMsg::NftFactoryNoCallback {} => execute_nft_factory_no_callback(deps, env, info),
+        ExecuteMsg::NftFactoryWrongCallback {} => {
+            execute_nft_factory_wrong_callback(deps, env, info)
+        }
+        ExecuteMsg::TokenFactoryFactory(token) => {
+            execute_token_factory_factory(deps, env, info, token)
+        }
+        ExecuteMsg::TokenFactoryFactoryWithFunds(token) => {
+            execute_token_factory_factory_with_funds(deps, env, info, token)
+        }
+        ExecuteMsg::TokenFactoryFactoryNoCallback {} => {
+            execute_token_factory_factory_no_callback(deps, env, info)
+        }
+        ExecuteMsg::TokenFactoryFactoryWrongCallback {} => {
+            execute_token_factory_factory_wrong_callback(deps, env, info)
+        }
     }
 }
 
@@ -100,6 +117,41 @@ pub fn execute_nft_factory(
     Ok(Response::new().add_submessage(msg))
 }
 
+/// Requires one coin sent to test funds pass through for factory contracts
+pub fn execute_nft_factory_with_funds(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    cw721_instantiate_msg: Cw721InstantiateMsg,
+    code_id: u64,
+) -> Result<Response, ContractError> {
+    // Validate one coin was sent
+    one_coin(&info)?;
+
+    execute_nft_factory(deps, env, info, cw721_instantiate_msg, code_id)
+}
+
+/// No callback for testing
+pub fn execute_nft_factory_no_callback(
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+) -> Result<Response, ContractError> {
+    Ok(Response::new())
+}
+
+/// Wrong callback for testing
+pub fn execute_nft_factory_wrong_callback(
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+) -> Result<Response, ContractError> {
+    Ok(Response::new().set_data(to_binary(&TokenFactoryCallback {
+        denom: "wrong".to_string(),
+        token_contract: None,
+    })?))
+}
+
 /// An example factory that instantiates a cw_tokenfactory_issuer contract
 /// A more realistic example would be something like a DeFi Pool or Augmented
 /// bonding curve.
@@ -109,9 +161,6 @@ pub fn execute_token_factory_factory(
     info: MessageInfo,
     token: NewTokenInfo,
 ) -> Result<Response, ContractError> {
-    // Validate one coin was sent
-    one_coin(&info)?;
-
     // Save voting module address
     VOTING_MODULE.save(deps.storage, &info.sender)?;
 
@@ -140,6 +189,39 @@ pub fn execute_token_factory_factory(
     );
 
     Ok(Response::new().add_submessage(msg))
+}
+
+/// Requires one coin sent to test funds pass through for factory contracts
+pub fn execute_token_factory_factory_with_funds(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    token: NewTokenInfo,
+) -> Result<Response, ContractError> {
+    // Validate one coin was sent
+    one_coin(&info)?;
+
+    execute_token_factory_factory(deps, env, info, token)
+}
+
+/// No callback for testing
+pub fn execute_token_factory_factory_no_callback(
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+) -> Result<Response, ContractError> {
+    Ok(Response::new())
+}
+
+/// Wrong callback for testing
+pub fn execute_token_factory_factory_wrong_callback(
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+) -> Result<Response, ContractError> {
+    Ok(Response::new().set_data(to_binary(&NftFactoryCallback {
+        nft_contract: "nope".to_string(),
+    })?))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
