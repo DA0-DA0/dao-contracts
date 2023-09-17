@@ -452,7 +452,7 @@ fn test_instantiate_zero_active_threshold_count() {
 }
 
 #[test]
-#[should_panic(expected = "Active threshold count is greater than supply")]
+#[should_panic(expected = "Absolute count threshold cannot be greater than the total token supply")]
 fn test_instantiate_invalid_active_threshold_count_new_nft() {
     let mut app = App::default();
     let cw721_id = app.store_code(cw721_base_contract());
@@ -492,7 +492,7 @@ fn test_instantiate_invalid_active_threshold_count_new_nft() {
 }
 
 #[test]
-#[should_panic(expected = "Active threshold count is greater than supply")]
+#[should_panic(expected = "Absolute count threshold cannot be greater than the total token supply")]
 fn test_instantiate_invalid_active_threshold_count_existing_nft() {
     let mut app = App::default();
     let module_id = app.store_code(voting_cw721_staked_contract());
@@ -805,7 +805,7 @@ fn test_update_active_threshold() {
 
     let msg = ExecuteMsg::UpdateActiveThreshold {
         new_threshold: Some(ActiveThreshold::AbsoluteCount {
-            count: Uint128::new(100),
+            count: Uint128::new(1),
         }),
     };
 
@@ -829,13 +829,15 @@ fn test_update_active_threshold() {
     assert_eq!(
         resp.active_threshold,
         Some(ActiveThreshold::AbsoluteCount {
-            count: Uint128::new(100)
+            count: Uint128::new(1)
         })
     );
 }
 
 #[test]
-#[should_panic(expected = "Active threshold percentage must be greater than 0 and less than 1")]
+#[should_panic(
+    expected = "Active threshold percentage must be greater than 0 and not greater than 1"
+)]
 fn test_active_threshold_percentage_gt_100() {
     let mut app = App::default();
     let cw721_id = app.store_code(cw721_base_contract());
@@ -875,7 +877,9 @@ fn test_active_threshold_percentage_gt_100() {
 }
 
 #[test]
-#[should_panic(expected = "Active threshold percentage must be greater than 0 and less than 1")]
+#[should_panic(
+    expected = "Active threshold percentage must be greater than 0 and not greater than 1"
+)]
 fn test_active_threshold_percentage_lte_0() {
     let mut app = App::default();
     let cw721_id = app.store_code(cw721_base_contract());

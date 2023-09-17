@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Empty, Env,
-    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
+    from_binary, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
+    Response, StdError, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NumTokensResponse};
@@ -10,7 +10,10 @@ use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_execute_data, parse_reply_instantiate_data, Duration};
 use dao_hooks::nft_stake::{stake_nft_hook_msgs, unstake_nft_hook_msgs};
 use dao_interface::{nft::NftFactoryCallback, voting::IsActiveResponse};
-use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
+use dao_voting::threshold::{
+    assert_valid_absolute_count_threshold, assert_valid_percentage_threshold, ActiveThreshold,
+    ActiveThresholdResponse,
+};
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, NftContract, QueryMsg};
 use crate::state::{
@@ -74,24 +77,21 @@ pub fn instantiate(
     if let Some(active_threshold) = msg.active_threshold.as_ref() {
         match active_threshold {
             ActiveThreshold::Percentage { percent } => {
-                if percent > &Decimal::percent(100) || percent.is_zero() {
-                    return Err(ContractError::InvalidActivePercentage {});
-                }
+                assert_valid_percentage_threshold(*percent)?;
             }
             ActiveThreshold::AbsoluteCount { count } => {
-                // Check Absolute count is not zero
-                if count.is_zero() {
-                    return Err(ContractError::ZeroActiveCount {});
-                }
-
-                // Check Absolute count is less than the supply of NFTs for existing NFT contracts
+                // Check Absolute count is less than the supply of NFTs for existing
+                // NFT contracts. For new NFT contracts, we will check this in the reply.
                 if let NftContract::Existing { ref address } = msg.nft_contract {
                     let nft_supply: NumTokensResponse = deps
                         .querier
                         .query_wasm_smart(address, &Cw721QueryMsg::NumTokens {})?;
-                    if count > &Uint128::new(nft_supply.count.into()) {
-                        return Err(ContractError::InvalidActiveCount {});
-                    }
+                    // Check the absolute count is less than the supply of NFTs and
+                    // greater than zero.
+                    assert_valid_absolute_count_threshold(
+                        *count,
+                        Uint128::new(nft_supply.count.into()),
+                    )?;
                 }
             }
         }
@@ -441,17 +441,20 @@ pub fn execute_update_active_threshold(
         return Err(ContractError::Unauthorized {});
     }
 
+    let config = CONFIG.load(deps.storage)?;
     if let Some(active_threshold) = new_active_threshold {
         match active_threshold {
             ActiveThreshold::Percentage { percent } => {
-                if percent > Decimal::percent(100) || percent.is_zero() {
-                    return Err(ContractError::InvalidActivePercentage {});
-                }
+                assert_valid_percentage_threshold(percent)?;
             }
             ActiveThreshold::AbsoluteCount { count } => {
-                if count.is_zero() {
-                    return Err(ContractError::ZeroActiveCount {});
-                }
+                let nft_supply: NumTokensResponse = deps
+                    .querier
+                    .query_wasm_smart(config.nft_address, &Cw721QueryMsg::NumTokens {})?;
+                assert_valid_absolute_count_threshold(
+                    count,
+                    Uint128::new(nft_supply.count.into()),
+                )?;
             }
         }
         ACTIVE_THRESHOLD.save(deps.storage, &active_threshold)?;
@@ -708,14 +711,15 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                 let collection_addr = CONFIG.load(deps.storage)?.nft_address;
 
                 // Query the total supply of the NFT contract
-                let supply: NumTokensResponse = deps
+                let nft_supply: NumTokensResponse = deps
                     .querier
                     .query_wasm_smart(collection_addr, &Cw721QueryMsg::NumTokens {})?;
 
-                // Chec the count is not greater than supply
-                if count > Uint128::new(supply.count.into()) {
-                    return Err(ContractError::InvalidActiveCount {});
-                }
+                // Check the count is not greater than supply and is not zero
+                assert_valid_absolute_count_threshold(
+                    count,
+                    Uint128::new(nft_supply.count.into()),
+                )?;
             }
             Ok(Response::new())
         }

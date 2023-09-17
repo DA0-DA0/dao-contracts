@@ -1,5 +1,6 @@
 use cosmwasm_std::{Addr, StdError};
 use cw_utils::ParseReplyError;
+use dao_voting::threshold::ActiveThresholdError;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
@@ -8,19 +9,16 @@ pub enum ContractError {
     Std(#[from] StdError),
 
     #[error(transparent)]
-    ParseReplyError(#[from] ParseReplyError),
-
-    #[error("Can not stake that which has already been staked")]
-    AlreadyStaked {},
+    ActiveThresholdError(#[from] ActiveThresholdError),
 
     #[error(transparent)]
     HookError(#[from] cw_hooks::HookError),
 
-    #[error("Active threshold count is greater than supply")]
-    InvalidActiveCount {},
+    #[error(transparent)]
+    ParseReplyError(#[from] ParseReplyError),
 
-    #[error("Active threshold percentage must be greater than 0 and less than 1")]
-    InvalidActivePercentage {},
+    #[error("Can not stake that which has already been staked")]
+    AlreadyStaked {},
 
     #[error("Invalid token. Got ({received}), expected ({expected})")]
     InvalidToken { received: Addr, expected: Addr },
@@ -54,9 +52,6 @@ pub enum ContractError {
 
     #[error("Factory message must serialize to WasmMsg::Execute")]
     UnsupportedFactoryMsg {},
-
-    #[error("Active threshold count must be greater than zero")]
-    ZeroActiveCount {},
 
     #[error("Can't unstake zero NFTs.")]
     ZeroUnstake {},
