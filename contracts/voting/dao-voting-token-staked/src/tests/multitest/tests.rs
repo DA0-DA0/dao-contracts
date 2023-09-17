@@ -1174,7 +1174,9 @@ fn test_update_active_threshold() {
 }
 
 #[test]
-#[should_panic(expected = "Active threshold percentage must be greater than 0 and less than 1")]
+#[should_panic(
+    expected = "Active threshold percentage must be greater than 0 and not greater than 1"
+)]
 fn test_active_threshold_percentage_gt_100() {
     let mut app = App::default();
 
@@ -1195,7 +1197,9 @@ fn test_active_threshold_percentage_gt_100() {
 }
 
 #[test]
-#[should_panic(expected = "Active threshold percentage must be greater than 0 and less than 1")]
+#[should_panic(
+    expected = "Active threshold percentage must be greater than 0 and not greater than 1"
+)]
 fn test_active_threshold_percentage_lte_0() {
     let mut app = App::default();
 

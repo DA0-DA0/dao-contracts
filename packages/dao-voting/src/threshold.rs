@@ -28,7 +28,7 @@ pub enum ActiveThresholdError {
     #[error("Absolute count threshold cannot be greater than the total token supply")]
     InvalidAbsoluteCount {},
 
-    #[error("Active threshold percentage must be greater than 0 and less than 1")]
+    #[error("Active threshold percentage must be greater than 0 and not greater than 1")]
     InvalidActivePercentage {},
 
     #[error("Active threshold count must be greater than zero")]
