@@ -285,19 +285,28 @@ where
         // bizare has happened. In that event, this message errors
         // which ought to cause the proposal module to remove this
         // module and open proposal submission to anyone.
-        if new_status != Status::Closed && new_status != Status::Executed {
+        if new_status != Status::Closed
+            && new_status != Status::Executed
+            && new_status != Status::Vetoed
+        {
             return Err(PreProposeError::NotClosedOrExecuted { status: new_status });
         }
 
         match self.deposits.may_load(deps.storage, id)? {
             Some((deposit_info, proposer)) => {
                 let messages = if let Some(ref deposit_info) = deposit_info {
-                    // Refund can be issued if proposal if it is going to
-                    // closed or executed.
-                    let should_refund_to_proposer = (new_status == Status::Closed
-                        && deposit_info.refund_policy == DepositRefundPolicy::Always)
-                        || (new_status == Status::Executed
-                            && deposit_info.refund_policy != DepositRefundPolicy::Never);
+                    // Determine if refund can be issued
+                    let should_refund_to_proposer =
+                        match (new_status, deposit_info.clone().refund_policy) {
+                            // If policy is refund only passed props, refund for executed status
+                            (Status::Executed, DepositRefundPolicy::OnlyPassed) => true,
+                            // Don't refund other statuses for OnlyPassed policy
+                            (_, DepositRefundPolicy::OnlyPassed) => false,
+                            // Refund if the refund policy is always refund
+                            (_, DepositRefundPolicy::Always) => true,
+                            // Don't refund if the refund is never refund
+                            (_, DepositRefundPolicy::Never) => false,
+                        };
 
                     if should_refund_to_proposer {
                         deposit_info.get_return_deposit_message(&proposer)?
