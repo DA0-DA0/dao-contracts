@@ -218,6 +218,7 @@ pub fn execute_propose(
             status: Status::Open,
             votes: Votes::zero(),
             allow_revoting: config.allow_revoting,
+            timelock: config.timelock,
         };
         // Update the proposal's status. Addresses case where proposal
         // expires on the same block as it is created.
@@ -266,21 +267,19 @@ pub fn execute_veto(
     info: MessageInfo,
     proposal_id: u64,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-
     let mut prop = PROPOSALS
         .may_load(deps.storage, proposal_id)?
         .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
 
     match prop.status {
-        Status::Passed { at_time } => {
-            match config.timelock {
-                Some(timelock) => {
-                    // Check if the proposal is timelocked
-                    timelock.is_locked(at_time, env.block.time)?;
+        Status::Timelocked { expires } => {
+            match prop.timelock {
+                Some(ref timelock) => {
+                    // Check if the proposal is still timelocked
+                    timelock.check_is_locked(env.block.time, expires)?;
 
                     // Check sender is vetoer
-                    timelock.is_vetoer(&info)?;
+                    timelock.check_is_vetoer(&info)?;
 
                     let old_status = prop.status;
 
@@ -323,7 +322,7 @@ pub fn execute_veto(
                         .add_attribute("proposal_id", proposal_id.to_string())
                         .add_submessages(hooks))
                 }
-                // If timelock is not configured throw error.
+                // If timelock is not configured throw error. This should never happen.
                 None => Err(ContractError::TimelockError(TimelockError::NoTimelock {})),
             }
         }
@@ -358,17 +357,19 @@ pub fn execute_execute(
     // Check here that the proposal is passed. Allow it to be executed
     // even if it is expired so long as it passed during its voting
     // period.
-    let old_status = prop.status;
     prop.update_status(&env.block);
+    let old_status = prop.status;
     match prop.status {
-        Status::Passed { at_time } => {
-            if let Some(timelock) = config.timelock {
-                // Check proposal is not timelocked
-                timelock.is_locked(at_time, env.block.time)?;
-
-                // If the sender is the vetoer, check if they can execute early
-                if timelock.is_vetoer(&info).is_ok() {
-                    timelock.early_excute_enabled()?;
+        Status::Passed {} => (),
+        Status::Timelocked { expires } => {
+            if let Some(ref timelock) = prop.timelock {
+                // Check if the sender is the vetoer
+                if timelock.check_is_vetoer(&info).is_ok() {
+                    // check if they can execute early
+                    timelock.check_early_excute_enabled()?;
+                } else {
+                    // Check if proposal is timelocked
+                    timelock.check_is_locked(env.block.time, expires)?;
                 }
             }
         }
@@ -1011,6 +1012,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                         status: v2_status_to_v3(prop.status),
                         votes: v2_votes_to_v3(prop.votes),
                         allow_revoting: prop.allow_revoting,
+                        timelock: None,
                     };
 
                     PROPOSALS

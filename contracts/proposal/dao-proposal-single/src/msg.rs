@@ -75,7 +75,7 @@ pub enum ExecuteMsg {
     },
     /// Callable only if timelock is configured
     Veto {
-        /// The ID of the proposal to execute.
+        /// The ID of the proposal to veto.
         proposal_id: u64,
     },
     /// Closes a proposal that has failed (either not passed or timed

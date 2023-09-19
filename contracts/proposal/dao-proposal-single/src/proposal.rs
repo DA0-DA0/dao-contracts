@@ -5,11 +5,14 @@ use cosmwasm_std::{Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdResult, Storag
 use cw_utils::Expiration;
 use dao_voting::status::Status;
 use dao_voting::threshold::{PercentageThreshold, Threshold};
+use dao_voting::timelock::Timelock;
 use dao_voting::voting::{does_vote_count_fail, does_vote_count_pass, Votes};
 
 #[cw_serde]
 pub struct SingleChoiceProposal {
+    /// The title of the proposal
     pub title: String,
+    /// The main body of the proposal text
     pub description: String,
     /// The address that created this proposal.
     pub proposer: Addr,
@@ -31,9 +34,15 @@ pub struct SingleChoiceProposal {
     pub total_power: Uint128,
     /// The messages that will be executed should this proposal pass.
     pub msgs: Vec<CosmosMsg<Empty>>,
+    /// The proposal status
     pub status: Status,
+    /// Votes on a particular proposal
     pub votes: Votes,
+    /// Whether or not revoting is enabled. If revoting is enabled, a proposal
+    /// cannot pass until the voting period has elapsed.
     pub allow_revoting: bool,
+    /// Timelock info, if configured
+    pub timelock: Option<Timelock>,
 }
 
 pub fn next_proposal_id(store: &dyn Storage) -> StdResult<u64> {
@@ -62,8 +71,16 @@ impl SingleChoiceProposal {
     /// Gets the current status of the proposal.
     pub fn current_status(&self, block: &BlockInfo) -> Status {
         if self.status == Status::Open && self.is_passed(block) {
-            Status::Passed {
-                at_time: block.time,
+            // If time lock is configured for the proposal, calculate lock
+            // expiration and set status to Timelocked.
+            //
+            // Otherwise the proposal is simply passed
+            if let Some(timelock) = &self.timelock {
+                Status::Timelocked {
+                    expires: timelock.calculate_timelock_expiration(block.time),
+                }
+            } else {
+                Status::Passed
             }
         } else if self.status == Status::Open
             && (self.expiration.is_expired(block) || self.is_rejected(block))
@@ -277,6 +294,7 @@ mod test {
             msgs: vec![],
             status: Status::Open,
             threshold,
+            timelock: None,
             total_power,
             votes,
         };

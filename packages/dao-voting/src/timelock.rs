@@ -35,8 +35,13 @@ pub struct Timelock {
 }
 
 impl Timelock {
+    /// Calculate the expiration time for the timelock
+    pub fn calculate_timelock_expiration(&self, current_time: Timestamp) -> Timestamp {
+        Timestamp::from_seconds(current_time.seconds() + self.delay.seconds())
+    }
+
     /// Whether early execute is enabled
-    pub fn early_excute_enabled(&self) -> Result<(), TimelockError> {
+    pub fn check_early_excute_enabled(&self) -> Result<(), TimelockError> {
         if self.early_execute {
             Ok(())
         } else {
@@ -45,12 +50,12 @@ impl Timelock {
     }
 
     /// Takes two timestamps and returns true if the proposal is locked or not.
-    pub fn is_locked(
+    pub fn check_is_locked(
         &self,
-        proposal_passed: Timestamp,
         current_time: Timestamp,
+        expires: Timestamp,
     ) -> Result<(), TimelockError> {
-        if proposal_passed.seconds() + self.delay.seconds() < current_time.seconds() {
+        if current_time.seconds() > expires.seconds() {
             Ok(())
         } else {
             Err(TimelockError::Timelocked {})
@@ -58,7 +63,7 @@ impl Timelock {
     }
 
     /// Checks whether the message sender is the vetoer.
-    pub fn is_vetoer(&self, info: &MessageInfo) -> Result<(), TimelockError> {
+    pub fn check_is_vetoer(&self, info: &MessageInfo) -> Result<(), TimelockError> {
         if self.vetoer == info.sender.to_string() {
             Ok(())
         } else {
