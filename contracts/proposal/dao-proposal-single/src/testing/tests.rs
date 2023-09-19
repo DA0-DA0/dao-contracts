@@ -384,6 +384,79 @@ fn test_proposal_message_execution() {
 }
 
 #[test]
+fn test_proposal_message_timelock() {
+    let mut app = App::default();
+    let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
+    instantiate.close_proposal_on_execution_failure = false;
+    instantiate.timelock = Some(Timelock {
+        delay: Timestamp::from_seconds(100),
+        vetoer: "oversite".to_string(),
+        early_execute: false,
+    });
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
+    let proposal_module = query_single_proposal_module(&app, &core_addr);
+    let gov_token = query_dao_token(&app, &core_addr);
+
+    mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
+    let proposal_id = make_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        vec![
+            WasmMsg::Execute {
+                contract_addr: gov_token.to_string(),
+                msg: to_binary(&cw20::Cw20ExecuteMsg::Mint {
+                    recipient: CREATOR_ADDR.to_string(),
+                    amount: Uint128::new(10_000_000),
+                })
+                .unwrap(),
+                funds: vec![],
+            }
+            .into(),
+            BankMsg::Send {
+                to_address: CREATOR_ADDR.to_string(),
+                amount: coins(10, "ujuno"),
+            }
+            .into(),
+        ],
+    );
+    let cw20_balance = query_balance_cw20(&app, &gov_token, CREATOR_ADDR);
+    let native_balance = query_balance_native(&app, CREATOR_ADDR, "ujuno");
+    assert_eq!(cw20_balance, Uint128::zero());
+    assert_eq!(native_balance, Uint128::zero());
+
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        proposal_id,
+        Vote::Yes,
+    );
+    let proposal = query_proposal(&app, &proposal_module, proposal_id);
+    // Proposal is timelocked
+    assert_eq!(
+        proposal.proposal.status,
+        Status::Timelocked {
+            expires: Timestamp::from_nanos(1571797519000000000)
+        }
+    );
+
+    // TODO Test even oversite can't execute when Timelocked and early execute is
+    // not enabled.
+
+    // TODO Test veto
+
+    // TODO Test execute when timelock expires
+
+    // TODO Test early execute
+
+    mint_natives(&mut app, core_addr.as_str(), coins(10, "ujuno"));
+    execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
+    let proposal = query_proposal(&app, &proposal_module, proposal_id);
+    assert_eq!(proposal.proposal.status, Status::Executed);
+}
+
+#[test]
 fn test_proposal_close_after_expiry() {
     let CommonTest {
         mut app,
