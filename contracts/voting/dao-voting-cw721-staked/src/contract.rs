@@ -26,7 +26,7 @@ pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw721-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const INSTANTIATE_NFT_CONTRACT_REPLY_ID: u64 = 0;
-const VALIDATE_ABSOLUTE_COUNT_FOR_NEW_NFT_CONTRACTS: u64 = 1;
+const VALIDATE_SUPPLY_REPLY_ID: u64 = 1;
 const FACTORY_EXECUTE_REPLY_ID: u64 = 2;
 
 // We multiply by this when calculating needed power for being active
@@ -690,7 +690,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                             )?,
                             funds: vec![],
                         },
-                        VALIDATE_ABSOLUTE_COUNT_FOR_NEW_NFT_CONTRACTS,
+                        VALIDATE_SUPPLY_REPLY_ID,
                     ));
 
                     Ok(Response::default()
@@ -700,27 +700,35 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                 Err(_) => Err(ContractError::NftInstantiateError {}),
             }
         }
-        VALIDATE_ABSOLUTE_COUNT_FOR_NEW_NFT_CONTRACTS => {
-            // Check that absolute count is not greater than supply
+        VALIDATE_SUPPLY_REPLY_ID => {
+            // Check that NFTs have actually been minted, and that supply is greater than zero
             // NOTE: we have to check this in a reply as it is potentially possible
             // to include non-mint messages in `initial_nfts`.
+            //
+            // Load config for nft contract address
+            let collection_addr = CONFIG.load(deps.storage)?.nft_address;
+
+            // Query the total supply of the NFT contract
+            let nft_supply: NumTokensResponse = deps
+                .querier
+                .query_wasm_smart(collection_addr, &Cw721QueryMsg::NumTokens {})?;
+
+            // Check greater than zero
+            if nft_supply.count == 0 {
+                return Err(ContractError::NoInitialNfts {});
+            }
+
+            // If Active Threshold absolute count is configured,
+            // check the count is not greater than supply
             if let Some(ActiveThreshold::AbsoluteCount { count }) =
                 ACTIVE_THRESHOLD.may_load(deps.storage)?
             {
-                // Load config for nft contract address
-                let collection_addr = CONFIG.load(deps.storage)?.nft_address;
-
-                // Query the total supply of the NFT contract
-                let nft_supply: NumTokensResponse = deps
-                    .querier
-                    .query_wasm_smart(collection_addr, &Cw721QueryMsg::NumTokens {})?;
-
-                // Check the count is not greater than supply and is not zero
                 assert_valid_absolute_count_threshold(
                     count,
                     Uint128::new(nft_supply.count.into()),
                 )?;
             }
+
             Ok(Response::new())
         }
         FACTORY_EXECUTE_REPLY_ID => {

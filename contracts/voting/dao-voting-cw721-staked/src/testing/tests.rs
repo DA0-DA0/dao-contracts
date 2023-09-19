@@ -958,6 +958,93 @@ fn test_invalid_instantiate_msg() {
 }
 
 #[test]
+fn test_invalid_initial_nft_msg() {
+    let mut app = App::default();
+    let module_id = app.store_code(voting_cw721_staked_contract());
+    let cw721_id = app.store_code(cw721_base_contract());
+
+    let err = app
+        .instantiate_contract(
+            module_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &InstantiateMsg {
+                nft_contract: NftContract::New {
+                    code_id: cw721_id,
+                    label: "Test NFT".to_string(),
+                    msg: to_binary(&Cw721InstantiateMsg {
+                        name: "Test NFT".to_string(),
+                        symbol: "TEST".to_string(),
+                        minter: CREATOR_ADDR.to_string(),
+                    })
+                    .unwrap(),
+                    initial_nfts: vec![to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Extension {
+                        msg: Empty {},
+                    })
+                    .unwrap()],
+                },
+                unstaking_duration: None,
+                active_threshold: None,
+            },
+            &[],
+            "cw721_voting",
+            None,
+        )
+        .unwrap_err();
+    assert_eq!(
+        err.root_cause().to_string(),
+        "New NFT contract must be instantiated with at least one NFT".to_string()
+    );
+}
+
+#[test]
+fn test_invalid_initial_nft_msg_wrong_absolute_count() {
+    let mut app = App::default();
+    let module_id = app.store_code(voting_cw721_staked_contract());
+    let cw721_id = app.store_code(cw721_base_contract());
+
+    let err = app
+        .instantiate_contract(
+            module_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &InstantiateMsg {
+                nft_contract: NftContract::New {
+                    code_id: cw721_id,
+                    label: "Test NFT".to_string(),
+                    msg: to_binary(&Cw721InstantiateMsg {
+                        name: "Test NFT".to_string(),
+                        symbol: "TEST".to_string(),
+                        minter: CREATOR_ADDR.to_string(),
+                    })
+                    .unwrap(),
+                    initial_nfts: vec![
+                        to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Extension { msg: Empty {} })
+                            .unwrap(),
+                        to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                            owner: CREATOR_ADDR.to_string(),
+                            token_uri: Some("https://example.com".to_string()),
+                            token_id: "1".to_string(),
+                            extension: Empty {},
+                        })
+                        .unwrap(),
+                    ],
+                },
+                unstaking_duration: None,
+                active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                    count: Uint128::new(2),
+                }),
+            },
+            &[],
+            "cw721_voting",
+            None,
+        )
+        .unwrap_err();
+    assert_eq!(
+        err.root_cause().to_string(),
+        "Absolute count threshold cannot be greater than the total token supply".to_string()
+    );
+}
+
+#[test]
 fn test_no_initial_nfts_fails() {
     let mut app = App::default();
     let cw721_id = app.store_code(cw721_base_contract());
