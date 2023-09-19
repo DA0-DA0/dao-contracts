@@ -564,7 +564,6 @@ fn test_factory_no_callback() {
     let app = OsmosisTestApp::new();
     let env = TestEnvBuilder::new();
     let TestEnv {
-        tf_issuer,
         vp_contract,
         proposal_single,
         custom_factory,
@@ -646,7 +645,6 @@ fn test_factory_wrong_callback() {
     let app = OsmosisTestApp::new();
     let env = TestEnvBuilder::new();
     let TestEnv {
-        tf_issuer,
         vp_contract,
         proposal_single,
         custom_factory,
