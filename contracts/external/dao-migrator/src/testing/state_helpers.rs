@@ -8,7 +8,7 @@ use crate::utils::query_helpers::{
 #[derive(PartialEq, Debug, Clone)]
 pub struct TestState {
     pub proposal_count: u64,
-    pub proposal: dao_proposal_single::proposal::SingleChoiceProposal,
+    pub proposal: dao_proposal_single_v2::proposal::SingleChoiceProposal,
     pub total_power: Uint128,
     pub single_power: Uint128,
 }
@@ -16,7 +16,7 @@ pub struct TestState {
 pub fn query_proposal_v1(
     app: &mut App,
     proposal_addr: Addr,
-) -> (u64, dao_proposal_single::proposal::SingleChoiceProposal) {
+) -> (u64, dao_proposal_single_v2::proposal::SingleChoiceProposal) {
     // proposal count
     let proposal_count: u64 = app
         .wrap()
@@ -41,7 +41,7 @@ pub fn query_proposal_v1(
         .clone()
         .proposal;
 
-    let proposal = dao_proposal_single::proposal::SingleChoiceProposal {
+    let proposal = dao_proposal_single_v2::proposal::SingleChoiceProposal {
         title: proposal.title,
         description: proposal.description,
         proposer: proposal.proposer,
@@ -62,20 +62,20 @@ pub fn query_proposal_v1(
 pub fn query_proposal_v2(
     app: &mut App,
     proposal_addr: Addr,
-) -> (u64, dao_proposal_single::proposal::SingleChoiceProposal) {
+) -> (u64, dao_proposal_single_v2::proposal::SingleChoiceProposal) {
     // proposal count
     let proposal_count: u64 = app
         .wrap()
         .query_wasm_smart(
             proposal_addr.clone(),
-            &dao_proposal_single::msg::QueryMsg::ProposalCount {},
+            &dao_proposal_single_v2::msg::QueryMsg::ProposalCount {},
         )
         .unwrap();
 
     // query proposal
     let proposal = app
         .wrap()
-        .query_wasm_smart::<dao_proposal_single::query::ProposalListResponse>(
+        .query_wasm_smart::<dao_proposal_single_v2::query::ProposalListResponse>(
             proposal_addr,
             &dao_proposal_single::msg::QueryMsg::ListProposals {
                 start_after: None,

@@ -91,6 +91,7 @@ pub fn create_dao(
                         label: "DAO DAO Pre-Propose Module".to_string(),
                     },
                 },
+                timelock: None,
             })?,
             admin: Some(Admin::CoreModule {}),
             funds: vec![],

@@ -24,7 +24,7 @@ pub fn query_proposal_count_v2(deps: Deps, proposals_addrs: Vec<Addr>) -> StdRes
         .map(|proposal_addr| {
             deps.querier.query_wasm_smart(
                 proposal_addr,
-                &dao_proposal_single::msg::QueryMsg::ProposalCount {},
+                &dao_proposal_single_v2::msg::QueryMsg::ProposalCount {},
             )
         })
         .collect()
@@ -35,7 +35,7 @@ pub fn query_proposal_v1(
     proposals_addrs: Vec<Addr>,
 ) -> Result<
     (
-        Vec<dao_proposal_single::proposal::SingleChoiceProposal>,
+        Vec<dao_proposal_single_v2::proposal::SingleChoiceProposal>,
         SingleProposalData,
     ),
     ContractError,
@@ -70,7 +70,7 @@ pub fn query_proposal_v1(
                 });
             }
 
-            Ok(dao_proposal_single::proposal::SingleChoiceProposal {
+            Ok(dao_proposal_single_v2::proposal::SingleChoiceProposal {
                 title: proposal.title,
                 description: proposal.description,
                 proposer: proposal.proposer,
@@ -85,7 +85,7 @@ pub fn query_proposal_v1(
                 allow_revoting: proposal.allow_revoting,
             })
         })
-        .collect::<Result<Vec<dao_proposal_single::proposal::SingleChoiceProposal>, ContractError>>(
+        .collect::<Result<Vec<dao_proposal_single_v2::proposal::SingleChoiceProposal>, ContractError>>(
         )?;
 
     Ok((proposals, sample_proposal.unwrap()))
@@ -96,7 +96,7 @@ pub fn query_proposal_v2(
     proposals_addrs: Vec<Addr>,
 ) -> Result<
     (
-        Vec<dao_proposal_single::proposal::SingleChoiceProposal>,
+        Vec<dao_proposal_single_v2::proposal::SingleChoiceProposal>,
         SingleProposalData,
     ),
     ContractError,
@@ -106,10 +106,10 @@ pub fn query_proposal_v2(
     let proposals = proposals_addrs
         .into_iter()
         .map(|proposal_addr| {
-            let proposals: dao_proposal_single::query::ProposalListResponse =
+            let proposals: dao_proposal_single_v2::query::ProposalListResponse =
                 deps.querier.query_wasm_smart(
                     proposal_addr.clone(),
-                    &dao_proposal_single::msg::QueryMsg::ReverseProposals {
+                    &dao_proposal_single_v2::msg::QueryMsg::ReverseProposals {
                         start_before: None,
                         limit: None,
                     },
@@ -132,7 +132,7 @@ pub fn query_proposal_v2(
 
             Ok(proposal)
         })
-        .collect::<Result<Vec<dao_proposal_single::proposal::SingleChoiceProposal>, ContractError>>(
+        .collect::<Result<Vec<dao_proposal_single_v2::proposal::SingleChoiceProposal>, ContractError>>(
         )?;
 
     Ok((proposals, sample_proposal.unwrap()))

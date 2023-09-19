@@ -45,7 +45,7 @@ impl V2CodeIds {
 #[cw_serde]
 pub struct ProposalParams {
     pub close_proposal_on_execution_failure: bool,
-    pub pre_propose_info: dao_voting::pre_propose::PreProposeInfo,
+    pub pre_propose_info: voting_v2::pre_propose::PreProposeInfo,
 }
 
 #[cw_serde]
@@ -65,7 +65,7 @@ pub struct MigrationParams {
 #[cw_serde]
 #[serde(untagged)]
 pub enum MigrationMsgs {
-    DaoProposalSingle(dao_proposal_single::msg::MigrateMsg),
+    DaoProposalSingle(dao_proposal_single_v2::msg::MigrateMsg),
     DaoVotingCw4(dao_voting_cw4::msg::MigrateMsg),
     Cw20Stake(cw20_stake::msg::MigrateMsg),
     DaoVotingCw20Staked(dao_voting_cw20_staked::msg::MigrateMsg),
@@ -124,7 +124,7 @@ pub struct SingleProposalData {
 #[cw_serde]
 pub struct TestState {
     pub proposal_counts: Vec<u64>,
-    pub proposals: Vec<dao_proposal_single::proposal::SingleChoiceProposal>,
+    pub proposals: Vec<dao_proposal_single_v2::proposal::SingleChoiceProposal>,
     pub total_voting_power: Uint128,
     /// This is the voting power of the proposer of the sample proposal
     pub single_voting_power: Uint128,

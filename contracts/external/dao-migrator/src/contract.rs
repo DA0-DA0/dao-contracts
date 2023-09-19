@@ -111,7 +111,7 @@ fn execute_migration_v1_v2(
                     v1_code_ids.proposal_single,
                     v2_code_ids.proposal_single,
                     MigrationMsgs::DaoProposalSingle(
-                        dao_proposal_single::msg::MigrateMsg::FromV1 {
+                        dao_proposal_single_v2::msg::MigrateMsg::FromV1 {
                             close_proposal_on_execution_failure: proposal_params
                                 .close_proposal_on_execution_failure,
                             pre_propose_info: proposal_params.pre_propose_info,

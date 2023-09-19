@@ -107,6 +107,7 @@ fn main() -> Result<()> {
                     },
                 },
                 close_proposal_on_execution_failure: false,
+                timelock: None,
             })?,
             admin: Some(Admin::CoreModule {}),
             funds: vec![],

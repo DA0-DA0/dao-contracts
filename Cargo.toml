@@ -130,5 +130,6 @@ stake-cw20-v03 = { package = "stake-cw20", version = "0.2.6" }
 # v2 dependencies. used for state migrations
 cw-utils-v2 = { package = "cw-utils", version = "0.16" }
 dao-dao-core-v2 = { package = "dao-dao-core", version = "2.2.0" }
+dao-interface-v2 = { package = "dao-interface", version = "2.2.0" }
 dao-proposal-single-v2 = { package = "dao-proposal-single", version = "2.2.0" }
 voting-v2 = { package = "dao-voting", version = "2.2.0" }

@@ -188,14 +188,14 @@ fn test_duplicate_proposal_params() {
             module_addrs.proposals[0].to_string(),
             ProposalParams {
                 close_proposal_on_execution_failure: true,
-                pre_propose_info: dao_voting::pre_propose::PreProposeInfo::AnyoneMayPropose {},
+                pre_propose_info: voting_v2::pre_propose::PreProposeInfo::AnyoneMayPropose {},
             },
         ),
         (
             module_addrs.proposals[0].to_string(),
             ProposalParams {
                 close_proposal_on_execution_failure: true,
-                pre_propose_info: dao_voting::pre_propose::PreProposeInfo::AnyoneMayPropose {},
+                pre_propose_info: voting_v2::pre_propose::PreProposeInfo::AnyoneMayPropose {},
             },
         ),
     ];

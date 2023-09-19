@@ -1,5 +1,5 @@
-use cw_utils::Expiration;
-use dao_voting::{
+use cw_utils_v2::Expiration;
+use voting_v2::{
     status::Status,
     threshold::{PercentageThreshold, Threshold},
     voting::Votes,

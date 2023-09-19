@@ -155,6 +155,7 @@ fn test_counters() {
         allow_revoting: false,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         close_proposal_on_execution_failure: true,
+        timelock: None,
     };
 
     let governance_addr =
