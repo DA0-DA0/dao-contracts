@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Uint128};
 use cw_utils::Duration;
-use dao_dao_macros::{active_query, token_query, voting_module_query};
+use dao_dao_macros::{active_query, voting_module_query};
 use dao_interface::token::NewTokenInfo;
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
@@ -59,7 +59,6 @@ pub enum ExecuteMsg {
 
 #[active_query]
 #[voting_module_query]
-#[token_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
@@ -78,6 +77,8 @@ pub enum QueryMsg {
     ActiveThreshold {},
     #[returns(GetHooksResponse)]
     GetHooks {},
+    #[returns(Option<cosmwasm_std::Addr>)]
+    TokenContract {},
 }
 
 #[cw_serde]

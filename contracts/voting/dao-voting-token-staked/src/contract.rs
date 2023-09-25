@@ -402,7 +402,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::IsActive {} => query_is_active(deps),
         QueryMsg::ActiveThreshold {} => query_active_threshold(deps),
         QueryMsg::GetHooks {} => to_binary(&query_hooks(deps)?),
-        QueryMsg::TokenContract {} => to_binary(&TOKEN_ISSUER_CONTRACT.load(deps.storage)?),
+        QueryMsg::TokenContract {} => to_binary(&TOKEN_ISSUER_CONTRACT.may_load(deps.storage)?),
     }
 }
 
