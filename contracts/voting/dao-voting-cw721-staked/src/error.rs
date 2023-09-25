@@ -17,6 +17,9 @@ pub enum ContractError {
     #[error(transparent)]
     ParseReplyError(#[from] ParseReplyError),
 
+    #[error(transparent)]
+    UnstakingDurationError(#[from] dao_voting::duration::UnstakingDurationError),
+
     #[error("Can not stake that which has already been staked")]
     AlreadyStaked {},
 

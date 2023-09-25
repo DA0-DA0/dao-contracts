@@ -197,6 +197,13 @@ fn test_update_config() -> anyhow::Result<()> {
         }
     );
 
+    // Update config to invalid duration fails
+    let err = update_config(&mut app, &module, CREATOR_ADDR, Some(Duration::Time(0))).unwrap_err();
+    assert_eq!(
+        err.root_cause().to_string(),
+        "Invalid unstaking duration, unstaking duration cannot be 0".to_string()
+    );
+
     // Update duration
     update_config(&mut app, &module, CREATOR_ADDR, Some(Duration::Time(1)))?;
 
@@ -409,6 +416,45 @@ fn test_add_remove_hooks() -> anyhow::Result<()> {
     is_error!(res => "Unauthorized");
 
     Ok(())
+}
+
+#[test]
+fn test_instantiate_with_invalid_duration_fails() {
+    let mut app = App::default();
+    let module_id = app.store_code(voting_cw721_staked_contract());
+    let cw721_id = app.store_code(cw721_base_contract());
+
+    let err = app
+        .instantiate_contract(
+            module_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &InstantiateMsg {
+                nft_contract: NftContract::New {
+                    code_id: cw721_id,
+                    label: "Test NFT".to_string(),
+                    msg: to_binary(&Cw721InstantiateMsg {
+                        name: "Test NFT".to_string(),
+                        symbol: "TEST".to_string(),
+                        minter: CREATOR_ADDR.to_string(),
+                    })
+                    .unwrap(),
+                    initial_nfts: vec![to_binary(&Cw721ExecuteMsg::<Empty, Empty>::Extension {
+                        msg: Empty {},
+                    })
+                    .unwrap()],
+                },
+                unstaking_duration: None,
+                active_threshold: None,
+            },
+            &[],
+            "cw721_voting",
+            None,
+        )
+        .unwrap_err();
+    assert_eq!(
+        err.root_cause().to_string(),
+        "New NFT contract must be instantiated with at least one NFT".to_string()
+    );
 }
 
 #[test]

@@ -10,6 +10,7 @@ use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_execute_data, parse_reply_instantiate_data, Duration};
 use dao_hooks::nft_stake::{stake_nft_hook_msgs, unstake_nft_hook_msgs};
 use dao_interface::{nft::NftFactoryCallback, voting::IsActiveResponse};
+use dao_voting::duration::validate_duration;
 use dao_voting::threshold::{
     assert_valid_absolute_count_threshold, assert_valid_percentage_threshold, ActiveThreshold,
     ActiveThresholdResponse,
@@ -74,6 +75,10 @@ pub fn instantiate(
 
     DAO.save(deps.storage, &info.sender)?;
 
+    // Validate unstaking duration
+    validate_duration(msg.unstaking_duration)?;
+
+    // Validate active threshold if configured
     if let Some(active_threshold) = msg.active_threshold.as_ref() {
         match active_threshold {
             ActiveThreshold::Percentage { percent } => {
@@ -375,6 +380,9 @@ pub fn execute_update_config(
     if info.sender != dao {
         return Err(ContractError::Unauthorized {});
     }
+
+    // Validate unstaking duration
+    validate_duration(duration)?;
 
     config.unstaking_duration = duration;
     CONFIG.save(deps.storage, &config)?;
