@@ -1,12 +1,13 @@
 use cosmwasm_std::{to_binary, Addr, Coin, Decimal, Uint128, WasmMsg};
-use cw_tokenfactory_issuer::msg::DenomUnit;
+use cw_ownable::Ownership;
+use cw_tokenfactory_issuer::msg::{DenomUnit, QueryMsg as IssuerQueryMsg};
 use cw_utils::Duration;
 use dao_interface::{
     msg::QueryMsg as DaoQueryMsg,
     state::{Admin, ModuleInstantiateInfo},
     token::{InitialBalance, NewDenomMetadata, NewTokenInfo},
 };
-use dao_testing::test_tube::dao_dao_core::DaoCore;
+use dao_testing::test_tube::{cw_tokenfactory_issuer::TokenfactoryIssuer, dao_dao_core::DaoCore};
 use dao_voting::{
     pre_propose::PreProposeInfo,
     threshold::{ActiveThreshold, ActiveThresholdError, PercentageThreshold, Threshold},
@@ -420,6 +421,15 @@ fn test_factory() {
 
     // Check the TF denom is as expected
     assert_eq!(denom, format!("factory/{}/{}", token_contract, DENOM));
+
+    // Check issuer ownership is the DAO and the ModuleInstantiateCallback
+    // has successfully accepted ownership.
+    let issuer =
+        TokenfactoryIssuer::new_with_values(&app, tf_issuer.code_id, token_contract.to_string())
+            .unwrap();
+    let ownership: Ownership<Addr> = issuer.query(&IssuerQueryMsg::Ownership {}).unwrap();
+    let owner = ownership.owner.unwrap();
+    assert_eq!(owner, dao.contract_addr);
 }
 
 #[test]
@@ -628,7 +638,7 @@ fn test_factory_no_callback() {
         initial_items: None,
     };
 
-    // Instantiate DAO fails because no funds to create the token were sent
+    // Instantiate DAO fails because no callback
     let err = DaoCore::new(&app, &msg, &accounts[0], &vec![]).unwrap_err();
 
     // Check error is no reply data
@@ -709,14 +719,14 @@ fn test_factory_wrong_callback() {
         initial_items: None,
     };
 
-    // Instantiate DAO fails because no funds to create the token were sent
+    // Instantiate DAO fails because of wrong callback
     let err = DaoCore::new(&app, &msg, &accounts[0], &vec![]).unwrap_err();
 
     // Check error is wrong reply type
     assert_eq!(
         err,
         RunnerError::ExecuteError {
-            msg: "failed to execute message; message index: 0: dispatch: submessages: dispatch: submessages: reply: Error parsing into type dao_interface::token::TokenFactoryCallback: unknown field `nft_contract`, expected `denom` or `token_contract`: execute wasm contract failed".to_string(),
+            msg: "failed to execute message; message index: 0: dispatch: submessages: dispatch: submessages: reply: Error parsing into type dao_interface::token::TokenFactoryCallback: unknown field `nft_contract`, expected one of `denom`, `token_contract`, `module_instantiate_callback`: execute wasm contract failed".to_string(),
         }
     );
 }

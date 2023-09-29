@@ -131,17 +131,22 @@ pub fn instantiate(
                 msg,
                 contract_addr,
                 funds,
-            } => Ok(Response::new()
-                .add_attribute("action", "intantiate")
-                .add_attribute("token", "custom_factory")
-                .add_submessage(SubMsg::reply_on_success(
-                    WasmMsg::Execute {
-                        contract_addr,
-                        msg,
-                        funds,
-                    },
-                    FACTORY_EXECUTE_REPLY_ID,
-                ))),
+            } => {
+                // Call factory contract. Use only a trusted factory contract,
+                // as this is a critical security component and valdiation of
+                // setup will happen in the factory.
+                Ok(Response::new()
+                    .add_attribute("action", "intantiate")
+                    .add_attribute("token", "custom_factory")
+                    .add_submessage(SubMsg::reply_on_success(
+                        WasmMsg::Execute {
+                            contract_addr,
+                            msg,
+                            funds,
+                        },
+                        FACTORY_EXECUTE_REPLY_ID,
+                    )))
+            }
             _ => Err(ContractError::UnsupportedFactoryMsg {}),
         },
     }
@@ -735,9 +740,18 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                             .save(deps.storage, &deps.api.addr_validate(token_contract)?)?;
                     }
 
-                    Ok(Response::new()
+                    // Construct the response
+                    let mut res = Response::new()
                         .add_attribute("denom", info.denom)
-                        .add_attribute("token_contract", info.token_contract.unwrap_or_default()))
+                        .add_attribute("token_contract", info.token_contract.unwrap_or_default());
+
+                    // If a callback has been configured, set the module
+                    // instantiate callback data.
+                    if let Some(callback) = info.module_instantiate_callback {
+                        res = res.set_data(to_binary(&callback)?);
+                    }
+
+                    Ok(res)
                 }
                 None => Err(ContractError::NoFactoryCallback {}),
             }

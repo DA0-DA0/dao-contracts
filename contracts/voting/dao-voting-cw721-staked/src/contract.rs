@@ -175,6 +175,9 @@ pub fn instantiate(
                 };
                 CONFIG.save(deps.storage, &config)?;
 
+                // Call factory contract. Use only a trusted factory contract,
+                // as this is a critical security component and valdiation of
+                // setup will happen in the factory.
                 Ok(Response::new()
                     .add_attribute("action", "intantiate")
                     .add_submessage(SubMsg::reply_on_success(
@@ -779,7 +782,16 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     config.nft_address = nft_address;
                     CONFIG.save(deps.storage, &config)?;
 
-                    Ok(Response::new().add_attribute("nft_contract", info.nft_contract))
+                    // Construct the response
+                    let mut res = Response::new().add_attribute("nft_contract", info.nft_contract);
+
+                    // If a callback has been configured, set the module
+                    // instantiate callback data.
+                    if let Some(callback) = info.module_instantiate_callback {
+                        res = res.set_data(to_binary(&callback)?);
+                    }
+
+                    Ok(res)
                 }
                 None => Err(ContractError::NoFactoryCallback {}),
             }

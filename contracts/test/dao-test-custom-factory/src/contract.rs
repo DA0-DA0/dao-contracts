@@ -1,11 +1,13 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
-    Uint128, WasmMsg,
+    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
+    StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
+use cw721::{Cw721QueryMsg, NumTokensResponse};
 use cw721_base::InstantiateMsg as Cw721InstantiateMsg;
+use cw_ownable::Ownership;
 use cw_storage_plus::Item;
 use cw_tokenfactory_issuer::msg::{
     ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg,
@@ -13,6 +15,7 @@ use cw_tokenfactory_issuer::msg::{
 use cw_utils::{one_coin, parse_reply_instantiate_data};
 use dao_interface::{
     nft::NftFactoryCallback,
+    state::ModuleInstantiateCallback,
     token::{InitialBalance, NewTokenInfo, TokenFactoryCallback},
     voting::{ActiveThresholdQuery, Query as VotingModuleQueryMsg},
 };
@@ -33,6 +36,8 @@ const INSTANTIATE_ISSUER_REPLY_ID: u64 = 1;
 const INSTANTIATE_NFT_REPLY_ID: u64 = 2;
 
 const DAO: Item<Addr> = Item::new("dao");
+const INITIAL_NFTS: Item<Vec<Binary>> = Item::new("initial_nfts");
+const NFT_CONTRACT: Item<Addr> = Item::new("nft_contract");
 const VOTING_MODULE: Item<Addr> = Item::new("voting_module");
 const TOKEN_INFO: Item<NewTokenInfo> = Item::new("token_info");
 
@@ -59,11 +64,27 @@ pub fn execute(
         ExecuteMsg::NftFactory {
             code_id,
             cw721_instantiate_msg,
-        } => execute_nft_factory(deps, env, info, cw721_instantiate_msg, code_id),
+            initial_nfts,
+        } => execute_nft_factory(
+            deps,
+            env,
+            info,
+            cw721_instantiate_msg,
+            code_id,
+            initial_nfts,
+        ),
         ExecuteMsg::NftFactoryWithFunds {
             code_id,
             cw721_instantiate_msg,
-        } => execute_nft_factory_with_funds(deps, env, info, cw721_instantiate_msg, code_id),
+            initial_nfts,
+        } => execute_nft_factory_with_funds(
+            deps,
+            env,
+            info,
+            cw721_instantiate_msg,
+            code_id,
+            initial_nfts,
+        ),
         ExecuteMsg::NftFactoryNoCallback {} => execute_nft_factory_no_callback(deps, env, info),
         ExecuteMsg::NftFactoryWrongCallback {} => {
             execute_nft_factory_wrong_callback(deps, env, info)
@@ -80,6 +101,7 @@ pub fn execute(
         ExecuteMsg::TokenFactoryFactoryWrongCallback {} => {
             execute_token_factory_factory_wrong_callback(deps, env, info)
         }
+        ExecuteMsg::ValidateNftDao {} => execute_validate_nft_dao(deps, info),
     }
 }
 
@@ -92,7 +114,11 @@ pub fn execute_nft_factory(
     info: MessageInfo,
     cw721_instantiate_msg: Cw721InstantiateMsg,
     code_id: u64,
+    initial_nfts: Vec<Binary>,
 ) -> Result<Response, ContractError> {
+    // Save voting module address
+    VOTING_MODULE.save(deps.storage, &info.sender)?;
+
     // Query for DAO
     let dao: Addr = deps
         .querier
@@ -101,13 +127,23 @@ pub fn execute_nft_factory(
     // Save DAO and TOKEN_INFO for use in replies
     DAO.save(deps.storage, &dao)?;
 
+    // Save initial NFTs for use in replies
+    INITIAL_NFTS.save(deps.storage, &initial_nfts)?;
+
+    // Override minter to be the DAO address
+    let msg = to_binary(&Cw721InstantiateMsg {
+        name: cw721_instantiate_msg.name,
+        symbol: cw721_instantiate_msg.symbol,
+        minter: dao.to_string(),
+    })?;
+
     // Instantiate new contract, further setup is handled in the
     // SubMsg reply.
     let msg = SubMsg::reply_on_success(
         WasmMsg::Instantiate {
             admin: Some(dao.to_string()),
             code_id,
-            msg: to_binary(&cw721_instantiate_msg)?,
+            msg,
             funds: vec![],
             label: "cw_tokenfactory_issuer".to_string(),
         },
@@ -124,11 +160,19 @@ pub fn execute_nft_factory_with_funds(
     info: MessageInfo,
     cw721_instantiate_msg: Cw721InstantiateMsg,
     code_id: u64,
+    initial_nfts: Vec<Binary>,
 ) -> Result<Response, ContractError> {
     // Validate one coin was sent
     one_coin(&info)?;
 
-    execute_nft_factory(deps, env, info, cw721_instantiate_msg, code_id)
+    execute_nft_factory(
+        deps,
+        env,
+        info,
+        cw721_instantiate_msg,
+        code_id,
+        initial_nfts,
+    )
 }
 
 /// No callback for testing
@@ -149,6 +193,7 @@ pub fn execute_nft_factory_wrong_callback(
     Ok(Response::new().set_data(to_binary(&TokenFactoryCallback {
         denom: "wrong".to_string(),
         token_contract: None,
+        module_instantiate_callback: None,
     })?))
 }
 
@@ -221,7 +266,57 @@ pub fn execute_token_factory_factory_wrong_callback(
 ) -> Result<Response, ContractError> {
     Ok(Response::new().set_data(to_binary(&NftFactoryCallback {
         nft_contract: "nope".to_string(),
+        module_instantiate_callback: None,
     })?))
+}
+
+/// Example method called in the ModuleInstantiateCallback providing
+/// an example for checking the DAO has been setup correctly.
+pub fn execute_validate_nft_dao(
+    deps: DepsMut,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
+    // Load the collection and voting module address
+    let collection_addr = NFT_CONTRACT.load(deps.storage)?;
+    let voting_module = VOTING_MODULE.load(deps.storage)?;
+
+    // Query the collection owner and check that it's the DAO.
+    let owner: Ownership<Addr> = deps.querier.query_wasm_smart(
+        collection_addr.clone(),
+        &cw721_base::msg::QueryMsg::<Empty>::Ownership {},
+    )?;
+    match owner.owner {
+        Some(owner) => {
+            if owner != info.sender {
+                return Err(ContractError::Unauthorized {});
+            }
+        }
+        None => return Err(ContractError::Unauthorized {}),
+    }
+
+    // Query the total supply of the NFT contract
+    let nft_supply: NumTokensResponse = deps
+        .querier
+        .query_wasm_smart(collection_addr.clone(), &Cw721QueryMsg::NumTokens {})?;
+
+    // Check greater than zero
+    if nft_supply.count == 0 {
+        return Err(ContractError::NoInitialNfts {});
+    }
+
+    // Query active threshold
+    let active_threshold: ActiveThresholdResponse = deps
+        .querier
+        .query_wasm_smart(voting_module, &ActiveThresholdQuery::ActiveThreshold {})?;
+
+    // If Active Threshold absolute count is configured,
+    // check the count is not greater than supply.
+    // Percentage is validated in the voting module contract.
+    if let Some(ActiveThreshold::AbsoluteCount { count }) = active_threshold.active_threshold {
+        assert_valid_absolute_count_threshold(count, Uint128::new(nft_supply.count.into()))?;
+    }
+
+    Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -321,7 +416,6 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
             // Begin update issuer contract owner to be the DAO, this is a
             // two-step ownership transfer.
-            // DAO must pass a prop to Accept Ownership
             msgs.push(WasmMsg::Execute {
                 contract_addr: issuer_addr.clone(),
                 msg: to_binary(&IssuerExecuteMsg::UpdateOwnership(
@@ -333,19 +427,69 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 funds: vec![],
             });
 
+            // DAO must accept ownership transfer. Here we include a
+            // ModuleInstantiateCallback message that will be called by the
+            // dao-dao-core contract when voting module instantiation is
+            // complete.
+            let callback = ModuleInstantiateCallback {
+                msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: issuer_addr.clone(),
+                    msg: to_binary(&IssuerExecuteMsg::UpdateOwnership(
+                        cw_ownable::Action::AcceptOwnership {},
+                    ))?,
+                    funds: vec![],
+                })],
+            };
+
+            // Responses for `dao-voting-token-staked` MUST include a
+            // TokenFactoryCallback.
             Ok(Response::new()
                 .add_messages(msgs)
                 .set_data(to_binary(&TokenFactoryCallback {
                     denom,
                     token_contract: Some(issuer_addr.to_string()),
+                    module_instantiate_callback: Some(callback),
                 })?))
         }
         INSTANTIATE_NFT_REPLY_ID => {
             // Parse nft address from instantiate reply
             let nft_address = parse_reply_instantiate_data(msg)?.contract_address;
 
+            // Save NFT contract for use in validation reply
+            NFT_CONTRACT.save(deps.storage, &deps.api.addr_validate(&nft_address)?)?;
+
+            let initial_nfts = INITIAL_NFTS.load(deps.storage)?;
+
+            // Add mint messages that will be called by the DAO in the
+            // ModuleInstantiateCallback
+            let mut msgs: Vec<CosmosMsg> = initial_nfts
+                .iter()
+                .flat_map(|nft| -> Result<CosmosMsg, ContractError> {
+                    Ok(CosmosMsg::Wasm(WasmMsg::Execute {
+                        contract_addr: nft_address.clone(),
+                        funds: vec![],
+                        msg: nft.clone(),
+                    }))
+                })
+                .collect::<Vec<CosmosMsg>>();
+
+            // Clear space
+            INITIAL_NFTS.remove(deps.storage);
+
+            // After DAO mints NFT, it calls back into the factory contract
+            // To validate the setup. NOTE: other patterns could be used for this
+            // but factory contracts SHOULD validate setups.
+            msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: env.contract.address.to_string(),
+                msg: to_binary(&ExecuteMsg::ValidateNftDao {})?,
+                funds: vec![],
+            }));
+
+            // Responses for `dao-voting-cw721-staked` MUST include a
+            // NftFactoryCallback.
             Ok(Response::new().set_data(to_binary(&NftFactoryCallback {
                 nft_contract: nft_address.to_string(),
+                module_instantiate_callback: Some(ModuleInstantiateCallback { msgs }),
             })?))
         }
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),

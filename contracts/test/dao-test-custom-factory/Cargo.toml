@@ -1,7 +1,7 @@
 [package]
 name = "dao-test-custom-factory"
 authors = ["Jake Hartnell"]
-description = "A test contract for testing factory patterns in dao-voting-token-staked."
+description = "A test contract for testing factory patterns in dao-voting-token-staked and dao-voting-cw721-staked."
 edition = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
@@ -21,6 +21,7 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cosmwasm-storage = { workspace = true }
 cw2 = { workspace = true }
+cw721 = { workspace = true }
 cw721-base = { workspace = true, features = ["library"] }
 cw-ownable = { workspace = true }
 cw-storage-plus = { workspace = true }

@@ -87,4 +87,6 @@ The `factory` pattern takes a single `WasmMsg::Execute` message that calls into 
 
 **NOTE:** when using the factory pattern, it is important to only use a trusted factory contract, as all validation happens in the factory contract.
 
+Those implementing custom factory contracts MUST handle any validation that is to happen, and the custom `WasmMsg::Execute` message MUST include `TokenFactoryCallback` data respectively.
+
 The [dao-test-custom-factory contract](../test/dao-test-custom-factory) provides an example of how this can be done and is used for tests. It is NOT production ready, but meant to serve as an example for building factory contracts.

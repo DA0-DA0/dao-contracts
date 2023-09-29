@@ -17,6 +17,9 @@ pub enum ContractError {
     #[error(transparent)]
     PaymentError(#[from] PaymentError),
 
+    #[error("New NFT contract must be instantiated with at least one NFT")]
+    NoInitialNfts {},
+
     #[error("Unauthorized")]
     Unauthorized {},
 
