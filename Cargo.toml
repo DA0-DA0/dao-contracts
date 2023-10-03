@@ -41,7 +41,7 @@ cosmwasm-schema = { version = "1.2" }
 cosmwasm-std = { version = "1.2", features = ["ibc3"] }
 cosmwasm-storage = { version = "1.2" }
 cw-controllers = "1.1"
-cw-multi-test = "0.16"
+cw-multi-test = "0.17"
 cw-storage-plus = { version = "1.1" }
 cw-utils = "1.0"
 cw2 = "1.1"
@@ -126,7 +126,3 @@ cw20-staked-balance-voting-v1 = { package = "cw20-staked-balance-voting", versio
 cw4-voting-v1 = { package = "cw4-voting", version = "0.1.0" }
 voting-v1 = { package = "dao-voting", version = "0.1.0" }
 stake-cw20-v03 = { package = "stake-cw20", version = "0.2.6" }
-
-# TODO remove when new release is tagged upstream
-[patch.crates-io]
-cw-multi-test = { git = "https://github.com/CosmWasm/cw-multi-test.git", rev = "d38db7752b9f054c395d6108453f8b321e4cab02" }

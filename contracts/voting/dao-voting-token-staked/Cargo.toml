@@ -41,8 +41,7 @@ cw-tokenfactory-issuer = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
 anyhow = { workspace = true }
-# TODO use upstream when new release is tagged
-cw-multi-test = { git = "https://github.com/CosmWasm/cw-multi-test.git", rev = "d38db7752b9f054c395d6108453f8b321e4cab02" }
+cw-multi-test = { workspace = true }
 cw-tokenfactory-issuer = { workspace = true }
 dao-proposal-single = { workspace = true }
 dao-proposal-hook-counter = { workspace = true }
