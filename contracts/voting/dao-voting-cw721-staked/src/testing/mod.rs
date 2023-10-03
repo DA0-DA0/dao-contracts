@@ -5,6 +5,16 @@ mod instantiate;
 mod queries;
 mod tests;
 
+// Integrationg tests using an actual chain binary, requires
+// the "test-tube" feature to be enabled
+// cargo test --features test-tube
+#[cfg(test)]
+#[cfg(feature = "test-tube")]
+mod integration_tests;
+#[cfg(test)]
+#[cfg(feature = "test-tube")]
+mod test_tube_env;
+
 use cosmwasm_std::Addr;
 use cw_multi_test::{App, Executor};
 use cw_utils::Duration;

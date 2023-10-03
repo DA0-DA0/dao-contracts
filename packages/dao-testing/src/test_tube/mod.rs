@@ -9,6 +9,9 @@
 pub mod cw_tokenfactory_issuer;
 
 #[cfg(feature = "test-tube")]
+pub mod cw721_base;
+
+#[cfg(feature = "test-tube")]
 pub mod dao_dao_core;
 
 #[cfg(feature = "test-tube")]
