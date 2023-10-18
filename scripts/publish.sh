@@ -93,6 +93,10 @@ cd "$START_DIR"
 sleep 120
 
 # Contracts
+cd contracts/external/cw-tokenfactory-issuer
+cargo hack publish --no-dev-deps --allow-dirty
+cd "$START_DIR"
+
 cd contracts/external/cw-token-swap
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
