@@ -16,8 +16,6 @@ This is a collection of smart contracts for building composable, modular, and up
 
 For a detailed look at how these contracts work, see [our wiki](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design).
 
-Our most recently [audited](https://github.com/oak-security/audit-reports/blob/master/DAO%20DAO/2023-02-06%20Audit%20Report%20-%20DAO%20DAO%202%20v1.0.pdf) release is `v2.0.0`. If you believe you have found a problem, please [let us know](SECURITY.md).
-
 ## Overview
 
 Every DAO is made up of three modules:
@@ -33,6 +31,48 @@ For example, voting power might be based on [staked governance tokens](https://g
 Each module type has a [standard interface](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design). As a result, any voting module can be used with any proposal module, and any proposal module with any voting module.
 
 The best way to get started is to create a DAO! We maintain an [open source](https://github.com/DA0-DA0/dao-dao-ui) frontend you can find at [daodao.zone](https://daodao.zone).
+
+## Audits
+
+If you believe you have found a problem, please [let us know](SECURITY.md).
+
+DAO DAO has been audited by [Oak Security](https://www.oaksecurity.io/) on multiple occasions. You can find all the audit reports [here](https://github.com/oak-security/audit-reports/tree/master/DAO%20DAO).
+
+`v2.3.0` is the most recent DAO DAO release; only new feautres related to tokenfactory and improved NFT DAOs have been [audited](https://github.com/oak-security/audit-reports/blob/master/DAO%20DAO/2023-10-16%20Audit%20Report%20-%20DAO%20DAO%20Updates%20v1.0.pdf). Our most recently [full audited](https://github.com/oak-security/audit-reports/blob/master/DAO%20DAO/2023-02-06%20Audit%20Report%20-%20DAO%20DAO%202%20v1.0.pdf) release is `v2.0.0`. Vesting and payroll were added and [audited](https://github.com/oak-security/audit-reports/blob/master/DAO%20DAO/2023-03-22%20Audit%20Report%20-%20DAO%20DAO%20Vesting%20and%20Payroll%20Factory%20v1.0.pdf) in `v2.1.0`.
+
+Audited contracts include:
+- [cw-payroll-factory](https://crates.io/crates/cw-payroll-factory)
+- [cw-tokenfactory-issuer](https://crates.io/crates/cw-tokenfactory-issuer)
+- [cw-token-swap](https://crates.io/crates/cw-token-swap)
+- [cw-vesting](https://crates.io/crates/cw-vesting)
+- [dao-dao-core](https://crates.io/crates/dao-dao-core)
+- [dao-pre-propose-approval-single](https://crates.io/crates/dao-pre-propose-approval-single)
+- [dao-pre-propose-approver](https://crates.io/crates/dao-pre-propose-approver)
+- [dao-pre-propose-multiple](https://crates.io/crates/dao-pre-propose-multiple)
+- [dao-pre-propose-single](https://crates.io/crates/dao-pre-propose-single)
+- [dao-proposal-condorcet](https://crates.io/crates/dao-proposal-condorcet)
+- [dao-proposal-multiple](https://crates.io/crates/dao-proposal-multiple)
+- [dao-proposal-single](https://crates.io/crates/dao-proposal-single)
+- [cw20-stake](https://crates.io/crates/cw20-stake)
+- [cw20-stake-external-rewards](https://crates.io/crates/cw20-stake-external-rewards)
+- [cw20-stake-reward-distributor](https://crates.io/crates/cw20-stake-reward-distributor)
+- [dao-voting-cw4](https://crates.io/crates/dao-voting-cw4)
+- [dao-voting-cw20-staked](https://crates.io/crates/dao-voting-cw20-staked)
+- [dao-voting-cw721-staked](https://crates.io/crates/dao-voting-cw721-staked)
+- [dao-voting-token-staked](https://crates.io/crates/dao-voting-token-staked)
+
+Audited packages include:
+- [cw721-controllers](https://crates.io/crates/cw721-controllers)
+- [cw-denom](https://crates.io/crates/cw-denom)
+- [cw-hooks](https://crates.io/crates/cw-hooks)
+- [cw-paginate-storage](https://crates.io/crates/cw-paginate-storage)
+- [cw-stake-tracker](https://crates.io/crates/cw-stake-tracker)
+- [cw-wormhole](https://crates.io/crates/cw-wormhole)
+- [dao-dao-macros](https://crates.io/crates/dao-dao-macros)
+- [dao-hooks](https://crates.io/crates/dao-hooks)
+- [dao-interface](https://crates.io/crates/dao-interface)
+- [dao-pre-propose-based](https://crates.io/crates/dao-pre-propose-based)
+- [dao-voting](https://crates.io/crates/dao-voting)
 
 ## Why?
 
