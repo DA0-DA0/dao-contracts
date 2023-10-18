@@ -1,46 +1,9 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
-use cw_tokenfactory_issuer::msg::DenomUnit;
+use cosmwasm_std::{Binary, Uint128};
 use cw_utils::Duration;
-use dao_dao_macros::{active_query, token_query, voting_module_query};
+use dao_dao_macros::{active_query, voting_module_query};
+use dao_interface::token::NewTokenInfo;
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
-
-#[cw_serde]
-pub struct InitialBalance {
-    pub amount: Uint128,
-    pub address: String,
-}
-
-#[cw_serde]
-pub struct NewDenomMetadata {
-    /// The name of the token (e.g. "Cat Coin")
-    pub name: String,
-    /// The description of the token
-    pub description: String,
-    /// The ticker symbol of the token (e.g. "CAT")
-    pub symbol: String,
-    /// The unit commonly used in communication (e.g. "cat")
-    pub display: String,
-    /// Used define additional units of the token (e.g. "tiger")
-    /// These must have an exponent larger than 0.
-    pub additional_denom_units: Option<Vec<DenomUnit>>,
-}
-
-#[cw_serde]
-pub struct NewTokenInfo {
-    /// The code id of the cw-tokenfactory-issuer contract
-    pub token_issuer_code_id: u64,
-    /// The subdenom of the token to create, will also be used as an alias
-    /// for the denom. The Token Factory denom will have the format of
-    /// factory/{contract_address}/{subdenom}
-    pub subdenom: String,
-    /// Optional metadata for the token, this can additionally be set later.
-    pub metadata: Option<NewDenomMetadata>,
-    /// The initial balances to set for the token, cannot be empty.
-    pub initial_balances: Vec<InitialBalance>,
-    /// Optional balance to mint for the DAO.
-    pub initial_dao_balance: Option<Uint128>,
-}
 
 #[cw_serde]
 pub enum TokenInfo {
@@ -54,6 +17,11 @@ pub enum TokenInfo {
     /// Creates a new Token Factory token via the issue contract with the DAO automatically
     /// setup as admin and owner.
     New(NewTokenInfo),
+    /// Uses a factory contract that must return the denom, optionally a Token Contract address.
+    /// The binary must serialize to a `WasmMsg::Execute` message.
+    /// Validation happens in the factory contract itself, so be sure to use a
+    /// trusted factory contract.
+    Factory(Binary),
 }
 
 #[cw_serde]
@@ -91,7 +59,6 @@ pub enum ExecuteMsg {
 
 #[active_query]
 #[voting_module_query]
-#[token_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
@@ -110,6 +77,8 @@ pub enum QueryMsg {
     ActiveThreshold {},
     #[returns(GetHooksResponse)]
     GetHooks {},
+    #[returns(Option<cosmwasm_std::Addr>)]
+    TokenContract {},
 }
 
 #[cw_serde]

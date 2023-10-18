@@ -5,9 +5,9 @@ members = [
 	"contracts/proposal/*",
 	"contracts/pre-propose/*",
 	"contracts/staking/*",
+	"contracts/test/*",
 	"contracts/voting/*",
 	"packages/*",
-	"test-contracts/*",
 	"ci/*",
 ]
 exclude = ["ci/configs/", "wasmvm/libwasmvm"]
@@ -41,7 +41,7 @@ cosmwasm-schema = { version = "1.2" }
 cosmwasm-std = { version = "1.2", features = ["ibc3"] }
 cosmwasm-storage = { version = "1.2" }
 cw-controllers = "1.1"
-cw-multi-test = "0.16"
+cw-multi-test = "0.17"
 cw-storage-plus = { version = "1.1" }
 cw-utils = "1.0"
 cw2 = "1.1"
@@ -103,11 +103,12 @@ dao-pre-propose-single = { path = "./contracts/pre-propose/dao-pre-propose-singl
 dao-proposal-condorcet = { path = "./contracts/proposal/dao-proposal-condorcet", version = "2.2.0" }
 dao-proposal-multiple = { path = "./contracts/proposal/dao-proposal-multiple", version = "2.2.0" }
 dao-proposal-single = { path = "./contracts/proposal/dao-proposal-single", version = "2.2.0" }
-dao-proposal-sudo = { path = "./test-contracts/dao-proposal-sudo", version = "2.2.0" }
-dao-proposal-hook-counter = { path = "./test-contracts/dao-proposal-hook-counter", version = "2.2.0" }
+dao-proposal-sudo = { path = "./contracts/test/dao-proposal-sudo", version = "2.2.0" }
+dao-proposal-hook-counter = { path = "./contracts/test/dao-proposal-hook-counter", version = "2.2.0" }
+dao-test-custom-factory = { path = "./contracts/test/dao-test-custom-factory", version = "*" }
 dao-testing = { path = "./packages/dao-testing", version = "2.2.0" }
 dao-voting = { path = "./packages/dao-voting", version = "2.2.0" }
-dao-voting-cw20-balance = { path = "./test-contracts/dao-voting-cw20-balance", version = "2.2.0" }
+dao-voting-cw20-balance = { path = "./contracts/test/dao-voting-cw20-balance", version = "2.2.0" }
 dao-voting-cw20-staked = { path = "./contracts/voting/dao-voting-cw20-staked", version = "2.2.0" }
 dao-voting-cw4 = { path = "./contracts/voting/dao-voting-cw4", version = "2.2.0" }
 dao-voting-cw721-roles = { path = "./contracts/voting/dao-voting-cw721-roles", version = "*" }
@@ -125,7 +126,3 @@ cw20-staked-balance-voting-v1 = { package = "cw20-staked-balance-voting", versio
 cw4-voting-v1 = { package = "cw4-voting", version = "0.1.0" }
 voting-v1 = { package = "dao-voting", version = "0.1.0" }
 stake-cw20-v03 = { package = "stake-cw20", version = "0.2.6" }
-
-# TODO remove when new release is tagged upstream
-[patch.crates-io]
-cw-multi-test = { git = "https://github.com/CosmWasm/cw-multi-test.git", rev = "d38db7752b9f054c395d6108453f8b321e4cab02" }

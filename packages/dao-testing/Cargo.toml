@@ -49,6 +49,7 @@ dao-pre-propose-multiple = { workspace = true }
 dao-pre-propose-single = { workspace = true }
 dao-proposal-condorcet = { workspace = true }
 dao-proposal-single = { workspace = true }
+dao-test-custom-factory = { workspace = true }
 dao-voting = { workspace = true }
 dao-voting-cw20-balance = { workspace = true }
 dao-voting-cw20-staked = { workspace = true }

@@ -910,6 +910,7 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
                             msg: to_binary(&migrate_params.params).unwrap(),
                             admin: Some(Admin::CoreModule {}),
                             label: "migrator".to_string(),
+                            funds: vec![],
                         }],
                         to_disable: vec![],
                     })

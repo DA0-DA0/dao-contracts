@@ -29,6 +29,9 @@ pub enum ContractError {
     #[error("Can only unstake less than or equal to the amount you have staked")]
     InvalidUnstakeAmount {},
 
+    #[error("Factory contract did not implment the required TokenFactoryCallback interface")]
+    NoFactoryCallback {},
+
     #[error("Nothing to claim")]
     NothingToClaim {},
 
@@ -40,6 +43,9 @@ pub enum ContractError {
 
     #[error("Got a submessage reply with unknown id: {id}")]
     UnknownReplyId { id: u64 },
+
+    #[error("Factory message must serialize to WasmMsg::Execute")]
+    UnsupportedFactoryMsg {},
 
     #[error("Amount being unstaked must be non-zero")]
     ZeroUnstake {},

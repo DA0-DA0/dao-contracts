@@ -21,10 +21,9 @@ impl<'a> DaoCore<'a> {
         app: &'a OsmosisTestApp,
         instantiate_msg: &InstantiateMsg,
         signer: &SigningAccount,
+        funds: &[Coin],
     ) -> Result<Self, RunnerError> {
         let wasm = Wasm::new(app);
-        let token_creation_fee = Coin::new(10000000, "uosmo");
-
         let code_id = wasm
             .store_code(&Self::get_wasm_byte_code(), None, signer)?
             .data
@@ -36,7 +35,7 @@ impl<'a> DaoCore<'a> {
                 &instantiate_msg,
                 Some(&signer.address()),
                 None,
-                &[token_creation_fee],
+                funds,
                 signer,
             )?
             .data

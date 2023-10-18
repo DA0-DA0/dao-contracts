@@ -1626,13 +1626,15 @@ fn test_migrate_from_v1() {
             })
             .unwrap(),
             admin: None,
+            funds: vec![],
             label: "DAO DAO voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: v1_proposal_single_code,
-            label: "DAO DAO governance module.".to_string(),
-            admin: Some(Admin::CoreModule {}),
             msg: to_binary(&instantiate).unwrap(),
+            admin: Some(Admin::CoreModule {}),
+            funds: vec![],
+            label: "DAO DAO governance module.".to_string(),
         }],
         initial_items: None,
     };
@@ -1739,6 +1741,7 @@ fn test_migrate_from_v1() {
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
+                funds: vec![],
                 label: "DAO DAO pre-propose".to_string(),
             },
         },
@@ -2409,6 +2412,7 @@ fn test_update_pre_propose_module() {
                         })
                         .unwrap(),
                         admin: Some(Admin::CoreModule {}),
+                        funds: vec![],
                         label: "new pre-propose module".to_string(),
                     },
                 },

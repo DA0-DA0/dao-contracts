@@ -2,8 +2,8 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    coins, to_binary, BankMsg, BankQuery, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Order, Reply, Response, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
+    coins, from_binary, to_binary, BankMsg, BankQuery, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Order, Reply, Response, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_controllers::ClaimsResponse;
@@ -11,11 +11,14 @@ use cw_storage_plus::Bound;
 use cw_tokenfactory_issuer::msg::{
     DenomUnit, ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg, Metadata,
 };
-use cw_utils::{maybe_addr, must_pay, parse_reply_instantiate_data, Duration};
+use cw_utils::{
+    maybe_addr, must_pay, parse_reply_execute_data, parse_reply_instantiate_data, Duration,
+};
 use dao_hooks::stake::{stake_hook_msgs, unstake_hook_msgs};
-use dao_interface::state::ModuleInstantiateCallback;
-use dao_interface::voting::{
-    IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
+use dao_interface::{
+    state::ModuleInstantiateCallback,
+    token::{InitialBalance, NewTokenInfo, TokenFactoryCallback},
+    voting::{IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse},
 };
 use dao_voting::{
     duration::validate_duration,
@@ -27,8 +30,8 @@ use dao_voting::{
 
 use crate::error::ContractError;
 use crate::msg::{
-    DenomResponse, ExecuteMsg, GetHooksResponse, InitialBalance, InstantiateMsg,
-    ListStakersResponse, MigrateMsg, NewTokenInfo, QueryMsg, StakerBalanceResponse, TokenInfo,
+    DenomResponse, ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg,
+    QueryMsg, StakerBalanceResponse, TokenInfo,
 };
 use crate::state::{
     Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, DENOM, HOOKS, MAX_CLAIMS, STAKED_BALANCES,
@@ -43,6 +46,7 @@ const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 
 const INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID: u64 = 0;
+const FACTORY_EXECUTE_REPLY_ID: u64 = 2;
 
 // We multiply by this when calculating needed power for being active
 // when using active threshold with percent
@@ -122,6 +126,29 @@ pub fn instantiate(
                 .add_attribute("token", "new_token")
                 .add_submessage(issuer_instantiate_msg))
         }
+        TokenInfo::Factory(binary) => match from_binary(&binary)? {
+            WasmMsg::Execute {
+                msg,
+                contract_addr,
+                funds,
+            } => {
+                // Call factory contract. Use only a trusted factory contract,
+                // as this is a critical security component and valdiation of
+                // setup will happen in the factory.
+                Ok(Response::new()
+                    .add_attribute("action", "intantiate")
+                    .add_attribute("token", "custom_factory")
+                    .add_submessage(SubMsg::reply_on_success(
+                        WasmMsg::Execute {
+                            contract_addr,
+                            msg,
+                            funds,
+                        },
+                        FACTORY_EXECUTE_REPLY_ID,
+                    )))
+            }
+            _ => Err(ContractError::UnsupportedFactoryMsg {}),
+        },
     }
 }
 
@@ -380,7 +407,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::IsActive {} => query_is_active(deps),
         QueryMsg::ActiveThreshold {} => query_active_threshold(deps),
         QueryMsg::GetHooks {} => to_binary(&query_hooks(deps)?),
-        QueryMsg::TokenContract {} => to_binary(&TOKEN_ISSUER_CONTRACT.load(deps.storage)?),
+        QueryMsg::TokenContract {} => to_binary(&TOKEN_ISSUER_CONTRACT.may_load(deps.storage)?),
     }
 }
 
@@ -687,12 +714,46 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     })?;
 
                     Ok(Response::new()
-                        .add_attribute("cw-tokenfactory-issuer-address", issuer_addr)
                         .add_attribute("denom", denom)
+                        .add_attribute("token_contract", issuer_addr)
                         .add_messages(msgs)
                         .set_data(callback))
                 }
                 _ => unreachable!(),
+            }
+        }
+        FACTORY_EXECUTE_REPLY_ID => {
+            // Parse reply
+            let res = parse_reply_execute_data(msg)?;
+            match res.data {
+                Some(data) => {
+                    // Parse info from the callback, this will fail
+                    // if incorrectly formatted.
+                    let info: TokenFactoryCallback = from_binary(&data)?;
+
+                    // Save Denom
+                    DENOM.save(deps.storage, &info.denom)?;
+
+                    // Save token issuer contract if one is returned
+                    if let Some(ref token_contract) = info.token_contract {
+                        TOKEN_ISSUER_CONTRACT
+                            .save(deps.storage, &deps.api.addr_validate(token_contract)?)?;
+                    }
+
+                    // Construct the response
+                    let mut res = Response::new()
+                        .add_attribute("denom", info.denom)
+                        .add_attribute("token_contract", info.token_contract.unwrap_or_default());
+
+                    // If a callback has been configured, set the module
+                    // instantiate callback data.
+                    if let Some(callback) = info.module_instantiate_callback {
+                        res = res.set_data(to_binary(&callback)?);
+                    }
+
+                    Ok(res)
+                }
+                None => Err(ContractError::NoFactoryCallback {}),
             }
         }
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),

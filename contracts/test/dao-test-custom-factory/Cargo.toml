@@ -1,0 +1,36 @@
+[package]
+name = "dao-test-custom-factory"
+authors = ["Jake Hartnell"]
+description = "A test contract for testing factory patterns in dao-voting-token-staked and dao-voting-cw721-staked."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cosmwasm-storage = { workspace = true }
+cw2 = { workspace = true }
+cw721 = { workspace = true }
+cw721-base = { workspace = true, features = ["library"] }
+cw-ownable = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-utils = { workspace = true }
+thiserror = { workspace = true }
+dao-dao-macros = { workspace = true }
+dao-interface = { workspace = true }
+dao-voting = { workspace = true }
+cw-tokenfactory-issuer = { workspace = true, features = ["library"] }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }

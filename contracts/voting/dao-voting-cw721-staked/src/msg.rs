@@ -8,10 +8,12 @@ use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 #[cw_serde]
 #[allow(clippy::large_enum_variant)]
 pub enum NftContract {
+    /// Uses an existing cw721 or sg721 token contract.
     Existing {
-        /// Address of an already instantiated cw721 token contract.
+        /// Address of an already instantiated cw721 or sg721 token contract.
         address: String,
     },
+    /// Creates a new NFT collection used for staking and governance.
     New {
         /// Code ID for cw721 token contract.
         code_id: u64,
@@ -23,6 +25,11 @@ pub enum NftContract {
         /// valid mint message for the corresponding cw721 contract.
         initial_nfts: Vec<Binary>,
     },
+    /// Uses a factory contract that must return the address of the NFT contract.
+    /// The binary must serialize to a `WasmMsg::Execute` message.
+    /// Validation happens in the factory contract itself, so be sure to use a
+    /// trusted factory contract.
+    Factory(Binary),
 }
 
 #[cw_serde]
@@ -46,22 +53,20 @@ pub enum ExecuteMsg {
     /// Unstakes the specified token_ids on behalf of the
     /// sender. token_ids must have unique values and have non-zero
     /// length.
-    Unstake {
-        token_ids: Vec<String>,
-    },
+    Unstake { token_ids: Vec<String> },
+    /// Claim NFTs that have been unstaked for the specified duration.
     ClaimNfts {},
-    UpdateConfig {
-        duration: Option<Duration>,
-    },
-    AddHook {
-        addr: String,
-    },
-    RemoveHook {
-        addr: String,
-    },
-    /// Sets the active threshold to a new value. Only the
-    /// instantiator this contract (a DAO most likely) may call this
-    /// method.
+    /// Updates the contract configuration, namely unstaking duration.
+    /// Only callable by the DAO that initialized this voting contract.
+    UpdateConfig { duration: Option<Duration> },
+    /// Adds a hook which is called on staking / unstaking events.
+    /// Only callable by the DAO that initialized this voting contract.
+    AddHook { addr: String },
+    /// Removes a hook which is called on staking / unstaking events.
+    /// Only callable by the DAO that initialized this voting contract.
+    RemoveHook { addr: String },
+    /// Sets the active threshold to a new value.
+    /// Only callable by the DAO that initialized this voting contract.
     UpdateActiveThreshold {
         new_threshold: Option<ActiveThreshold>,
     },

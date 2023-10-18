@@ -31,6 +31,11 @@ pub enum Query {
 }
 
 #[cw_serde]
+pub enum ActiveThresholdQuery {
+    ActiveThreshold {},
+}
+
+#[cw_serde]
 pub struct VotingPowerAtHeightResponse {
     pub power: Uint128,
     pub height: u64,

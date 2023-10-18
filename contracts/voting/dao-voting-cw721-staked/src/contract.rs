@@ -1,17 +1,21 @@
-use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Empty, Env,
-    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
+    from_binary, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
+    Response, StdError, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NumTokensResponse};
 use cw_storage_plus::Bound;
-use cw_utils::{parse_reply_instantiate_data, Duration};
+use cw_utils::{parse_reply_execute_data, parse_reply_instantiate_data, Duration};
 use dao_hooks::nft_stake::{stake_nft_hook_msgs, unstake_nft_hook_msgs};
-use dao_interface::voting::IsActiveResponse;
-use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
+use dao_interface::state::ModuleInstantiateCallback;
+use dao_interface::{nft::NftFactoryCallback, voting::IsActiveResponse};
+use dao_voting::duration::validate_duration;
+use dao_voting::threshold::{
+    assert_valid_absolute_count_threshold, assert_valid_percentage_threshold, ActiveThreshold,
+    ActiveThresholdResponse,
+};
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, NftContract, QueryMsg};
 use crate::state::{
@@ -24,39 +28,29 @@ pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw721-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const INSTANTIATE_NFT_CONTRACT_REPLY_ID: u64 = 0;
-const VALIDATE_ABSOLUTE_COUNT_FOR_NEW_NFT_CONTRACTS: u64 = 1;
+const VALIDATE_SUPPLY_REPLY_ID: u64 = 1;
+const FACTORY_EXECUTE_REPLY_ID: u64 = 2;
 
 // We multiply by this when calculating needed power for being active
 // when using active threshold with percent
 const PRECISION_FACTOR: u128 = 10u128.pow(9);
 
-#[cw_serde]
+// Supported NFT instantiation messages
 pub enum NftInstantiateMsg {
     Cw721(cw721_base::InstantiateMsg),
-    Sg721(sg721::InstantiateMsg),
 }
 
 impl NftInstantiateMsg {
-    fn modify_instantiate_msg(&mut self, minter: &str, dao: &str) {
+    fn modify_instantiate_msg(&mut self, minter: &str) {
         match self {
             // Update minter for cw721 NFTs
             NftInstantiateMsg::Cw721(msg) => msg.minter = minter.to_string(),
-            NftInstantiateMsg::Sg721(msg) => {
-                // Update minter and collection creator for sg721 NFTs
-                // The collection creator is the only one able to call certain methods
-                // in sg721 contracts
-                msg.minter = minter.to_string();
-                // This should be the DAO, which will be able to control metadata about
-                // the collection as well as royalties
-                msg.collection_info.creator = dao.to_string();
-            }
         }
     }
 
     fn to_binary(&self) -> Result<Binary, StdError> {
         match self {
             NftInstantiateMsg::Cw721(msg) => to_binary(&msg),
-            NftInstantiateMsg::Sg721(msg) => to_binary(&msg),
         }
     }
 }
@@ -66,10 +60,6 @@ pub fn try_deserialize_nft_instantiate_msg(
 ) -> Result<NftInstantiateMsg, ContractError> {
     if let Ok(cw721_msg) = from_binary::<cw721_base::msg::InstantiateMsg>(&instantiate_msg) {
         return Ok(NftInstantiateMsg::Cw721(cw721_msg));
-    }
-
-    if let Ok(sg721_msg) = from_binary::<sg721::InstantiateMsg>(&instantiate_msg) {
-        return Ok(NftInstantiateMsg::Sg721(sg721_msg));
     }
 
     Err(ContractError::NftInstantiateError {})
@@ -86,27 +76,28 @@ pub fn instantiate(
 
     DAO.save(deps.storage, &info.sender)?;
 
+    // Validate unstaking duration
+    validate_duration(msg.unstaking_duration)?;
+
+    // Validate active threshold if configured
     if let Some(active_threshold) = msg.active_threshold.as_ref() {
         match active_threshold {
             ActiveThreshold::Percentage { percent } => {
-                if percent > &Decimal::percent(100) || percent.is_zero() {
-                    return Err(ContractError::InvalidActivePercentage {});
-                }
+                assert_valid_percentage_threshold(*percent)?;
             }
             ActiveThreshold::AbsoluteCount { count } => {
-                // Check Absolute count is not zero
-                if count.is_zero() {
-                    return Err(ContractError::ZeroActiveCount {});
-                }
-
-                // Check Absolute count is less than the supply of NFTs for existing NFT contracts
+                // Check Absolute count is less than the supply of NFTs for existing
+                // NFT contracts. For new NFT contracts, we will check this in the reply.
                 if let NftContract::Existing { ref address } = msg.nft_contract {
                     let nft_supply: NumTokensResponse = deps
                         .querier
                         .query_wasm_smart(address, &Cw721QueryMsg::NumTokens {})?;
-                    if count > &Uint128::new(nft_supply.count.into()) {
-                        return Err(ContractError::InvalidActiveCount {});
-                    }
+                    // Check the absolute count is less than the supply of NFTs and
+                    // greater than zero.
+                    assert_valid_absolute_count_threshold(
+                        *count,
+                        Uint128::new(nft_supply.count.into()),
+                    )?;
                 }
             }
         }
@@ -133,17 +124,12 @@ pub fn instantiate(
             msg: instantiate_msg,
             initial_nfts,
         } => {
-            // Deserialize the binary msg into either cw721 or sg721
+            // Deserialize the binary msg into cw721
             let mut instantiate_msg = try_deserialize_nft_instantiate_msg(instantiate_msg)?;
 
             // Modify the InstantiateMsg such that the minter is now this contract.
             // We will update ownership of the NFT contract to be the DAO in the submessage reply.
-            //
-            // NOTE: sg721 also has a creator that is set in the `collection_info` field,
-            // we override this with the address of the DAO (the sender of this message).
-            // In sg721 the `creator` address controls metadata and royalties.
-            instantiate_msg
-                .modify_instantiate_msg(env.contract.address.as_str(), info.sender.as_str());
+            instantiate_msg.modify_instantiate_msg(env.contract.address.as_str());
 
             // Check there is at least one NFT to initialize
             if initial_nfts.is_empty() {
@@ -176,6 +162,35 @@ pub fn instantiate(
                 .add_attribute("method", "instantiate")
                 .add_submessage(instantiate_msg))
         }
+        NftContract::Factory(binary) => match from_binary(&binary)? {
+            WasmMsg::Execute {
+                msg: wasm_msg,
+                contract_addr,
+                funds,
+            } => {
+                // Save config with empty nft_address
+                let config = Config {
+                    nft_address: Addr::unchecked(""),
+                    unstaking_duration: msg.unstaking_duration,
+                };
+                CONFIG.save(deps.storage, &config)?;
+
+                // Call factory contract. Use only a trusted factory contract,
+                // as this is a critical security component and valdiation of
+                // setup will happen in the factory.
+                Ok(Response::new()
+                    .add_attribute("action", "intantiate")
+                    .add_submessage(SubMsg::reply_on_success(
+                        WasmMsg::Execute {
+                            contract_addr,
+                            msg: wasm_msg,
+                            funds,
+                        },
+                        FACTORY_EXECUTE_REPLY_ID,
+                    )))
+            }
+            _ => Err(ContractError::UnsupportedFactoryMsg {}),
+        },
     }
 }
 
@@ -370,6 +385,9 @@ pub fn execute_update_config(
         return Err(ContractError::Unauthorized {});
     }
 
+    // Validate unstaking duration
+    validate_duration(duration)?;
+
     config.unstaking_duration = duration;
     CONFIG.save(deps.storage, &config)?;
 
@@ -435,17 +453,20 @@ pub fn execute_update_active_threshold(
         return Err(ContractError::Unauthorized {});
     }
 
+    let config = CONFIG.load(deps.storage)?;
     if let Some(active_threshold) = new_active_threshold {
         match active_threshold {
             ActiveThreshold::Percentage { percent } => {
-                if percent > Decimal::percent(100) || percent.is_zero() {
-                    return Err(ContractError::InvalidActivePercentage {});
-                }
+                assert_valid_percentage_threshold(percent)?;
             }
             ActiveThreshold::AbsoluteCount { count } => {
-                if count.is_zero() {
-                    return Err(ContractError::ZeroActiveCount {});
-                }
+                let nft_supply: NumTokensResponse = deps
+                    .querier
+                    .query_wasm_smart(config.nft_address, &Cw721QueryMsg::NumTokens {})?;
+                assert_valid_absolute_count_threshold(
+                    count,
+                    Uint128::new(nft_supply.count.into()),
+                )?;
             }
         }
         ACTIVE_THRESHOLD.save(deps.storage, &active_threshold)?;
@@ -681,7 +702,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                             )?,
                             funds: vec![],
                         },
-                        VALIDATE_ABSOLUTE_COUNT_FOR_NEW_NFT_CONTRACTS,
+                        VALIDATE_SUPPLY_REPLY_ID,
                     ));
 
                     Ok(Response::default()
@@ -691,27 +712,89 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                 Err(_) => Err(ContractError::NftInstantiateError {}),
             }
         }
-        VALIDATE_ABSOLUTE_COUNT_FOR_NEW_NFT_CONTRACTS => {
-            // Check that absolute count is not greater than supply
+        VALIDATE_SUPPLY_REPLY_ID => {
+            // Check that NFTs have actually been minted, and that supply is greater than zero
             // NOTE: we have to check this in a reply as it is potentially possible
             // to include non-mint messages in `initial_nfts`.
+            //
+            // Load config for nft contract address
+            let collection_addr = CONFIG.load(deps.storage)?.nft_address;
+
+            // Query the total supply of the NFT contract
+            let nft_supply: NumTokensResponse = deps
+                .querier
+                .query_wasm_smart(collection_addr.clone(), &Cw721QueryMsg::NumTokens {})?;
+
+            // Check greater than zero
+            if nft_supply.count == 0 {
+                return Err(ContractError::NoInitialNfts {});
+            }
+
+            // If Active Threshold absolute count is configured,
+            // check the count is not greater than supply
             if let Some(ActiveThreshold::AbsoluteCount { count }) =
                 ACTIVE_THRESHOLD.may_load(deps.storage)?
             {
-                // Load config for nft contract address
-                let collection_addr = CONFIG.load(deps.storage)?.nft_address;
-
-                // Query the total supply of the NFT contract
-                let supply: NumTokensResponse = deps
-                    .querier
-                    .query_wasm_smart(collection_addr, &Cw721QueryMsg::NumTokens {})?;
-
-                // Chec the count is not greater than supply
-                if count > Uint128::new(supply.count.into()) {
-                    return Err(ContractError::InvalidActiveCount {});
-                }
+                assert_valid_absolute_count_threshold(
+                    count,
+                    Uint128::new(nft_supply.count.into()),
+                )?;
             }
-            Ok(Response::new())
+
+            // On setup success, have the DAO complete the second part of
+            // ownership transfer by accepting ownership in a
+            // ModuleInstantiateCallback.
+            let callback = to_binary(&ModuleInstantiateCallback {
+                msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: collection_addr.to_string(),
+                    msg: to_binary(
+                        &&cw721_base::msg::ExecuteMsg::<Empty, Empty>::UpdateOwnership(
+                            cw721_base::Action::AcceptOwnership {},
+                        ),
+                    )?,
+                    funds: vec![],
+                })],
+            })?;
+
+            Ok(Response::new().set_data(callback))
+        }
+        FACTORY_EXECUTE_REPLY_ID => {
+            // Parse reply data
+            let res = parse_reply_execute_data(msg)?;
+            match res.data {
+                Some(data) => {
+                    let mut config = CONFIG.load(deps.storage)?;
+
+                    // Parse info from the callback, this will fail
+                    // if incorrectly formatted.
+                    let info: NftFactoryCallback = from_binary(&data)?;
+
+                    // Validate NFT contract address
+                    let nft_address = deps.api.addr_validate(&info.nft_contract)?;
+
+                    // Validate that this is an NFT with a query
+                    deps.querier.query_wasm_smart::<NumTokensResponse>(
+                        nft_address.clone(),
+                        &Cw721QueryMsg::NumTokens {},
+                    )?;
+
+                    // Update NFT contract
+                    config.nft_address = nft_address;
+                    CONFIG.save(deps.storage, &config)?;
+
+                    // Construct the response
+                    let mut res = Response::new().add_attribute("nft_contract", info.nft_contract);
+
+                    // If a callback has been configured, set the module
+                    // instantiate callback data.
+                    if let Some(callback) = info.module_instantiate_callback {
+                        res = res.set_data(to_binary(&callback)?);
+                    }
+
+                    Ok(res)
+                }
+                None => Err(ContractError::NoFactoryCallback {}),
+            }
         }
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }

@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 use crate::{
-    msg::{ExecuteMsg, InitialBalance, InstantiateMsg, NewTokenInfo, QueryMsg, TokenInfo},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenInfo},
     ContractError,
 };
 
@@ -13,6 +13,7 @@ use cw_utils::Duration;
 use dao_interface::{
     msg::QueryMsg as DaoQueryMsg,
     state::{Admin, ModuleInstantiateInfo, ProposalModule},
+    token::{InitialBalance, NewDenomMetadata, NewTokenInfo},
     voting::{IsActiveResponse, VotingPowerAtHeightResponse},
 };
 use dao_voting::{
@@ -21,7 +22,7 @@ use dao_voting::{
 
 use dao_testing::test_tube::{
     cw_tokenfactory_issuer::TokenfactoryIssuer, dao_dao_core::DaoCore,
-    dao_proposal_single::DaoProposalSingle,
+    dao_proposal_single::DaoProposalSingle, dao_test_custom_factory::CustomFactoryContract,
 };
 use dao_voting::threshold::ActiveThreshold;
 use osmosis_std::types::{
@@ -41,6 +42,7 @@ pub struct TestEnv<'a> {
     pub app: &'a OsmosisTestApp,
     pub dao: Option<DaoCore<'a>>,
     pub proposal_single: Option<DaoProposalSingle<'a>>,
+    pub custom_factory: Option<CustomFactoryContract<'a>>,
     pub vp_contract: TokenVotingContract<'a>,
     pub tf_issuer: TokenfactoryIssuer<'a>,
     pub accounts: Vec<SigningAccount>,
@@ -135,7 +137,7 @@ impl TestEnvBuilder {
                 token_info: TokenInfo::New(NewTokenInfo {
                     token_issuer_code_id: issuer_id,
                     subdenom: DENOM.to_string(),
-                    metadata: Some(crate::msg::NewDenomMetadata {
+                    metadata: Some(NewDenomMetadata {
                         description: "Awesome token, get it meow!".to_string(),
                         additional_denom_units: Some(vec![DenomUnit {
                             denom: "cat".to_string(),
@@ -168,6 +170,7 @@ impl TestEnvBuilder {
             accounts,
             dao: None,
             proposal_single: None,
+            custom_factory: None,
             tf_issuer,
             vp_contract,
         }
@@ -206,7 +209,7 @@ impl TestEnvBuilder {
                     token_info: TokenInfo::New(NewTokenInfo {
                         token_issuer_code_id: issuer_id,
                         subdenom: DENOM.to_string(),
-                        metadata: Some(crate::msg::NewDenomMetadata {
+                        metadata: Some(NewDenomMetadata {
                             description: "Awesome token, get it meow!".to_string(),
                             additional_denom_units: Some(vec![DenomUnit {
                                 denom: "cat".to_string(),
@@ -227,6 +230,7 @@ impl TestEnvBuilder {
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
+                funds: vec![],
                 label: "DAO DAO Voting Module".to_string(),
             },
             proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
@@ -245,13 +249,14 @@ impl TestEnvBuilder {
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
+                funds: vec![],
                 label: "DAO DAO Proposal Module".to_string(),
             }],
             initial_items: None,
         };
 
         // Instantiate DAO
-        let dao = DaoCore::new(app, &msg, &accounts[0]).unwrap();
+        let dao = DaoCore::new(app, &msg, &accounts[0], &vec![]).unwrap();
 
         // Get voting module address, setup vp_contract helper
         let vp_addr: Addr = dao.query(&DaoQueryMsg::VotingModule {}).unwrap();
@@ -277,11 +282,20 @@ impl TestEnvBuilder {
             TokenVotingContract::query(&vp_contract, &QueryMsg::TokenContract {}).unwrap();
         let tf_issuer = TokenfactoryIssuer::new_with_values(app, issuer_id, issuer_addr).unwrap();
 
+        // Instantiate Custom Factory
+        let custom_factory = CustomFactoryContract::new(
+            app,
+            &dao_test_custom_factory::msg::InstantiateMsg {},
+            &accounts[0],
+        )
+        .unwrap();
+
         TestEnv {
             app,
             dao: Some(dao),
             vp_contract,
             proposal_single: Some(proposal_single),
+            custom_factory: Some(custom_factory),
             tf_issuer,
             accounts,
         }

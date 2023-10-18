@@ -84,6 +84,7 @@ pub fn test_set_admin() {
             code_id: cw20_code_id,
             msg: to_binary(&cw20_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
+            funds: vec![],
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![
@@ -91,12 +92,14 @@ pub fn test_set_admin() {
                 code_id: cw20_code_id,
                 msg: to_binary(&cw20_instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
+                funds: vec![],
                 label: "prop module".to_string(),
             },
             ModuleInstantiateInfo {
                 code_id: cw20_code_id,
                 msg: to_binary(&cw20_instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
+                funds: vec![],
                 label: "prop module 2".to_string(),
             },
         ],

@@ -70,12 +70,14 @@ pub fn instantiate_with_cw20_balances_governance(
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
+            funds: vec![],
             label: "DAO DAO voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: governance_code_id,
             msg: governance_instantiate,
             admin: Some(Admin::CoreModule {}),
+            funds: vec![],
             label: "DAO DAO governance module".to_string(),
         }],
         initial_items: None,
@@ -153,6 +155,7 @@ pub fn instantiate_with_staked_balances_governance(
             })
             .unwrap(),
             admin: None,
+            funds: vec![],
             label: "DAO DAO voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
@@ -160,6 +163,7 @@ pub fn instantiate_with_staked_balances_governance(
             label: "DAO DAO governance module.".to_string(),
             admin: Some(Admin::CoreModule {}),
             msg: governance_instantiate,
+            funds: vec![],
         }],
         initial_items: None,
     };
@@ -272,12 +276,14 @@ pub fn instantiate_with_staking_active_threshold(
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
+            funds: vec![],
             label: "DAO DAO voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id,
             msg: governance_instantiate,
             admin: Some(Admin::CoreModule {}),
+            funds: vec![],
             label: "DAO DAO governance module".to_string(),
         }],
         initial_items: None,
@@ -344,12 +350,14 @@ pub fn instantiate_with_cw4_groups_governance(
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
+            funds: vec![],
             label: "DAO DAO voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: core_code_id,
             msg: proposal_module_instantiate,
             admin: Some(Admin::CoreModule {}),
+            funds: vec![],
             label: "DAO DAO governance module".to_string(),
         }],
         initial_items: None,

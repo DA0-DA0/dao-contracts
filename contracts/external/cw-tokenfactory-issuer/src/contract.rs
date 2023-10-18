@@ -91,7 +91,7 @@ pub fn execute(
         } => execute::burn(deps, env, info, amount, address),
         ExecuteMsg::Deny { address, status } => execute::deny(deps, env, info, address, status),
         ExecuteMsg::Allow { address, status } => execute::allow(deps, info, address, status),
-        ExecuteMsg::Freeze { status } => execute::freeze(deps, info, status),
+        ExecuteMsg::Freeze { status } => execute::freeze(deps, env, info, status),
         ExecuteMsg::ForceTransfer {
             amount,
             from_address,

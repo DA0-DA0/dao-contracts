@@ -6,7 +6,7 @@ use osmosis_std::types::osmosis::tokenfactory::v1beta1::{
 use token_bindings::TokenFactoryMsg;
 
 use crate::error::ContractError;
-use crate::helpers::check_before_send_hook_features_enabled;
+use crate::helpers::{check_before_send_hook_features_enabled, check_is_not_frozen};
 use crate::state::{
     BeforeSendHookInfo, ALLOWLIST, BEFORE_SEND_HOOK_INFO, BURNER_ALLOWANCES, DENOM, DENYLIST,
     IS_FROZEN, MINTER_ALLOWANCES,
@@ -49,6 +49,9 @@ pub fn mint(
 
     // Get token denom from contract
     let denom = DENOM.load(deps.storage)?;
+
+    // Check token is not frozen, or if from or to address is on allowlist
+    check_is_not_frozen(deps.as_ref(), info.sender.as_str(), &to_address, &denom)?;
 
     // Create tokenfactory MsgMint which mints coins to the contract address
     let mint_tokens_msg = TokenFactoryMsg::mint_contract_tokens(
@@ -325,9 +328,13 @@ pub fn set_minter(
 /// contract), or add an airdrop contract to the allowlist so users can claim
 /// their tokens (but not yet trade them).
 ///
+/// This issuer contract itself is added to the allowlist when freezing, to allow
+/// for minting of tokens (if minters with allowances are also on the allowlist).
+///
 /// Must be the contract owner to call this method.
 pub fn freeze(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     status: bool,
 ) -> Result<Response<TokenFactoryMsg>, ContractError> {
@@ -339,6 +346,14 @@ pub fn freeze(
     // Update config frozen status
     // NOTE: Does not check if new status is same as old status
     IS_FROZEN.save(deps.storage, &status)?;
+
+    // Add the issue contract itself to the Allowlist, or remove
+    // if unfreezing to save storage.
+    if status {
+        ALLOWLIST.save(deps.storage, &env.contract.address, &status)?;
+    } else {
+        ALLOWLIST.remove(deps.storage, &env.contract.address);
+    }
 
     Ok(Response::new()
         .add_attribute("action", "freeze")
