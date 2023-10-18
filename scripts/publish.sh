@@ -78,15 +78,19 @@ cargo publish
 cd "$START_DIR"
 
 # Test contracts
-cd test-contracts/dao-proposal-sudo
+cd contracts/test/dao-proposal-sudo
 cargo publish
 cd "$START_DIR"
 
-cd test-contracts/dao-voting-cw20-balance
+cd contracts/test/dao-voting-cw20-balance
 cargo publish
 cd "$START_DIR"
 
-cd test-contracts/dao-proposal-hook-counter
+cd contracts/test/dao-proposal-hook-counter
+cargo hack publish --no-dev-deps --allow-dirty
+cd "$START_DIR"
+
+cd contracts/test/dao-test-custom-factory
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
 
