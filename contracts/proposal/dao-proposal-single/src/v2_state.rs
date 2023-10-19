@@ -1,7 +1,6 @@
 //! Helper methods for migrating from v2 to v3 state. These will need
 //! to be updated when we bump our CosmWasm version for v3.
 
-use cw_utils::{Duration, Expiration};
 use dao_voting::{
     status::Status,
     threshold::{PercentageThreshold, Threshold},
@@ -33,21 +32,6 @@ pub fn v2_threshold_to_v3(v2: voting_v2::threshold::Threshold) -> Threshold {
         voting_v2::threshold::Threshold::AbsoluteCount { threshold } => {
             Threshold::AbsoluteCount { threshold }
         }
-    }
-}
-
-pub fn v2_duration_to_v3(v2: cw_utils_v2::Duration) -> Duration {
-    match v2 {
-        cw_utils_v2::Duration::Height(height) => Duration::Height(height),
-        cw_utils_v2::Duration::Time(time) => Duration::Time(time),
-    }
-}
-
-pub fn v2_expiration_to_v3(v2: cw_utils_v2::Expiration) -> Expiration {
-    match v2 {
-        cw_utils_v2::Expiration::AtHeight(height) => Expiration::AtHeight(height),
-        cw_utils_v2::Expiration::AtTime(time) => Expiration::AtTime(time),
-        cw_utils_v2::Expiration::Never {} => Expiration::Never {},
     }
 }
 
@@ -88,36 +72,6 @@ mod tests {
             )),
             PercentageThreshold::Percent(Decimal::percent(80))
         )
-    }
-
-    #[test]
-    fn test_duration_conversion() {
-        assert_eq!(
-            v2_duration_to_v3(cw_utils_v2::Duration::Height(100)),
-            Duration::Height(100)
-        );
-        assert_eq!(
-            v2_duration_to_v3(cw_utils_v2::Duration::Time(100)),
-            Duration::Time(100)
-        );
-    }
-
-    #[test]
-    fn test_expiration_conversion() {
-        assert_eq!(
-            v2_expiration_to_v3(cw_utils_v2::Expiration::AtHeight(100)),
-            Expiration::AtHeight(100)
-        );
-        assert_eq!(
-            v2_expiration_to_v3(cw_utils_v2::Expiration::AtTime(Timestamp::from_seconds(
-                100
-            ))),
-            Expiration::AtTime(Timestamp::from_seconds(100))
-        );
-        assert_eq!(
-            v2_expiration_to_v3(cw_utils_v2::Expiration::Never {}),
-            Expiration::Never {}
-        );
     }
 
     #[test]

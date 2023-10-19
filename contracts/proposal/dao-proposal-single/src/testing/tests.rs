@@ -25,7 +25,7 @@ use dao_voting::{
     },
     status::Status,
     threshold::{ActiveThreshold, PercentageThreshold, Threshold},
-    timelock::Timelock,
+    timelock::{Timelock, TimelockError},
     voting::{Vote, Votes},
 };
 
@@ -433,6 +433,7 @@ fn test_proposal_message_timelock() {
         Vote::Yes,
     );
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
+
     // Proposal is timelocked
     assert_eq!(
         proposal.proposal.status,
@@ -444,13 +445,33 @@ fn test_proposal_message_timelock() {
     // TODO Test even oversite can't execute when Timelocked and early execute is
     // not enabled.
 
-    // TODO Test veto
-
-    // TODO Test execute when timelock expires
-
-    // TODO Test early execute
+    // TODO Test early execute (separator test)
 
     mint_natives(&mut app, core_addr.as_str(), coins(10, "ujuno"));
+
+    // Proposal cannot be excuted before timelock expires
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            proposal_module.clone(),
+            &ExecuteMsg::Execute { proposal_id },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert_eq!(
+        err,
+        ContractError::TimelockError(TimelockError::Timelocked {})
+    );
+
+    // Time passes
+    app.update_block(|block| {
+        block.time = block.time.plus_seconds(604800);
+    });
+
+    // Proposal executes successfully
     execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Executed);

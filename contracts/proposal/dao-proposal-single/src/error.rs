@@ -6,7 +6,7 @@ use cw_utils::ParseReplyError;
 use dao_voting::{reply::error::TagError, timelock::TimelockError};
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error(transparent)]
     Std(#[from] StdError),

@@ -1,4 +1,4 @@
-use cw_utils_v2::Expiration;
+use cw_utils::Expiration;
 use voting_v2::{
     status::Status,
     threshold::{PercentageThreshold, Threshold},

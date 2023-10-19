@@ -1,6 +1,6 @@
 use std::mem::discriminant;
 
-use cosmwasm_std::{coins, Addr, Uint128};
+use cosmwasm_std::{coins, Addr, Coin, Uint128};
 use cw20::Cw20Coin;
 
 use cw_multi_test::{App, BankSudo, Executor, SudoMsg};
