@@ -49,6 +49,18 @@ impl Timelock {
         }
     }
 
+    pub fn check_is_expired(
+        &self,
+        current_time: Timestamp,
+        expires: Timestamp,
+    ) -> Result<(), TimelockError> {
+        if expires.seconds() > current_time.seconds() {
+            Ok(())
+        } else {
+            Err(TimelockError::Timelocked {})
+        }
+    }
+
     /// Takes two timestamps and returns true if the proposal is locked or not.
     pub fn check_is_locked(
         &self,

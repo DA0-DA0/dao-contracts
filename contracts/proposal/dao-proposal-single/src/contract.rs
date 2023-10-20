@@ -272,8 +272,9 @@ pub fn execute_veto(
         Status::Timelocked { expires } => {
             match prop.timelock {
                 Some(ref timelock) => {
-                    // Check if the proposal is still timelocked
-                    timelock.check_is_locked(env.block.time, expires)?;
+                    // Check if the proposal timelock has expired, vetoer cannot veto
+                    // after expiration
+                    timelock.check_is_expired(env.block.time, expires)?;
 
                     // Check sender is vetoer
                     timelock.check_is_vetoer(&info)?;
