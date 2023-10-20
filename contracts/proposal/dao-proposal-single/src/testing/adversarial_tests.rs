@@ -139,7 +139,7 @@ fn test_execute_proposal_more_than_once() {
 
     // assert proposal is passed, execute it
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
-    assert_eq!(proposal.proposal.status, Status::Passed {});
+    assert_eq!(proposal.proposal.status, Status::Passed);
     execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
 
     app.update_block(next_block);
@@ -333,7 +333,7 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
 
     // assert proposal is passed with 20 votes in favor and none opposed
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
-    assert_eq!(proposal.proposal.status, Status::Passed {});
+    assert_eq!(proposal.proposal.status, Status::Passed);
     assert_eq!(proposal.proposal.votes.yes, Uint128::new(20));
     assert_eq!(proposal.proposal.votes.no, Uint128::zero());
 
@@ -360,7 +360,7 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
     // assert that the late votes have been counted and proposal
     // is still in passed state before executing it
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
-    assert_eq!(proposal.proposal.status, Status::Passed {});
+    assert_eq!(proposal.proposal.status, Status::Passed);
     assert_eq!(proposal.proposal.votes.yes, Uint128::new(20));
     assert_eq!(proposal.proposal.votes.no, Uint128::new(80));
 

@@ -358,7 +358,7 @@ pub fn execute_execute(
     prop.update_status(&env.block);
     let old_status = prop.status;
     match prop.status {
-        Status::Passed {} => (),
+        Status::Passed => (),
         Status::Timelocked { expires } => {
             if let Some(ref timelock) = prop.timelock {
                 // Check if the sender is the vetoer
