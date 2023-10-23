@@ -1,9 +1,9 @@
 use cosmwasm_std::{coins, from_slice, to_binary, Addr, Coin, Empty, Uint128};
-use cps::query::{ProposalListResponse, ProposalResponse};
 use cw2::ContractVersion;
 use cw20::Cw20Coin;
 use cw_denom::UncheckedDenom;
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor};
+use dps::query::{ProposalListResponse, ProposalResponse};
 
 use dao_interface::state::ProposalModule;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
@@ -14,7 +14,7 @@ use dao_pre_propose_approval_single::{
     state::PendingProposal,
 };
 use dao_pre_propose_base::{error::PreProposeError, msg::DepositInfoResponse, state::Config};
-use dao_proposal_single as cps;
+use dao_proposal_single as dps;
 use dao_testing::helpers::instantiate_with_cw4_groups_governance;
 use dao_voting::{
     deposit::{CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
@@ -32,12 +32,12 @@ const APPROVER: &str = "contract6";
 
 fn cw_dao_proposal_single_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        cps::contract::execute,
-        cps::contract::instantiate,
-        cps::contract::query,
+        dps::contract::execute,
+        dps::contract::instantiate,
+        dps::contract::query,
     )
-    .with_migrate(cps::contract::migrate)
-    .with_reply(cps::contract::reply);
+    .with_migrate(dps::contract::migrate)
+    .with_reply(dps::contract::reply);
     Box::new(contract)
 }
 
@@ -72,10 +72,10 @@ fn get_proposal_module_approval_single_instantiate(
     app: &mut App,
     deposit_info: Option<UncheckedDepositInfo>,
     open_proposal_submission: bool,
-) -> cps::msg::InstantiateMsg {
+) -> dps::msg::InstantiateMsg {
     let pre_propose_id = app.store_code(cw_pre_propose_base_proposal_single());
 
-    cps::msg::InstantiateMsg {
+    dps::msg::InstantiateMsg {
         threshold: Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Majority {},
         },
@@ -107,10 +107,10 @@ fn get_proposal_module_approver_instantiate(
     _deposit_info: Option<UncheckedDepositInfo>,
     _open_proposal_submission: bool,
     pre_propose_approval_contract: String,
-) -> cps::msg::InstantiateMsg {
+) -> dps::msg::InstantiateMsg {
     let pre_propose_id = app.store_code(pre_propose_approver_contract());
 
-    cps::msg::InstantiateMsg {
+    dps::msg::InstantiateMsg {
         threshold: Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Majority {},
         },
@@ -171,7 +171,7 @@ fn setup_default_test(
     deposit_info: Option<UncheckedDepositInfo>,
     open_proposal_submission: bool,
 ) -> DefaultTestSetup {
-    let cps_id = app.store_code(cw_dao_proposal_single_contract());
+    let dps_id = app.store_code(cw_dao_proposal_single_contract());
 
     // Instantiate SubDAO with pre-propose-approval-single
     let proposal_module_instantiate = get_proposal_module_approval_single_instantiate(
@@ -181,7 +181,7 @@ fn setup_default_test(
     );
     let core_addr = instantiate_with_cw4_groups_governance(
         app,
-        cps_id,
+        dps_id,
         to_binary(&proposal_module_instantiate).unwrap(),
         Some(vec![
             cw20::Cw20Coin {
@@ -212,7 +212,7 @@ fn setup_default_test(
         .wrap()
         .query_wasm_smart(
             proposal_single.clone(),
-            &cps::msg::QueryMsg::ProposalCreationPolicy {},
+            &dps::msg::QueryMsg::ProposalCreationPolicy {},
         )
         .unwrap();
     let pre_propose = match proposal_creation_policy {
@@ -235,7 +235,7 @@ fn setup_default_test(
 
     let _approver_core_addr = instantiate_with_cw4_groups_governance(
         app,
-        cps_id,
+        dps_id,
         to_binary(&proposal_module_instantiate).unwrap(),
         Some(vec![
             cw20::Cw20Coin {
@@ -266,7 +266,7 @@ fn setup_default_test(
         .wrap()
         .query_wasm_smart(
             proposal_single_approver.clone(),
-            &cps::msg::QueryMsg::ProposalCreationPolicy {},
+            &dps::msg::QueryMsg::ProposalCreationPolicy {},
         )
         .unwrap();
     let pre_propose_approver = match proposal_creation_policy {
@@ -369,7 +369,7 @@ fn vote(app: &mut App, module: Addr, sender: &str, id: u64, position: Vote) -> S
     app.execute_contract(
         Addr::unchecked(sender),
         module.clone(),
-        &cps::msg::ExecuteMsg::Vote {
+        &dps::msg::ExecuteMsg::Vote {
             proposal_id: id,
             vote: position,
             rationale: None,
@@ -380,7 +380,7 @@ fn vote(app: &mut App, module: Addr, sender: &str, id: u64, position: Vote) -> S
 
     let proposal: ProposalResponse = app
         .wrap()
-        .query_wasm_smart(module, &cps::msg::QueryMsg::Proposal { proposal_id: id })
+        .query_wasm_smart(module, &dps::msg::QueryMsg::Proposal { proposal_id: id })
         .unwrap();
 
     proposal.proposal.status
@@ -414,7 +414,7 @@ fn get_proposals(app: &App, module: Addr) -> ProposalListResponse {
     app.wrap()
         .query_wasm_smart(
             module,
-            &cps::msg::QueryMsg::ListProposals {
+            &dps::msg::QueryMsg::ListProposals {
                 start_after: None,
                 limit: None,
             },
@@ -428,7 +428,7 @@ fn get_latest_proposal_id(app: &App, module: Addr) -> u64 {
         .wrap()
         .query_wasm_smart(
             module,
-            &cps::msg::QueryMsg::ListProposals {
+            &dps::msg::QueryMsg::ListProposals {
                 start_after: None,
                 limit: None,
             },
@@ -510,7 +510,7 @@ fn close_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64) {
     app.execute_contract(
         Addr::unchecked(sender),
         module,
-        &cps::msg::ExecuteMsg::Close { proposal_id },
+        &dps::msg::ExecuteMsg::Close { proposal_id },
         &[],
     )
     .unwrap();
@@ -520,7 +520,7 @@ fn execute_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64)
     app.execute_contract(
         Addr::unchecked(sender),
         module,
-        &cps::msg::ExecuteMsg::Execute { proposal_id },
+        &dps::msg::ExecuteMsg::Execute { proposal_id },
         &[],
     )
     .unwrap();
@@ -1517,7 +1517,7 @@ fn test_withdraw() {
         .wrap()
         .query_wasm_smart(
             proposal_single.clone(),
-            &cps::msg::QueryMsg::ProposalCreationPolicy {},
+            &dps::msg::QueryMsg::ProposalCreationPolicy {},
         )
         .unwrap();
 
