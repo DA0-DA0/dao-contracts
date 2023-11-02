@@ -7,7 +7,7 @@ use crate::{
         ClosedConfig, CommonsPhaseConfig, CurveType, HatchConfig, MinMax, OpenConfig, ReserveToken,
         SupplyToken,
     },
-    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     ContractError,
 };
 
@@ -15,11 +15,8 @@ use cosmwasm_std::{Coin, Decimal, Uint128};
 use dao_testing::test_tube::cw_tokenfactory_issuer::TokenfactoryIssuer;
 use osmosis_test_tube::{
     osmosis_std::types::cosmos::bank::v1beta1::QueryAllBalancesRequest,
-    osmosis_std::types::cosmwasm::wasm::v1::{
-        MsgExecuteContractResponse, MsgMigrateContract, MsgMigrateContractResponse,
-    },
-    Account, Bank, Module, OsmosisTestApp, RunnerError, RunnerExecuteResult, RunnerResult,
-    SigningAccount, Wasm,
+    osmosis_std::types::cosmwasm::wasm::v1::MsgExecuteContractResponse, Account, Bank, Module,
+    OsmosisTestApp, RunnerError, RunnerExecuteResult, SigningAccount, Wasm,
 };
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;

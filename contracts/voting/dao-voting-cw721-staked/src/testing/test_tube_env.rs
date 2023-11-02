@@ -24,12 +24,8 @@ use dao_testing::test_tube::{
 };
 use dao_voting::threshold::ActiveThreshold;
 use osmosis_test_tube::{
-    osmosis_std::types::{
-        cosmos::bank::v1beta1::QueryAllBalancesRequest,
-        cosmwasm::wasm::v1::MsgExecuteContractResponse,
-    },
-    Account, Bank, Module, OsmosisTestApp, RunnerError, RunnerExecuteResult, RunnerResult,
-    SigningAccount, Wasm,
+    osmosis_std::types::cosmwasm::wasm::v1::MsgExecuteContractResponse, Account, Bank, Module,
+    OsmosisTestApp, RunnerError, RunnerExecuteResult, RunnerResult, SigningAccount, Wasm,
 };
 use serde::de::DeserializeOwned;
 use std::path::PathBuf;

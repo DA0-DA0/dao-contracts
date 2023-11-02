@@ -1,24 +1,17 @@
 use cosmwasm_std::{
     testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage},
-    CosmosMsg, Decimal, DepsMut, OwnedDeps, Uint128, WasmMsg,
+    Decimal, DepsMut, OwnedDeps, Uint128,
 };
-use speculoos::prelude::*;
 use std::marker::PhantomData;
-use token_bindings::{Metadata, TokenFactoryMsg, TokenFactoryQuery};
+use token_bindings::{Metadata, TokenFactoryQuery};
 
+use crate::abc::{
+    ClosedConfig, CommonsPhaseConfig, CurveType, HatchConfig, MinMax, OpenConfig, ReserveToken,
+    SupplyToken,
+};
+use crate::contract;
 use crate::contract::CwAbcResult;
 use crate::msg::InstantiateMsg;
-use crate::queries::query_curve_info;
-use crate::{
-    abc::{
-        ClosedConfig, CommonsPhaseConfig, CurveType, HatchConfig, MinMax, OpenConfig, ReserveToken,
-        SupplyToken,
-    },
-    contract::instantiate,
-};
-use crate::{contract, state::CURVE_TYPE};
-
-const CREATOR: &str = "creator";
 
 pub(crate) mod prelude {
     pub use super::{
