@@ -268,7 +268,63 @@ pub fn execute_veto(
         .may_load(deps.storage, proposal_id)?
         .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
 
+    // TODO refactor for brevity and better code reuse
     match prop.status {
+        Status::Open => {
+            match prop.timelock {
+                Some(ref timelock) => {
+                    // Check sender is vetoer
+                    timelock.check_is_vetoer(&info)?;
+
+                    // Veto prop only if veto_before_passed is true
+                    timelock.check_veto_before_passed_enabled()?;
+
+                    let old_status = prop.status;
+
+                    // Update proposal status to vetoed
+                    prop.status = Status::Vetoed;
+                    PROPOSALS.save(deps.storage, proposal_id, &prop)?;
+
+                    let hooks = proposal_status_changed_hooks(
+                        PROPOSAL_HOOKS,
+                        deps.storage,
+                        proposal_id,
+                        old_status.to_string(),
+                        prop.status.to_string(),
+                    )?;
+
+                    // TODO refactor into proposal_creation_policy_hooks?
+                    // Add prepropose / deposit module hook which will handle deposit refunds.
+                    let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
+                    let hooks = match proposal_creation_policy {
+                        ProposalCreationPolicy::Anyone {} => hooks,
+                        ProposalCreationPolicy::Module { addr } => {
+                            let msg = to_binary(&PreProposeHookMsg::ProposalCompletedHook {
+                                proposal_id,
+                                new_status: prop.status,
+                            })?;
+                            let mut hooks = hooks;
+                            hooks.push(SubMsg::reply_on_error(
+                                WasmMsg::Execute {
+                                    contract_addr: addr.into_string(),
+                                    msg,
+                                    funds: vec![],
+                                },
+                                failed_pre_propose_module_hook_id(),
+                            ));
+                            hooks
+                        }
+                    };
+
+                    Ok(Response::new()
+                        .add_attribute("action", "veto")
+                        .add_attribute("proposal_id", proposal_id.to_string())
+                        .add_submessages(hooks))
+                }
+                // If timelock is not configured throw error. This should never happen.
+                None => Err(ContractError::TimelockError(TimelockError::NoTimelock {})),
+            }
+        }
         Status::Timelocked { expires } => {
             match prop.timelock {
                 Some(ref timelock) => {
@@ -324,8 +380,12 @@ pub fn execute_veto(
                 None => Err(ContractError::TimelockError(TimelockError::NoTimelock {})),
             }
         }
-        // Error if the proposal hasn't passed
-        _ => Err(ContractError::NotPassed {}),
+        // Error if the proposal has any other status
+        _ => Err(ContractError::TimelockError(
+            TimelockError::InvalidProposalStatus {
+                status: prop.status.to_string(),
+            },
+        )),
     }
 }
 

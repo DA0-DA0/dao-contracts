@@ -41,7 +41,7 @@ pub struct SingleChoiceProposal {
     /// Whether or not revoting is enabled. If revoting is enabled, a proposal
     /// cannot pass until the voting period has elapsed.
     pub allow_revoting: bool,
-    /// Timelock info, if configured
+    /// Timelock info, if configured enables veto
     pub timelock: Option<Timelock>,
 }
 

@@ -392,6 +392,7 @@ fn test_proposal_message_timelock_execution() {
         delay: Timestamp::from_seconds(100),
         vetoer: "oversight".to_string(),
         early_execute: false,
+        veto_before_passed: false,
     });
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
@@ -511,6 +512,7 @@ fn test_proposal_message_timelock_veto() {
         delay: Timestamp::from_seconds(100),
         vetoer: "oversight".to_string(),
         early_execute: false,
+        veto_before_passed: false,
     });
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
@@ -562,7 +564,10 @@ fn test_proposal_message_timelock_veto() {
         .unwrap_err()
         .downcast()
         .unwrap();
-    assert_eq!(err, ContractError::NotPassed {});
+    assert_eq!(
+        err,
+        ContractError::TimelockError(TimelockError::NoVetoBeforePassed {})
+    );
 
     // Vote on proposal to pass it
     vote_on_proposal(
@@ -622,6 +627,7 @@ fn test_proposal_message_timelock_early_execution() {
         delay: Timestamp::from_seconds(100),
         vetoer: "oversight".to_string(),
         early_execute: true,
+        veto_before_passed: false,
     });
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
@@ -691,6 +697,83 @@ fn test_proposal_message_timelock_early_execution() {
     execute_proposal(&mut app, &proposal_module, "oversight", proposal_id);
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Executed);
+}
+
+#[test]
+fn test_proposal_message_timelock_veto_before_passed() {
+    let mut app = App::default();
+    let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
+    instantiate.close_proposal_on_execution_failure = false;
+    instantiate.timelock = Some(Timelock {
+        delay: Timestamp::from_seconds(100),
+        vetoer: "oversight".to_string(),
+        early_execute: false,
+        veto_before_passed: true,
+    });
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        instantiate,
+        Some(vec![
+            Cw20Coin {
+                address: "oversight".to_string(),
+                amount: Uint128::new(15),
+            },
+            Cw20Coin {
+                address: CREATOR_ADDR.to_string(),
+                amount: Uint128::new(85),
+            },
+        ]),
+    );
+    let proposal_module = query_single_proposal_module(&app, &core_addr);
+    let gov_token = query_dao_token(&app, &core_addr);
+
+    mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
+    let proposal_id = make_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        vec![
+            WasmMsg::Execute {
+                contract_addr: gov_token.to_string(),
+                msg: to_binary(&cw20::Cw20ExecuteMsg::Mint {
+                    recipient: CREATOR_ADDR.to_string(),
+                    amount: Uint128::new(10_000_000),
+                })
+                .unwrap(),
+                funds: vec![],
+            }
+            .into(),
+            BankMsg::Send {
+                to_address: CREATOR_ADDR.to_string(),
+                amount: coins(10, "ujuno"),
+            }
+            .into(),
+        ],
+    );
+
+    let proposal = query_proposal(&app, &proposal_module, proposal_id);
+
+    // Proposal is open for voting
+    assert_eq!(proposal.proposal.status, Status::Open);
+
+    // Oversite vetos prop
+    app.execute_contract(
+        Addr::unchecked("oversight"),
+        proposal_module.clone(),
+        &ExecuteMsg::Veto { proposal_id },
+        &[],
+    )
+    .unwrap();
+
+    let proposal = query_proposal(&app, &proposal_module, proposal_id);
+    assert_eq!(proposal.proposal.status, Status::Vetoed);
+
+    // mint_natives(&mut app, core_addr.as_str(), coins(10, "ujuno"));
+
+    // // Proposal can be executed early by vetoer
+    // execute_proposal(&mut app, &proposal_module, "oversight", proposal_id);
+    // let proposal = query_proposal(&app, &proposal_module, proposal_id);
+    // assert_eq!(proposal.proposal.status, Status::Executed);
 }
 
 #[test]
@@ -897,6 +980,7 @@ fn test_update_config() {
                     delay: Timestamp::from_seconds(100),
                     vetoer: CREATOR_ADDR.to_string(),
                     early_execute: false,
+                    veto_before_passed: false,
                 }),
                 threshold: Threshold::AbsoluteCount {
                     threshold: Uint128::new(10_000),
@@ -929,7 +1013,8 @@ fn test_update_config() {
             timelock: Some(Timelock {
                 delay: Timestamp::from_seconds(100),
                 vetoer: CREATOR_ADDR.to_string(),
-                early_execute: false
+                early_execute: false,
+                veto_before_passed: false,
             }),
             threshold: Threshold::AbsoluteCount {
                 threshold: Uint128::new(10_000)
