@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    coins, ensure, to_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal as StdDecimal, DepsMut, Env,
-    MessageInfo, QuerierWrapper, Response, StdError, StdResult, Storage, Uint128, WasmMsg,
+    ensure, to_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal as StdDecimal, DepsMut, Env,
+    MessageInfo, QuerierWrapper, Response, StdError, StdResult, Storage, SubMsg, Uint128, WasmMsg,
 };
 use cw_tokenfactory_issuer::msg::ExecuteMsg as IssuerExecuteMsg;
 use cw_utils::must_pay;
@@ -120,8 +120,6 @@ pub fn execute_sell(
     info: MessageInfo,
     curve_fn: CurveFn,
 ) -> CwAbcResult {
-    let burner = info.sender.clone();
-
     let supply_denom = SUPPLY_DENOM.load(deps.storage)?;
     let burn_amount = must_pay(&info, &supply_denom)?;
 
@@ -172,16 +170,19 @@ pub fn execute_sell(
         .map_err(StdError::overflow)?;
 
     // Now send the tokens to the sender
-    let msg_send = BankMsg::Send {
-        to_address: burner.to_string(),
-        amount: coins(released_reserve.u128(), curve_state.reserve_denom),
-    };
+    let msg_send = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+        to_address: info.sender.to_string(),
+        amount: vec![Coin {
+            amount: released_reserve,
+            denom: curve_state.reserve_denom,
+        }],
+    }));
 
     Ok(Response::<TokenFactoryMsg>::new()
-        .add_message(msg_send)
         .add_messages(burn_msgs)
+        .add_submessage(msg_send)
         .add_attribute("action", "burn")
-        .add_attribute("from", burner)
+        .add_attribute("from", info.sender)
         .add_attribute("amount", burn_amount)
         .add_attribute("burned", released_reserve)
         .add_attribute("funded", taxed_amount))

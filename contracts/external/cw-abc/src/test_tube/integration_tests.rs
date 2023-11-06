@@ -48,8 +48,17 @@ fn test_happy_path() {
     let phase: CommonsPhaseConfigResponse = abc.query(&QueryMsg::PhaseConfig {}).unwrap();
     println!("Phase {:?}", phase);
 
+    // Contract balances
+    let balances = env.bank().query_all_balances(
+        &osmosis_test_tube::osmosis_std::types::cosmos::bank::v1beta1::QueryAllBalancesRequest {
+            address: abc.contract_addr.to_string(),
+            pagination: None,
+        },
+    ).unwrap();
+    println!("{:?}", balances);
+
     // Burn
-    abc.execute(&ExecuteMsg::Burn {}, &coins(900000, denom), &accounts[0])
+    abc.execute(&ExecuteMsg::Burn {}, &coins(10000, denom), &accounts[0])
         .unwrap();
 
     let curve_info: CurveInfoResponse = abc.query(&QueryMsg::CurveInfo {}).unwrap();
