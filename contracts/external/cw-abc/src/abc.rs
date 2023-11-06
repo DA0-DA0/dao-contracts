@@ -191,6 +191,7 @@ impl CommonsPhaseConfig {
 
 pub type CurveFn = Box<dyn Fn(DecimalPlaces) -> Box<dyn Curve>>;
 
+// TODO add S-curve and taylor series
 #[cw_serde]
 pub enum CurveType {
     /// Constant always returns `value * 10^-scale` as spot price
