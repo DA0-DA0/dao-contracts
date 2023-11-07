@@ -8,7 +8,9 @@ use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_hooks::Hooks;
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration};
-use dao_hooks::proposal::{new_proposal_hooks, proposal_status_changed_hooks};
+use dao_hooks::proposal::{
+    new_proposal_hooks, proposal_completed_hooks, proposal_status_changed_hooks,
+};
 use dao_hooks::vote::new_vote_hooks;
 use dao_interface::voting::IsActiveResponse;
 use dao_voting::pre_propose::{PreProposeInfo, ProposalCreationPolicy};
@@ -39,10 +41,6 @@ use crate::{
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-proposal-single";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-/// Message type used for firing hooks to this module's pre-propose
-/// module, if one is installed.
-type PreProposeHookMsg = dao_pre_propose_base::msg::ExecuteMsg<Empty, Empty>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -268,7 +266,6 @@ pub fn execute_veto(
         .may_load(deps.storage, proposal_id)?
         .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
 
-    // TODO refactor for brevity and better code reuse
     match prop.status {
         Status::Open => {
             match prop.timelock {
@@ -285,7 +282,8 @@ pub fn execute_veto(
                     prop.status = Status::Vetoed;
                     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
-                    let hooks = proposal_status_changed_hooks(
+                    // Add proposal status change hooks
+                    let proposal_status_changed_hooks = proposal_status_changed_hooks(
                         PROPOSAL_HOOKS,
                         deps.storage,
                         proposal_id,
@@ -293,33 +291,19 @@ pub fn execute_veto(
                         prop.status.to_string(),
                     )?;
 
-                    // TODO refactor into proposal_creation_policy_hooks?
                     // Add prepropose / deposit module hook which will handle deposit refunds.
                     let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
-                    let hooks = match proposal_creation_policy {
-                        ProposalCreationPolicy::Anyone {} => hooks,
-                        ProposalCreationPolicy::Module { addr } => {
-                            let msg = to_binary(&PreProposeHookMsg::ProposalCompletedHook {
-                                proposal_id,
-                                new_status: prop.status,
-                            })?;
-                            let mut hooks = hooks;
-                            hooks.push(SubMsg::reply_on_error(
-                                WasmMsg::Execute {
-                                    contract_addr: addr.into_string(),
-                                    msg,
-                                    funds: vec![],
-                                },
-                                failed_pre_propose_module_hook_id(),
-                            ));
-                            hooks
-                        }
-                    };
+                    let proposal_completed_hooks = proposal_completed_hooks(
+                        proposal_creation_policy,
+                        proposal_id,
+                        prop.status,
+                    )?;
 
                     Ok(Response::new()
                         .add_attribute("action", "veto")
                         .add_attribute("proposal_id", proposal_id.to_string())
-                        .add_submessages(hooks))
+                        .add_submessages(proposal_status_changed_hooks)
+                        .add_submessages(proposal_completed_hooks))
                 }
                 // If timelock is not configured throw error. This should never happen.
                 None => Err(ContractError::TimelockError(TimelockError::NoTimelock {})),
@@ -341,7 +325,8 @@ pub fn execute_veto(
                     prop.status = Status::Vetoed;
                     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
-                    let hooks = proposal_status_changed_hooks(
+                    // Add proposal status change hooks
+                    let proposal_status_changed_hooks = proposal_status_changed_hooks(
                         PROPOSAL_HOOKS,
                         deps.storage,
                         proposal_id,
@@ -351,30 +336,17 @@ pub fn execute_veto(
 
                     // Add prepropose / deposit module hook which will handle deposit refunds.
                     let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
-                    let hooks = match proposal_creation_policy {
-                        ProposalCreationPolicy::Anyone {} => hooks,
-                        ProposalCreationPolicy::Module { addr } => {
-                            let msg = to_binary(&PreProposeHookMsg::ProposalCompletedHook {
-                                proposal_id,
-                                new_status: prop.status,
-                            })?;
-                            let mut hooks = hooks;
-                            hooks.push(SubMsg::reply_on_error(
-                                WasmMsg::Execute {
-                                    contract_addr: addr.into_string(),
-                                    msg,
-                                    funds: vec![],
-                                },
-                                failed_pre_propose_module_hook_id(),
-                            ));
-                            hooks
-                        }
-                    };
+                    let proposal_completed_hooks = proposal_completed_hooks(
+                        proposal_creation_policy,
+                        proposal_id,
+                        prop.status,
+                    )?;
 
                     Ok(Response::new()
                         .add_attribute("action", "veto")
                         .add_attribute("proposal_id", proposal_id.to_string())
-                        .add_submessages(hooks))
+                        .add_submessages(proposal_status_changed_hooks)
+                        .add_submessages(proposal_completed_hooks))
                 }
                 // If timelock is not configured throw error. This should never happen.
                 None => Err(ContractError::TimelockError(TimelockError::NoTimelock {})),
@@ -462,7 +434,8 @@ pub fn execute_execute(
         }
     };
 
-    let hooks = proposal_status_changed_hooks(
+    // Add proposal status change hooks
+    let proposal_status_changed_hooks = proposal_status_changed_hooks(
         PROPOSAL_HOOKS,
         deps.storage,
         proposal_id,
@@ -472,28 +445,12 @@ pub fn execute_execute(
 
     // Add prepropose / deposit module hook which will handle deposit refunds.
     let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
-    let hooks = match proposal_creation_policy {
-        ProposalCreationPolicy::Anyone {} => hooks,
-        ProposalCreationPolicy::Module { addr } => {
-            let msg = to_binary(&PreProposeHookMsg::ProposalCompletedHook {
-                proposal_id,
-                new_status: prop.status,
-            })?;
-            let mut hooks = hooks;
-            hooks.push(SubMsg::reply_on_error(
-                WasmMsg::Execute {
-                    contract_addr: addr.into_string(),
-                    msg,
-                    funds: vec![],
-                },
-                failed_pre_propose_module_hook_id(),
-            ));
-            hooks
-        }
-    };
+    let proposal_completed_hooks =
+        proposal_completed_hooks(proposal_creation_policy, proposal_id, prop.status)?;
 
     Ok(response
-        .add_submessages(hooks)
+        .add_submessages(proposal_status_changed_hooks)
+        .add_submessages(proposal_completed_hooks)
         .add_attribute("action", "execute")
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string())
@@ -651,7 +608,8 @@ pub fn execute_close(
     prop.status = Status::Closed;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
-    let hooks = proposal_status_changed_hooks(
+    // Add proposal status change hooks
+    let proposal_status_changed_hooks = proposal_status_changed_hooks(
         PROPOSAL_HOOKS,
         deps.storage,
         proposal_id,
@@ -661,28 +619,12 @@ pub fn execute_close(
 
     // Add prepropose / deposit module hook which will handle deposit refunds.
     let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
-    let hooks = match proposal_creation_policy {
-        ProposalCreationPolicy::Anyone {} => hooks,
-        ProposalCreationPolicy::Module { addr } => {
-            let msg = to_binary(&PreProposeHookMsg::ProposalCompletedHook {
-                proposal_id,
-                new_status: prop.status,
-            })?;
-            let mut hooks = hooks;
-            hooks.push(SubMsg::reply_on_error(
-                WasmMsg::Execute {
-                    contract_addr: addr.into_string(),
-                    msg,
-                    funds: vec![],
-                },
-                failed_pre_propose_module_hook_id(),
-            ));
-            hooks
-        }
-    };
+    let proposal_completed_hooks =
+        proposal_completed_hooks(proposal_creation_policy, proposal_id, prop.status)?;
 
     Ok(Response::default()
-        .add_submessages(hooks)
+        .add_submessages(proposal_status_changed_hooks)
+        .add_submessages(proposal_completed_hooks)
         .add_attribute("action", "close")
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string()))
