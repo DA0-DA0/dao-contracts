@@ -2,7 +2,7 @@ use std::borrow::BorrowMut;
 
 use cosmwasm_std::{to_binary, Addr, WasmMsg};
 use cw_multi_test::{next_block, App, AppResponse, Executor};
-use dao_interface::state::{Admin, ModuleInstantiateInfo};
+use dao_interface_v2::state::{Admin, ModuleInstantiateInfo};
 use dao_testing::contracts::stake_cw20_v03_contract;
 
 use crate::{

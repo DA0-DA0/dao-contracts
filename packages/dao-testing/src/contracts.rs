@@ -205,7 +205,8 @@ pub fn v2_dao_dao_contract() -> Box<dyn Contract<Empty>> {
         dao_dao_core_v2::contract::instantiate,
         dao_dao_core_v2::contract::query,
     )
-    .with_reply(dao_dao_core_v2::contract::reply);
+    .with_reply(dao_dao_core_v2::contract::reply)
+    .with_migrate(dao_dao_core_v2::contract::migrate);
     Box::new(contract)
 }
 

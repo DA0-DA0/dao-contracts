@@ -77,7 +77,7 @@ pub fn query_proposal_v2(
         .wrap()
         .query_wasm_smart::<dao_proposal_single_v2::query::ProposalListResponse>(
             proposal_addr,
-            &dao_proposal_single::msg::QueryMsg::ListProposals {
+            &dao_proposal_single_v2::msg::QueryMsg::ListProposals {
                 start_after: None,
                 limit: None,
             },
