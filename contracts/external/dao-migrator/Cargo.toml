@@ -48,6 +48,7 @@ cw4-v1                        = { version = "0.13", package = "cw4" }
 
 # v2 migration
 dao-dao-core-v2 = { workspace = true }
+dao-interface-v2 = { workspace = true }
 cw-utils-v2 = { workspace = true }
 dao-proposal-single-v2 = { workspace = true, features = ["library"] }
 voting-v2 = { workspace = true}

@@ -179,6 +179,36 @@ pub fn v1_dao_dao_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
+pub fn v2_proposal_single_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        dao_proposal_single_v2::contract::execute,
+        dao_proposal_single_v2::contract::instantiate,
+        dao_proposal_single_v2::contract::query,
+    )
+    .with_reply(dao_proposal_single_v2::contract::reply)
+    .with_migrate(dao_proposal_single_v2::contract::migrate);
+    Box::new(contract)
+}
+
+pub fn v2_pre_propose_single_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        dao_pre_propose_single_v2::contract::execute,
+        dao_pre_propose_single_v2::contract::instantiate,
+        dao_pre_propose_single_v2::contract::query,
+    );
+    Box::new(contract)
+}
+
+pub fn v2_dao_dao_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        dao_dao_core_v2::contract::execute,
+        dao_dao_core_v2::contract::instantiate,
+        dao_dao_core_v2::contract::query,
+    )
+    .with_reply(dao_dao_core_v2::contract::reply);
+    Box::new(contract)
+}
+
 pub fn cw_vesting_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         cw_vesting::contract::execute,

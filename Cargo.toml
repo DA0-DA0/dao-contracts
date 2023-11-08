@@ -132,4 +132,5 @@ cw-utils-v2 = { package = "cw-utils", version = "0.16" }
 dao-dao-core-v2 = { package = "dao-dao-core", version = "2.2.0" }
 dao-interface-v2 = { package = "dao-interface", version = "2.2.0" }
 dao-proposal-single-v2 = { package = "dao-proposal-single", version = "2.2.0" }
+dao-pre-propose-single-v2 = { package = "dao-pre-propose-single", version = "2.2.0" }
 voting-v2 = { package = "dao-voting", version = "2.2.0" }

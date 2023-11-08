@@ -56,4 +56,8 @@ cw20-base = { workspace = true }
 cw721-base = { workspace = true }
 cw4 = { workspace = true }
 cw4-group = { workspace = true }
+
+# Required for migration testing
 dao-dao-core-v2 = { workspace = true, features = ["library"] }
+dao-interface-v2 = { workspace = true }
+dao-pre-propose-single-v2 = { workspace = true, features = ["library"] }
