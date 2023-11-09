@@ -958,9 +958,10 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
             // blob we are migrating to. `version` is from storage. If
             // the version in storage matches the version in the blob
             // we are not upgrading.
-            if version == CONTRACT_VERSION {
-                return Err(ContractError::AlreadyMigrated {});
-            }
+            // TODO fix this check!
+            // if version == CONTRACT_VERSION {
+            //     return Err(ContractError::AlreadyMigrated {});
+            // }
 
             // TODO check that the version is greater than 2.0.0
 

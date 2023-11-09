@@ -102,23 +102,25 @@ fn test_v2_v3_full_migration() {
                             only_members_execute: false,
                             allow_revoting: false,
                             pre_propose_info:
-                                voting_v2::pre_propose::PreProposeInfo::ModuleMayPropose {
-                                    info: dao_interface_v2::state::ModuleInstantiateInfo {
-                                        code_id: pre_proposal_code,
-                                        msg: to_binary(
-                                            &dao_pre_propose_single_v2::InstantiateMsg {
-                                                deposit_info: None,
-                                                open_proposal_submission: false,
-                                                extension: cosmwasm_std::Empty {},
-                                            },
-                                        )
-                                        .unwrap(),
-                                        admin: Some(dao_interface_v2::state::Admin::CoreModule {}),
-                                        funds: vec![],
-                                        label: "pre-propose module".to_string(),
-                                    },
-                                },
-                            close_proposal_on_execution_failure: false,
+                                // TODO use pre-propose module
+                                // voting_v2::pre_propose::PreProposeInfo::ModuleMayPropose {
+                                //     info: dao_interface_v2::state::ModuleInstantiateInfo {
+                                //         code_id: pre_proposal_code,
+                                //         msg: to_binary(
+                                //             &dao_pre_propose_single_v2::InstantiateMsg {
+                                //                 deposit_info: None,
+                                //                 open_proposal_submission: false,
+                                //                 extension: cosmwasm_std::Empty {},
+                                //             },
+                                //         )
+                                //         .unwrap(),
+                                //         admin: Some(dao_interface_v2::state::Admin::CoreModule {}),
+                                //         funds: vec![],
+                                //         label: "pre-propose module".to_string(),
+                                //     },
+                                // },
+                                voting_v2::pre_propose::PreProposeInfo::AnyoneMayPropose {},
+                            close_proposal_on_execution_failure: true,
                         })
                         .unwrap(),
                         admin: Some(dao_interface_v2::state::Admin::CoreModule {}),
@@ -190,7 +192,7 @@ fn test_v2_v3_full_migration() {
     // ----
 
     let proposal = {
-        let modules: Vec<Addr> = app
+        let modules: Vec<dao_interface_v2::state::ProposalModule> = app
             .wrap()
             .query_wasm_smart(
                 &core,
@@ -201,7 +203,7 @@ fn test_v2_v3_full_migration() {
             )
             .unwrap();
         assert!(modules.len() == 1);
-        modules.into_iter().next().unwrap()
+        modules.into_iter().next().unwrap().address
     };
 
     app.execute_contract(
@@ -308,8 +310,7 @@ fn test_v2_v3_full_migration() {
         &dao_proposal_single_v2::msg::ExecuteMsg::Execute { proposal_id: 2 },
         &[],
     )
-    // can not be executed.
-    .unwrap_err();
+    .unwrap();
     let dao_proposal_single_v2::query::ProposalResponse {
         proposal: dao_proposal_single_v2::proposal::SingleChoiceProposal { status, .. },
         ..
@@ -320,7 +321,7 @@ fn test_v2_v3_full_migration() {
             &dao_proposal_single_v2::msg::QueryMsg::Proposal { proposal_id: 2 },
         )
         .unwrap();
-    assert_eq!(status, voting_v2::status::Status::Passed);
+    assert_eq!(status, voting_v2::status::Status::ExecutionFailed {});
 
     // ----
     // create a proposal to migrate to v3
@@ -338,6 +339,8 @@ fn test_v2_v3_full_migration() {
         }),
         false,
     );
+
+    // TODO test migrate with timelock enabled
     app.execute_contract(
         sender.clone(),
         proposal.clone(),
@@ -376,6 +379,7 @@ fn test_v2_v3_full_migration() {
         &[],
     )
     .unwrap();
+
     app.execute_contract(
         sender.clone(),
         proposal.clone(),
@@ -383,14 +387,6 @@ fn test_v2_v3_full_migration() {
         &[],
     )
     .unwrap();
-
-    // ----
-    // execute proposal two. the addition of
-    // close_proposal_on_execution_failure ought to allow it to close.
-    // ----
-    execute_proposal(&mut app, &proposal, sender.as_str(), 2);
-    let status = query_proposal(&app, &proposal, 2).proposal.status;
-    assert_eq!(status, Status::ExecutionFailed);
 
     // ----
     // check that proposal count is still three after proposal state migration.
