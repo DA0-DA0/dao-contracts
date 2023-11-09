@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
+    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
     StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
@@ -131,7 +131,7 @@ pub fn execute_nft_factory(
     INITIAL_NFTS.save(deps.storage, &initial_nfts)?;
 
     // Override minter to be the DAO address
-    let msg = to_binary(&Cw721InstantiateMsg {
+    let msg = to_json_binary(&Cw721InstantiateMsg {
         name: cw721_instantiate_msg.name,
         symbol: cw721_instantiate_msg.symbol,
         minter: dao.to_string(),
@@ -190,7 +190,7 @@ pub fn execute_nft_factory_wrong_callback(
     _env: Env,
     _info: MessageInfo,
 ) -> Result<Response, ContractError> {
-    Ok(Response::new().set_data(to_binary(&TokenFactoryCallback {
+    Ok(Response::new().set_data(to_json_binary(&TokenFactoryCallback {
         denom: "wrong".to_string(),
         token_contract: None,
         module_instantiate_callback: None,
@@ -224,7 +224,7 @@ pub fn execute_token_factory_factory(
         WasmMsg::Instantiate {
             admin: Some(dao.to_string()),
             code_id: token.token_issuer_code_id,
-            msg: to_binary(&IssuerInstantiateMsg::NewToken {
+            msg: to_json_binary(&IssuerInstantiateMsg::NewToken {
                 subdenom: token.subdenom,
             })?,
             funds: vec![],
@@ -264,7 +264,7 @@ pub fn execute_token_factory_factory_wrong_callback(
     _env: Env,
     _info: MessageInfo,
 ) -> Result<Response, ContractError> {
-    Ok(Response::new().set_data(to_binary(&NftFactoryCallback {
+    Ok(Response::new().set_data(to_json_binary(&NftFactoryCallback {
         nft_contract: "nope".to_string(),
         module_instantiate_callback: None,
     })?))
@@ -328,7 +328,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
-    to_binary(&dao_interface::voting::InfoResponse { info })
+    to_json_binary(&dao_interface::voting::InfoResponse { info })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -377,7 +377,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             // Grant an allowance to mint the initial supply
             msgs.push(WasmMsg::Execute {
                 contract_addr: issuer_addr.clone(),
-                msg: to_binary(&IssuerExecuteMsg::SetMinterAllowance {
+                msg: to_json_binary(&IssuerExecuteMsg::SetMinterAllowance {
                     address: env.contract.address.to_string(),
                     allowance: total_supply,
                 })?,
@@ -391,7 +391,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 .for_each(|b: &InitialBalance| {
                     msgs.push(WasmMsg::Execute {
                         contract_addr: issuer_addr.clone(),
-                        msg: to_binary(&IssuerExecuteMsg::Mint {
+                        msg: to_json_binary(&IssuerExecuteMsg::Mint {
                             to_address: b.address.clone(),
                             amount: b.amount,
                         })
@@ -405,7 +405,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 if !initial_dao_balance.is_zero() {
                     msgs.push(WasmMsg::Execute {
                         contract_addr: issuer_addr.clone(),
-                        msg: to_binary(&IssuerExecuteMsg::Mint {
+                        msg: to_json_binary(&IssuerExecuteMsg::Mint {
                             to_address: dao.to_string(),
                             amount: initial_dao_balance,
                         })?,
@@ -418,7 +418,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             // two-step ownership transfer.
             msgs.push(WasmMsg::Execute {
                 contract_addr: issuer_addr.clone(),
-                msg: to_binary(&IssuerExecuteMsg::UpdateOwnership(
+                msg: to_json_binary(&IssuerExecuteMsg::UpdateOwnership(
                     cw_ownable::Action::TransferOwnership {
                         new_owner: dao.to_string(),
                         expiry: None,
@@ -434,7 +434,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             let callback = ModuleInstantiateCallback {
                 msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: issuer_addr.clone(),
-                    msg: to_binary(&IssuerExecuteMsg::UpdateOwnership(
+                    msg: to_json_binary(&IssuerExecuteMsg::UpdateOwnership(
                         cw_ownable::Action::AcceptOwnership {},
                     ))?,
                     funds: vec![],
@@ -445,7 +445,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             // TokenFactoryCallback.
             Ok(Response::new()
                 .add_messages(msgs)
-                .set_data(to_binary(&TokenFactoryCallback {
+                .set_data(to_json_binary(&TokenFactoryCallback {
                     denom,
                     token_contract: Some(issuer_addr.to_string()),
                     module_instantiate_callback: Some(callback),
@@ -481,13 +481,13 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             // but factory contracts SHOULD validate setups.
             msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: env.contract.address.to_string(),
-                msg: to_binary(&ExecuteMsg::ValidateNftDao {})?,
+                msg: to_json_binary(&ExecuteMsg::ValidateNftDao {})?,
                 funds: vec![],
             }));
 
             // Responses for `dao-voting-cw721-staked` MUST include a
             // NftFactoryCallback.
-            Ok(Response::new().set_data(to_binary(&NftFactoryCallback {
+            Ok(Response::new().set_data(to_json_binary(&NftFactoryCallback {
                 nft_contract: nft_address.to_string(),
                 module_instantiate_callback: Some(ModuleInstantiateCallback { msgs }),
             })?))

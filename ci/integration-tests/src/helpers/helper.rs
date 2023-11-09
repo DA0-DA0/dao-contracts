@@ -1,7 +1,7 @@
 use super::chain::Chain;
 use anyhow::Result;
 use cosm_orc::orchestrator::SigningKey;
-use cosmwasm_std::{to_binary, CosmosMsg, Decimal, Empty, Uint128};
+use cosmwasm_std::{to_json_binary, CosmosMsg, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_utils::Duration;
 use dao_interface::query::DumpStateResponse;
@@ -39,7 +39,7 @@ pub fn create_dao(
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: chain.orc.contract_map.code_id("dao_voting_cw20_staked")?,
-            msg: to_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
+            msg: to_json_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
                 token_info: dao_voting_cw20_staked::msg::TokenInfo::New {
                     code_id: chain.orc.contract_map.code_id("cw20_base")?,
                     label: "DAO DAO Gov token".to_string(),
@@ -63,7 +63,7 @@ pub fn create_dao(
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: chain.orc.contract_map.code_id("dao_proposal_single")?,
-            msg: to_binary(&dao_proposal_single::msg::InstantiateMsg {
+            msg: to_json_binary(&dao_proposal_single::msg::InstantiateMsg {
                 min_voting_period: None,
                 threshold: Threshold::ThresholdQuorum {
                     threshold: PercentageThreshold::Majority {},
@@ -76,7 +76,7 @@ pub fn create_dao(
                 pre_propose_info: PreProposeInfo::ModuleMayPropose {
                     info: ModuleInstantiateInfo {
                         code_id: chain.orc.contract_map.code_id("dao_pre_propose_single")?,
-                        msg: to_binary(&dao_pre_propose_single::InstantiateMsg {
+                        msg: to_json_binary(&dao_pre_propose_single::InstantiateMsg {
                             deposit_info: Some(UncheckedDepositInfo {
                                 denom: DepositToken::VotingModuleToken {},
                                 amount: DEPOSIT_AMOUNT,
@@ -187,7 +187,7 @@ pub fn stake_tokens(chain: &mut Chain, how_many: u128, key: &SigningKey) {
             &cw20::Cw20ExecuteMsg::Send {
                 contract: chain.orc.contract_map.address("cw20_stake").unwrap(),
                 amount: Uint128::new(how_many),
-                msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+                msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
             },
             key,
             vec![],

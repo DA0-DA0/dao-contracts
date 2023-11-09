@@ -11,7 +11,7 @@ use crate::testing::{
     },
     queries::{query_balance_cw20, query_dao_token, query_proposal, query_single_proposal_module},
 };
-use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Decimal, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App};
 use cw_utils::Duration;
@@ -301,7 +301,7 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
         recipient: "threshold".to_string(),
         amount: Uint128::new(100_000_000),
     };
-    let binary_msg = to_binary(&msg).unwrap();
+    let binary_msg = to_json_binary(&msg).unwrap();
 
     mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
     let proposal_id = make_proposal(

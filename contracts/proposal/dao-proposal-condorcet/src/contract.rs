@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
+    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
 };
 
 use cw2::set_contract_version;
@@ -252,12 +252,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let mut proposal = PROPOSAL.load(deps.storage, id)?;
             let tally = TALLY.load(deps.storage, id)?;
             proposal.update_status(&env.block, &tally);
-            to_binary(&ProposalResponse { proposal, tally })
+            to_json_binary(&ProposalResponse { proposal, tally })
         }
-        QueryMsg::Config {} => to_binary(&CONFIG.load(deps.storage)?),
-        QueryMsg::NextProposalId {} => to_binary(&next_proposal_id(deps.storage)?),
-        QueryMsg::Dao {} => to_binary(&DAO.load(deps.storage)?),
-        QueryMsg::Info {} => to_binary(&dao_interface::voting::InfoResponse {
+        QueryMsg::Config {} => to_json_binary(&CONFIG.load(deps.storage)?),
+        QueryMsg::NextProposalId {} => to_json_binary(&next_proposal_id(deps.storage)?),
+        QueryMsg::Dao {} => to_json_binary(&DAO.load(deps.storage)?),
+        QueryMsg::Info {} => to_json_binary(&dao_interface::voting::InfoResponse {
             info: cw2::get_contract_version(deps.storage)?,
         }),
     }

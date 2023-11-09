@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
+    from_json_binary, to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
     StdError, StdResult, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
@@ -129,7 +129,7 @@ pub fn execute_receive(
             expected: config.token_address,
         });
     }
-    let msg: ReceiveMsg = from_binary(&wrapper.msg)?;
+    let msg: ReceiveMsg = from_json_binary(&wrapper.msg)?;
     let sender = deps.api.addr_validate(&wrapper.sender)?;
     match msg {
         ReceiveMsg::Stake {} => execute_stake(deps, env, sender, wrapper.amount),
@@ -221,7 +221,7 @@ pub fn execute_unstake(
             };
             let wasm_msg = cosmwasm_std::WasmMsg::Execute {
                 contract_addr: config.token_address.to_string(),
-                msg: to_binary(&cw_send_msg)?,
+                msg: to_json_binary(&cw_send_msg)?,
                 funds: vec![],
             };
             Ok(Response::new()
@@ -270,7 +270,7 @@ pub fn execute_claim(
     };
     let wasm_msg = cosmwasm_std::WasmMsg::Execute {
         contract_addr: config.token_address.to_string(),
-        msg: to_binary(&cw_send_msg)?,
+        msg: to_json_binary(&cw_send_msg)?,
         funds: vec![],
     };
     Ok(Response::new()
@@ -336,21 +336,21 @@ pub fn execute_update_owner(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetConfig {} => to_binary(&query_config(deps)?),
+        QueryMsg::GetConfig {} => to_json_binary(&query_config(deps)?),
         QueryMsg::StakedBalanceAtHeight { address, height } => {
-            to_binary(&query_staked_balance_at_height(deps, env, address, height)?)
+            to_json_binary(&query_staked_balance_at_height(deps, env, address, height)?)
         }
         QueryMsg::TotalStakedAtHeight { height } => {
-            to_binary(&query_total_staked_at_height(deps, env, height)?)
+            to_json_binary(&query_total_staked_at_height(deps, env, height)?)
         }
-        QueryMsg::StakedValue { address } => to_binary(&query_staked_value(deps, env, address)?),
-        QueryMsg::TotalValue {} => to_binary(&query_total_value(deps, env)?),
-        QueryMsg::Claims { address } => to_binary(&query_claims(deps, address)?),
-        QueryMsg::GetHooks {} => to_binary(&query_hooks(deps)?),
+        QueryMsg::StakedValue { address } => to_json_binary(&query_staked_value(deps, env, address)?),
+        QueryMsg::TotalValue {} => to_json_binary(&query_total_value(deps, env)?),
+        QueryMsg::Claims { address } => to_json_binary(&query_claims(deps, address)?),
+        QueryMsg::GetHooks {} => to_json_binary(&query_hooks(deps)?),
         QueryMsg::ListStakers { start_after, limit } => {
             query_list_stakers(deps, start_after, limit)
         }
-        QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
+        QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
     }
 }
 
@@ -450,7 +450,7 @@ pub fn query_list_stakers(
         })
         .collect();
 
-    to_binary(&ListStakersResponse { stakers })
+    to_json_binary(&ListStakersResponse { stakers })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

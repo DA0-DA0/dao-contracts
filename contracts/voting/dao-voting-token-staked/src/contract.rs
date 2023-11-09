@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    coins, from_binary, to_binary, BankMsg, BankQuery, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    coins, from_json_binary, to_json_binary, BankMsg, BankQuery, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
     MessageInfo, Order, Reply, Response, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
@@ -112,7 +112,7 @@ pub fn instantiate(
                 WasmMsg::Instantiate {
                     admin: Some(info.sender.to_string()),
                     code_id: *token_issuer_code_id,
-                    msg: to_binary(&IssuerInstantiateMsg::NewToken {
+                    msg: to_json_binary(&IssuerInstantiateMsg::NewToken {
                         subdenom: subdenom.to_string(),
                     })?,
                     funds: info.funds,
@@ -126,7 +126,7 @@ pub fn instantiate(
                 .add_attribute("token", "new_token")
                 .add_submessage(issuer_instantiate_msg))
         }
-        TokenInfo::Factory(binary) => match from_binary(&binary)? {
+        TokenInfo::Factory(binary) => match from_json_binary(&binary)? {
             WasmMsg::Execute {
                 msg,
                 contract_addr,
@@ -389,16 +389,16 @@ pub fn execute_remove_hook(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::VotingPowerAtHeight { address, height } => {
-            to_binary(&query_voting_power_at_height(deps, env, address, height)?)
+            to_json_binary(&query_voting_power_at_height(deps, env, address, height)?)
         }
         QueryMsg::TotalPowerAtHeight { height } => {
-            to_binary(&query_total_power_at_height(deps, env, height)?)
+            to_json_binary(&query_total_power_at_height(deps, env, height)?)
         }
         QueryMsg::Info {} => query_info(deps),
         QueryMsg::Dao {} => query_dao(deps),
-        QueryMsg::Claims { address } => to_binary(&query_claims(deps, address)?),
-        QueryMsg::GetConfig {} => to_binary(&CONFIG.load(deps.storage)?),
-        QueryMsg::Denom {} => to_binary(&DenomResponse {
+        QueryMsg::Claims { address } => to_json_binary(&query_claims(deps, address)?),
+        QueryMsg::GetConfig {} => to_json_binary(&CONFIG.load(deps.storage)?),
+        QueryMsg::Denom {} => to_json_binary(&DenomResponse {
             denom: DENOM.load(deps.storage)?,
         }),
         QueryMsg::ListStakers { start_after, limit } => {
@@ -406,8 +406,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::IsActive {} => query_is_active(deps),
         QueryMsg::ActiveThreshold {} => query_active_threshold(deps),
-        QueryMsg::GetHooks {} => to_binary(&query_hooks(deps)?),
-        QueryMsg::TokenContract {} => to_binary(&TOKEN_ISSUER_CONTRACT.may_load(deps.storage)?),
+        QueryMsg::GetHooks {} => to_json_binary(&query_hooks(deps)?),
+        QueryMsg::TokenContract {} => to_json_binary(&TOKEN_ISSUER_CONTRACT.may_load(deps.storage)?),
     }
 }
 
@@ -439,12 +439,12 @@ pub fn query_total_power_at_height(
 
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
-    to_binary(&dao_interface::voting::InfoResponse { info })
+    to_json_binary(&dao_interface::voting::InfoResponse { info })
 }
 
 pub fn query_dao(deps: Deps) -> StdResult<Binary> {
     let dao = DAO.load(deps.storage)?;
-    to_binary(&dao)
+    to_json_binary(&dao)
 }
 
 pub fn query_claims(deps: Deps, address: String) -> StdResult<ClaimsResponse> {
@@ -471,7 +471,7 @@ pub fn query_list_stakers(
         })
         .collect::<StdResult<_>>()?;
 
-    to_binary(&ListStakersResponse { stakers })
+    to_json_binary(&ListStakersResponse { stakers })
 }
 
 pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
@@ -480,7 +480,7 @@ pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
         let denom = DENOM.load(deps.storage)?;
         let actual_power = STAKED_TOTAL.may_load(deps.storage)?.unwrap_or_default();
         match threshold {
-            ActiveThreshold::AbsoluteCount { count } => to_binary(&IsActiveResponse {
+            ActiveThreshold::AbsoluteCount { count } => to_json_binary(&IsActiveResponse {
                 active: actual_power >= count,
             }),
             ActiveThreshold::Percentage { percent } => {
@@ -526,18 +526,18 @@ pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
                 let rounded = (applied + Uint256::from(PRECISION_FACTOR) - Uint256::from(1u128))
                     / Uint256::from(PRECISION_FACTOR);
                 let count: Uint128 = rounded.try_into().unwrap();
-                to_binary(&IsActiveResponse {
+                to_json_binary(&IsActiveResponse {
                     active: actual_power >= count,
                 })
             }
         }
     } else {
-        to_binary(&IsActiveResponse { active: true })
+        to_json_binary(&IsActiveResponse { active: true })
     }
 }
 
 pub fn query_active_threshold(deps: Deps) -> StdResult<Binary> {
-    to_binary(&ActiveThresholdResponse {
+    to_json_binary(&ActiveThresholdResponse {
         active_threshold: ACTIVE_THRESHOLD.may_load(deps.storage)?,
     })
 }
@@ -615,7 +615,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     // Grant an allowance to mint the initial supply
                     msgs.push(WasmMsg::Execute {
                         contract_addr: issuer_addr.clone(),
-                        msg: to_binary(&IssuerExecuteMsg::SetMinterAllowance {
+                        msg: to_json_binary(&IssuerExecuteMsg::SetMinterAllowance {
                             address: env.contract.address.to_string(),
                             allowance: total_supply,
                         })?,
@@ -643,7 +643,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
                         msgs.push(WasmMsg::Execute {
                             contract_addr: issuer_addr.clone(),
-                            msg: to_binary(&IssuerExecuteMsg::SetDenomMetadata {
+                            msg: to_json_binary(&IssuerExecuteMsg::SetDenomMetadata {
                                 metadata: Metadata {
                                     description: metadata.description,
                                     denom_units,
@@ -664,7 +664,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         .for_each(|b: &InitialBalance| {
                             msgs.push(WasmMsg::Execute {
                                 contract_addr: issuer_addr.clone(),
-                                msg: to_binary(&IssuerExecuteMsg::Mint {
+                                msg: to_json_binary(&IssuerExecuteMsg::Mint {
                                     to_address: b.address.clone(),
                                     amount: b.amount,
                                 })
@@ -678,7 +678,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         if !initial_dao_balance.is_zero() {
                             msgs.push(WasmMsg::Execute {
                                 contract_addr: issuer_addr.clone(),
-                                msg: to_binary(&IssuerExecuteMsg::Mint {
+                                msg: to_json_binary(&IssuerExecuteMsg::Mint {
                                     to_address: dao.to_string(),
                                     amount: initial_dao_balance,
                                 })?,
@@ -691,7 +691,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     // two-step ownership transfer.
                     msgs.push(WasmMsg::Execute {
                         contract_addr: issuer_addr.clone(),
-                        msg: to_binary(&IssuerExecuteMsg::UpdateOwnership(
+                        msg: to_json_binary(&IssuerExecuteMsg::UpdateOwnership(
                             cw_ownable::Action::TransferOwnership {
                                 new_owner: dao.to_string(),
                                 expiry: None,
@@ -703,10 +703,10 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     // On setup success, have the DAO complete the second part of
                     // ownership transfer by accepting ownership in a
                     // ModuleInstantiateCallback.
-                    let callback = to_binary(&ModuleInstantiateCallback {
+                    let callback = to_json_binary(&ModuleInstantiateCallback {
                         msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
                             contract_addr: issuer_addr.clone(),
-                            msg: to_binary(&IssuerExecuteMsg::UpdateOwnership(
+                            msg: to_json_binary(&IssuerExecuteMsg::UpdateOwnership(
                                 cw_ownable::Action::AcceptOwnership {},
                             ))?,
                             funds: vec![],
@@ -729,7 +729,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 Some(data) => {
                     // Parse info from the callback, this will fail
                     // if incorrectly formatted.
-                    let info: TokenFactoryCallback = from_binary(&data)?;
+                    let info: TokenFactoryCallback = from_json_binary(&data)?;
 
                     // Save Denom
                     DENOM.save(deps.storage, &info.denom)?;
@@ -748,7 +748,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     // If a callback has been configured, set the module
                     // instantiate callback data.
                     if let Some(callback) = info.module_instantiate_callback {
-                        res = res.set_data(to_binary(&callback)?);
+                        res = res.set_data(to_json_binary(&callback)?);
                     }
 
                     Ok(res)

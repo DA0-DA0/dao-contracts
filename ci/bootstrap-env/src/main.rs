@@ -1,7 +1,7 @@
 use anyhow::Result;
 use cosm_orc::orchestrator::{Coin, Key, SigningKey};
 use cosm_orc::{config::cfg::Config, orchestrator::cosm_orc::CosmOrc};
-use cosmwasm_std::{to_binary, Decimal, Empty, Uint128};
+use cosmwasm_std::{to_json_binary, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_voting::{
@@ -55,7 +55,7 @@ fn main() -> Result<()> {
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: orc.contract_map.code_id("dao_voting_cw20_staked")?,
-            msg: to_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
+            msg: to_json_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
                 token_info: dao_voting_cw20_staked::msg::TokenInfo::New {
                     code_id: orc.contract_map.code_id("cw20_base")?,
                     label: "DAO DAO Gov token".to_string(),
@@ -79,7 +79,7 @@ fn main() -> Result<()> {
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: orc.contract_map.code_id("dao_proposal_single")?,
-            msg: to_binary(&dao_proposal_single::msg::InstantiateMsg {
+            msg: to_json_binary(&dao_proposal_single::msg::InstantiateMsg {
                 min_voting_period: None,
                 threshold: Threshold::ThresholdQuorum {
                     threshold: PercentageThreshold::Majority {},
@@ -91,7 +91,7 @@ fn main() -> Result<()> {
                 pre_propose_info: PreProposeInfo::ModuleMayPropose {
                     info: ModuleInstantiateInfo {
                         code_id: orc.contract_map.code_id("dao_pre_propose_single")?,
-                        msg: to_binary(&dao_pre_propose_single::InstantiateMsg {
+                        msg: to_json_binary(&dao_pre_propose_single::InstantiateMsg {
                             deposit_info: Some(UncheckedDepositInfo {
                                 denom: DepositToken::VotingModuleToken {},
                                 amount: Uint128::new(1000000000),

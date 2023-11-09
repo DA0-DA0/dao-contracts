@@ -1,4 +1,4 @@
-use cosmwasm_std::{coins, to_binary, Addr, Empty, Uint128};
+use cosmwasm_std::{coins, to_json_binary, Addr, Empty, Uint128};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
 use cw_denom::UncheckedDenom;
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
@@ -296,7 +296,7 @@ pub fn test_instantiate_cw20_payroll_contract() {
             &Cw20ExecuteMsg::Send {
                 contract: factory_addr.to_string(),
                 amount: instantiate_payroll_msg.total,
-                msg: to_binary(&ReceiveMsg::InstantiatePayrollContract {
+                msg: to_json_binary(&ReceiveMsg::InstantiatePayrollContract {
                     instantiate_msg: instantiate_payroll_msg,
                     label: "Payroll".to_string(),
                 })
@@ -510,7 +510,7 @@ fn test_instantiate_wrong_owner_cw20() {
             &Cw20ExecuteMsg::Send {
                 contract: factory_addr.to_string(),
                 amount: instantiate_payroll_msg.total,
-                msg: to_binary(&ReceiveMsg::InstantiatePayrollContract {
+                msg: to_json_binary(&ReceiveMsg::InstantiatePayrollContract {
                     instantiate_msg: instantiate_payroll_msg,
                     label: "Payroll".to_string(),
                 })
@@ -699,7 +699,7 @@ pub fn test_inconsistent_cw20_amount() {
             &Cw20ExecuteMsg::Send {
                 contract: factory_addr.to_string(),
                 amount,
-                msg: to_binary(&ReceiveMsg::InstantiatePayrollContract {
+                msg: to_json_binary(&ReceiveMsg::InstantiatePayrollContract {
                     instantiate_msg: instantiate_payroll_msg,
                     label: "Payroll".to_string(),
                 })

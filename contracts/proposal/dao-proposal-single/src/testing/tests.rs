@@ -1,7 +1,7 @@
 use cosmwasm_std::{
     coins,
     testing::{mock_dependencies, mock_env},
-    to_binary, Addr, Attribute, BankMsg, Binary, ContractInfoResponse, CosmosMsg, Decimal, Empty,
+    to_json_binary, Addr, Attribute, BankMsg, Binary, ContractInfoResponse, CosmosMsg, Decimal, Empty,
     Reply, StdError, SubMsgResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::ContractVersion;
@@ -321,7 +321,7 @@ fn test_proposal_message_execution() {
         vec![
             WasmMsg::Execute {
                 contract_addr: gov_token.to_string(),
-                msg: to_binary(&cw20::Cw20ExecuteMsg::Mint {
+                msg: to_json_binary(&cw20::Cw20ExecuteMsg::Mint {
                     recipient: CREATOR_ADDR.to_string(),
                     amount: Uint128::new(10_000_000),
                 })
@@ -540,7 +540,7 @@ fn test_cant_execute_not_member_when_proposal_created() {
         &cw20::Cw20ExecuteMsg::Send {
             contract: staking_contract.to_string(),
             amount: Uint128::new(10_000_000),
-            msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+            msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
         },
         &[],
     )
@@ -578,7 +578,7 @@ fn test_update_config() {
         CREATOR_ADDR,
         vec![WasmMsg::Execute {
             contract_addr: proposal_module.to_string(),
-            msg: to_binary(&ExecuteMsg::UpdateConfig {
+            msg: to_json_binary(&ExecuteMsg::UpdateConfig {
                 threshold: Threshold::AbsoluteCount {
                     threshold: Uint128::new(10_000),
                 },
@@ -890,7 +890,7 @@ fn test_active_threshold_absolute() {
     let msg = cw20::Cw20ExecuteMsg::Send {
         contract: staking_contract.to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+        msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
     };
     app.execute_contract(Addr::unchecked(CREATOR_ADDR), gov_token, &msg, &[])
         .unwrap();
@@ -971,7 +971,7 @@ fn test_active_threshold_percent() {
     let msg = cw20::Cw20ExecuteMsg::Send {
         contract: staking_contract.to_string(),
         amount: Uint128::new(20_000_000),
-        msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+        msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
     };
     app.execute_contract(Addr::unchecked(CREATOR_ADDR), gov_token, &msg, &[])
         .unwrap();
@@ -1545,7 +1545,7 @@ fn test_migrate_from_compatible() {
         CosmosMsg::Wasm(WasmMsg::Migrate {
             contract_addr: proposal_module.to_string(),
             new_code_id,
-            msg: to_binary(&MigrateMsg::FromCompatible {}).unwrap(),
+            msg: to_json_binary(&MigrateMsg::FromCompatible {}).unwrap(),
         }),
     )
     .unwrap();
@@ -1609,7 +1609,7 @@ fn test_migrate_from_v1() {
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: staked_balances_voting_id,
-            msg: to_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
+            msg: to_json_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
                 active_threshold: None,
                 token_info: dao_voting_cw20_staked::msg::TokenInfo::New {
                     code_id: cw20_id,
@@ -1631,7 +1631,7 @@ fn test_migrate_from_v1() {
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: v1_proposal_single_code,
-            msg: to_binary(&instantiate).unwrap(),
+            msg: to_json_binary(&instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "DAO DAO governance module.".to_string(),
@@ -1682,7 +1682,7 @@ fn test_migrate_from_v1() {
             &cw20::Cw20ExecuteMsg::Send {
                 contract: staking_contract.to_string(),
                 amount,
-                msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+                msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
             },
             &[],
         )
@@ -1730,7 +1730,7 @@ fn test_migrate_from_v1() {
         pre_propose_info: PreProposeInfo::ModuleMayPropose {
             info: ModuleInstantiateInfo {
                 code_id: pre_propose_single,
-                msg: to_binary(&dao_pre_propose_single::InstantiateMsg {
+                msg: to_json_binary(&dao_pre_propose_single::InstantiateMsg {
                     deposit_info: Some(UncheckedDepositInfo {
                         denom: dao_voting::deposit::DepositToken::VotingModuleToken {},
                         amount: Uint128::new(1),
@@ -1752,7 +1752,7 @@ fn test_migrate_from_v1() {
             CosmosMsg::Wasm(WasmMsg::Migrate {
                 contract_addr: proposal_module.to_string(),
                 new_code_id: v2_proposal_single,
-                msg: to_binary(&migrate_msg).unwrap(),
+                msg: to_json_binary(&migrate_msg).unwrap(),
             }),
         )
         .unwrap_err()
@@ -1770,7 +1770,7 @@ fn test_migrate_from_v1() {
         CosmosMsg::Wasm(WasmMsg::Migrate {
             contract_addr: proposal_module.to_string(),
             new_code_id: v2_proposal_single,
-            msg: to_binary(&migrate_msg).unwrap(),
+            msg: to_json_binary(&migrate_msg).unwrap(),
         }),
     )
     .unwrap();
@@ -1798,7 +1798,7 @@ fn test_migrate_from_v1() {
             CosmosMsg::Wasm(WasmMsg::Migrate {
                 contract_addr: proposal_module.to_string(),
                 new_code_id: v2_proposal_single,
-                msg: to_binary(&migrate_msg).unwrap(),
+                msg: to_json_binary(&migrate_msg).unwrap(),
             }),
         )
         .unwrap_err()
@@ -2397,11 +2397,11 @@ fn test_update_pre_propose_module() {
         CREATOR_ADDR,
         vec![WasmMsg::Execute {
             contract_addr: proposal_module.to_string(),
-            msg: to_binary(&ExecuteMsg::UpdatePreProposeInfo {
+            msg: to_json_binary(&ExecuteMsg::UpdatePreProposeInfo {
                 info: PreProposeInfo::ModuleMayPropose {
                     info: ModuleInstantiateInfo {
                         code_id: pre_propose_id,
-                        msg: to_binary(&dao_pre_propose_single::InstantiateMsg {
+                        msg: to_json_binary(&dao_pre_propose_single::InstantiateMsg {
                             deposit_info: Some(UncheckedDepositInfo {
                                 denom: dao_voting::deposit::DepositToken::VotingModuleToken {},
                                 amount: Uint128::new(1),
@@ -2495,7 +2495,7 @@ fn test_update_pre_propose_module() {
         CREATOR_ADDR,
         vec![WasmMsg::Execute {
             contract_addr: pre_propose_start.into_string(),
-            msg: to_binary(&dao_pre_propose_single::ExecuteMsg::Withdraw { denom: None }).unwrap(),
+            msg: to_json_binary(&dao_pre_propose_single::ExecuteMsg::Withdraw { denom: None }).unwrap(),
             funds: vec![],
         }
         .into()],

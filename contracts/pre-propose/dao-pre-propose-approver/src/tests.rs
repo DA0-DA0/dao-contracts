@@ -1,4 +1,4 @@
-use cosmwasm_std::{coins, from_slice, to_binary, Addr, Coin, Empty, Uint128};
+use cosmwasm_std::{coins, from_slice, to_json_binary, Addr, Coin, Empty, Uint128};
 use cw2::ContractVersion;
 use cw20::Cw20Coin;
 use cw_denom::UncheckedDenom;
@@ -86,7 +86,7 @@ fn get_proposal_module_approval_single_instantiate(
         pre_propose_info: PreProposeInfo::ModuleMayPropose {
             info: ModuleInstantiateInfo {
                 code_id: pre_propose_id,
-                msg: to_binary(&InstantiateMsg {
+                msg: to_json_binary(&InstantiateMsg {
                     deposit_info,
                     open_proposal_submission,
                     extension: InstantiateExt {
@@ -122,7 +122,7 @@ fn get_proposal_module_approver_instantiate(
         pre_propose_info: PreProposeInfo::ModuleMayPropose {
             info: ModuleInstantiateInfo {
                 code_id: pre_propose_id,
-                msg: to_binary(&ApproverInstantiateMsg {
+                msg: to_json_binary(&ApproverInstantiateMsg {
                     pre_propose_approval_contract,
                 })
                 .unwrap(),
@@ -184,7 +184,7 @@ fn setup_default_test(
     let core_addr = instantiate_with_cw4_groups_governance(
         app,
         dps_id,
-        to_binary(&proposal_module_instantiate).unwrap(),
+        to_json_binary(&proposal_module_instantiate).unwrap(),
         Some(vec![
             cw20::Cw20Coin {
                 address: "ekez".to_string(),
@@ -238,7 +238,7 @@ fn setup_default_test(
     let _approver_core_addr = instantiate_with_cw4_groups_governance(
         app,
         dps_id,
-        to_binary(&proposal_module_instantiate).unwrap(),
+        to_json_binary(&proposal_module_instantiate).unwrap(),
         Some(vec![
             cw20::Cw20Coin {
                 address: "ekez".to_string(),

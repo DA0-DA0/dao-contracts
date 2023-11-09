@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_binary, Addr, StdResult, Storage, SubMsg, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, StdResult, Storage, SubMsg, WasmMsg};
 use cw_hooks::Hooks;
 
 /// An enum representing NFT staking hooks.
@@ -17,7 +17,7 @@ pub fn stake_nft_hook_msgs(
     addr: Addr,
     token_id: String,
 ) -> StdResult<Vec<SubMsg>> {
-    let msg = to_binary(&NftStakeChangedExecuteMsg::NftStakeChangeHook(
+    let msg = to_json_binary(&NftStakeChangedExecuteMsg::NftStakeChangeHook(
         NftStakeChangedHookMsg::Stake { addr, token_id },
     ))?;
     hooks.prepare_hooks(storage, |a| {
@@ -38,7 +38,7 @@ pub fn unstake_nft_hook_msgs(
     addr: Addr,
     token_ids: Vec<String>,
 ) -> StdResult<Vec<SubMsg>> {
-    let msg = to_binary(&NftStakeChangedExecuteMsg::NftStakeChangeHook(
+    let msg = to_json_binary(&NftStakeChangedExecuteMsg::NftStakeChangeHook(
         NftStakeChangedHookMsg::Unstake { addr, token_ids },
     ))?;
 

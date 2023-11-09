@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
     WasmMsg,
 };
 use cw2::set_contract_version;
@@ -59,7 +59,7 @@ pub fn execute_execute(
 
     let msg = WasmMsg::Execute {
         contract_addr: dao.to_string(),
-        msg: to_binary(&dao_interface::msg::ExecuteMsg::ExecuteProposalHook { msgs })?,
+        msg: to_json_binary(&dao_interface::msg::ExecuteMsg::ExecuteProposalHook { msgs })?,
         funds: vec![],
     };
 
@@ -78,14 +78,14 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 pub fn query_admin(deps: Deps) -> StdResult<Binary> {
-    to_binary(&ROOT.load(deps.storage)?)
+    to_json_binary(&ROOT.load(deps.storage)?)
 }
 
 pub fn query_dao(deps: Deps) -> StdResult<Binary> {
-    to_binary(&DAO.load(deps.storage)?)
+    to_json_binary(&DAO.load(deps.storage)?)
 }
 
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
-    to_binary(&dao_interface::voting::InfoResponse { info })
+    to_json_binary(&dao_interface::voting::InfoResponse { info })
 }

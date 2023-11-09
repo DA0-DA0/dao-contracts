@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_binary, StdResult, Storage, SubMsg, WasmMsg};
+use cosmwasm_std::{to_json_binary, StdResult, Storage, SubMsg, WasmMsg};
 use cw_hooks::Hooks;
 use dao_voting::reply::mask_vote_hook_index;
 
@@ -23,7 +23,7 @@ pub fn new_vote_hooks(
     voter: String,
     vote: String,
 ) -> StdResult<Vec<SubMsg>> {
-    let msg = to_binary(&VoteHookExecuteMsg::VoteHook(VoteHookMsg::NewVote {
+    let msg = to_json_binary(&VoteHookExecuteMsg::VoteHook(VoteHookMsg::NewVote {
         proposal_id,
         voter,
         vote,

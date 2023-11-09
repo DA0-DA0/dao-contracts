@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, Coin, CosmosMsg, DelegationResponse, Deps, DepsMut,
+    from_json_binary, to_json_binary, Binary, Coin, CosmosMsg, DelegationResponse, Deps, DepsMut,
     DistributionMsg, Env, MessageInfo, Response, StakingMsg, StakingQuery, StdResult, Timestamp,
     Uint128,
 };
@@ -137,7 +137,7 @@ pub fn execute_receive_cw20(
     // Only accepts cw20 tokens
     nonpayable(&info)?;
 
-    let msg: ReceiveMsg = from_binary(&receive_msg.msg)?;
+    let msg: ReceiveMsg = from_json_binary(&receive_msg.msg)?;
 
     match msg {
         ReceiveMsg::Fund {} => {
@@ -446,20 +446,20 @@ pub fn execute_register_slash(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
-        QueryMsg::Info {} => to_binary(&PAYMENT.get_vest(deps.storage)?),
-        QueryMsg::Distributable { t } => to_binary(&PAYMENT.distributable(
+        QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
+        QueryMsg::Info {} => to_json_binary(&PAYMENT.get_vest(deps.storage)?),
+        QueryMsg::Distributable { t } => to_json_binary(&PAYMENT.distributable(
             deps.storage,
             &PAYMENT.get_vest(deps.storage)?,
             t.unwrap_or(env.block.time),
         )?),
         QueryMsg::Stake(q) => PAYMENT.query_stake(deps.storage, q),
-        QueryMsg::Vested { t } => to_binary(
+        QueryMsg::Vested { t } => to_json_binary(
             &PAYMENT
                 .get_vest(deps.storage)?
                 .vested(t.unwrap_or(env.block.time)),
         ),
-        QueryMsg::TotalToVest {} => to_binary(&PAYMENT.get_vest(deps.storage)?.total()),
-        QueryMsg::VestDuration {} => to_binary(&PAYMENT.duration(deps.storage)?),
+        QueryMsg::TotalToVest {} => to_json_binary(&PAYMENT.get_vest(deps.storage)?.total()),
+        QueryMsg::VestDuration {} => to_json_binary(&PAYMENT.duration(deps.storage)?),
     }
 }

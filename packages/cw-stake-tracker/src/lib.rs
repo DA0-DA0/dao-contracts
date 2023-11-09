@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{to_binary, Binary, StdResult, Storage, Timestamp, Uint128};
+use cosmwasm_std::{to_json_binary, Binary, StdResult, Storage, Timestamp, Uint128};
 use cw_wormhole::Wormhole;
 
 #[cfg(test)]
@@ -261,12 +261,12 @@ impl<'a> StakeTracker<'a> {
     /// API.
     pub fn query(&self, storage: &dyn Storage, msg: StakeTrackerQuery) -> StdResult<Binary> {
         match msg {
-            StakeTrackerQuery::Cardinality { t } => to_binary(&Uint128::new(
+            StakeTrackerQuery::Cardinality { t } => to_json_binary(&Uint128::new(
                 self.validator_cardinality(storage, t)?.into(),
             )),
-            StakeTrackerQuery::TotalStaked { t } => to_binary(&self.total_staked(storage, t)?),
+            StakeTrackerQuery::TotalStaked { t } => to_json_binary(&self.total_staked(storage, t)?),
             StakeTrackerQuery::ValidatorStaked { validator, t } => {
-                to_binary(&self.validator_staked(storage, t, validator)?)
+                to_json_binary(&self.validator_staked(storage, t, validator)?)
             }
         }
     }

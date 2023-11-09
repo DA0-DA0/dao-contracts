@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response, StdResult, SubMsg,
+    to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response, StdResult, SubMsg,
     WasmMsg,
 };
 use cw2::set_contract_version;
@@ -107,7 +107,7 @@ pub fn execute_propose(
             .prepare_hooks(deps.storage, |a| {
                 let execute_msg = WasmMsg::Execute {
                     contract_addr: a.into_string(),
-                    msg: to_binary(&ExecuteBase::<ApproverProposeMessage, Empty>::Propose {
+                    msg: to_json_binary(&ExecuteBase::<ApproverProposeMessage, Empty>::Propose {
                         msg: ApproverProposeMessage::Propose {
                             title: propose_msg_internal.title.clone(),
                             description: propose_msg_internal.description.clone(),
@@ -169,7 +169,7 @@ pub fn execute_approve(
 
             let propose_messsage = WasmMsg::Execute {
                 contract_addr: proposal_module.into_string(),
-                msg: to_binary(&ProposeMessageInternal::Propose(proposal.msg))?,
+                msg: to_json_binary(&ProposeMessageInternal::Propose(proposal.msg))?,
                 funds: vec![],
             };
             PENDING_PROPOSALS.remove(deps.storage, id);
@@ -221,7 +221,7 @@ pub fn execute_reject(
     Ok(Response::default()
         .add_attribute("method", "proposal_rejected")
         .add_attribute("proposal", id.to_string())
-        .add_attribute("deposit_info", to_binary(&deposit)?.to_string())
+        .add_attribute("deposit_info", to_json_binary(&deposit)?.to_string())
         .add_messages(messages))
 }
 
@@ -296,11 +296,11 @@ pub fn execute_remove_approver_hook(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::QueryExtension { msg } => match msg {
-            QueryExt::Approver {} => to_binary(&APPROVER.load(deps.storage)?),
+            QueryExt::Approver {} => to_json_binary(&APPROVER.load(deps.storage)?),
             QueryExt::PendingProposal { id } => {
-                to_binary(&PENDING_PROPOSALS.load(deps.storage, id)?)
+                to_json_binary(&PENDING_PROPOSALS.load(deps.storage, id)?)
             }
-            QueryExt::PendingProposals { start_after, limit } => to_binary(&paginate_map_values(
+            QueryExt::PendingProposals { start_after, limit } => to_json_binary(&paginate_map_values(
                 deps,
                 &PENDING_PROPOSALS,
                 start_after,
@@ -310,7 +310,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             QueryExt::ReversePendingProposals {
                 start_before,
                 limit,
-            } => to_binary(&paginate_map_values(
+            } => to_json_binary(&paginate_map_values(
                 deps,
                 &PENDING_PROPOSALS,
                 start_before,

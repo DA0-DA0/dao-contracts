@@ -3,7 +3,7 @@ use std::{collections::HashSet, env};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
     StdResult, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
@@ -42,10 +42,10 @@ pub fn instantiate(
     CORE_ADDR.save(deps.storage, &info.sender)?;
 
     Ok(
-        Response::default().set_data(to_binary(&ModuleInstantiateCallback {
+        Response::default().set_data(to_json_binary(&ModuleInstantiateCallback {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: env.contract.address.to_string(),
-                msg: to_binary(&MigrateV1ToV2 {
+                msg: to_json_binary(&MigrateV1ToV2 {
                     sub_daos: msg.sub_daos,
                     migration_params: msg.migration_params,
                     v1_code_ids: msg.v1_code_ids,
@@ -168,7 +168,7 @@ fn execute_migration_v1_v2(
             WasmMsg::Migrate {
                 contract_addr: voting_module.to_string(),
                 new_code_id: voting_pair.v2_code_id,
-                msg: to_binary(&voting_pair.migrate_msg).unwrap(),
+                msg: to_json_binary(&voting_pair.migrate_msg).unwrap(),
             }
             .into(),
         );
@@ -212,7 +212,7 @@ fn execute_migration_v1_v2(
                 WasmMsg::Migrate {
                     contract_addr: cw20_staked_addr.to_string(),
                     new_code_id: staking_pair.v2_code_id,
-                    msg: to_binary(&staking_pair.migrate_msg).unwrap(),
+                    msg: to_json_binary(&staking_pair.migrate_msg).unwrap(),
                 }
                 .into(),
             );
@@ -276,7 +276,7 @@ fn execute_migration_v1_v2(
                     WasmMsg::Migrate {
                         contract_addr: module.address.to_string(),
                         new_code_id: proposal_pair.v2_code_id,
-                        msg: to_binary(&proposal_pair.migrate_msg).unwrap(),
+                        msg: to_json_binary(&proposal_pair.migrate_msg).unwrap(),
                     }
                     .into(),
                 );
@@ -305,7 +305,7 @@ fn execute_migration_v1_v2(
     msgs.push(
         WasmMsg::Execute {
             contract_addr: info.sender.to_string(),
-            msg: to_binary(&dao_interface::msg::ExecuteMsg::UpdateSubDaos {
+            msg: to_json_binary(&dao_interface::msg::ExecuteMsg::UpdateSubDaos {
                 to_add: sub_daos,
                 to_remove: vec![],
             })?,
@@ -318,7 +318,7 @@ fn execute_migration_v1_v2(
     let proposal_hook_msg = SubMsg::reply_on_success(
         WasmMsg::Execute {
             contract_addr: info.sender.to_string(),
-            msg: to_binary(&dao_interface::msg::ExecuteMsg::ExecuteProposalHook { msgs })?,
+            msg: to_json_binary(&dao_interface::msg::ExecuteMsg::ExecuteProposalHook { msgs })?,
             funds: vec![],
         },
         V1_V2_REPLY_ID,
@@ -345,10 +345,10 @@ pub fn reply(deps: DepsMut, env: Env, reply: Reply) -> Result<Response, Contract
             // and only then delete our module if everything worked out.
             let remove_msg = WasmMsg::Execute {
                 contract_addr: core_addr.to_string(),
-                msg: to_binary(&dao_interface::msg::ExecuteMsg::ExecuteProposalHook {
+                msg: to_json_binary(&dao_interface::msg::ExecuteMsg::ExecuteProposalHook {
                     msgs: vec![WasmMsg::Execute {
                         contract_addr: core_addr.to_string(),
-                        msg: to_binary(&dao_interface::msg::ExecuteMsg::UpdateProposalModules {
+                        msg: to_json_binary(&dao_interface::msg::ExecuteMsg::UpdateProposalModules {
                             to_add: vec![],
                             to_disable: vec![env.contract.address.to_string()],
                         })?,

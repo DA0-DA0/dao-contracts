@@ -2,7 +2,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     from_slice,
     testing::{mock_dependencies, mock_env},
-    to_binary, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
+    to_json_binary, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
 };
 use cw2::{set_contract_version, ContractVersion};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
@@ -117,7 +117,7 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: cw20_id,
-            msg: to_binary(&cw20_instantiate).unwrap(),
+            msg: to_json_binary(&cw20_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "voting module".to_string(),
@@ -125,7 +125,7 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
         proposal_modules_instantiate_info: (0..n)
             .map(|n| ModuleInstantiateInfo {
                 code_id: cw20_id,
-                msg: to_binary(&cw20_instantiate).unwrap(),
+                msg: to_json_binary(&cw20_instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
                 funds: vec![],
                 label: format!("governance module {n}"),
@@ -191,7 +191,7 @@ fn test_instantiate_with_submessage_failure() {
     let mut governance_modules = (0..3)
         .map(|n| ModuleInstantiateInfo {
             code_id: cw20_id,
-            msg: to_binary(&cw20_instantiate).unwrap(),
+            msg: to_json_binary(&cw20_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: format!("governance module {n}"),
@@ -199,14 +199,14 @@ fn test_instantiate_with_submessage_failure() {
         .collect::<Vec<_>>();
     governance_modules.push(ModuleInstantiateInfo {
         code_id: cw20_id,
-        msg: to_binary("bad").unwrap(),
+        msg: to_json_binary("bad").unwrap(),
         admin: Some(Admin::CoreModule {}),
         funds: vec![],
         label: "I have a bad instantiate message".to_string(),
     });
     governance_modules.push(ModuleInstantiateInfo {
         code_id: cw20_id,
-        msg: to_binary(&cw20_instantiate).unwrap(),
+        msg: to_json_binary(&cw20_instantiate).unwrap(),
         admin: Some(Admin::CoreModule {}),
         funds: vec![],
         label: "Everybody knowing
@@ -225,7 +225,7 @@ makes wickedness."
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: cw20_id,
-            msg: to_binary(&cw20_instantiate).unwrap(),
+            msg: to_json_binary(&cw20_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "voting module".to_string(),
@@ -256,14 +256,14 @@ fn test_update_config() {
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: govmod_id,
-            msg: to_binary(&govmod_instantiate).unwrap(),
+            msg: to_json_binary(&govmod_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
-            msg: to_binary(&govmod_instantiate).unwrap(),
+            msg: to_json_binary(&govmod_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "voting module".to_string(),
@@ -311,7 +311,7 @@ fn test_update_config() {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: gov_addr.to_string(),
                 funds: vec![],
-                msg: to_binary(&ExecuteMsg::UpdateConfig {
+                msg: to_json_binary(&ExecuteMsg::UpdateConfig {
                     config: expected_config.clone(),
                 })
                 .unwrap(),
@@ -355,14 +355,14 @@ fn test_swap_governance(swaps: Vec<(u32, u32)>) {
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: propmod_id,
-            msg: to_binary(&govmod_instantiate).unwrap(),
+            msg: to_json_binary(&govmod_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: propmod_id,
-            msg: to_binary(&govmod_instantiate).unwrap(),
+            msg: to_json_binary(&govmod_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "governance module".to_string(),
@@ -426,7 +426,7 @@ fn test_swap_governance(swaps: Vec<(u32, u32)>) {
         let to_add: Vec<_> = (0..add)
             .map(|n| ModuleInstantiateInfo {
                 code_id: propmod_id,
-                msg: to_binary(&govmod_instantiate).unwrap(),
+                msg: to_json_binary(&govmod_instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
                 funds: vec![],
                 label: format!("governance module {n}"),
@@ -447,7 +447,7 @@ fn test_swap_governance(swaps: Vec<(u32, u32)>) {
                 msgs: vec![WasmMsg::Execute {
                     contract_addr: gov_addr.to_string(),
                     funds: vec![],
-                    msg: to_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_disable })
+                    msg: to_json_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_disable })
                         .unwrap(),
                 }
                 .into()],
@@ -534,14 +534,14 @@ fn test_removed_modules_can_not_execute() {
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: govmod_id,
-            msg: to_binary(&govmod_instantiate).unwrap(),
+            msg: to_json_binary(&govmod_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
-            msg: to_binary(&govmod_instantiate).unwrap(),
+            msg: to_json_binary(&govmod_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "governance module".to_string(),
@@ -577,7 +577,7 @@ fn test_removed_modules_can_not_execute() {
 
     let to_add = vec![ModuleInstantiateInfo {
         code_id: govmod_id,
-        msg: to_binary(&govmod_instantiate).unwrap(),
+        msg: to_json_binary(&govmod_instantiate).unwrap(),
         admin: Some(Admin::CoreModule {}),
         funds: vec![],
         label: "new governance module".to_string(),
@@ -593,7 +593,7 @@ fn test_removed_modules_can_not_execute() {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: gov_addr.to_string(),
                 funds: vec![],
-                msg: to_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_disable }).unwrap(),
+                msg: to_json_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_disable }).unwrap(),
             }
             .into()],
         },
@@ -609,7 +609,7 @@ fn test_removed_modules_can_not_execute() {
     // earlier. This should fail as we have been removed.
     let to_add = vec![ModuleInstantiateInfo {
         code_id: govmod_id,
-        msg: to_binary(&govmod_instantiate).unwrap(),
+        msg: to_json_binary(&govmod_instantiate).unwrap(),
         admin: Some(Admin::CoreModule {}),
         funds: vec![],
         label: "new governance module".to_string(),
@@ -624,7 +624,7 @@ fn test_removed_modules_can_not_execute() {
                 msgs: vec![WasmMsg::Execute {
                     contract_addr: gov_addr.to_string(),
                     funds: vec![],
-                    msg: to_binary(&ExecuteMsg::UpdateProposalModules {
+                    msg: to_json_binary(&ExecuteMsg::UpdateProposalModules {
                         to_add: to_add.clone(),
                         to_disable: to_disable.clone(),
                     })
@@ -666,7 +666,7 @@ fn test_removed_modules_can_not_execute() {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: gov_addr.to_string(),
                 funds: vec![],
-                msg: to_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_disable }).unwrap(),
+                msg: to_json_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_disable }).unwrap(),
             }
             .into()],
         },
@@ -695,14 +695,14 @@ fn test_module_already_disabled() {
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: govmod_id,
-            msg: to_binary(&govmod_instantiate).unwrap(),
+            msg: to_json_binary(&govmod_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
-            msg: to_binary(&govmod_instantiate).unwrap(),
+            msg: to_json_binary(&govmod_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "governance module".to_string(),
@@ -749,10 +749,10 @@ fn test_module_already_disabled() {
                 msgs: vec![WasmMsg::Execute {
                     contract_addr: gov_addr.to_string(),
                     funds: vec![],
-                    msg: to_binary(&ExecuteMsg::UpdateProposalModules {
+                    msg: to_json_binary(&ExecuteMsg::UpdateProposalModules {
                         to_add: vec![ModuleInstantiateInfo {
                             code_id: govmod_id,
-                            msg: to_binary(&govmod_instantiate).unwrap(),
+                            msg: to_json_binary(&govmod_instantiate).unwrap(),
                             admin: Some(Admin::CoreModule {}),
                             funds: vec![],
                             label: "governance module".to_string(),
@@ -797,14 +797,14 @@ fn test_swap_voting_module() {
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: govmod_id,
-            msg: to_binary(&govmod_instantiate).unwrap(),
+            msg: to_json_binary(&govmod_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
-            msg: to_binary(&govmod_instantiate).unwrap(),
+            msg: to_json_binary(&govmod_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "governance module".to_string(),
@@ -848,10 +848,10 @@ fn test_swap_voting_module() {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: gov_addr.to_string(),
                 funds: vec![],
-                msg: to_binary(&ExecuteMsg::UpdateVotingModule {
+                msg: to_json_binary(&ExecuteMsg::UpdateVotingModule {
                     module: ModuleInstantiateInfo {
                         code_id: govmod_id,
-                        msg: to_binary(&govmod_instantiate).unwrap(),
+                        msg: to_json_binary(&govmod_instantiate).unwrap(),
                         admin: Some(Admin::CoreModule {}),
                         funds: vec![],
                         label: "voting module".to_string(),
@@ -901,14 +901,14 @@ fn test_permissions() {
         image_url: None,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: govmod_id,
-            msg: to_binary(&govmod_instantiate).unwrap(),
+            msg: to_json_binary(&govmod_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
-            msg: to_binary(&govmod_instantiate).unwrap(),
+            msg: to_json_binary(&govmod_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "governance module".to_string(),
@@ -935,7 +935,7 @@ fn test_permissions() {
         ExecuteMsg::UpdateVotingModule {
             module: ModuleInstantiateInfo {
                 code_id: govmod_id,
-                msg: to_binary(&govmod_instantiate).unwrap(),
+                msg: to_json_binary(&govmod_instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
                 funds: vec![],
                 label: "voting module".to_string(),
@@ -1003,14 +1003,14 @@ fn do_standard_instantiate(auto_add: bool, admin: Option<String>) -> (Addr, App)
         automatically_add_cw721s: auto_add,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: voting_id,
-            msg: to_binary(&voting_instantiate).unwrap(),
+            msg: to_json_binary(&voting_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
-            msg: to_binary(&govmod_instantiate).unwrap(),
+            msg: to_json_binary(&govmod_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "governance module".to_string(),
@@ -1058,7 +1058,7 @@ fn test_admin_permissions() {
         &ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: core_addr.to_string(),
-                msg: to_binary(&ExecuteMsg::Pause {
+                msg: to_json_binary(&ExecuteMsg::Pause {
                     duration: Duration::Height(10),
                 })
                 .unwrap(),
@@ -1077,7 +1077,7 @@ fn test_admin_permissions() {
         &ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: core_addr.to_string(),
-                msg: to_binary(&ExecuteMsg::Pause {
+                msg: to_json_binary(&ExecuteMsg::Pause {
                     duration: Duration::Height(10),
                 })
                 .unwrap(),
@@ -1108,7 +1108,7 @@ fn test_admin_permissions() {
         &ExecuteMsg::ExecuteProposalHook {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: core_addr.to_string(),
-                msg: to_binary(&ExecuteMsg::NominateAdmin {
+                msg: to_json_binary(&ExecuteMsg::NominateAdmin {
                     admin: Some("meow".to_string()),
                 })
                 .unwrap(),
@@ -1131,7 +1131,7 @@ fn test_admin_permissions() {
         &ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: core_with_admin_addr.to_string(),
-                msg: to_binary(&ExecuteMsg::Pause {
+                msg: to_json_binary(&ExecuteMsg::Pause {
                     duration: Duration::Height(10),
                 })
                 .unwrap(),
@@ -1150,7 +1150,7 @@ fn test_admin_permissions() {
         &ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: core_with_admin_addr.to_string(),
-                msg: to_binary(&ExecuteMsg::Pause {
+                msg: to_json_binary(&ExecuteMsg::Pause {
                     duration: Duration::Height(10),
                 })
                 .unwrap(),
@@ -1395,7 +1395,7 @@ fn test_admin_nomination() {
             &ExecuteMsg::ExecuteAdminMsgs {
                 msgs: vec![WasmMsg::Execute {
                     contract_addr: core_addr.to_string(),
-                    msg: to_binary(&ExecuteMsg::Pause {
+                    msg: to_json_binary(&ExecuteMsg::Pause {
                         duration: Duration::Height(10),
                     })
                     .unwrap(),
@@ -1416,7 +1416,7 @@ fn test_admin_nomination() {
         &ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: core_addr.to_string(),
-                msg: to_binary(&ExecuteMsg::Pause {
+                msg: to_json_binary(&ExecuteMsg::Pause {
                     duration: Duration::Height(10),
                 })
                 .unwrap(),
@@ -1637,14 +1637,14 @@ fn test_list_items() {
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: voting_id,
-            msg: to_binary(&voting_instantiate).unwrap(),
+            msg: to_json_binary(&voting_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
-            msg: to_binary(&govmod_instantiate).unwrap(),
+            msg: to_json_binary(&govmod_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "governance module".to_string(),
@@ -1771,14 +1771,14 @@ fn test_instantiate_with_items() {
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: voting_id,
-            msg: to_binary(&voting_instantiate).unwrap(),
+            msg: to_json_binary(&voting_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
-            msg: to_binary(&govmod_instantiate).unwrap(),
+            msg: to_json_binary(&govmod_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "governance module".to_string(),
@@ -1893,7 +1893,7 @@ fn test_cw20_receive_auto_add() {
         &cw20::Cw20ExecuteMsg::Send {
             contract: gov_addr.to_string(),
             amount: Uint128::new(1),
-            msg: to_binary(&"").unwrap(),
+            msg: to_json_binary(&"").unwrap(),
         },
         &[],
     )
@@ -2028,7 +2028,7 @@ fn test_cw20_receive_no_auto_add() {
         &cw20::Cw20ExecuteMsg::Send {
             contract: gov_addr.to_string(),
             amount: Uint128::new(1),
-            msg: to_binary(&"").unwrap(),
+            msg: to_json_binary(&"").unwrap(),
         },
         &[],
     )
@@ -2125,7 +2125,7 @@ fn test_cw721_receive() {
         &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::SendNft {
             contract: gov_addr.to_string(),
             token_id: "ekez".to_string(),
-            msg: to_binary("").unwrap(),
+            msg: to_json_binary("").unwrap(),
         },
         &[],
     )
@@ -2255,7 +2255,7 @@ fn test_cw721_receive_no_auto_add() {
         &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::SendNft {
             contract: gov_addr.to_string(),
             token_id: "ekez".to_string(),
-            msg: to_binary("").unwrap(),
+            msg: to_json_binary("").unwrap(),
         },
         &[],
     )
@@ -2380,7 +2380,7 @@ fn test_pause() {
         &ExecuteMsg::ExecuteProposalHook {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: core_addr.to_string(),
-                msg: to_binary(&ExecuteMsg::Pause {
+                msg: to_json_binary(&ExecuteMsg::Pause {
                     duration: Duration::Height(10),
                 })
                 .unwrap(),
@@ -2442,7 +2442,7 @@ fn test_pause() {
             &ExecuteMsg::ExecuteProposalHook {
                 msgs: vec![WasmMsg::Execute {
                     contract_addr: core_addr.to_string(),
-                    msg: to_binary(&ExecuteMsg::Pause {
+                    msg: to_json_binary(&ExecuteMsg::Pause {
                         duration: Duration::Height(10),
                     })
                     .unwrap(),
@@ -2468,7 +2468,7 @@ fn test_pause() {
             &ExecuteMsg::ExecuteProposalHook {
                 msgs: vec![WasmMsg::Execute {
                     contract_addr: core_addr.to_string(),
-                    msg: to_binary(&ExecuteMsg::Pause {
+                    msg: to_json_binary(&ExecuteMsg::Pause {
                         duration: Duration::Height(10),
                     })
                     .unwrap(),
@@ -2504,7 +2504,7 @@ fn test_pause() {
         &ExecuteMsg::ExecuteProposalHook {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: core_addr.to_string(),
-                msg: to_binary(&ExecuteMsg::Pause {
+                msg: to_json_binary(&ExecuteMsg::Pause {
                     duration: Duration::Height(10),
                 })
                 .unwrap(),
@@ -2604,14 +2604,14 @@ fn test_migrate_from_compatible() {
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: voting_id,
-            msg: to_binary(&voting_instantiate).unwrap(),
+            msg: to_json_binary(&voting_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
-            msg: to_binary(&govmod_instantiate).unwrap(),
+            msg: to_json_binary(&govmod_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "governance module".to_string(),
@@ -2640,7 +2640,7 @@ fn test_migrate_from_compatible() {
         CosmosMsg::Wasm(WasmMsg::Migrate {
             contract_addr: core_addr.to_string(),
             new_code_id: gov_id,
-            msg: to_binary(&MigrateMsg::FromCompatible {}).unwrap(),
+            msg: to_json_binary(&MigrateMsg::FromCompatible {}).unwrap(),
         }),
     )
     .unwrap();
@@ -2692,20 +2692,20 @@ fn test_migrate_from_beta() {
         automatically_add_cw721s: false,
         voting_module_instantiate_info: v1::msg::ModuleInstantiateInfo {
             code_id: voting_id,
-            msg: to_binary(&voting_instantiate).unwrap(),
+            msg: to_json_binary(&voting_instantiate).unwrap(),
             admin: v1::msg::Admin::CoreContract {},
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![
             v1::msg::ModuleInstantiateInfo {
                 code_id: govmod_id,
-                msg: to_binary(&proposal_instantiate).unwrap(),
+                msg: to_json_binary(&proposal_instantiate).unwrap(),
                 admin: v1::msg::Admin::CoreContract {},
                 label: "governance module 1".to_string(),
             },
             v1::msg::ModuleInstantiateInfo {
                 code_id: govmod_id,
-                msg: to_binary(&proposal_instantiate).unwrap(),
+                msg: to_json_binary(&proposal_instantiate).unwrap(),
                 admin: v1::msg::Admin::CoreContract {},
                 label: "governance module 2".to_string(),
             },
@@ -2729,7 +2729,7 @@ fn test_migrate_from_beta() {
         CosmosMsg::Wasm(WasmMsg::Migrate {
             contract_addr: core_addr.to_string(),
             new_code_id: core_id,
-            msg: to_binary(&MigrateMsg::FromV1 {
+            msg: to_json_binary(&MigrateMsg::FromV1 {
                 dao_uri: None,
                 params: None,
             })
@@ -2758,7 +2758,7 @@ fn test_migrate_from_beta() {
             CosmosMsg::Wasm(WasmMsg::Migrate {
                 contract_addr: core_addr.to_string(),
                 new_code_id: core_id,
-                msg: to_binary(&MigrateMsg::FromV1 {
+                msg: to_json_binary(&MigrateMsg::FromV1 {
                     dao_uri: None,
                     params: None,
                 })
@@ -2788,7 +2788,7 @@ fn test_migrate_mock() {
     let proposal_modules_key = Addr::unchecked("addr");
     let old_map: Map<Addr, Empty> = Map::new("proposal_modules");
     let path = old_map.key(proposal_modules_key.clone());
-    deps.storage.set(&path, &to_binary(&Empty {}).unwrap());
+    deps.storage.set(&path, &to_json_binary(&Empty {}).unwrap());
 
     // Write to storage in old config format
     #[cw_serde]
@@ -2860,7 +2860,7 @@ fn test_execute_stargate_msg() {
         &ExecuteMsg::ExecuteProposalHook {
             msgs: vec![CosmosMsg::Stargate {
                 type_url: "foo_type".to_string(),
-                value: to_binary("foo_bin").unwrap(),
+                value: to_json_binary("foo_bin").unwrap(),
             }],
         },
         &[],
@@ -2889,7 +2889,7 @@ fn test_module_prefixes() {
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: govmod_id,
-            msg: to_binary(&govmod_instantiate).unwrap(),
+            msg: to_json_binary(&govmod_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "voting module".to_string(),
@@ -2897,21 +2897,21 @@ fn test_module_prefixes() {
         proposal_modules_instantiate_info: vec![
             ModuleInstantiateInfo {
                 code_id: govmod_id,
-                msg: to_binary(&govmod_instantiate).unwrap(),
+                msg: to_json_binary(&govmod_instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
                 funds: vec![],
                 label: "proposal module 1".to_string(),
             },
             ModuleInstantiateInfo {
                 code_id: govmod_id,
-                msg: to_binary(&govmod_instantiate).unwrap(),
+                msg: to_json_binary(&govmod_instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
                 funds: vec![],
                 label: "proposal module 2".to_string(),
             },
             ModuleInstantiateInfo {
                 code_id: govmod_id,
-                msg: to_binary(&govmod_instantiate).unwrap(),
+                msg: to_json_binary(&govmod_instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
                 funds: vec![],
                 label: "proposal module 2".to_string(),

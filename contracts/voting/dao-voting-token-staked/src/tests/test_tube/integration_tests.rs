@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, Addr, Coin, Decimal, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, Coin, Decimal, Uint128, WasmMsg};
 use cw_ownable::Ownership;
 use cw_tokenfactory_issuer::msg::{DenomUnit, QueryMsg as IssuerQueryMsg};
 use cw_utils::Duration;
@@ -349,11 +349,11 @@ fn test_factory() {
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: vp_contract.code_id,
-            msg: to_binary(&InstantiateMsg {
+            msg: to_json_binary(&InstantiateMsg {
                 token_info: TokenInfo::Factory(
-                    to_binary(&WasmMsg::Execute {
+                    to_json_binary(&WasmMsg::Execute {
                         contract_addr: factory_addr.clone(),
-                        msg: to_binary(
+                        msg: to_json_binary(
                             &dao_test_custom_factory::msg::ExecuteMsg::TokenFactoryFactory(
                                 NewTokenInfo {
                                     token_issuer_code_id: tf_issuer.code_id,
@@ -384,7 +384,7 @@ fn test_factory() {
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: proposal_single.unwrap().code_id,
-            msg: to_binary(&dao_proposal_single::msg::InstantiateMsg {
+            msg: to_json_binary(&dao_proposal_single::msg::InstantiateMsg {
                 min_voting_period: None,
                 threshold: Threshold::ThresholdQuorum {
                     threshold: PercentageThreshold::Majority {},
@@ -458,11 +458,11 @@ fn test_factory_funds_pass_through() {
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: vp_contract.code_id,
-            msg: to_binary(&InstantiateMsg {
+            msg: to_json_binary(&InstantiateMsg {
                 token_info: TokenInfo::Factory(
-                    to_binary(&WasmMsg::Execute {
+                    to_json_binary(&WasmMsg::Execute {
                         contract_addr: factory_addr.clone(),
-                        msg: to_binary(
+                        msg: to_json_binary(
                             &dao_test_custom_factory::msg::ExecuteMsg::TokenFactoryFactoryWithFunds(
                                 NewTokenInfo {
                                     token_issuer_code_id: tf_issuer.code_id,
@@ -493,7 +493,7 @@ fn test_factory_funds_pass_through() {
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: proposal_single.unwrap().code_id,
-            msg: to_binary(&dao_proposal_single::msg::InstantiateMsg {
+            msg: to_json_binary(&dao_proposal_single::msg::InstantiateMsg {
                 min_voting_period: None,
                 threshold: Threshold::ThresholdQuorum {
                     threshold: PercentageThreshold::Majority {},
@@ -531,11 +531,11 @@ fn test_factory_funds_pass_through() {
     }];
     msg.voting_module_instantiate_info = ModuleInstantiateInfo {
         code_id: vp_contract.code_id,
-        msg: to_binary(&InstantiateMsg {
+        msg: to_json_binary(&InstantiateMsg {
             token_info: TokenInfo::Factory(
-                to_binary(&WasmMsg::Execute {
+                to_json_binary(&WasmMsg::Execute {
                     contract_addr: factory_addr,
-                    msg: to_binary(
+                    msg: to_json_binary(
                         &dao_test_custom_factory::msg::ExecuteMsg::TokenFactoryFactoryWithFunds(
                             NewTokenInfo {
                                 token_issuer_code_id: tf_issuer.code_id,
@@ -594,11 +594,11 @@ fn test_factory_no_callback() {
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: vp_contract.code_id,
-            msg: to_binary(&InstantiateMsg {
+            msg: to_json_binary(&InstantiateMsg {
                 token_info: TokenInfo::Factory(
-                    to_binary(&WasmMsg::Execute {
+                    to_json_binary(&WasmMsg::Execute {
                         contract_addr: factory_addr.clone(),
-                        msg: to_binary(
+                        msg: to_json_binary(
                             &dao_test_custom_factory::msg::ExecuteMsg::TokenFactoryFactoryNoCallback{},
                         )
                         .unwrap(),
@@ -618,7 +618,7 @@ fn test_factory_no_callback() {
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: proposal_single.unwrap().code_id,
-            msg: to_binary(&dao_proposal_single::msg::InstantiateMsg {
+            msg: to_json_binary(&dao_proposal_single::msg::InstantiateMsg {
                 min_voting_period: None,
                 threshold: Threshold::ThresholdQuorum {
                     threshold: PercentageThreshold::Majority {},
@@ -675,11 +675,11 @@ fn test_factory_wrong_callback() {
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: vp_contract.code_id,
-            msg: to_binary(&InstantiateMsg {
+            msg: to_json_binary(&InstantiateMsg {
                 token_info: TokenInfo::Factory(
-                    to_binary(&WasmMsg::Execute {
+                    to_json_binary(&WasmMsg::Execute {
                         contract_addr: factory_addr.clone(),
-                        msg: to_binary(
+                        msg: to_json_binary(
                             &dao_test_custom_factory::msg::ExecuteMsg::TokenFactoryFactoryWrongCallback{},
                         )
                         .unwrap(),
@@ -699,7 +699,7 @@ fn test_factory_wrong_callback() {
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: proposal_single.unwrap().code_id,
-            msg: to_binary(&dao_proposal_single::msg::InstantiateMsg {
+            msg: to_json_binary(&dao_proposal_single::msg::InstantiateMsg {
                 min_voting_period: None,
                 threshold: Threshold::ThresholdQuorum {
                     threshold: PercentageThreshold::Majority {},

@@ -3,7 +3,7 @@ use std::convert::TryInto;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg,
+    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg,
 };
 use cosmwasm_std::{CosmosMsg, Reply};
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
@@ -133,30 +133,30 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Allowlist { start_after, limit } => {
-            to_binary(&queries::query_allowlist(deps, start_after, limit)?)
+            to_json_binary(&queries::query_allowlist(deps, start_after, limit)?)
         }
         QueryMsg::BeforeSendHookInfo {} => {
-            to_binary(&queries::query_before_send_hook_features(deps)?)
+            to_json_binary(&queries::query_before_send_hook_features(deps)?)
         }
         QueryMsg::BurnAllowance { address } => {
-            to_binary(&queries::query_burn_allowance(deps, address)?)
+            to_json_binary(&queries::query_burn_allowance(deps, address)?)
         }
         QueryMsg::BurnAllowances { start_after, limit } => {
-            to_binary(&queries::query_burn_allowances(deps, start_after, limit)?)
+            to_json_binary(&queries::query_burn_allowances(deps, start_after, limit)?)
         }
-        QueryMsg::Denom {} => to_binary(&queries::query_denom(deps)?),
+        QueryMsg::Denom {} => to_json_binary(&queries::query_denom(deps)?),
         QueryMsg::Denylist { start_after, limit } => {
-            to_binary(&queries::query_denylist(deps, start_after, limit)?)
+            to_json_binary(&queries::query_denylist(deps, start_after, limit)?)
         }
-        QueryMsg::IsAllowed { address } => to_binary(&queries::query_is_allowed(deps, address)?),
-        QueryMsg::IsDenied { address } => to_binary(&queries::query_is_denied(deps, address)?),
-        QueryMsg::IsFrozen {} => to_binary(&queries::query_is_frozen(deps)?),
-        QueryMsg::Ownership {} => to_binary(&queries::query_owner(deps)?),
+        QueryMsg::IsAllowed { address } => to_json_binary(&queries::query_is_allowed(deps, address)?),
+        QueryMsg::IsDenied { address } => to_json_binary(&queries::query_is_denied(deps, address)?),
+        QueryMsg::IsFrozen {} => to_json_binary(&queries::query_is_frozen(deps)?),
+        QueryMsg::Ownership {} => to_json_binary(&queries::query_owner(deps)?),
         QueryMsg::MintAllowance { address } => {
-            to_binary(&queries::query_mint_allowance(deps, address)?)
+            to_json_binary(&queries::query_mint_allowance(deps, address)?)
         }
         QueryMsg::MintAllowances { start_after, limit } => {
-            to_binary(&queries::query_mint_allowances(deps, start_after, limit)?)
+            to_json_binary(&queries::query_mint_allowances(deps, start_after, limit)?)
         }
     }
 }

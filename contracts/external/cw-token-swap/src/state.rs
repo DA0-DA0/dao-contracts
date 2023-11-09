@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_binary, Addr, BankMsg, Coin, CosmosMsg, Deps, StdError, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, BankMsg, Coin, CosmosMsg, Deps, StdError, Uint128, WasmMsg};
 use cw_storage_plus::Item;
 
 use crate::{
@@ -85,7 +85,7 @@ impl CheckedTokenInfo {
                 amount,
             } => WasmMsg::Execute {
                 contract_addr: contract_addr.into_string(),
-                msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                msg: to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
                     recipient: recipient.to_string(),
                     amount,
                 })?,
@@ -133,7 +133,7 @@ mod tests {
             CosmosMsg::Wasm(WasmMsg::Execute {
                 funds: vec![],
                 contract_addr: "ekez_token".to_string(),
-                msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                msg: to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
                     recipient: "ekez".to_string(),
                     amount: Uint128::new(100)
                 })

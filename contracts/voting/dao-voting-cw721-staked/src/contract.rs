@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
+    from_json_binary, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
     Response, StdError, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
@@ -48,9 +48,9 @@ impl NftInstantiateMsg {
         }
     }
 
-    fn to_binary(&self) -> Result<Binary, StdError> {
+    fn to_json_binary(&self) -> Result<Binary, StdError> {
         match self {
-            NftInstantiateMsg::Cw721(msg) => to_binary(&msg),
+            NftInstantiateMsg::Cw721(msg) => to_json_binary(&msg),
         }
     }
 }
@@ -58,7 +58,7 @@ impl NftInstantiateMsg {
 pub fn try_deserialize_nft_instantiate_msg(
     instantiate_msg: Binary,
 ) -> Result<NftInstantiateMsg, ContractError> {
-    if let Ok(cw721_msg) = from_binary::<cw721_base::msg::InstantiateMsg>(&instantiate_msg) {
+    if let Ok(cw721_msg) = from_json_binary::<cw721_base::msg::InstantiateMsg>(&instantiate_msg) {
         return Ok(NftInstantiateMsg::Cw721(cw721_msg));
     }
 
@@ -153,7 +153,7 @@ pub fn instantiate(
                     funds: vec![],
                     admin: Some(info.sender.to_string()),
                     label,
-                    msg: instantiate_msg.to_binary()?,
+                    msg: instantiate_msg.to_json_binary()?,
                 },
                 INSTANTIATE_NFT_CONTRACT_REPLY_ID,
             );
@@ -162,7 +162,7 @@ pub fn instantiate(
                 .add_attribute("method", "instantiate")
                 .add_submessage(instantiate_msg))
         }
-        NftContract::Factory(binary) => match from_binary(&binary)? {
+        NftContract::Factory(binary) => match from_json_binary(&binary)? {
             WasmMsg::Execute {
                 msg: wasm_msg,
                 contract_addr,
@@ -296,7 +296,7 @@ pub fn execute_unstake(
                 .map(|token_id| -> StdResult<WasmMsg> {
                     Ok(cosmwasm_std::WasmMsg::Execute {
                         contract_addr: config.nft_address.to_string(),
-                        msg: to_binary(&cw721::Cw721ExecuteMsg::TransferNft {
+                        msg: to_json_binary(&cw721::Cw721ExecuteMsg::TransferNft {
                             recipient: info.sender.to_string(),
                             token_id,
                         })?,
@@ -356,7 +356,7 @@ pub fn execute_claim_nfts(
         .map(|nft| -> StdResult<CosmosMsg> {
             Ok(WasmMsg::Execute {
                 contract_addr: config.nft_address.to_string(),
-                msg: to_binary(&cw721::Cw721ExecuteMsg::TransferNft {
+                msg: to_json_binary(&cw721::Cw721ExecuteMsg::TransferNft {
                     recipient: info.sender.to_string(),
                     token_id: nft,
                 })?,
@@ -500,7 +500,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 pub fn query_active_threshold(deps: Deps) -> StdResult<Binary> {
-    to_binary(&ActiveThresholdResponse {
+    to_json_binary(&ActiveThresholdResponse {
         active_threshold: ACTIVE_THRESHOLD.may_load(deps.storage)?,
     })
 }
@@ -518,13 +518,13 @@ pub fn query_is_active(deps: Deps, env: Env) -> StdResult<Binary> {
         )?;
 
         match threshold {
-            ActiveThreshold::AbsoluteCount { count } => to_binary(&IsActiveResponse {
+            ActiveThreshold::AbsoluteCount { count } => to_json_binary(&IsActiveResponse {
                 active: staked_nfts >= count,
             }),
             ActiveThreshold::Percentage { percent } => {
                 // Check if there are any staked NFTs
                 if staked_nfts.is_zero() {
-                    return to_binary(&IsActiveResponse { active: false });
+                    return to_json_binary(&IsActiveResponse { active: false });
                 }
 
                 // percent is bounded between [0, 100]. decimal
@@ -564,13 +564,13 @@ pub fn query_is_active(deps: Deps, env: Env) -> StdResult<Binary> {
                 let count: Uint128 = rounded.try_into().unwrap();
 
                 // staked_nfts >= total_nfts * percent
-                to_binary(&IsActiveResponse {
+                to_json_binary(&IsActiveResponse {
                     active: staked_nfts >= count,
                 })
             }
         }
     } else {
-        to_binary(&IsActiveResponse { active: true })
+        to_json_binary(&IsActiveResponse { active: true })
     }
 }
 
@@ -585,7 +585,7 @@ pub fn query_voting_power_at_height(
     let power = NFT_BALANCES
         .may_load_at_height(deps.storage, &address, height)?
         .unwrap_or_default();
-    to_binary(&dao_interface::voting::VotingPowerAtHeightResponse { power, height })
+    to_json_binary(&dao_interface::voting::VotingPowerAtHeightResponse { power, height })
 }
 
 pub fn query_total_power_at_height(deps: Deps, env: Env, height: Option<u64>) -> StdResult<Binary> {
@@ -593,30 +593,30 @@ pub fn query_total_power_at_height(deps: Deps, env: Env, height: Option<u64>) ->
     let power = TOTAL_STAKED_NFTS
         .may_load_at_height(deps.storage, height)?
         .unwrap_or_default();
-    to_binary(&dao_interface::voting::TotalPowerAtHeightResponse { power, height })
+    to_json_binary(&dao_interface::voting::TotalPowerAtHeightResponse { power, height })
 }
 
 pub fn query_config(deps: Deps) -> StdResult<Binary> {
     let config = CONFIG.load(deps.storage)?;
-    to_binary(&config)
+    to_json_binary(&config)
 }
 
 pub fn query_dao(deps: Deps) -> StdResult<Binary> {
     let dao = DAO.load(deps.storage)?;
-    to_binary(&dao)
+    to_json_binary(&dao)
 }
 
 pub fn query_nft_claims(deps: Deps, address: String) -> StdResult<Binary> {
-    to_binary(&NFT_CLAIMS.query_claims(deps, &deps.api.addr_validate(&address)?)?)
+    to_json_binary(&NFT_CLAIMS.query_claims(deps, &deps.api.addr_validate(&address)?)?)
 }
 
 pub fn query_hooks(deps: Deps) -> StdResult<Binary> {
-    to_binary(&HOOKS.query_hooks(deps)?)
+    to_json_binary(&HOOKS.query_hooks(deps)?)
 }
 
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
-    to_binary(&dao_interface::voting::InfoResponse { info })
+    to_json_binary(&dao_interface::voting::InfoResponse { info })
 }
 
 pub fn query_staked_nfts(
@@ -639,7 +639,7 @@ pub fn query_staked_nfts(
         Some(l) => range.take(l as usize).collect(),
         None => range.collect(),
     };
-    to_binary(&range?)
+    to_json_binary(&range?)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -692,7 +692,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     submessages.push(SubMsg::reply_on_success(
                         WasmMsg::Execute {
                             contract_addr: nft_contract.clone(),
-                            msg: to_binary(
+                            msg: to_json_binary(
                                 &cw721_base::msg::ExecuteMsg::<Empty, Empty>::UpdateOwnership(
                                     cw721_base::Action::TransferOwnership {
                                         new_owner: dao.to_string(),
@@ -744,10 +744,10 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             // On setup success, have the DAO complete the second part of
             // ownership transfer by accepting ownership in a
             // ModuleInstantiateCallback.
-            let callback = to_binary(&ModuleInstantiateCallback {
+            let callback = to_json_binary(&ModuleInstantiateCallback {
                 msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: collection_addr.to_string(),
-                    msg: to_binary(
+                    msg: to_json_binary(
                         &&cw721_base::msg::ExecuteMsg::<Empty, Empty>::UpdateOwnership(
                             cw721_base::Action::AcceptOwnership {},
                         ),
@@ -767,7 +767,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
                     // Parse info from the callback, this will fail
                     // if incorrectly formatted.
-                    let info: NftFactoryCallback = from_binary(&data)?;
+                    let info: NftFactoryCallback = from_json_binary(&data)?;
 
                     // Validate NFT contract address
                     let nft_address = deps.api.addr_validate(&info.nft_contract)?;
@@ -788,7 +788,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     // If a callback has been configured, set the module
                     // instantiate callback data.
                     if let Some(callback) = info.module_instantiate_callback {
-                        res = res.set_data(to_binary(&callback)?);
+                        res = res.set_data(to_json_binary(&callback)?);
                     }
 
                     Ok(res)

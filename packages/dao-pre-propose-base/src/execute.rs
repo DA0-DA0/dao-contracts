@@ -1,6 +1,6 @@
 use cosmwasm_schema::schemars::JsonSchema;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg, WasmMsg,
+    to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg, WasmMsg,
 };
 
 use cw2::set_contract_version;
@@ -138,7 +138,7 @@ where
 
         let propose_messsage = WasmMsg::Execute {
             contract_addr: proposal_module.into_string(),
-            msg: to_binary(&msg)?,
+            msg: to_json_binary(&msg)?,
             funds: vec![],
         };
 
@@ -147,7 +147,7 @@ where
             .prepare_hooks(deps.storage, |a| {
                 let execute = WasmMsg::Execute {
                     contract_addr: a.into_string(),
-                    msg: to_binary(&msg)?,
+                    msg: to_json_binary(&msg)?,
                     funds: vec![],
                 };
                 Ok(SubMsg::new(execute))
@@ -314,7 +314,7 @@ where
                 Ok(Response::default()
                     .add_attribute("method", "execute_proposal_completed_hook")
                     .add_attribute("proposal", id.to_string())
-                    .add_attribute("deposit_info", to_binary(&deposit_info)?.to_string())
+                    .add_attribute("deposit_info", to_json_binary(&deposit_info)?.to_string())
                     .add_messages(messages))
             }
 
@@ -349,18 +349,18 @@ where
 
     pub fn query(&self, deps: Deps, _env: Env, msg: QueryMsg<QueryExt>) -> StdResult<Binary> {
         match msg {
-            QueryMsg::ProposalModule {} => to_binary(&self.proposal_module.load(deps.storage)?),
-            QueryMsg::Dao {} => to_binary(&self.dao.load(deps.storage)?),
-            QueryMsg::Config {} => to_binary(&self.config.load(deps.storage)?),
+            QueryMsg::ProposalModule {} => to_json_binary(&self.proposal_module.load(deps.storage)?),
+            QueryMsg::Dao {} => to_json_binary(&self.dao.load(deps.storage)?),
+            QueryMsg::Config {} => to_json_binary(&self.config.load(deps.storage)?),
             QueryMsg::DepositInfo { proposal_id } => {
                 let (deposit_info, proposer) = self.deposits.load(deps.storage, proposal_id)?;
-                to_binary(&DepositInfoResponse {
+                to_json_binary(&DepositInfoResponse {
                     deposit_info,
                     proposer,
                 })
             }
             QueryMsg::ProposalSubmittedHooks {} => {
-                to_binary(&self.proposal_submitted_hooks.query_hooks(deps)?)
+                to_json_binary(&self.proposal_submitted_hooks.query_hooks(deps)?)
             }
             QueryMsg::QueryExtension { .. } => Ok(Binary::default()),
         }

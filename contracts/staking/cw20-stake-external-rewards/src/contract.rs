@@ -14,7 +14,7 @@ use crate::ContractError::{
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
+    from_json_binary, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
     MessageInfo, Response, StdError, StdResult, Uint128, Uint256, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
@@ -143,7 +143,7 @@ pub fn execute_receive(
     info: MessageInfo,
     wrapper: Cw20ReceiveMsg,
 ) -> Result<Response<Empty>, ContractError> {
-    let msg: ReceiveMsg = from_binary(&wrapper.msg)?;
+    let msg: ReceiveMsg = from_json_binary(&wrapper.msg)?;
     let config = CONFIG.load(deps.storage)?;
     let sender = deps.api.addr_validate(&wrapper.sender)?;
     if config.reward_token != Denom::Cw20(info.sender) {
@@ -280,7 +280,7 @@ pub fn get_transfer_msg(recipient: Addr, amount: Uint128, denom: Denom) -> StdRe
         }
         .into()),
         Denom::Cw20(addr) => {
-            let cw20_msg = to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+            let cw20_msg = to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
                 recipient: recipient.into_string(),
                 amount,
             })?;
@@ -414,11 +414,11 @@ fn scale_factor() -> Uint256 {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Info {} => Ok(to_binary(&query_info(deps, env)?)?),
+        QueryMsg::Info {} => Ok(to_json_binary(&query_info(deps, env)?)?),
         QueryMsg::GetPendingRewards { address } => {
-            Ok(to_binary(&query_pending_rewards(deps, env, address)?)?)
+            Ok(to_json_binary(&query_pending_rewards(deps, env, address)?)?)
         }
-        QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
+        QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
     }
 }
 
@@ -462,7 +462,7 @@ mod tests {
 
     use crate::{msg::MigrateMsg, ContractError};
 
-    use cosmwasm_std::{coin, to_binary, Addr, Empty, Uint128, WasmMsg};
+    use cosmwasm_std::{coin, to_json_binary, Addr, Empty, Uint128, WasmMsg};
     use cw20::{Cw20Coin, Cw20ExecuteMsg, Denom};
     use cw_ownable::{Action, Ownership, OwnershipError};
     use cw_utils::Duration;
@@ -566,7 +566,7 @@ mod tests {
         let msg = cw20::Cw20ExecuteMsg::Send {
             contract: staking_addr.to_string(),
             amount: Uint128::new(amount),
-            msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+            msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
         };
         app.execute_contract(Addr::unchecked(sender), cw20_addr.clone(), &msg, &[])
             .unwrap();
@@ -679,7 +679,7 @@ mod tests {
         reward_addr: &Addr,
         amount: u128,
     ) {
-        let fund_sub_msg = to_binary(&ReceiveMsg::Fund {}).unwrap();
+        let fund_sub_msg = to_json_binary(&ReceiveMsg::Fund {}).unwrap();
         let fund_msg = Cw20ExecuteMsg::Send {
             contract: reward_addr.clone().into_string(),
             amount: Uint128::new(amount),
@@ -1680,7 +1680,7 @@ mod tests {
                 amount: Uint128::new(500000000),
             }],
         );
-        let fund_sub_msg = to_binary(&ReceiveMsg::Fund {}).unwrap();
+        let fund_sub_msg = to_json_binary(&ReceiveMsg::Fund {}).unwrap();
         let fund_msg = Cw20ExecuteMsg::Send {
             contract: reward_addr.into_string(),
             amount: Uint128::new(100),
@@ -1733,7 +1733,7 @@ mod tests {
         app.borrow_mut().update_block(|b| b.height = 1000);
 
         // Test with invalid token
-        let fund_sub_msg = to_binary(&ReceiveMsg::Fund {}).unwrap();
+        let fund_sub_msg = to_json_binary(&ReceiveMsg::Fund {}).unwrap();
         let fund_msg = Cw20ExecuteMsg::Send {
             contract: reward_addr.clone().into_string(),
             amount: Uint128::new(100),
@@ -2003,7 +2003,7 @@ mod tests {
             WasmMsg::Migrate {
                 contract_addr: rewards_addr.to_string(),
                 new_code_id: v2_code,
-                msg: to_binary(&MigrateMsg::FromV1 {}).unwrap(),
+                msg: to_json_binary(&MigrateMsg::FromV1 {}).unwrap(),
             }
             .into(),
         )
@@ -2025,7 +2025,7 @@ mod tests {
                 WasmMsg::Migrate {
                     contract_addr: rewards_addr.to_string(),
                     new_code_id: v2_code,
-                    msg: to_binary(&MigrateMsg::FromV1 {}).unwrap(),
+                    msg: to_json_binary(&MigrateMsg::FromV1 {}).unwrap(),
                 }
                 .into(),
             )

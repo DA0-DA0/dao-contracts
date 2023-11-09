@@ -91,13 +91,13 @@ pub struct ModuleInstantiateCallback {
 mod tests {
     use super::*;
 
-    use cosmwasm_std::{to_binary, Addr, WasmMsg};
+    use cosmwasm_std::{to_json_binary, Addr, WasmMsg};
 
     #[test]
     fn test_module_instantiate_admin_none() {
         let no_admin = ModuleInstantiateInfo {
             code_id: 42,
-            msg: to_binary("foo").unwrap(),
+            msg: to_json_binary("foo").unwrap(),
             admin: None,
             label: "bar".to_string(),
             funds: vec![],
@@ -107,7 +107,7 @@ mod tests {
             WasmMsg::Instantiate {
                 admin: None,
                 code_id: 42,
-                msg: to_binary("foo").unwrap(),
+                msg: to_json_binary("foo").unwrap(),
                 funds: vec![],
                 label: "bar".to_string()
             }
@@ -118,7 +118,7 @@ mod tests {
     fn test_module_instantiate_admin_addr() {
         let no_admin = ModuleInstantiateInfo {
             code_id: 42,
-            msg: to_binary("foo").unwrap(),
+            msg: to_json_binary("foo").unwrap(),
             admin: Some(Admin::Address {
                 addr: "core".to_string(),
             }),
@@ -130,7 +130,7 @@ mod tests {
             WasmMsg::Instantiate {
                 admin: Some("core".to_string()),
                 code_id: 42,
-                msg: to_binary("foo").unwrap(),
+                msg: to_json_binary("foo").unwrap(),
                 funds: vec![],
                 label: "bar".to_string()
             }
@@ -141,7 +141,7 @@ mod tests {
     fn test_module_instantiate_instantiator_addr() {
         let no_admin = ModuleInstantiateInfo {
             code_id: 42,
-            msg: to_binary("foo").unwrap(),
+            msg: to_json_binary("foo").unwrap(),
             admin: Some(Admin::CoreModule {}),
             label: "bar".to_string(),
             funds: vec![],
@@ -151,7 +151,7 @@ mod tests {
             WasmMsg::Instantiate {
                 admin: Some("ekez".to_string()),
                 code_id: 42,
-                msg: to_binary("foo").unwrap(),
+                msg: to_json_binary("foo").unwrap(),
                 funds: vec![],
                 label: "bar".to_string()
             }
