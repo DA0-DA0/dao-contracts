@@ -62,7 +62,6 @@ pub enum ExecuteMsg {
     UpdatePhaseConfig(UpdatePhaseConfigMsg),
 }
 
-// TODO token contract query
 #[cw_ownable::cw_ownable_query]
 #[cw_serde]
 #[derive(QueryResponses)]

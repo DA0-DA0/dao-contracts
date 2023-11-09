@@ -40,6 +40,7 @@ cosm-tome = "0.2"
 cosmos-sdk-proto = "0.19"
 cosmwasm-schema = { version = "1.2" }
 cosmwasm-std = { version = "1.5.0", features = ["ibc3"] }
+cw-address-like = "1.0.4"
 cw-controllers = "1.1"
 cw-multi-test = "0.18"
 cw-storage-plus = { version = "1.1" }
@@ -53,6 +54,9 @@ cw4-group = "1.1"
 cw721 = "0.18"
 cw721-base = "0.18"
 env_logger = "0.10"
+getrandom = "0.2"
+integer-sqrt = "0.1.5"
+integer-cbrt = "0.1.2"
 once_cell = "1.18"
 osmosis-std = "0.20.1"
 osmosis-std-derive = "0.20.1"
@@ -60,6 +64,8 @@ osmosis-test-tube = "20.1.1"
 proc-macro2 = "1.0"
 prost = { version = "0.12.3", features = ["prost-derive"] }
 prost-types = { version = "0.12.3", default-features = false }
+prost = "0.11"
+rust_decimal = "1.14.3"
 quote = "1.0"
 rand = "0.8"
 schemars = "0.8"
@@ -71,7 +77,8 @@ sg-multi-test = "3.1.0"
 sg-std = "3.1.0"
 sg721 = "3.1.0"
 sg721-base = "3.1.0"
-syn = { version = "1.0", features = ["derive"] }
+speculoos = "0.11.0"
+syn = {version = "1.0", features = ["derive"]}
 test-context = "0.1"
 thiserror = { version = "1.0" }
 token-bindings = "0.11.0"

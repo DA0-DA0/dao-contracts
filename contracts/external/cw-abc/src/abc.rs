@@ -139,7 +139,6 @@ pub struct CommonsPhaseConfig {
 pub enum CommonsPhase {
     Hatch,
     Open,
-    // TODO: should we allow for a closed phase?
     Closed,
 }
 

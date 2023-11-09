@@ -1,17 +1,16 @@
 [package]
 name = "cw-abc"
-version = "0.0.1"
 authors = [
     "Ethan Frey <ethanfrey@users.noreply.github.com>",
     "Jake Hartnell",
     "Adair <adairrr@users.noreply.github.com>",
 ]
-edition = { workspace = true }
 description = "Implements an Augmented Bonding Curve"
+# Inherits license from previous work
 license = "Apache-2.0"
+edition = { workspace = true }
 repository = { workspace = true }
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+version = "0.0.1"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -24,7 +23,7 @@ library = []
 # cargo test --features "test-tube"
 test-tube = []
 # when writing tests you may wish to enable test-tube as a default feature
-default = ["test-tube"]
+# default = ["test-tube"]
 
 [dependencies]
 cw-utils = { workspace = true }
@@ -33,20 +32,18 @@ cw-storage-plus = { workspace = true }
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 thiserror = { workspace = true }
-# TODO move to workspace
-cw-address-like = "1.0.4"
-rust_decimal = "1.14.3"
-integer-sqrt = "0.1.5"
-integer-cbrt = "0.1.2"
-getrandom = { version = "0.2", features = ["js"] }
+cw-address-like = { workspace = true }
+rust_decimal = { workspace = true }
+integer-sqrt = { workspace = true }
+integer-cbrt = { workspace = true }
+getrandom = { workspace = true, features = ["js"] }
 token-bindings = { workspace = true }
 cw-ownable = { workspace = true }
 cw-paginate-storage = { workspace = true }
 cw-tokenfactory-issuer = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
-# TODO move to workspace?
-speculoos = "0.11.0"
+speculoos = { workspace = true }
 anyhow = { workspace = true }
 cw-multi-test = { workspace = true }
 dao-testing = { workspace = true, features = ["test-tube"] }
@@ -54,14 +51,3 @@ osmosis-std = { workspace = true }
 osmosis-test-tube = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-
-[profile.release]
-rpath = false
-lto = true
-overflow-checks = true
-opt-level = 3
-debug = false
-debug-assertions = false
-codegen-units = 1
-panic = 'abort'
-incremental = false

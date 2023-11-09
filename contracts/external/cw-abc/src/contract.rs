@@ -231,29 +231,28 @@ pub fn reply(
             SUPPLY_DENOM.save(deps.storage, &denom)?;
 
             // Msgs to be executed to finalize setup
-            let mut msgs: Vec<WasmMsg> = vec![];
-
-            // Grant an allowance to mint
-            msgs.push(WasmMsg::Execute {
-                contract_addr: issuer_addr.clone(),
-                msg: to_binary(&IssuerExecuteMsg::SetMinterAllowance {
-                    address: env.contract.address.to_string(),
-                    // TODO let this be capped
-                    allowance: Uint128::MAX,
-                })?,
-                funds: vec![],
-            });
-
-            // Grant an allowance to burn
-            msgs.push(WasmMsg::Execute {
-                contract_addr: issuer_addr.clone(),
-                msg: to_binary(&IssuerExecuteMsg::SetBurnerAllowance {
-                    address: env.contract.address.to_string(),
-                    // TODO let this be capped
-                    allowance: Uint128::MAX,
-                })?,
-                funds: vec![],
-            });
+            let msgs: Vec<WasmMsg> = vec![
+                // Grant an allowance to mint
+                WasmMsg::Execute {
+                    contract_addr: issuer_addr.clone(),
+                    msg: to_binary(&IssuerExecuteMsg::SetMinterAllowance {
+                        address: env.contract.address.to_string(),
+                        // TODO let this be capped
+                        allowance: Uint128::MAX,
+                    })?,
+                    funds: vec![],
+                },
+                // Grant an allowance to burn
+                WasmMsg::Execute {
+                    contract_addr: issuer_addr.clone(),
+                    msg: to_binary(&IssuerExecuteMsg::SetBurnerAllowance {
+                        address: env.contract.address.to_string(),
+                        // TODO let this be capped
+                        allowance: Uint128::MAX,
+                    })?,
+                    funds: vec![],
+                },
+            ];
 
             // TODO fix metadata
             // // If metadata, set it by calling the contract
@@ -290,16 +289,6 @@ pub fn reply(
             //         funds: vec![],
             //     });
             // }
-
-            // TODO who should own the token contract?
-            // // Update issuer contract owner to be the DAO
-            // msgs.push(WasmMsg::Execute {
-            //     contract_addr: issuer_addr.clone(),
-            //     msg: to_binary(&IssuerExecuteMsg::ChangeContractOwner {
-            //         new_owner: dao.to_string(),
-            //     })?,
-            //     funds: vec![],
-            // });
 
             Ok(Response::new()
                 .add_attribute("cw-tokenfactory-issuer-address", issuer_addr)
