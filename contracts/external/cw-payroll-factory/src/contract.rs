@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_json_binary, to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Reply,
+    from_json, to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Reply,
     Response, StdResult, SubMsg, WasmMsg,
 };
 use cosmwasm_std::{Addr, Coin};
@@ -72,7 +72,7 @@ pub fn execute_receive_cw20(
     // Only accepts cw20 tokens
     nonpayable(&info)?;
 
-    let msg: ReceiveMsg = from_json_binary(&receive_msg.msg)?;
+    let msg: ReceiveMsg = from_json(&receive_msg.msg)?;
 
     if TMP_INSTANTIATOR_INFO.may_load(deps.storage)?.is_some() {
         return Err(ContractError::Reentrancy);

@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    from_json_binary,
+    from_json,
     testing::{mock_dependencies, mock_env, mock_info},
     to_json_binary, Addr, Binary, ContractResult, Empty, Response, SubMsg, WasmMsg,
 };
@@ -97,7 +97,7 @@ fn test_proposal_submitted_hooks() {
     module
         .execute_add_proposal_submitted_hook(deps.as_mut(), info, "one".to_string())
         .unwrap();
-    let hooks: HooksResponse = from_json_binary(
+    let hooks: HooksResponse = from_json(
         &module
             .query(
                 deps.as_ref(),
@@ -153,7 +153,7 @@ fn test_proposal_submitted_hooks() {
     module
         .execute_remove_proposal_submitted_hook(deps.as_mut(), info, "one".to_string())
         .unwrap();
-    let hooks: HooksResponse = from_json_binary(
+    let hooks: HooksResponse = from_json(
         &module
             .query(
                 deps.as_ref(),

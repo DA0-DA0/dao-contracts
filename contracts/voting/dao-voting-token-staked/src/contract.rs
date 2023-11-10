@@ -2,8 +2,8 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    coins, from_json_binary, to_json_binary, BankMsg, BankQuery, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Order, Reply, Response, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
+    coins, from_json, to_json_binary, BankMsg, BankQuery, Binary, Coin, CosmosMsg, Deps, DepsMut,
+    Env, MessageInfo, Order, Reply, Response, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_controllers::ClaimsResponse;
@@ -126,7 +126,7 @@ pub fn instantiate(
                 .add_attribute("token", "new_token")
                 .add_submessage(issuer_instantiate_msg))
         }
-        TokenInfo::Factory(binary) => match from_json_binary(&binary)? {
+        TokenInfo::Factory(binary) => match from_json(&binary)? {
             WasmMsg::Execute {
                 msg,
                 contract_addr,
@@ -407,7 +407,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::IsActive {} => query_is_active(deps),
         QueryMsg::ActiveThreshold {} => query_active_threshold(deps),
         QueryMsg::GetHooks {} => to_json_binary(&query_hooks(deps)?),
-        QueryMsg::TokenContract {} => to_json_binary(&TOKEN_ISSUER_CONTRACT.may_load(deps.storage)?),
+        QueryMsg::TokenContract {} => {
+            to_json_binary(&TOKEN_ISSUER_CONTRACT.may_load(deps.storage)?)
+        }
     }
 }
 
@@ -729,7 +731,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 Some(data) => {
                     // Parse info from the callback, this will fail
                     // if incorrectly formatted.
-                    let info: TokenFactoryCallback = from_json_binary(&data)?;
+                    let info: TokenFactoryCallback = from_json(&data)?;
 
                     // Save Denom
                     DENOM.save(deps.storage, &info.denom)?;

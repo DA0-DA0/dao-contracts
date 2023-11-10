@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_json_binary, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
-    Reply, Response, StdError, StdResult, SubMsg, WasmMsg,
+    from_json, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
+    Order, Reply, Response, StdError, StdResult, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_paginate_storage::{paginate_map, paginate_map_keys, paginate_map_values};
@@ -952,7 +952,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
             // Check for module instantiation callbacks
             let callback_msgs = match res.data {
-                Some(data) => from_json_binary::<ModuleInstantiateCallback>(&data)
+                Some(data) => from_json::<ModuleInstantiateCallback>(&data)
                     .map(|m| m.msgs)
                     .unwrap_or_else(|_| vec![]),
                 None => vec![],
@@ -978,7 +978,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
             // Check for module instantiation callbacks
             let callback_msgs = match res.data {
-                Some(data) => from_json_binary::<ModuleInstantiateCallback>(&data)
+                Some(data) => from_json::<ModuleInstantiateCallback>(&data)
                     .map(|m| m.msgs)
                     .unwrap_or_else(|_| vec![]),
                 None => vec![],

@@ -14,7 +14,7 @@ use crate::ContractError::{
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    from_json_binary, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
+    from_json, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
     MessageInfo, Response, StdError, StdResult, Uint128, Uint256, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
@@ -143,7 +143,7 @@ pub fn execute_receive(
     info: MessageInfo,
     wrapper: Cw20ReceiveMsg,
 ) -> Result<Response<Empty>, ContractError> {
-    let msg: ReceiveMsg = from_json_binary(&wrapper.msg)?;
+    let msg: ReceiveMsg = from_json(&wrapper.msg)?;
     let config = CONFIG.load(deps.storage)?;
     let sender = deps.api.addr_validate(&wrapper.sender)?;
     if config.reward_token != Denom::Cw20(info.sender) {

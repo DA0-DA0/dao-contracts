@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    from_json_binary, to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
+    from_json, to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
     StdError, StdResult, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
@@ -129,7 +129,7 @@ pub fn execute_receive(
             expected: config.token_address,
         });
     }
-    let msg: ReceiveMsg = from_json_binary(&wrapper.msg)?;
+    let msg: ReceiveMsg = from_json(&wrapper.msg)?;
     let sender = deps.api.addr_validate(&wrapper.sender)?;
     match msg {
         ReceiveMsg::Stake {} => execute_stake(deps, env, sender, wrapper.amount),
@@ -343,7 +343,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::TotalStakedAtHeight { height } => {
             to_json_binary(&query_total_staked_at_height(deps, env, height)?)
         }
-        QueryMsg::StakedValue { address } => to_json_binary(&query_staked_value(deps, env, address)?),
+        QueryMsg::StakedValue { address } => {
+            to_json_binary(&query_staked_value(deps, env, address)?)
+        }
         QueryMsg::TotalValue {} => to_json_binary(&query_total_value(deps, env)?),
         QueryMsg::Claims { address } => to_json_binary(&query_claims(deps, address)?),
         QueryMsg::GetHooks {} => to_json_binary(&query_hooks(deps)?),

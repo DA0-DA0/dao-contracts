@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_json_binary, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
-    Response, StdError, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
+    from_json, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
+    Reply, Response, StdError, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NumTokensResponse};
@@ -58,7 +58,7 @@ impl NftInstantiateMsg {
 pub fn try_deserialize_nft_instantiate_msg(
     instantiate_msg: Binary,
 ) -> Result<NftInstantiateMsg, ContractError> {
-    if let Ok(cw721_msg) = from_json_binary::<cw721_base::msg::InstantiateMsg>(&instantiate_msg) {
+    if let Ok(cw721_msg) = from_json::<cw721_base::msg::InstantiateMsg>(&instantiate_msg) {
         return Ok(NftInstantiateMsg::Cw721(cw721_msg));
     }
 
@@ -162,7 +162,7 @@ pub fn instantiate(
                 .add_attribute("method", "instantiate")
                 .add_submessage(instantiate_msg))
         }
-        NftContract::Factory(binary) => match from_json_binary(&binary)? {
+        NftContract::Factory(binary) => match from_json(&binary)? {
             WasmMsg::Execute {
                 msg: wasm_msg,
                 contract_addr,
@@ -767,7 +767,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
                     // Parse info from the callback, this will fail
                     // if incorrectly formatted.
-                    let info: NftFactoryCallback = from_json_binary(&data)?;
+                    let info: NftFactoryCallback = from_json(&data)?;
 
                     // Validate NFT contract address
                     let nft_address = deps.api.addr_validate(&info.nft_contract)?;
