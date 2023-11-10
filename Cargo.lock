@@ -1023,7 +1023,7 @@ dependencies = [
  "cw2 1.1.1",
  "osmosis-std 0.20.1",
  "osmosis-test-tube",
- "prost 0.11.9",
+ "prost 0.12.1",
  "schemars",
  "serde",
  "serde_json",
