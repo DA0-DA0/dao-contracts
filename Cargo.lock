@@ -83,6 +83,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "atty"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8"
+dependencies = [
+ "hermit-abi 0.1.19",
+ "libc",
+ "winapi",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -186,24 +197,24 @@ checksum = "d86b93f97252c47b41663388e6d155714a9d0c398b99f1005cbc5f978b29f445"
 
 [[package]]
 name = "bindgen"
-version = "0.68.1"
+version = "0.60.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "726e4313eb6ec35d2730258ad4e15b547ee75d6afaa1361a922e78e59b7d8078"
+checksum = "062dddbc1ba4aca46de6338e2bf87771414c335f7b2f2036e8f3e9befebf88e6"
 dependencies = [
- "bitflags 2.4.0",
+ "bitflags 1.3.2",
  "cexpr",
  "clang-sys",
+ "clap",
+ "env_logger 0.9.3",
  "lazy_static",
  "lazycell",
  "log",
  "peeking_take_while",
- "prettyplease",
  "proc-macro2",
  "quote",
  "regex",
  "rustc-hash",
  "shlex",
- "syn 2.0.34",
  "which",
 ]
 
@@ -278,7 +289,7 @@ dependencies = [
  "dao-proposal-single",
  "dao-voting 2.3.0",
  "dao-voting-cw20-staked",
- "env_logger",
+ "env_logger 0.10.0",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -356,6 +367,30 @@ dependencies = [
  "glob",
  "libc",
  "libloading",
+]
+
+[[package]]
+name = "clap"
+version = "3.2.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ea181bf566f71cb9a5d17a59e1871af638180a18fb0035c92ae62b705207123"
+dependencies = [
+ "atty",
+ "bitflags 1.3.2",
+ "clap_lex",
+ "indexmap 1.9.3",
+ "strsim",
+ "termcolor",
+ "textwrap",
+]
+
+[[package]]
+name = "clap_lex"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2850f2f5a82cbf437dd5af4d49848fbdfc27c157c3d010345776f952765261c5"
+dependencies = [
+ "os_str_bytes",
 ]
 
 [[package]]
@@ -1021,9 +1056,9 @@ dependencies = [
  "cw-ownable",
  "cw-storage-plus 1.1.0",
  "cw2 1.1.1",
- "osmosis-std 0.20.1",
+ "osmosis-std 0.19.1",
  "osmosis-test-tube",
- "prost 0.12.1",
+ "prost 0.11.9",
  "schemars",
  "serde",
  "serde_json",
@@ -1645,7 +1680,7 @@ dependencies = [
  "cw2 1.1.1",
  "cw20 1.1.0",
  "cw721 0.18.0",
- "osmosis-std 0.20.1",
+ "osmosis-std 0.19.1",
 ]
 
 [[package]]
@@ -1996,7 +2031,7 @@ dependencies = [
  "dao-voting-cw721-roles",
  "dao-voting-cw721-staked",
  "dao-voting-token-staked",
- "osmosis-std 0.20.1",
+ "osmosis-std 0.19.1",
  "osmosis-test-tube",
  "rand",
  "serde",
@@ -2137,7 +2172,7 @@ dependencies = [
  "dao-test-custom-factory",
  "dao-testing",
  "dao-voting 2.3.0",
- "osmosis-std 0.19.1",
+ "osmosis-std 0.20.1",
  "osmosis-test-tube",
  "serde",
  "thiserror",
@@ -2168,7 +2203,7 @@ dependencies = [
  "dao-test-custom-factory",
  "dao-testing",
  "dao-voting 2.3.0",
- "osmosis-std 0.19.1",
+ "osmosis-std 0.20.1",
  "osmosis-test-tube",
  "serde",
  "thiserror",
@@ -2343,6 +2378,19 @@ dependencies = [
  "sec1 0.7.3",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "env_logger"
+version = "0.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a12e6657c4c97ebab115a42dcee77225f7f482cdd841cf7088c657a42e9e00e7"
+dependencies = [
+ "atty",
+ "humantime",
+ "log",
+ "regex",
+ "termcolor",
 ]
 
 [[package]]
@@ -2662,6 +2710,15 @@ dependencies = [
 
 [[package]]
 name = "hermit-abi"
+version = "0.1.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
+dependencies = [
+ "libc",
+]
+
+[[package]]
+name = "hermit-abi"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "443144c8cdadd93ebf52ddb4056d257f5b52c04d3c804e657d19eb73fc33668b"
@@ -2878,7 +2935,7 @@ dependencies = [
  "dao-voting 2.3.0",
  "dao-voting-cw20-staked",
  "dao-voting-cw721-staked",
- "env_logger",
+ "env_logger 0.10.0",
  "once_cell",
  "rand",
  "serde",
@@ -2892,7 +2949,7 @@ version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb0889898416213fab133e1d33a0e5858a48177452750691bde3666d0fdbaf8b"
 dependencies = [
- "hermit-abi",
+ "hermit-abi 0.3.2",
  "rustix",
  "windows-sys",
 ]
@@ -3103,7 +3160,7 @@ version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4161fcb6d602d4d2081af7c3a45852d875a03dd337a6bfdd6e06407b61342a43"
 dependencies = [
- "hermit-abi",
+ "hermit-abi 0.3.2",
  "libc",
 ]
 
@@ -3152,6 +3209,12 @@ dependencies = [
  "dlv-list",
  "hashbrown 0.12.3",
 ]
+
+[[package]]
+name = "os_str_bytes"
+version = "6.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2355d85b9a3786f481747ced0e0ff2ba35213a1f9bd406ed906554d7af805a1"
 
 [[package]]
 name = "osmosis-std"
@@ -3213,15 +3276,15 @@ dependencies = [
 
 [[package]]
 name = "osmosis-test-tube"
-version = "20.1.2"
+version = "19.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c1534a419d9e2c27b0b4869e68496b92abca93464b82efbdd1f1b43467f2938"
+checksum = "b0dde0a21f1323e7c78f46da4bd0b24149d26483785fb5b39f74016f3f524aad"
 dependencies = [
- "base64 0.21.5",
+ "base64 0.13.1",
  "bindgen",
  "cosmrs 0.9.0",
  "cosmwasm-std",
- "osmosis-std 0.20.1",
+ "osmosis-std 0.19.1",
  "prost 0.11.9",
  "serde",
  "serde_json",
@@ -3391,16 +3454,6 @@ name = "ppv-lite86"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
-
-[[package]]
-name = "prettyplease"
-version = "0.2.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae005bd773ab59b4725093fd7df83fd7892f7d8eafb48dbd7de6e024e4215f9d"
-dependencies = [
- "proc-macro2",
- "syn 2.0.34",
-]
 
 [[package]]
 name = "proc-macro2"
@@ -4084,6 +4137,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
+name = "strsim"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
+
+[[package]]
 name = "subtle"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4369,19 +4428,25 @@ dependencies = [
 
 [[package]]
 name = "test-tube"
-version = "0.2.0"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65e79c7af10967dd3383ee5aae3810637cc3f2fd040f87f862c02151db060628"
+checksum = "04de0d85f2438f0b64a5c135a1524564f2b89263cfbce011542446b6681d006f"
 dependencies = [
  "base64 0.13.1",
  "cosmrs 0.9.0",
  "cosmwasm-std",
- "osmosis-std 0.20.1",
+ "osmosis-std 0.19.1",
  "prost 0.11.9",
  "serde",
  "serde_json",
  "thiserror",
 ]
+
+[[package]]
+name = "textwrap"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "222a222a5bfe1bba4a77b45ec488a741b3cb8872e5e499451fd7d0129c9c7c3d"
 
 [[package]]
 name = "thiserror"
