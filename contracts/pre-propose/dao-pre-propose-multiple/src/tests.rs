@@ -1,4 +1,4 @@
-use cosmwasm_std::{coins, from_slice, to_json_binary, Addr, Coin, Decimal, Empty, Uint128};
+use cosmwasm_std::{coins, from_json, to_json_binary, Addr, Coin, Decimal, Empty, Uint128};
 use cpm::query::ProposalResponse;
 use cw2::ContractVersion;
 use cw20::Cw20Coin;
@@ -800,7 +800,7 @@ fn test_set_version() {
         false,
     );
 
-    let info: ContractVersion = from_slice(
+    let info: ContractVersion = from_json(
         &app.wrap()
             .query_wasm_raw(pre_propose, "contract_info".as_bytes())
             .unwrap()
