@@ -239,7 +239,7 @@ pub fn execute_propose(
     //
     // `to_vec` is the method used by cosmwasm to convert a struct
     // into it's byte representation in storage.
-    let proposal_size = cosmwasm_std::to_vec(&proposal)?.len() as u64;
+    let proposal_size = cosmwasm_std::to_json_vec(&proposal)?.len() as u64;
     if proposal_size > MAX_PROPOSAL_SIZE {
         return Err(ContractError::ProposalTooLarge {
             size: proposal_size,
