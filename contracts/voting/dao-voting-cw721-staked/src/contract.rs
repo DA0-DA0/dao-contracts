@@ -162,7 +162,7 @@ pub fn instantiate(
                 .add_attribute("method", "instantiate")
                 .add_submessage(instantiate_msg))
         }
-        NftContract::Factory(binary) => match from_json(&binary)? {
+        NftContract::Factory(binary) => match from_json(binary)? {
             WasmMsg::Execute {
                 msg: wasm_msg,
                 contract_addr,
@@ -767,7 +767,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
                     // Parse info from the callback, this will fail
                     // if incorrectly formatted.
-                    let info: NftFactoryCallback = from_json(&data)?;
+                    let info: NftFactoryCallback = from_json(data)?;
 
                     // Validate NFT contract address
                     let nft_address = deps.api.addr_validate(&info.nft_contract)?;

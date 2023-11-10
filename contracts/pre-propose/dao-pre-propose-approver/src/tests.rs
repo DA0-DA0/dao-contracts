@@ -1078,7 +1078,7 @@ fn test_set_version() {
     );
 
     let info: ContractVersion = from_json(
-        &app.wrap()
+        app.wrap()
             .query_wasm_raw(pre_propose_approver, "contract_info".as_bytes())
             .unwrap()
             .unwrap(),

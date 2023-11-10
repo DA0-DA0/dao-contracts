@@ -154,7 +154,7 @@ pub fn execute_burn(
     token_id: String,
 ) -> Result<Response, ContractError> {
     // Lookup the owner of the NFT
-    let owner: OwnerOfResponse = from_json(&Cw721Roles::default().query(
+    let owner: OwnerOfResponse = from_json(Cw721Roles::default().query(
         deps.as_ref(),
         env.clone(),
         QueryMsg::OwnerOf {
@@ -164,7 +164,7 @@ pub fn execute_burn(
     )?)?;
 
     // Get the weight of the token
-    let nft_info: NftInfoResponse<MetadataExt> = from_json(&Cw721Roles::default().query(
+    let nft_info: NftInfoResponse<MetadataExt> = from_json(Cw721Roles::default().query(
         deps.as_ref(),
         env.clone(),
         QueryMsg::NftInfo {

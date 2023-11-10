@@ -2818,7 +2818,7 @@ fn test_migrate_mock() {
 
     let new_path = PROPOSAL_MODULES.key(proposal_modules_key);
     let prop_module_bytes = deps.storage.get(&new_path).unwrap();
-    let module: ProposalModule = from_json(&prop_module_bytes).unwrap();
+    let module: ProposalModule = from_json(prop_module_bytes).unwrap();
     assert_eq!(module.address, Addr::unchecked("addr"));
     assert_eq!(module.prefix, derive_proposal_module_prefix(0).unwrap());
     assert_eq!(module.status, ProposalModuleStatus::Enabled {});

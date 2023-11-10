@@ -126,7 +126,7 @@ pub fn instantiate(
                 .add_attribute("token", "new_token")
                 .add_submessage(issuer_instantiate_msg))
         }
-        TokenInfo::Factory(binary) => match from_json(&binary)? {
+        TokenInfo::Factory(binary) => match from_json(binary)? {
             WasmMsg::Execute {
                 msg,
                 contract_addr,
@@ -731,7 +731,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 Some(data) => {
                     // Parse info from the callback, this will fail
                     // if incorrectly formatted.
-                    let info: TokenFactoryCallback = from_json(&data)?;
+                    let info: TokenFactoryCallback = from_json(data)?;
 
                     // Save Denom
                     DENOM.save(deps.storage, &info.denom)?;

@@ -98,7 +98,7 @@ fn test_proposal_submitted_hooks() {
         .execute_add_proposal_submitted_hook(deps.as_mut(), info, "one".to_string())
         .unwrap();
     let hooks: HooksResponse = from_json(
-        &module
+        module
             .query(
                 deps.as_ref(),
                 mock_env(),
@@ -154,7 +154,7 @@ fn test_proposal_submitted_hooks() {
         .execute_remove_proposal_submitted_hook(deps.as_mut(), info, "one".to_string())
         .unwrap();
     let hooks: HooksResponse = from_json(
-        &module
+        module
             .query(
                 deps.as_ref(),
                 mock_env(),

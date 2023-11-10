@@ -432,7 +432,7 @@ fn test_queries() {
     .unwrap();
 
     let cardinality: Uint128 = from_json(
-        &st.query(
+        st.query(
             storage,
             StakeTrackerQuery::Cardinality {
                 t: Timestamp::from_seconds(11),
@@ -444,7 +444,7 @@ fn test_queries() {
     assert_eq!(cardinality, Uint128::one());
 
     let total_staked: Uint128 = from_json(
-        &st.query(
+        st.query(
             storage,
             StakeTrackerQuery::TotalStaked {
                 t: Timestamp::from_seconds(10),
@@ -456,7 +456,7 @@ fn test_queries() {
     assert_eq!(total_staked, Uint128::new(42));
 
     let val_staked: Uint128 = from_json(
-        &st.query(
+        st.query(
             storage,
             StakeTrackerQuery::ValidatorStaked {
                 t: Timestamp::from_seconds(10),
@@ -469,7 +469,7 @@ fn test_queries() {
     assert_eq!(val_staked, Uint128::new(42));
 
     let val_staked_before_staking: Uint128 = from_json(
-        &st.query(
+        st.query(
             storage,
             StakeTrackerQuery::ValidatorStaked {
                 t: Timestamp::from_seconds(9),
