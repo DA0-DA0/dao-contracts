@@ -1,4 +1,6 @@
-use cosmwasm_std::{to_json_binary, Addr, Coin, CosmosMsg, Decimal, Empty, Timestamp, Uint128, WasmMsg};
+use cosmwasm_std::{
+    to_json_binary, Addr, Coin, CosmosMsg, Decimal, Empty, Timestamp, Uint128, WasmMsg,
+};
 use cw20::Cw20Coin;
 use cw_denom::{CheckedDenom, UncheckedDenom};
 use cw_hooks::HooksResponse;

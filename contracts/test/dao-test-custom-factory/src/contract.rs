@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
-    StdResult, SubMsg, Uint128, WasmMsg,
+    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
+    Response, StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721QueryMsg, NumTokensResponse};
@@ -190,11 +190,13 @@ pub fn execute_nft_factory_wrong_callback(
     _env: Env,
     _info: MessageInfo,
 ) -> Result<Response, ContractError> {
-    Ok(Response::new().set_data(to_json_binary(&TokenFactoryCallback {
-        denom: "wrong".to_string(),
-        token_contract: None,
-        module_instantiate_callback: None,
-    })?))
+    Ok(
+        Response::new().set_data(to_json_binary(&TokenFactoryCallback {
+            denom: "wrong".to_string(),
+            token_contract: None,
+            module_instantiate_callback: None,
+        })?),
+    )
 }
 
 /// An example factory that instantiates a cw_tokenfactory_issuer contract
@@ -264,10 +266,12 @@ pub fn execute_token_factory_factory_wrong_callback(
     _env: Env,
     _info: MessageInfo,
 ) -> Result<Response, ContractError> {
-    Ok(Response::new().set_data(to_json_binary(&NftFactoryCallback {
-        nft_contract: "nope".to_string(),
-        module_instantiate_callback: None,
-    })?))
+    Ok(
+        Response::new().set_data(to_json_binary(&NftFactoryCallback {
+            nft_contract: "nope".to_string(),
+            module_instantiate_callback: None,
+        })?),
+    )
 }
 
 /// Example method called in the ModuleInstantiateCallback providing
@@ -443,13 +447,13 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
             // Responses for `dao-voting-token-staked` MUST include a
             // TokenFactoryCallback.
-            Ok(Response::new()
-                .add_messages(msgs)
-                .set_data(to_json_binary(&TokenFactoryCallback {
+            Ok(Response::new().add_messages(msgs).set_data(to_json_binary(
+                &TokenFactoryCallback {
                     denom,
                     token_contract: Some(issuer_addr.to_string()),
                     module_instantiate_callback: Some(callback),
-                })?))
+                },
+            )?))
         }
         INSTANTIATE_NFT_REPLY_ID => {
             // Parse nft address from instantiate reply
@@ -487,10 +491,12 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
             // Responses for `dao-voting-cw721-staked` MUST include a
             // NftFactoryCallback.
-            Ok(Response::new().set_data(to_json_binary(&NftFactoryCallback {
-                nft_contract: nft_address.to_string(),
-                module_instantiate_callback: Some(ModuleInstantiateCallback { msgs }),
-            })?))
+            Ok(
+                Response::new().set_data(to_json_binary(&NftFactoryCallback {
+                    nft_contract: nft_address.to_string(),
+                    module_instantiate_callback: Some(ModuleInstantiateCallback { msgs }),
+                })?),
+            )
         }
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }

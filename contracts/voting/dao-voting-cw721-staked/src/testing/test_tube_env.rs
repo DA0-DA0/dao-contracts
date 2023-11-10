@@ -90,23 +90,26 @@ impl TestEnvBuilder {
                     nft_contract: NftContract::Factory(
                         to_json_binary(&WasmMsg::Execute {
                             contract_addr: custom_factory.contract_addr.clone(),
-                            msg: to_json_binary(&dao_test_custom_factory::msg::ExecuteMsg::NftFactory {
-                                code_id: cw721_id,
-                                cw721_instantiate_msg: Cw721InstantiateMsg {
-                                    name: "Test NFT".to_string(),
-                                    symbol: "TEST".to_string(),
-                                    minter: accounts[0].address(),
-                                },
-                                initial_nfts: vec![to_json_binary(
-                                    &Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                            msg: to_json_binary(
+                                &dao_test_custom_factory::msg::ExecuteMsg::NftFactory {
+                                    code_id: cw721_id,
+                                    cw721_instantiate_msg: Cw721InstantiateMsg {
+                                        name: "Test NFT".to_string(),
+                                        symbol: "TEST".to_string(),
+                                        minter: accounts[0].address(),
+                                    },
+                                    initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::<
+                                        Empty,
+                                        Empty,
+                                    >::Mint {
                                         owner: accounts[0].address(),
                                         token_uri: Some("https://example.com".to_string()),
                                         token_id: "1".to_string(),
                                         extension: Empty {},
-                                    },
-                                )
-                                .unwrap()],
-                            })
+                                    })
+                                    .unwrap()],
+                                },
+                            )
                             .unwrap(),
                             funds: vec![],
                         })

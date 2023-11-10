@@ -438,9 +438,9 @@ fn test_instantiate_with_invalid_duration_fails() {
                         minter: CREATOR_ADDR.to_string(),
                     })
                     .unwrap(),
-                    initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Extension {
-                        msg: Empty {},
-                    })
+                    initial_nfts: vec![to_json_binary(
+                        &Cw721ExecuteMsg::<Empty, Empty>::Extension { msg: Empty {} },
+                    )
                     .unwrap()],
                 },
                 unstaking_duration: None,
@@ -1023,9 +1023,9 @@ fn test_invalid_initial_nft_msg() {
                         minter: CREATOR_ADDR.to_string(),
                     })
                     .unwrap(),
-                    initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Extension {
-                        msg: Empty {},
-                    })
+                    initial_nfts: vec![to_json_binary(
+                        &Cw721ExecuteMsg::<Empty, Empty>::Extension { msg: Empty {} },
+                    )
                     .unwrap()],
                 },
                 unstaking_duration: None,
@@ -1063,8 +1063,10 @@ fn test_invalid_initial_nft_msg_wrong_absolute_count() {
                     })
                     .unwrap(),
                     initial_nfts: vec![
-                        to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Extension { msg: Empty {} })
-                            .unwrap(),
+                        to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Extension {
+                            msg: Empty {},
+                        })
+                        .unwrap(),
                         to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
                             owner: CREATOR_ADDR.to_string(),
                             token_uri: Some("https://example.com".to_string()),
@@ -1226,12 +1228,14 @@ fn test_factory_with_funds_pass_through() {
                                 symbol: "TEST".to_string(),
                                 minter: CREATOR_ADDR.to_string(),
                             },
-                            initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
-                                owner: CREATOR_ADDR.to_string(),
-                                token_uri: Some("https://example.com".to_string()),
-                                token_id: "1".to_string(),
-                                extension: Empty {},
-                            })
+                            initial_nfts: vec![to_json_binary(
+                                &Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                                    owner: CREATOR_ADDR.to_string(),
+                                    token_uri: Some("https://example.com".to_string()),
+                                    token_id: "1".to_string(),
+                                    extension: Empty {},
+                                },
+                            )
                             .unwrap()],
                         },
                     )
@@ -1271,12 +1275,14 @@ fn test_factory_with_funds_pass_through() {
                                 symbol: "TEST".to_string(),
                                 minter: CREATOR_ADDR.to_string(),
                             },
-                            initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
-                                owner: CREATOR_ADDR.to_string(),
-                                token_uri: Some("https://example.com".to_string()),
-                                token_id: "1".to_string(),
-                                extension: Empty {},
-                            })
+                            initial_nfts: vec![to_json_binary(
+                                &Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                                    owner: CREATOR_ADDR.to_string(),
+                                    token_uri: Some("https://example.com".to_string()),
+                                    token_id: "1".to_string(),
+                                    extension: Empty {},
+                                },
+                            )
                             .unwrap()],
                         },
                     )

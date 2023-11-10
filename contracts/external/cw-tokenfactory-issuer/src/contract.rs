@@ -148,7 +148,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Denylist { start_after, limit } => {
             to_json_binary(&queries::query_denylist(deps, start_after, limit)?)
         }
-        QueryMsg::IsAllowed { address } => to_json_binary(&queries::query_is_allowed(deps, address)?),
+        QueryMsg::IsAllowed { address } => {
+            to_json_binary(&queries::query_is_allowed(deps, address)?)
+        }
         QueryMsg::IsDenied { address } => to_json_binary(&queries::query_is_denied(deps, address)?),
         QueryMsg::IsFrozen {} => to_json_binary(&queries::query_is_frozen(deps)?),
         QueryMsg::Ownership {} => to_json_binary(&queries::query_owner(deps)?),

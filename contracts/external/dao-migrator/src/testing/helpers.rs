@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult, Uint128,
-    WasmMsg,
+    to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
+    Uint128, WasmMsg,
 };
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 use dao_interface::query::SubDao;

@@ -348,10 +348,12 @@ pub fn reply(deps: DepsMut, env: Env, reply: Reply) -> Result<Response, Contract
                 msg: to_json_binary(&dao_interface::msg::ExecuteMsg::ExecuteProposalHook {
                     msgs: vec![WasmMsg::Execute {
                         contract_addr: core_addr.to_string(),
-                        msg: to_json_binary(&dao_interface::msg::ExecuteMsg::UpdateProposalModules {
-                            to_add: vec![],
-                            to_disable: vec![env.contract.address.to_string()],
-                        })?,
+                        msg: to_json_binary(
+                            &dao_interface::msg::ExecuteMsg::UpdateProposalModules {
+                                to_add: vec![],
+                                to_disable: vec![env.contract.address.to_string()],
+                            },
+                        )?,
                         funds: vec![],
                     }
                     .into()],

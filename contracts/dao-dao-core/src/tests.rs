@@ -593,7 +593,8 @@ fn test_removed_modules_can_not_execute() {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: gov_addr.to_string(),
                 funds: vec![],
-                msg: to_json_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_disable }).unwrap(),
+                msg: to_json_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_disable })
+                    .unwrap(),
             }
             .into()],
         },
@@ -666,7 +667,8 @@ fn test_removed_modules_can_not_execute() {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: gov_addr.to_string(),
                 funds: vec![],
-                msg: to_json_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_disable }).unwrap(),
+                msg: to_json_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_disable })
+                    .unwrap(),
             }
             .into()],
         },

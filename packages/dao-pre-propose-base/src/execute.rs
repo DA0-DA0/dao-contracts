@@ -1,6 +1,7 @@
 use cosmwasm_schema::schemars::JsonSchema;
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg, WasmMsg,
+    to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg,
+    WasmMsg,
 };
 
 use cw2::set_contract_version;
@@ -349,7 +350,9 @@ where
 
     pub fn query(&self, deps: Deps, _env: Env, msg: QueryMsg<QueryExt>) -> StdResult<Binary> {
         match msg {
-            QueryMsg::ProposalModule {} => to_json_binary(&self.proposal_module.load(deps.storage)?),
+            QueryMsg::ProposalModule {} => {
+                to_json_binary(&self.proposal_module.load(deps.storage)?)
+            }
             QueryMsg::Dao {} => to_json_binary(&self.dao.load(deps.storage)?),
             QueryMsg::Config {} => to_json_binary(&self.config.load(deps.storage)?),
             QueryMsg::DepositInfo { proposal_id } => {

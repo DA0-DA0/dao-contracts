@@ -10,8 +10,8 @@ use crate::state::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env, Fraction, MessageInfo,
-    Order, Response, StdError, StdResult, Uint128, WasmMsg,
+    to_json_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env, Fraction,
+    MessageInfo, Order, Response, StdError, StdResult, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_paginate_storage::paginate_map;

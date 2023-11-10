@@ -1,8 +1,8 @@
 use cosmwasm_std::{
     coins,
     testing::{mock_dependencies, mock_env},
-    to_json_binary, Addr, Attribute, BankMsg, Binary, ContractInfoResponse, CosmosMsg, Decimal, Empty,
-    Reply, StdError, SubMsgResult, Uint128, WasmMsg, WasmQuery,
+    to_json_binary, Addr, Attribute, BankMsg, Binary, ContractInfoResponse, CosmosMsg, Decimal,
+    Empty, Reply, StdError, SubMsgResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::ContractVersion;
 use cw20::Cw20Coin;
@@ -2495,7 +2495,8 @@ fn test_update_pre_propose_module() {
         CREATOR_ADDR,
         vec![WasmMsg::Execute {
             contract_addr: pre_propose_start.into_string(),
-            msg: to_json_binary(&dao_pre_propose_single::ExecuteMsg::Withdraw { denom: None }).unwrap(),
+            msg: to_json_binary(&dao_pre_propose_single::ExecuteMsg::Withdraw { denom: None })
+                .unwrap(),
             funds: vec![],
         }
         .into()],

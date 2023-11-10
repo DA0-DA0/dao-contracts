@@ -1,5 +1,7 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_json_binary, Addr, BankMsg, Coin, CosmosMsg, Deps, StdError, Uint128, WasmMsg};
+use cosmwasm_std::{
+    to_json_binary, Addr, BankMsg, Coin, CosmosMsg, Deps, StdError, Uint128, WasmMsg,
+};
 use cw_storage_plus::Item;
 
 use crate::{

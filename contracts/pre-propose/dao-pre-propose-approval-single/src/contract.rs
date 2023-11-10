@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response, StdResult, SubMsg,
-    WasmMsg,
+    to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response, StdResult,
+    SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_paginate_storage::paginate_map_values;
@@ -300,13 +300,15 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             QueryExt::PendingProposal { id } => {
                 to_json_binary(&PENDING_PROPOSALS.load(deps.storage, id)?)
             }
-            QueryExt::PendingProposals { start_after, limit } => to_json_binary(&paginate_map_values(
-                deps,
-                &PENDING_PROPOSALS,
-                start_after,
-                limit,
-                Order::Descending,
-            )?),
+            QueryExt::PendingProposals { start_after, limit } => {
+                to_json_binary(&paginate_map_values(
+                    deps,
+                    &PENDING_PROPOSALS,
+                    start_after,
+                    limit,
+                    Order::Descending,
+                )?)
+            }
             QueryExt::ReversePendingProposals {
                 start_before,
                 limit,
