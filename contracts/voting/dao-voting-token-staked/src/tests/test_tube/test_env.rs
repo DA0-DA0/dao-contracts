@@ -25,10 +25,11 @@ use dao_testing::test_tube::{
     dao_proposal_single::DaoProposalSingle, dao_test_custom_factory::CustomFactoryContract,
 };
 use dao_voting::threshold::ActiveThreshold;
-use osmosis_std::types::{
-    cosmos::bank::v1beta1::QueryAllBalancesRequest, cosmwasm::wasm::v1::MsgExecuteContractResponse,
-};
 use osmosis_test_tube::{
+    osmosis_std::types::{
+        cosmos::bank::v1beta1::QueryAllBalancesRequest,
+        cosmwasm::wasm::v1::MsgExecuteContractResponse,
+    },
     Account, Bank, Module, OsmosisTestApp, RunnerError, RunnerExecuteResult, RunnerResult,
     SigningAccount, Wasm,
 };

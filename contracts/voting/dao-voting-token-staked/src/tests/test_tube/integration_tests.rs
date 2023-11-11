@@ -12,8 +12,10 @@ use dao_voting::{
     pre_propose::PreProposeInfo,
     threshold::{ActiveThreshold, ActiveThresholdError, PercentageThreshold, Threshold},
 };
-use osmosis_std::types::cosmos::bank::v1beta1::QueryBalanceRequest;
-use osmosis_test_tube::{Account, OsmosisTestApp, RunnerError};
+use osmosis_test_tube::{
+    osmosis_std::types::cosmos::bank::v1beta1::QueryBalanceRequest, Account, OsmosisTestApp,
+    RunnerError,
+};
 
 use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenInfo},
