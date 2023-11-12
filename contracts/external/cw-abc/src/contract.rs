@@ -89,7 +89,7 @@ pub fn instantiate(
 
     PHASE_CONFIG.save(deps.storage, &phase_config)?;
 
-    // TODO don't hardcode this?
+    // TODO don't hardcode this? Make it configurable? Hatch config can be optional
     PHASE.save(deps.storage, &CommonsPhase::Hatch)?;
 
     // Initialize owner to sender

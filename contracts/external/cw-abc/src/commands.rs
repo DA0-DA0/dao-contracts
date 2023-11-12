@@ -39,7 +39,7 @@ pub fn execute_buy(
 
             // Check if the initial_raise max has been met
             if curve_state.reserve + payment >= hatch_config.initial_raise.max {
-                // Transition to the Open phase, the hatchers' tokens are now vesting
+                // Transition to the Open phase
                 phase = CommonsPhase::Open;
                 PHASE.save(deps.storage, &phase)?;
             }
@@ -54,10 +54,11 @@ pub fn execute_buy(
         }
     };
 
-    // calculate how many tokens can be purchased with this and mint them
+    // Calculate how many tokens can be purchased with this and mint them
     let curve = curve_fn(curve_state.clone().decimals);
     curve_state.reserve += reserved;
     curve_state.funding += funded;
+
     // Calculate the supply based on the reserve
     let new_supply = curve.supply(curve_state.reserve);
     let minted = new_supply

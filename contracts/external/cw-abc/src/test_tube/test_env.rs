@@ -23,6 +23,7 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 
 pub const DENOM: &str = "ucat";
+
 // Needs to match what's configured for test-tube
 pub const RESERVE: &str = "uosmo";
 
@@ -87,22 +88,16 @@ impl<'a> TestEnv<'a> {
     }
 }
 
-pub struct TestEnvBuilder {
-    pub accounts: Vec<SigningAccount>,
-    pub instantiate_msg: Option<InstantiateMsg>,
-}
+pub struct TestEnvBuilder {}
 
 impl TestEnvBuilder {
     pub fn new() -> Self {
-        Self {
-            accounts: vec![],
-            instantiate_msg: None,
-        }
+        Self {}
     }
 
     pub fn default_setup(self, app: &'_ OsmosisTestApp) -> TestEnv<'_> {
         let accounts = app
-            .init_accounts(&[Coin::new(1000000000000000u128, "uosmo")], 10)
+            .init_accounts(&[Coin::new(1000000000000000u128, RESERVE)], 10)
             .unwrap();
 
         let issuer_id = TokenfactoryIssuer::upload(app, &accounts[0]).unwrap();
@@ -128,7 +123,7 @@ impl TestEnvBuilder {
                         },
                         initial_price: Uint128::one(),
                         initial_allocation_ratio: Decimal::percent(10u64),
-                        exit_tax: Decimal::zero(),
+                        exit_tax: Decimal::percent(10u64),
                     },
                     open: OpenConfig {
                         allocation_percentage: Decimal::percent(10u64),
@@ -158,28 +153,18 @@ impl TestEnvBuilder {
         }
     }
 
-    pub fn build(self, app: &'_ OsmosisTestApp) -> TestEnv<'_> {
-        let accounts = self.accounts;
+    pub fn setup(self, app: &'_ OsmosisTestApp, msg: InstantiateMsg) -> TestEnv<'_> {
+        let accounts = app
+            .init_accounts(&[Coin::new(1000000000000000u128, RESERVE)], 10)
+            .unwrap();
 
-        let abc = CwAbc::deploy(
-            app,
-            self.instantiate_msg
-                .as_ref()
-                .expect("instantiate msg not set"),
-            &accounts[0],
-        )
-        .unwrap();
+        let issuer_id = TokenfactoryIssuer::upload(app, &accounts[0]).unwrap();
+
+        let abc = CwAbc::deploy(app, &msg, &accounts[0]).unwrap();
 
         let issuer_addr = CwAbc::query(&abc, &QueryMsg::TokenContract {}).unwrap();
 
-        let tf_issuer = TokenfactoryIssuer::new_with_values(
-            app,
-            self.instantiate_msg
-                .expect("instantiate msg not set")
-                .token_issuer_code_id,
-            issuer_addr,
-        )
-        .unwrap();
+        let tf_issuer = TokenfactoryIssuer::new_with_values(app, issuer_id, issuer_addr).unwrap();
 
         TestEnv {
             app,
@@ -191,21 +176,6 @@ impl TestEnvBuilder {
 
     pub fn upload_issuer(self, app: &'_ OsmosisTestApp, signer: &SigningAccount) -> u64 {
         TokenfactoryIssuer::upload(app, signer).unwrap()
-    }
-
-    pub fn set_accounts(mut self, accounts: Vec<SigningAccount>) -> Self {
-        self.accounts = accounts;
-        self
-    }
-
-    pub fn with_account(mut self, account: SigningAccount) -> Self {
-        self.accounts.push(account);
-        self
-    }
-
-    pub fn with_instantiate_msg(mut self, msg: InstantiateMsg) -> Self {
-        self.instantiate_msg = Some(msg);
-        self
     }
 }
 
@@ -237,7 +207,7 @@ impl<'a> CwAbc<'a> {
         signer: &SigningAccount,
     ) -> Result<Self, RunnerError> {
         let wasm = Wasm::new(app);
-        let token_creation_fee = Coin::new(10000000, "uosmo");
+        let token_creation_fee = Coin::new(10000000, RESERVE);
 
         let code_id = wasm
             .store_code(&Self::get_wasm_byte_code(), None, signer)?

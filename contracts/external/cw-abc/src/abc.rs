@@ -40,6 +40,7 @@ pub struct HatchConfig {
     pub initial_raise: MinMax,
     /// The initial price (p0) per reserve token
     /// TODO: initial price is not implemented yet
+    /// TODO: do we need this or is it just calculated?
     pub initial_price: Uint128,
     /// The initial allocation (θ), percentage of the initial raise allocated to the Funding Pool
     pub initial_allocation_ratio: StdDecimal,
@@ -86,6 +87,7 @@ impl HatchConfig {
 
 #[cw_serde]
 pub struct OpenConfig {
+    // TODO isn't this the same as initial_allocation_ratio? Maybe clearer to just call it an entrance fee?
     /// Percentage of capital put into the Reserve Pool during the Open phase
     pub allocation_percentage: StdDecimal,
     /// Exit taxation ratio
