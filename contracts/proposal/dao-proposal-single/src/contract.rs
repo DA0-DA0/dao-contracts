@@ -198,6 +198,21 @@ pub fn execute_propose(
 
     let total_power = get_total_power(deps.as_ref(), &config.dao, Some(env.block.height))?;
 
+    // If the proposer has all of the voting power, the proposal
+    // should be created and auto passed.
+    let proposer_voting_power = get_voting_power(
+        deps.as_ref(),
+        sender.clone(),
+        &config.dao,
+        Some(env.block.height),
+    )?;
+
+    let status = if total_power == proposer_voting_power {
+        Status::Open
+    } else {
+        Status::Passed
+    };
+
     let proposal = {
         // Limit mutability to this block.
         let mut proposal = SingleChoiceProposal {
@@ -210,7 +225,7 @@ pub fn execute_propose(
             threshold: config.threshold,
             total_power,
             msgs,
-            status: Status::Open,
+            status,
             votes: Votes::zero(),
             allow_revoting: config.allow_revoting,
         };
