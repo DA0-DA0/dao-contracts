@@ -202,7 +202,7 @@ pub fn execute_propose(
     // should be created and auto passed.
     let proposer_voting_power = get_voting_power(
         deps.as_ref(),
-        sender.clone(),
+        proposer.clone(),
         &config.dao,
         Some(env.block.height),
     )?;
