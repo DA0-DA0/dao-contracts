@@ -16,7 +16,7 @@ use dao_voting::status::Status;
 use crate::msg::{
     BaseInstantiateMsg, ExecuteMsg, InstantiateMsg, ProposeMessageInternal, QueryExt, QueryMsg,
 };
-use crate::state::{PRE_PROPOSE_APPROVAL_CONTRACT, PROPOSAL_IDS};
+use crate::state::{PRE_PROPOSE_APPROVAL_CONTRACT, PROPOSAL_ID_TO_PRE_PROPOSE_ID};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-pre-propose-approver";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -124,7 +124,7 @@ pub fn execute_propose(
         &proposal_module,
         &dao_interface::proposal::Query::NextProposalId {},
     )?;
-    PROPOSAL_IDS.save(deps.storage, proposal_id, &pre_propose_id)?;
+    PROPOSAL_ID_TO_PRE_PROPOSE_ID.save(deps.storage, proposal_id, &pre_propose_id)?;
 
     let propose_messsage = WasmMsg::Execute {
         contract_addr: proposal_module.into_string(),
@@ -147,7 +147,7 @@ pub fn execute_proposal_completed(
     }
 
     // Get approval pre-propose id
-    let pre_propose_id = PROPOSAL_IDS.load(deps.storage, proposal_id)?;
+    let pre_propose_id = PROPOSAL_ID_TO_PRE_PROPOSE_ID.load(deps.storage, proposal_id)?;
 
     // Get approval contract address
     let approval_contract = PRE_PROPOSE_APPROVAL_CONTRACT.load(deps.storage)?;
@@ -189,7 +189,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 to_binary(&PRE_PROPOSE_APPROVAL_CONTRACT.load(deps.storage)?)
             }
             QueryExt::PendingProposalIdForApprovalProposalId { id } => {
-                to_binary(&PROPOSAL_IDS.load(deps.storage, id)?)
+                to_binary(&PROPOSAL_ID_TO_PRE_PROPOSE_ID.may_load(deps.storage, id)?)
             }
         },
         _ => PrePropose::default().query(deps, env, msg),
