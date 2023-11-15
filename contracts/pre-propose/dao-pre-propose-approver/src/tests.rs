@@ -1258,7 +1258,7 @@ fn test_propose_open_proposal_submission() {
         .query_wasm_smart(
             pre_propose_approver.clone(),
             &ApproverQueryMsg::QueryExtension {
-                msg: ApproverQueryExt::PendingProposalIdForApprovalProposalId {
+                msg: ApproverQueryExt::PreProposeApprovalIdForApproverProposalId {
                     id: approver_prop_id,
                 },
             },

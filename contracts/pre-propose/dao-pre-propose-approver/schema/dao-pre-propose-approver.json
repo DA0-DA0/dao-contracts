@@ -547,10 +547,10 @@
           {
             "type": "object",
             "required": [
-              "pending_proposal_id_for_approval_proposal_id"
+              "pre_propose_approval_id_for_approver_proposal_id"
             ],
             "properties": {
-              "pending_proposal_id_for_approval_proposal_id": {
+              "pre_propose_approval_id_for_approver_proposal_id": {
                 "type": "object",
                 "required": [
                   "id"

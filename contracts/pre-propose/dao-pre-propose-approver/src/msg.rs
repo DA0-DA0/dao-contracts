@@ -16,7 +16,7 @@ pub enum QueryExt {
     #[returns(cosmwasm_std::Addr)]
     PreProposeApprovalContract {},
     #[returns(Option<u64>)]
-    PendingProposalIdForApprovalProposalId { id: u64 },
+    PreProposeApprovalIdForApproverProposalId { id: u64 },
 }
 
 pub type BaseInstantiateMsg = InstantiateBase<Empty>;
