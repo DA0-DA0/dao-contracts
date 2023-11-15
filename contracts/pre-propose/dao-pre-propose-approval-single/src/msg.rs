@@ -79,7 +79,7 @@ pub enum QueryExt {
         limit: Option<u32>,
     },
     /// The completed approval ID for a created proposal ID.
-    #[returns(Option<u64>)]
+    #[returns(::std::option::Option<u64>)]
     CompletedProposalIdForCreatedProposalId { id: u64 },
 }
 
