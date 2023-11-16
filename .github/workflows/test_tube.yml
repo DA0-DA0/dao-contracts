@@ -24,8 +24,8 @@ jobs:
           target: wasm32-unknown-unknown
           override: true
 
-#      - name: Setup Go
-#        uses: actions/setup-go@v4
+      - name: Setup Go
+        uses: actions/setup-go@v4
 
       - name: Clone libwasmv (needed for test-tube)
         uses: actions/checkout@v2
