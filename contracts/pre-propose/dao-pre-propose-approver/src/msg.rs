@@ -15,6 +15,8 @@ pub struct InstantiateMsg {
 pub enum QueryExt {
     #[returns(cosmwasm_std::Addr)]
     PreProposeApprovalContract {},
+    #[returns(::std::option::Option<u64>)]
+    PreProposeApprovalIdForApproverProposalId { id: u64 },
 }
 
 pub type BaseInstantiateMsg = InstantiateBase<Empty>;
