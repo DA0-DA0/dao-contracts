@@ -1,8 +1,5 @@
 use crate::{
-    abc::{
-        ClosedConfig, CommonsPhase, CommonsPhaseConfig, CurveType, HatchConfig, MinMax, OpenConfig,
-        ReserveToken, SupplyToken,
-    },
+    abc::{ClosedConfig, CommonsPhase, CommonsPhaseConfig, HatchConfig, MinMax, OpenConfig},
     msg::{
         CommonsPhaseConfigResponse, CurveInfoResponse, DenomResponse, ExecuteMsg, InstantiateMsg,
         QueryMsg,
@@ -216,8 +213,33 @@ fn test_contribution_limits_enforced() {
     );
 }
 
-// TODO
 #[test]
-fn test_max_supply() {
-    // Set a max supply and ensure it does not go over
+fn test_max_supply_enforced() {
+    let app = OsmosisTestApp::new();
+    let builder = TestEnvBuilder::new();
+    let env = builder.default_setup(&app);
+    let TestEnv {
+        ref abc,
+        ref accounts,
+        ..
+    } = env;
+
+    // Buy enough tokens to end the hatch phase
+    abc.execute(&ExecuteMsg::Buy {}, &coins(1000000, RESERVE), &accounts[0])
+        .unwrap();
+
+    // Buy enough tokens to trigger a max supply error
+    let err = abc
+        .execute(
+            &ExecuteMsg::Buy {},
+            &coins(1000000000, RESERVE),
+            &accounts[0],
+        )
+        .unwrap_err();
+    assert_eq!(
+        err,
+        abc.execute_error(ContractError::CannotExceedMaxSupply {
+            max: Uint128::from(1000000u128)
+        })
+    );
 }

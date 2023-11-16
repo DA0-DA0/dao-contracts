@@ -17,8 +17,8 @@ use crate::curves::DecimalPlaces;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, UpdatePhaseConfigMsg};
 use crate::state::{
-    CurveState, CURVE_STATE, CURVE_TYPE, HATCHER_ALLOWLIST, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
-    TOKEN_INSTANTIATION_INFO, TOKEN_ISSUER_CONTRACT,
+    CurveState, CURVE_STATE, CURVE_TYPE, HATCHER_ALLOWLIST, MAX_SUPPLY, PHASE, PHASE_CONFIG,
+    SUPPLY_DENOM, TOKEN_INSTANTIATION_INFO, TOKEN_ISSUER_CONTRACT,
 };
 use crate::{commands, queries};
 
@@ -62,16 +62,9 @@ pub fn instantiate(
     // Save new token info for use in reply
     TOKEN_INSTANTIATION_INFO.save(deps.storage, &supply)?;
 
-    // Save the denom
-    SUPPLY_DENOM.save(
-        deps.storage,
-        &format!(
-            "{}/{}/{}",
-            DENOM_PREFIX,
-            env.contract.address.into_string(),
-            supply.subdenom
-        ),
-    )?;
+    if let Some(max_supply) = supply.max_supply {
+        MAX_SUPPLY.save(deps.storage, &max_supply)?;
+    }
 
     // Save the curve type and state
     let normalization_places = DecimalPlaces::new(supply.decimals, reserve.decimals);

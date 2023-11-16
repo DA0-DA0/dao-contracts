@@ -43,6 +43,9 @@ pub const CURVE_TYPE: Item<CurveType> = Item::new("curve_type");
 /// The denom used for the supply token
 pub const SUPPLY_DENOM: Item<String> = Item::new("denom");
 
+/// The maximum supply of the supply token, new tokens cannot be minted beyond this cap
+pub const MAX_SUPPLY: Item<Uint128> = Item::new("max_supply");
+
 /// Hatcher phase allowlist
 /// TODO: we could use the keys for the [`HATCHERS`] map instead setting them to 0 at the beginning, though existing hatchers would not be able to be removed
 pub static HATCHER_ALLOWLIST: Item<HashSet<Addr>> = Item::new("hatch_allowlist");

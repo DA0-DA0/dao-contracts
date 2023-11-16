@@ -14,8 +14,8 @@ pub struct SupplyToken {
     /// Number of decimal places for the supply token, needed for proper curve math.
     /// Default for token factory is 6
     pub decimals: u8,
-    // TODO max supply
-    // pub max_supply: Uint128,
+    // Optional maximum supply
+    pub max_supply: Option<Uint128>,
 }
 
 #[cw_serde]

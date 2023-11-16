@@ -16,14 +16,17 @@ pub enum ContractError {
     #[error("{0}")]
     Ownership(#[from] cw_ownable::OwnershipError),
 
+    #[error("Cannot mint more tokens than the maximum supply of {max}")]
+    CannotExceedMaxSupply { max: Uint128 },
+
     #[error("The commons is closed to new contributions")]
     CommonsClosed {},
 
     #[error("Contribution must be less than or equal to {max} and greater than or equal to {min}")]
     ContributionLimit { min: Uint128, max: Uint128 },
 
-    #[error("Selling is disabled during the hatch phase")]
-    HatchSellingDisabled {},
+    #[error("Hatch phase config error {0}")]
+    HatchPhaseConfigError(String),
 
     #[error("Invalid subdenom: {subdenom:?}")]
     InvalidSubdenom { subdenom: String },
@@ -33,9 +36,6 @@ pub enum ContractError {
 
     #[error("Invalid sell amount")]
     MismatchedSellAmount {},
-
-    #[error("Hatch phase config error {0}")]
-    HatchPhaseConfigError(String),
 
     #[error("Open phase config error {0}")]
     OpenPhaseConfigError(String),

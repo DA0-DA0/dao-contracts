@@ -8,12 +8,12 @@ use std::collections::HashSet;
 use std::ops::Deref;
 use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 
-use crate::abc::{CommonsPhase, CurveFn, MinMax};
+use crate::abc::CommonsPhase;
 use crate::contract::CwAbcResult;
 use crate::msg::UpdatePhaseConfigMsg;
 use crate::state::{
-    CURVE_STATE, CURVE_TYPE, DONATIONS, HATCHERS, HATCHER_ALLOWLIST, PHASE, PHASE_CONFIG,
-    SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
+    CURVE_STATE, CURVE_TYPE, DONATIONS, HATCHERS, HATCHER_ALLOWLIST, MAX_SUPPLY, PHASE,
+    PHASE_CONFIG, SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
 };
 use crate::ContractError;
 
@@ -81,6 +81,15 @@ pub fn execute_buy(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageInf
     let minted = new_supply
         .checked_sub(curve_state.supply)
         .map_err(StdError::overflow)?;
+
+    // Check that the minted amount has not exceeded the max supply (if configured)
+    if let Some(max_supply) = MAX_SUPPLY.may_load(deps.storage)? {
+        if new_supply > max_supply {
+            return Err(ContractError::CannotExceedMaxSupply { max: max_supply });
+        }
+    }
+
+    // Save the new curve state
     curve_state.supply = new_supply;
     CURVE_STATE.save(deps.storage, &curve_state)?;
 
@@ -94,8 +103,6 @@ pub fn execute_buy(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageInf
         })?,
         funds: vec![],
     };
-
-    // TODO check that the minted amount has not exceeded the max supply
 
     Ok(Response::new()
         .add_message(mint_msg)

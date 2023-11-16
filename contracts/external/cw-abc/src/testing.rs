@@ -51,6 +51,7 @@ pub fn default_instantiate_msg(
             subdenom: TEST_SUPPLY_DENOM.to_string(),
             metadata: Some(default_supply_metadata()),
             decimals,
+            max_supply: None,
         },
         reserve: ReserveToken {
             denom: TEST_RESERVE_DENOM.to_string(),

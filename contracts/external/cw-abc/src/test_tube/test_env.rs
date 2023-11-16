@@ -110,6 +110,7 @@ impl TestEnvBuilder {
                     subdenom: DENOM.to_string(),
                     metadata: None,
                     decimals: 6,
+                    max_supply: Some(Uint128::from(1000000000u128)),
                 },
                 reserve: ReserveToken {
                     denom: RESERVE.to_string(),
