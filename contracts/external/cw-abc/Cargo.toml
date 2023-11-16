@@ -31,16 +31,17 @@ cw2 = { workspace = true }
 cw-storage-plus = { workspace = true }
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
-thiserror = { workspace = true }
 cw-address-like = { workspace = true }
+cw-ownable = { workspace = true }
+cw-paginate-storage = { workspace = true }
+cw-tokenfactory-issuer = { workspace = true, features = ["library"] }
+dao-interface = { workspace = true }
 rust_decimal = { workspace = true }
 integer-sqrt = { workspace = true }
 integer-cbrt = { workspace = true }
 getrandom = { workspace = true, features = ["js"] }
+thiserror = { workspace = true }
 token-bindings = { workspace = true }
-cw-ownable = { workspace = true }
-cw-paginate-storage = { workspace = true }
-cw-tokenfactory-issuer = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
 speculoos = { workspace = true }

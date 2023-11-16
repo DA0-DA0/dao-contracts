@@ -737,6 +737,7 @@ dependencies = [
  "cw-tokenfactory-issuer",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
+ "dao-interface",
  "dao-testing",
  "getrandom",
  "integer-cbrt",

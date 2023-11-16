@@ -6,7 +6,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_tokenfactory_issuer::msg::{
-    ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg,
+    DenomUnit, ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg, Metadata,
 };
 use cw_utils::parse_reply_instantiate_data;
 use std::collections::HashSet;
@@ -121,43 +121,16 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> CwAbcResult {
-    // default implementation stores curve info as enum, you can do something else in a derived
-    // contract and just pass in your custom curve to do_execute
-    let curve_type = CURVE_TYPE.load(deps.storage)?;
-    let curve_fn = curve_type.to_curve_fn();
-    do_execute(deps, env, info, msg, curve_fn)
-}
-
-/// We pull out logic here, so we can import this from another contract and set a different Curve.
-/// This contacts sets a curve with an enum in InstantiateMsg and stored in state, but you may want
-/// to use custom math not included - make this easily reusable
-pub fn do_execute(
-    deps: DepsMut<TokenFactoryQuery>,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-    curve_fn: CurveFn,
-) -> CwAbcResult {
     match msg {
-        ExecuteMsg::Buy {} => commands::execute_buy(deps, env, info, curve_fn),
-        ExecuteMsg::Burn {} => commands::execute_sell(deps, env, info, curve_fn),
+        ExecuteMsg::Buy {} => commands::execute_buy(deps, env, info),
+        ExecuteMsg::Burn {} => commands::execute_sell(deps, env, info),
         ExecuteMsg::Donate {} => commands::execute_donate(deps, env, info),
         ExecuteMsg::UpdateHatchAllowlist { to_add, to_remove } => {
             commands::update_hatch_allowlist(deps, info, to_add, to_remove)
         }
-        ExecuteMsg::UpdatePhaseConfig(update) => match update {
-            UpdatePhaseConfigMsg::Hatch {
-                initial_raise,
-                initial_allocation_ratio,
-            } => commands::update_hatch_config(
-                deps,
-                env,
-                info,
-                initial_raise,
-                initial_allocation_ratio,
-            ),
-            _ => todo!(),
-        },
+        ExecuteMsg::UpdatePhaseConfig(update_msg) => {
+            commands::update_phase_config(deps, env, info, update_msg)
+        }
         ExecuteMsg::UpdateOwnership(action) => {
             commands::update_ownership(deps, &env, &info, action)
         }
@@ -231,13 +204,15 @@ pub fn reply(
             SUPPLY_DENOM.save(deps.storage, &denom)?;
 
             // Msgs to be executed to finalize setup
-            let msgs: Vec<WasmMsg> = vec![
+            let mut msgs: Vec<WasmMsg> = vec![
                 // Grant an allowance to mint
                 WasmMsg::Execute {
                     contract_addr: issuer_addr.clone(),
                     msg: to_binary(&IssuerExecuteMsg::SetMinterAllowance {
                         address: env.contract.address.to_string(),
-                        // TODO let this be capped
+                        // Allowance needs to be max as this the is the amount of tokens
+                        // the minter is allowed to mint, not to be confused with max supply
+                        // which we have to enforce elsewhere.
                         allowance: Uint128::MAX,
                     })?,
                     funds: vec![],
@@ -247,48 +222,46 @@ pub fn reply(
                     contract_addr: issuer_addr.clone(),
                     msg: to_binary(&IssuerExecuteMsg::SetBurnerAllowance {
                         address: env.contract.address.to_string(),
-                        // TODO let this be capped
                         allowance: Uint128::MAX,
                     })?,
                     funds: vec![],
                 },
             ];
 
-            // TODO fix metadata
-            // // If metadata, set it by calling the contract
-            // if let Some(metadata) = token_info.metadata {
-            //     // The first denom_unit must be the same as the tf and base denom.
-            //     // It must have an exponent of 0. This the smallest unit of the token.
-            //     // For more info: // https://docs.cosmos.network/main/architecture/adr-024-coin-metadata
-            //     let mut denom_units = vec![DenomUnit {
-            //         denom: denom.clone(),
-            //         exponent: 0,
-            //         aliases: vec![token_info.subdenom],
-            //     }];
+            // If metadata, set it by calling the contract
+            if let Some(metadata) = token_info.metadata {
+                // The first denom_unit must be the same as the tf and base denom.
+                // It must have an exponent of 0. This the smallest unit of the token.
+                // For more info: // https://docs.cosmos.network/main/architecture/adr-024-coin-metadata
+                let mut denom_units = vec![DenomUnit {
+                    denom: denom.clone(),
+                    exponent: 0,
+                    aliases: vec![token_info.subdenom],
+                }];
 
-            //     // Caller can optionally define additional units
-            //     if let Some(mut additional_units) = metadata.additional_denom_units {
-            //         denom_units.append(&mut additional_units);
-            //     }
+                // Caller can optionally define additional units
+                if let Some(mut additional_units) = metadata.additional_denom_units {
+                    denom_units.append(&mut additional_units);
+                }
 
-            //     // Sort denom units by exponent, must be in ascending order
-            //     denom_units.sort_by(|a, b| a.exponent.cmp(&b.exponent));
+                // Sort denom units by exponent, must be in ascending order
+                denom_units.sort_by(|a, b| a.exponent.cmp(&b.exponent));
 
-            //     msgs.push(WasmMsg::Execute {
-            //         contract_addr: issuer_addr.clone(),
-            //         msg: to_binary(&IssuerExecuteMsg::SetDenomMetadata {
-            //             metadata: Metadata {
-            //                 description: metadata.description,
-            //                 denom_units,
-            //                 base: denom.clone(),
-            //                 display: metadata.display,
-            //                 name: metadata.name,
-            //                 symbol: metadata.symbol,
-            //             },
-            //         })?,
-            //         funds: vec![],
-            //     });
-            // }
+                msgs.push(WasmMsg::Execute {
+                    contract_addr: issuer_addr.clone(),
+                    msg: to_binary(&IssuerExecuteMsg::SetDenomMetadata {
+                        metadata: Metadata {
+                            description: metadata.description,
+                            denom_units,
+                            base: denom.clone(),
+                            display: metadata.display,
+                            name: metadata.name,
+                            symbol: metadata.symbol,
+                        },
+                    })?,
+                    funds: vec![],
+                });
+            }
 
             Ok(Response::new()
                 .add_attribute("cw-tokenfactory-issuer-address", issuer_addr)

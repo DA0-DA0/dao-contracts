@@ -1,16 +1,16 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, Decimal as StdDecimal, Uint128};
+use dao_interface::token::NewDenomMetadata;
 
 use crate::curves::{decimal, Constant, Curve, DecimalPlaces, Linear, SquareRoot};
 use crate::ContractError;
-use token_bindings::Metadata;
 
 #[cw_serde]
 pub struct SupplyToken {
     /// The denom to create for the supply token
     pub subdenom: String,
     /// Metadata for the supply token to create
-    pub metadata: Option<Metadata>,
+    pub metadata: Option<NewDenomMetadata>,
     /// Number of decimal places for the supply token, needed for proper curve math.
     /// Default for token factory is 6
     pub decimals: u8,
@@ -87,8 +87,8 @@ impl HatchConfig {
 
 #[cw_serde]
 pub struct OpenConfig {
-    // TODO isn't this the same as initial_allocation_ratio? Maybe clearer to just call it an entrance fee?
     /// Percentage of capital put into the Reserve Pool during the Open phase
+    /// when buying from the curve.
     pub allocation_percentage: StdDecimal,
     /// Exit taxation ratio
     pub exit_tax: StdDecimal,
@@ -129,6 +129,7 @@ impl ClosedConfig {
 pub struct CommonsPhaseConfig {
     /// The Hatch phase where initial contributors (Hatchers) participate in a hatch sale.
     pub hatch: HatchConfig,
+    /// TODO Vest tokens after hatch phase
     /// The Vesting phase where tokens minted during the Hatch phase are locked (burning is disabled) to combat early speculation/arbitrage.
     /// pub vesting: VestingConfig,
     /// The Open phase where anyone can mint tokens by contributing the reserve token into the curve and becoming members of the Commons.

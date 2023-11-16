@@ -10,18 +10,17 @@ use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 
 use crate::abc::{CommonsPhase, CurveFn, MinMax};
 use crate::contract::CwAbcResult;
+use crate::msg::UpdatePhaseConfigMsg;
 use crate::state::{
-    CURVE_STATE, DONATIONS, HATCHERS, HATCHER_ALLOWLIST, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
-    TOKEN_ISSUER_CONTRACT,
+    CURVE_STATE, CURVE_TYPE, DONATIONS, HATCHERS, HATCHER_ALLOWLIST, PHASE, PHASE_CONFIG,
+    SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
 };
 use crate::ContractError;
 
-pub fn execute_buy(
-    deps: DepsMut<TokenFactoryQuery>,
-    _env: Env,
-    info: MessageInfo,
-    curve_fn: CurveFn,
-) -> CwAbcResult {
+pub fn execute_buy(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageInfo) -> CwAbcResult {
+    let curve_type = CURVE_TYPE.load(deps.storage)?;
+    let curve_fn = curve_type.to_curve_fn();
+
     let mut curve_state = CURVE_STATE.load(deps.storage)?;
 
     let payment = must_pay(&info, &curve_state.reserve_denom)?;
@@ -115,12 +114,10 @@ fn update_hatcher_contributions(
     Ok(())
 }
 
-pub fn execute_sell(
-    deps: DepsMut<TokenFactoryQuery>,
-    _env: Env,
-    info: MessageInfo,
-    curve_fn: CurveFn,
-) -> CwAbcResult {
+pub fn execute_sell(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageInfo) -> CwAbcResult {
+    let curve_type = CURVE_TYPE.load(deps.storage)?;
+    let curve_fn = curve_type.to_curve_fn();
+
     let supply_denom = SUPPLY_DENOM.load(deps.storage)?;
     let burn_amount = must_pay(&info, &supply_denom)?;
 
@@ -281,35 +278,71 @@ pub fn update_hatch_allowlist(
     Ok(Response::new().add_attributes(vec![("action", "update_hatch_allowlist")]))
 }
 
-/// Update the hatch config
-pub fn update_hatch_config(
+pub fn update_phase_config(
     deps: DepsMut<TokenFactoryQuery>,
     _env: Env,
     info: MessageInfo,
-    initial_raise: Option<MinMax>,
-    initial_allocation_ratio: Option<StdDecimal>,
+    update_phase_config_msg: UpdatePhaseConfigMsg,
 ) -> CwAbcResult {
     // Assert that the sender is the contract owner
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
-    // Ensure we're in the Hatch phase
-    PHASE.load(deps.storage)?.expect_hatch()?;
+    // Load phase and phase config
+    let phase = PHASE.load(deps.storage)?;
 
     // Load the current phase config
     let mut phase_config = PHASE_CONFIG.load(deps.storage)?;
 
-    // Update the hatch config if new values are provided
-    if let Some(initial_raise) = initial_raise {
-        phase_config.hatch.initial_raise = initial_raise;
-    }
-    if let Some(initial_allocation_ratio) = initial_allocation_ratio {
-        phase_config.hatch.initial_allocation_ratio = initial_allocation_ratio;
-    }
+    match update_phase_config_msg {
+        UpdatePhaseConfigMsg::Hatch {
+            exit_tax,
+            initial_raise,
+            initial_allocation_ratio,
+        } => {
+            // Check we are in the hatch phase
+            phase.expect_hatch()?;
 
-    phase_config.hatch.validate()?;
-    PHASE_CONFIG.save(deps.storage, &phase_config)?;
+            // Update the hatch config if new values are provided
+            if let Some(initial_raise) = initial_raise {
+                phase_config.hatch.initial_raise = initial_raise;
+            }
+            if let Some(initial_allocation_ratio) = initial_allocation_ratio {
+                phase_config.hatch.initial_allocation_ratio = initial_allocation_ratio;
+            }
+            if let Some(exit_tax) = exit_tax {
+                phase_config.hatch.exit_tax = exit_tax;
+            }
 
-    Ok(Response::new().add_attribute("action", "update_hatch_config"))
+            // Validate config
+            phase_config.hatch.validate()?;
+            PHASE_CONFIG.save(deps.storage, &phase_config)?;
+
+            Ok(Response::new().add_attribute("action", "update_hatch_phase_config"))
+        }
+        UpdatePhaseConfigMsg::Open {
+            exit_tax,
+            allocation_percentage,
+        } => {
+            // Check we are in the open phase
+            phase.expect_open()?;
+
+            // Update the hatch config if new values are provided
+            if let Some(allocation_percentage) = allocation_percentage {
+                phase_config.open.allocation_percentage = allocation_percentage;
+            }
+            if let Some(exit_tax) = exit_tax {
+                phase_config.hatch.exit_tax = exit_tax;
+            }
+
+            // Validate config
+            phase_config.open.validate()?;
+            PHASE_CONFIG.save(deps.storage, &phase_config)?;
+
+            Ok(Response::new().add_attribute("action", "update_open_phase_config"))
+        }
+        // TODO what should the closed phase configuration be, is there one?
+        _ => todo!(),
+    }
 }
 
 /// Update the ownership of the contract

@@ -30,13 +30,14 @@ pub struct InstantiateMsg {
 pub enum UpdatePhaseConfigMsg {
     /// Update the hatch phase configuration
     Hatch {
+        exit_tax: Option<StdDecimal>,
         initial_raise: Option<MinMax>,
         initial_allocation_ratio: Option<StdDecimal>,
     },
     /// Update the open phase configuration
     Open {
         exit_tax: Option<StdDecimal>,
-        reserve_ratio: Option<StdDecimal>,
+        allocation_percentage: Option<StdDecimal>,
     },
     /// Update the closed phase configuration
     Closed {},

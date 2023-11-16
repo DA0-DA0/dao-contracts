@@ -2,8 +2,9 @@ use cosmwasm_std::{
     testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage},
     Decimal, DepsMut, OwnedDeps, Uint128,
 };
+use dao_interface::token::NewDenomMetadata;
 use std::marker::PhantomData;
-use token_bindings::{Metadata, TokenFactoryQuery};
+use token_bindings::TokenFactoryQuery;
 
 use crate::abc::{
     ClosedConfig, CommonsPhaseConfig, CurveType, HatchConfig, MinMax, OpenConfig, ReserveToken,
@@ -29,14 +30,13 @@ pub const _TEST_BUYER: &str = "buyer";
 
 pub const TEST_SUPPLY_DENOM: &str = "subdenom";
 
-pub fn default_supply_metadata() -> Metadata {
-    Metadata {
-        name: Some("Bonded".to_string()),
-        symbol: Some("EPOXY".to_string()),
-        description: None,
-        denom_units: vec![],
-        base: None,
-        display: None,
+pub fn default_supply_metadata() -> NewDenomMetadata {
+    NewDenomMetadata {
+        name: "Bonded".to_string(),
+        symbol: "EPOXY".to_string(),
+        description: "Forever".to_string(),
+        display: "EPOXY".to_string(),
+        additional_denom_units: None,
     }
 }
 
