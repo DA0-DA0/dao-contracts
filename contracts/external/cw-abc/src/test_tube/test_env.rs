@@ -117,8 +117,12 @@ impl TestEnvBuilder {
                 },
                 phase_config: CommonsPhaseConfig {
                     hatch: HatchConfig {
+                        contribution_limits: MinMax {
+                            min: Uint128::from(10u128),
+                            max: Uint128::from(1000000u128),
+                        },
                         initial_raise: MinMax {
-                            min: Uint128::one(),
+                            min: Uint128::from(10u128),
                             max: Uint128::from(1000000u128),
                         },
                         initial_price: Uint128::one(),
@@ -153,25 +157,32 @@ impl TestEnvBuilder {
         }
     }
 
-    pub fn setup(self, app: &'_ OsmosisTestApp, msg: InstantiateMsg) -> TestEnv<'_> {
+    pub fn setup(
+        self,
+        app: &'_ OsmosisTestApp,
+        mut msg: InstantiateMsg,
+    ) -> Result<TestEnv<'_>, RunnerError> {
         let accounts = app
             .init_accounts(&[Coin::new(1000000000000000u128, RESERVE)], 10)
             .unwrap();
 
-        let issuer_id = TokenfactoryIssuer::upload(app, &accounts[0]).unwrap();
+        let issuer_id = TokenfactoryIssuer::upload(app, &accounts[0])?;
 
-        let abc = CwAbc::deploy(app, &msg, &accounts[0]).unwrap();
+        // Override issuer_id
+        msg.token_issuer_code_id = issuer_id;
 
-        let issuer_addr = CwAbc::query(&abc, &QueryMsg::TokenContract {}).unwrap();
+        let abc = CwAbc::deploy(app, &msg, &accounts[0])?;
 
-        let tf_issuer = TokenfactoryIssuer::new_with_values(app, issuer_id, issuer_addr).unwrap();
+        let issuer_addr = CwAbc::query(&abc, &QueryMsg::TokenContract {})?;
 
-        TestEnv {
+        let tf_issuer = TokenfactoryIssuer::new_with_values(app, issuer_id, issuer_addr)?;
+
+        Ok(TestEnv {
             app,
             abc,
             tf_issuer,
             accounts,
-        }
+        })
     }
 
     pub fn upload_issuer(self, app: &'_ OsmosisTestApp, signer: &SigningAccount) -> u64 {
@@ -351,7 +362,7 @@ impl<'a> CwAbc<'a> {
         }
     }
 
-    pub fn execute_error(err: ContractError) -> RunnerError {
+    pub fn execute_error(&self, err: ContractError) -> RunnerError {
         RunnerError::ExecuteError {
             msg: format!(
                 "failed to execute message; message index: 0: {}: execute wasm contract failed",

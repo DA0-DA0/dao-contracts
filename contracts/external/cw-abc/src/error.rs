@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{StdError, Uint128};
 use cw_utils::{ParseReplyError, PaymentError};
 use thiserror::Error;
 
@@ -13,14 +13,26 @@ pub enum ContractError {
     #[error(transparent)]
     ParseReplyError(#[from] ParseReplyError),
 
-    #[error("Invalid subdenom: {subdenom:?}")]
-    InvalidSubdenom { subdenom: String },
-
     #[error("{0}")]
     Ownership(#[from] cw_ownable::OwnershipError),
 
-    #[error("Unauthorized")]
-    Unauthorized {},
+    #[error("The commons is closed to new contributions")]
+    CommonsClosed {},
+
+    #[error("Contribution must be less than or equal to {max} and greater than or equal to {min}")]
+    ContributionLimit { min: Uint128, max: Uint128 },
+
+    #[error("Selling is disabled during the hatch phase")]
+    HatchSellingDisabled {},
+
+    #[error("Invalid subdenom: {subdenom:?}")]
+    InvalidSubdenom { subdenom: String },
+
+    #[error("Invalid phase, expected {expected:?}, actual {actual:?}")]
+    InvalidPhase { expected: String, actual: String },
+
+    #[error("Invalid sell amount")]
+    MismatchedSellAmount {},
 
     #[error("Hatch phase config error {0}")]
     HatchPhaseConfigError(String),
@@ -28,23 +40,14 @@ pub enum ContractError {
     #[error("Open phase config error {0}")]
     OpenPhaseConfigError(String),
 
-    #[error("Supply token error {0}")]
-    SupplyTokenError(String),
-
     #[error("Sender {sender:?} is not in the hatcher allowlist.")]
     SenderNotAllowlisted { sender: String },
 
-    #[error("The commons is closed to new contributions")]
-    CommonsClosed {},
+    #[error("Supply token error {0}")]
+    SupplyTokenError(String),
 
-    #[error("Selling is disabled during the hatch phase")]
-    HatchSellingDisabled {},
-
-    #[error("Invalid sell amount")]
-    MismatchedSellAmount {},
-
-    #[error("Invalid phase, expected {expected:?}, actual {actual:?}")]
-    InvalidPhase { expected: String, actual: String },
+    #[error("Unauthorized")]
+    Unauthorized {},
 
     #[error("Got a submessage reply with unknown id: {id}")]
     UnknownReplyId { id: u64 },

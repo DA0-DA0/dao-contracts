@@ -34,7 +34,25 @@ pub fn execute_buy(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageInf
             let hatch_config = phase_config.hatch;
             // Check that the potential hatcher is allowlisted
             assert_allowlisted(deps.storage, &info.sender)?;
-            update_hatcher_contributions(deps.storage, &info.sender, payment)?;
+
+            // Update hatcher contribution
+            let contribution = update_hatcher_contributions(deps.storage, &info.sender, payment)?;
+
+            // Check contribtuion is above minimum
+            if contribution < hatch_config.contribution_limits.min {
+                return Err(ContractError::ContributionLimit {
+                    min: hatch_config.contribution_limits.min,
+                    max: hatch_config.contribution_limits.max,
+                });
+            }
+
+            // Check contribution is below maximum
+            if contribution > hatch_config.contribution_limits.max {
+                return Err(ContractError::ContributionLimit {
+                    min: hatch_config.contribution_limits.min,
+                    max: hatch_config.contribution_limits.max,
+                });
+            }
 
             // Check if the initial_raise max has been met
             if curve_state.reserve + payment >= hatch_config.initial_raise.max {
@@ -77,6 +95,8 @@ pub fn execute_buy(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageInf
         funds: vec![],
     };
 
+    // TODO check that the minted amount has not exceeded the max supply
+
     Ok(Response::new()
         .add_message(mint_msg)
         .add_attribute("action", "buy")
@@ -101,7 +121,7 @@ fn update_hatcher_contributions(
     storage: &mut dyn Storage,
     hatcher: &Addr,
     contribution: Uint128,
-) -> StdResult<()> {
+) -> StdResult<Uint128> {
     HATCHERS.update(storage, hatcher, |amount| -> StdResult<_> {
         match amount {
             Some(mut amount) => {
@@ -110,8 +130,7 @@ fn update_hatcher_contributions(
             }
             None => Ok(contribution),
         }
-    })?;
-    Ok(())
+    })
 }
 
 pub fn execute_sell(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageInfo) -> CwAbcResult {
@@ -298,19 +317,23 @@ pub fn update_phase_config(
             exit_tax,
             initial_raise,
             initial_allocation_ratio,
+            contribution_limits,
         } => {
             // Check we are in the hatch phase
             phase.expect_hatch()?;
 
             // Update the hatch config if new values are provided
+            if let Some(contribution_limits) = contribution_limits {
+                phase_config.hatch.contribution_limits = contribution_limits;
+            }
+            if let Some(exit_tax) = exit_tax {
+                phase_config.hatch.exit_tax = exit_tax;
+            }
             if let Some(initial_raise) = initial_raise {
                 phase_config.hatch.initial_raise = initial_raise;
             }
             if let Some(initial_allocation_ratio) = initial_allocation_ratio {
                 phase_config.hatch.initial_allocation_ratio = initial_allocation_ratio;
-            }
-            if let Some(exit_tax) = exit_tax {
-                phase_config.hatch.exit_tax = exit_tax;
             }
 
             // Validate config

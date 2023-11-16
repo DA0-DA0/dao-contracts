@@ -14,6 +14,8 @@ pub struct SupplyToken {
     /// Number of decimal places for the supply token, needed for proper curve math.
     /// Default for token factory is 6
     pub decimals: u8,
+    // TODO max supply
+    // pub max_supply: Uint128,
 }
 
 #[cw_serde]
@@ -34,8 +36,8 @@ pub struct MinMax {
 
 #[cw_serde]
 pub struct HatchConfig {
-    // /// TODO: The minimum and maximum contribution amounts (min, max) in the reserve token
-    /// pub contribution_limits: MinMax,
+    /// The minimum and maximum contribution amounts (min, max) in the reserve token
+    pub contribution_limits: MinMax,
     /// The initial raise range (min, max) in the reserve token
     pub initial_raise: MinMax,
     /// The initial price (p0) per reserve token
@@ -59,6 +61,14 @@ impl HatchConfig {
         );
 
         ensure!(
+            self.contribution_limits.max <= self.initial_raise.max,
+            ContractError::HatchPhaseConfigError(
+                "Max contribution limit cannot be greater than the maximum initial raise."
+                    .to_string()
+            )
+        );
+
+        ensure!(
             !self.initial_price.is_zero(),
             ContractError::HatchPhaseConfigError(
                 "Initial price must be greater than zero.".to_string()
@@ -66,6 +76,8 @@ impl HatchConfig {
         );
 
         // TODO: define better values
+        // Q: is zero valid for initial allocation value? Isn't the whole point of the
+        // hatch phase to initialize the DAO treasury?
         ensure!(
             self.initial_allocation_ratio <= StdDecimal::percent(100u64),
             ContractError::HatchPhaseConfigError(
@@ -73,11 +85,10 @@ impl HatchConfig {
             )
         );
 
-        // TODO: define better values
         ensure!(
             self.exit_tax <= StdDecimal::percent(100u64),
             ContractError::HatchPhaseConfigError(
-                "Exit taxation percentage must be between 0 and 100.".to_string()
+                "Exit taxation percentage must be less than or equal to 100.".to_string()
             )
         );
 
@@ -226,5 +237,42 @@ impl CurveType {
                 Box::new(calc)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod unit_tests {
+    use super::*;
+
+    #[test]
+    fn validate_contribution_limit_not_gt_initial_raise() {
+        let phase_config = CommonsPhaseConfig {
+            hatch: HatchConfig {
+                contribution_limits: MinMax {
+                    min: Uint128::one(),
+                    max: Uint128::MAX,
+                },
+                initial_raise: MinMax {
+                    min: Uint128::one(),
+                    max: Uint128::from(1000000u128),
+                },
+                initial_price: Uint128::one(),
+                initial_allocation_ratio: StdDecimal::percent(10u64),
+                exit_tax: StdDecimal::percent(10u64),
+            },
+            open: OpenConfig {
+                allocation_percentage: StdDecimal::percent(10u64),
+                exit_tax: StdDecimal::percent(10u64),
+            },
+            closed: ClosedConfig {},
+        };
+        let err = phase_config.validate().unwrap_err();
+        assert_eq!(
+            err,
+            ContractError::HatchPhaseConfigError(
+                "Max contribution limit cannot be greater than the maximum initial raise."
+                    .to_string()
+            )
+        )
     }
 }

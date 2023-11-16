@@ -20,6 +20,8 @@ pub struct InstantiateMsg {
     /// Hatch configuration information
     pub phase_config: CommonsPhaseConfig,
 
+    /// TODO different ways of doing this, for example DAO members?
+    /// Using a whitelist contract? Merkle tree?
     /// Hatcher allowlist
     pub hatcher_allowlist: Option<Vec<String>>,
 }
@@ -30,6 +32,7 @@ pub struct InstantiateMsg {
 pub enum UpdatePhaseConfigMsg {
     /// Update the hatch phase configuration
     Hatch {
+        contribution_limits: Option<MinMax>,
         exit_tax: Option<StdDecimal>,
         initial_raise: Option<MinMax>,
         initial_allocation_ratio: Option<StdDecimal>,

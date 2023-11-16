@@ -58,6 +58,10 @@ pub fn default_instantiate_msg(
         },
         phase_config: CommonsPhaseConfig {
             hatch: HatchConfig {
+                contribution_limits: MinMax {
+                    min: Uint128::one(),
+                    max: Uint128::from(1000000u128),
+                },
                 initial_raise: MinMax {
                     min: Uint128::one(),
                     max: Uint128::from(1000000u128),
