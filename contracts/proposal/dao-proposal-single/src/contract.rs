@@ -62,6 +62,8 @@ pub fn instantiate(
         .pre_propose_info
         .into_initial_policy_and_messages(dao.clone())?;
 
+    // TODO: validate timelock?
+
     let config = Config {
         threshold: msg.threshold,
         max_voting_period,
@@ -309,15 +311,16 @@ pub fn execute_veto(
                 None => Err(ContractError::TimelockError(TimelockError::NoTimelock {})),
             }
         }
-        Status::Timelocked { expires } => {
+        Status::Timelocked { expiration } => {
             match prop.timelock {
                 Some(ref timelock) => {
-                    // Check if the proposal timelock has expired, vetoer cannot veto
-                    // after expiration
-                    timelock.check_is_expired(env.block.time, expires)?;
-
                     // Check sender is vetoer
                     timelock.check_is_vetoer(&info)?;
+
+                    // vetoer can veto the proposal iff the timelock is active/not expired
+                    if expiration.is_expired(&env.block) {
+                        return Err(ContractError::TimelockError(TimelockError::TimelockExpired {  }))
+                    }
 
                     let old_status = prop.status;
 
@@ -391,15 +394,16 @@ pub fn execute_execute(
     let old_status = prop.status;
     match prop.status {
         Status::Passed => (),
-        Status::Timelocked { expires } => {
+        Status::Timelocked { expiration } => {
             if let Some(ref timelock) = prop.timelock {
                 // Check if the sender is the vetoer
                 if timelock.check_is_vetoer(&info).is_ok() {
                     // check if they can execute early
-                    timelock.check_early_excute_enabled()?;
-                } else {
-                    // Check if proposal is timelocked
-                    timelock.check_is_locked(env.block.time, expires)?;
+                    timelock.check_early_execute_enabled()?;
+                } else if !expiration.is_expired(&env.block) {
+                    // anyone can execute the proposal iff timelock 
+                    // expiration is due. otherwise we error.
+                    return Err(ContractError::TimelockError(TimelockError::Timelocked {}))
                 }
             }
         }
@@ -477,6 +481,7 @@ pub fn execute_vote(
     // cause a different one. This then serves to allow
     // for better tallies of opinions in the event that a
     // proposal passes or is rejected early.
+    // benskey TODO: check for potential timelock issues
     if prop.expiration.is_expired(&env.block) {
         return Err(ContractError::Expired { id: proposal_id });
     }

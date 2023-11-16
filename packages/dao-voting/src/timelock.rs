@@ -1,5 +1,6 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{MessageInfo, StdError, Timestamp};
+use cosmwasm_std::{MessageInfo, StdError, Timestamp, BlockInfo};
+use cw_utils::{Duration, Expiration};
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
@@ -23,7 +24,7 @@ pub enum TimelockError {
     Timelocked {},
 
     #[error("The timelock duration has expired.")]
-    TimelockedExpired {},
+    TimelockExpired {},
 
     #[error("Only vetoer can veto a proposal.")]
     Unauthorized {},
@@ -31,9 +32,9 @@ pub enum TimelockError {
 
 #[cw_serde]
 pub struct Timelock {
-    /// The time duration to delay proposal execution for
-    pub delay: Timestamp,
-    /// The account able to veto proposals.
+    /// The time duration to delay proposal execution for.
+    pub delay: Duration,
+    /// The address able to veto proposals.
     pub vetoer: String,
     /// Whether or not the vetoer can excute a proposal early before the
     /// timelock duration has expired
@@ -43,13 +44,8 @@ pub struct Timelock {
 }
 
 impl Timelock {
-    /// Calculate the expiration time for the timelock
-    pub fn calculate_timelock_expiration(&self, current_time: Timestamp) -> Timestamp {
-        Timestamp::from_seconds(current_time.seconds() + self.delay.seconds())
-    }
-
     /// Whether early execute is enabled
-    pub fn check_early_excute_enabled(&self) -> Result<(), TimelockError> {
+    pub fn check_early_execute_enabled(&self) -> Result<(), TimelockError> {
         if self.early_execute {
             Ok(())
         } else {
@@ -63,19 +59,6 @@ impl Timelock {
         expires: Timestamp,
     ) -> Result<(), TimelockError> {
         if expires.seconds() > current_time.seconds() {
-            Ok(())
-        } else {
-            Err(TimelockError::Timelocked {})
-        }
-    }
-
-    /// Takes two timestamps and returns true if the proposal is locked or not.
-    pub fn check_is_locked(
-        &self,
-        current_time: Timestamp,
-        expires: Timestamp,
-    ) -> Result<(), TimelockError> {
-        if current_time.seconds() > expires.seconds() {
             Ok(())
         } else {
             Err(TimelockError::Timelocked {})

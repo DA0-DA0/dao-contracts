@@ -9,7 +9,7 @@ use cw20::Cw20Coin;
 use cw_denom::CheckedDenom;
 use cw_hooks::{HookError, HooksResponse};
 use cw_multi_test::{next_block, App, Executor};
-use cw_utils::Duration;
+use cw_utils::{Duration, Expiration};
 use dao_interface::{
     state::{Admin, ModuleInstantiateInfo},
     voting::InfoResponse,
@@ -387,13 +387,14 @@ fn test_proposal_message_execution() {
 fn test_proposal_message_timelock_execution() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
-    instantiate.close_proposal_on_execution_failure = false;
-    instantiate.timelock = Some(Timelock {
-        delay: Timestamp::from_seconds(100),
+    let timelock = Timelock {
+        delay: Duration::Time(100),
         vetoer: "oversight".to_string(),
         early_execute: false,
         veto_before_passed: false,
-    });
+    };
+    instantiate.close_proposal_on_execution_failure = false;
+    instantiate.timelock = Some(timelock.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -438,7 +439,7 @@ fn test_proposal_message_timelock_execution() {
     let native_balance = query_balance_native(&app, CREATOR_ADDR, "ujuno");
     assert_eq!(cw20_balance, Uint128::zero());
     assert_eq!(native_balance, Uint128::zero());
-
+    
     vote_on_proposal(
         &mut app,
         &proposal_module,
@@ -447,12 +448,12 @@ fn test_proposal_message_timelock_execution() {
         Vote::Yes,
     );
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
-
-    // Proposal is timelocked
+    
+    // Proposal is timelocked to the moment of prop passing + timelock delay
     assert_eq!(
         proposal.proposal.status,
         Status::Timelocked {
-            expires: Timestamp::from_nanos(1571797519000000000)
+            expiration: timelock.delay.after(&app.block_info()),
         }
     );
 
@@ -508,12 +509,13 @@ fn test_proposal_message_timelock_veto() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
-    instantiate.timelock = Some(Timelock {
-        delay: Timestamp::from_seconds(100),
+    let timelock = Timelock {
+        delay: Duration::Time(100),
         vetoer: "oversight".to_string(),
         early_execute: false,
         veto_before_passed: false,
-    });
+    };
+    instantiate.timelock = Some(timelock.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -579,11 +581,11 @@ fn test_proposal_message_timelock_veto() {
     );
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
 
-    // Proposal is timelocked
+    // Proposal is timelocked to the moment of prop passing + timelock delay
     assert_eq!(
         proposal.proposal.status,
         Status::Timelocked {
-            expires: Timestamp::from_nanos(1571797519000000000)
+            expiration: timelock.delay.after(&app.block_info()),
         }
     );
 
@@ -623,12 +625,13 @@ fn test_proposal_message_timelock_early_execution() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
-    instantiate.timelock = Some(Timelock {
-        delay: Timestamp::from_seconds(100),
+    let timelock = Timelock {
+        delay: Duration::Time(100),
         vetoer: "oversight".to_string(),
         early_execute: true,
         veto_before_passed: false,
-    });
+    };
+    instantiate.timelock = Some(timelock.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -683,11 +686,11 @@ fn test_proposal_message_timelock_early_execution() {
     );
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
 
-    // Proposal is timelocked
+    // Proposal is timelocked to the moment of prop passing + timelock delay
     assert_eq!(
         proposal.proposal.status,
         Status::Timelocked {
-            expires: Timestamp::from_nanos(1571797519000000000)
+            expiration: timelock.delay.after(&app.block_info()),
         }
     );
 
@@ -705,7 +708,7 @@ fn test_proposal_message_timelock_veto_before_passed() {
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
     instantiate.timelock = Some(Timelock {
-        delay: Timestamp::from_seconds(100),
+        delay: Duration::Time(100),
         vetoer: "oversight".to_string(),
         early_execute: false,
         veto_before_passed: true,
@@ -977,7 +980,7 @@ fn test_update_config() {
             contract_addr: proposal_module.to_string(),
             msg: to_binary(&ExecuteMsg::UpdateConfig {
                 timelock: Some(Timelock {
-                    delay: Timestamp::from_seconds(100),
+                    delay: Duration::Time(100),
                     vetoer: CREATOR_ADDR.to_string(),
                     early_execute: false,
                     veto_before_passed: false,
@@ -1011,7 +1014,7 @@ fn test_update_config() {
         config,
         Config {
             timelock: Some(Timelock {
-                delay: Timestamp::from_seconds(100),
+                delay: Duration::Time(100),
                 vetoer: CREATOR_ADDR.to_string(),
                 early_execute: false,
                 veto_before_passed: false,

@@ -70,14 +70,17 @@ impl SingleChoiceProposal {
 
     /// Gets the current status of the proposal.
     pub fn current_status(&self, block: &BlockInfo) -> Status {
+        // benskey: make this nicer
         if self.status == Status::Open && self.is_passed(block) {
             // If time lock is configured for the proposal, calculate lock
             // expiration and set status to Timelocked.
             //
             // Otherwise the proposal is simply passed
             if let Some(timelock) = &self.timelock {
+                // derive the timelock `Expiration` by adding the delay
+                // duration to the current block
                 Status::Timelocked {
-                    expires: timelock.calculate_timelock_expiration(block.time),
+                    expiration: timelock.delay.after(block),
                 }
             } else {
                 Status::Passed
