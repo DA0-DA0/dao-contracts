@@ -358,7 +358,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 &PENDING_PROPOSALS,
                 start_after,
                 limit,
-                Order::Descending,
+                Order::Ascending,
             )?),
             QueryExt::ReversePendingProposals {
                 start_before,
@@ -368,7 +368,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 &PENDING_PROPOSALS,
                 start_before,
                 limit,
-                Order::Ascending,
+                Order::Descending,
             )?),
             QueryExt::CompletedProposal { id } => {
                 to_binary(&COMPLETED_PROPOSALS.load(deps.storage, id)?)
@@ -378,7 +378,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 &COMPLETED_PROPOSALS,
                 start_after,
                 limit,
-                Order::Descending,
+                Order::Ascending,
             )?),
             QueryExt::ReverseCompletedProposals {
                 start_before,
@@ -388,7 +388,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 &COMPLETED_PROPOSALS,
                 start_before,
                 limit,
-                Order::Ascending,
+                Order::Descending,
             )?),
             QueryExt::CompletedProposalIdForCreatedProposalId { id } => {
                 to_binary(&CREATED_PROPOSAL_TO_COMPLETED_PROPOSAL.may_load(deps.storage, id)?)

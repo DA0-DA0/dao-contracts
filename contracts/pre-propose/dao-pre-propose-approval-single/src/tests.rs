@@ -190,8 +190,8 @@ fn make_pre_proposal(app: &mut App, pre_propose: Addr, proposer: &str, funds: &[
     )
     .unwrap();
 
-    // Query for pending proposal and return latest id. Returns descending.
-    let pending: Vec<Proposal> = app
+    // Query for pending proposal and return latest id.
+    let mut pending: Vec<Proposal> = app
         .wrap()
         .query_wasm_smart(
             pre_propose,
@@ -204,8 +204,8 @@ fn make_pre_proposal(app: &mut App, pre_propose: Addr, proposer: &str, funds: &[
         )
         .unwrap();
 
-    // Return first item in descending list, id is first element of tuple
-    pending[0].approval_id
+    // Return last item in ascending list, id is first element of tuple
+    pending.pop().unwrap().approval_id
 }
 
 fn mint_natives(app: &mut App, receiver: &str, coins: Vec<Coin>) {
@@ -911,7 +911,7 @@ fn test_pending_proposal_queries() {
         )
         .unwrap();
     assert_eq!(pre_propose_props.len(), 2);
-    assert_eq!(pre_propose_props[0].approval_id, 2);
+    assert_eq!(pre_propose_props[0].approval_id, 1);
 
     // Query props in reverse
     let reverse_pre_propose_props: Vec<Proposal> = app
@@ -928,7 +928,7 @@ fn test_pending_proposal_queries() {
         .unwrap();
 
     assert_eq!(reverse_pre_propose_props.len(), 2);
-    assert_eq!(reverse_pre_propose_props[0].approval_id, 1);
+    assert_eq!(reverse_pre_propose_props[0].approval_id, 2);
 }
 
 #[test]
@@ -1051,8 +1051,8 @@ fn test_completed_proposal_queries() {
         )
         .unwrap();
     assert_eq!(pre_propose_props.len(), 2);
-    assert_eq!(pre_propose_props[0].approval_id, reject_id);
-    assert_eq!(pre_propose_props[1].approval_id, approve_id);
+    assert_eq!(pre_propose_props[0].approval_id, approve_id);
+    assert_eq!(pre_propose_props[1].approval_id, reject_id);
 
     // Query props in reverse
     let reverse_pre_propose_props: Vec<Proposal> = app
@@ -1069,8 +1069,8 @@ fn test_completed_proposal_queries() {
         .unwrap();
 
     assert_eq!(reverse_pre_propose_props.len(), 2);
-    assert_eq!(reverse_pre_propose_props[0].approval_id, approve_id);
-    assert_eq!(reverse_pre_propose_props[1].approval_id, reject_id);
+    assert_eq!(reverse_pre_propose_props[0].approval_id, reject_id);
+    assert_eq!(reverse_pre_propose_props[1].approval_id, approve_id);
 }
 
 #[test]
