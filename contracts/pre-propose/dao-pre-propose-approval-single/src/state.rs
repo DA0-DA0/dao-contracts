@@ -6,7 +6,22 @@ use dao_voting::deposit::CheckedDepositInfo;
 use dao_voting::proposal::SingleChoiceProposeMsg as ProposeMsg;
 
 #[cw_serde]
-pub struct PendingProposal {
+pub enum ProposalStatus {
+    /// The proposal is pending approval.
+    Pending {},
+    /// The proposal has been approved.
+    Approved {
+        /// The created proposal ID.
+        created_proposal_id: u64,
+    },
+    /// The proposal has been rejected.
+    Rejected {},
+}
+
+#[cw_serde]
+pub struct Proposal {
+    /// The status of a completed proposal.
+    pub status: ProposalStatus,
     /// The approval ID used to identify this pending proposal.
     pub approval_id: u64,
     /// The address that created the proposal.
@@ -20,7 +35,10 @@ pub struct PendingProposal {
 }
 
 pub const APPROVER: Item<Addr> = Item::new("approver");
-pub const PENDING_PROPOSALS: Map<u64, PendingProposal> = Map::new("pending_proposals");
+pub const PENDING_PROPOSALS: Map<u64, Proposal> = Map::new("pending_proposals");
+pub const COMPLETED_PROPOSALS: Map<u64, Proposal> = Map::new("completed_proposals");
+pub const CREATED_PROPOSAL_TO_COMPLETED_PROPOSAL: Map<u64, u64> =
+    Map::new("created_to_completed_proposal");
 
 /// Used internally to track the current approval_id.
 const CURRENT_ID: Item<u64> = Item::new("current_id");

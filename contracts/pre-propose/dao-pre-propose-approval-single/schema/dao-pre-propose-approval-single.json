@@ -1501,6 +1501,54 @@
             "additionalProperties": false
           },
           {
+            "description": "Return whether or not the proposal is pending",
+            "type": "object",
+            "required": [
+              "is_pending"
+            ],
+            "properties": {
+              "is_pending": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "A proposal, pending or completed.",
+            "type": "object",
+            "required": [
+              "proposal"
+            ],
+            "properties": {
+              "proposal": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
             "description": "A pending proposal",
             "type": "object",
             "required": [
@@ -1578,6 +1626,117 @@
                       "integer",
                       "null"
                     ],
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "A completed proposal",
+            "type": "object",
+            "required": [
+              "completed_proposal"
+            ],
+            "properties": {
+              "completed_proposal": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "List of completed proposals",
+            "type": "object",
+            "required": [
+              "completed_proposals"
+            ],
+            "properties": {
+              "completed_proposals": {
+                "type": "object",
+                "properties": {
+                  "limit": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "format": "uint32",
+                    "minimum": 0.0
+                  },
+                  "start_after": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "reverse_completed_proposals"
+            ],
+            "properties": {
+              "reverse_completed_proposals": {
+                "type": "object",
+                "properties": {
+                  "limit": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "format": "uint32",
+                    "minimum": 0.0
+                  },
+                  "start_before": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "The completed approval ID for a created proposal ID.",
+            "type": "object",
+            "required": [
+              "completed_proposal_id_for_created_proposal_id"
+            ],
+            "properties": {
+              "completed_proposal_id_for_created_proposal_id": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
                     "format": "uint64",
                     "minimum": 0.0
                   }
