@@ -23,7 +23,7 @@
         ]
       },
       "hatcher_allowlist": {
-        "description": "Hatcher allowlist",
+        "description": "TODO different ways of doing this, for example DAO members? Using a whitelist contract? Merkle tree? Hatcher allowlist",
         "type": [
           "array",
           "null"
@@ -94,7 +94,7 @@
             ]
           },
           "open": {
-            "description": "The Vesting phase where tokens minted during the Hatch phase are locked (burning is disabled) to combat early speculation/arbitrage. pub vesting: VestingConfig, The Open phase where anyone can mint tokens by contributing the reserve token into the curve and becoming members of the Commons.",
+            "description": "TODO Vest tokens after hatch phase The Vesting phase where tokens minted during the Hatch phase are locked (burning is disabled) to combat early speculation/arbitrage. pub vesting: VestingConfig, The Open phase where anyone can mint tokens by contributing the reserve token into the curve and becoming members of the Commons.",
             "allOf": [
               {
                 "$ref": "#/definitions/OpenConfig"
@@ -197,7 +197,7 @@
         "type": "string"
       },
       "DenomUnit": {
-        "description": "This maps to cosmos.bank.v1beta1.DenomUnit protobuf struct",
+        "description": "DenomUnit represents a struct that describes a given denomination unit of the basic token.",
         "type": "object",
         "required": [
           "aliases",
@@ -222,18 +222,25 @@
             "format": "uint32",
             "minimum": 0.0
           }
-        },
-        "additionalProperties": false
+        }
       },
       "HatchConfig": {
         "type": "object",
         "required": [
+          "contribution_limits",
           "exit_tax",
           "initial_allocation_ratio",
-          "initial_price",
           "initial_raise"
         ],
         "properties": {
+          "contribution_limits": {
+            "description": "The minimum and maximum contribution amounts (min, max) in the reserve token",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MinMax"
+              }
+            ]
+          },
           "exit_tax": {
             "description": "Exit tax for the hatch phase",
             "allOf": [
@@ -250,71 +257,12 @@
               }
             ]
           },
-          "initial_price": {
-            "description": "The initial price (p0) per reserve token TODO: initial price is not implemented yet",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Uint128"
-              }
-            ]
-          },
           "initial_raise": {
-            "description": "pub contribution_limits: MinMax, The initial raise range (min, max) in the reserve token",
+            "description": "The initial raise range (min, max) in the reserve token",
             "allOf": [
               {
                 "$ref": "#/definitions/MinMax"
               }
-            ]
-          }
-        },
-        "additionalProperties": false
-      },
-      "Metadata": {
-        "description": "This maps to cosmos.bank.v1beta1.Metadata protobuf struct",
-        "type": "object",
-        "required": [
-          "denom_units"
-        ],
-        "properties": {
-          "base": {
-            "description": "base represents the base denom (should be the DenomUnit with exponent = 0).",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "denom_units": {
-            "description": "denom_units represents the list of DenomUnit's for a given coin",
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/DenomUnit"
-            }
-          },
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "display": {
-            "description": "display indicates the suggested denom that should be displayed in clients.",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "name": {
-            "description": "name defines the name of the token (eg: Cosmos Atom)",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "symbol": {
-            "description": "symbol is the token symbol usually shown on exchanges (eg: ATOM). This can be the same as the display.",
-            "type": [
-              "string",
-              "null"
             ]
           }
         },
@@ -337,6 +285,44 @@
         },
         "additionalProperties": false
       },
+      "NewDenomMetadata": {
+        "type": "object",
+        "required": [
+          "description",
+          "display",
+          "name",
+          "symbol"
+        ],
+        "properties": {
+          "additional_denom_units": {
+            "description": "Used define additional units of the token (e.g. \"tiger\") These must have an exponent larger than 0.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/DenomUnit"
+            }
+          },
+          "description": {
+            "description": "The description of the token",
+            "type": "string"
+          },
+          "display": {
+            "description": "The unit commonly used in communication (e.g. \"cat\")",
+            "type": "string"
+          },
+          "name": {
+            "description": "The name of the token (e.g. \"Cat Coin\")",
+            "type": "string"
+          },
+          "symbol": {
+            "description": "The ticker symbol of the token (e.g. \"CAT\")",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "OpenConfig": {
         "type": "object",
         "required": [
@@ -345,7 +331,7 @@
         ],
         "properties": {
           "allocation_percentage": {
-            "description": "Percentage of capital put into the Reserve Pool during the Open phase",
+            "description": "Percentage of capital put into the Reserve Pool during the Open phase when buying from the curve.",
             "allOf": [
               {
                 "$ref": "#/definitions/Decimal"
@@ -396,11 +382,21 @@
             "format": "uint8",
             "minimum": 0.0
           },
+          "max_supply": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Uint128"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "metadata": {
             "description": "Metadata for the supply token to create",
             "anyOf": [
               {
-                "$ref": "#/definitions/Metadata"
+                "$ref": "#/definitions/NewDenomMetadata"
               },
               {
                 "type": "null"
@@ -425,7 +421,7 @@
     "title": "ExecuteMsg",
     "oneOf": [
       {
-        "description": "Buy will attempt to purchase as many supply tokens as possible. You must send only reserve tokens in that message",
+        "description": "Buy will attempt to purchase as many supply tokens as possible. You must send only reserve tokens.",
         "type": "object",
         "required": [
           "buy"
@@ -439,13 +435,13 @@
         "additionalProperties": false
       },
       {
-        "description": "Burn is a base message to destroy tokens forever",
+        "description": "Sell burns supply tokens in return for the reserve token. You must send only supply tokens.",
         "type": "object",
         "required": [
-          "burn"
+          "sell"
         ],
         "properties": {
-          "burn": {
+          "sell": {
             "type": "object",
             "additionalProperties": false
           }
@@ -467,7 +463,56 @@
         "additionalProperties": false
       },
       {
-        "description": "Update the hatch phase allowlist",
+        "description": "Sets (or unsets if set to None) the maximum supply",
+        "type": "object",
+        "required": [
+          "update_max_supply"
+        ],
+        "properties": {
+          "update_max_supply": {
+            "type": "object",
+            "properties": {
+              "max_supply": {
+                "description": "The maximum supply able to be minted.",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Uint128"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Updates the curve type used for pricing tokens. Only callable by owner. TODO think about other potential limitations on this.",
+        "type": "object",
+        "required": [
+          "update_curve"
+        ],
+        "properties": {
+          "update_curve": {
+            "type": "object",
+            "required": [
+              "curve_type"
+            ],
+            "properties": {
+              "curve_type": {
+                "$ref": "#/definitions/CurveType"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Update the hatch phase allowlist. This can only be called by the owner.",
         "type": "object",
         "required": [
           "update_hatch_allowlist"
@@ -481,12 +526,14 @@
             ],
             "properties": {
               "to_add": {
+                "description": "Addresses to be added.",
                 "type": "array",
                 "items": {
                   "type": "string"
                 }
               },
               "to_remove": {
+                "description": "Addresses to be removed.",
                 "type": "array",
                 "items": {
                   "type": "string"
@@ -499,7 +546,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Update the hatch phase configuration This can only be called by the admin and only during the hatch phase",
+        "description": "Update the configuration of a certain phase. This can only be called by the owner.",
         "type": "object",
         "required": [
           "update_phase_config"
@@ -507,6 +554,20 @@
         "properties": {
           "update_phase_config": {
             "$ref": "#/definitions/UpdatePhaseConfigMsg"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Closing the bonding curve means no more buys are enabled and exit tax is set to zero. For example, this could be used in the event of a project shutting down.",
+        "type": "object",
+        "required": [
+          "close"
+        ],
+        "properties": {
+          "close": {
+            "type": "object",
+            "additionalProperties": false
           }
         },
         "additionalProperties": false
@@ -574,6 +635,94 @@
             "enum": [
               "renounce_ownership"
             ]
+          }
+        ]
+      },
+      "CurveType": {
+        "oneOf": [
+          {
+            "description": "Constant always returns `value * 10^-scale` as spot price",
+            "type": "object",
+            "required": [
+              "constant"
+            ],
+            "properties": {
+              "constant": {
+                "type": "object",
+                "required": [
+                  "scale",
+                  "value"
+                ],
+                "properties": {
+                  "scale": {
+                    "type": "integer",
+                    "format": "uint32",
+                    "minimum": 0.0
+                  },
+                  "value": {
+                    "$ref": "#/definitions/Uint128"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Linear returns `slope * 10^-scale * supply` as spot price",
+            "type": "object",
+            "required": [
+              "linear"
+            ],
+            "properties": {
+              "linear": {
+                "type": "object",
+                "required": [
+                  "scale",
+                  "slope"
+                ],
+                "properties": {
+                  "scale": {
+                    "type": "integer",
+                    "format": "uint32",
+                    "minimum": 0.0
+                  },
+                  "slope": {
+                    "$ref": "#/definitions/Uint128"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "SquareRoot returns `slope * 10^-scale * supply^0.5` as spot price",
+            "type": "object",
+            "required": [
+              "square_root"
+            ],
+            "properties": {
+              "square_root": {
+                "type": "object",
+                "required": [
+                  "scale",
+                  "slope"
+                ],
+                "properties": {
+                  "scale": {
+                    "type": "integer",
+                    "format": "uint32",
+                    "minimum": 0.0
+                  },
+                  "slope": {
+                    "$ref": "#/definitions/Uint128"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
           }
         ]
       },
@@ -662,7 +811,7 @@
         "type": "string"
       },
       "UpdatePhaseConfigMsg": {
-        "description": "Update the phase configurations. These can only be called by the admin and only before or during each phase",
+        "description": "Update the phase configurations. These can only be called by the owner.",
         "oneOf": [
           {
             "description": "Update the hatch phase configuration",
@@ -674,6 +823,26 @@
               "hatch": {
                 "type": "object",
                 "properties": {
+                  "contribution_limits": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/MinMax"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "exit_tax": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Decimal"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "initial_allocation_ratio": {
                     "anyOf": [
                       {
@@ -701,7 +870,7 @@
             "additionalProperties": false
           },
           {
-            "description": "Update the open phase configuration",
+            "description": "Update the open phase configuration.",
             "type": "object",
             "required": [
               "open"
@@ -710,7 +879,7 @@
               "open": {
                 "type": "object",
                 "properties": {
-                  "exit_tax": {
+                  "allocation_percentage": {
                     "anyOf": [
                       {
                         "$ref": "#/definitions/Decimal"
@@ -720,7 +889,7 @@
                       }
                     ]
                   },
-                  "reserve_ratio": {
+                  "exit_tax": {
                     "anyOf": [
                       {
                         "$ref": "#/definitions/Decimal"
@@ -737,7 +906,7 @@
             "additionalProperties": false
           },
           {
-            "description": "Update the closed phase configuration",
+            "description": "Update the closed phase configuration. TODO Set the curve type to be used on close?",
             "type": "object",
             "required": [
               "closed"
@@ -1204,7 +1373,7 @@
               ]
             },
             "open": {
-              "description": "The Vesting phase where tokens minted during the Hatch phase are locked (burning is disabled) to combat early speculation/arbitrage. pub vesting: VestingConfig, The Open phase where anyone can mint tokens by contributing the reserve token into the curve and becoming members of the Commons.",
+              "description": "TODO Vest tokens after hatch phase The Vesting phase where tokens minted during the Hatch phase are locked (burning is disabled) to combat early speculation/arbitrage. pub vesting: VestingConfig, The Open phase where anyone can mint tokens by contributing the reserve token into the curve and becoming members of the Commons.",
               "allOf": [
                 {
                   "$ref": "#/definitions/OpenConfig"
@@ -1221,12 +1390,20 @@
         "HatchConfig": {
           "type": "object",
           "required": [
+            "contribution_limits",
             "exit_tax",
             "initial_allocation_ratio",
-            "initial_price",
             "initial_raise"
           ],
           "properties": {
+            "contribution_limits": {
+              "description": "The minimum and maximum contribution amounts (min, max) in the reserve token",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/MinMax"
+                }
+              ]
+            },
             "exit_tax": {
               "description": "Exit tax for the hatch phase",
               "allOf": [
@@ -1243,16 +1420,8 @@
                 }
               ]
             },
-            "initial_price": {
-              "description": "The initial price (p0) per reserve token TODO: initial price is not implemented yet",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Uint128"
-                }
-              ]
-            },
             "initial_raise": {
-              "description": "pub contribution_limits: MinMax, The initial raise range (min, max) in the reserve token",
+              "description": "The initial raise range (min, max) in the reserve token",
               "allOf": [
                 {
                   "$ref": "#/definitions/MinMax"
@@ -1287,7 +1456,7 @@
           ],
           "properties": {
             "allocation_percentage": {
-              "description": "Percentage of capital put into the Reserve Pool during the Open phase",
+              "description": "Percentage of capital put into the Reserve Pool during the Open phase when buying from the curve.",
               "allOf": [
                 {
                   "$ref": "#/definitions/Decimal"
