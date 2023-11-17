@@ -42,6 +42,7 @@ pub enum UpdatePhaseConfigMsg {
         exit_tax: Option<StdDecimal>,
         allocation_percentage: Option<StdDecimal>,
     },
+    /// TODO include curve type so we know what happens when a DAO dies?
     /// Update the closed phase configuration
     Closed {},
 }
@@ -64,8 +65,16 @@ pub enum ExecuteMsg {
     /// Update the hatch phase configuration
     /// This can only be called by the admin and only during the hatch phase
     UpdatePhaseConfig(UpdatePhaseConfigMsg),
+    // TODO Close the bonding curve
+    // Closing the bonding curve means no more buys are enabled and exit tax is set
+    // to zero. This could be used in the event of a project shutting down for example.
+    //
+    // Q: do we allow updating of the curve type? Is it passed in here?
+    // Close {},
 }
 
+// TODO Price queries:
+// - Price to buy a certain amount?
 #[cw_ownable::cw_ownable_query]
 #[cw_serde]
 #[derive(QueryResponses)]

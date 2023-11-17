@@ -67,7 +67,6 @@ pub fn default_instantiate_msg(
                     min: Uint128::one(),
                     max: Uint128::from(1000000u128),
                 },
-                initial_price: Uint128::one(),
                 initial_allocation_ratio: Decimal::percent(10u64),
                 exit_tax: Decimal::zero(),
             },

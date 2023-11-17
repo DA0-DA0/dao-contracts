@@ -40,10 +40,6 @@ pub struct HatchConfig {
     pub contribution_limits: MinMax,
     /// The initial raise range (min, max) in the reserve token
     pub initial_raise: MinMax,
-    /// The initial price (p0) per reserve token
-    /// TODO: initial price is not implemented yet
-    /// TODO: do we need this or is it just calculated?
-    pub initial_price: Uint128,
     /// The initial allocation (θ), percentage of the initial raise allocated to the Funding Pool
     pub initial_allocation_ratio: StdDecimal,
     /// Exit tax for the hatch phase
@@ -68,16 +64,6 @@ impl HatchConfig {
             )
         );
 
-        ensure!(
-            !self.initial_price.is_zero(),
-            ContractError::HatchPhaseConfigError(
-                "Initial price must be greater than zero.".to_string()
-            )
-        );
-
-        // TODO: define better values
-        // Q: is zero valid for initial allocation value? Isn't the whole point of the
-        // hatch phase to initialize the DAO treasury?
         ensure!(
             self.initial_allocation_ratio <= StdDecimal::percent(100u64),
             ContractError::HatchPhaseConfigError(
@@ -204,6 +190,7 @@ impl CommonsPhaseConfig {
 
 pub type CurveFn = Box<dyn Fn(DecimalPlaces) -> Box<dyn Curve>>;
 
+// TODO Curve type validation?
 // TODO add S-curve and taylor series
 #[cw_serde]
 pub enum CurveType {
@@ -256,7 +243,6 @@ mod unit_tests {
                     min: Uint128::one(),
                     max: Uint128::from(1000000u128),
                 },
-                initial_price: Uint128::one(),
                 initial_allocation_ratio: StdDecimal::percent(10u64),
                 exit_tax: StdDecimal::percent(10u64),
             },
