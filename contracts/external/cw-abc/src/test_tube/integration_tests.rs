@@ -1,20 +1,15 @@
 use crate::{
     abc::{ClosedConfig, CommonsPhase, CommonsPhaseConfig, HatchConfig, MinMax, OpenConfig},
-    msg::{
-        CommonsPhaseConfigResponse, CurveInfoResponse, DenomResponse, ExecuteMsg, InstantiateMsg,
-        QueryMsg,
-    },
+    msg::{CommonsPhaseConfigResponse, CurveInfoResponse, DenomResponse, ExecuteMsg, QueryMsg},
     ContractError,
 };
 
-use super::test_env::{TestEnv, TestEnvBuilder, DENOM, RESERVE};
+use super::test_env::{TestEnv, TestEnvBuilder, RESERVE};
 
 use cosmwasm_std::{coins, Decimal, Uint128};
 use cw_tokenfactory_issuer::msg::QueryMsg as IssuerQueryMsg;
 use osmosis_std::types::cosmos::bank::v1beta1::QueryBalanceRequest;
-use osmosis_test_tube::{
-    osmosis_std::types::cosmos::base::v1beta1::Coin, Account, OsmosisTestApp, RunnerError,
-};
+use osmosis_test_tube::{osmosis_std::types::cosmos::base::v1beta1::Coin, Account, OsmosisTestApp};
 
 #[test]
 fn test_happy_path() {
@@ -109,9 +104,9 @@ fn test_happy_path() {
         }
     );
 
-    // Burn
+    // Sell
     abc.execute(
-        &ExecuteMsg::Burn {},
+        &ExecuteMsg::Sell {},
         &coins(100, denom.clone()),
         &accounts[0],
     )

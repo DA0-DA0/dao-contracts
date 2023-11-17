@@ -283,7 +283,7 @@ fn assert_allowlisted(storage: &dyn Storage, hatcher: &Addr) -> Result<(), Contr
 
 /// Set the maxiumum supply (only callable by owner)
 /// If `max_supply` is set to None there will be no limit.`
-pub fn set_max_supply(
+pub fn update_max_supply(
     deps: DepsMut<TokenFactoryQuery>,
     info: MessageInfo,
     max_supply: Option<Uint128>,
@@ -296,7 +296,7 @@ pub fn set_max_supply(
     }
 
     Ok(Response::new()
-        .add_attribute("action", "set_max_supply")
+        .add_attribute("action", "update_max_supply")
         .add_attribute("value", max_supply.unwrap_or(Uint128::MAX).to_string()))
 }
 

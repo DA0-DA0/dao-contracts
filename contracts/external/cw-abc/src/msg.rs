@@ -52,14 +52,15 @@ pub enum UpdatePhaseConfigMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Buy will attempt to purchase as many supply tokens as possible.
-    /// You must send only reserve tokens in that message
+    /// You must send only reserve tokens.
     Buy {},
-    /// Burn is a base message to destroy tokens forever
-    Burn {},
+    /// Sell burns supply tokens in return for the reserve token.
+    /// You must send only supply tokens.
+    Sell {},
     /// Donate will add reserve tokens to the funding pool
     Donate {},
     /// Sets (or unsets if set to None) the maximum supply
-    SetMaxSupply {
+    UpdateMaxSupply {
         /// The maximum supply able to be minted.
         max_supply: Option<Uint128>,
     },

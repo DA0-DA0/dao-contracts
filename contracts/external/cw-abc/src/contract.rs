@@ -116,10 +116,12 @@ pub fn execute(
 ) -> CwAbcResult {
     match msg {
         ExecuteMsg::Buy {} => commands::execute_buy(deps, env, info),
-        ExecuteMsg::Burn {} => commands::execute_sell(deps, env, info),
+        ExecuteMsg::Sell {} => commands::execute_sell(deps, env, info),
         ExecuteMsg::Close {} => commands::execute_close(deps, info),
         ExecuteMsg::Donate {} => commands::execute_donate(deps, env, info),
-        ExecuteMsg::SetMaxSupply { max_supply } => commands::set_max_supply(deps, info, max_supply),
+        ExecuteMsg::UpdateMaxSupply { max_supply } => {
+            commands::update_max_supply(deps, info, max_supply)
+        }
         ExecuteMsg::UpdateCurve { curve_type } => commands::update_curve(deps, info, curve_type),
         ExecuteMsg::UpdateHatchAllowlist { to_add, to_remove } => {
             commands::update_hatch_allowlist(deps, info, to_add, to_remove)
