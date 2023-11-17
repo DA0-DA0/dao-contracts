@@ -11,6 +11,13 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
+pub enum ExecuteExt {
+    // Reset approver back to DAO that set up this approver contract. Only
+    // callable by the DAO.
+    ResetApprover {},
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryExt {
     #[returns(cosmwasm_std::Addr)]
@@ -22,7 +29,7 @@ pub enum QueryExt {
 }
 
 pub type BaseInstantiateMsg = InstantiateBase<Empty>;
-pub type ExecuteMsg = ExecuteBase<ApproverProposeMessage, Empty>;
+pub type ExecuteMsg = ExecuteBase<ApproverProposeMessage, ExecuteExt>;
 pub type QueryMsg = QueryBase<QueryExt>;
 
 /// Internal version of the propose message that includes the

@@ -14,7 +14,8 @@ use dao_pre_propose_base::{error::PreProposeError, state::PreProposeContract};
 use dao_voting::status::Status;
 
 use crate::msg::{
-    BaseInstantiateMsg, ExecuteMsg, InstantiateMsg, ProposeMessageInternal, QueryExt, QueryMsg,
+    BaseInstantiateMsg, ExecuteExt, ExecuteMsg, InstantiateMsg, ProposeMessageInternal, QueryExt,
+    QueryMsg,
 };
 use crate::state::{
     PRE_PROPOSE_APPROVAL_CONTRACT, PRE_PROPOSE_ID_TO_PROPOSAL_ID, PROPOSAL_ID_TO_PRE_PROPOSE_ID,
@@ -23,7 +24,7 @@ use crate::state::{
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-pre-propose-approver";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-type PrePropose = PreProposeContract<Empty, Empty, QueryExt, ApproverProposeMessage>;
+type PrePropose = PreProposeContract<Empty, ExecuteExt, QueryExt, ApproverProposeMessage>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -88,6 +89,9 @@ pub fn execute(
             proposal_id,
             new_status,
         } => execute_proposal_completed(deps, info, proposal_id, new_status),
+        ExecuteMsg::Extension { msg } => match msg {
+            ExecuteExt::ResetApprover {} => execute_reset_approver(deps, env, info),
+        },
         _ => PrePropose::default().execute(deps, env, info, msg),
     }
 }
@@ -182,6 +186,43 @@ pub fn execute_proposal_completed(
             .add_attribute("proposal", proposal_id.to_string())),
         None => Err(PreProposeError::NotClosedOrExecuted { status: new_status }),
     }
+}
+
+pub fn execute_reset_approver(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+) -> Result<Response, PreProposeError> {
+    // Check that this is coming from the DAO.
+    let dao = PrePropose::default().dao.load(deps.storage)?;
+    if info.sender != dao {
+        return Err(PreProposeError::Unauthorized {});
+    }
+
+    let pre_propose_approval_contract = PRE_PROPOSE_APPROVAL_CONTRACT.load(deps.storage)?;
+
+    let reset_messages = vec![
+        // Remove the proposal submitted hook.
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: pre_propose_approval_contract.to_string(),
+            msg: to_json_binary(&PreProposeApprovalExecuteMsg::RemoveProposalSubmittedHook {
+                address: env.contract.address.to_string(),
+            })?,
+            funds: vec![],
+        }),
+        // Set pre-propose-approval approver to the DAO.
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: pre_propose_approval_contract.to_string(),
+            msg: to_json_binary(&PreProposeApprovalExecuteMsg::Extension {
+                msg: ApprovalExt::UpdateApprover {
+                    address: dao.to_string(),
+                },
+            })?,
+            funds: vec![],
+        }),
+    ];
+
+    Ok(Response::default().add_messages(reset_messages))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

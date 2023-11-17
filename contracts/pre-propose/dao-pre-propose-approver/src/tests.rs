@@ -26,7 +26,10 @@ use dao_voting::{
 
 use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::InstantiateMsg as ApproverInstantiateMsg;
-use crate::msg::{QueryExt as ApproverQueryExt, QueryMsg as ApproverQueryMsg};
+use crate::msg::{
+    ExecuteExt as ApproverExecuteExt, ExecuteMsg as ApproverExecuteMsg,
+    QueryExt as ApproverQueryExt, QueryMsg as ApproverQueryMsg,
+};
 
 // The approver dao contract is the 6th contract instantiated
 const APPROVER: &str = "contract6";
@@ -1568,4 +1571,98 @@ fn test_withdraw() {
     );
     let balance = get_balance_native(&app, core_addr.as_str(), "ujuno");
     assert_eq!(balance, Uint128::new(30));
+}
+
+#[test]
+fn test_reset_approver() {
+    let mut app = App::default();
+
+    // Need to instantiate this so contract addresses match with cw20 test cases
+    let _ = instantiate_cw20_base_default(&mut app);
+
+    let DefaultTestSetup {
+        core_addr: _,
+        proposal_single: _,
+        pre_propose,
+        _approver_core_addr,
+        proposal_single_approver: _,
+        pre_propose_approver,
+    } = setup_default_test(
+        &mut app,
+        Some(UncheckedDepositInfo {
+            denom: DepositToken::Token {
+                denom: UncheckedDenom::Native("ujuno".to_string()),
+            },
+            amount: Uint128::new(10),
+            refund_policy: DepositRefundPolicy::Always,
+        }),
+        false,
+    );
+
+    // Ensure approver is set to the pre_propose_approver
+    let approver: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose.clone(),
+            &QueryMsg::QueryExtension {
+                msg: QueryExt::Approver {},
+            },
+        )
+        .unwrap();
+    assert_eq!(approver, pre_propose_approver);
+
+    // Fail to change approver by non-approver.
+    let err: PreProposeError = app
+        .execute_contract(
+            Addr::unchecked("someone"),
+            pre_propose.clone(),
+            &ExecuteMsg::Extension {
+                msg: ExecuteExt::UpdateApprover {
+                    address: "someone".to_string(),
+                },
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, PreProposeError::Unauthorized {});
+
+    // Fail to reset approver back to approver DAO by non-approver.
+    let err: PreProposeError = app
+        .execute_contract(
+            Addr::unchecked("someone"),
+            pre_propose_approver.clone(),
+            &ApproverExecuteMsg::Extension {
+                msg: ApproverExecuteExt::ResetApprover {},
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, PreProposeError::Unauthorized {});
+
+    // Reset approver back to approver DAO.
+    app.execute_contract(
+        _approver_core_addr.clone(),
+        pre_propose_approver.clone(),
+        &ApproverExecuteMsg::Extension {
+            msg: ApproverExecuteExt::ResetApprover {},
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Ensure approver is reset back to the approver DAO
+    let approver: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose.clone(),
+            &QueryMsg::QueryExtension {
+                msg: QueryExt::Approver {},
+            },
+        )
+        .unwrap();
+    assert_eq!(approver, _approver_core_addr);
 }
