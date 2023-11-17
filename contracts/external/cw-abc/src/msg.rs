@@ -27,23 +27,24 @@ pub struct InstantiateMsg {
 }
 
 /// Update the phase configurations.
-/// These can only be called by the admin and only before or during each phase
+/// These can only be called by the owner.
 #[cw_serde]
 pub enum UpdatePhaseConfigMsg {
     /// Update the hatch phase configuration
     Hatch {
         contribution_limits: Option<MinMax>,
         exit_tax: Option<StdDecimal>,
+        // TODO what is the minimum used for?
         initial_raise: Option<MinMax>,
         initial_allocation_ratio: Option<StdDecimal>,
     },
-    /// Update the open phase configuration
+    /// Update the open phase configuration.
     Open {
         exit_tax: Option<StdDecimal>,
         allocation_percentage: Option<StdDecimal>,
     },
-    /// TODO include curve type so we know what happens when a DAO dies?
-    /// Update the closed phase configuration
+    /// Update the closed phase configuration.
+    /// TODO Set the curve type to be used on close?
     Closed {},
 }
 
@@ -57,24 +58,35 @@ pub enum ExecuteMsg {
     Burn {},
     /// Donate will add reserve tokens to the funding pool
     Donate {},
-    /// Update the hatch phase allowlist
+    /// Sets (or unsets if set to None) the maximum supply
+    SetMaxSupply {
+        /// The maximum supply able to be minted.
+        max_supply: Option<Uint128>,
+    },
+    /// Updates the curve type used for pricing tokens.
+    /// Only callable by owner.
+    /// TODO think about other potential limitations on this.
+    UpdateCurve { curve_type: CurveType },
+    /// Update the hatch phase allowlist.
+    /// This can only be called by the owner.
     UpdateHatchAllowlist {
+        /// Addresses to be added.
         to_add: Vec<String>,
+        /// Addresses to be removed.
         to_remove: Vec<String>,
     },
-    /// Update the hatch phase configuration
-    /// This can only be called by the admin and only during the hatch phase
+    /// Update the configuration of a certain phase.
+    /// This can only be called by the owner.
     UpdatePhaseConfig(UpdatePhaseConfigMsg),
-    // TODO Close the bonding curve
-    // Closing the bonding curve means no more buys are enabled and exit tax is set
-    // to zero. This could be used in the event of a project shutting down for example.
-    //
-    // Q: do we allow updating of the curve type? Is it passed in here?
-    // Close {},
+    /// Closing the bonding curve means no more buys are enabled and exit tax is set
+    /// to zero.
+    /// For example, this could be used in the event of a project shutting down.
+    Close {},
 }
 
 // TODO Price queries:
 // - Price to buy a certain amount?
+// - What can be bought for a certain amount?
 #[cw_ownable::cw_ownable_query]
 #[cw_serde]
 #[derive(QueryResponses)]

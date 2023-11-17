@@ -8,7 +8,7 @@ use std::collections::HashSet;
 use std::ops::Deref;
 use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 
-use crate::abc::CommonsPhase;
+use crate::abc::{CommonsPhase, CurveType};
 use crate::contract::CwAbcResult;
 use crate::msg::UpdatePhaseConfigMsg;
 use crate::state::{
@@ -140,6 +140,7 @@ fn update_hatcher_contributions(
     })
 }
 
+/// Sell tokens on the bonding curve
 pub fn execute_sell(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageInfo) -> CwAbcResult {
     let curve_type = CURVE_TYPE.load(deps.storage)?;
     let curve_fn = curve_type.to_curve_fn();
@@ -235,6 +236,15 @@ fn calculate_exit_tax(storage: &dyn Storage, sell_amount: Uint128) -> CwAbcResul
     Ok(taxed_amount)
 }
 
+/// Transitions the bonding curve to a closed phase where only sells are allowed
+pub fn execute_close(deps: DepsMut<TokenFactoryQuery>, info: MessageInfo) -> CwAbcResult {
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    PHASE.save(deps.storage, &CommonsPhase::Closed)?;
+
+    Ok(Response::new().add_attribute("action", "close"))
+}
+
 /// Send a donation to the funding pool
 pub fn execute_donate(
     deps: DepsMut<TokenFactoryQuery>,
@@ -271,6 +281,25 @@ fn assert_allowlisted(storage: &dyn Storage, hatcher: &Addr) -> Result<(), Contr
     Ok(())
 }
 
+/// Set the maxiumum supply (only callable by owner)
+/// If `max_supply` is set to None there will be no limit.`
+pub fn set_max_supply(
+    deps: DepsMut<TokenFactoryQuery>,
+    info: MessageInfo,
+    max_supply: Option<Uint128>,
+) -> CwAbcResult {
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    match max_supply {
+        Some(max) => MAX_SUPPLY.save(deps.storage, &max)?,
+        None => MAX_SUPPLY.remove(deps.storage),
+    }
+
+    Ok(Response::new()
+        .add_attribute("action", "set_max_supply")
+        .add_attribute("value", max_supply.unwrap_or(Uint128::MAX).to_string()))
+}
+
 /// Add and remove addresses from the hatcher allowlist
 pub fn update_hatch_allowlist(
     deps: DepsMut<TokenFactoryQuery>,
@@ -304,6 +333,7 @@ pub fn update_hatch_allowlist(
     Ok(Response::new().add_attributes(vec![("action", "update_hatch_allowlist")]))
 }
 
+/// Update the configuration of a particular phase
 pub fn update_phase_config(
     deps: DepsMut<TokenFactoryQuery>,
     _env: Env,
@@ -373,6 +403,21 @@ pub fn update_phase_config(
         // TODO what should the closed phase configuration be, is there one?
         _ => todo!(),
     }
+}
+
+/// Update the bonding curve. Only callable by the owner.
+/// NOTE: this changes the pricing. Use with caution.
+/// TODO: what other limitations do we want to put on this?
+pub fn update_curve(
+    deps: DepsMut<TokenFactoryQuery>,
+    info: MessageInfo,
+    curve_type: CurveType,
+) -> CwAbcResult {
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    CURVE_TYPE.save(deps.storage, &curve_type)?;
+
+    Ok(Response::new().add_attribute("action", "close"))
 }
 
 /// Update the ownership of the contract
