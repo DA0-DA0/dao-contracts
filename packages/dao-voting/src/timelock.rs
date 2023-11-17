@@ -1,6 +1,6 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{MessageInfo, StdError, Timestamp, BlockInfo};
-use cw_utils::{Duration, Expiration};
+use cosmwasm_std::{MessageInfo, StdError};
+use cw_utils::Duration;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
@@ -50,18 +50,6 @@ impl Timelock {
             Ok(())
         } else {
             Err(TimelockError::NoEarlyExecute {})
-        }
-    }
-
-    pub fn check_is_expired(
-        &self,
-        current_time: Timestamp,
-        expires: Timestamp,
-    ) -> Result<(), TimelockError> {
-        if expires.seconds() > current_time.seconds() {
-            Ok(())
-        } else {
-            Err(TimelockError::Timelocked {})
         }
     }
 

@@ -439,7 +439,7 @@ fn test_proposal_message_timelock_execution() {
     let native_balance = query_balance_native(&app, CREATOR_ADDR, "ujuno");
     assert_eq!(cw20_balance, Uint128::zero());
     assert_eq!(native_balance, Uint128::zero());
-    
+
     vote_on_proposal(
         &mut app,
         &proposal_module,
@@ -448,7 +448,7 @@ fn test_proposal_message_timelock_execution() {
         Vote::Yes,
     );
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
-    
+
     // Proposal is timelocked to the moment of prop passing + timelock delay
     assert_eq!(
         proposal.proposal.status,
@@ -459,8 +459,8 @@ fn test_proposal_message_timelock_execution() {
 
     mint_natives(&mut app, core_addr.as_str(), coins(10, "ujuno"));
 
-    // Test even oversite can't execute when Timelocked and early execute is
-    // not enabled.
+    // vetoer can't execute when timelock is active and
+    // early execute not enabled.
     let err: ContractError = app
         .execute_contract(
             Addr::unchecked("oversight"),
@@ -502,6 +502,253 @@ fn test_proposal_message_timelock_execution() {
     execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Executed);
+}
+
+// only the authorized vetoer can veto an open proposal
+#[test]
+fn test_open_proposal_veto_unauthorized() {
+    let mut app = App::default();
+    let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
+    instantiate.close_proposal_on_execution_failure = false;
+    let timelock = Timelock {
+        delay: Duration::Time(100),
+        vetoer: "oversight".to_string(),
+        early_execute: false,
+        veto_before_passed: true,
+    };
+    instantiate.timelock = Some(timelock.clone());
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        instantiate,
+        Some(vec![Cw20Coin {
+            address: CREATOR_ADDR.to_string(),
+            amount: Uint128::new(85),
+        }]),
+    );
+    let proposal_module = query_single_proposal_module(&app, &core_addr);
+    let gov_token = query_dao_token(&app, &core_addr);
+
+    mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
+    let proposal_id = make_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        vec![
+            WasmMsg::Execute {
+                contract_addr: gov_token.to_string(),
+                msg: to_binary(&cw20::Cw20ExecuteMsg::Mint {
+                    recipient: CREATOR_ADDR.to_string(),
+                    amount: Uint128::new(10_000_000),
+                })
+                .unwrap(),
+                funds: vec![],
+            }
+            .into(),
+            BankMsg::Send {
+                to_address: CREATOR_ADDR.to_string(),
+                amount: coins(10, "ujuno"),
+            }
+            .into(),
+        ],
+    );
+
+    // only the vetoer can veto
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("not-oversight"),
+            proposal_module.clone(),
+            &ExecuteMsg::Veto { proposal_id },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::TimelockError(TimelockError::Unauthorized {})
+    );
+}
+
+// open proposal can only be vetoed if `veto_before_passed` flag is enabled
+#[test]
+fn test_open_proposal_veto_with_early_veto_flag_disabled() {
+    let mut app = App::default();
+    let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
+    instantiate.close_proposal_on_execution_failure = false;
+    let timelock = Timelock {
+        delay: Duration::Time(100),
+        vetoer: "oversight".to_string(),
+        early_execute: false,
+        veto_before_passed: false,
+    };
+    instantiate.timelock = Some(timelock.clone());
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        instantiate,
+        Some(vec![Cw20Coin {
+            address: CREATOR_ADDR.to_string(),
+            amount: Uint128::new(85),
+        }]),
+    );
+    let proposal_module = query_single_proposal_module(&app, &core_addr);
+    let gov_token = query_dao_token(&app, &core_addr);
+
+    mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
+    let proposal_id = make_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        vec![
+            WasmMsg::Execute {
+                contract_addr: gov_token.to_string(),
+                msg: to_binary(&cw20::Cw20ExecuteMsg::Mint {
+                    recipient: CREATOR_ADDR.to_string(),
+                    amount: Uint128::new(10_000_000),
+                })
+                    .unwrap(),
+                funds: vec![],
+            }
+                .into(),
+            BankMsg::Send {
+                to_address: CREATOR_ADDR.to_string(),
+                amount: coins(10, "ujuno"),
+            }
+                .into(),
+        ],
+    );
+
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("oversight"),
+            proposal_module.clone(),
+            &ExecuteMsg::Veto { proposal_id },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::TimelockError(TimelockError::NoVetoBeforePassed {})
+    );
+}
+
+#[test]
+fn test_open_proposal_veto_early() {
+    let mut app = App::default();
+    let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
+    instantiate.close_proposal_on_execution_failure = false;
+    let timelock = Timelock {
+        delay: Duration::Time(100),
+        vetoer: "oversight".to_string(),
+        early_execute: false,
+        veto_before_passed: true,
+    };
+    instantiate.timelock = Some(timelock.clone());
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        instantiate,
+        Some(vec![Cw20Coin {
+            address: CREATOR_ADDR.to_string(),
+            amount: Uint128::new(85),
+        }]),
+    );
+    let proposal_module = query_single_proposal_module(&app, &core_addr);
+    let gov_token = query_dao_token(&app, &core_addr);
+
+    mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
+    let proposal_id = make_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        vec![
+            WasmMsg::Execute {
+                contract_addr: gov_token.to_string(),
+                msg: to_binary(&cw20::Cw20ExecuteMsg::Mint {
+                    recipient: CREATOR_ADDR.to_string(),
+                    amount: Uint128::new(10_000_000),
+                })
+                    .unwrap(),
+                funds: vec![],
+            }
+                .into(),
+            BankMsg::Send {
+                to_address: CREATOR_ADDR.to_string(),
+                amount: coins(10, "ujuno"),
+            }
+                .into(),
+        ],
+    );
+
+     app.execute_contract(
+            Addr::unchecked("oversight"),
+            proposal_module.clone(),
+            &ExecuteMsg::Veto { proposal_id },
+            &[],
+        )
+        .unwrap();
+
+    let proposal = query_proposal(&app, &proposal_module, proposal_id);
+    assert_eq!(
+        proposal.proposal.status,
+        Status::Vetoed {}
+    );
+}
+
+// only the vetoer can veto during timelock period
+#[test]
+fn test_timelocked_proposal_veto_unauthorized() {
+    todo!()
+}
+
+// vetoer can only veto the proposal before the timelock expires
+#[test]
+fn test_timelocked_proposal_veto_expired_timelock() {
+    todo!()
+}
+
+#[test]
+fn test_timelocked_proposal_veto_no_timelock_config() {
+    todo!()
+    // what
+}
+
+// vetoer can only exec timelocked prop if the early exec flag is enabled
+#[test]
+fn test_timelocked_proposal_execute_no_early_exec() {
+    todo!()
+}
+
+#[test]
+fn test_timelocked_proposal_execute_early() {
+    todo!()
+}
+
+// only vetoer can exec timelocked prop early
+#[test]
+fn test_timelocked_proposal_execute_active_timelock_unauthorized() {
+    todo!()
+}
+
+// anyone can exec the prop after the timelock expires
+#[test]
+fn test_timelocked_proposal_execute_expired_timelock_not_vetoer() {
+    todo!()
+}
+
+#[test]
+fn test_timelocked_proposal_no_votes_accepted() {
+    todo!()
+}
+
+#[test]
+fn test_vetoed_proposal_no_votes_accepted() {
+    todo!()
+}
+
+#[test]
+fn test_update_vetoer_address() {
+    todo!()
 }
 
 #[test]
