@@ -605,6 +605,63 @@ fn test_open_proposal_veto_with_early_veto_flag_disabled() {
                     recipient: CREATOR_ADDR.to_string(),
                     amount: Uint128::new(10_000_000),
                 })
+                .unwrap(),
+                funds: vec![],
+            }
+            .into(),
+            BankMsg::Send {
+                to_address: CREATOR_ADDR.to_string(),
+                amount: coins(10, "ujuno"),
+            }
+            .into(),
+        ],
+    );
+
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("oversight"),
+            proposal_module.clone(),
+            &ExecuteMsg::Veto { proposal_id },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::TimelockError(TimelockError::NoVetoBeforePassed {})
+    );
+}
+
+#[test]
+fn test_open_proposal_veto_with_no_timelock() {
+    let mut app = App::default();
+    let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
+    instantiate.close_proposal_on_execution_failure = false;
+    instantiate.timelock = None;
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        instantiate,
+        Some(vec![Cw20Coin {
+            address: CREATOR_ADDR.to_string(),
+            amount: Uint128::new(85),
+        }]),
+    );
+    let proposal_module = query_single_proposal_module(&app, &core_addr);
+    let gov_token = query_dao_token(&app, &core_addr);
+
+    mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
+    let proposal_id = make_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        vec![
+            WasmMsg::Execute {
+                contract_addr: gov_token.to_string(),
+                msg: to_binary(&cw20::Cw20ExecuteMsg::Mint {
+                    recipient: CREATOR_ADDR.to_string(),
+                    amount: Uint128::new(10_000_000),
+                })
                     .unwrap(),
                 funds: vec![],
             }
@@ -629,12 +686,14 @@ fn test_open_proposal_veto_with_early_veto_flag_disabled() {
         .unwrap();
     assert_eq!(
         err,
-        ContractError::TimelockError(TimelockError::NoVetoBeforePassed {})
+        ContractError::TimelockError(TimelockError::NoTimelock {})
     );
 }
 
+// if proposal is not open or timelocked, attempts to veto should
+// throw an error
 #[test]
-fn test_open_proposal_veto_early() {
+fn test_vetoed_proposal_veto() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
@@ -680,19 +739,92 @@ fn test_open_proposal_veto_early() {
         ],
     );
 
-     app.execute_contract(
-            Addr::unchecked("oversight"),
-            proposal_module.clone(),
-            &ExecuteMsg::Veto { proposal_id },
-            &[],
-        )
+    app.execute_contract(
+        Addr::unchecked("oversight"),
+        proposal_module.clone(),
+        &ExecuteMsg::Veto { proposal_id },
+        &[],
+    )
         .unwrap();
 
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
+    assert_eq!(proposal.proposal.status, Status::Vetoed {});
+
+    let err: ContractError = app.execute_contract(
+        Addr::unchecked("oversight"),
+        proposal_module.clone(),
+        &ExecuteMsg::Veto { proposal_id },
+        &[],
+    )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
     assert_eq!(
-        proposal.proposal.status,
-        Status::Vetoed {}
+        ContractError::TimelockError(
+            TimelockError::InvalidProposalStatus { status: "vetoed".to_string() }
+        ),
+        err,
     );
+}
+
+#[test]
+fn test_open_proposal_veto_early() {
+    let mut app = App::default();
+    let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
+    instantiate.close_proposal_on_execution_failure = false;
+    let timelock = Timelock {
+        delay: Duration::Time(100),
+        vetoer: "oversight".to_string(),
+        early_execute: false,
+        veto_before_passed: true,
+    };
+    instantiate.timelock = Some(timelock.clone());
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        instantiate,
+        Some(vec![Cw20Coin {
+            address: CREATOR_ADDR.to_string(),
+            amount: Uint128::new(85),
+        }]),
+    );
+    let proposal_module = query_single_proposal_module(&app, &core_addr);
+    let gov_token = query_dao_token(&app, &core_addr);
+
+    mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
+    let proposal_id = make_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        vec![
+            WasmMsg::Execute {
+                contract_addr: gov_token.to_string(),
+                msg: to_binary(&cw20::Cw20ExecuteMsg::Mint {
+                    recipient: CREATOR_ADDR.to_string(),
+                    amount: Uint128::new(10_000_000),
+                })
+                .unwrap(),
+                funds: vec![],
+            }
+            .into(),
+            BankMsg::Send {
+                to_address: CREATOR_ADDR.to_string(),
+                amount: coins(10, "ujuno"),
+            }
+            .into(),
+        ],
+    );
+
+    app.execute_contract(
+        Addr::unchecked("oversight"),
+        proposal_module.clone(),
+        &ExecuteMsg::Veto { proposal_id },
+        &[],
+    )
+    .unwrap();
+
+    let proposal = query_proposal(&app, &proposal_module, proposal_id);
+    assert_eq!(proposal.proposal.status, Status::Vetoed {});
 }
 
 // only the vetoer can veto during timelock period
@@ -737,15 +869,15 @@ fn test_timelocked_proposal_veto_unauthorized() {
                     recipient: CREATOR_ADDR.to_string(),
                     amount: Uint128::new(10_000_000),
                 })
-                    .unwrap(),
+                .unwrap(),
                 funds: vec![],
             }
-                .into(),
+            .into(),
             BankMsg::Send {
                 to_address: CREATOR_ADDR.to_string(),
                 amount: coins(10, "ujuno"),
             }
-                .into(),
+            .into(),
         ],
     );
 
@@ -766,15 +898,16 @@ fn test_timelocked_proposal_veto_unauthorized() {
         }
     );
 
-    let err: ContractError = app.execute_contract(
-        Addr::unchecked("not-oversight"),
-        proposal_module.clone(),
-        &ExecuteMsg::Veto { proposal_id },
-        &[],
-    )
-    .unwrap_err()
-    .downcast()
-    .unwrap();
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("not-oversight"),
+            proposal_module.clone(),
+            &ExecuteMsg::Veto { proposal_id },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
 
     assert_eq!(
         err,
@@ -831,15 +964,15 @@ fn test_timelocked_proposal_veto_expired_timelock() {
                     recipient: CREATOR_ADDR.to_string(),
                     amount: Uint128::new(10_000_000),
                 })
-                    .unwrap(),
+                .unwrap(),
                 funds: vec![],
             }
-                .into(),
+            .into(),
             BankMsg::Send {
                 to_address: CREATOR_ADDR.to_string(),
                 amount: coins(10, "ujuno"),
             }
-                .into(),
+            .into(),
         ],
     );
 
@@ -861,15 +994,16 @@ fn test_timelocked_proposal_veto_expired_timelock() {
     );
     app.update_block(|b| b.time = b.time.plus_seconds(200));
 
-    let err: ContractError = app.execute_contract(
-        Addr::unchecked("oversight"),
-        proposal_module.clone(),
-        &ExecuteMsg::Veto { proposal_id },
-        &[],
-    )
-    .unwrap_err()
-    .downcast()
-    .unwrap();
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("oversight"),
+            proposal_module.clone(),
+            &ExecuteMsg::Veto { proposal_id },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
 
     assert_eq!(
         err,
@@ -893,12 +1027,10 @@ fn test_timelocked_proposal_execute_no_early_exec() {
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
-        Some(vec![
-            Cw20Coin {
-                address: CREATOR_ADDR.to_string(),
-                amount: Uint128::new(85),
-            },
-        ]),
+        Some(vec![Cw20Coin {
+            address: CREATOR_ADDR.to_string(),
+            amount: Uint128::new(85),
+        }]),
     );
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
@@ -915,15 +1047,15 @@ fn test_timelocked_proposal_execute_no_early_exec() {
                     recipient: CREATOR_ADDR.to_string(),
                     amount: Uint128::new(10_000_000),
                 })
-                    .unwrap(),
+                .unwrap(),
                 funds: vec![],
             }
-                .into(),
+            .into(),
             BankMsg::Send {
                 to_address: CREATOR_ADDR.to_string(),
                 amount: coins(10, "ujuno"),
             }
-                .into(),
+            .into(),
         ],
     );
 
@@ -944,12 +1076,13 @@ fn test_timelocked_proposal_execute_no_early_exec() {
         }
     );
 
-    let err: ContractError = app.execute_contract(
-        Addr::unchecked("oversight"),
-        proposal_module.clone(),
-        &ExecuteMsg::Execute { proposal_id },
-        &[],
-    )
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("oversight"),
+            proposal_module.clone(),
+            &ExecuteMsg::Execute { proposal_id },
+            &[],
+        )
         .unwrap_err()
         .downcast()
         .unwrap();
@@ -975,12 +1108,10 @@ fn test_timelocked_proposal_execute_early() {
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
-        Some(vec![
-            Cw20Coin {
-                address: CREATOR_ADDR.to_string(),
-                amount: Uint128::new(85),
-            },
-        ]),
+        Some(vec![Cw20Coin {
+            address: CREATOR_ADDR.to_string(),
+            amount: Uint128::new(85),
+        }]),
     );
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
@@ -997,15 +1128,15 @@ fn test_timelocked_proposal_execute_early() {
                     recipient: CREATOR_ADDR.to_string(),
                     amount: Uint128::new(10_000_000),
                 })
-                    .unwrap(),
+                .unwrap(),
                 funds: vec![],
             }
-                .into(),
+            .into(),
             BankMsg::Send {
                 to_address: CREATOR_ADDR.to_string(),
                 amount: coins(10, "ujuno"),
             }
-                .into(),
+            .into(),
         ],
     );
 
@@ -1027,7 +1158,10 @@ fn test_timelocked_proposal_execute_early() {
     );
 
     // assert timelock is active
-    assert!(!timelock.delay.after(&app.block_info()).is_expired(&app.block_info()));
+    assert!(!timelock
+        .delay
+        .after(&app.block_info())
+        .is_expired(&app.block_info()));
     mint_natives(&mut app, core_addr.as_str(), coins(10, "ujuno"));
 
     app.execute_contract(
@@ -1035,13 +1169,11 @@ fn test_timelocked_proposal_execute_early() {
         proposal_module.clone(),
         &ExecuteMsg::Execute { proposal_id },
         &[],
-    ).unwrap();
+    )
+    .unwrap();
 
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
-    assert_eq!(
-        proposal.proposal.status,
-        Status::Executed {}
-    );
+    assert_eq!(proposal.proposal.status, Status::Executed {});
 }
 
 // only vetoer can exec timelocked prop early
@@ -1060,12 +1192,10 @@ fn test_timelocked_proposal_execute_active_timelock_unauthorized() {
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
-        Some(vec![
-            Cw20Coin {
-                address: CREATOR_ADDR.to_string(),
-                amount: Uint128::new(85),
-            },
-        ]),
+        Some(vec![Cw20Coin {
+            address: CREATOR_ADDR.to_string(),
+            amount: Uint128::new(85),
+        }]),
     );
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
@@ -1082,15 +1212,15 @@ fn test_timelocked_proposal_execute_active_timelock_unauthorized() {
                     recipient: CREATOR_ADDR.to_string(),
                     amount: Uint128::new(10_000_000),
                 })
-                    .unwrap(),
+                .unwrap(),
                 funds: vec![],
             }
-                .into(),
+            .into(),
             BankMsg::Send {
                 to_address: CREATOR_ADDR.to_string(),
                 amount: coins(10, "ujuno"),
             }
-                .into(),
+            .into(),
         ],
     );
 
@@ -1112,14 +1242,18 @@ fn test_timelocked_proposal_execute_active_timelock_unauthorized() {
     );
 
     // assert timelock is active
-    assert!(!timelock.delay.after(&app.block_info()).is_expired(&app.block_info()));
+    assert!(!timelock
+        .delay
+        .after(&app.block_info())
+        .is_expired(&app.block_info()));
 
-    let err: ContractError = app.execute_contract(
-        Addr::unchecked(CREATOR_ADDR),
-        proposal_module.clone(),
-        &ExecuteMsg::Execute { proposal_id },
-        &[],
-    )
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            proposal_module.clone(),
+            &ExecuteMsg::Execute { proposal_id },
+            &[],
+        )
         .unwrap_err()
         .downcast()
         .unwrap();
@@ -1146,12 +1280,10 @@ fn test_timelocked_proposal_execute_expired_timelock_not_vetoer() {
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
-        Some(vec![
-            Cw20Coin {
-                address: CREATOR_ADDR.to_string(),
-                amount: Uint128::new(85),
-            },
-        ]),
+        Some(vec![Cw20Coin {
+            address: CREATOR_ADDR.to_string(),
+            amount: Uint128::new(85),
+        }]),
     );
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
@@ -1168,15 +1300,15 @@ fn test_timelocked_proposal_execute_expired_timelock_not_vetoer() {
                     recipient: CREATOR_ADDR.to_string(),
                     amount: Uint128::new(10_000_000),
                 })
-                    .unwrap(),
+                .unwrap(),
                 funds: vec![],
             }
-                .into(),
+            .into(),
             BankMsg::Send {
                 to_address: CREATOR_ADDR.to_string(),
                 amount: coins(10, "ujuno"),
             }
-                .into(),
+            .into(),
         ],
     );
 
@@ -1191,12 +1323,7 @@ fn test_timelocked_proposal_execute_expired_timelock_not_vetoer() {
 
     // Proposal is timelocked to the moment of prop passing + timelock delay
     let expiration = timelock.delay.after(&app.block_info());
-    assert_eq!(
-        proposal.proposal.status,
-        Status::Timelocked {
-            expiration,
-        }
-    );
+    assert_eq!(proposal.proposal.status, Status::Timelocked { expiration });
 
     app.update_block(|b| b.time = b.time.plus_seconds(201));
     // assert timelock is expired
@@ -1208,13 +1335,11 @@ fn test_timelocked_proposal_execute_expired_timelock_not_vetoer() {
         proposal_module.clone(),
         &ExecuteMsg::Execute { proposal_id },
         &[],
-    ).unwrap();
+    )
+    .unwrap();
 
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
-    assert_eq!(
-        proposal.proposal.status,
-        Status::Executed {},
-    );
+    assert_eq!(proposal.proposal.status, Status::Executed {},);
 }
 
 #[test]

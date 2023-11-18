@@ -305,7 +305,7 @@ pub fn execute_veto(
                         .add_submessages(proposal_status_changed_hooks)
                         .add_submessages(proposal_completed_hooks))
                 }
-                // If timelock is not configured throw error. This should never happen.
+                // If timelock is not configured throw error
                 None => Err(ContractError::TimelockError(TimelockError::NoTimelock {})),
             }
         }
@@ -408,8 +408,10 @@ pub fn execute_execute(
                     // if sender is the vetoer we validate the early exec flag
                     true => timelock.check_early_execute_enabled()?,
                     // otherwise timelock must be expired in order to execute
-                    false => if !expiration.is_expired(&env.block) {
-                        return Err(ContractError::TimelockError(TimelockError::Timelocked {}));
+                    false => {
+                        if !expiration.is_expired(&env.block) {
+                            return Err(ContractError::TimelockError(TimelockError::Timelocked {}));
+                        }
                     }
                 }
             }
