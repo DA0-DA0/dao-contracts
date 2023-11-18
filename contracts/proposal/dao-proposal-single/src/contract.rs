@@ -375,7 +375,6 @@ pub fn execute_execute(
         .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
 
     let config = CONFIG.load(deps.storage)?;
-    // TODO: add exception for vetoer execution
     if config.only_members_execute {
         let power = get_voting_power(
             deps.as_ref(),
@@ -383,7 +382,12 @@ pub fn execute_execute(
             &config.dao,
             Some(prop.start_height),
         )?;
-        if power.is_zero() {
+        let vetoer_call = match config.timelock {
+            None => false,
+            Some(timelock) => timelock.vetoer == info.sender,
+        };
+
+        if power.is_zero() && !vetoer_call {
             return Err(ContractError::Unauthorized {});
         }
     }
@@ -396,6 +400,8 @@ pub fn execute_execute(
     match prop.status {
         Status::Passed => (),
         Status::Timelocked { expiration } => {
+            // we can only end up in `Timelocked` state if `timelock`
+            // is not `None`
             if let Some(ref timelock) = prop.timelock {
                 // Check if the sender is the vetoer
                 match timelock.vetoer == info.sender {
@@ -482,7 +488,6 @@ pub fn execute_vote(
     // cause a different one. This then serves to allow
     // for better tallies of opinions in the event that a
     // proposal passes or is rejected early.
-    // benskey TODO: check for potential timelock issues
     if prop.expiration.is_expired(&env.block) {
         return Err(ContractError::Expired { id: proposal_id });
     }
