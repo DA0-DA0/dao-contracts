@@ -73,6 +73,7 @@ test-context = "0.1"
 thiserror = { version = "1.0" }
 token-bindings = "0.11.0"
 wynd-utils = "0.4"
+semver = "1"
 
 # One commit ahead of version 0.3.0. Allows initialization with an
 # optional owner.

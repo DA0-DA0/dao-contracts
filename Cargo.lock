@@ -2091,6 +2091,7 @@ dependencies = [
  "dao-voting-cw4",
  "dao-voting-cw721-staked",
  "dao-voting-token-staked",
+ "semver",
  "thiserror",
 ]
 

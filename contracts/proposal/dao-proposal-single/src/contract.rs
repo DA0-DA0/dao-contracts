@@ -1,3 +1,4 @@
+use std::str::FromStr;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -8,6 +9,7 @@ use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_hooks::Hooks;
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration};
+use semver::Version;
 use dao_hooks::proposal::{
     new_proposal_hooks, proposal_completed_hooks, proposal_status_changed_hooks,
 };
@@ -972,20 +974,23 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
             // the version in storage matches the version in the blob
             // we are not upgrading.
             // TODO fix this check!
-            // if version == CONTRACT_VERSION {
-            //     return Err(ContractError::AlreadyMigrated {});
-            // }
+            if version == CONTRACT_VERSION {
+                return Err(ContractError::AlreadyMigrated {});
+            }
 
-            // TODO check that the version is greater than 2.0.0
+            let parsed_version = Version::from_str(&version)
+                .map_err(|_| ContractError::MigrationVersionError {})?;
+            // migration is only possible from 2.0.0
+            if parsed_version < Version::new(2, 0, 0) {
+                return Err(ContractError::MigrationVersionError {})
+            }
 
-            // Update the stored config to have the new
-            // `close_proposal_on_execution_falure` field.
+            // Update the stored config to have the new `timelock` field
             let current_config = dao_proposal_single_v2::state::CONFIG.load(deps.storage)?;
             CONFIG.save(
                 deps.storage,
                 &Config {
                     threshold: v2_threshold_to_v3(current_config.threshold),
-                    // TODO test these migrations, not sure if minor cw-utils versions will effect the migration
                     max_voting_period: current_config.max_voting_period,
                     min_voting_period: current_config.min_voting_period,
                     only_members_execute: current_config.only_members_execute,
@@ -1021,7 +1026,6 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                         description: prop.description,
                         proposer: prop.proposer,
                         start_height: prop.start_height,
-                        // TODO test migrations
                         min_voting_period: prop.min_voting_period,
                         expiration: prop.expiration,
                         threshold: v2_threshold_to_v3(prop.threshold),

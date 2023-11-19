@@ -92,4 +92,7 @@ pub enum ContractError {
 
     #[error("can not migrate. current version is up to date")]
     AlreadyMigrated {},
+
+    #[error("incompatible migration version")]
+    MigrationVersionError {},
 }

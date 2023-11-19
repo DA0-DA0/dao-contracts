@@ -39,6 +39,9 @@ cw-utils-v2 = { workspace = true }
 voting-v2 = { workspace = true }
 dao-proposal-single-v2 = { workspace = true, features = ["library"] }
 
+# deps for v3 migration
+semver = { workspace = true, features = [] }
+
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }
 cw-multi-test = { workspace = true }
