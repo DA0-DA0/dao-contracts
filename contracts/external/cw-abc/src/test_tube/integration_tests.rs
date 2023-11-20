@@ -417,5 +417,99 @@ fn test_close_curve() {
         .unwrap();
 }
 
+// TODO maybe we don't allow for updating the curve in the MVP as it could lead
+// to weird edge cases?
 #[test]
-fn test_update_curve() {}
+fn test_update_curve() {
+    let app = OsmosisTestApp::new();
+    let builder = TestEnvBuilder::new();
+    let env = builder.default_setup(&app);
+    let TestEnv {
+        ref abc,
+        ref accounts,
+        ref tf_issuer,
+        ..
+    } = env;
+
+    // Query denom
+    let denom = tf_issuer
+        .query::<DenomResponse>(&IssuerQueryMsg::Denom {})
+        .unwrap()
+        .denom;
+
+    // Buy enough tokens to end the hatch phase
+    abc.execute(&ExecuteMsg::Buy {}, &coins(1000000, RESERVE), &accounts[0])
+        .unwrap();
+
+    // Only owner can update the curve
+    let err = abc
+        .execute(
+            &ExecuteMsg::UpdateCurve {
+                curve_type: CurveType::Linear {
+                    slope: Uint128::new(2),
+                    scale: 5,
+                },
+            },
+            &[],
+            &accounts[1],
+        )
+        .unwrap_err();
+    assert_eq!(
+        err,
+        abc.execute_error(ContractError::Ownership(
+            cw_ownable::OwnershipError::NotOwner
+        ))
+    );
+
+    // Owner updates curve
+    abc.execute(
+        &ExecuteMsg::UpdateCurve {
+            curve_type: CurveType::Linear {
+                slope: Uint128::new(2),
+                scale: 5,
+            },
+        },
+        &[],
+        &accounts[0],
+    )
+    .unwrap();
+
+    // All tokens are sold successfully
+    let user_balance = env
+        .bank()
+        .query_balance(&QueryBalanceRequest {
+            address: accounts[0].address(),
+            denom: denom.clone(),
+        })
+        .unwrap();
+    assert_eq!(
+        user_balance.balance,
+        Some(Coin {
+            denom: denom.clone(),
+            amount: "9000000".to_string(),
+        })
+    );
+
+    abc.execute(
+        &ExecuteMsg::Sell {},
+        &coins(9000000, denom.clone()),
+        &accounts[0],
+    )
+    .unwrap();
+
+    // No money is left over in the contract
+    let contract_balance = env
+        .bank()
+        .query_balance(&QueryBalanceRequest {
+            address: abc.contract_addr.to_string(),
+            denom: RESERVE.to_string(),
+        })
+        .unwrap();
+    assert_eq!(
+        contract_balance.balance,
+        Some(Coin {
+            denom: RESERVE.to_string(),
+            amount: "0".to_string(),
+        })
+    );
+}
