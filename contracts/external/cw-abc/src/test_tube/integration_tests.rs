@@ -86,11 +86,11 @@ fn test_happy_path() {
         CommonsPhaseConfig {
             hatch: HatchConfig {
                 contribution_limits: MinMax {
-                    min: Uint128::one(),
+                    min: Uint128::from(10u128),
                     max: Uint128::from(1000000u128),
                 },
                 initial_raise: MinMax {
-                    min: Uint128::one(),
+                    min: Uint128::from(10u128),
                     max: Uint128::from(1000000u128),
                 },
                 initial_allocation_ratio: Decimal::percent(10u64),
@@ -226,14 +226,14 @@ fn test_max_supply_enforced() {
     let err = abc
         .execute(
             &ExecuteMsg::Buy {},
-            &coins(1000000000000000000000000, RESERVE),
+            &coins(10000000000000, RESERVE),
             &accounts[0],
         )
         .unwrap_err();
     assert_eq!(
         err,
         abc.execute_error(ContractError::CannotExceedMaxSupply {
-            max: Uint128::from(1000000u128)
+            max: Uint128::from(1000000000u128)
         })
     );
 }
