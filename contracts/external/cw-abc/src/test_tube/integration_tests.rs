@@ -1,10 +1,16 @@
 use crate::{
-    abc::{ClosedConfig, CommonsPhase, CommonsPhaseConfig, HatchConfig, MinMax, OpenConfig},
-    msg::{CommonsPhaseConfigResponse, CurveInfoResponse, DenomResponse, ExecuteMsg, QueryMsg},
+    abc::{
+        ClosedConfig, CommonsPhase, CommonsPhaseConfig, CurveType, HatchConfig, MinMax, OpenConfig,
+        ReserveToken, SupplyToken,
+    },
+    msg::{
+        CommonsPhaseConfigResponse, CurveInfoResponse, DenomResponse, ExecuteMsg, InstantiateMsg,
+        QueryMsg,
+    },
     ContractError,
 };
 
-use super::test_env::{TestEnv, TestEnvBuilder, RESERVE};
+use super::test_env::{TestEnv, TestEnvBuilder, DENOM, RESERVE};
 
 use cosmwasm_std::{coins, Decimal, Uint128};
 use cw_tokenfactory_issuer::msg::QueryMsg as IssuerQueryMsg;
@@ -208,7 +214,7 @@ fn test_contribution_limits_enforced() {
 }
 
 #[test]
-fn test_max_supply_enforced() {
+fn test_max_supply() {
     let app = OsmosisTestApp::new();
     let builder = TestEnvBuilder::new();
     let env = builder.default_setup(&app);
@@ -236,4 +242,180 @@ fn test_max_supply_enforced() {
             max: Uint128::from(1000000000u128)
         })
     );
+
+    // Only owner can update the max supply
+    let err = abc
+        .execute(
+            &ExecuteMsg::UpdateMaxSupply { max_supply: None },
+            &[],
+            &accounts[1],
+        )
+        .unwrap_err();
+    assert_eq!(
+        err,
+        abc.execute_error(ContractError::Ownership(
+            cw_ownable::OwnershipError::NotOwner
+        ))
+    );
+
+    // Update the max supply to no limit
+    abc.execute(
+        &ExecuteMsg::UpdateMaxSupply { max_supply: None },
+        &[],
+        &accounts[0],
+    )
+    .unwrap();
+
+    // Purchase large amount of coins succeeds
+    abc.execute(
+        &ExecuteMsg::Buy {},
+        &coins(10000000000000, RESERVE),
+        &accounts[0],
+    )
+    .unwrap();
 }
+
+#[test]
+fn test_allowlist() {
+    let app = OsmosisTestApp::new();
+    let builder = TestEnvBuilder::new();
+    let instantiate_msg = InstantiateMsg {
+        token_issuer_code_id: 0,
+        supply: SupplyToken {
+            subdenom: DENOM.to_string(),
+            metadata: None,
+            decimals: 6,
+            max_supply: Some(Uint128::from(1000000000u128)),
+        },
+        reserve: ReserveToken {
+            denom: RESERVE.to_string(),
+            decimals: 6,
+        },
+        phase_config: CommonsPhaseConfig {
+            hatch: HatchConfig {
+                contribution_limits: MinMax {
+                    min: Uint128::from(10u128),
+                    max: Uint128::from(1000000u128),
+                },
+                initial_raise: MinMax {
+                    min: Uint128::from(10u128),
+                    max: Uint128::from(1000000u128),
+                },
+                initial_allocation_ratio: Decimal::percent(10u64),
+                exit_tax: Decimal::percent(10u64),
+            },
+            open: OpenConfig {
+                allocation_percentage: Decimal::percent(10u64),
+                exit_tax: Decimal::percent(10u64),
+            },
+            closed: ClosedConfig {},
+        },
+        hatcher_allowlist: None,
+        curve_type: CurveType::Constant {
+            value: Uint128::one(),
+            scale: 1,
+        },
+    };
+    let env = builder.setup(&app, instantiate_msg).unwrap();
+    let TestEnv {
+        ref abc,
+        ref accounts,
+        ..
+    } = env;
+
+    // Only owner can update hatch list
+    let err = abc
+        .execute(
+            &ExecuteMsg::UpdateHatchAllowlist {
+                to_add: vec![accounts[0].address(), accounts[1].address()],
+                to_remove: vec![],
+            },
+            &[],
+            &accounts[1],
+        )
+        .unwrap_err();
+    assert_eq!(
+        err,
+        abc.execute_error(ContractError::Ownership(
+            cw_ownable::OwnershipError::NotOwner
+        ))
+    );
+
+    // Enable the allow list, normally this would be passed in through
+    // instantiation.
+    abc.execute(
+        &ExecuteMsg::UpdateHatchAllowlist {
+            to_add: vec![accounts[0].address(), accounts[1].address()],
+            to_remove: vec![],
+        },
+        &[],
+        &accounts[0],
+    )
+    .unwrap();
+
+    // Account not on the hatch allowlist can't purchase
+    let err = abc
+        .execute(&ExecuteMsg::Buy {}, &coins(1000, RESERVE), &accounts[3])
+        .unwrap_err();
+    assert_eq!(
+        err,
+        abc.execute_error(ContractError::SenderNotAllowlisted {
+            sender: accounts[3].address()
+        })
+    );
+
+    // Account on allowlist can purchase
+    abc.execute(&ExecuteMsg::Buy {}, &coins(1000, RESERVE), &accounts[1])
+        .unwrap();
+}
+
+#[test]
+fn test_close_curve() {
+    let app = OsmosisTestApp::new();
+    let builder = TestEnvBuilder::new();
+    let env = builder.default_setup(&app);
+    let TestEnv {
+        ref abc,
+        ref accounts,
+        ref tf_issuer,
+        ..
+    } = env;
+
+    // Query denom
+    let denom = tf_issuer
+        .query::<DenomResponse>(&IssuerQueryMsg::Denom {})
+        .unwrap()
+        .denom;
+
+    // Buy enough tokens to end the hatch phase
+    abc.execute(&ExecuteMsg::Buy {}, &coins(1000000, RESERVE), &accounts[0])
+        .unwrap();
+
+    // Only owner can close the curve
+    let err = abc
+        .execute(&ExecuteMsg::Close {}, &[], &accounts[1])
+        .unwrap_err();
+    assert_eq!(
+        err,
+        abc.execute_error(ContractError::Ownership(
+            cw_ownable::OwnershipError::NotOwner
+        ))
+    );
+
+    // Owner closes curve
+    abc.execute(&ExecuteMsg::Close {}, &[], &accounts[0])
+        .unwrap();
+
+    // Can no longer buy
+    let err = abc
+        .execute(&ExecuteMsg::Buy {}, &coins(1000, RESERVE), &accounts[0])
+        .unwrap_err();
+    assert_eq!(err, abc.execute_error(ContractError::CommonsClosed {}));
+
+    // Can sell
+    abc.execute(&ExecuteMsg::Sell {}, &coins(100, denom), &accounts[0])
+        .unwrap();
+}
+
+#[test]
+fn test_update_curve() {}
