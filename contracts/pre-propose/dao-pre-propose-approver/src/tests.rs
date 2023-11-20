@@ -1264,7 +1264,20 @@ fn test_propose_open_proposal_submission() {
             },
         )
         .unwrap();
-    assert_eq!(pre_propose_id, pre_propose_id_from_proposal);
+    assert_eq!(pre_propose_id_from_proposal, pre_propose_id);
+
+    let proposal_id_from_pre_propose: u64 = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose_approver.clone(),
+            &ApproverQueryMsg::QueryExtension {
+                msg: ApproverQueryExt::ApproverProposalIdForPreProposeApprovalId {
+                    id: pre_propose_id,
+                },
+            },
+        )
+        .unwrap();
+    assert_eq!(proposal_id_from_pre_propose, approver_prop_id);
 
     // Approver DAO votes to approves
     approve_proposal(&mut app, proposal_single_approver, "ekez", approver_prop_id);
