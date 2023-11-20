@@ -17,12 +17,6 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("instantiate message owner does not match factory owner. got ({actual:?}) expected ({expected:?})")]
-    OwnerMissmatch {
-        actual: Option<String>,
-        expected: Option<String>,
-    },
-
     #[error("{0}")]
     ParseReplyError(#[from] ParseReplyError),
 
