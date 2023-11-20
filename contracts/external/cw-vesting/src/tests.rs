@@ -344,7 +344,7 @@ fn test_staking_rewards_go_to_receiver() {
                 StakingInfo {
                     bonded_denom: NATIVE_DENOM.to_string(),
                     unbonding_time: 60,
-                    /// Interest rate per year (60 * 60 * 24 * 365 seconds)
+                    // Interest rate per year (60 * 60 * 24 * 365 seconds)
                     apr: Decimal::percent(10),
                 },
             )
