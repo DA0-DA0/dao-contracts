@@ -350,13 +350,15 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
                     to_binary(&COMPLETED_PROPOSALS.load(deps.storage, id)?)
                 }
             }
-            QueryExt::PendingProposals { start_after, limit } => to_json_binary(&paginate_map_values(
-                deps,
-                &PENDING_PROPOSALS,
-                start_after,
-                limit,
-                Order::Ascending,
-            )?),
+            QueryExt::PendingProposals { start_after, limit } => {
+                to_json_binary(&paginate_map_values(
+                    deps,
+                    &PENDING_PROPOSALS,
+                    start_after,
+                    limit,
+                    Order::Ascending,
+                )?)
+            }
             QueryExt::ReversePendingProposals {
                 start_before,
                 limit,
