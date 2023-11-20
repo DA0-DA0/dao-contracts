@@ -195,7 +195,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 to_json_binary(&PROPOSAL_ID_TO_PRE_PROPOSE_ID.may_load(deps.storage, id)?)
             }
             QueryExt::ApproverProposalIdForPreProposeApprovalId { id } => {
-                to_binary(&PRE_PROPOSE_ID_TO_PROPOSAL_ID.may_load(deps.storage, id)?)
+                to_json_binary(&PRE_PROPOSE_ID_TO_PROPOSAL_ID.may_load(deps.storage, id)?)
             }
         },
         _ => PrePropose::default().query(deps, env, msg),
