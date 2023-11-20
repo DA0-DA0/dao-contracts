@@ -130,16 +130,6 @@ pub fn instantiate_contract(
     {
         return Err(ContractError::Unauthorized {});
     }
-    // No owner is always allowed. If an owner is specified, it must
-    // exactly match the owner of the contract.
-    if instantiate_msg.owner.as_deref().map_or(false, |i| {
-        ownership.owner.as_ref().map_or(true, |o| o.as_str() != i)
-    }) {
-        return Err(ContractError::OwnerMissmatch {
-            actual: instantiate_msg.owner,
-            expected: ownership.owner.map(|a| a.into_string()),
-        });
-    }
 
     let code_id = VESTING_CODE_ID.load(deps.storage)?;
 
