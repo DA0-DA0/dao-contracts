@@ -339,16 +339,19 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
                     COMPLETED_PROPOSALS.load(deps.storage, id)?;
                 }
 
-                to_binary(&pending)
+                to_json_binary(&pending)
             }
             QueryExt::Proposal { id } => {
                 if let Some(pending) = PENDING_PROPOSALS.may_load(deps.storage, id)? {
-                    to_binary(&pending)
+                    to_json_binary(&pending)
                 } else {
                     // Force load completed proposal if not pending, throwing
                     // error if not found.
-                    to_binary(&COMPLETED_PROPOSALS.load(deps.storage, id)?)
+                    to_json_binary(&COMPLETED_PROPOSALS.load(deps.storage, id)?)
                 }
+            }
+            QueryExt::PendingProposal { id } => {
+                to_json_binary(&PENDING_PROPOSALS.load(deps.storage, id)?)
             }
             QueryExt::PendingProposals { start_after, limit } => {
                 to_json_binary(&paginate_map_values(
@@ -370,19 +373,21 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 Order::Descending,
             )?),
             QueryExt::CompletedProposal { id } => {
-                to_binary(&COMPLETED_PROPOSALS.load(deps.storage, id)?)
+                to_json_binary(&COMPLETED_PROPOSALS.load(deps.storage, id)?)
             }
-            QueryExt::CompletedProposals { start_after, limit } => to_binary(&paginate_map_values(
-                deps,
-                &COMPLETED_PROPOSALS,
-                start_after,
-                limit,
-                Order::Ascending,
-            )?),
+            QueryExt::CompletedProposals { start_after, limit } => {
+                to_json_binary(&paginate_map_values(
+                    deps,
+                    &COMPLETED_PROPOSALS,
+                    start_after,
+                    limit,
+                    Order::Ascending,
+                )?)
+            }
             QueryExt::ReverseCompletedProposals {
                 start_before,
                 limit,
-            } => to_binary(&paginate_map_values(
+            } => to_json_binary(&paginate_map_values(
                 deps,
                 &COMPLETED_PROPOSALS,
                 start_before,
@@ -390,7 +395,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 Order::Descending,
             )?),
             QueryExt::CompletedProposalIdForCreatedProposalId { id } => {
-                to_binary(&CREATED_PROPOSAL_TO_COMPLETED_PROPOSAL.may_load(deps.storage, id)?)
+                to_json_binary(&CREATED_PROPOSAL_TO_COMPLETED_PROPOSAL.may_load(deps.storage, id)?)
             }
         },
         _ => PrePropose::default().query(deps, env, msg),
