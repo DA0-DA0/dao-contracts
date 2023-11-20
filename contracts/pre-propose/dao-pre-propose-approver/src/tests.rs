@@ -11,7 +11,7 @@ use dao_pre_propose_approval_single::{
     msg::{
         ExecuteExt, ExecuteMsg, InstantiateExt, InstantiateMsg, ProposeMessage, QueryExt, QueryMsg,
     },
-    state::PendingProposal,
+    state::Proposal,
 };
 use dao_pre_propose_base::{error::PreProposeError, msg::DepositInfoResponse, state::Config};
 use dao_proposal_single as dps;
@@ -26,6 +26,7 @@ use dao_voting::{
 
 use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::InstantiateMsg as ApproverInstantiateMsg;
+use crate::msg::{QueryExt as ApproverQueryExt, QueryMsg as ApproverQueryMsg};
 
 // The approver dao contract is the 6th contract instantiated
 const APPROVER: &str = "contract6";
@@ -310,7 +311,7 @@ fn make_pre_proposal(app: &mut App, pre_propose: Addr, proposer: &str, funds: &[
     .unwrap();
 
     // Query for pending proposal and return latest id
-    let mut pending: Vec<PendingProposal> = app
+    let mut pending: Vec<Proposal> = app
         .wrap()
         .query_wasm_smart(
             pre_propose,
@@ -1234,7 +1235,7 @@ fn test_propose_open_proposal_submission() {
         pre_propose,
         _approver_core_addr: _,
         proposal_single_approver,
-        pre_propose_approver: _,
+        pre_propose_approver,
     } = setup_default_test(
         &mut app,
         Some(UncheckedDepositInfo {
@@ -1249,11 +1250,23 @@ fn test_propose_open_proposal_submission() {
 
     // Non-member proposes.
     mint_natives(&mut app, "nonmember", coins(10, "ujuno"));
-    let _pre_propose_id =
-        make_pre_proposal(&mut app, pre_propose, "nonmember", &coins(10, "ujuno"));
+    let pre_propose_id = make_pre_proposal(&mut app, pre_propose, "nonmember", &coins(10, "ujuno"));
+
+    let approver_prop_id = get_latest_proposal_id(&app, proposal_single_approver.clone());
+    let pre_propose_id_from_proposal: u64 = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose_approver.clone(),
+            &ApproverQueryMsg::QueryExtension {
+                msg: ApproverQueryExt::PreProposeApprovalIdForApproverProposalId {
+                    id: approver_prop_id,
+                },
+            },
+        )
+        .unwrap();
+    assert_eq!(pre_propose_id, pre_propose_id_from_proposal);
 
     // Approver DAO votes to approves
-    let approver_prop_id = get_latest_proposal_id(&app, proposal_single_approver.clone());
     approve_proposal(&mut app, proposal_single_approver, "ekez", approver_prop_id);
     let id = get_latest_proposal_id(&app, proposal_single.clone());
 

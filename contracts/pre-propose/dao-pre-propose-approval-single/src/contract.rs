@@ -16,7 +16,10 @@ use crate::msg::{
     ApproverProposeMessage, ExecuteExt, ExecuteMsg, InstantiateExt, InstantiateMsg, ProposeMessage,
     ProposeMessageInternal, QueryExt, QueryMsg,
 };
-use crate::state::{advance_approval_id, PendingProposal, APPROVER, PENDING_PROPOSALS};
+use crate::state::{
+    advance_approval_id, Proposal, ProposalStatus, APPROVER, COMPLETED_PROPOSALS,
+    CREATED_PROPOSAL_TO_COMPLETED_PROPOSAL, PENDING_PROPOSALS,
+};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-pre-propose-approval-single";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -123,7 +126,8 @@ pub fn execute_propose(
     PENDING_PROPOSALS.save(
         deps.storage,
         approval_id,
-        &PendingProposal {
+        &Proposal {
+            status: ProposalStatus::Pending {},
             approval_id,
             proposer: info.sender,
             msg: propose_msg_internal,
@@ -164,14 +168,29 @@ pub fn execute_approve(
             PrePropose::default().deposits.save(
                 deps.storage,
                 proposal_id,
-                &(proposal.deposit, proposal.proposer),
+                &(proposal.deposit.clone(), proposal.proposer.clone()),
             )?;
 
             let propose_messsage = WasmMsg::Execute {
                 contract_addr: proposal_module.into_string(),
-                msg: to_json_binary(&ProposeMessageInternal::Propose(proposal.msg))?,
+                msg: to_json_binary(&ProposeMessageInternal::Propose(proposal.msg.clone()))?,
                 funds: vec![],
             };
+
+            COMPLETED_PROPOSALS.save(
+                deps.storage,
+                id,
+                &Proposal {
+                    status: ProposalStatus::Approved {
+                        created_proposal_id: proposal_id,
+                    },
+                    approval_id: proposal.approval_id,
+                    proposer: proposal.proposer,
+                    msg: proposal.msg,
+                    deposit: proposal.deposit,
+                },
+            )?;
+            CREATED_PROPOSAL_TO_COMPLETED_PROPOSAL.save(deps.storage, proposal_id, &id)?;
             PENDING_PROPOSALS.remove(deps.storage, id);
 
             Ok(Response::default()
@@ -195,12 +214,27 @@ pub fn execute_reject(
         return Err(PreProposeError::Unauthorized {});
     }
 
-    let PendingProposal {
-        deposit, proposer, ..
+    let Proposal {
+        approval_id,
+        proposer,
+        msg,
+        deposit,
+        ..
     } = PENDING_PROPOSALS
         .may_load(deps.storage, id)?
         .ok_or(PreProposeError::ProposalNotFound {})?;
 
+    COMPLETED_PROPOSALS.save(
+        deps.storage,
+        id,
+        &Proposal {
+            status: ProposalStatus::Rejected {},
+            approval_id,
+            proposer: proposer.clone(),
+            msg: msg.clone(),
+            deposit: deposit.clone(),
+        },
+    )?;
     PENDING_PROPOSALS.remove(deps.storage, id);
 
     let messages = if let Some(ref deposit_info) = deposit {
@@ -297,18 +331,32 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::QueryExtension { msg } => match msg {
             QueryExt::Approver {} => to_json_binary(&APPROVER.load(deps.storage)?),
-            QueryExt::PendingProposal { id } => {
-                to_json_binary(&PENDING_PROPOSALS.load(deps.storage, id)?)
+            QueryExt::IsPending { id } => {
+                let pending = PENDING_PROPOSALS.may_load(deps.storage, id)?.is_some();
+                // Force load completed proposal if not pending, throwing error
+                // if not found.
+                if !pending {
+                    COMPLETED_PROPOSALS.load(deps.storage, id)?;
+                }
+
+                to_binary(&pending)
             }
-            QueryExt::PendingProposals { start_after, limit } => {
-                to_json_binary(&paginate_map_values(
-                    deps,
-                    &PENDING_PROPOSALS,
-                    start_after,
-                    limit,
-                    Order::Descending,
-                )?)
+            QueryExt::Proposal { id } => {
+                if let Some(pending) = PENDING_PROPOSALS.may_load(deps.storage, id)? {
+                    to_binary(&pending)
+                } else {
+                    // Force load completed proposal if not pending, throwing
+                    // error if not found.
+                    to_binary(&COMPLETED_PROPOSALS.load(deps.storage, id)?)
+                }
             }
+            QueryExt::PendingProposals { start_after, limit } => to_json_binary(&paginate_map_values(
+                deps,
+                &PENDING_PROPOSALS,
+                start_after,
+                limit,
+                Order::Ascending,
+            )?),
             QueryExt::ReversePendingProposals {
                 start_before,
                 limit,
@@ -317,8 +365,31 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 &PENDING_PROPOSALS,
                 start_before,
                 limit,
+                Order::Descending,
+            )?),
+            QueryExt::CompletedProposal { id } => {
+                to_binary(&COMPLETED_PROPOSALS.load(deps.storage, id)?)
+            }
+            QueryExt::CompletedProposals { start_after, limit } => to_binary(&paginate_map_values(
+                deps,
+                &COMPLETED_PROPOSALS,
+                start_after,
+                limit,
                 Order::Ascending,
             )?),
+            QueryExt::ReverseCompletedProposals {
+                start_before,
+                limit,
+            } => to_binary(&paginate_map_values(
+                deps,
+                &COMPLETED_PROPOSALS,
+                start_before,
+                limit,
+                Order::Descending,
+            )?),
+            QueryExt::CompletedProposalIdForCreatedProposalId { id } => {
+                to_binary(&CREATED_PROPOSAL_TO_COMPLETED_PROPOSAL.may_load(deps.storage, id)?)
+            }
         },
         _ => PrePropose::default().query(deps, env, msg),
     }
