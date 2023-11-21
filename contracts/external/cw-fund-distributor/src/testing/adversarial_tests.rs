@@ -1,6 +1,6 @@
 use crate::msg::ExecuteMsg::ClaimAll;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
-use cosmwasm_std::{to_binary, Addr, Binary, Coin, Empty, Uint128};
+use cosmwasm_std::{to_json_binary, Addr, Binary, Coin, Empty, Uint128};
 use cw20::{BalanceResponse, Cw20Coin};
 use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 use cw_utils::Duration;
@@ -127,7 +127,7 @@ fn setup_test(initial_balances: Vec<Cw20Coin>) -> BaseTest {
             &cw20_base::msg::ExecuteMsg::Send {
                 contract: staking_contract.to_string(),
                 amount,
-                msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+                msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
             },
             &[],
         )

@@ -3,7 +3,7 @@ use crate::msg::{
     NativeEntitlementResponse, QueryMsg, TotalPowerResponse, VotingContractResponse,
 };
 use crate::ContractError;
-use cosmwasm_std::{to_binary, Addr, Binary, Coin, Empty, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, Binary, Coin, Empty, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 
@@ -114,7 +114,7 @@ fn setup_test(initial_balances: Vec<Cw20Coin>) -> BaseTest {
             &cw20_base::msg::ExecuteMsg::Send {
                 contract: staking_contract.to_string(),
                 amount,
-                msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+                msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
             },
             &[],
         )
@@ -1044,7 +1044,7 @@ pub fn test_redistribute_unclaimed_funds() {
         WasmMsg::Migrate {
             contract_addr: distributor_address.to_string(),
             new_code_id: distributor_id,
-            msg: to_binary(migrate_msg).unwrap(),
+            msg: to_json_binary(migrate_msg).unwrap(),
         }
         .into(),
     )
@@ -1121,7 +1121,7 @@ pub fn test_unauthorized_redistribute_unclaimed_funds() {
         WasmMsg::Migrate {
             contract_addr: distributor_address.to_string(),
             new_code_id: distributor_id,
-            msg: to_binary(migrate_msg).unwrap(),
+            msg: to_json_binary(migrate_msg).unwrap(),
         }
         .into(),
     )

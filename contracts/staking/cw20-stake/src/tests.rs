@@ -1,6 +1,6 @@
 use anyhow::Result as AnyResult;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{to_binary, Addr, Empty, MessageInfo, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, Empty, MessageInfo, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_controllers::{Claim, ClaimsResponse};
 use cw_multi_test::{next_block, App, AppResponse, Contract, ContractWrapper, Executor};
@@ -190,7 +190,7 @@ fn stake_tokens(
     let msg = cw20::Cw20ExecuteMsg::Send {
         contract: staking_addr.to_string(),
         amount,
-        msg: to_binary(&ReceiveMsg::Stake {}).unwrap(),
+        msg: to_json_binary(&ReceiveMsg::Stake {}).unwrap(),
     };
     app.execute_contract(info.sender, cw20_addr.clone(), &msg, &[])
 }
@@ -653,7 +653,7 @@ fn test_auto_compounding_staking() {
     let msg = cw20::Cw20ExecuteMsg::Send {
         contract: staking_addr.to_string(),
         amount: Uint128::from(100u128),
-        msg: to_binary(&ReceiveMsg::Fund {}).unwrap(),
+        msg: to_json_binary(&ReceiveMsg::Fund {}).unwrap(),
     };
     let _res = app
         .borrow_mut()
@@ -725,7 +725,7 @@ fn test_auto_compounding_staking() {
     let msg = cw20::Cw20ExecuteMsg::Send {
         contract: staking_addr.to_string(),
         amount: Uint128::from(90u128),
-        msg: to_binary(&ReceiveMsg::Fund {}).unwrap(),
+        msg: to_json_binary(&ReceiveMsg::Fund {}).unwrap(),
     };
     let _res = app
         .borrow_mut()
@@ -1151,7 +1151,7 @@ fn test_migrate_from_v1() {
         WasmMsg::Migrate {
             contract_addr: staking.to_string(),
             new_code_id: v2_code,
-            msg: to_binary(&MigrateMsg::FromV1 {}).unwrap(),
+            msg: to_json_binary(&MigrateMsg::FromV1 {}).unwrap(),
         }
         .into(),
     )
@@ -1164,7 +1164,7 @@ fn test_migrate_from_v1() {
             WasmMsg::Migrate {
                 contract_addr: staking.to_string(),
                 new_code_id: v2_code,
-                msg: to_binary(&MigrateMsg::FromV1 {}).unwrap(),
+                msg: to_json_binary(&MigrateMsg::FromV1 {}).unwrap(),
             }
             .into(),
         )

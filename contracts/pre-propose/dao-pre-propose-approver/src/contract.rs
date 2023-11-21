@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
+    to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
     WasmMsg,
 };
 use cw2::set_contract_version;
@@ -52,18 +52,18 @@ pub fn instantiate(
     let addr = deps.api.addr_validate(&msg.pre_propose_approval_contract)?;
     PRE_PROPOSE_APPROVAL_CONTRACT.save(deps.storage, &addr)?;
 
-    Ok(resp.set_data(to_binary(&ModuleInstantiateCallback {
+    Ok(resp.set_data(to_json_binary(&ModuleInstantiateCallback {
         msgs: vec![
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: addr.to_string(),
-                msg: to_binary(&PreProposeApprovalExecuteMsg::AddProposalSubmittedHook {
+                msg: to_json_binary(&PreProposeApprovalExecuteMsg::AddProposalSubmittedHook {
                     address: env.contract.address.to_string(),
                 })?,
                 funds: vec![],
             }),
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: addr.to_string(),
-                msg: to_binary(&PreProposeApprovalExecuteMsg::Extension {
+                msg: to_json_binary(&PreProposeApprovalExecuteMsg::Extension {
                     msg: ApprovalExt::UpdateApprover {
                         address: env.contract.address.to_string(),
                     },
@@ -131,7 +131,7 @@ pub fn execute_propose(
 
     let propose_messsage = WasmMsg::Execute {
         contract_addr: proposal_module.into_string(),
-        msg: to_binary(&sanitized_msg)?,
+        msg: to_json_binary(&sanitized_msg)?,
         funds: vec![],
     };
     Ok(Response::default().add_message(propose_messsage))
@@ -159,14 +159,14 @@ pub fn execute_proposal_completed(
     let msg = match new_status {
         Status::Closed => Some(WasmMsg::Execute {
             contract_addr: approval_contract.into_string(),
-            msg: to_binary(&PreProposeApprovalExecuteMsg::Extension {
+            msg: to_json_binary(&PreProposeApprovalExecuteMsg::Extension {
                 msg: ApprovalExt::Reject { id: pre_propose_id },
             })?,
             funds: vec![],
         }),
         Status::Executed => Some(WasmMsg::Execute {
             contract_addr: approval_contract.into_string(),
-            msg: to_binary(&PreProposeApprovalExecuteMsg::Extension {
+            msg: to_json_binary(&PreProposeApprovalExecuteMsg::Extension {
                 msg: ApprovalExt::Approve { id: pre_propose_id },
             })?,
             funds: vec![],
@@ -189,13 +189,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::QueryExtension { msg } => match msg {
             QueryExt::PreProposeApprovalContract {} => {
-                to_binary(&PRE_PROPOSE_APPROVAL_CONTRACT.load(deps.storage)?)
+                to_json_binary(&PRE_PROPOSE_APPROVAL_CONTRACT.load(deps.storage)?)
             }
             QueryExt::PreProposeApprovalIdForApproverProposalId { id } => {
-                to_binary(&PROPOSAL_ID_TO_PRE_PROPOSE_ID.may_load(deps.storage, id)?)
+                to_json_binary(&PROPOSAL_ID_TO_PRE_PROPOSE_ID.may_load(deps.storage, id)?)
             }
             QueryExt::ApproverProposalIdForPreProposeApprovalId { id } => {
-                to_binary(&PRE_PROPOSE_ID_TO_PROPOSAL_ID.may_load(deps.storage, id)?)
+                to_json_binary(&PRE_PROPOSE_ID_TO_PROPOSAL_ID.may_load(deps.storage, id)?)
             }
         },
         _ => PrePropose::default().query(deps, env, msg),

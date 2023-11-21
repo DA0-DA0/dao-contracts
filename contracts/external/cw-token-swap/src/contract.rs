@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use cw2::set_contract_version;
 use cw_storage_plus::Item;
@@ -240,7 +240,7 @@ pub fn query_status(deps: Deps) -> StdResult<Binary> {
     let counterparty_one = COUNTERPARTY_ONE.load(deps.storage)?;
     let counterparty_two = COUNTERPARTY_TWO.load(deps.storage)?;
 
-    to_binary(&StatusResponse {
+    to_json_binary(&StatusResponse {
         counterparty_one,
         counterparty_two,
     })

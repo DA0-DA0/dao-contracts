@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, Addr, Binary, Uint128};
+use cosmwasm_std::{to_json_binary, Addr, Binary, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::{App, Executor};
 use cw_utils::Duration;
@@ -57,7 +57,7 @@ pub fn instantiate_with_cw20_balances_governance(
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: votemod_id,
-            msg: to_binary(&dao_voting_cw20_balance::msg::InstantiateMsg {
+            msg: to_json_binary(&dao_voting_cw20_balance::msg::InstantiateMsg {
                 token_info: dao_voting_cw20_balance::msg::TokenInfo::New {
                     code_id: cw20_id,
                     label: "DAO DAO governance token".to_string(),
@@ -138,7 +138,7 @@ pub fn instantiate_with_staked_balances_governance(
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: staked_balances_voting_id,
-            msg: to_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
+            msg: to_json_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
                 active_threshold: None,
                 token_info: dao_voting_cw20_staked::msg::TokenInfo::New {
                     code_id: cw20_id,
@@ -211,7 +211,7 @@ pub fn instantiate_with_staked_balances_governance(
             &cw20::Cw20ExecuteMsg::Send {
                 contract: staking_contract.to_string(),
                 amount,
-                msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+                msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
             },
             &[],
         )
@@ -259,7 +259,7 @@ pub fn instantiate_with_staking_active_threshold(
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: votemod_id,
-            msg: to_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
+            msg: to_json_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
                 token_info: dao_voting_cw20_staked::msg::TokenInfo::New {
                     code_id: cw20_id,
                     label: "DAO DAO governance token".to_string(),
@@ -342,7 +342,7 @@ pub fn instantiate_with_cw4_groups_governance(
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: votemod_id,
-            msg: to_binary(&dao_voting_cw4::msg::InstantiateMsg {
+            msg: to_json_binary(&dao_voting_cw4::msg::InstantiateMsg {
                 group_contract: GroupContract::New {
                     cw4_group_code_id: cw4_id,
                     initial_members: initial_weights,

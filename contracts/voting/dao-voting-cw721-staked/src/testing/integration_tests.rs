@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, Addr, Coin, Decimal, Empty, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, Coin, Decimal, Empty, Uint128, WasmMsg};
 use cw721_base::{
     msg::{
         ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg,
@@ -54,11 +54,11 @@ fn test_full_integration_with_factory() {
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: vp_contract.code_id,
-            msg: to_binary(&InstantiateMsg {
+            msg: to_json_binary(&InstantiateMsg {
                 nft_contract: NftContract::Factory(
-                    to_binary(&WasmMsg::Execute {
+                    to_json_binary(&WasmMsg::Execute {
                         contract_addr: custom_factory.contract_addr.clone(),
-                        msg: to_binary(
+                        msg: to_json_binary(
                             &dao_test_custom_factory::msg::ExecuteMsg::NftFactoryWithFunds {
                                 code_id: cw721.code_id,
                                 cw721_instantiate_msg: Cw721InstantiateMsg {
@@ -66,14 +66,15 @@ fn test_full_integration_with_factory() {
                                     symbol: "TEST".to_string(),
                                     minter: accounts[0].address(),
                                 },
-                                initial_nfts: vec![to_binary(
-                                    &Cw721ExecuteMsg::<Empty, Empty>::Mint {
-                                        owner: accounts[0].address(),
-                                        token_uri: Some("https://example.com".to_string()),
-                                        token_id: "1".to_string(),
-                                        extension: Empty {},
-                                    },
-                                )
+                                initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::<
+                                    Empty,
+                                    Empty,
+                                >::Mint {
+                                    owner: accounts[0].address(),
+                                    token_uri: Some("https://example.com".to_string()),
+                                    token_id: "1".to_string(),
+                                    extension: Empty {},
+                                })
                                 .unwrap()],
                             },
                         )
@@ -100,7 +101,7 @@ fn test_full_integration_with_factory() {
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: proposal_single.code_id,
-            msg: to_binary(&dao_proposal_single::msg::InstantiateMsg {
+            msg: to_json_binary(&dao_proposal_single::msg::InstantiateMsg {
                 min_voting_period: None,
                 threshold: Threshold::ThresholdQuorum {
                     threshold: PercentageThreshold::Majority {},

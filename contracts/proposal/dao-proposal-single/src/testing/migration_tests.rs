@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, Addr, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App, Executor};
 use dao_interface::query::{GetItemResponse, ProposalModuleCountResponse};
@@ -68,7 +68,7 @@ fn test_v1_v2_full_migration() {
                 automatically_add_cw721s: true,
                 voting_module_instantiate_info: cw_core_v1::msg::ModuleInstantiateInfo {
                     code_id: voting_code,
-                    msg: to_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
+                    msg: to_json_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
                         active_threshold: None,
                         token_info: dao_voting_cw20_staked::msg::TokenInfo::New {
                             code_id: cw20_code,
@@ -89,7 +89,7 @@ fn test_v1_v2_full_migration() {
                 },
                 proposal_modules_instantiate_info: vec![cw_core_v1::msg::ModuleInstantiateInfo {
                     code_id: proposal_code,
-                    msg: to_binary(&cw_proposal_single_v1::msg::InstantiateMsg {
+                    msg: to_json_binary(&cw_proposal_single_v1::msg::InstantiateMsg {
                         threshold: voting_v1::Threshold::AbsolutePercentage {
                             percentage: voting_v1::PercentageThreshold::Majority {},
                         },
@@ -152,7 +152,7 @@ fn test_v1_v2_full_migration() {
             &cw20::Cw20ExecuteMsg::Send {
                 contract: staking.into_string(),
                 amount: Uint128::new(1),
-                msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+                msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
             },
             &[],
         )
@@ -188,7 +188,7 @@ fn test_v1_v2_full_migration() {
             description: "d".to_string(),
             msgs: vec![WasmMsg::Execute {
                 contract_addr: core.to_string(),
-                msg: to_binary(&cw_core_v1::msg::ExecuteMsg::UpdateCw20List {
+                msg: to_json_binary(&cw_core_v1::msg::ExecuteMsg::UpdateCw20List {
                     to_add: vec![token.to_string()],
                     to_remove: vec![],
                 })
@@ -247,7 +247,7 @@ fn test_v1_v2_full_migration() {
             description: "d".to_string(),
             msgs: vec![WasmMsg::Execute {
                 contract_addr: token.to_string(),
-                msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                msg: to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
                     recipient: sender.to_string(),
                     // more tokens than the DAO posseses.
                     amount: Uint128::new(101),
@@ -316,7 +316,7 @@ fn test_v1_v2_full_migration() {
                 WasmMsg::Migrate {
                     contract_addr: core.to_string(),
                     new_code_id: v2_core_code,
-                    msg: to_binary(&dao_interface::msg::MigrateMsg::FromV1 {
+                    msg: to_json_binary(&dao_interface::msg::MigrateMsg::FromV1 {
                         dao_uri: Some("dao-uri".to_string()),
                         params: None,
                     })
@@ -326,7 +326,7 @@ fn test_v1_v2_full_migration() {
                 WasmMsg::Migrate {
                     contract_addr: proposal.to_string(),
                     new_code_id: v2_proposal_code,
-                    msg: to_binary(&crate::msg::MigrateMsg::FromV1 {
+                    msg: to_json_binary(&crate::msg::MigrateMsg::FromV1 {
                         close_proposal_on_execution_failure: true,
                         pre_propose_info,
                     })
@@ -413,7 +413,7 @@ fn test_v1_v2_full_migration() {
         sender.as_str(),
         vec![WasmMsg::Execute {
             contract_addr: core.to_string(),
-            msg: to_binary(&dao_interface::msg::ExecuteMsg::UpdateCw20List {
+            msg: to_json_binary(&dao_interface::msg::ExecuteMsg::UpdateCw20List {
                 to_add: vec![],
                 to_remove: vec![token.into_string()],
             })

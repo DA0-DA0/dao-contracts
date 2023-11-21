@@ -7,7 +7,7 @@ use crate::{
     state::Config,
 };
 
-use cosmwasm_std::{to_binary, Addr, Coin, Decimal, Empty, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, Coin, Decimal, Empty, WasmMsg};
 use cw_utils::Duration;
 use dao_interface::{
     msg::QueryMsg as DaoQueryMsg,
@@ -23,10 +23,9 @@ use dao_testing::test_tube::{
     dao_test_custom_factory::CustomFactoryContract,
 };
 use dao_voting::threshold::ActiveThreshold;
-use osmosis_std::types::cosmwasm::wasm::v1::MsgExecuteContractResponse;
 use osmosis_test_tube::{
-    Account, Bank, Module, OsmosisTestApp, RunnerError, RunnerExecuteResult, RunnerResult,
-    SigningAccount, Wasm,
+    osmosis_std::types::cosmwasm::wasm::v1::MsgExecuteContractResponse, Account, Bank, Module,
+    OsmosisTestApp, RunnerError, RunnerExecuteResult, RunnerResult, SigningAccount, Wasm,
 };
 use serde::de::DeserializeOwned;
 use std::path::PathBuf;
@@ -86,27 +85,30 @@ impl TestEnvBuilder {
             automatically_add_cw721s: false,
             voting_module_instantiate_info: ModuleInstantiateInfo {
                 code_id: vp_contract_id,
-                msg: to_binary(&InstantiateMsg {
+                msg: to_json_binary(&InstantiateMsg {
                     nft_contract: NftContract::Factory(
-                        to_binary(&WasmMsg::Execute {
+                        to_json_binary(&WasmMsg::Execute {
                             contract_addr: custom_factory.contract_addr.clone(),
-                            msg: to_binary(&dao_test_custom_factory::msg::ExecuteMsg::NftFactory {
-                                code_id: cw721_id,
-                                cw721_instantiate_msg: Cw721InstantiateMsg {
-                                    name: "Test NFT".to_string(),
-                                    symbol: "TEST".to_string(),
-                                    minter: accounts[0].address(),
-                                },
-                                initial_nfts: vec![to_binary(
-                                    &Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                            msg: to_json_binary(
+                                &dao_test_custom_factory::msg::ExecuteMsg::NftFactory {
+                                    code_id: cw721_id,
+                                    cw721_instantiate_msg: Cw721InstantiateMsg {
+                                        name: "Test NFT".to_string(),
+                                        symbol: "TEST".to_string(),
+                                        minter: accounts[0].address(),
+                                    },
+                                    initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::<
+                                        Empty,
+                                        Empty,
+                                    >::Mint {
                                         owner: accounts[0].address(),
                                         token_uri: Some("https://example.com".to_string()),
                                         token_id: "1".to_string(),
                                         extension: Empty {},
-                                    },
-                                )
-                                .unwrap()],
-                            })
+                                    })
+                                    .unwrap()],
+                                },
+                            )
                             .unwrap(),
                             funds: vec![],
                         })
@@ -124,7 +126,7 @@ impl TestEnvBuilder {
             },
             proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
                 code_id: proposal_single_id,
-                msg: to_binary(&dao_proposal_single::msg::InstantiateMsg {
+                msg: to_json_binary(&dao_proposal_single::msg::InstantiateMsg {
                     min_voting_period: None,
                     threshold: Threshold::ThresholdQuorum {
                         threshold: PercentageThreshold::Majority {},

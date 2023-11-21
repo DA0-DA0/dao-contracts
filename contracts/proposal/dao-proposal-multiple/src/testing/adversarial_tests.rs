@@ -9,7 +9,7 @@ use crate::testing::queries::{
 };
 use crate::testing::tests::{get_pre_propose_info, ALTERNATIVE_ADDR, CREATOR_ADDR};
 use crate::ContractError;
-use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Decimal, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App, Executor};
 use cw_utils::Duration;
@@ -307,7 +307,7 @@ pub fn test_allow_voting_after_proposal_execution_pre_expiration_cw20() {
         recipient: CREATOR_ADDR.to_string(),
         amount: Uint128::new(100_000_000),
     };
-    let binary_msg = to_binary(&msg).unwrap();
+    let binary_msg = to_json_binary(&msg).unwrap();
 
     let options = vec![
         MultipleChoiceOption {

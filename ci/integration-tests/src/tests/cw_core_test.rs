@@ -3,7 +3,7 @@ use crate::helpers::helper::create_dao;
 use assert_matches::assert_matches;
 use cosm_orc::orchestrator::error::CosmwasmError::TxError;
 use cosm_orc::orchestrator::error::ProcessError;
-use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Uint128};
+use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Decimal, Uint128};
 use cw20_stake::msg::{StakedValueResponse, TotalValueResponse};
 
 use cw_utils::Duration;
@@ -40,7 +40,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
         &dao_interface::msg::ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
                 contract_addr: dao.addr,
-                msg: to_binary(&dao_interface::msg::ExecuteMsg::Pause {
+                msg: to_json_binary(&dao_interface::msg::ExecuteMsg::Pause {
                     duration: Duration::Time(100),
                 })
                 .unwrap(),
@@ -79,7 +79,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
             &dao_interface::msg::ExecuteMsg::ExecuteAdminMsgs {
                 msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
                     contract_addr: dao.addr,
-                    msg: to_binary(&dao_interface::msg::ExecuteMsg::Pause {
+                    msg: to_json_binary(&dao_interface::msg::ExecuteMsg::Pause {
                         duration: Duration::Height(100),
                     })
                     .unwrap(),
@@ -139,7 +139,7 @@ fn execute_items(chain: &mut Chain) {
             &dao_interface::msg::ExecuteMsg::ExecuteAdminMsgs {
                 msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
                     contract_addr: dao.addr.clone(),
-                    msg: to_binary(&dao_interface::msg::ExecuteMsg::SetItem {
+                    msg: to_json_binary(&dao_interface::msg::ExecuteMsg::SetItem {
                         key: "meme".to_string(),
                         value: "foobar".to_string(),
                     })
@@ -174,7 +174,7 @@ fn execute_items(chain: &mut Chain) {
             &dao_interface::msg::ExecuteMsg::ExecuteAdminMsgs {
                 msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
                     contract_addr: dao.addr,
-                    msg: to_binary(&dao_interface::msg::ExecuteMsg::RemoveItem {
+                    msg: to_json_binary(&dao_interface::msg::ExecuteMsg::RemoveItem {
                         key: "meme".to_string(),
                     })
                     .unwrap(),

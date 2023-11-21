@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_binary, Addr, StdResult, Storage, SubMsg, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, StdResult, Storage, SubMsg, Uint128, WasmMsg};
 use cw_hooks::Hooks;
 
 /// An enum representing staking hooks.
@@ -17,7 +17,7 @@ pub fn stake_hook_msgs(
     addr: Addr,
     amount: Uint128,
 ) -> StdResult<Vec<SubMsg>> {
-    let msg = to_binary(&StakeChangedExecuteMsg::StakeChangeHook(
+    let msg = to_json_binary(&StakeChangedExecuteMsg::StakeChangeHook(
         StakeChangedHookMsg::Stake { addr, amount },
     ))?;
     hooks.prepare_hooks(storage, |a| {
@@ -38,7 +38,7 @@ pub fn unstake_hook_msgs(
     addr: Addr,
     amount: Uint128,
 ) -> StdResult<Vec<SubMsg>> {
-    let msg = to_binary(&StakeChangedExecuteMsg::StakeChangeHook(
+    let msg = to_json_binary(&StakeChangedExecuteMsg::StakeChangeHook(
         StakeChangedHookMsg::Unstake { addr, amount },
     ))?;
     hooks.prepare_hooks(storage, |a| {

@@ -7,7 +7,7 @@ use crate::{
     ContractError,
 };
 
-use cosmwasm_std::{to_binary, Addr, Coin, Decimal, Uint128};
+use cosmwasm_std::{to_json_binary, Addr, Coin, Decimal, Uint128};
 use cw_tokenfactory_issuer::msg::{DenomResponse, DenomUnit};
 use cw_utils::Duration;
 use dao_interface::{
@@ -25,10 +25,11 @@ use dao_testing::test_tube::{
     dao_proposal_single::DaoProposalSingle, dao_test_custom_factory::CustomFactoryContract,
 };
 use dao_voting::threshold::ActiveThreshold;
-use osmosis_std::types::{
-    cosmos::bank::v1beta1::QueryAllBalancesRequest, cosmwasm::wasm::v1::MsgExecuteContractResponse,
-};
 use osmosis_test_tube::{
+    osmosis_std::types::{
+        cosmos::bank::v1beta1::QueryAllBalancesRequest,
+        cosmwasm::wasm::v1::MsgExecuteContractResponse,
+    },
     Account, Bank, Module, OsmosisTestApp, RunnerError, RunnerExecuteResult, RunnerResult,
     SigningAccount, Wasm,
 };
@@ -205,7 +206,7 @@ impl TestEnvBuilder {
             automatically_add_cw721s: false,
             voting_module_instantiate_info: ModuleInstantiateInfo {
                 code_id: vp_contract_id,
-                msg: to_binary(&InstantiateMsg {
+                msg: to_json_binary(&InstantiateMsg {
                     token_info: TokenInfo::New(NewTokenInfo {
                         token_issuer_code_id: issuer_id,
                         subdenom: DENOM.to_string(),
@@ -235,7 +236,7 @@ impl TestEnvBuilder {
             },
             proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
                 code_id: proposal_single_id,
-                msg: to_binary(&dao_proposal_single::msg::InstantiateMsg {
+                msg: to_json_binary(&dao_proposal_single::msg::InstantiateMsg {
                     min_voting_period: None,
                     threshold: Threshold::ThresholdQuorum {
                         threshold: PercentageThreshold::Majority {},

@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use cw2::set_contract_version;
 use dao_hooks::stake::StakeChangedHookMsg;
@@ -121,14 +121,14 @@ pub fn execute_vote_hook(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::ProposalCounter {} => to_binary(&CountResponse {
+        QueryMsg::ProposalCounter {} => to_json_binary(&CountResponse {
             count: PROPOSAL_COUNTER.load(deps.storage)?,
         }),
-        QueryMsg::StakeCounter {} => to_binary(&STAKE_COUNTER.load(deps.storage)?),
-        QueryMsg::StatusChangedCounter {} => to_binary(&CountResponse {
+        QueryMsg::StakeCounter {} => to_json_binary(&STAKE_COUNTER.load(deps.storage)?),
+        QueryMsg::StatusChangedCounter {} => to_json_binary(&CountResponse {
             count: STATUS_CHANGED_COUNTER.load(deps.storage)?,
         }),
-        QueryMsg::VoteCounter {} => to_binary(&CountResponse {
+        QueryMsg::VoteCounter {} => to_json_binary(&CountResponse {
             count: VOTE_COUNTER.load(deps.storage)?,
         }),
     }

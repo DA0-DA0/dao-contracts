@@ -1,5 +1,5 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{coins, to_binary, Addr, Coin, Decimal, Empty, Uint128, Validator};
+use cosmwasm_std::{coins, to_json_binary, Addr, Coin, Decimal, Empty, Uint128, Validator};
 use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_denom::{CheckedDenom, UncheckedDenom};
 use cw_multi_test::{
@@ -170,7 +170,7 @@ fn setup_test_case(app: &mut App, msg: InstantiateMsg, funds: &[Coin]) -> TestCa
             let msg = Cw20ExecuteMsg::Send {
                 contract: cw_vesting_addr.to_string(),
                 amount: msg.total,
-                msg: to_binary(&ReceiveMsg::Fund {}).unwrap(),
+                msg: to_json_binary(&ReceiveMsg::Fund {}).unwrap(),
             };
             app.execute_contract(
                 Addr::unchecked(OWNER),
@@ -344,7 +344,7 @@ fn test_staking_rewards_go_to_receiver() {
                 StakingInfo {
                     bonded_denom: NATIVE_DENOM.to_string(),
                     unbonding_time: 60,
-                    /// Interest rate per year (60 * 60 * 24 * 365 seconds)
+                    // Interest rate per year (60 * 60 * 24 * 365 seconds)
                     apr: Decimal::percent(10),
                 },
             )
@@ -509,7 +509,7 @@ fn test_catch_imposter_cw20() {
     let msg = Cw20ExecuteMsg::Send {
         contract: cw_vesting_addr.to_string(),
         amount: Uint128::new(TOTAL_VEST),
-        msg: to_binary(&ReceiveMsg::Fund {}).unwrap(),
+        msg: to_json_binary(&ReceiveMsg::Fund {}).unwrap(),
     };
 
     // Errors that cw20 does not match what was expected
@@ -595,7 +595,7 @@ fn test_execution_rejection_recv() {
         Cw20ReceiveMsg {
             sender: "random".to_string(),
             amount: Uint128::new(100),
-            msg: to_binary(&ReceiveMsg::Fund {}).unwrap(),
+            msg: to_json_binary(&ReceiveMsg::Fund {}).unwrap(),
         },
     )
     .unwrap_err();
@@ -608,7 +608,7 @@ fn test_execution_rejection_recv() {
         Cw20ReceiveMsg {
             sender: "random".to_string(),
             amount: Uint128::new(101),
-            msg: to_binary(&ReceiveMsg::Fund {}).unwrap(),
+            msg: to_json_binary(&ReceiveMsg::Fund {}).unwrap(),
         },
     )
     .unwrap_err();

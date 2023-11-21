@@ -1,5 +1,5 @@
 use crate::helpers::{chain::Chain, helper::create_dao};
-use cosmwasm_std::{to_binary, Uint128};
+use cosmwasm_std::{to_json_binary, Uint128};
 use cw20_stake::{msg::StakedValueResponse, state::Config};
 use dao_interface::voting::VotingPowerAtHeightResponse;
 use std::time::Duration;
@@ -79,7 +79,7 @@ fn execute_stake_tokens(chain: &mut Chain) {
             &cw20_base::msg::ExecuteMsg::Send {
                 contract: staking_addr,
                 amount: Uint128::new(100),
-                msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+                msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
             },
             &user_key,
             vec![],

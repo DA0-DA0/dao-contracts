@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_binary, StdResult, Storage, SubMsg, WasmMsg};
+use cosmwasm_std::{to_json_binary, StdResult, Storage, SubMsg, WasmMsg};
 use cw_hooks::Hooks;
 use dao_voting::reply::mask_proposal_hook_index;
 
@@ -28,7 +28,7 @@ pub fn new_proposal_hooks(
     id: u64,
     proposer: &str,
 ) -> StdResult<Vec<SubMsg>> {
-    let msg = to_binary(&ProposalHookExecuteMsg::ProposalHook(
+    let msg = to_json_binary(&ProposalHookExecuteMsg::ProposalHook(
         ProposalHookMsg::NewProposal {
             id,
             proposer: proposer.to_string(),
@@ -65,7 +65,7 @@ pub fn proposal_status_changed_hooks(
         return Ok(vec![]);
     }
 
-    let msg = to_binary(&ProposalHookExecuteMsg::ProposalHook(
+    let msg = to_json_binary(&ProposalHookExecuteMsg::ProposalHook(
         ProposalHookMsg::ProposalStatusChanged {
             id,
             old_status,
