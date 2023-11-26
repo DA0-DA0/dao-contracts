@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, Addr, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App, Executor};
 use voting_v2::pre_propose::PreProposeInfo;
@@ -73,7 +73,7 @@ fn test_v2_v3_full_migration() {
                 automatically_add_cw721s: true,
                 voting_module_instantiate_info: dao_interface_v2::state::ModuleInstantiateInfo {
                     code_id: voting_code,
-                    msg: to_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
+                    msg: to_json_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
                         active_threshold: None,
                         token_info: dao_voting_cw20_staked::msg::TokenInfo::New {
                             code_id: cw20_code,
@@ -96,7 +96,7 @@ fn test_v2_v3_full_migration() {
                 proposal_modules_instantiate_info: vec![
                     dao_interface_v2::state::ModuleInstantiateInfo {
                         code_id: proposal_code,
-                        msg: to_binary(&dao_proposal_single_v2::msg::InstantiateMsg {
+                        msg: to_json_binary(&dao_proposal_single_v2::msg::InstantiateMsg {
                             threshold: voting_v2::threshold::Threshold::AbsolutePercentage {
                                 percentage: voting_v2::threshold::PercentageThreshold::Majority {},
                             },
@@ -109,7 +109,7 @@ fn test_v2_v3_full_migration() {
                                 // voting_v2::pre_propose::PreProposeInfo::ModuleMayPropose {
                                 //     info: dao_interface_v2::state::ModuleInstantiateInfo {
                                 //         code_id: pre_proposal_code,
-                                //         msg: to_binary(
+                                //         msg: to_json_binary(
                                 //             &dao_pre_propose_single_v2::InstantiateMsg {
                                 //                 deposit_info: None,
                                 //                 open_proposal_submission: false,
@@ -181,7 +181,7 @@ fn test_v2_v3_full_migration() {
             &cw20::Cw20ExecuteMsg::Send {
                 contract: staking.into_string(),
                 amount: Uint128::new(1),
-                msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+                msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
             },
             &[],
         )
@@ -223,7 +223,7 @@ fn test_v2_v3_full_migration() {
                 description: "d".to_string(),
                 msgs: vec![WasmMsg::Execute {
                     contract_addr: core.to_string(),
-                    msg: to_binary(&dao_interface_v2::msg::ExecuteMsg::UpdateCw20List {
+                    msg: to_json_binary(&dao_interface_v2::msg::ExecuteMsg::UpdateCw20List {
                         to_add: vec![token.to_string()],
                         to_remove: vec![],
                     })
@@ -287,7 +287,7 @@ fn test_v2_v3_full_migration() {
                 description: "d".to_string(),
                 msgs: vec![WasmMsg::Execute {
                     contract_addr: token.to_string(),
-                    msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                    msg: to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
                         recipient: sender.to_string(),
                         // more tokens than the DAO posseses.
                         amount: Uint128::new(101),
@@ -370,13 +370,13 @@ fn test_v2_v3_full_migration() {
                     WasmMsg::Migrate {
                         contract_addr: core.to_string(),
                         new_code_id: v3_core_code,
-                        msg: to_binary(&dao_interface::msg::MigrateMsg::FromCompatible {}).unwrap(),
+                        msg: to_json_binary(&dao_interface::msg::MigrateMsg::FromCompatible {}).unwrap(),
                     }
                     .into(),
                     WasmMsg::Migrate {
                         contract_addr: proposal.to_string(),
                         new_code_id: v3_proposal_code,
-                        msg: to_binary(&crate::msg::MigrateMsg::FromV2 { timelock: None }).unwrap(),
+                        msg: to_json_binary(&crate::msg::MigrateMsg::FromV2 { timelock: None }).unwrap(),
                     }
                     .into(),
                 ],
@@ -455,7 +455,7 @@ fn test_v2_v3_full_migration() {
         sender.as_str(),
         vec![WasmMsg::Execute {
             contract_addr: core.to_string(),
-            msg: to_binary(&dao_interface::msg::ExecuteMsg::UpdateCw20List {
+            msg: to_json_binary(&dao_interface::msg::ExecuteMsg::UpdateCw20List {
                 to_add: vec![],
                 to_remove: vec![token.into_string()],
             })
@@ -492,8 +492,8 @@ fn test_v2_v3_full_migration() {
     assert_eq!(config.dao, config_v2.dao);
     assert_eq!(config.allow_revoting, config_v2.allow_revoting);
     assert_eq!(
-        to_binary(&config.threshold).unwrap(),
-        to_binary(&config_v2.threshold).unwrap(),
+        to_json_binary(&config.threshold).unwrap(),
+        to_json_binary(&config_v2.threshold).unwrap(),
     );
     assert_eq!(config.close_proposal_on_execution_failure, config_v2.close_proposal_on_execution_failure);
     assert_eq!(config.max_voting_period, config_v2.max_voting_period);
@@ -521,8 +521,8 @@ fn test_v2_v3_full_migration() {
         assert_eq!(prop_v2.proposal.min_voting_period, migrated_prop.proposal.min_voting_period);
         assert_eq!(prop_v2.proposal.expiration, migrated_prop.proposal.expiration);
         assert_eq!(
-            to_binary(&prop_v2.proposal.threshold).unwrap(),
-            to_binary(&migrated_prop.proposal.threshold).unwrap(),
+            to_json_binary(&prop_v2.proposal.threshold).unwrap(),
+            to_json_binary(&migrated_prop.proposal.threshold).unwrap(),
         );
         assert_eq!(prop_v2.proposal.total_power, migrated_prop.proposal.total_power);
         assert_eq!(prop_v2.proposal.msgs, migrated_prop.proposal.msgs);

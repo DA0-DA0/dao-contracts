@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_binary, Empty, StdResult, Storage, SubMsg, WasmMsg};
+use cosmwasm_std::{to_json_binary, Empty, StdResult, Storage, SubMsg, WasmMsg};
 use cw_hooks::Hooks;
 use dao_voting::{
     pre_propose::ProposalCreationPolicy,
@@ -32,7 +32,7 @@ pub fn new_proposal_hooks(
     id: u64,
     proposer: &str,
 ) -> StdResult<Vec<SubMsg>> {
-    let msg = to_binary(&ProposalHookExecuteMsg::ProposalHook(
+    let msg = to_json_binary(&ProposalHookExecuteMsg::ProposalHook(
         ProposalHookMsg::NewProposal {
             id,
             proposer: proposer.to_string(),
@@ -69,7 +69,7 @@ pub fn proposal_status_changed_hooks(
         return Ok(vec![]);
     }
 
-    let msg = to_binary(&ProposalHookExecuteMsg::ProposalHook(
+    let msg = to_json_binary(&ProposalHookExecuteMsg::ProposalHook(
         ProposalHookMsg::ProposalStatusChanged {
             id,
             old_status,
@@ -106,7 +106,7 @@ pub fn proposal_completed_hooks(
     match proposal_creation_policy {
         ProposalCreationPolicy::Anyone {} => (),
         ProposalCreationPolicy::Module { addr } => {
-            let msg = to_binary(&PreProposeHookMsg::ProposalCompletedHook {
+            let msg = to_json_binary(&PreProposeHookMsg::ProposalCompletedHook {
                 proposal_id,
                 new_status,
             })?;
