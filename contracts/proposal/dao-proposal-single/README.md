@@ -94,6 +94,10 @@ Vetoer (`String`) is the address allowed to veto the proposals that are in
 
 Vetoer address can be updated via a regular proposal config update.
 
+If you want the `vetoer` role to be shared between multiple organizations or
+individuals, a [cw1-whitelist](https://github.com/CosmWasm/cw-plus/tree/main/contracts/cw1-whitelist) contract address can be used to
+allow multiple accounts to veto the prop.
+
 ### `early_execute`
 
 Early execute (`bool`) is a flag used to indicate whether the vetoer can

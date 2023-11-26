@@ -969,19 +969,24 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
 
     match msg {
         MigrateMsg::FromV2 { timelock } => {
+            let version_2 = Version::new(2, 0, 0);
+
             // `CONTRACT_VERSION` here is from the data section of the
-            // blob we are migrating to. `version` is from storage. If
-            // the version in storage matches the version in the blob
+            // blob we are migrating to. `version` is from storage.
+            let target_blob_version = Version::from_str(&CONTRACT_VERSION)
+                .map_err(|_| ContractError::MigrationVersionError {})?;
+            let parsed_version = Version::from_str(&version)
+                .map_err(|_| ContractError::MigrationVersionError {})?;
+
+            // If the version in storage matches the version in the blob
             // we are not upgrading.
-            // TODO fix this check!
-            if version == CONTRACT_VERSION {
+            if parsed_version == target_blob_version {
                 return Err(ContractError::AlreadyMigrated {});
             }
 
-            let parsed_version = Version::from_str(&version)
-                .map_err(|_| ContractError::MigrationVersionError {})?;
-            // migration is only possible from 2.0.0
-            if parsed_version < Version::new(2, 0, 0) {
+            // migration is only possible from 2.0.0, but no later than the 
+            // version of the blob we are migrating to
+            if parsed_version < version_2 || parsed_version > target_blob_version {
                 return Err(ContractError::MigrationVersionError {})
             }
 
