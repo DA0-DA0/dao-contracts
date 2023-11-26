@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
+    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
     Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
@@ -55,7 +55,7 @@ pub fn instantiate(
             let msg = WasmMsg::Instantiate {
                 admin: Some(info.sender.to_string()),
                 code_id,
-                msg: to_binary(&cw20_base::msg::InstantiateMsg {
+                msg: to_json_binary(&cw20_base::msg::InstantiateMsg {
                     name,
                     symbol,
                     decimals,
@@ -104,12 +104,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 pub fn query_dao(deps: Deps) -> StdResult<Binary> {
     let dao = DAO.load(deps.storage)?;
-    to_binary(&dao)
+    to_json_binary(&dao)
 }
 
 pub fn query_token_contract(deps: Deps) -> StdResult<Binary> {
     let token = TOKEN.load(deps.storage)?;
-    to_binary(&token)
+    to_json_binary(&token)
 }
 
 pub fn query_voting_power_at_height(deps: Deps, env: Env, address: String) -> StdResult<Binary> {
@@ -121,7 +121,7 @@ pub fn query_voting_power_at_height(deps: Deps, env: Env, address: String) -> St
             address: address.to_string(),
         },
     )?;
-    to_binary(&dao_interface::voting::VotingPowerAtHeightResponse {
+    to_json_binary(&dao_interface::voting::VotingPowerAtHeightResponse {
         power: balance.balance,
         height: env.block.height,
     })
@@ -132,7 +132,7 @@ pub fn query_total_power_at_height(deps: Deps, env: Env) -> StdResult<Binary> {
     let info: cw20::TokenInfoResponse = deps
         .querier
         .query_wasm_smart(token, &cw20::Cw20QueryMsg::TokenInfo {})?;
-    to_binary(&dao_interface::voting::TotalPowerAtHeightResponse {
+    to_json_binary(&dao_interface::voting::TotalPowerAtHeightResponse {
         power: info.total_supply,
         height: env.block.height,
     })
@@ -140,7 +140,7 @@ pub fn query_total_power_at_height(deps: Deps, env: Env) -> StdResult<Binary> {
 
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
-    to_binary(&dao_interface::voting::InfoResponse { info })
+    to_json_binary(&dao_interface::voting::InfoResponse { info })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Reply,
+    from_json, to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Reply,
     Response, StdResult, SubMsg, WasmMsg,
 };
 use cosmwasm_std::{Addr, Coin};
@@ -72,7 +72,7 @@ pub fn execute_receive_cw20(
     // Only accepts cw20 tokens
     nonpayable(&info)?;
 
-    let msg: ReceiveMsg = from_binary(&receive_msg.msg)?;
+    let msg: ReceiveMsg = from_json(&receive_msg.msg)?;
 
     if TMP_INSTANTIATOR_INFO.may_load(deps.storage)?.is_some() {
         return Err(ContractError::Reentrancy);
@@ -130,16 +130,6 @@ pub fn instantiate_contract(
     {
         return Err(ContractError::Unauthorized {});
     }
-    // No owner is always allowed. If an owner is specified, it must
-    // exactly match the owner of the contract.
-    if instantiate_msg.owner.as_deref().map_or(false, |i| {
-        ownership.owner.as_ref().map_or(true, |o| o.as_str() != i)
-    }) {
-        return Err(ContractError::OwnerMissmatch {
-            actual: instantiate_msg.owner,
-            expected: ownership.owner.map(|a| a.into_string()),
-        });
-    }
 
     let code_id = VESTING_CODE_ID.load(deps.storage)?;
 
@@ -147,7 +137,7 @@ pub fn instantiate_contract(
     let instantiate = WasmMsg::Instantiate {
         admin: instantiate_msg.owner.clone(),
         code_id,
-        msg: to_binary(&instantiate_msg)?,
+        msg: to_json_binary(&instantiate_msg)?,
         funds: funds.unwrap_or_default(),
         label,
     };
@@ -194,7 +184,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 .flat_map(|vc| Ok::<VestingContract, ContractError>(vc?.1))
                 .collect();
 
-            Ok(to_binary(&res)?)
+            Ok(to_json_binary(&res)?)
         }
         QueryMsg::ListVestingContractsReverse {
             start_before,
@@ -209,7 +199,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 .flat_map(|vc| Ok::<VestingContract, ContractError>(vc?.1))
                 .collect();
 
-            Ok(to_binary(&res)?)
+            Ok(to_json_binary(&res)?)
         }
         QueryMsg::ListVestingContractsByInstantiator {
             instantiator,
@@ -231,7 +221,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 .flat_map(|vc| Ok::<VestingContract, ContractError>(vc?.1))
                 .collect();
 
-            Ok(to_binary(&res)?)
+            Ok(to_json_binary(&res)?)
         }
         QueryMsg::ListVestingContractsByInstantiatorReverse {
             instantiator,
@@ -253,7 +243,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 .flat_map(|vc| Ok::<VestingContract, ContractError>(vc?.1))
                 .collect();
 
-            Ok(to_binary(&res)?)
+            Ok(to_json_binary(&res)?)
         }
         QueryMsg::ListVestingContractsByRecipient {
             recipient,
@@ -275,7 +265,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 .flat_map(|vc| Ok::<VestingContract, ContractError>(vc?.1))
                 .collect();
 
-            Ok(to_binary(&res)?)
+            Ok(to_json_binary(&res)?)
         }
         QueryMsg::ListVestingContractsByRecipientReverse {
             recipient,
@@ -297,10 +287,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 .flat_map(|vc| Ok::<VestingContract, ContractError>(vc?.1))
                 .collect();
 
-            Ok(to_binary(&res)?)
+            Ok(to_json_binary(&res)?)
         }
-        QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
-        QueryMsg::CodeId {} => to_binary(&VESTING_CODE_ID.load(deps.storage)?),
+        QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
+        QueryMsg::CodeId {} => to_json_binary(&VESTING_CODE_ID.load(deps.storage)?),
     }
 }
 
@@ -339,10 +329,10 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     // Send transaction to fund contract
                     vec![CosmosMsg::Wasm(WasmMsg::Execute {
                         contract_addr: denom.to_string(),
-                        msg: to_binary(&Cw20ExecuteMsg::Send {
+                        msg: to_json_binary(&Cw20ExecuteMsg::Send {
                             contract: contract_addr.to_string(),
                             amount: vest.total(),
-                            msg: to_binary(&PayrollReceiveMsg::Fund {})?,
+                            msg: to_json_binary(&PayrollReceiveMsg::Fund {})?,
                         })?,
                         funds: vec![],
                     })]

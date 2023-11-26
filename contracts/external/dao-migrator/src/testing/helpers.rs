@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult, Uint128,
-    WasmMsg,
+    to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
+    Uint128, WasmMsg,
 };
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 use dao_testing::contracts::{
@@ -172,7 +172,7 @@ pub fn set_dummy_proposal(app: &mut App, sender: Addr, core_addr: Addr, proposal
             description: "d".to_string(),
             msgs: vec![WasmMsg::Execute {
                 contract_addr: core_addr.to_string(),
-                msg: to_binary(&cw_core_v1::msg::ExecuteMsg::UpdateCw20List {
+                msg: to_json_binary(&cw_core_v1::msg::ExecuteMsg::UpdateCw20List {
                     to_add: vec![],
                     to_remove: vec![],
                 })
@@ -197,7 +197,7 @@ pub fn set_cw20_to_dao(app: &mut App, sender: Addr, addrs: ModuleAddrs) {
         &cw20::Cw20ExecuteMsg::Send {
             contract: staking_addr.to_string(),
             amount: Uint128::new(1),
-            msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+            msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
         },
         &[],
     )
@@ -216,7 +216,7 @@ pub fn set_cw20_to_dao(app: &mut App, sender: Addr, addrs: ModuleAddrs) {
             description: "d".to_string(),
             msgs: vec![WasmMsg::Execute {
                 contract_addr: addrs.core.to_string(),
-                msg: to_binary(&cw_core_v1::msg::ExecuteMsg::UpdateCw20List {
+                msg: to_json_binary(&cw_core_v1::msg::ExecuteMsg::UpdateCw20List {
                     to_add: vec![token_addr.to_string()],
                     to_remove: vec![],
                 })

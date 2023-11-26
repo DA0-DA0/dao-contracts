@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, Addr, Empty, Uint128};
+use cosmwasm_std::{to_json_binary, Addr, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_hooks::HooksResponse;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
@@ -108,7 +108,7 @@ fn instantiate_with_default_governance(
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: votemod_id,
-            msg: to_binary(&dao_voting_cw20_balance::msg::InstantiateMsg {
+            msg: to_json_binary(&dao_voting_cw20_balance::msg::InstantiateMsg {
                 token_info: dao_voting_cw20_balance::msg::TokenInfo::New {
                     code_id: cw20_id,
                     label: "DAO DAO governance token".to_string(),
@@ -126,7 +126,7 @@ fn instantiate_with_default_governance(
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id,
-            msg: to_binary(&msg).unwrap(),
+            msg: to_json_binary(&msg).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "DAO DAO governance module".to_string(),

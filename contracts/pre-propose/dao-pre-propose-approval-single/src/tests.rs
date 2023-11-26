@@ -1,4 +1,4 @@
-use cosmwasm_std::{coins, from_slice, to_binary, Addr, Coin, Empty, Uint128};
+use cosmwasm_std::{coins, from_json, to_json_binary, Addr, Coin, Empty, Uint128};
 use cw2::ContractVersion;
 use cw20::Cw20Coin;
 use cw_denom::UncheckedDenom;
@@ -17,7 +17,8 @@ use dao_voting::{
     voting::Vote,
 };
 
-use crate::{contract::*, msg::*, state::PendingProposal};
+use crate::state::{Proposal, ProposalStatus};
+use crate::{contract::*, msg::*};
 
 fn cw_dao_proposal_single_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -62,7 +63,7 @@ fn get_default_proposal_module_instantiate(
         pre_propose_info: PreProposeInfo::ModuleMayPropose {
             info: ModuleInstantiateInfo {
                 code_id: pre_propose_id,
-                msg: to_binary(&InstantiateMsg {
+                msg: to_json_binary(&InstantiateMsg {
                     deposit_info,
                     open_proposal_submission,
                     extension: InstantiateExt {
@@ -123,7 +124,7 @@ fn setup_default_test(
     let core_addr = instantiate_with_cw4_groups_governance(
         app,
         dao_proposal_single_id,
-        to_binary(&proposal_module_instantiate).unwrap(),
+        to_json_binary(&proposal_module_instantiate).unwrap(),
         Some(vec![
             cw20::Cw20Coin {
                 address: "ekez".to_string(),
@@ -190,8 +191,8 @@ fn make_pre_proposal(app: &mut App, pre_propose: Addr, proposer: &str, funds: &[
     )
     .unwrap();
 
-    // Query for pending proposal and return latest id
-    let mut pending: Vec<PendingProposal> = app
+    // Query for pending proposal and return latest id.
+    let mut pending: Vec<Proposal> = app
         .wrap()
         .query_wasm_smart(
             pre_propose,
@@ -204,7 +205,7 @@ fn make_pre_proposal(app: &mut App, pre_propose: Addr, proposer: &str, funds: &[
         )
         .unwrap();
 
-    // Return last item in list, id is first element of tuple
+    // Return last item in ascending list, id is first element of tuple
     pending.pop().unwrap().approval_id
 }
 
@@ -873,7 +874,7 @@ fn test_pending_proposal_queries() {
     make_pre_proposal(&mut app, pre_propose.clone(), "ekez", &coins(10, "ujuno"));
 
     // Query for individual proposal
-    let prop1: PendingProposal = app
+    let prop1: Proposal = app
         .wrap()
         .query_wasm_smart(
             pre_propose.clone(),
@@ -883,9 +884,22 @@ fn test_pending_proposal_queries() {
         )
         .unwrap();
     assert_eq!(prop1.approval_id, 1);
+    assert_eq!(prop1.status, ProposalStatus::Pending {});
+
+    let prop1: Proposal = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose.clone(),
+            &QueryMsg::QueryExtension {
+                msg: QueryExt::Proposal { id: 1 },
+            },
+        )
+        .unwrap();
+    assert_eq!(prop1.approval_id, 1);
+    assert_eq!(prop1.status, ProposalStatus::Pending {});
 
     // Query for the pre-propose proposals
-    let pre_propose_props: Vec<PendingProposal> = app
+    let pre_propose_props: Vec<Proposal> = app
         .wrap()
         .query_wasm_smart(
             pre_propose.clone(),
@@ -898,10 +912,10 @@ fn test_pending_proposal_queries() {
         )
         .unwrap();
     assert_eq!(pre_propose_props.len(), 2);
-    assert_eq!(pre_propose_props[0].approval_id, 2);
+    assert_eq!(pre_propose_props[0].approval_id, 1);
 
     // Query props in reverse
-    let reverse_pre_propose_props: Vec<PendingProposal> = app
+    let reverse_pre_propose_props: Vec<Proposal> = app
         .wrap()
         .query_wasm_smart(
             pre_propose,
@@ -915,7 +929,149 @@ fn test_pending_proposal_queries() {
         .unwrap();
 
     assert_eq!(reverse_pre_propose_props.len(), 2);
-    assert_eq!(reverse_pre_propose_props[0].approval_id, 1);
+    assert_eq!(reverse_pre_propose_props[0].approval_id, 2);
+}
+
+#[test]
+fn test_completed_proposal_queries() {
+    let mut app = App::default();
+
+    let DefaultTestSetup {
+        core_addr: _,
+        proposal_single: _,
+        pre_propose,
+    } = setup_default_test(
+        &mut app,
+        Some(UncheckedDepositInfo {
+            denom: DepositToken::Token {
+                denom: UncheckedDenom::Native("ujuno".to_string()),
+            },
+            amount: Uint128::new(10),
+            refund_policy: DepositRefundPolicy::Always,
+        }),
+        false,
+    );
+
+    mint_natives(&mut app, "ekez", coins(20, "ujuno"));
+    let approve_id = make_pre_proposal(&mut app, pre_propose.clone(), "ekez", &coins(10, "ujuno"));
+    let reject_id = make_pre_proposal(&mut app, pre_propose.clone(), "ekez", &coins(10, "ujuno"));
+
+    let is_pending: bool = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose.clone(),
+            &QueryMsg::QueryExtension {
+                msg: QueryExt::IsPending { id: approve_id },
+            },
+        )
+        .unwrap();
+    assert!(is_pending);
+
+    let created_approved_id =
+        approve_proposal(&mut app, pre_propose.clone(), "approver", approve_id);
+    reject_proposal(&mut app, pre_propose.clone(), "approver", reject_id);
+
+    let is_pending: bool = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose.clone(),
+            &QueryMsg::QueryExtension {
+                msg: QueryExt::IsPending { id: approve_id },
+            },
+        )
+        .unwrap();
+    assert!(!is_pending);
+
+    // Query for individual proposals
+    let prop1: Proposal = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose.clone(),
+            &QueryMsg::QueryExtension {
+                msg: QueryExt::CompletedProposal { id: approve_id },
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        prop1.status,
+        ProposalStatus::Approved {
+            created_proposal_id: created_approved_id
+        }
+    );
+    let prop1: Proposal = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose.clone(),
+            &QueryMsg::QueryExtension {
+                msg: QueryExt::Proposal { id: approve_id },
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        prop1.status,
+        ProposalStatus::Approved {
+            created_proposal_id: created_approved_id
+        }
+    );
+
+    let prop1_id: Option<u64> = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose.clone(),
+            &QueryMsg::QueryExtension {
+                msg: QueryExt::CompletedProposalIdForCreatedProposalId {
+                    id: created_approved_id,
+                },
+            },
+        )
+        .unwrap();
+    assert_eq!(prop1_id, Some(approve_id));
+
+    let prop2: Proposal = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose.clone(),
+            &QueryMsg::QueryExtension {
+                msg: QueryExt::CompletedProposal { id: reject_id },
+            },
+        )
+        .unwrap();
+    assert_eq!(prop2.status, ProposalStatus::Rejected {});
+
+    // Query for the pre-propose proposals
+    let pre_propose_props: Vec<Proposal> = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose.clone(),
+            &QueryMsg::QueryExtension {
+                msg: QueryExt::CompletedProposals {
+                    start_after: None,
+                    limit: None,
+                },
+            },
+        )
+        .unwrap();
+    assert_eq!(pre_propose_props.len(), 2);
+    assert_eq!(pre_propose_props[0].approval_id, approve_id);
+    assert_eq!(pre_propose_props[1].approval_id, reject_id);
+
+    // Query props in reverse
+    let reverse_pre_propose_props: Vec<Proposal> = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose,
+            &QueryMsg::QueryExtension {
+                msg: QueryExt::ReverseCompletedProposals {
+                    start_before: None,
+                    limit: None,
+                },
+            },
+        )
+        .unwrap();
+
+    assert_eq!(reverse_pre_propose_props.len(), 2);
+    assert_eq!(reverse_pre_propose_props[0].approval_id, reject_id);
+    assert_eq!(reverse_pre_propose_props[1].approval_id, approve_id);
 }
 
 #[test]
@@ -938,8 +1094,8 @@ fn test_set_version() {
         false,
     );
 
-    let info: ContractVersion = from_slice(
-        &app.wrap()
+    let info: ContractVersion = from_json(
+        app.wrap()
             .query_wasm_raw(pre_propose, "contract_info".as_bytes())
             .unwrap()
             .unwrap(),
@@ -1187,7 +1343,7 @@ fn test_instantiate_with_zero_native_deposit() {
             pre_propose_info: PreProposeInfo::ModuleMayPropose {
                 info: ModuleInstantiateInfo {
                     code_id: pre_propose_id,
-                    msg: to_binary(&InstantiateMsg {
+                    msg: to_json_binary(&InstantiateMsg {
                         deposit_info: Some(UncheckedDepositInfo {
                             denom: DepositToken::Token {
                                 denom: UncheckedDenom::Native("ujuno".to_string()),
@@ -1215,7 +1371,7 @@ fn test_instantiate_with_zero_native_deposit() {
     instantiate_with_cw4_groups_governance(
         &mut app,
         dao_proposal_single_id,
-        to_binary(&proposal_module_instantiate).unwrap(),
+        to_json_binary(&proposal_module_instantiate).unwrap(),
         Some(vec![
             cw20::Cw20Coin {
                 address: "ekez".to_string(),
@@ -1252,7 +1408,7 @@ fn test_instantiate_with_zero_cw20_deposit() {
             pre_propose_info: PreProposeInfo::ModuleMayPropose {
                 info: ModuleInstantiateInfo {
                     code_id: pre_propose_id,
-                    msg: to_binary(&InstantiateMsg {
+                    msg: to_json_binary(&InstantiateMsg {
                         deposit_info: Some(UncheckedDepositInfo {
                             denom: DepositToken::Token {
                                 denom: UncheckedDenom::Cw20(cw20_addr.into_string()),
@@ -1280,7 +1436,7 @@ fn test_instantiate_with_zero_cw20_deposit() {
     instantiate_with_cw4_groups_governance(
         &mut app,
         dao_proposal_single_id,
-        to_binary(&proposal_module_instantiate).unwrap(),
+        to_json_binary(&proposal_module_instantiate).unwrap(),
         Some(vec![
             cw20::Cw20Coin {
                 address: "ekez".to_string(),

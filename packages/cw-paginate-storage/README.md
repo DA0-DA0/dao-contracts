@@ -18,7 +18,7 @@ pub const ITEMS: Map<String, String> = Map::new("items");
 You can use this package to write a query to list it's contents like:
 
 ```rust
-use cosmwasm_std::{Deps, Binary, to_binary, StdResult};
+use cosmwasm_std::{Deps, Binary, to_json_binary, StdResult};
 use cw_storage_plus::Map;
 use cw_paginate_storage::paginate_map;                         
 
@@ -29,7 +29,7 @@ pub fn query_list_items(
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<Binary> {
-    to_binary(&paginate_map(
+    to_json_binary(&paginate_map(
         deps,
         &ITEMS,
         start_after,

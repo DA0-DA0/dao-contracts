@@ -1,16 +1,16 @@
 [workspace]
-members = [
-	"contracts/dao-dao-core",
-	"contracts/external/*",
-	"contracts/proposal/*",
-	"contracts/pre-propose/*",
-	"contracts/staking/*",
-	"contracts/test/*",
-	"contracts/voting/*",
-	"packages/*",
-	"ci/*",
-]
 exclude = ["ci/configs/", "wasmvm/libwasmvm"]
+members = [
+  "contracts/dao-dao-core",
+  "contracts/external/*",
+  "contracts/proposal/*",
+  "contracts/pre-propose/*",
+  "contracts/staking/*",
+  "contracts/test/*",
+  "contracts/voting/*",
+  "packages/*",
+  "ci/*",
+]
 
 [workspace.package]
 edition = "2021"
@@ -20,29 +20,29 @@ version = "2.3.0"
 
 [profile.release]
 codegen-units = 1
-opt-level = 3
 debug = false
-rpath = false
-lto = true
 debug-assertions = false
-panic = 'abort'
 incremental = false
+lto = true
+opt-level = 3
+panic = 'abort'
+rpath = false
 # Please do not disable these. Doing so will cause overflow checks in
 # all workspace members to stop working. Overflows should be errors.
 overflow-checks = true
 
 [workspace.dependencies]
-anyhow = { version = "1.0" }
+anyhow = {version = "1.0"}
 assert_matches = "1.5"
-cosm-orc = { version = "4.0" }
+cosm-orc = {version = "4.0"}
 cosm-tome = "0.2"
 cosmos-sdk-proto = "0.19"
-cosmwasm-schema = { version = "1.2" }
-cosmwasm-std = { version = "1.2", features = ["ibc3"] }
-cosmwasm-storage = { version = "1.2" }
+cosmwasm-schema = {version = "1.2"}
+cosmwasm-std = {version = "1.5.0", features = ["ibc3"]}
+cosmwasm-storage = {version = "1.2"}
 cw-controllers = "1.1"
-cw-multi-test = "0.17"
-cw-storage-plus = { version = "1.1" }
+cw-multi-test = "0.18"
+cw-storage-plus = {version = "1.1"}
 cw-utils = "1.0"
 cw2 = "1.1"
 cw20 = "1.1"
@@ -54,23 +54,23 @@ cw721 = "0.18"
 cw721-base = "0.18"
 env_logger = "0.10"
 once_cell = "1.18"
-osmosis-std = "0.19.0"
-osmosis-test-tube = "19.0.0"
+osmosis-std = "0.20.1"
+osmosis-test-tube = "20.1.1"
 proc-macro2 = "1.0"
 prost = "0.11"
 quote = "1.0"
 rand = "0.8"
 schemars = "0.8"
-serde = { version = "1.0", default-features = false, features = ["derive"] }
+serde = {version = "1.0", default-features = false, features = ["derive"]}
 serde_json = "1.0"
 serde_yaml = "0.9"
+sg-multi-test = "3.1.0"
 sg-std = "3.1.0"
 sg721 = "3.1.0"
 sg721-base = "3.1.0"
-sg-multi-test = "3.1.0"
-syn = { version = "1.0", features = ["derive"] }
+syn = {version = "1.0", features = ["derive"]}
 test-context = "0.1"
-thiserror = { version = "1.0" }
+thiserror = {version = "1.0"}
 token-bindings = "0.11.0"
 wynd-utils = "0.4"
 semver = "1"
@@ -79,42 +79,42 @@ semver = "1"
 # optional owner.
 cw-ownable = "0.5"
 
-cw-admin-factory = { path = "./contracts/external/cw-admin-factory", version = "2.3.0" }
-cw-denom = { path = "./packages/cw-denom", version = "2.3.0" }
-cw-hooks = { path = "./packages/cw-hooks", version = "2.3.0" }
-cw-wormhole = { path = "./packages/cw-wormhole", version = "2.3.0" }
-cw-paginate-storage = { path = "./packages/cw-paginate-storage", version = "2.3.0" }
-cw-payroll-factory = { path = "./contracts/external/cw-payroll-factory", version = "2.3.0" }
-cw-tokenfactory-issuer = { path = "./contracts/external/cw-tokenfactory-issuer", version = "2.3.0" }
-cw-vesting = { path = "./contracts/external/cw-vesting", version = "2.3.0" }
-cw20-stake = { path = "./contracts/staking/cw20-stake", version = "2.3.0" }
-cw-stake-tracker = { path = "./packages/cw-stake-tracker", version = "2.3.0" }
-cw721-controllers = { path = "./packages/cw721-controllers", version = "2.3.0" }
-cw721-roles = { path = "./contracts/external/cw721-roles", version = "2.3.0" }
-dao-cw721-extensions = { path = "./packages/dao-cw721-extensions", version = "2.3.0" }
-dao-dao-core = { path = "./contracts/dao-dao-core", version = "2.3.0" }
-dao-dao-macros = { path = "./packages/dao-dao-macros", version = "2.3.0" }
-dao-hooks = { path = "./packages/dao-hooks", version = "2.3.0" }
-dao-interface = { path = "./packages/dao-interface", version = "2.3.0" }
-dao-pre-propose-approval-single = { path = "./contracts/pre-propose/dao-pre-propose-approval-single", version = "2.3.0" }
-dao-pre-propose-approver = { path = "./contracts/pre-propose/dao-pre-propose-approver", version = "2.3.0" }
-dao-pre-propose-base = { path = "./packages/dao-pre-propose-base", version = "2.3.0" }
-dao-pre-propose-multiple = { path = "./contracts/pre-propose/dao-pre-propose-multiple", version = "2.3.0" }
-dao-pre-propose-single = { path = "./contracts/pre-propose/dao-pre-propose-single", version = "2.3.0" }
-dao-proposal-condorcet = { path = "./contracts/proposal/dao-proposal-condorcet", version = "2.3.0" }
-dao-proposal-multiple = { path = "./contracts/proposal/dao-proposal-multiple", version = "2.3.0" }
-dao-proposal-single = { path = "./contracts/proposal/dao-proposal-single", version = "2.3.0" }
-dao-proposal-sudo = { path = "./contracts/test/dao-proposal-sudo", version = "2.3.0" }
-dao-proposal-hook-counter = { path = "./contracts/test/dao-proposal-hook-counter", version = "2.3.0" }
-dao-test-custom-factory = { path = "./contracts/test/dao-test-custom-factory", version = "2.3.0" }
-dao-testing = { path = "./packages/dao-testing", version = "2.3.0" }
-dao-voting = { path = "./packages/dao-voting", version = "2.3.0" }
-dao-voting-cw20-balance = { path = "./contracts/test/dao-voting-cw20-balance", version = "2.3.0" }
-dao-voting-cw20-staked = { path = "./contracts/voting/dao-voting-cw20-staked", version = "2.3.0" }
-dao-voting-cw4 = { path = "./contracts/voting/dao-voting-cw4", version = "2.3.0" }
-dao-voting-cw721-roles = { path = "./contracts/voting/dao-voting-cw721-roles", version = "2.3.0" }
-dao-voting-cw721-staked = { path = "./contracts/voting/dao-voting-cw721-staked", version = "2.3.0" }
-dao-voting-token-staked = { path = "./contracts/voting/dao-voting-token-staked", version = "2.3.0" }
+cw-admin-factory = {path = "./contracts/external/cw-admin-factory", version = "2.3.0"}
+cw-denom = {path = "./packages/cw-denom", version = "2.3.0"}
+cw-hooks = {path = "./packages/cw-hooks", version = "2.3.0"}
+cw-paginate-storage = {path = "./packages/cw-paginate-storage", version = "2.3.0"}
+cw-payroll-factory = {path = "./contracts/external/cw-payroll-factory", version = "2.3.0"}
+cw-stake-tracker = {path = "./packages/cw-stake-tracker", version = "2.3.0"}
+cw-tokenfactory-issuer = {path = "./contracts/external/cw-tokenfactory-issuer", version = "2.3.0"}
+cw-vesting = {path = "./contracts/external/cw-vesting", version = "2.3.0"}
+cw-wormhole = {path = "./packages/cw-wormhole", version = "2.3.0"}
+cw20-stake = {path = "./contracts/staking/cw20-stake", version = "2.3.0"}
+cw721-controllers = {path = "./packages/cw721-controllers", version = "2.3.0"}
+cw721-roles = {path = "./contracts/external/cw721-roles", version = "2.3.0"}
+dao-cw721-extensions = {path = "./packages/dao-cw721-extensions", version = "2.3.0"}
+dao-dao-core = {path = "./contracts/dao-dao-core", version = "2.3.0"}
+dao-dao-macros = {path = "./packages/dao-dao-macros", version = "2.3.0"}
+dao-hooks = {path = "./packages/dao-hooks", version = "2.3.0"}
+dao-interface = {path = "./packages/dao-interface", version = "2.3.0"}
+dao-pre-propose-approval-single = {path = "./contracts/pre-propose/dao-pre-propose-approval-single", version = "2.3.0"}
+dao-pre-propose-approver = {path = "./contracts/pre-propose/dao-pre-propose-approver", version = "2.3.0"}
+dao-pre-propose-base = {path = "./packages/dao-pre-propose-base", version = "2.3.0"}
+dao-pre-propose-multiple = {path = "./contracts/pre-propose/dao-pre-propose-multiple", version = "2.3.0"}
+dao-pre-propose-single = {path = "./contracts/pre-propose/dao-pre-propose-single", version = "2.3.0"}
+dao-proposal-condorcet = {path = "./contracts/proposal/dao-proposal-condorcet", version = "2.3.0"}
+dao-proposal-hook-counter = {path = "./contracts/test/dao-proposal-hook-counter", version = "2.3.0"}
+dao-proposal-multiple = {path = "./contracts/proposal/dao-proposal-multiple", version = "2.3.0"}
+dao-proposal-single = {path = "./contracts/proposal/dao-proposal-single", version = "2.3.0"}
+dao-proposal-sudo = {path = "./contracts/test/dao-proposal-sudo", version = "2.3.0"}
+dao-test-custom-factory = {path = "./contracts/test/dao-test-custom-factory", version = "2.3.0"}
+dao-testing = {path = "./packages/dao-testing", version = "2.3.0"}
+dao-voting = {path = "./packages/dao-voting", version = "2.3.0"}
+dao-voting-cw20-balance = {path = "./contracts/test/dao-voting-cw20-balance", version = "2.3.0"}
+dao-voting-cw20-staked = {path = "./contracts/voting/dao-voting-cw20-staked", version = "2.3.0"}
+dao-voting-cw4 = {path = "./contracts/voting/dao-voting-cw4", version = "2.3.0"}
+dao-voting-cw721-roles = {path = "./contracts/voting/dao-voting-cw721-roles", version = "2.3.0"}
+dao-voting-cw721-staked = {path = "./contracts/voting/dao-voting-cw721-staked", version = "2.3.0"}
+dao-voting-token-staked = {path = "./contracts/voting/dao-voting-token-staked", version = "2.3.0"}
 
 # v1 dependencies. used for state migrations.
 cw-core-v1 = { package = "cw-core", version = "0.1.0" }

@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
+    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
     Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
@@ -67,7 +67,7 @@ pub fn instantiate(
             let msg = WasmMsg::Instantiate {
                 admin: Some(info.sender.to_string()),
                 code_id: cw4_group_code_id,
-                msg: to_binary(&cw4_group::msg::InstantiateMsg {
+                msg: to_json_binary(&cw4_group::msg::InstantiateMsg {
                     admin: Some(info.sender.to_string()),
                     members: initial_members,
                 })?,
@@ -124,8 +124,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, env, height),
         QueryMsg::Info {} => query_info(deps),
-        QueryMsg::GroupContract {} => to_binary(&GROUP_CONTRACT.load(deps.storage)?),
-        QueryMsg::Dao {} => to_binary(&DAO.load(deps.storage)?),
+        QueryMsg::GroupContract {} => to_json_binary(&GROUP_CONTRACT.load(deps.storage)?),
+        QueryMsg::Dao {} => to_json_binary(&DAO.load(deps.storage)?),
     }
 }
 
@@ -145,7 +145,7 @@ pub fn query_voting_power_at_height(
         },
     )?;
 
-    to_binary(&dao_interface::voting::VotingPowerAtHeightResponse {
+    to_json_binary(&dao_interface::voting::VotingPowerAtHeightResponse {
         power: res.weight.unwrap_or(0).into(),
         height: height.unwrap_or(env.block.height),
     })
@@ -157,7 +157,7 @@ pub fn query_total_power_at_height(deps: Deps, env: Env, height: Option<u64>) ->
         group_contract,
         &cw4_group::msg::QueryMsg::TotalWeight { at_height: height },
     )?;
-    to_binary(&dao_interface::voting::TotalPowerAtHeightResponse {
+    to_json_binary(&dao_interface::voting::TotalPowerAtHeightResponse {
         power: res.weight.into(),
         height: height.unwrap_or(env.block.height),
     })
@@ -165,7 +165,7 @@ pub fn query_total_power_at_height(deps: Deps, env: Env, height: Option<u64>) ->
 
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
-    to_binary(&dao_interface::voting::InfoResponse { info })
+    to_json_binary(&dao_interface::voting::InfoResponse { info })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

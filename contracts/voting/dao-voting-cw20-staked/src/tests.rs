@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     testing::{mock_dependencies, mock_env},
-    to_binary, Addr, CosmosMsg, Decimal, Empty, Uint128, WasmMsg,
+    to_json_binary, Addr, CosmosMsg, Decimal, Empty, Uint128, WasmMsg,
 };
 use cw2::ContractVersion;
 use cw20::{BalanceResponse, Cw20Coin, MinterResponse, TokenInfoResponse};
@@ -61,7 +61,7 @@ fn stake_tokens(app: &mut App, staking_addr: Addr, cw20_addr: Addr, sender: &str
     let msg = cw20::Cw20ExecuteMsg::Send {
         contract: staking_addr.to_string(),
         amount: Uint128::new(amount),
-        msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+        msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
     };
     app.execute_contract(Addr::unchecked(sender), cw20_addr, &msg, &[])
         .unwrap();
@@ -1375,7 +1375,7 @@ fn test_migrate() {
         CosmosMsg::Wasm(WasmMsg::Migrate {
             contract_addr: voting_addr.to_string(),
             new_code_id: voting_id,
-            msg: to_binary(&MigrateMsg {}).unwrap(),
+            msg: to_json_binary(&MigrateMsg {}).unwrap(),
         }),
     )
     .unwrap();

@@ -2,7 +2,7 @@ use std::cmp::min;
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Addr, CosmosMsg, StdError, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, StdError, Uint128, WasmMsg};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InfoResponse, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -162,10 +162,10 @@ fn get_distribution_msg(deps: Deps, env: &Env) -> Result<CosmosMsg, ContractErro
         return Err(ContractError::ZeroRewards {});
     }
 
-    let msg = to_binary(&cw20::Cw20ExecuteMsg::Send {
+    let msg = to_json_binary(&cw20::Cw20ExecuteMsg::Send {
         contract: config.staking_addr.clone().into_string(),
         amount,
-        msg: to_binary(&cw20_stake::msg::ReceiveMsg::Fund {}).unwrap(),
+        msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Fund {}).unwrap(),
     })?;
     let send_msg: CosmosMsg = WasmMsg::Execute {
         contract_addr: config.reward_token.into(),
@@ -200,7 +200,7 @@ pub fn execute_withdraw(
         },
     )?;
 
-    let msg = to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+    let msg = to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
         // `assert_owner` call above validates that the sender is the
         // owner.
         recipient: info.sender.to_string(),
@@ -223,8 +223,8 @@ pub fn execute_withdraw(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Info {} => to_binary(&query_info(deps, env)?),
-        QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
+        QueryMsg::Info {} => to_json_binary(&query_info(deps, env)?),
+        QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
     }
 }
 
