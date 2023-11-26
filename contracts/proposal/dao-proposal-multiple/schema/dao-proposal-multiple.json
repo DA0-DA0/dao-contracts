@@ -3284,6 +3284,35 @@
               "enum": [
                 "execution_failed"
               ]
+            },
+            {
+              "description": "The proposal is timelocked. Only the configured vetoer can execute or veto until the timelock expires.",
+              "type": "object",
+              "required": [
+                "timelocked"
+              ],
+              "properties": {
+                "timelocked": {
+                  "type": "object",
+                  "required": [
+                    "expiration"
+                  ],
+                  "properties": {
+                    "expiration": {
+                      "$ref": "#/definitions/Expiration"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "The proposal has been vetoed.",
+              "type": "string",
+              "enum": [
+                "vetoed"
+              ]
             }
           ]
         },
@@ -4446,6 +4475,35 @@
               "enum": [
                 "execution_failed"
               ]
+            },
+            {
+              "description": "The proposal is timelocked. Only the configured vetoer can execute or veto until the timelock expires.",
+              "type": "object",
+              "required": [
+                "timelocked"
+              ],
+              "properties": {
+                "timelocked": {
+                  "type": "object",
+                  "required": [
+                    "expiration"
+                  ],
+                  "properties": {
+                    "expiration": {
+                      "$ref": "#/definitions/Expiration"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "The proposal has been vetoed.",
+              "type": "string",
+              "enum": [
+                "vetoed"
+              ]
             }
           ]
         },
@@ -5602,6 +5660,35 @@
               "type": "string",
               "enum": [
                 "execution_failed"
+              ]
+            },
+            {
+              "description": "The proposal is timelocked. Only the configured vetoer can execute or veto until the timelock expires.",
+              "type": "object",
+              "required": [
+                "timelocked"
+              ],
+              "properties": {
+                "timelocked": {
+                  "type": "object",
+                  "required": [
+                    "expiration"
+                  ],
+                  "properties": {
+                    "expiration": {
+                      "$ref": "#/definitions/Expiration"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "The proposal has been vetoed.",
+              "type": "string",
+              "enum": [
+                "vetoed"
               ]
             }
           ]

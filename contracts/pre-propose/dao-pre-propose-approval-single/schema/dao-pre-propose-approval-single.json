@@ -751,6 +751,53 @@
           }
         ]
       },
+      "Expiration": {
+        "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
+        "oneOf": [
+          {
+            "description": "AtHeight will expire when `env.block.height` >= height",
+            "type": "object",
+            "required": [
+              "at_height"
+            ],
+            "properties": {
+              "at_height": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "AtTime will expire when `env.block.time` >= time",
+            "type": "object",
+            "required": [
+              "at_time"
+            ],
+            "properties": {
+              "at_time": {
+                "$ref": "#/definitions/Timestamp"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Never will never expire. Used to express the empty variant",
+            "type": "object",
+            "required": [
+              "never"
+            ],
+            "properties": {
+              "never": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
       "GovMsg": {
         "description": "This message type allows the contract interact with the [x/gov] module in order to cast votes.\n\n[x/gov]: https://github.com/cosmos/cosmos-sdk/tree/v0.45.12/x/gov\n\n## Examples\n\nCast a simple vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); use cosmwasm_std::{GovMsg, VoteOption};\n\n#[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::Vote { proposal_id: 4, vote: VoteOption::Yes, })) } ```\n\nCast a weighted vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); # #[cfg(feature = \"cosmwasm_1_2\")] use cosmwasm_std::{Decimal, GovMsg, VoteOption, WeightedVoteOption};\n\n# #[cfg(feature = \"cosmwasm_1_2\")] #[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::VoteWeighted { proposal_id: 4, options: vec![ WeightedVoteOption { option: VoteOption::Yes, weight: Decimal::percent(65), }, WeightedVoteOption { option: VoteOption::Abstain, weight: Decimal::percent(35), }, ], })) } ```",
         "oneOf": [
@@ -1103,6 +1150,35 @@
             "type": "string",
             "enum": [
               "execution_failed"
+            ]
+          },
+          {
+            "description": "The proposal is timelocked. Only the configured vetoer can execute or veto until the timelock expires.",
+            "type": "object",
+            "required": [
+              "timelocked"
+            ],
+            "properties": {
+              "timelocked": {
+                "type": "object",
+                "required": [
+                  "expiration"
+                ],
+                "properties": {
+                  "expiration": {
+                    "$ref": "#/definitions/Expiration"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "The proposal has been vetoed.",
+            "type": "string",
+            "enum": [
+              "vetoed"
             ]
           }
         ]
