@@ -11,7 +11,7 @@ use crate::testing::{
     },
     queries::{query_balance_cw20, query_dao_token, query_proposal, query_single_proposal_module},
 };
-use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Decimal, Timestamp, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Decimal, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App};
 use cw_utils::Duration;

@@ -1,4 +1,3 @@
-use std::str::FromStr;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -9,7 +8,6 @@ use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_hooks::Hooks;
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration};
-use semver::Version;
 use dao_hooks::proposal::{
     new_proposal_hooks, proposal_completed_hooks, proposal_status_changed_hooks,
 };
@@ -26,6 +24,8 @@ use dao_voting::status::Status;
 use dao_voting::threshold::Threshold;
 use dao_voting::timelock::{Timelock, TimelockError};
 use dao_voting::voting::{get_total_power, get_voting_power, validate_voting_period, Vote, Votes};
+use semver::Version;
+use std::str::FromStr;
 
 use crate::msg::MigrateMsg;
 use crate::proposal::{next_proposal_id, SingleChoiceProposal};
@@ -973,10 +973,10 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
 
             // `CONTRACT_VERSION` here is from the data section of the
             // blob we are migrating to. `version` is from storage.
-            let target_blob_version = Version::from_str(&CONTRACT_VERSION)
+            let target_blob_version = Version::from_str(CONTRACT_VERSION)
                 .map_err(|_| ContractError::MigrationVersionError {})?;
-            let parsed_version = Version::from_str(&version)
-                .map_err(|_| ContractError::MigrationVersionError {})?;
+            let parsed_version =
+                Version::from_str(&version).map_err(|_| ContractError::MigrationVersionError {})?;
 
             // If the version in storage matches the version in the blob
             // we are not upgrading.
@@ -984,10 +984,10 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                 return Err(ContractError::AlreadyMigrated {});
             }
 
-            // migration is only possible from 2.0.0, but no later than the 
+            // migration is only possible from 2.0.0, but no later than the
             // version of the blob we are migrating to
             if parsed_version < version_2 || parsed_version > target_blob_version {
-                return Err(ContractError::MigrationVersionError {})
+                return Err(ContractError::MigrationVersionError {});
             }
 
             // Update the stored config to have the new `timelock` field

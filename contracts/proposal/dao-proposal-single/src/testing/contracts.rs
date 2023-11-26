@@ -39,16 +39,16 @@ pub(crate) fn cw20_stake_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub(crate) fn v2_proposal_single_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        dao_proposal_single_v2::contract::execute,
-        dao_proposal_single_v2::contract::instantiate,
-        dao_proposal_single_v2::contract::query,
-    )
-    .with_reply(dao_proposal_single_v2::contract::reply)
-    .with_migrate(dao_proposal_single_v2::contract::migrate);
-    Box::new(contract)
-}
+// pub(crate) fn v2_proposal_single_contract() -> Box<dyn Contract<Empty>> {
+//     let contract = ContractWrapper::new(
+//         dao_proposal_single_v2::contract::execute,
+//         dao_proposal_single_v2::contract::instantiate,
+//         dao_proposal_single_v2::contract::query,
+//     )
+//     .with_reply(dao_proposal_single_v2::contract::reply)
+//     .with_migrate(dao_proposal_single_v2::contract::migrate);
+//     Box::new(contract)
+// }
 
 pub(crate) fn proposal_single_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(

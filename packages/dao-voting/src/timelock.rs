@@ -55,7 +55,7 @@ impl Timelock {
 
     /// Checks whether the message sender is the vetoer.
     pub fn check_is_vetoer(&self, info: &MessageInfo) -> Result<(), TimelockError> {
-        if self.vetoer == info.sender.to_string() {
+        if self.vetoer == info.sender {
             Ok(())
         } else {
             Err(TimelockError::Unauthorized {})

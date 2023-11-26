@@ -56,7 +56,7 @@ pub fn v2_status_to_v3(v2: voting_v2::status::Status) -> Status {
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::{Decimal, Timestamp, Uint128};
+    use cosmwasm_std::{Decimal, Uint128};
 
     use super::*;
 

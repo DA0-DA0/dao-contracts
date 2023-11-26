@@ -300,25 +300,27 @@ pub fn execute_migration(
                 .into(),
                 WasmMsg::Execute {
                     contract_addr: module_addrs.core.to_string(),
-                    msg: to_json_binary(&dao_interface_v2::msg::ExecuteMsg::UpdateProposalModules {
-                        to_add: vec![ModuleInstantiateInfo {
-                            code_id: migrator_code_id,
-                            msg: to_json_binary(&crate::msg::InstantiateMsg {
-                                sub_daos: params.sub_daos.unwrap(),
-                                migration_params: MigrationParams {
-                                    migrate_stake_cw20_manager: params.migrate_cw20,
-                                    proposal_params,
-                                },
-                                v1_code_ids,
-                                v2_code_ids,
-                            })
-                            .unwrap(),
-                            admin: Some(Admin::CoreModule {}),
-                            funds: vec![],
-                            label: "migrator".to_string(),
-                        }],
-                        to_disable: vec![],
-                    })
+                    msg: to_json_binary(
+                        &dao_interface_v2::msg::ExecuteMsg::UpdateProposalModules {
+                            to_add: vec![ModuleInstantiateInfo {
+                                code_id: migrator_code_id,
+                                msg: to_json_binary(&crate::msg::InstantiateMsg {
+                                    sub_daos: params.sub_daos.unwrap(),
+                                    migration_params: MigrationParams {
+                                        migrate_stake_cw20_manager: params.migrate_cw20,
+                                        proposal_params,
+                                    },
+                                    v1_code_ids,
+                                    v2_code_ids,
+                                })
+                                .unwrap(),
+                                admin: Some(Admin::CoreModule {}),
+                                funds: vec![],
+                                label: "migrator".to_string(),
+                            }],
+                            to_disable: vec![],
+                        },
+                    )
                     .unwrap(),
                     funds: vec![],
                 }

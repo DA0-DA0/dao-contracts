@@ -1,15 +1,15 @@
 use cosmwasm_std::{
     coins,
     testing::{mock_dependencies, mock_env},
-    to_json_binary, Addr, Attribute, BankMsg, Binary, ContractInfoResponse, CosmosMsg, Decimal, Empty,
-    Reply, StdError, SubMsgResult, Timestamp, Uint128, WasmMsg, WasmQuery,
+    to_json_binary, Addr, Attribute, BankMsg, Binary, ContractInfoResponse, CosmosMsg, Decimal,
+    Empty, Reply, StdError, SubMsgResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::ContractVersion;
 use cw20::Cw20Coin;
 use cw_denom::CheckedDenom;
 use cw_hooks::{HookError, HooksResponse};
 use cw_multi_test::{next_block, App, Executor};
-use cw_utils::{Duration, Expiration};
+use cw_utils::Duration;
 use dao_interface::{
     state::{Admin, ModuleInstantiateInfo},
     voting::InfoResponse,
@@ -36,11 +36,7 @@ use crate::{
     query::{ProposalResponse, VoteInfo},
     state::Config,
     testing::{
-        contracts::{
-            cw20_base_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
-            cw_core_contract, pre_propose_single_contract, proposal_single_contract,
-            v2_proposal_single_contract,
-        },
+        contracts::{pre_propose_single_contract, proposal_single_contract},
         execute::{
             add_proposal_hook, add_proposal_hook_should_fail, add_vote_hook,
             add_vote_hook_should_fail, close_proposal, close_proposal_should_fail,
@@ -662,15 +658,15 @@ fn test_open_proposal_veto_with_no_timelock() {
                     recipient: CREATOR_ADDR.to_string(),
                     amount: Uint128::new(10_000_000),
                 })
-                    .unwrap(),
+                .unwrap(),
                 funds: vec![],
             }
-                .into(),
+            .into(),
             BankMsg::Send {
                 to_address: CREATOR_ADDR.to_string(),
                 amount: coins(10, "ujuno"),
             }
-                .into(),
+            .into(),
         ],
     );
 
@@ -727,15 +723,15 @@ fn test_vetoed_proposal_veto() {
                     recipient: CREATOR_ADDR.to_string(),
                     amount: Uint128::new(10_000_000),
                 })
-                    .unwrap(),
+                .unwrap(),
                 funds: vec![],
             }
-                .into(),
+            .into(),
             BankMsg::Send {
                 to_address: CREATOR_ADDR.to_string(),
                 amount: coins(10, "ujuno"),
             }
-                .into(),
+            .into(),
         ],
     );
 
@@ -745,25 +741,26 @@ fn test_vetoed_proposal_veto() {
         &ExecuteMsg::Veto { proposal_id },
         &[],
     )
-        .unwrap();
+    .unwrap();
 
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Vetoed {});
 
-    let err: ContractError = app.execute_contract(
-        Addr::unchecked("oversight"),
-        proposal_module.clone(),
-        &ExecuteMsg::Veto { proposal_id },
-        &[],
-    )
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("oversight"),
+            proposal_module.clone(),
+            &ExecuteMsg::Veto { proposal_id },
+            &[],
+        )
         .unwrap_err()
         .downcast()
         .unwrap();
 
     assert_eq!(
-        ContractError::TimelockError(
-            TimelockError::InvalidProposalStatus { status: "vetoed".to_string() }
-        ),
+        ContractError::TimelockError(TimelockError::InvalidProposalStatus {
+            status: "vetoed".to_string()
+        }),
         err,
     );
 }
@@ -3733,7 +3730,8 @@ fn test_update_pre_propose_module() {
         CREATOR_ADDR,
         vec![WasmMsg::Execute {
             contract_addr: pre_propose_start.into_string(),
-            msg: to_json_binary(&dao_pre_propose_single::ExecuteMsg::Withdraw { denom: None }).unwrap(),
+            msg: to_json_binary(&dao_pre_propose_single::ExecuteMsg::Withdraw { denom: None })
+                .unwrap(),
             funds: vec![],
         }
         .into()],
