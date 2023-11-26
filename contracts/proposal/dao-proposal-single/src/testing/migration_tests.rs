@@ -206,7 +206,7 @@ fn test_v2_v3_full_migration() {
     // old config to assert against
     let config_v2: dao_proposal_single_v2::state::Config = app
         .wrap()
-        .query_wasm_smart(&proposal.to_string(), &QueryMsg::Config {})
+        .query_wasm_smart(proposal.to_string(), &QueryMsg::Config {})
         .unwrap();
 
     app.execute_contract(
@@ -331,7 +331,7 @@ fn test_v2_v3_full_migration() {
     let proposals_v2: dao_proposal_single_v2::query::ProposalListResponse = app
         .wrap()
         .query_wasm_smart(
-            &proposal.clone(),
+            proposal.clone(),
             &dao_proposal_single_v2::msg::QueryMsg::ListProposals {
                 start_after: None,
                 limit: None,
@@ -508,7 +508,7 @@ fn test_v2_v3_full_migration() {
     let proposals_v3: crate::query::ProposalListResponse = app
         .wrap()
         .query_wasm_smart(
-            &proposal.to_string(),
+            proposal.to_string(),
             &crate::msg::QueryMsg::ListProposals {
                 start_after: None,
                 limit: None,
