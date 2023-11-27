@@ -247,6 +247,7 @@ impl TestEnvBuilder {
                     only_members_execute: true,
                     close_proposal_on_execution_failure: false,
                     pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+                    timelock: None,
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
