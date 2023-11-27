@@ -2316,7 +2316,6 @@ dependencies = [
  "dao-interface 2.3.0",
  "dao-proposal-hook-counter",
  "dao-proposal-single 2.3.0",
- "dao-proposal-single 2.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "dao-test-custom-factory",
  "dao-testing",
  "dao-voting 2.3.0",
