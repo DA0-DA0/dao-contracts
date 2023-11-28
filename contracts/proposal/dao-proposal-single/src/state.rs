@@ -58,7 +58,7 @@ pub struct Config {
     /// remain open until the DAO's treasury was large enough for it to be
     /// executed.
     pub close_proposal_on_execution_failure: bool,
-    /// Optional time delay on proposal execution
+    /// Optional time delay on proposal execution during which the configured vetoer can veto the proposal.
     pub timelock: Option<Timelock>,
 }
 
