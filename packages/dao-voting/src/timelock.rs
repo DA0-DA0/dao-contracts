@@ -36,7 +36,7 @@ pub struct Timelock {
     pub delay: Duration,
     /// The address able to veto proposals.
     pub vetoer: String,
-    /// Whether or not the vetoer can excute a proposal early before the
+    /// Whether or not the vetoer can execute a proposal early before the
     /// timelock duration has expired
     pub early_execute: bool,
     /// Whether or not the vetoer can veto a proposal before it passes.

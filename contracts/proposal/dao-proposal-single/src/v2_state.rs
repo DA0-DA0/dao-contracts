@@ -47,7 +47,7 @@ pub fn v2_status_to_v3(v2: voting_v2::status::Status) -> Status {
     match v2 {
         voting_v2::status::Status::Open => Status::Open,
         voting_v2::status::Status::Rejected => Status::Rejected,
-        voting_v2::status::Status::Passed => todo!(),
+        voting_v2::status::Status::Passed => Status::Passed,
         voting_v2::status::Status::Executed => Status::Executed,
         voting_v2::status::Status::Closed => Status::Closed,
         voting_v2::status::Status::ExecutionFailed => Status::ExecutionFailed,
@@ -123,7 +123,6 @@ mod tests {
         status_conversion!(Status::Executed);
         status_conversion!(Status::Rejected);
         status_conversion!(Status::ExecutionFailed);
-        // TODO test passed status conversion
-        // status_conversion!(Status::Passed);
+        status_conversion!(Status::Passed);
     }
 }

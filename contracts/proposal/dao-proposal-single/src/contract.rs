@@ -268,94 +268,75 @@ pub fn execute_veto(
         .may_load(deps.storage, proposal_id)?
         .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
 
+    let timelock = prop.timelock.as_ref().ok_or(TimelockError::NoTimelock {})?;
+
+    // Check sender is vetoer
+    timelock.check_is_vetoer(&info)?;
+
     match prop.status {
         Status::Open => {
-            match prop.timelock {
-                Some(ref timelock) => {
-                    // Check sender is vetoer
-                    timelock.check_is_vetoer(&info)?;
+            // Veto prop only if veto_before_passed is true
+            timelock.check_veto_before_passed_enabled()?;
 
-                    // Veto prop only if veto_before_passed is true
-                    timelock.check_veto_before_passed_enabled()?;
+            let old_status = prop.status;
 
-                    let old_status = prop.status;
+            // Update proposal status to vetoed
+            prop.status = Status::Vetoed;
+            PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
-                    // Update proposal status to vetoed
-                    prop.status = Status::Vetoed;
-                    PROPOSALS.save(deps.storage, proposal_id, &prop)?;
+            // Add proposal status change hooks
+            let proposal_status_changed_hooks = proposal_status_changed_hooks(
+                PROPOSAL_HOOKS,
+                deps.storage,
+                proposal_id,
+                old_status.to_string(),
+                prop.status.to_string(),
+            )?;
 
-                    // Add proposal status change hooks
-                    let proposal_status_changed_hooks = proposal_status_changed_hooks(
-                        PROPOSAL_HOOKS,
-                        deps.storage,
-                        proposal_id,
-                        old_status.to_string(),
-                        prop.status.to_string(),
-                    )?;
+            // Add prepropose / deposit module hook which will handle deposit refunds.
+            let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
+            let proposal_completed_hooks =
+                proposal_completed_hooks(proposal_creation_policy, proposal_id, prop.status)?;
 
-                    // Add prepropose / deposit module hook which will handle deposit refunds.
-                    let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
-                    let proposal_completed_hooks = proposal_completed_hooks(
-                        proposal_creation_policy,
-                        proposal_id,
-                        prop.status,
-                    )?;
-
-                    Ok(Response::new()
-                        .add_attribute("action", "veto")
-                        .add_attribute("proposal_id", proposal_id.to_string())
-                        .add_submessages(proposal_status_changed_hooks)
-                        .add_submessages(proposal_completed_hooks))
-                }
-                // If timelock is not configured throw error
-                None => Err(ContractError::TimelockError(TimelockError::NoTimelock {})),
-            }
+            Ok(Response::new()
+                .add_attribute("action", "veto")
+                .add_attribute("proposal_id", proposal_id.to_string())
+                .add_submessages(proposal_status_changed_hooks)
+                .add_submessages(proposal_completed_hooks))
         }
         Status::Timelocked { expiration } => {
-            match prop.timelock {
-                Some(ref timelock) => {
-                    // Check sender is vetoer
-                    timelock.check_is_vetoer(&info)?;
-
-                    // vetoer can veto the proposal iff the timelock is active/not expired
-                    if expiration.is_expired(&env.block) {
-                        return Err(ContractError::TimelockError(
-                            TimelockError::TimelockExpired {},
-                        ));
-                    }
-
-                    let old_status = prop.status;
-
-                    // Update proposal status to vetoed
-                    prop.status = Status::Vetoed;
-                    PROPOSALS.save(deps.storage, proposal_id, &prop)?;
-
-                    // Add proposal status change hooks
-                    let proposal_status_changed_hooks = proposal_status_changed_hooks(
-                        PROPOSAL_HOOKS,
-                        deps.storage,
-                        proposal_id,
-                        old_status.to_string(),
-                        prop.status.to_string(),
-                    )?;
-
-                    // Add prepropose / deposit module hook which will handle deposit refunds.
-                    let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
-                    let proposal_completed_hooks = proposal_completed_hooks(
-                        proposal_creation_policy,
-                        proposal_id,
-                        prop.status,
-                    )?;
-
-                    Ok(Response::new()
-                        .add_attribute("action", "veto")
-                        .add_attribute("proposal_id", proposal_id.to_string())
-                        .add_submessages(proposal_status_changed_hooks)
-                        .add_submessages(proposal_completed_hooks))
-                }
-                // If timelock is not configured throw error. This should never happen.
-                None => Err(ContractError::TimelockError(TimelockError::NoTimelock {})),
+            // vetoer can veto the proposal iff the timelock is active/not expired
+            if expiration.is_expired(&env.block) {
+                return Err(ContractError::TimelockError(
+                    TimelockError::TimelockExpired {},
+                ));
             }
+
+            let old_status = prop.status;
+
+            // Update proposal status to vetoed
+            prop.status = Status::Vetoed;
+            PROPOSALS.save(deps.storage, proposal_id, &prop)?;
+
+            // Add proposal status change hooks
+            let proposal_status_changed_hooks = proposal_status_changed_hooks(
+                PROPOSAL_HOOKS,
+                deps.storage,
+                proposal_id,
+                old_status.to_string(),
+                prop.status.to_string(),
+            )?;
+
+            // Add prepropose / deposit module hook which will handle deposit refunds.
+            let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
+            let proposal_completed_hooks =
+                proposal_completed_hooks(proposal_creation_policy, proposal_id, prop.status)?;
+
+            Ok(Response::new()
+                .add_attribute("action", "veto")
+                .add_attribute("proposal_id", proposal_id.to_string())
+                .add_submessages(proposal_status_changed_hooks)
+                .add_submessages(proposal_completed_hooks))
         }
         // Error if the proposal has any other status
         _ => Err(ContractError::TimelockError(
@@ -384,10 +365,13 @@ pub fn execute_execute(
             &config.dao,
             Some(prop.start_height),
         )?;
-        let vetoer_call = match prop.timelock {
-            None => false,
-            Some(timelock) => timelock.vetoer == info.sender,
-        };
+
+        // if there is no timelock, then caller is not the vetoer
+        // if there is, we validate the caller addr
+        let vetoer_call = prop
+            .timelock
+            .as_ref()
+            .map_or(false, |timelock| timelock.vetoer == info.sender);
 
         if power.is_zero() && !vetoer_call {
             return Err(ContractError::Unauthorized {});
@@ -399,21 +383,19 @@ pub fn execute_execute(
     // as it passed during its voting period.
     prop.update_status(&env.block);
     let old_status = prop.status;
-    match prop.status {
+    match &prop.status {
         Status::Passed => (),
         Status::Timelocked { expiration } => {
-            // we can only end up in `Timelocked` state if `timelock`
-            // is not `None`
-            if let Some(ref timelock) = prop.timelock {
-                // Check if the sender is the vetoer
-                match timelock.vetoer == info.sender {
-                    // if sender is the vetoer we validate the early exec flag
-                    true => timelock.check_early_execute_enabled()?,
-                    // otherwise timelock must be expired in order to execute
-                    false => {
-                        if !expiration.is_expired(&env.block) {
-                            return Err(ContractError::TimelockError(TimelockError::Timelocked {}));
-                        }
+            let timelock = prop.timelock.as_ref().ok_or(TimelockError::NoTimelock {})?;
+
+            // Check if the sender is the vetoer
+            match timelock.vetoer == info.sender {
+                // if sender is the vetoer we validate the early exec flag
+                true => timelock.check_early_execute_enabled()?,
+                // otherwise timelock must be expired in order to execute
+                false => {
+                    if !expiration.is_expired(&env.block) {
+                        return Err(ContractError::TimelockError(TimelockError::Timelocked {}));
                     }
                 }
             }

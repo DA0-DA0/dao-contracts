@@ -388,7 +388,7 @@
             ]
           },
           "early_execute": {
-            "description": "Whether or not the vetoer can excute a proposal early before the timelock duration has expired",
+            "description": "Whether or not the vetoer can execute a proposal early before the timelock duration has expired",
             "type": "boolean"
           },
           "veto_before_passed": {
@@ -1604,7 +1604,7 @@
             ]
           },
           "early_execute": {
-            "description": "Whether or not the vetoer can excute a proposal early before the timelock duration has expired",
+            "description": "Whether or not the vetoer can execute a proposal early before the timelock duration has expired",
             "type": "boolean"
           },
           "veto_before_passed": {
@@ -2138,7 +2138,7 @@
             "type": "object",
             "properties": {
               "timelock": {
-                "description": "This field was not present in DAO DAO v1. To migrate, a value must be specified.\n\nOptional delay on proposal execution",
+                "description": "This field was not present in DAO DAO v2. To migrate, a value must be specified.\n\nOptional delay on proposal execution",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Timelock"
@@ -2221,7 +2221,7 @@
             ]
           },
           "early_execute": {
-            "description": "Whether or not the vetoer can excute a proposal early before the timelock duration has expired",
+            "description": "Whether or not the vetoer can execute a proposal early before the timelock duration has expired",
             "type": "boolean"
           },
           "veto_before_passed": {
@@ -2301,7 +2301,7 @@
           ]
         },
         "timelock": {
-          "description": "Optional time delay on proposal execution",
+          "description": "Optional time delay on proposal execution during which the configured vetoer can veto the proposal.",
           "anyOf": [
             {
               "$ref": "#/definitions/Timelock"
@@ -2481,7 +2481,7 @@
               ]
             },
             "early_execute": {
-              "description": "Whether or not the vetoer can excute a proposal early before the timelock duration has expired",
+              "description": "Whether or not the vetoer can execute a proposal early before the timelock duration has expired",
               "type": "boolean"
             },
             "veto_before_passed": {
@@ -3596,7 +3596,7 @@
               ]
             },
             "early_execute": {
-              "description": "Whether or not the vetoer can excute a proposal early before the timelock duration has expired",
+              "description": "Whether or not the vetoer can execute a proposal early before the timelock duration has expired",
               "type": "boolean"
             },
             "veto_before_passed": {
@@ -4876,7 +4876,7 @@
               ]
             },
             "early_execute": {
-              "description": "Whether or not the vetoer can excute a proposal early before the timelock duration has expired",
+              "description": "Whether or not the vetoer can execute a proposal early before the timelock duration has expired",
               "type": "boolean"
             },
             "veto_before_passed": {
@@ -6141,7 +6141,7 @@
               ]
             },
             "early_execute": {
-              "description": "Whether or not the vetoer can excute a proposal early before the timelock duration has expired",
+              "description": "Whether or not the vetoer can execute a proposal early before the timelock duration has expired",
               "type": "boolean"
             },
             "veto_before_passed": {

@@ -213,7 +213,7 @@ pub enum QueryMsg {
 #[cw_serde]
 pub enum MigrateMsg {
     FromV2 {
-        /// This field was not present in DAO DAO v1. To migrate, a
+        /// This field was not present in DAO DAO v2. To migrate, a
         /// value must be specified.
         ///
         /// Optional delay on proposal execution
