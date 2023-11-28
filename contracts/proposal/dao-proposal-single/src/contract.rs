@@ -384,7 +384,7 @@ pub fn execute_execute(
             &config.dao,
             Some(prop.start_height),
         )?;
-        let vetoer_call = match config.timelock {
+        let vetoer_call = match prop.timelock {
             None => false,
             Some(timelock) => timelock.vetoer == info.sender,
         };
