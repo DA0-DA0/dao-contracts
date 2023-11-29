@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
+    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
     Response, StdResult, Storage, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
@@ -183,6 +183,14 @@ pub fn execute_propose(
         &dao_interface::msg::QueryMsg::VotingModule {},
     )?;
 
+    // Get Proposer voting power
+    let power = get_voting_power(
+        deps.as_ref(),
+        proposer.clone(),
+        &config.dao,
+        Some(env.block.height),
+    )?;
+
     // Voting modules are not required to implement this
     // query. Lacking an implementation they are active by default.
     let active_resp: IsActiveResponse = deps
@@ -200,6 +208,7 @@ pub fn execute_propose(
 
     let proposal = {
         // Limit mutability to this block.
+        // If proposer has voting power = total_power. AutoPass proposal
         let mut proposal = SingleChoiceProposal {
             title,
             description,
@@ -210,7 +219,11 @@ pub fn execute_propose(
             threshold: config.threshold,
             total_power,
             msgs,
-            status: Status::Open,
+            status: if power == total_power {
+                Status::Passed
+            } else {
+                Status::Open
+            },
             votes: Votes::zero(),
             allow_revoting: config.allow_revoting,
         };
@@ -235,7 +248,7 @@ pub fn execute_propose(
     //
     // `to_vec` is the method used by cosmwasm to convert a struct
     // into it's byte representation in storage.
-    let proposal_size = cosmwasm_std::to_json_vec(&proposal)?.len() as u64;
+    let proposal_size = cosmwasm_std::to_vec(&proposal)?.len() as u64;
     if proposal_size > MAX_PROPOSAL_SIZE {
         return Err(ContractError::ProposalTooLarge {
             size: proposal_size,
@@ -295,7 +308,7 @@ pub fn execute_execute(
         if !prop.msgs.is_empty() {
             let execute_message = WasmMsg::Execute {
                 contract_addr: config.dao.to_string(),
-                msg: to_json_binary(&dao_interface::msg::ExecuteMsg::ExecuteProposalHook {
+                msg: to_binary(&dao_interface::msg::ExecuteMsg::ExecuteProposalHook {
                     msgs: prop.msgs,
                 })?,
                 funds: vec![],
@@ -326,7 +339,7 @@ pub fn execute_execute(
     let hooks = match proposal_creation_policy {
         ProposalCreationPolicy::Anyone {} => hooks,
         ProposalCreationPolicy::Module { addr } => {
-            let msg = to_json_binary(&PreProposeHookMsg::ProposalCompletedHook {
+            let msg = to_binary(&PreProposeHookMsg::ProposalCompletedHook {
                 proposal_id,
                 new_status: prop.status,
             })?;
@@ -515,7 +528,7 @@ pub fn execute_close(
     let hooks = match proposal_creation_policy {
         ProposalCreationPolicy::Anyone {} => hooks,
         ProposalCreationPolicy::Module { addr } => {
-            let msg = to_json_binary(&PreProposeHookMsg::ProposalCompletedHook {
+            let msg = to_binary(&PreProposeHookMsg::ProposalCompletedHook {
                 proposal_id,
                 new_status: prop.status,
             })?;
@@ -730,29 +743,29 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             limit,
         } => query_reverse_proposals(deps, env, start_before, limit),
         QueryMsg::ProposalCreationPolicy {} => query_creation_policy(deps),
-        QueryMsg::ProposalHooks {} => to_json_binary(&PROPOSAL_HOOKS.query_hooks(deps)?),
-        QueryMsg::VoteHooks {} => to_json_binary(&VOTE_HOOKS.query_hooks(deps)?),
+        QueryMsg::ProposalHooks {} => to_binary(&PROPOSAL_HOOKS.query_hooks(deps)?),
+        QueryMsg::VoteHooks {} => to_binary(&VOTE_HOOKS.query_hooks(deps)?),
     }
 }
 
 pub fn query_config(deps: Deps) -> StdResult<Binary> {
     let config = CONFIG.load(deps.storage)?;
-    to_json_binary(&config)
+    to_binary(&config)
 }
 
 pub fn query_dao(deps: Deps) -> StdResult<Binary> {
     let config = CONFIG.load(deps.storage)?;
-    to_json_binary(&config.dao)
+    to_binary(&config.dao)
 }
 
 pub fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<Binary> {
     let proposal = PROPOSALS.load(deps.storage, id)?;
-    to_json_binary(&proposal.into_response(&env.block, id))
+    to_binary(&proposal.into_response(&env.block, id))
 }
 
 pub fn query_creation_policy(deps: Deps) -> StdResult<Binary> {
     let policy = CREATION_POLICY.load(deps.storage)?;
-    to_json_binary(&policy)
+    to_binary(&policy)
 }
 
 pub fn query_list_proposals(
@@ -771,7 +784,7 @@ pub fn query_list_proposals(
         .map(|(id, proposal)| proposal.into_response(&env.block, id))
         .collect();
 
-    to_json_binary(&ProposalListResponse { proposals: props })
+    to_binary(&ProposalListResponse { proposals: props })
 }
 
 pub fn query_reverse_proposals(
@@ -790,16 +803,16 @@ pub fn query_reverse_proposals(
         .map(|(id, proposal)| proposal.into_response(&env.block, id))
         .collect();
 
-    to_json_binary(&ProposalListResponse { proposals: props })
+    to_binary(&ProposalListResponse { proposals: props })
 }
 
 pub fn query_proposal_count(deps: Deps) -> StdResult<Binary> {
     let proposal_count = PROPOSAL_COUNT.load(deps.storage)?;
-    to_json_binary(&proposal_count)
+    to_binary(&proposal_count)
 }
 
 pub fn query_next_proposal_id(deps: Deps) -> StdResult<Binary> {
-    to_json_binary(&next_proposal_id(deps.storage)?)
+    to_binary(&next_proposal_id(deps.storage)?)
 }
 
 pub fn query_vote(deps: Deps, proposal_id: u64, voter: String) -> StdResult<Binary> {
@@ -811,7 +824,7 @@ pub fn query_vote(deps: Deps, proposal_id: u64, voter: String) -> StdResult<Bina
         power: ballot.power,
         rationale: ballot.rationale,
     });
-    to_json_binary(&VoteResponse { vote })
+    to_binary(&VoteResponse { vote })
 }
 
 pub fn query_list_votes(
@@ -841,12 +854,12 @@ pub fn query_list_votes(
         })
         .collect::<StdResult<Vec<_>>>()?;
 
-    to_json_binary(&VoteListResponse { votes })
+    to_binary(&VoteListResponse { votes })
 }
 
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
-    to_json_binary(&dao_interface::voting::InfoResponse { info })
+    to_binary(&dao_interface::voting::InfoResponse { info })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

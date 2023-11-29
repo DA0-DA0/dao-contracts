@@ -45,14 +45,22 @@ where
     );
 
     do_votes(
-        vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
-            position: Vote::No,
-            weight: Uint128::new(10),
-            should_execute: ShouldExecute::Yes,
-        }],
+        vec![
+            TestSingleChoiceVote {
+                voter: "zeke".to_string(),
+                position: Vote::Yes,
+                weight: Uint128::new(1),
+                should_execute: ShouldExecute::Yes,
+            },
+            TestSingleChoiceVote {
+                voter: "123".to_string(),
+                position: Vote::No,
+                weight: Uint128::new(10),
+                should_execute: ShouldExecute::Yes,
+            },
+        ],
         Threshold::AbsolutePercentage {
-            percentage: PercentageThreshold::Percent(Decimal::percent(100)),
+            percentage: PercentageThreshold::Percent(Decimal::percent(90)),
         },
         Status::Rejected,
         None,
@@ -124,12 +132,20 @@ where
     F: Fn(Vec<TestSingleChoiceVote>, Threshold, Status, Option<Uint128>),
 {
     do_votes(
-        vec![TestSingleChoiceVote {
-            voter: "zeke".to_string(),
-            position: Vote::No,
-            weight: Uint128::new(1),
-            should_execute: ShouldExecute::Yes,
-        }],
+        vec![
+            TestSingleChoiceVote {
+                voter: "zeke".to_string(),
+                position: Vote::No,
+                weight: Uint128::new(1),
+                should_execute: ShouldExecute::Yes,
+            },
+            TestSingleChoiceVote {
+                voter: "keze".to_string(),
+                position: Vote::No,
+                weight: Uint128::new(1),
+                should_execute: ShouldExecute::Yes,
+            },
+        ],
         Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Percent(Decimal::percent(100)),
         },
@@ -157,12 +173,20 @@ where
     F: Fn(Vec<TestSingleChoiceVote>, Threshold, Status, Option<Uint128>),
 {
     do_votes(
-        vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
-            position: Vote::Abstain,
-            weight: Uint128::new(u64::max_value().into()),
-            should_execute: ShouldExecute::Yes,
-        }],
+        vec![
+            TestSingleChoiceVote {
+                voter: "ekez".to_string(),
+                position: Vote::Abstain,
+                weight: Uint128::new(10),
+                should_execute: ShouldExecute::Yes,
+            },
+            TestSingleChoiceVote {
+                voter: "n1n0".to_string(),
+                position: Vote::Abstain,
+                weight: Uint128::new(10),
+                should_execute: ShouldExecute::Yes,
+            },
+        ],
         Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Percent(Decimal::percent(100)),
         },
@@ -174,12 +198,20 @@ where
     // rejected.
     for i in 0..101 {
         do_votes(
-            vec![TestSingleChoiceVote {
-                voter: "ekez".to_string(),
-                position: Vote::Abstain,
-                weight: Uint128::new(u64::max_value().into()),
-                should_execute: ShouldExecute::Yes,
-            }],
+            vec![
+                TestSingleChoiceVote {
+                    voter: "ekez".to_string(),
+                    position: Vote::Abstain,
+                    weight: Uint128::new(10),
+                    should_execute: ShouldExecute::Yes,
+                },
+                TestSingleChoiceVote {
+                    voter: "tere".to_string(),
+                    position: Vote::Abstain,
+                    weight: Uint128::new(10),
+                    should_execute: ShouldExecute::Yes,
+                },
+            ],
             Threshold::ThresholdQuorum {
                 threshold: PercentageThreshold::Percent(Decimal::percent(100)),
                 quorum: PercentageThreshold::Percent(Decimal::percent(i)),
@@ -199,12 +231,20 @@ where
     // and 1 total vote. This should round up and only pass if there
     // are more than 1 yes votes.
     do_votes(
-        vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
-            position: Vote::Yes,
-            weight: Uint128::new(1),
-            should_execute: ShouldExecute::Yes,
-        }],
+        vec![
+            TestSingleChoiceVote {
+                voter: "ekez".to_string(),
+                position: Vote::Yes,
+                weight: Uint128::new(1),
+                should_execute: ShouldExecute::Yes,
+            },
+            TestSingleChoiceVote {
+                voter: "prop1".to_string(),
+                position: Vote::Yes,
+                weight: Uint128::new(1),
+                should_execute: ShouldExecute::Yes,
+            },
+        ],
         Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Percent(Decimal::percent(1)),
         },
@@ -213,12 +253,20 @@ where
     );
 
     do_votes(
-        vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
-            position: Vote::Yes,
-            weight: Uint128::new(10),
-            should_execute: ShouldExecute::Yes,
-        }],
+        vec![
+            TestSingleChoiceVote {
+                voter: "ekez".to_string(),
+                position: Vote::Yes,
+                weight: Uint128::new(10),
+                should_execute: ShouldExecute::Yes,
+            },
+            TestSingleChoiceVote {
+                voter: "prop2".to_string(),
+                position: Vote::Yes,
+                weight: Uint128::new(10),
+                should_execute: ShouldExecute::Yes,
+            },
+        ],
         Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Percent(Decimal::percent(1)),
         },
@@ -227,6 +275,7 @@ where
     );
 
     // HIGH PERCISION
+    // This is directly passing as there is only 1 member in the DAO
     do_votes(
         vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
@@ -242,12 +291,20 @@ where
     );
 
     do_votes(
-        vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
-            position: Vote::Abstain,
-            weight: Uint128::new(1),
-            should_execute: ShouldExecute::Yes,
-        }],
+        vec![
+            TestSingleChoiceVote {
+                voter: "ekez".to_string(),
+                position: Vote::Abstain,
+                weight: Uint128::new(1),
+                should_execute: ShouldExecute::Yes,
+            },
+            TestSingleChoiceVote {
+                voter: "teze".to_string(),
+                position: Vote::Abstain,
+                weight: Uint128::new(1),
+                should_execute: ShouldExecute::Yes,
+            },
+        ],
         Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Percent(Decimal::percent(1)),
         },
