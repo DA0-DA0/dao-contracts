@@ -127,7 +127,7 @@ fn test_simple_propose_staked_balances() {
         total_power: Uint128::new(100_000_000),
         msgs: vec![],
         status: Status::Open,
-        timelock: None,
+        veto: None,
         votes: Votes::zero(),
     };
 
@@ -177,7 +177,7 @@ fn test_simple_proposal_cw4_voting() {
         total_power: Uint128::new(1),
         msgs: vec![],
         status: Status::Open,
-        timelock: None,
+        veto: None,
         votes: Votes::zero(),
     };
 
@@ -283,7 +283,7 @@ fn test_instantiate_with_non_voting_module_cw20_deposit() {
         msgs: vec![],
         status: Status::Open,
         votes: Votes::zero(),
-        timelock: None,
+        veto: None,
     };
 
     assert_eq!(created.proposal, expected);
@@ -390,7 +390,7 @@ fn test_proposal_message_timelock_execution() {
         veto_before_passed: false,
     };
     instantiate.close_proposal_on_execution_failure = false;
-    instantiate.timelock = Some(timelock.clone());
+    instantiate.veto = Some(timelock.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -448,7 +448,7 @@ fn test_proposal_message_timelock_execution() {
     // Proposal is timelocked to the moment of prop passing + timelock delay
     assert_eq!(
         proposal.proposal.status,
-        Status::Timelocked {
+        Status::VetoTimelock {
             expiration: timelock.delay.after(&app.block_info()),
         }
     );
@@ -512,7 +512,7 @@ fn test_open_proposal_veto_unauthorized() {
         early_execute: false,
         veto_before_passed: true,
     };
-    instantiate.timelock = Some(timelock.clone());
+    instantiate.veto = Some(timelock.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -577,7 +577,7 @@ fn test_open_proposal_veto_with_early_veto_flag_disabled() {
         early_execute: false,
         veto_before_passed: false,
     };
-    instantiate.timelock = Some(timelock.clone());
+    instantiate.veto = Some(timelock.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -634,7 +634,7 @@ fn test_open_proposal_veto_with_no_timelock() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
-    instantiate.timelock = None;
+    instantiate.veto = None;
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -699,7 +699,7 @@ fn test_vetoed_proposal_veto() {
         early_execute: false,
         veto_before_passed: true,
     };
-    instantiate.timelock = Some(timelock.clone());
+    instantiate.veto = Some(timelock.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -776,7 +776,7 @@ fn test_open_proposal_veto_early() {
         early_execute: false,
         veto_before_passed: true,
     };
-    instantiate.timelock = Some(timelock.clone());
+    instantiate.veto = Some(timelock.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -836,7 +836,7 @@ fn test_timelocked_proposal_veto_unauthorized() {
         early_execute: true,
         veto_before_passed: false,
     };
-    instantiate.timelock = Some(timelock.clone());
+    instantiate.veto = Some(timelock.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -890,7 +890,7 @@ fn test_timelocked_proposal_veto_unauthorized() {
     // Proposal is timelocked to the moment of prop passing + timelock delay
     assert_eq!(
         proposal.proposal.status,
-        Status::Timelocked {
+        Status::VetoTimelock {
             expiration: timelock.delay.after(&app.block_info()),
         }
     );
@@ -913,7 +913,7 @@ fn test_timelocked_proposal_veto_unauthorized() {
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(
         proposal.proposal.status,
-        Status::Timelocked {
+        Status::VetoTimelock {
             expiration: timelock.delay.after(&app.block_info()),
         }
     );
@@ -931,7 +931,7 @@ fn test_timelocked_proposal_veto_expired_timelock() {
         early_execute: true,
         veto_before_passed: false,
     };
-    instantiate.timelock = Some(timelock.clone());
+    instantiate.veto = Some(timelock.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -985,7 +985,7 @@ fn test_timelocked_proposal_veto_expired_timelock() {
     // Proposal is timelocked to the moment of prop passing + timelock delay
     assert_eq!(
         proposal.proposal.status,
-        Status::Timelocked {
+        Status::VetoTimelock {
             expiration: timelock.delay.after(&app.block_info()),
         }
     );
@@ -1020,7 +1020,7 @@ fn test_timelocked_proposal_execute_no_early_exec() {
         early_execute: false,
         veto_before_passed: false,
     };
-    instantiate.timelock = Some(timelock.clone());
+    instantiate.veto = Some(timelock.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -1068,7 +1068,7 @@ fn test_timelocked_proposal_execute_no_early_exec() {
     // Proposal is timelocked to the moment of prop passing + timelock delay
     assert_eq!(
         proposal.proposal.status,
-        Status::Timelocked {
+        Status::VetoTimelock {
             expiration: timelock.delay.after(&app.block_info()),
         }
     );
@@ -1101,7 +1101,7 @@ fn test_timelocked_proposal_execute_early() {
         early_execute: true,
         veto_before_passed: false,
     };
-    instantiate.timelock = Some(timelock.clone());
+    instantiate.veto = Some(timelock.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -1149,7 +1149,7 @@ fn test_timelocked_proposal_execute_early() {
     // Proposal is timelocked to the moment of prop passing + timelock delay
     assert_eq!(
         proposal.proposal.status,
-        Status::Timelocked {
+        Status::VetoTimelock {
             expiration: timelock.delay.after(&app.block_info()),
         }
     );
@@ -1185,7 +1185,7 @@ fn test_timelocked_proposal_execute_active_timelock_unauthorized() {
         early_execute: true,
         veto_before_passed: false,
     };
-    instantiate.timelock = Some(timelock.clone());
+    instantiate.veto = Some(timelock.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -1233,7 +1233,7 @@ fn test_timelocked_proposal_execute_active_timelock_unauthorized() {
     // Proposal is timelocked to the moment of prop passing + timelock delay
     assert_eq!(
         proposal.proposal.status,
-        Status::Timelocked {
+        Status::VetoTimelock {
             expiration: timelock.delay.after(&app.block_info()),
         }
     );
@@ -1273,7 +1273,7 @@ fn test_timelocked_proposal_execute_expired_timelock_not_vetoer() {
         early_execute: true,
         veto_before_passed: false,
     };
-    instantiate.timelock = Some(timelock.clone());
+    instantiate.veto = Some(timelock.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -1320,7 +1320,7 @@ fn test_timelocked_proposal_execute_expired_timelock_not_vetoer() {
 
     // Proposal is timelocked to the moment of prop passing + timelock delay
     let expiration = timelock.delay.after(&app.block_info());
-    assert_eq!(proposal.proposal.status, Status::Timelocked { expiration });
+    assert_eq!(proposal.proposal.status, Status::VetoTimelock { expiration });
 
     app.update_block(|b| b.time = b.time.plus_seconds(201));
     // assert timelock is expired
@@ -1350,7 +1350,7 @@ fn test_proposal_message_timelock_veto() {
         early_execute: false,
         veto_before_passed: false,
     };
-    instantiate.timelock = Some(timelock.clone());
+    instantiate.veto = Some(timelock.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -1419,7 +1419,7 @@ fn test_proposal_message_timelock_veto() {
     // Proposal is timelocked to the moment of prop passing + timelock delay
     assert_eq!(
         proposal.proposal.status,
-        Status::Timelocked {
+        Status::VetoTimelock {
             expiration: timelock.delay.after(&app.block_info()),
         }
     );
@@ -1466,7 +1466,7 @@ fn test_proposal_message_timelock_early_execution() {
         early_execute: true,
         veto_before_passed: false,
     };
-    instantiate.timelock = Some(timelock.clone());
+    instantiate.veto = Some(timelock.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -1524,7 +1524,7 @@ fn test_proposal_message_timelock_early_execution() {
     // Proposal is timelocked to the moment of prop passing + timelock delay
     assert_eq!(
         proposal.proposal.status,
-        Status::Timelocked {
+        Status::VetoTimelock {
             expiration: timelock.delay.after(&app.block_info()),
         }
     );
@@ -1542,7 +1542,7 @@ fn test_proposal_message_timelock_veto_before_passed() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
-    instantiate.timelock = Some(Timelock {
+    instantiate.veto = Some(Timelock {
         delay: Duration::Time(100),
         vetoer: "oversight".to_string(),
         early_execute: false,
@@ -1814,7 +1814,7 @@ fn test_update_config() {
         vec![WasmMsg::Execute {
             contract_addr: proposal_module.to_string(),
             msg: to_json_binary(&ExecuteMsg::UpdateConfig {
-                timelock: Some(Timelock {
+                veto: Some(Timelock {
                     delay: Duration::Time(100),
                     vetoer: CREATOR_ADDR.to_string(),
                     early_execute: false,
@@ -1848,7 +1848,7 @@ fn test_update_config() {
     assert_eq!(
         config,
         Config {
-            timelock: Some(Timelock {
+            veto: Some(Timelock {
                 delay: Duration::Time(100),
                 vetoer: CREATOR_ADDR.to_string(),
                 early_execute: false,
@@ -1872,7 +1872,7 @@ fn test_update_config() {
             Addr::unchecked(CREATOR_ADDR),
             proposal_module,
             &&ExecuteMsg::UpdateConfig {
-                timelock: None,
+                veto: None,
                 threshold: Threshold::AbsoluteCount {
                     threshold: Uint128::new(10_000),
                 },
@@ -1967,7 +1967,7 @@ fn test_anyone_may_propose_and_proposal_listing() {
                     no: Uint128::zero(),
                     abstain: Uint128::zero()
                 },
-                timelock: None
+                veto: None
             }
         }
     )
@@ -2434,7 +2434,7 @@ fn test_allow_revoting_config_changes() {
         core_addr.clone(),
         proposal_module.clone(),
         &ExecuteMsg::UpdateConfig {
-            timelock: None,
+            veto: None,
             threshold: Threshold::ThresholdQuorum {
                 quorum: PercentageThreshold::Percent(Decimal::percent(15)),
                 threshold: PercentageThreshold::Majority {},
@@ -2738,7 +2738,7 @@ fn test_proposal_count_initialized_to_zero() {
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         InstantiateMsg {
-            timelock: None,
+            veto: None,
             threshold: Threshold::ThresholdQuorum {
                 threshold: PercentageThreshold::Majority {},
                 quorum: PercentageThreshold::Percent(Decimal::percent(10)),
@@ -3146,7 +3146,7 @@ fn test_execution_failed() {
         core_addr,
         proposal_module.clone(),
         &ExecuteMsg::UpdateConfig {
-            timelock: None,
+            veto: None,
             threshold: config.threshold,
             max_voting_period: config.max_voting_period,
             min_voting_period: config.min_voting_period,
@@ -3218,7 +3218,7 @@ fn test_reply_proposal_mock() {
                 total_power: Uint128::new(100_000_000),
                 msgs: vec![],
                 status: Status::Open,
-                timelock: None,
+                veto: None,
                 votes: Votes::zero(),
             },
         )

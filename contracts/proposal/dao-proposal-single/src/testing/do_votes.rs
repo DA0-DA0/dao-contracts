@@ -134,7 +134,7 @@ where
 
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
-        timelock: None,
+        veto: None,
         threshold,
         max_voting_period,
         min_voting_period: None,

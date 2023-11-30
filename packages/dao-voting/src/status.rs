@@ -19,7 +19,7 @@ pub enum Status {
     ExecutionFailed,
     /// The proposal is timelocked. Only the configured vetoer
     /// can execute or veto until the timelock expires.
-    Timelocked { expiration: Expiration },
+    VetoTimelock { expiration: Expiration },
     /// The proposal has been vetoed.
     Vetoed,
 }
@@ -33,7 +33,7 @@ impl std::fmt::Display for Status {
             Status::Executed => write!(f, "executed"),
             Status::Closed => write!(f, "closed"),
             Status::ExecutionFailed => write!(f, "execution_failed"),
-            Status::Timelocked { expiration } => write!(f, "timelocked_until {:?}", expiration),
+            Status::VetoTimelock { expiration } => write!(f, "veto_timelock_until_{:?}", expiration),
             Status::Vetoed => write!(f, "vetoed"),
         }
     }

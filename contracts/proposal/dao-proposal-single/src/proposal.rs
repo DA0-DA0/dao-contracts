@@ -41,8 +41,9 @@ pub struct SingleChoiceProposal {
     /// Whether or not revoting is enabled. If revoting is enabled, a proposal
     /// cannot pass until the voting period has elapsed.
     pub allow_revoting: bool,
-    /// Timelock info, if configured enables veto
-    pub timelock: Option<Timelock>,
+    /// Optional veto configuration. If set to `None`, veto option
+    /// is disabled. Otherwise contains the configuration for veto flow.
+    pub veto: Option<Timelock>,
 }
 
 pub fn next_proposal_id(store: &dyn Storage) -> StdResult<u64> {
@@ -71,10 +72,10 @@ impl SingleChoiceProposal {
     /// Gets the current status of the proposal.
     pub fn current_status(&self, block: &BlockInfo) -> Status {
         match self.status {
-            Status::Open if self.is_passed(block) => match &self.timelock {
+            Status::Open if self.is_passed(block) => match &self.veto {
                 // if prop is passed and time lock is configured,
                 // calculate lock expiration and set status to `Timelocked`.
-                Some(timelock) => Status::Timelocked {
+                Some(timelock) => Status::VetoTimelock {
                     expiration: timelock.delay.after(block),
                 },
                 // Otherwise the proposal is simply passed
@@ -290,7 +291,7 @@ mod test {
             msgs: vec![],
             status: Status::Open,
             threshold,
-            timelock: None,
+            veto: None,
             total_power,
             votes,
         };

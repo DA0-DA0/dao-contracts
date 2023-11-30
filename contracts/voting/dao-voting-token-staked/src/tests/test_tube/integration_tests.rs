@@ -396,7 +396,7 @@ fn test_factory() {
                 only_members_execute: true,
                 close_proposal_on_execution_failure: false,
                 pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
-                timelock: None,
+                veto: None,
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
@@ -506,7 +506,7 @@ fn test_factory_funds_pass_through() {
                 only_members_execute: true,
                 close_proposal_on_execution_failure: false,
                 pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
-                timelock: None,
+                veto: None,
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
@@ -632,7 +632,7 @@ fn test_factory_no_callback() {
                 only_members_execute: true,
                 close_proposal_on_execution_failure: false,
                 pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
-                timelock: None,
+                veto: None,
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
@@ -713,7 +713,7 @@ fn test_factory_wrong_callback() {
                 only_members_execute: true,
                 close_proposal_on_execution_failure: false,
                 pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
-                timelock: None,
+                veto: None,
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),

@@ -375,7 +375,7 @@ fn test_v2_v3_full_migration() {
                     WasmMsg::Migrate {
                         contract_addr: proposal.to_string(),
                         new_code_id: v3_proposal_code,
-                        msg: to_json_binary(&crate::msg::MigrateMsg::FromV2 { timelock: None })
+                        msg: to_json_binary(&crate::msg::MigrateMsg::FromV2 { veto: None })
                             .unwrap(),
                     }
                     .into(),
@@ -502,7 +502,7 @@ fn test_v2_v3_full_migration() {
     assert_eq!(config.max_voting_period, config_v2.max_voting_period);
     assert_eq!(config.min_voting_period, config_v2.min_voting_period);
     assert_eq!(config.only_members_execute, config_v2.only_members_execute);
-    assert_eq!(config.timelock, None);
+    assert_eq!(config.veto, None);
 
     // query migrated proposals
     let proposals_v3: crate::query::ProposalListResponse = app
@@ -555,6 +555,6 @@ fn test_v2_v3_full_migration() {
             prop_v2.proposal.allow_revoting,
             migrated_prop.proposal.allow_revoting
         );
-        assert_eq!(None, migrated_prop.proposal.timelock);
+        assert_eq!(None, migrated_prop.proposal.veto);
     }
 }

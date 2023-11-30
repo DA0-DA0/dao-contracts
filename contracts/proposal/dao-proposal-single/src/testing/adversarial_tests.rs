@@ -160,7 +160,7 @@ pub fn test_executed_prop_state_remains_after_vote_swing() {
     let mut app = App::default();
 
     let instantiate = InstantiateMsg {
-        timelock: None,
+        veto: None,
         threshold: AbsolutePercentage {
             percentage: PercentageThreshold::Percent(Decimal::percent(15)),
         },
@@ -257,7 +257,7 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
     let mut app = App::default();
 
     let instantiate = InstantiateMsg {
-        timelock: None,
+        veto: None,
         threshold: AbsolutePercentage {
             percentage: PercentageThreshold::Percent(Decimal::percent(15)),
         },

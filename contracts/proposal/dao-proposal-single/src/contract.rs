@@ -72,7 +72,7 @@ pub fn instantiate(
         dao: dao.clone(),
         allow_revoting: msg.allow_revoting,
         close_proposal_on_execution_failure: msg.close_proposal_on_execution_failure,
-        timelock: msg.timelock,
+        veto: msg.veto,
     };
 
     // Initialize proposal count to zero so that queries return zero
@@ -120,7 +120,7 @@ pub fn execute(
             allow_revoting,
             dao,
             close_proposal_on_execution_failure,
-            timelock,
+            veto,
         } => execute_update_config(
             deps,
             info,
@@ -131,7 +131,7 @@ pub fn execute(
             allow_revoting,
             dao,
             close_proposal_on_execution_failure,
-            timelock,
+            veto,
         ),
         ExecuteMsg::UpdatePreProposeInfo { info: new_info } => {
             execute_update_proposal_creation_policy(deps, info, new_info)
@@ -215,7 +215,7 @@ pub fn execute_propose(
             status: Status::Open,
             votes: Votes::zero(),
             allow_revoting: config.allow_revoting,
-            timelock: config.timelock,
+            veto: config.veto,
         };
         // Update the proposal's status. Addresses case where proposal
         // expires on the same block as it is created.
@@ -272,7 +272,7 @@ pub fn execute_veto(
     prop.update_status(&env.block);
     let old_status = prop.status;
 
-    let timelock = prop.timelock.as_ref().ok_or(TimelockError::NoTimelock {})?;
+    let timelock = prop.veto.as_ref().ok_or(TimelockError::NoTimelock {})?;
 
     // Check sender is vetoer
     timelock.check_is_vetoer(&info)?;
@@ -306,7 +306,7 @@ pub fn execute_veto(
                 .add_submessages(proposal_status_changed_hooks)
                 .add_submessages(proposal_completed_hooks))
         }
-        Status::Timelocked { expiration } => {
+        Status::VetoTimelock { expiration } => {
             // vetoer can veto the proposal iff the timelock is active/not expired
             if expiration.is_expired(&env.block) {
                 return Err(ContractError::TimelockError(
@@ -339,7 +339,7 @@ pub fn execute_veto(
                 .add_submessages(proposal_completed_hooks))
         }
         // Error if the proposal has any other status
-        _ => Err(ContractError::TimelockError(
+        _ => Err(ContractError:: TimelockError(
             TimelockError::InvalidProposalStatus {
                 status: prop.status.to_string(),
             },
@@ -369,7 +369,7 @@ pub fn execute_execute(
         // if there is no timelock, then caller is not the vetoer
         // if there is, we validate the caller addr
         let vetoer_call = prop
-            .timelock
+            .veto
             .as_ref()
             .map_or(false, |timelock| timelock.vetoer == info.sender);
 
@@ -385,8 +385,8 @@ pub fn execute_execute(
     let old_status = prop.status;
     match &prop.status {
         Status::Passed => (),
-        Status::Timelocked { expiration } => {
-            let timelock = prop.timelock.as_ref().ok_or(TimelockError::NoTimelock {})?;
+        Status::VetoTimelock { expiration } => {
+            let timelock = prop.veto.as_ref().ok_or(TimelockError::NoTimelock {})?;
 
             // Check if the sender is the vetoer
             match timelock.vetoer == info.sender {
@@ -638,7 +638,7 @@ pub fn execute_update_config(
     allow_revoting: bool,
     dao: String,
     close_proposal_on_execution_failure: bool,
-    timelock: Option<Timelock>,
+    veto: Option<Timelock>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -652,8 +652,8 @@ pub fn execute_update_config(
     let (min_voting_period, max_voting_period) =
         validate_voting_period(min_voting_period, max_voting_period)?;
 
-    if let Some(ref timelock) = timelock {
-        // If timelock configured, validate the vetoer address
+    if let Some(ref timelock) = veto {
+        // If veto is enabled, validate the vetoer address
         deps.api.addr_validate(&timelock.vetoer)?;
     }
 
@@ -667,7 +667,7 @@ pub fn execute_update_config(
             allow_revoting,
             dao,
             close_proposal_on_execution_failure,
-            timelock,
+            veto,
         },
     )?;
 
@@ -923,7 +923,7 @@ pub fn query_list_votes(
 
     let votes = BALLOTS
         .prefix(proposal_id)
-        .range(deps.storage, min, None, cosmwasm_std::Order::Ascending)
+        .range(deps.storage, min, None, Order::Ascending)
         .take(limit as usize)
         .map(|item| {
             let (voter, ballot) = item?;
@@ -950,7 +950,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     match msg {
-        MigrateMsg::FromV2 { timelock } => {
+        MigrateMsg::FromV2 { veto } => {
             let version_2 = Version::new(2, 0, 0);
 
             // `CONTRACT_VERSION` here is from the data section of the
@@ -985,7 +985,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                     dao: current_config.dao.clone(),
                     close_proposal_on_execution_failure: current_config
                         .close_proposal_on_execution_failure,
-                    timelock,
+                    veto,
                 },
             )?;
 
@@ -1021,7 +1021,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                         status: v2_status_to_v3(prop.status),
                         votes: v2_votes_to_v3(prop.votes),
                         allow_revoting: prop.allow_revoting,
-                        timelock: None,
+                        veto: None,
                     };
 
                     PROPOSALS

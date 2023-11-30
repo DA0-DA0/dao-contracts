@@ -38,11 +38,12 @@ pub struct InstantiateMsg {
     /// remain open until the DAO's treasury was large enough for it to be
     /// executed.
     pub close_proposal_on_execution_failure: bool,
-    /// Optional time delay on proposal execution
-    /// If set, proposals can only executed after the delay has passed
-    /// During this period an oversight account
-    /// can veto a proposal
-    pub timelock: Option<Timelock>,
+    /// Optional veto configuration for proposal execution.
+    /// If set, proposals can only be executed after the timelock
+    /// delay expiration.
+    /// During this period an oversight account (`veto.vetoer`) can
+    /// veto the proposal.
+    pub veto: Option<Timelock>,
 }
 
 #[cw_serde]
@@ -122,7 +123,7 @@ pub enum ExecuteMsg {
         close_proposal_on_execution_failure: bool,
         /// Optional time delay on proposal execution, during which the
         /// proposal maybe vetoed
-        timelock: Option<Timelock>,
+        veto: Option<Timelock>,
     },
     /// Update's the proposal creation policy used for this
     /// module. Only the DAO may call this method.
@@ -216,8 +217,8 @@ pub enum MigrateMsg {
         /// This field was not present in DAO DAO v2. To migrate, a
         /// value must be specified.
         ///
-        /// Optional delay on proposal execution
-        timelock: Option<Timelock>,
+        /// optional configuration for veto feature
+        veto: Option<Timelock>,
     },
     FromCompatible {},
 }
