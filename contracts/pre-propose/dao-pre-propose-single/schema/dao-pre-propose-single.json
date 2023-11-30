@@ -1075,10 +1075,10 @@
             "description": "The proposal is timelocked. Only the configured vetoer can execute or veto until the timelock expires.",
             "type": "object",
             "required": [
-              "timelocked"
+              "veto_timelock"
             ],
             "properties": {
-              "timelocked": {
+              "veto_timelock": {
                 "type": "object",
                 "required": [
                   "expiration"
