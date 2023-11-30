@@ -290,7 +290,7 @@ where
             && new_status != Status::Executed
             && new_status != Status::Vetoed
         {
-            return Err(PreProposeError::NotClosedOrExecuted { status: new_status });
+            return Err(PreProposeError::NotCompleted { status: new_status });
         }
 
         match self.deposits.may_load(deps.storage, id)? {
