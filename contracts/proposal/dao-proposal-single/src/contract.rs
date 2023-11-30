@@ -268,6 +268,10 @@ pub fn execute_veto(
         .may_load(deps.storage, proposal_id)?
         .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
 
+    // ensure status is up to date
+    prop.update_status(&env.block);
+    let old_status = prop.status;
+
     let timelock = prop.timelock.as_ref().ok_or(TimelockError::NoTimelock {})?;
 
     // Check sender is vetoer
@@ -277,8 +281,6 @@ pub fn execute_veto(
         Status::Open => {
             // Veto prop only if veto_before_passed is true
             timelock.check_veto_before_passed_enabled()?;
-
-            let old_status = prop.status;
 
             // Update proposal status to vetoed
             prop.status = Status::Vetoed;
@@ -311,8 +313,6 @@ pub fn execute_veto(
                     TimelockError::TimelockExpired {},
                 ));
             }
-
-            let old_status = prop.status;
 
             // Update proposal status to vetoed
             prop.status = Status::Vetoed;
