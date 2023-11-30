@@ -4,7 +4,7 @@ use cw_hooks::Hooks;
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
 use dao_voting::{
-    pre_propose::ProposalCreationPolicy, threshold::Threshold, timelock::Timelock, voting::Vote,
+    pre_propose::ProposalCreationPolicy, threshold::Threshold, veto::VetoConfig, voting::Vote,
 };
 
 use crate::proposal::SingleChoiceProposal;
@@ -60,7 +60,7 @@ pub struct Config {
     pub close_proposal_on_execution_failure: bool,
     /// Optional veto configuration. If set to `None`, veto option
     /// is disabled. Otherwise contains the configuration for veto flow.
-    pub veto: Option<Timelock>,
+    pub veto: Option<VetoConfig>,
 }
 
 /// The current top level config for the module.  The "config" key was

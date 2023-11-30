@@ -33,7 +33,9 @@ impl std::fmt::Display for Status {
             Status::Executed => write!(f, "executed"),
             Status::Closed => write!(f, "closed"),
             Status::ExecutionFailed => write!(f, "execution_failed"),
-            Status::VetoTimelock { expiration } => write!(f, "veto_timelock_until_{:?}", expiration),
+            Status::VetoTimelock { expiration } => {
+                write!(f, "veto_timelock_until_{:?}", expiration)
+            }
             Status::Vetoed => write!(f, "vetoed"),
         }
     }

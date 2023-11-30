@@ -9,5 +9,5 @@ pub mod proposal;
 pub mod reply;
 pub mod status;
 pub mod threshold;
-pub mod timelock;
+pub mod veto;
 pub mod voting;

@@ -62,27 +62,27 @@ Revoting for the currently cast option will return an error.
 
 ## Veto
 
-Proposals may be configured with an optional `Timelock` - a configuration describing
+Proposals may be configured with an optional `VetoConfig` - a configuration describing
 the veto flow.
 
-Timelock period enables an oversight committee to hold the main DAO accountable
-by vetoing proposals during (and potentially before entering into) the timelock
-period.
+VetoConfig timelock period enables an oversight committee to hold the main DAO 
+accountable by vetoing proposals during (and potentially before entering into) 
+the timelock period.
 
 No actions from DAO members are allowed during the timelock period.
 
 After the timelock expires, the proposal can be executed normally.
 
-Timelock contains the following fields:
+`VetoConfig` contains the following fields:
 
-### `delay`
+### `timelock_duration`
 
-Delay (`cw_utils::Duration`) describes the duration of timelock in blocks
-or seconds.
+Timelock duration (`cw_utils::Duration`) describes the duration of timelock
+in blocks or seconds.
 
 It comes into effect when a proposal is passed. The delay duration is then
 added to the current block time/height to get `Expiration` to be used for
-the new proposal state of `Timelocked { expiration: Expiration}`.
+the new proposal state of `VetoTimelock { expiration: Expiration}`.
 
 If the vetoer address is another DAO, this duration should be carefully
 considered because of the DAO voting period.
@@ -90,7 +90,7 @@ considered because of the DAO voting period.
 ### `vetoer`
 
 Vetoer (`String`) is the address allowed to veto the proposals that are in
-`Timelocked` state.
+`VetoTimelock` state.
 
 Vetoer address can be updated via a regular proposal config update.
 
@@ -102,7 +102,7 @@ allow multiple accounts to veto the prop.
 
 Early execute (`bool`) is a flag used to indicate whether the vetoer can
 execute the proposals before the timelock period is expired. The proposals
-still need to be passed and in the `Timelock` state in order for this to
+still need to be passed and in the `VetoTimelock` state in order for this to
 be possible.
 
 ### `veto_before_passed`

@@ -25,7 +25,7 @@ use dao_voting::{
     },
     status::Status,
     threshold::{ActiveThreshold, PercentageThreshold, Threshold},
-    timelock::{Timelock, TimelockError},
+    veto::{VetoConfig, VetoError},
     voting::{Vote, Votes},
 };
 
@@ -383,14 +383,14 @@ fn test_proposal_message_execution() {
 fn test_proposal_message_timelock_execution() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
-    let timelock = Timelock {
-        delay: Duration::Time(100),
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Time(100),
         vetoer: "oversight".to_string(),
         early_execute: false,
         veto_before_passed: false,
     };
     instantiate.close_proposal_on_execution_failure = false;
-    instantiate.veto = Some(timelock.clone());
+    instantiate.veto = Some(veto_config.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -449,7 +449,7 @@ fn test_proposal_message_timelock_execution() {
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: timelock.delay.after(&app.block_info()),
+            expiration: veto_config.timelock_duration.after(&app.block_info()),
         }
     );
 
@@ -467,10 +467,7 @@ fn test_proposal_message_timelock_execution() {
         .unwrap_err()
         .downcast()
         .unwrap();
-    assert_eq!(
-        err,
-        ContractError::TimelockError(TimelockError::NoEarlyExecute {})
-    );
+    assert_eq!(err, ContractError::VetoError(VetoError::NoEarlyExecute {}));
 
     // Proposal cannot be excuted before timelock expires
     let err: ContractError = app
@@ -484,10 +481,7 @@ fn test_proposal_message_timelock_execution() {
         .downcast()
         .unwrap();
 
-    assert_eq!(
-        err,
-        ContractError::TimelockError(TimelockError::Timelocked {})
-    );
+    assert_eq!(err, ContractError::VetoError(VetoError::Timelocked {}));
 
     // Time passes
     app.update_block(|block| {
@@ -506,13 +500,13 @@ fn test_open_proposal_veto_unauthorized() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
-    let timelock = Timelock {
-        delay: Duration::Time(100),
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Time(100),
         vetoer: "oversight".to_string(),
         early_execute: false,
         veto_before_passed: true,
     };
-    instantiate.veto = Some(timelock.clone());
+    instantiate.veto = Some(veto_config.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -559,10 +553,7 @@ fn test_open_proposal_veto_unauthorized() {
         .unwrap_err()
         .downcast()
         .unwrap();
-    assert_eq!(
-        err,
-        ContractError::TimelockError(TimelockError::Unauthorized {})
-    );
+    assert_eq!(err, ContractError::VetoError(VetoError::Unauthorized {}));
 }
 
 // open proposal can only be vetoed if `veto_before_passed` flag is enabled
@@ -571,13 +562,13 @@ fn test_open_proposal_veto_with_early_veto_flag_disabled() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
-    let timelock = Timelock {
-        delay: Duration::Time(100),
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Time(100),
         vetoer: "oversight".to_string(),
         early_execute: false,
         veto_before_passed: false,
     };
-    instantiate.veto = Some(timelock.clone());
+    instantiate.veto = Some(veto_config.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -625,7 +616,7 @@ fn test_open_proposal_veto_with_early_veto_flag_disabled() {
         .unwrap();
     assert_eq!(
         err,
-        ContractError::TimelockError(TimelockError::NoVetoBeforePassed {})
+        ContractError::VetoError(VetoError::NoVetoBeforePassed {})
     );
 }
 
@@ -682,7 +673,7 @@ fn test_open_proposal_veto_with_no_timelock() {
         .unwrap();
     assert_eq!(
         err,
-        ContractError::TimelockError(TimelockError::NoTimelock {})
+        ContractError::VetoError(VetoError::NoVetoConfiguration {})
     );
 }
 
@@ -693,13 +684,13 @@ fn test_vetoed_proposal_veto() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
-    let timelock = Timelock {
-        delay: Duration::Time(100),
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Time(100),
         vetoer: "oversight".to_string(),
         early_execute: false,
         veto_before_passed: true,
     };
-    instantiate.veto = Some(timelock.clone());
+    instantiate.veto = Some(veto_config.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -758,7 +749,7 @@ fn test_vetoed_proposal_veto() {
         .unwrap();
 
     assert_eq!(
-        ContractError::TimelockError(TimelockError::InvalidProposalStatus {
+        ContractError::VetoError(VetoError::InvalidProposalStatus {
             status: "vetoed".to_string()
         }),
         err,
@@ -770,13 +761,13 @@ fn test_open_proposal_veto_early() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
-    let timelock = Timelock {
-        delay: Duration::Time(100),
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Time(100),
         vetoer: "oversight".to_string(),
         early_execute: false,
         veto_before_passed: true,
     };
-    instantiate.veto = Some(timelock.clone());
+    instantiate.veto = Some(veto_config.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -830,13 +821,13 @@ fn test_timelocked_proposal_veto_unauthorized() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
-    let timelock = Timelock {
-        delay: Duration::Time(100),
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Time(100),
         vetoer: "oversight".to_string(),
         early_execute: true,
         veto_before_passed: false,
     };
-    instantiate.veto = Some(timelock.clone());
+    instantiate.veto = Some(veto_config.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -891,7 +882,7 @@ fn test_timelocked_proposal_veto_unauthorized() {
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: timelock.delay.after(&app.block_info()),
+            expiration: veto_config.timelock_duration.after(&app.block_info()),
         }
     );
 
@@ -906,15 +897,12 @@ fn test_timelocked_proposal_veto_unauthorized() {
         .downcast()
         .unwrap();
 
-    assert_eq!(
-        err,
-        ContractError::TimelockError(TimelockError::Unauthorized {}),
-    );
+    assert_eq!(err, ContractError::VetoError(VetoError::Unauthorized {}),);
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: timelock.delay.after(&app.block_info()),
+            expiration: veto_config.timelock_duration.after(&app.block_info()),
         }
     );
 }
@@ -925,13 +913,13 @@ fn test_timelocked_proposal_veto_expired_timelock() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
-    let timelock = Timelock {
-        delay: Duration::Time(100),
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Time(100),
         vetoer: "oversight".to_string(),
         early_execute: true,
         veto_before_passed: false,
     };
-    instantiate.veto = Some(timelock.clone());
+    instantiate.veto = Some(veto_config.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -986,7 +974,7 @@ fn test_timelocked_proposal_veto_expired_timelock() {
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: timelock.delay.after(&app.block_info()),
+            expiration: veto_config.timelock_duration.after(&app.block_info()),
         }
     );
     app.update_block(|b| b.time = b.time.plus_seconds(200));
@@ -1002,10 +990,7 @@ fn test_timelocked_proposal_veto_expired_timelock() {
         .downcast()
         .unwrap();
 
-    assert_eq!(
-        err,
-        ContractError::TimelockError(TimelockError::TimelockExpired {}),
-    );
+    assert_eq!(err, ContractError::VetoError(VetoError::TimelockExpired {}),);
 }
 
 // vetoer can only exec timelocked prop if the early exec flag is enabled
@@ -1014,13 +999,13 @@ fn test_timelocked_proposal_execute_no_early_exec() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
-    let timelock = Timelock {
-        delay: Duration::Time(100),
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Time(100),
         vetoer: "oversight".to_string(),
         early_execute: false,
         veto_before_passed: false,
     };
-    instantiate.veto = Some(timelock.clone());
+    instantiate.veto = Some(veto_config.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -1069,7 +1054,7 @@ fn test_timelocked_proposal_execute_no_early_exec() {
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: timelock.delay.after(&app.block_info()),
+            expiration: veto_config.timelock_duration.after(&app.block_info()),
         }
     );
 
@@ -1084,10 +1069,7 @@ fn test_timelocked_proposal_execute_no_early_exec() {
         .downcast()
         .unwrap();
 
-    assert_eq!(
-        err,
-        ContractError::TimelockError(TimelockError::NoEarlyExecute {}),
-    );
+    assert_eq!(err, ContractError::VetoError(VetoError::NoEarlyExecute {}),);
 }
 
 #[test]
@@ -1095,13 +1077,13 @@ fn test_timelocked_proposal_execute_early() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
-    let timelock = Timelock {
-        delay: Duration::Time(100),
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Time(100),
         vetoer: "oversight".to_string(),
         early_execute: true,
         veto_before_passed: false,
     };
-    instantiate.veto = Some(timelock.clone());
+    instantiate.veto = Some(veto_config.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -1150,13 +1132,13 @@ fn test_timelocked_proposal_execute_early() {
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: timelock.delay.after(&app.block_info()),
+            expiration: veto_config.timelock_duration.after(&app.block_info()),
         }
     );
 
     // assert timelock is active
-    assert!(!timelock
-        .delay
+    assert!(!veto_config
+        .timelock_duration
         .after(&app.block_info())
         .is_expired(&app.block_info()));
     mint_natives(&mut app, core_addr.as_str(), coins(10, "ujuno"));
@@ -1179,13 +1161,13 @@ fn test_timelocked_proposal_execute_active_timelock_unauthorized() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
-    let timelock = Timelock {
-        delay: Duration::Time(100),
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Time(100),
         vetoer: "oversight".to_string(),
         early_execute: true,
         veto_before_passed: false,
     };
-    instantiate.veto = Some(timelock.clone());
+    instantiate.veto = Some(veto_config.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -1234,13 +1216,13 @@ fn test_timelocked_proposal_execute_active_timelock_unauthorized() {
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: timelock.delay.after(&app.block_info()),
+            expiration: veto_config.timelock_duration.after(&app.block_info()),
         }
     );
 
     // assert timelock is active
-    assert!(!timelock
-        .delay
+    assert!(!veto_config
+        .timelock_duration
         .after(&app.block_info())
         .is_expired(&app.block_info()));
 
@@ -1255,10 +1237,7 @@ fn test_timelocked_proposal_execute_active_timelock_unauthorized() {
         .downcast()
         .unwrap();
 
-    assert_eq!(
-        err,
-        ContractError::TimelockError(TimelockError::Timelocked {}),
-    );
+    assert_eq!(err, ContractError::VetoError(VetoError::Timelocked {}),);
 }
 
 // anyone can exec the prop after the timelock expires
@@ -1267,13 +1246,13 @@ fn test_timelocked_proposal_execute_expired_timelock_not_vetoer() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
-    let timelock = Timelock {
-        delay: Duration::Time(100),
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Time(100),
         vetoer: "oversight".to_string(),
         early_execute: true,
         veto_before_passed: false,
     };
-    instantiate.veto = Some(timelock.clone());
+    instantiate.veto = Some(veto_config.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -1319,8 +1298,11 @@ fn test_timelocked_proposal_execute_expired_timelock_not_vetoer() {
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
 
     // Proposal is timelocked to the moment of prop passing + timelock delay
-    let expiration = timelock.delay.after(&app.block_info());
-    assert_eq!(proposal.proposal.status, Status::VetoTimelock { expiration });
+    let expiration = veto_config.timelock_duration.after(&app.block_info());
+    assert_eq!(
+        proposal.proposal.status,
+        Status::VetoTimelock { expiration }
+    );
 
     app.update_block(|b| b.time = b.time.plus_seconds(201));
     // assert timelock is expired
@@ -1344,13 +1326,13 @@ fn test_proposal_message_timelock_veto() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
-    let timelock = Timelock {
-        delay: Duration::Time(100),
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Time(100),
         vetoer: "oversight".to_string(),
         early_execute: false,
         veto_before_passed: false,
     };
-    instantiate.veto = Some(timelock.clone());
+    instantiate.veto = Some(veto_config.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -1403,7 +1385,7 @@ fn test_proposal_message_timelock_veto() {
         .unwrap();
     assert_eq!(
         err,
-        ContractError::TimelockError(TimelockError::NoVetoBeforePassed {})
+        ContractError::VetoError(VetoError::NoVetoBeforePassed {})
     );
 
     // Vote on proposal to pass it
@@ -1420,7 +1402,7 @@ fn test_proposal_message_timelock_veto() {
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: timelock.delay.after(&app.block_info()),
+            expiration: veto_config.timelock_duration.after(&app.block_info()),
         }
     );
 
@@ -1437,10 +1419,7 @@ fn test_proposal_message_timelock_veto() {
         .unwrap_err()
         .downcast()
         .unwrap();
-    assert_eq!(
-        err,
-        ContractError::TimelockError(TimelockError::Unauthorized {})
-    );
+    assert_eq!(err, ContractError::VetoError(VetoError::Unauthorized {}));
 
     // Oversite vetos prop
     app.execute_contract(
@@ -1460,13 +1439,13 @@ fn test_proposal_message_timelock_early_execution() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
-    let timelock = Timelock {
-        delay: Duration::Time(100),
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Time(100),
         vetoer: "oversight".to_string(),
         early_execute: true,
         veto_before_passed: false,
     };
-    instantiate.veto = Some(timelock.clone());
+    instantiate.veto = Some(veto_config.clone());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         instantiate,
@@ -1525,7 +1504,7 @@ fn test_proposal_message_timelock_early_execution() {
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: timelock.delay.after(&app.block_info()),
+            expiration: veto_config.timelock_duration.after(&app.block_info()),
         }
     );
 
@@ -1542,8 +1521,8 @@ fn test_proposal_message_timelock_veto_before_passed() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
-    instantiate.veto = Some(Timelock {
-        delay: Duration::Time(100),
+    instantiate.veto = Some(VetoConfig {
+        timelock_duration: Duration::Time(100),
         vetoer: "oversight".to_string(),
         early_execute: false,
         veto_before_passed: true,
@@ -1814,8 +1793,8 @@ fn test_update_config() {
         vec![WasmMsg::Execute {
             contract_addr: proposal_module.to_string(),
             msg: to_json_binary(&ExecuteMsg::UpdateConfig {
-                veto: Some(Timelock {
-                    delay: Duration::Time(100),
+                veto: Some(VetoConfig {
+                    timelock_duration: Duration::Time(100),
                     vetoer: CREATOR_ADDR.to_string(),
                     early_execute: false,
                     veto_before_passed: false,
@@ -1848,8 +1827,8 @@ fn test_update_config() {
     assert_eq!(
         config,
         Config {
-            veto: Some(Timelock {
-                delay: Duration::Time(100),
+            veto: Some(VetoConfig {
+                timelock_duration: Duration::Time(100),
                 vetoer: CREATOR_ADDR.to_string(),
                 early_execute: false,
                 veto_before_passed: false,

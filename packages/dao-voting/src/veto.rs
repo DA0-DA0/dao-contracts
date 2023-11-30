@@ -4,7 +4,7 @@ use cw_utils::Duration;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
-pub enum TimelockError {
+pub enum VetoError {
     #[error("{0}")]
     Std(#[from] StdError),
 
@@ -14,8 +14,8 @@ pub enum TimelockError {
     #[error("Early execution for timelocked proposals is not enabled. Proposal can not be executed before the timelock delay has expired.")]
     NoEarlyExecute {},
 
-    #[error("Timelock is not configured for this contract. Veto not enabled.")]
-    NoTimelock {},
+    #[error("Veto is not enabled for this contract.")]
+    NoVetoConfiguration {},
 
     #[error("Vetoing before a proposal passes is not enabled.")]
     NoVetoBeforePassed {},
@@ -31,9 +31,9 @@ pub enum TimelockError {
 }
 
 #[cw_serde]
-pub struct Timelock {
+pub struct VetoConfig {
     /// The time duration to delay proposal execution for.
-    pub delay: Duration,
+    pub timelock_duration: Duration,
     /// The address able to veto proposals.
     pub vetoer: String,
     /// Whether or not the vetoer can execute a proposal early before the
@@ -43,31 +43,31 @@ pub struct Timelock {
     pub veto_before_passed: bool,
 }
 
-impl Timelock {
+impl VetoConfig {
     /// Whether early execute is enabled
-    pub fn check_early_execute_enabled(&self) -> Result<(), TimelockError> {
+    pub fn check_early_execute_enabled(&self) -> Result<(), VetoError> {
         if self.early_execute {
             Ok(())
         } else {
-            Err(TimelockError::NoEarlyExecute {})
+            Err(VetoError::NoEarlyExecute {})
         }
     }
 
     /// Checks whether the message sender is the vetoer.
-    pub fn check_is_vetoer(&self, info: &MessageInfo) -> Result<(), TimelockError> {
+    pub fn check_is_vetoer(&self, info: &MessageInfo) -> Result<(), VetoError> {
         if self.vetoer == info.sender {
             Ok(())
         } else {
-            Err(TimelockError::Unauthorized {})
+            Err(VetoError::Unauthorized {})
         }
     }
 
     /// Checks whether veto_before_passed is enabled, errors if not
-    pub fn check_veto_before_passed_enabled(&self) -> Result<(), TimelockError> {
+    pub fn check_veto_before_passed_enabled(&self) -> Result<(), VetoError> {
         if self.veto_before_passed {
             Ok(())
         } else {
-            Err(TimelockError::NoVetoBeforePassed {})
+            Err(VetoError::NoVetoBeforePassed {})
         }
     }
 }

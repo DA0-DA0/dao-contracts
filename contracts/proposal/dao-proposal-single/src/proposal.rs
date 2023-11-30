@@ -5,7 +5,7 @@ use cosmwasm_std::{Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdResult, Storag
 use cw_utils::Expiration;
 use dao_voting::status::Status;
 use dao_voting::threshold::{PercentageThreshold, Threshold};
-use dao_voting::timelock::Timelock;
+use dao_voting::veto::VetoConfig;
 use dao_voting::voting::{does_vote_count_fail, does_vote_count_pass, Votes};
 
 #[cw_serde]
@@ -43,7 +43,7 @@ pub struct SingleChoiceProposal {
     pub allow_revoting: bool,
     /// Optional veto configuration. If set to `None`, veto option
     /// is disabled. Otherwise contains the configuration for veto flow.
-    pub veto: Option<Timelock>,
+    pub veto: Option<VetoConfig>,
 }
 
 pub fn next_proposal_id(store: &dyn Storage) -> StdResult<u64> {
@@ -74,9 +74,9 @@ impl SingleChoiceProposal {
         match self.status {
             Status::Open if self.is_passed(block) => match &self.veto {
                 // if prop is passed and time lock is configured,
-                // calculate lock expiration and set status to `Timelocked`.
-                Some(timelock) => Status::VetoTimelock {
-                    expiration: timelock.delay.after(block),
+                // calculate lock expiration and set status to `VetoTimelock`.
+                Some(veto_config) => Status::VetoTimelock {
+                    expiration: veto_config.timelock_duration.after(block),
                 },
                 // Otherwise the proposal is simply passed
                 None => Status::Passed,

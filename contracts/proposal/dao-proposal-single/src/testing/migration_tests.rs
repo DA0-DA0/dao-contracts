@@ -356,7 +356,7 @@ fn test_v2_v3_full_migration() {
     //     false,
     // );
 
-    // TODO test migrate with timelock enabled
+    // TODO test migrate with veto enabled
     app.execute_contract(
         sender.clone(),
         proposal.clone(),

@@ -22,7 +22,7 @@ use dao_voting::reply::{
 };
 use dao_voting::status::Status;
 use dao_voting::threshold::Threshold;
-use dao_voting::timelock::{Timelock, TimelockError};
+use dao_voting::veto::{VetoConfig, VetoError};
 use dao_voting::voting::{get_total_power, get_voting_power, validate_voting_period, Vote, Votes};
 use semver::Version;
 use std::str::FromStr;
@@ -272,15 +272,18 @@ pub fn execute_veto(
     prop.update_status(&env.block);
     let old_status = prop.status;
 
-    let timelock = prop.veto.as_ref().ok_or(TimelockError::NoTimelock {})?;
+    let veto_config = prop
+        .veto
+        .as_ref()
+        .ok_or(VetoError::NoVetoConfiguration {})?;
 
     // Check sender is vetoer
-    timelock.check_is_vetoer(&info)?;
+    veto_config.check_is_vetoer(&info)?;
 
     match prop.status {
         Status::Open => {
             // Veto prop only if veto_before_passed is true
-            timelock.check_veto_before_passed_enabled()?;
+            veto_config.check_veto_before_passed_enabled()?;
 
             // Update proposal status to vetoed
             prop.status = Status::Vetoed;
@@ -309,9 +312,7 @@ pub fn execute_veto(
         Status::VetoTimelock { expiration } => {
             // vetoer can veto the proposal iff the timelock is active/not expired
             if expiration.is_expired(&env.block) {
-                return Err(ContractError::TimelockError(
-                    TimelockError::TimelockExpired {},
-                ));
+                return Err(ContractError::VetoError(VetoError::TimelockExpired {}));
             }
 
             // Update proposal status to vetoed
@@ -339,11 +340,9 @@ pub fn execute_veto(
                 .add_submessages(proposal_completed_hooks))
         }
         // Error if the proposal has any other status
-        _ => Err(ContractError:: TimelockError(
-            TimelockError::InvalidProposalStatus {
-                status: prop.status.to_string(),
-            },
-        )),
+        _ => Err(ContractError::VetoError(VetoError::InvalidProposalStatus {
+            status: prop.status.to_string(),
+        })),
     }
 }
 
@@ -366,12 +365,12 @@ pub fn execute_execute(
             Some(prop.start_height),
         )?;
 
-        // if there is no timelock, then caller is not the vetoer
+        // if there is no veto config, then caller is not the vetoer
         // if there is, we validate the caller addr
         let vetoer_call = prop
             .veto
             .as_ref()
-            .map_or(false, |timelock| timelock.vetoer == info.sender);
+            .map_or(false, |veto_config| veto_config.vetoer == info.sender);
 
         if power.is_zero() && !vetoer_call {
             return Err(ContractError::Unauthorized {});
@@ -386,16 +385,19 @@ pub fn execute_execute(
     match &prop.status {
         Status::Passed => (),
         Status::VetoTimelock { expiration } => {
-            let timelock = prop.veto.as_ref().ok_or(TimelockError::NoTimelock {})?;
+            let veto_config = prop
+                .veto
+                .as_ref()
+                .ok_or(VetoError::NoVetoConfiguration {})?;
 
             // Check if the sender is the vetoer
-            match timelock.vetoer == info.sender {
+            match veto_config.vetoer == info.sender {
                 // if sender is the vetoer we validate the early exec flag
-                true => timelock.check_early_execute_enabled()?,
+                true => veto_config.check_early_execute_enabled()?,
                 // otherwise timelock must be expired in order to execute
                 false => {
                     if !expiration.is_expired(&env.block) {
-                        return Err(ContractError::TimelockError(TimelockError::Timelocked {}));
+                        return Err(ContractError::VetoError(VetoError::Timelocked {}));
                     }
                 }
             }
@@ -638,7 +640,7 @@ pub fn execute_update_config(
     allow_revoting: bool,
     dao: String,
     close_proposal_on_execution_failure: bool,
-    veto: Option<Timelock>,
+    veto: Option<VetoConfig>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -652,9 +654,9 @@ pub fn execute_update_config(
     let (min_voting_period, max_voting_period) =
         validate_voting_period(min_voting_period, max_voting_period)?;
 
-    if let Some(ref timelock) = veto {
+    if let Some(ref veto_config) = veto {
         // If veto is enabled, validate the vetoer address
-        deps.api.addr_validate(&timelock.vetoer)?;
+        deps.api.addr_validate(&veto_config.vetoer)?;
     }
 
     CONFIG.save(
@@ -972,7 +974,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                 return Err(ContractError::MigrationVersionError {});
             }
 
-            // Update the stored config to have the new `timelock` field
+            // Update the stored config to have the new `veto` field
             let current_config = dao_proposal_single_v2::state::CONFIG.load(deps.storage)?;
             CONFIG.save(
                 deps.storage,

@@ -3,7 +3,7 @@ use cw_utils::Duration;
 use dao_dao_macros::proposal_module_query;
 use dao_voting::{
     pre_propose::PreProposeInfo, proposal::SingleChoiceProposeMsg, threshold::Threshold,
-    timelock::Timelock, voting::Vote,
+    veto::VetoConfig, voting::Vote,
 };
 
 #[cw_serde]
@@ -43,7 +43,7 @@ pub struct InstantiateMsg {
     /// delay expiration.
     /// During this period an oversight account (`veto.vetoer`) can
     /// veto the proposal.
-    pub veto: Option<Timelock>,
+    pub veto: Option<VetoConfig>,
 }
 
 #[cw_serde]
@@ -74,7 +74,7 @@ pub enum ExecuteMsg {
         /// The ID of the proposal to execute.
         proposal_id: u64,
     },
-    /// Callable only if timelock is configured
+    /// Callable only if veto is configured
     Veto {
         /// The ID of the proposal to veto.
         proposal_id: u64,
@@ -123,7 +123,7 @@ pub enum ExecuteMsg {
         close_proposal_on_execution_failure: bool,
         /// Optional time delay on proposal execution, during which the
         /// proposal maybe vetoed
-        veto: Option<Timelock>,
+        veto: Option<VetoConfig>,
     },
     /// Update's the proposal creation policy used for this
     /// module. Only the DAO may call this method.
@@ -218,7 +218,7 @@ pub enum MigrateMsg {
         /// value must be specified.
         ///
         /// optional configuration for veto feature
-        veto: Option<Timelock>,
+        veto: Option<VetoConfig>,
     },
     FromCompatible {},
 }
