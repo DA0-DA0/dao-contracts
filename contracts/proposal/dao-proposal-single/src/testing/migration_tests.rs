@@ -1,20 +1,24 @@
-use crate::msg::QueryMsg;
 use cosmwasm_std::{to_json_binary, Addr, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App, Executor};
+use cw_utils::Duration;
 use dao_interface::query::{GetItemResponse, ProposalModuleCountResponse};
 use dao_testing::contracts::{
     cw20_base_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
-    dao_dao_contract, proposal_single_contract, v2_dao_dao_contract, v2_proposal_single_contract,
+    dao_dao_contract, proposal_single_contract, v1_dao_dao_contract, v1_proposal_single_contract,
 };
+use dao_voting::{deposit::UncheckedDepositInfo, status::Status};
+use dao_voting::veto::VetoConfig;
 
 use crate::testing::{
     execute::{execute_proposal, make_proposal, vote_on_proposal},
-    queries::query_proposal_count,
+    instantiate::get_pre_propose_info,
+    queries::{query_proposal, query_proposal_count},
 };
+use crate::testing::queries::query_list_proposals;
 
 /// This test attempts to simulate a realistic migration from DAO DAO
-/// v2 to v3. Other tests in `/tests/tests.rs` check that versions and
+/// v1 to v2. Other tests in `/tests/tests.rs` check that versions and
 /// top-level configs are updated correctly during migration. This
 /// concerns itself more with more subtle state in the contracts that
 /// is less functionality critical and thus more likely to be
@@ -31,20 +35,19 @@ use crate::testing::{
 ///
 /// - Items are not overriden during migration.
 #[test]
-fn test_v2_v3_full_migration() {
+fn test_v1_v2_full_migration() {
     let sender = Addr::unchecked("sender");
 
     let mut app = App::default();
 
     // ----
-    // instantiate a v2 DAO
+    // instantiate a v1 DAO
     // ----
 
-    let proposal_code = app.store_code(v2_proposal_single_contract());
-    // let pre_proposal_code = app.store_code(v2_pre_propose_single_contract());
-    let core_code = app.store_code(v2_dao_dao_contract());
+    let proposal_code = app.store_code(v1_proposal_single_contract());
+    let core_code = app.store_code(v1_dao_dao_contract());
 
-    // cw20 staking and voting module has not changed across v2->v3 so
+    // cw20 staking and voting module has not changed across v1->v2 so
     // we use the current edition.
     let cw20_code = app.store_code(cw20_base_contract());
     let cw20_stake_code = app.store_code(cw20_stake_contract());
@@ -59,14 +62,14 @@ fn test_v2_v3_full_migration() {
         .instantiate_contract(
             core_code,
             sender.clone(),
-            &dao_interface_v2::msg::InstantiateMsg {
+            &cw_core_v1::msg::InstantiateMsg {
                 admin: Some(sender.to_string()),
                 name: "n".to_string(),
                 description: "d".to_string(),
                 image_url: Some("i".to_string()),
                 automatically_add_cw20s: false,
                 automatically_add_cw721s: true,
-                voting_module_instantiate_info: dao_interface_v2::state::ModuleInstantiateInfo {
+                voting_module_instantiate_info: cw_core_v1::msg::ModuleInstantiateInfo {
                     code_id: voting_code,
                     msg: to_json_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
                         active_threshold: None,
@@ -83,54 +86,30 @@ fn test_v2_v3_full_migration() {
                             initial_dao_balance: Some(Uint128::new(100)),
                         },
                     })
-                    .unwrap(),
-                    admin: Some(dao_interface_v2::state::Admin::CoreModule {}),
-                    label: "voting".to_string(),
-                    funds: vec![],
-                },
-                proposal_modules_instantiate_info: vec![
-                    dao_interface_v2::state::ModuleInstantiateInfo {
-                        code_id: proposal_code,
-                        msg: to_json_binary(&dao_proposal_single_v2::msg::InstantiateMsg {
-                            threshold: voting_v2::threshold::Threshold::AbsolutePercentage {
-                                percentage: voting_v2::threshold::PercentageThreshold::Majority {},
-                            },
-                            max_voting_period: cw_utils::Duration::Height(6),
-                            min_voting_period: None,
-                            only_members_execute: false,
-                            allow_revoting: false,
-                            pre_propose_info:
-                                // TODO use pre-propose module
-                                // voting_v2::pre_propose::PreProposeInfo::ModuleMayPropose {
-                                //     info: dao_interface_v2::state::ModuleInstantiateInfo {
-                                //         code_id: pre_proposal_code,
-                                //         msg: to_json_binary(
-                                //             &dao_pre_propose_single_v2::InstantiateMsg {
-                                //                 deposit_info: None,
-                                //                 open_proposal_submission: false,
-                                //                 extension: cosmwasm_std::Empty {},
-                                //             },
-                                //         )
-                                //         .unwrap(),
-                                //         admin: Some(dao_interface_v2::state::Admin::CoreModule {}),
-                                //         funds: vec![],
-                                //         label: "pre-propose module".to_string(),
-                                //     },
-                                // },
-                                voting_v2::pre_propose::PreProposeInfo::AnyoneMayPropose {},
-                            close_proposal_on_execution_failure: true,
-                        })
                         .unwrap(),
-                        admin: Some(dao_interface_v2::state::Admin::CoreModule {}),
-                        funds: vec![],
-                        label: "proposal".to_string(),
-                    },
-                ],
-                initial_items: Some(vec![dao_interface_v2::msg::InitialItem {
+                    admin: cw_core_v1::msg::Admin::CoreContract {},
+                    label: "voting".to_string(),
+                },
+                proposal_modules_instantiate_info: vec![cw_core_v1::msg::ModuleInstantiateInfo {
+                    code_id: proposal_code,
+                    msg: to_json_binary(&cw_proposal_single_v1::msg::InstantiateMsg {
+                        threshold: voting_v1::Threshold::AbsolutePercentage {
+                            percentage: voting_v1::PercentageThreshold::Majority {},
+                        },
+                        max_voting_period: cw_utils_v1::Duration::Height(6),
+                        min_voting_period: None,
+                        only_members_execute: false,
+                        allow_revoting: false,
+                        deposit_info: None,
+                    })
+                        .unwrap(),
+                    admin: cw_core_v1::msg::Admin::CoreContract {},
+                    label: "proposal".to_string(),
+                }],
+                initial_items: Some(vec![cw_core_v1::msg::InitialItem {
                     key: "key".to_string(),
                     value: "value".to_string(),
                 }]),
-                dao_uri: None,
             },
             &[],
             "core",
@@ -143,9 +122,9 @@ fn test_v2_v3_full_migration() {
             contract_addr: core.to_string(),
             admin: core.to_string(),
         }
-        .into(),
+            .into(),
     )
-    .unwrap();
+        .unwrap();
 
     // ----
     // stake tokens in the DAO
@@ -154,7 +133,7 @@ fn test_v2_v3_full_migration() {
     let token = {
         let voting: Addr = app
             .wrap()
-            .query_wasm_smart(&core, &dao_interface_v2::msg::QueryMsg::VotingModule {})
+            .query_wasm_smart(&core, &cw_core_v1::msg::QueryMsg::VotingModule {})
             .unwrap();
         let staking: Addr = app
             .wrap()
@@ -180,7 +159,7 @@ fn test_v2_v3_full_migration() {
             },
             &[],
         )
-        .unwrap();
+            .unwrap();
         app.update_block(next_block);
         token
     };
@@ -190,80 +169,70 @@ fn test_v2_v3_full_migration() {
     // ----
 
     let proposal = {
-        let modules: Vec<dao_interface_v2::state::ProposalModule> = app
+        let modules: Vec<Addr> = app
             .wrap()
             .query_wasm_smart(
                 &core,
-                &dao_interface_v2::msg::QueryMsg::ProposalModules {
-                    start_after: None,
+                &cw_core_v1::msg::QueryMsg::ProposalModules {
+                    start_at: None,
                     limit: None,
                 },
             )
             .unwrap();
         assert!(modules.len() == 1);
-        modules.into_iter().next().unwrap().address
+        modules.into_iter().next().unwrap()
     };
-    // old config to assert against
-    let config_v2: dao_proposal_single_v2::state::Config = app
-        .wrap()
-        .query_wasm_smart(proposal.to_string(), &QueryMsg::Config {})
-        .unwrap();
-
-    app.execute_contract(
-        core.clone(),
-        proposal.clone(),
-        &dao_proposal_single_v2::msg::ExecuteMsg::Propose(
-            voting_v2::proposal::SingleChoiceProposeMsg {
-                title: "t".to_string(),
-                description: "d".to_string(),
-                msgs: vec![WasmMsg::Execute {
-                    contract_addr: core.to_string(),
-                    msg: to_json_binary(&dao_interface_v2::msg::ExecuteMsg::UpdateCw20List {
-                        to_add: vec![token.to_string()],
-                        to_remove: vec![],
-                    })
-                    .unwrap(),
-                    funds: vec![],
-                }
-                .into()],
-                proposer: None,
-            },
-        ),
-        &[],
-    )
-    .unwrap();
 
     app.execute_contract(
         sender.clone(),
         proposal.clone(),
-        &dao_proposal_single_v2::msg::ExecuteMsg::Vote {
-            proposal_id: 1,
-            vote: voting_v2::voting::Vote::Yes,
-            rationale: None,
+        &cw_proposal_single_v1::msg::ExecuteMsg::Propose {
+            title: "t".to_string(),
+            description: "d".to_string(),
+            msgs: vec![WasmMsg::Execute {
+                contract_addr: core.to_string(),
+                msg: to_json_binary(&cw_core_v1::msg::ExecuteMsg::UpdateCw20List {
+                    to_add: vec![token.to_string()],
+                    to_remove: vec![],
+                })
+                    .unwrap(),
+                funds: vec![],
+            }
+                .into()],
         },
         &[],
     )
-    .unwrap();
+        .unwrap();
     app.execute_contract(
         sender.clone(),
         proposal.clone(),
-        &dao_proposal_single_v2::msg::ExecuteMsg::Execute { proposal_id: 1 },
+        &cw_proposal_single_v1::msg::ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: voting_v1::Vote::Yes,
+        },
         &[],
     )
-    .unwrap();
-    let tokens: Vec<dao_interface_v2::query::Cw20BalanceResponse> = app
+        .unwrap();
+    app.execute_contract(
+        sender.clone(),
+        proposal.clone(),
+        &cw_proposal_single_v1::msg::ExecuteMsg::Execute { proposal_id: 1 },
+        &[],
+    )
+        .unwrap();
+    let tokens: Vec<cw_core_v1::query::Cw20BalanceResponse> = app
         .wrap()
         .query_wasm_smart(
             &core,
-            &dao_interface_v2::msg::QueryMsg::Cw20Balances {
-                start_after: None,
+            &cw_core_v1::msg::QueryMsg::Cw20Balances {
+                start_at: None,
                 limit: None,
             },
         )
         .unwrap();
     assert_eq!(
         tokens,
-        vec![dao_interface_v2::query::Cw20BalanceResponse {
+        vec![cw_core_v1::query::Cw20BalanceResponse {
             addr: token.clone(),
             balance: Uint128::new(100),
         }]
@@ -276,135 +245,133 @@ fn test_v2_v3_full_migration() {
     app.execute_contract(
         sender.clone(),
         proposal.clone(),
-        &dao_proposal_single_v2::msg::ExecuteMsg::Propose(
-            voting_v2::proposal::SingleChoiceProposeMsg {
-                title: "t".to_string(),
-                description: "d".to_string(),
-                msgs: vec![WasmMsg::Execute {
-                    contract_addr: token.to_string(),
-                    msg: to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
-                        recipient: sender.to_string(),
-                        // more tokens than the DAO posseses.
-                        amount: Uint128::new(101),
-                    })
+        &cw_proposal_single_v1::msg::ExecuteMsg::Propose {
+            title: "t".to_string(),
+            description: "d".to_string(),
+            msgs: vec![WasmMsg::Execute {
+                contract_addr: token.to_string(),
+                msg: to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                    recipient: sender.to_string(),
+                    // more tokens than the DAO posseses.
+                    amount: Uint128::new(101),
+                })
                     .unwrap(),
-                    funds: vec![],
-                }
+                funds: vec![],
+            }
                 .into()],
-                proposer: None,
-            },
-        ),
-        &[],
-    )
-    .unwrap();
-    app.execute_contract(
-        sender.clone(),
-        proposal.clone(),
-        &dao_proposal_single_v2::msg::ExecuteMsg::Vote {
-            proposal_id: 2,
-            vote: voting_v2::voting::Vote::Yes,
-            rationale: None,
         },
         &[],
     )
-    .unwrap();
+        .unwrap();
     app.execute_contract(
         sender.clone(),
         proposal.clone(),
-        &dao_proposal_single_v2::msg::ExecuteMsg::Execute { proposal_id: 2 },
+        &cw_proposal_single_v1::msg::ExecuteMsg::Vote {
+            proposal_id: 2,
+            vote: voting_v1::Vote::Yes,
+        },
         &[],
     )
-    .unwrap();
-    let dao_proposal_single_v2::query::ProposalResponse {
-        proposal: dao_proposal_single_v2::proposal::SingleChoiceProposal { status, .. },
+        .unwrap();
+    app.execute_contract(
+        sender.clone(),
+        proposal.clone(),
+        &cw_proposal_single_v1::msg::ExecuteMsg::Execute { proposal_id: 2 },
+        &[],
+    )
+        // can not be executed.
+        .unwrap_err();
+    let cw_proposal_single_v1::query::ProposalResponse {
+        proposal: cw_proposal_single_v1::proposal::Proposal { status, .. },
         ..
     } = app
         .wrap()
         .query_wasm_smart(
             &proposal,
-            &dao_proposal_single_v2::msg::QueryMsg::Proposal { proposal_id: 2 },
+            &cw_proposal_single_v1::msg::QueryMsg::Proposal { proposal_id: 2 },
         )
         .unwrap();
-    assert_eq!(status, voting_v2::status::Status::ExecutionFailed {});
-
-    // query existing proposals to assert against
-    let proposals_v2: dao_proposal_single_v2::query::ProposalListResponse = app
-        .wrap()
-        .query_wasm_smart(
-            proposal.clone(),
-            &dao_proposal_single_v2::msg::QueryMsg::ListProposals {
-                start_after: None,
-                limit: None,
-            },
-        )
-        .unwrap();
+    assert_eq!(status, voting_v1::Status::Passed);
 
     // ----
-    // create a proposal to migrate to v3
+    // create a proposal to migrate to v2
     // ----
 
-    let v3_core_code = app.store_code(dao_dao_contract());
-    let v3_proposal_code = app.store_code(proposal_single_contract());
+    let v2_core_code = app.store_code(dao_dao_contract());
+    let v2_proposal_code = app.store_code(proposal_single_contract());
 
-    // let pre_propose_info = get_pre_propose_info(
-    //     &mut app,
-    //     Some(UncheckedDepositInfo {
-    //         denom: dao_voting::deposit::DepositToken::VotingModuleToken {},
-    //         amount: Uint128::new(1),
-    //         refund_policy: dao_voting::deposit::DepositRefundPolicy::OnlyPassed,
-    //     }),
-    //     false,
-    // );
-
-    // TODO test migrate with veto enabled
+    let pre_propose_info = get_pre_propose_info(
+        &mut app,
+        Some(UncheckedDepositInfo {
+            denom: dao_voting::deposit::DepositToken::VotingModuleToken {},
+            amount: Uint128::new(1),
+            refund_policy: dao_voting::deposit::DepositRefundPolicy::OnlyPassed,
+        }),
+        false,
+    );
     app.execute_contract(
         sender.clone(),
         proposal.clone(),
-        &dao_proposal_single_v2::msg::ExecuteMsg::Propose(
-            voting_v2::proposal::SingleChoiceProposeMsg {
-                title: "t".to_string(),
-                description: "d".to_string(),
-                msgs: vec![
-                    WasmMsg::Migrate {
-                        contract_addr: core.to_string(),
-                        new_code_id: v3_core_code,
-                        msg: to_json_binary(&dao_interface::msg::MigrateMsg::FromCompatible {})
-                            .unwrap(),
-                    }
+        &cw_proposal_single_v1::msg::ExecuteMsg::Propose {
+            title: "t".to_string(),
+            description: "d".to_string(),
+            msgs: vec![
+                WasmMsg::Migrate {
+                    contract_addr: core.to_string(),
+                    new_code_id: v2_core_code,
+                    msg: to_json_binary(&dao_interface::msg::MigrateMsg::FromV1 {
+                        dao_uri: Some("dao-uri".to_string()),
+                        params: None,
+                    })
+                        .unwrap(),
+                }
                     .into(),
-                    WasmMsg::Migrate {
-                        contract_addr: proposal.to_string(),
-                        new_code_id: v3_proposal_code,
-                        msg: to_json_binary(&crate::msg::MigrateMsg::FromV2 { veto: None })
-                            .unwrap(),
-                    }
-                    .into(),
-                ],
-                proposer: None,
-            },
-        ),
-        &[],
-    )
-    .unwrap();
-    app.execute_contract(
-        sender.clone(),
-        proposal.clone(),
-        &dao_proposal_single_v2::msg::ExecuteMsg::Vote {
-            proposal_id: 3,
-            vote: voting_v2::voting::Vote::Yes,
-            rationale: None,
+                WasmMsg::Migrate {
+                    contract_addr: proposal.to_string(),
+                    new_code_id: v2_proposal_code,
+                    msg: to_json_binary(&crate::msg::MigrateMsg::FromV1 {
+                        close_proposal_on_execution_failure: true,
+                        pre_propose_info,
+                        veto: Some(VetoConfig {
+                            timelock_duration: Duration::Time(1000),
+                            vetoer: sender.to_string(),
+                            early_execute: true,
+                            veto_before_passed: false,
+                        }),
+                    })
+                    .unwrap(),
+                }
+                .into(),
+            ],
         },
         &[],
     )
-    .unwrap();
-
+        .unwrap();
     app.execute_contract(
         sender.clone(),
         proposal.clone(),
-        &dao_proposal_single_v2::msg::ExecuteMsg::Execute { proposal_id: 3 },
+        &cw_proposal_single_v1::msg::ExecuteMsg::Vote {
+            proposal_id: 3,
+            vote: voting_v1::Vote::Yes,
+        },
         &[],
     )
-    .unwrap();
+        .unwrap();
+    app.execute_contract(
+        sender.clone(),
+        proposal.clone(),
+        &cw_proposal_single_v1::msg::ExecuteMsg::Execute { proposal_id: 3 },
+        &[],
+    )
+        .unwrap();
+
+    // ----
+    // execute proposal two. the addition of
+    // close_proposal_on_execution_failure ought to allow it to close.
+    // ----
+    execute_proposal(&mut app, &proposal, sender.as_str(), 2);
+    let status = query_proposal(&app, &proposal, 2).proposal.status;
+    assert_eq!(status, Status::ExecutionFailed);
 
     // ----
     // check that proposal count is still three after proposal state migration.
@@ -412,6 +379,12 @@ fn test_v2_v3_full_migration() {
     let count = query_proposal_count(&app, &proposal);
     assert_eq!(count, 3);
 
+    let migrated_existing_props = query_list_proposals(&mut app, &proposal, None, None);
+    // assert that even though we migrate with a veto config,
+    // existing proposals are not affected
+    for prop in migrated_existing_props.proposals {
+        assert_eq!(prop.proposal.veto, None);
+    }
     // ----
     // check that proposal module counts have been updated.
     // ----
@@ -459,10 +432,10 @@ fn test_v2_v3_full_migration() {
                 to_add: vec![],
                 to_remove: vec![token.into_string()],
             })
-            .unwrap(),
+                .unwrap(),
             funds: vec![],
         }
-        .into()],
+            .into()],
     );
     vote_on_proposal(
         &mut app,
@@ -471,6 +444,15 @@ fn test_v2_v3_full_migration() {
         4,
         dao_voting::voting::Vote::Yes,
     );
+
+    let new_prop = query_proposal(&mut app, &proposal, 4);
+    assert_eq!(new_prop.proposal.veto, Some(VetoConfig {
+        timelock_duration: Duration::Time(1000),
+        vetoer: sender.to_string(),
+        early_execute: true,
+        veto_before_passed: false,
+    }));
+
     execute_proposal(&mut app, &proposal, sender.as_str(), 4);
     let tokens: Vec<dao_interface::query::Cw20BalanceResponse> = app
         .wrap()
@@ -482,79 +464,5 @@ fn test_v2_v3_full_migration() {
             },
         )
         .unwrap();
-    assert!(tokens.is_empty());
-
-    // query the config and assert fields are properly migrated
-    let config: crate::state::Config = app
-        .wrap()
-        .query_wasm_smart(&proposal, &QueryMsg::Config {})
-        .unwrap();
-    assert_eq!(config.dao, config_v2.dao);
-    assert_eq!(config.allow_revoting, config_v2.allow_revoting);
-    assert_eq!(
-        to_json_binary(&config.threshold).unwrap(),
-        to_json_binary(&config_v2.threshold).unwrap(),
-    );
-    assert_eq!(
-        config.close_proposal_on_execution_failure,
-        config_v2.close_proposal_on_execution_failure
-    );
-    assert_eq!(config.max_voting_period, config_v2.max_voting_period);
-    assert_eq!(config.min_voting_period, config_v2.min_voting_period);
-    assert_eq!(config.only_members_execute, config_v2.only_members_execute);
-    assert_eq!(config.veto, None);
-
-    // query migrated proposals
-    let proposals_v3: crate::query::ProposalListResponse = app
-        .wrap()
-        .query_wasm_smart(
-            proposal.to_string(),
-            &crate::msg::QueryMsg::ListProposals {
-                start_after: None,
-                limit: None,
-            },
-        )
-        .unwrap();
-
-    // assert that all pre-migration props have been correctly migrated over
-    for (i, prop_v2) in proposals_v2.proposals.iter().enumerate() {
-        let migrated_prop = &proposals_v3.proposals[i];
-        assert_eq!(prop_v2.id, migrated_prop.id);
-        assert_eq!(prop_v2.proposal.title, migrated_prop.proposal.title);
-        assert_eq!(
-            prop_v2.proposal.description,
-            migrated_prop.proposal.description
-        );
-        assert_eq!(prop_v2.proposal.proposer, migrated_prop.proposal.proposer);
-        assert_eq!(
-            prop_v2.proposal.start_height,
-            migrated_prop.proposal.start_height
-        );
-        assert_eq!(
-            prop_v2.proposal.min_voting_period,
-            migrated_prop.proposal.min_voting_period
-        );
-        assert_eq!(
-            prop_v2.proposal.expiration,
-            migrated_prop.proposal.expiration
-        );
-        assert_eq!(
-            to_json_binary(&prop_v2.proposal.threshold).unwrap(),
-            to_json_binary(&migrated_prop.proposal.threshold).unwrap(),
-        );
-        assert_eq!(
-            prop_v2.proposal.total_power,
-            migrated_prop.proposal.total_power
-        );
-        assert_eq!(prop_v2.proposal.msgs, migrated_prop.proposal.msgs);
-        assert_eq!(
-            prop_v2.proposal.status.to_string(),
-            migrated_prop.proposal.status.to_string()
-        );
-        assert_eq!(
-            prop_v2.proposal.allow_revoting,
-            migrated_prop.proposal.allow_revoting
-        );
-        assert_eq!(None, migrated_prop.proposal.veto);
-    }
+    assert!(tokens.is_empty())
 }

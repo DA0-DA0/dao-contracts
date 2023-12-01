@@ -73,7 +73,6 @@ test-context = "0.1"
 thiserror = {version = "1.0"}
 token-bindings = "0.11.0"
 wynd-utils = "0.4"
-semver = "1"
 
 # One commit ahead of version 0.3.0. Allows initialization with an
 # optional owner.
@@ -128,10 +127,12 @@ cw4-voting-v1 = { package = "cw4-voting", version = "0.1.0" }
 voting-v1 = { package = "dao-voting", version = "0.1.0" }
 stake-cw20-v03 = { package = "stake-cw20", version = "0.2.6" }
 
+
 # v2 dependencies. used for state migrations
 cw-utils-v2 = { package = "cw-utils", version = "0.16" }
 dao-dao-core-v2 = { package = "dao-dao-core", version = "2.2.0" }
 dao-interface-v2 = { package = "dao-interface", version = "2.2.0" }
 dao-proposal-single-v2 = { package = "dao-proposal-single", version = "2.2.0" }
 dao-pre-propose-single-v2 = { package = "dao-pre-propose-single", version = "2.2.0" }
-voting-v2 = { package = "dao-voting", version = "2.2.0" }
+voting-v2 = { package = "dao-voting", version = "2.2.0"}
+

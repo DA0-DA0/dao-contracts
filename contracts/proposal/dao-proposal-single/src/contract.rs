@@ -24,14 +24,11 @@ use dao_voting::status::Status;
 use dao_voting::threshold::Threshold;
 use dao_voting::veto::{VetoConfig, VetoError};
 use dao_voting::voting::{get_total_power, get_voting_power, validate_voting_period, Vote, Votes};
-use semver::Version;
-use std::str::FromStr;
 
 use crate::msg::MigrateMsg;
 use crate::proposal::{next_proposal_id, SingleChoiceProposal};
 use crate::state::{Config, CREATION_POLICY};
-
-use crate::v2_state::{v2_status_to_v3, v2_threshold_to_v3, v2_votes_to_v3};
+use cw_proposal_single_v1 as v1;
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
@@ -40,7 +37,9 @@ use crate::{
     query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
     state::{Ballot, BALLOTS, CONFIG, PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS},
 };
-
+use crate::v1_state::{
+    v1_duration_to_v2, v1_expiration_to_v2, v1_status_to_v2, v1_threshold_to_v2, v1_votes_to_v2,
+};
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-proposal-single";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -952,49 +951,45 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     match msg {
-        MigrateMsg::FromV2 { veto } => {
-            let version_2 = Version::new(2, 0, 0);
-
+        MigrateMsg::FromV1 {
+            close_proposal_on_execution_failure,
+            pre_propose_info,
+            veto
+        } => {
             // `CONTRACT_VERSION` here is from the data section of the
-            // blob we are migrating to. `version` is from storage.
-            let target_blob_version = Version::from_str(CONTRACT_VERSION)
-                .map_err(|_| ContractError::MigrationVersionError {})?;
-            let parsed_version =
-                Version::from_str(&version).map_err(|_| ContractError::MigrationVersionError {})?;
-
-            // If the version in storage matches the version in the blob
+            // blob we are migrating to. `version` is from storage. If
+            // the version in storage matches the version in the blob
             // we are not upgrading.
-            if parsed_version == target_blob_version {
+            if version == CONTRACT_VERSION {
                 return Err(ContractError::AlreadyMigrated {});
             }
 
-            // migration is only possible from 2.0.0, but no later than the
-            // version of the blob we are migrating to
-            if parsed_version < version_2 || parsed_version > target_blob_version {
-                return Err(ContractError::MigrationVersionError {});
-            }
-
-            // Update the stored config to have the new `veto` field
-            let current_config = dao_proposal_single_v2::state::CONFIG.load(deps.storage)?;
+            // Update the stored config to have the new
+            // `close_proposal_on_execution_failure` field.
+            let current_config = v1::state::CONFIG.load(deps.storage)?;
             CONFIG.save(
                 deps.storage,
                 &Config {
-                    threshold: v2_threshold_to_v3(current_config.threshold),
-                    max_voting_period: current_config.max_voting_period,
-                    min_voting_period: current_config.min_voting_period,
+                    threshold: v1_threshold_to_v2(current_config.threshold),
+                    max_voting_period: v1_duration_to_v2(current_config.max_voting_period),
+                    min_voting_period: current_config.min_voting_period.map(v1_duration_to_v2),
                     only_members_execute: current_config.only_members_execute,
                     allow_revoting: current_config.allow_revoting,
                     dao: current_config.dao.clone(),
-                    close_proposal_on_execution_failure: current_config
-                        .close_proposal_on_execution_failure,
+                    close_proposal_on_execution_failure,
                     veto,
                 },
             )?;
 
-            // Update the module's proposals to v3.
-            let current_proposals = dao_proposal_single_v2::state::PROPOSALS
+            let (initial_policy, pre_propose_messages) =
+                pre_propose_info.into_initial_policy_and_messages(current_config.dao)?;
+            CREATION_POLICY.save(deps.storage, &initial_policy)?;
+
+            // Update the module's proposals to v2.
+
+            let current_proposals = v1::state::PROPOSALS
                 .range(deps.storage, None, None, Order::Ascending)
-                .collect::<StdResult<Vec<(u64, dao_proposal_single_v2::proposal::SingleChoiceProposal)>>>()?;
+                .collect::<StdResult<Vec<(u64, v1::proposal::Proposal)>>>()?;
 
             // Based on gas usage testing, we estimate that we will be
             // able to migrate ~4200 proposals at a time before
@@ -1002,8 +997,12 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
             current_proposals
                 .into_iter()
                 .try_for_each::<_, Result<_, ContractError>>(|(id, prop)| {
-                    if prop.status != voting_v2::status::Status::Closed
-                        && prop.status != voting_v2::status::Status::Executed
+                    if prop
+                        .deposit_info
+                        .map(|info| !info.deposit.is_zero())
+                        .unwrap_or(false)
+                        && prop.status != voting_v1::Status::Closed
+                        && prop.status != voting_v1::Status::Executed
                     {
                         // No migration path for outstanding
                         // deposits.
@@ -1015,13 +1014,13 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                         description: prop.description,
                         proposer: prop.proposer,
                         start_height: prop.start_height,
-                        min_voting_period: prop.min_voting_period,
-                        expiration: prop.expiration,
-                        threshold: v2_threshold_to_v3(prop.threshold),
+                        min_voting_period: prop.min_voting_period.map(v1_expiration_to_v2),
+                        expiration: v1_expiration_to_v2(prop.expiration),
+                        threshold: v1_threshold_to_v2(prop.threshold),
                         total_power: prop.total_power,
                         msgs: prop.msgs,
-                        status: v2_status_to_v3(prop.status),
-                        votes: v2_votes_to_v3(prop.votes),
+                        status: v1_status_to_v2(prop.status),
+                        votes: v1_votes_to_v2(prop.votes),
                         allow_revoting: prop.allow_revoting,
                         veto: None,
                     };
@@ -1033,9 +1032,9 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
 
             Ok(Response::default()
                 .add_attribute("action", "migrate")
-                .add_attribute("from", "v2"))
-        }
-
+                .add_attribute("from", "v1")
+                .add_submessages(pre_propose_messages))
+        },
         MigrateMsg::FromCompatible {} => Ok(Response::default()
             .add_attribute("action", "migrate")
             .add_attribute("from", "compatible")),
