@@ -22,7 +22,7 @@ use dao_voting::{
     voting::Vote,
 };
 
-use super::CREATOR_ADDR;
+use super::{CREATOR_ADDR, MEMBER_ADDR};
 use crate::{query::ProposalResponse, ContractError};
 
 struct CommonTest {
@@ -131,6 +131,13 @@ fn test_execute_proposal_more_than_once() {
         &mut app,
         &proposal_module,
         CREATOR_ADDR,
+        proposal_id,
+        Vote::Yes,
+    );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        MEMBER_ADDR,
         proposal_id,
         Vote::Yes,
     );

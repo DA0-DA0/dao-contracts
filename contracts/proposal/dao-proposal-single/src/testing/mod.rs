@@ -7,4 +7,4 @@ mod migration_tests;
 mod queries;
 mod tests;
 
-pub(crate) const CREATOR_ADDR: &str = "creator";
+pub(crate) const MEMBER_ADDR: &str = "dao_member";

@@ -21,7 +21,7 @@ use super::{
         cw4_group_contract, cw4_voting_contract, cw721_base_contract, cw721_stake_contract,
         cw_core_contract, native_staked_balances_voting_contract, proposal_single_contract,
     },
-    CREATOR_ADDR,
+    CREATOR_ADDR, MEMBER_ADDR,
 };
 
 pub(crate) fn get_pre_propose_info(
@@ -96,10 +96,16 @@ pub(crate) fn instantiate_with_staked_cw721_governance(
     let proposal_module_code_id = app.store_code(proposal_single_contract());
 
     let initial_balances = initial_balances.unwrap_or_else(|| {
-        vec![Cw20Coin {
-            address: CREATOR_ADDR.to_string(),
-            amount: Uint128::new(100_000_000),
-        }]
+        vec![
+            Cw20Coin {
+                address: CREATOR_ADDR.to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+            Cw20Coin {
+                address: MEMBER_ADDR.to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]
     });
 
     let initial_balances: Vec<Cw20Coin> = {
@@ -545,10 +551,16 @@ pub(crate) fn instantiate_with_cw4_groups_governance(
     let votemod_id = app.store_code(cw4_voting_contract());
 
     let initial_weights = initial_weights.unwrap_or_else(|| {
-        vec![Cw20Coin {
-            address: CREATOR_ADDR.to_string(),
-            amount: Uint128::new(1),
-        }]
+        vec![
+            Cw20Coin {
+                address: CREATOR_ADDR.to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: MEMBER_ADDR.to_string(),
+                amount: Uint128::new(1),
+            },
+        ]
     });
 
     // Remove duplicates so that we can test duplicate voting.

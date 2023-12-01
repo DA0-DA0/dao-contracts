@@ -16,6 +16,7 @@ use dao_proposal_single::state::Config;
 use dao_voting::proposal::SingleChoiceProposeMsg as ProposeMsg;
 
 const CREATOR_ADDR: &str = "creator";
+const MEMBER_ADDR: &str = "dao_member";
 
 fn cw20_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -92,10 +93,16 @@ fn instantiate_with_default_governance(
     let votemod_id = app.store_code(cw20_balances_voting());
 
     let initial_balances = initial_balances.unwrap_or_else(|| {
-        vec![Cw20Coin {
-            address: CREATOR_ADDR.to_string(),
-            amount: Uint128::new(100_000_000),
-        }]
+        vec![
+            Cw20Coin {
+                address: CREATOR_ADDR.to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+            Cw20Coin {
+                address: MEMBER_ADDR.to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]
     });
 
     let governance_instantiate = dao_interface::msg::InstantiateMsg {
@@ -297,13 +304,23 @@ fn test_counters() {
         &[],
     )
     .unwrap();
-
-    // Query vote counter, expect 1
+    app.execute_contract(
+        Addr::unchecked(MEMBER_ADDR.to_string()),
+        govmod_single.clone(),
+        &dao_proposal_single::msg::ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+            rationale: None,
+        },
+        &[],
+    )
+    .unwrap();
+    // Query vote counter, expect 2
     let resp: CountResponse = app
         .wrap()
         .query_wasm_smart(counters.clone(), &QueryMsg::VoteCounter {})
         .unwrap();
-    assert_eq!(resp.count, 1);
+    assert_eq!(resp.count, 2);
 
     // Query status changed counter, expect 1
     let resp: CountResponse = app
@@ -419,18 +436,18 @@ fn test_counters() {
     .unwrap();
 
     // The success counters should still work
-    // Query vote counter, expect 2
+    // Query vote counter, expect 3
     let resp: CountResponse = app
         .wrap()
         .query_wasm_smart(counters.clone(), &QueryMsg::VoteCounter {})
         .unwrap();
-    assert_eq!(resp.count, 2);
-    // Query status changed counter, expect 2
+    assert_eq!(resp.count, 3);
+    // Query status changed counter, expect 1
     let resp: CountResponse = app
         .wrap()
         .query_wasm_smart(counters, &QueryMsg::StatusChangedCounter {})
         .unwrap();
-    assert_eq!(resp.count, 2);
+    assert_eq!(resp.count, 1);
 
     // The contract should of removed the failing counters
     let hooks: HooksResponse = app

@@ -70,7 +70,7 @@ use super::{
     do_votes::do_votes_staked_balances,
     execute::vote_on_proposal_with_rationale,
     queries::{query_next_proposal_id, query_vote},
-    CREATOR_ADDR,
+    CREATOR_ADDR, MEMBER_ADDR,
 };
 
 struct CommonTest {
@@ -127,7 +127,7 @@ fn test_simple_propose_staked_balances() {
             threshold: PercentageThreshold::Majority {},
         },
         allow_revoting: false,
-        total_power: Uint128::new(100_000_000),
+        total_power: Uint128::new(200_000_000),
         msgs: vec![],
         status: Status::Open,
         votes: Votes::zero(),
@@ -176,7 +176,7 @@ fn test_simple_proposal_cw4_voting() {
             quorum: PercentageThreshold::Majority {},
         },
         allow_revoting: false,
-        total_power: Uint128::new(1),
+        total_power: Uint128::new(2),
         msgs: vec![],
         status: Status::Open,
         votes: Votes::zero(),
@@ -345,6 +345,13 @@ fn test_proposal_message_execution() {
         &mut app,
         &proposal_module,
         CREATOR_ADDR,
+        proposal_id,
+        Vote::Yes,
+    );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        MEMBER_ADDR,
         proposal_id,
         Vote::Yes,
     );
@@ -522,7 +529,13 @@ fn test_cant_execute_not_member_when_proposal_created() {
         proposal_id,
         Vote::Yes,
     );
-
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        MEMBER_ADDR,
+        proposal_id,
+        Vote::Yes,
+    );
     // Give noah some tokens.
     mint_cw20s(&mut app, &gov_token, &core_addr, "noah", 20_000_000);
     // Have noah stake some.
@@ -601,6 +614,13 @@ fn test_update_config() {
         proposal_id,
         Vote::Yes,
     );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        MEMBER_ADDR,
+        proposal_id,
+        Vote::Yes,
+    );
     execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
 
     let config = query_proposal_config(&app, &proposal_module);
@@ -661,6 +681,13 @@ fn test_anyone_may_propose_and_proposal_listing() {
             proposal_id,
             Vote::Yes,
         );
+        vote_on_proposal(
+            &mut app,
+            &proposal_module,
+            MEMBER_ADDR,
+            proposal_id,
+            Vote::Yes,
+        );
         // Only members can execute still.
         let err = execute_proposal_should_fail(&mut app, &proposal_module, &addr, proposal_id);
         assert!(matches!(err, ContractError::Unauthorized {}));
@@ -711,11 +738,11 @@ fn test_anyone_may_propose_and_proposal_listing() {
                     threshold: PercentageThreshold::Majority {},
                 },
                 allow_revoting: false,
-                total_power: Uint128::new(100_000_000),
+                total_power: Uint128::new(200_000_000),
                 msgs: vec![],
                 status: Status::Executed,
                 votes: Votes {
-                    yes: Uint128::new(100_000_000),
+                    yes: Uint128::new(200_000_000),
                     no: Uint128::zero(),
                     abstain: Uint128::zero()
                 },
@@ -1047,6 +1074,13 @@ fn test_min_voting_period_no_early_pass() {
         proposal_id,
         Vote::Yes,
     );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        MEMBER_ADDR,
+        proposal_id,
+        Vote::Yes,
+    );
     let proposal_response = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal_response.proposal.status, Status::Open);
 
@@ -1234,6 +1268,13 @@ fn test_allow_revoting_config_changes() {
         CREATOR_ADDR,
         revoting_proposal,
         Vote::No,
+    );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        MEMBER_ADDR,
+        no_revoting_proposal,
+        Vote::Yes,
     );
     // Expire the revoting proposal and close it.
     app.update_block(|b| b.time = b.time.plus_seconds(604800));
@@ -1882,6 +1923,13 @@ fn test_execution_failed() {
         proposal_id,
         Vote::Yes,
     );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        MEMBER_ADDR,
+        proposal_id,
+        Vote::Yes,
+    );
     execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
 
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
@@ -1930,6 +1978,13 @@ fn test_execution_failed() {
         &mut app,
         &proposal_module,
         CREATOR_ADDR,
+        proposal_id,
+        Vote::Yes,
+    );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        MEMBER_ADDR,
         proposal_id,
         Vote::Yes,
     );
@@ -2507,6 +2562,13 @@ fn test_update_pre_propose_module() {
         CREATOR_ADDR,
         proposal_id,
         Vote::Yes,
+    );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        MEMBER_ADDR,
+        pre_update_proposal_id,
+        Vote::Abstain,
     );
     execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
 

@@ -196,10 +196,18 @@ pub fn execute_propose(
 
     let expiration = config.max_voting_period.after(&env.block);
 
+    // Get Proposer voting power
+    let proposer_power = get_voting_power(
+        deps.as_ref(),
+        proposer.clone(),
+        &config.dao,
+        Some(env.block.height),
+    )?;
     let total_power = get_total_power(deps.as_ref(), &config.dao, Some(env.block.height))?;
 
     let proposal = {
         // Limit mutability to this block.
+        // If proposer has voting power = total_power. AutoPass proposal
         let mut proposal = SingleChoiceProposal {
             title,
             description,
@@ -210,7 +218,11 @@ pub fn execute_propose(
             threshold: config.threshold,
             total_power,
             msgs,
-            status: Status::Open,
+            status: if proposer_power == total_power {
+                Status::Passed
+            } else {
+                Status::Open
+            },
             votes: Votes::zero(),
             allow_revoting: config.allow_revoting,
         };
