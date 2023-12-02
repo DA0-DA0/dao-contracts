@@ -91,6 +91,40 @@
           }
         }
       },
+      "Duration": {
+        "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "height"
+            ],
+            "properties": {
+              "height": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Time in seconds",
+            "type": "object",
+            "required": [
+              "time"
+            ],
+            "properties": {
+              "time": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
       "MigrationParams": {
         "type": "object",
         "required": [
@@ -226,6 +260,16 @@
           },
           "pre_propose_info": {
             "$ref": "#/definitions/PreProposeInfo"
+          },
+          "veto": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/VetoConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -314,6 +358,38 @@
             "type": "integer",
             "format": "uint64",
             "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      },
+      "VetoConfig": {
+        "type": "object",
+        "required": [
+          "early_execute",
+          "timelock_duration",
+          "veto_before_passed",
+          "vetoer"
+        ],
+        "properties": {
+          "early_execute": {
+            "description": "Whether or not the vetoer can execute a proposal early before the timelock duration has expired",
+            "type": "boolean"
+          },
+          "timelock_duration": {
+            "description": "The time duration to delay proposal execution for.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Duration"
+              }
+            ]
+          },
+          "veto_before_passed": {
+            "description": "Whether or not the vetoer can veto a proposal before it passes.",
+            "type": "boolean"
+          },
+          "vetoer": {
+            "description": "The address able to veto proposals.",
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -409,6 +485,40 @@
           }
         }
       },
+      "Duration": {
+        "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "height"
+            ],
+            "properties": {
+              "height": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Time in seconds",
+            "type": "object",
+            "required": [
+              "time"
+            ],
+            "properties": {
+              "time": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
       "MigrationParams": {
         "type": "object",
         "required": [
@@ -544,6 +654,16 @@
           },
           "pre_propose_info": {
             "$ref": "#/definitions/PreProposeInfo"
+          },
+          "veto": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/VetoConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -632,6 +752,38 @@
             "type": "integer",
             "format": "uint64",
             "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      },
+      "VetoConfig": {
+        "type": "object",
+        "required": [
+          "early_execute",
+          "timelock_duration",
+          "veto_before_passed",
+          "vetoer"
+        ],
+        "properties": {
+          "early_execute": {
+            "description": "Whether or not the vetoer can execute a proposal early before the timelock duration has expired",
+            "type": "boolean"
+          },
+          "timelock_duration": {
+            "description": "The time duration to delay proposal execution for.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Duration"
+              }
+            ]
+          },
+          "veto_before_passed": {
+            "description": "Whether or not the vetoer can veto a proposal before it passes.",
+            "type": "boolean"
+          },
+          "vetoer": {
+            "description": "The address able to veto proposals.",
+            "type": "string"
           }
         },
         "additionalProperties": false
