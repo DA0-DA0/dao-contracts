@@ -122,7 +122,7 @@ pub enum ExecuteMsg {
         /// executed.
         close_proposal_on_execution_failure: bool,
         /// Optional time delay on proposal execution, during which the
-        /// proposal maybe vetoed
+        /// proposal may be vetoed.
         veto: Option<VetoConfig>,
     },
     /// Update's the proposal creation policy used for this
@@ -233,7 +233,7 @@ pub enum MigrateMsg {
         /// no deposit or membership checks when submitting a proposal. The "ModuleMayPropose"
         /// option allows for instantiating a prepropose module which will handle deposit verification and return logic.
         pre_propose_info: PreProposeInfo,
-        /// This field was not present in DAO DAO v2. To migrate, a
+        /// This field was not present in DAO DAO v1. To migrate, a
         /// value must be specified.
         ///
         /// optional configuration for veto feature
