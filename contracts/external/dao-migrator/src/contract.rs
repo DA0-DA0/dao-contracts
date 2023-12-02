@@ -7,7 +7,7 @@ use cosmwasm_std::{
     StdResult, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
-use dao_interface_v2::{
+use dao_interface::{
     query::SubDao,
     state::{ModuleInstantiateCallback, ProposalModule},
 };
@@ -111,10 +111,11 @@ fn execute_migration_v1_v2(
                     v1_code_ids.proposal_single,
                     v2_code_ids.proposal_single,
                     MigrationMsgs::DaoProposalSingle(
-                        dao_proposal_single_v2::msg::MigrateMsg::FromV1 {
+                        dao_proposal_single::msg::MigrateMsg::FromV1 {
                             close_proposal_on_execution_failure: proposal_params
                                 .close_proposal_on_execution_failure,
                             pre_propose_info: proposal_params.pre_propose_info,
+                            veto: proposal_params.veto,
                         },
                     ),
                 ),
@@ -147,7 +148,7 @@ fn execute_migration_v1_v2(
     // --------------------
     let voting_module: Addr = deps.querier.query_wasm_smart(
         info.sender.clone(),
-        &dao_interface_v2::msg::QueryMsg::VotingModule {},
+        &dao_interface::msg::QueryMsg::VotingModule {},
     )?;
 
     let voting_code_id =
@@ -227,7 +228,7 @@ fn execute_migration_v1_v2(
     // We take all the proposal modules of the DAO.
     let proposal_modules: Vec<ProposalModule> = deps.querier.query_wasm_smart(
         info.sender.clone(),
-        &dao_interface_v2::msg::QueryMsg::ProposalModules {
+        &dao_interface::msg::QueryMsg::ProposalModules {
             start_after: None,
             limit: None,
         },
@@ -305,7 +306,7 @@ fn execute_migration_v1_v2(
     msgs.push(
         WasmMsg::Execute {
             contract_addr: info.sender.to_string(),
-            msg: to_json_binary(&dao_interface_v2::msg::ExecuteMsg::UpdateSubDaos {
+            msg: to_json_binary(&dao_interface::msg::ExecuteMsg::UpdateSubDaos {
                 to_add: sub_daos,
                 to_remove: vec![],
             })?,
@@ -318,7 +319,7 @@ fn execute_migration_v1_v2(
     let proposal_hook_msg = SubMsg::reply_on_success(
         WasmMsg::Execute {
             contract_addr: info.sender.to_string(),
-            msg: to_json_binary(&dao_interface_v2::msg::ExecuteMsg::ExecuteProposalHook { msgs })?,
+            msg: to_json_binary(&dao_interface::msg::ExecuteMsg::ExecuteProposalHook { msgs })?,
             funds: vec![],
         },
         V1_V2_REPLY_ID,
@@ -345,11 +346,11 @@ pub fn reply(deps: DepsMut, env: Env, reply: Reply) -> Result<Response, Contract
             // and only then delete our module if everything worked out.
             let remove_msg = WasmMsg::Execute {
                 contract_addr: core_addr.to_string(),
-                msg: to_json_binary(&dao_interface_v2::msg::ExecuteMsg::ExecuteProposalHook {
+                msg: to_json_binary(&dao_interface::msg::ExecuteMsg::ExecuteProposalHook {
                     msgs: vec![WasmMsg::Execute {
                         contract_addr: core_addr.to_string(),
                         msg: to_json_binary(
-                            &dao_interface_v2::msg::ExecuteMsg::UpdateProposalModules {
+                            &dao_interface::msg::ExecuteMsg::UpdateProposalModules {
                                 to_add: vec![],
                                 to_disable: vec![env.contract.address.to_string()],
                             },

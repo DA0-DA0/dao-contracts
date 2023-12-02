@@ -1,5 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
+use dao_voting::veto::VetoConfig;
 
 use crate::ContractError;
 
@@ -12,8 +13,8 @@ pub struct V1CodeIds {
 }
 
 impl V1CodeIds {
-    pub fn to(self) -> dao_interface_v2::migrate_msg::V1CodeIds {
-        dao_interface_v2::migrate_msg::V1CodeIds {
+    pub fn to(self) -> dao_interface::migrate_msg::V1CodeIds {
+        dao_interface::migrate_msg::V1CodeIds {
             proposal_single: self.proposal_single,
             cw4_voting: self.cw4_voting,
             cw20_stake: self.cw20_stake,
@@ -31,8 +32,8 @@ pub struct V2CodeIds {
 }
 
 impl V2CodeIds {
-    pub fn to(self) -> dao_interface_v2::migrate_msg::V2CodeIds {
-        dao_interface_v2::migrate_msg::V2CodeIds {
+    pub fn to(self) -> dao_interface::migrate_msg::V2CodeIds {
+        dao_interface::migrate_msg::V2CodeIds {
             proposal_single: self.proposal_single,
             cw4_voting: self.cw4_voting,
             cw20_stake: self.cw20_stake,
@@ -45,7 +46,8 @@ impl V2CodeIds {
 #[cw_serde]
 pub struct ProposalParams {
     pub close_proposal_on_execution_failure: bool,
-    pub pre_propose_info: voting_v2::pre_propose::PreProposeInfo,
+    pub pre_propose_info: dao_voting::pre_propose::PreProposeInfo,
+    pub veto: Option<VetoConfig>,
 }
 
 #[cw_serde]
@@ -65,7 +67,7 @@ pub struct MigrationParams {
 #[cw_serde]
 #[serde(untagged)]
 pub enum MigrationMsgs {
-    DaoProposalSingle(dao_proposal_single_v2::msg::MigrateMsg),
+    DaoProposalSingle(dao_proposal_single::msg::MigrateMsg),
     DaoVotingCw4(dao_voting_cw4::msg::MigrateMsg),
     Cw20Stake(cw20_stake::msg::MigrateMsg),
     DaoVotingCw20Staked(dao_voting_cw20_staked::msg::MigrateMsg),
@@ -124,7 +126,7 @@ pub struct SingleProposalData {
 #[cw_serde]
 pub struct TestState {
     pub proposal_counts: Vec<u64>,
-    pub proposals: Vec<dao_proposal_single_v2::proposal::SingleChoiceProposal>,
+    pub proposals: Vec<dao_proposal_single::proposal::SingleChoiceProposal>,
     pub total_voting_power: Uint128,
     /// This is the voting power of the proposer of the sample proposal
     pub single_voting_power: Uint128,

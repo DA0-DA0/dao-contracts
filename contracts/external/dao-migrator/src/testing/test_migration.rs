@@ -2,7 +2,7 @@ use std::borrow::BorrowMut;
 
 use cosmwasm_std::Addr;
 use cw_multi_test::Executor;
-use dao_interface_v2::{query::SubDao, state::ProposalModuleStatus};
+use dao_interface::{query::SubDao, state::ProposalModuleStatus};
 
 use crate::{
     testing::{
@@ -71,11 +71,11 @@ pub fn basic_test(voting_type: VotingType, from_core: bool) {
 
     assert_eq!(test_state_v1, test_state_v2);
 
-    let modules: Vec<dao_interface_v2::state::ProposalModule> = app
+    let modules: Vec<dao_interface::state::ProposalModule> = app
         .wrap()
         .query_wasm_smart(
             module_addrs.core,
-            &dao_interface_v2::msg::QueryMsg::ProposalModules {
+            &dao_interface::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -139,11 +139,11 @@ fn test_migrator_address_is_first() {
 
     assert_eq!(test_state_v1, test_state_v2);
 
-    let modules: Vec<dao_interface_v2::state::ProposalModule> = app
+    let modules: Vec<dao_interface::state::ProposalModule> = app
         .wrap()
         .query_wasm_smart(
             module_addrs.core,
-            &dao_interface_v2::msg::QueryMsg::ProposalModules {
+            &dao_interface::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -188,14 +188,16 @@ fn test_duplicate_proposal_params() {
             module_addrs.proposals[0].to_string(),
             ProposalParams {
                 close_proposal_on_execution_failure: true,
-                pre_propose_info: voting_v2::pre_propose::PreProposeInfo::AnyoneMayPropose {},
+                pre_propose_info: dao_voting::pre_propose::PreProposeInfo::AnyoneMayPropose {},
+                veto: None,
             },
         ),
         (
             module_addrs.proposals[0].to_string(),
             ProposalParams {
                 close_proposal_on_execution_failure: true,
-                pre_propose_info: voting_v2::pre_propose::PreProposeInfo::AnyoneMayPropose {},
+                pre_propose_info: dao_voting::pre_propose::PreProposeInfo::AnyoneMayPropose {},
+                veto: None,
             },
         ),
     ];
@@ -348,11 +350,11 @@ fn test_sub_daos() {
     )
     .unwrap();
 
-    let sub_daos: Vec<dao_interface_v2::query::SubDao> = app
+    let sub_daos: Vec<dao_interface::query::SubDao> = app
         .wrap()
         .query_wasm_smart(
             module_addrs.core,
-            &dao_interface_v2::msg::QueryMsg::ListSubDaos {
+            &dao_interface::msg::QueryMsg::ListSubDaos {
                 start_after: None,
                 limit: None,
             },
