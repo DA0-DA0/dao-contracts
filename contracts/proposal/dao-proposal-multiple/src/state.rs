@@ -7,6 +7,7 @@ use cw_utils::Duration;
 use dao_voting::{
     multiple_choice::{MultipleChoiceVote, VotingStrategy},
     pre_propose::ProposalCreationPolicy,
+    veto::VetoConfig,
 };
 
 /// The proposal module's configuration.
@@ -43,6 +44,9 @@ pub struct Config {
     /// remain open until the DAO's treasury was large enough for it to be
     /// executed.
     pub close_proposal_on_execution_failure: bool,
+    /// Optional veto configuration. If set to `None`, veto option
+    /// is disabled. Otherwise contains the configuration for veto flow.
+    pub veto: Option<VetoConfig>,
 }
 
 // Each ballot stores a chosen vote and corresponding voting power and rationale.
