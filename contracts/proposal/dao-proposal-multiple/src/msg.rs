@@ -4,6 +4,7 @@ use dao_dao_macros::proposal_module_query;
 use dao_voting::{
     multiple_choice::{MultipleChoiceOptions, MultipleChoiceVote, VotingStrategy},
     pre_propose::PreProposeInfo,
+    veto::VetoConfig,
 };
 
 #[cw_serde]
@@ -37,6 +38,12 @@ pub struct InstantiateMsg {
     /// remain open until the DAO's treasury was large enough for it to be
     /// executed.
     pub close_proposal_on_execution_failure: bool,
+    /// Optional veto configuration for proposal execution.
+    /// If set, proposals can only be executed after the timelock
+    /// delay expiration.
+    /// During this period an oversight account (`veto.vetoer`) can
+    /// veto the proposal.
+    pub veto: Option<VetoConfig>,
 }
 
 #[cw_serde]
@@ -72,6 +79,11 @@ pub enum ExecuteMsg {
     /// executed by the DAO.
     Execute {
         /// The ID of the proposal to execute.
+        proposal_id: u64,
+    },
+    /// Callable only if veto is configured
+    Veto {
+        /// The ID of the proposal to veto.
         proposal_id: u64,
     },
     /// Closes a proposal that has failed (either not passed or timed
@@ -116,6 +128,9 @@ pub enum ExecuteMsg {
         /// remain open until the DAO's treasury was large enough for it to be
         /// executed.
         close_proposal_on_execution_failure: bool,
+        /// Optional time delay on proposal execution, during which the
+        /// proposal may be vetoed.
+        veto: Option<VetoConfig>,
     },
     /// Updates the sender's rationale for their vote on the specified
     /// proposal. Errors if no vote vote has been cast.
@@ -217,6 +232,11 @@ pub enum MigrateMsg {
         /// no deposit or membership checks when submitting a proposal. The "ModuleMayPropose"
         /// option allows for instantiating a prepropose module which will handle deposit verification and return logic.
         pre_propose_info: PreProposeInfo,
+        /// This field was not present in DAO DAO v1. To migrate, a
+        /// value must be specified.
+        ///
+        /// optional configuration for veto feature
+        veto: Option<VetoConfig>,
     },
     FromCompatible {},
 }

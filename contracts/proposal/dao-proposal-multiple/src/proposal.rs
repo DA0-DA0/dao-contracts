@@ -6,6 +6,7 @@ use dao_voting::{
         CheckedMultipleChoiceOption, MultipleChoiceOptionType, MultipleChoiceVotes, VotingStrategy,
     },
     status::Status,
+    veto::VetoConfig,
     voting::does_vote_count_pass,
 };
 
@@ -13,7 +14,9 @@ use crate::query::ProposalResponse;
 
 #[cw_serde]
 pub struct MultipleChoiceProposal {
+    /// The title of the proposal
     pub title: String,
+    /// The main body of the proposal text
     pub description: String,
     /// The address that created this proposal.
     pub proposer: Addr,
@@ -30,7 +33,7 @@ pub struct MultipleChoiceProposal {
     pub expiration: Expiration,
     /// The options to be chosen from in the vote.
     pub choices: Vec<CheckedMultipleChoiceOption>,
-    /// Prosal status (Open, rejected, executed, execution failed, closed, passed)
+    /// The proposal status
     pub status: Status,
     /// Voting settings (threshold, quorum, etc.)
     pub voting_strategy: VotingStrategy,
@@ -43,6 +46,9 @@ pub struct MultipleChoiceProposal {
     /// When enabled, proposals can only be executed after the voting
     /// perid has ended and the proposal passed.
     pub allow_revoting: bool,
+    /// Optional veto configuration. If set to `None`, veto option
+    /// is disabled. Otherwise contains the configuration for veto flow.
+    pub veto: Option<VetoConfig>,
 }
 
 pub enum VoteResult {
@@ -65,14 +71,29 @@ impl MultipleChoiceProposal {
 
     /// Gets the current status of the proposal.
     pub fn current_status(&self, block: &BlockInfo) -> StdResult<Status> {
-        if self.status == Status::Open && self.is_passed(block)? {
-            Ok(Status::Passed)
-        } else if self.status == Status::Open
-            && (self.expiration.is_expired(block) || self.is_rejected(block)?)
-        {
-            Ok(Status::Rejected)
-        } else {
-            Ok(self.status)
+        match self.status {
+            Status::Open if self.is_passed(block)? => match &self.veto {
+                // if prop is passed and veto is configured, calculate timelock
+                // expiration. if it's expired, this proposal has passed.
+                // otherwise, set status to `VetoTimelock`.
+                Some(veto_config) => {
+                    let expiration = veto_config.timelock_duration.after(block);
+
+                    if expiration.is_expired(block) {
+                        Ok(Status::Passed)
+                    } else {
+                        Ok(Status::VetoTimelock {
+                            expiration: veto_config.timelock_duration.after(block),
+                        })
+                    }
+                }
+                // Otherwise the proposal is simply passed
+                None => Ok(Status::Passed),
+            },
+            Status::Open if self.expiration.is_expired(block) || self.is_rejected(block)? => {
+                Ok(Status::Rejected)
+            }
+            _ => Ok(self.status),
         }
     }
 
@@ -306,6 +327,7 @@ mod tests {
             votes,
             allow_revoting,
             min_voting_period: None,
+            veto: None,
         }
     }
 
