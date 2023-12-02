@@ -7,15 +7,15 @@ use dao_testing::contracts::{
     cw20_base_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
     dao_dao_contract, proposal_single_contract, v1_dao_dao_contract, v1_proposal_single_contract,
 };
-use dao_voting::{deposit::UncheckedDepositInfo, status::Status};
 use dao_voting::veto::VetoConfig;
+use dao_voting::{deposit::UncheckedDepositInfo, status::Status};
 
+use crate::testing::queries::query_list_proposals;
 use crate::testing::{
     execute::{execute_proposal, make_proposal, vote_on_proposal},
     instantiate::get_pre_propose_info,
     queries::{query_proposal, query_proposal_count},
 };
-use crate::testing::queries::query_list_proposals;
 
 /// This test attempts to simulate a realistic migration from DAO DAO
 /// v1 to v2. Other tests in `/tests/tests.rs` check that versions and
@@ -86,7 +86,7 @@ fn test_v1_v2_full_migration() {
                             initial_dao_balance: Some(Uint128::new(100)),
                         },
                     })
-                        .unwrap(),
+                    .unwrap(),
                     admin: cw_core_v1::msg::Admin::CoreContract {},
                     label: "voting".to_string(),
                 },
@@ -102,7 +102,7 @@ fn test_v1_v2_full_migration() {
                         allow_revoting: false,
                         deposit_info: None,
                     })
-                        .unwrap(),
+                    .unwrap(),
                     admin: cw_core_v1::msg::Admin::CoreContract {},
                     label: "proposal".to_string(),
                 }],
@@ -122,9 +122,9 @@ fn test_v1_v2_full_migration() {
             contract_addr: core.to_string(),
             admin: core.to_string(),
         }
-            .into(),
+        .into(),
     )
-        .unwrap();
+    .unwrap();
 
     // ----
     // stake tokens in the DAO
@@ -159,7 +159,7 @@ fn test_v1_v2_full_migration() {
             },
             &[],
         )
-            .unwrap();
+        .unwrap();
         app.update_block(next_block);
         token
     };
@@ -195,14 +195,14 @@ fn test_v1_v2_full_migration() {
                     to_add: vec![token.to_string()],
                     to_remove: vec![],
                 })
-                    .unwrap(),
+                .unwrap(),
                 funds: vec![],
             }
-                .into()],
+            .into()],
         },
         &[],
     )
-        .unwrap();
+    .unwrap();
     app.execute_contract(
         sender.clone(),
         proposal.clone(),
@@ -212,14 +212,14 @@ fn test_v1_v2_full_migration() {
         },
         &[],
     )
-        .unwrap();
+    .unwrap();
     app.execute_contract(
         sender.clone(),
         proposal.clone(),
         &cw_proposal_single_v1::msg::ExecuteMsg::Execute { proposal_id: 1 },
         &[],
     )
-        .unwrap();
+    .unwrap();
     let tokens: Vec<cw_core_v1::query::Cw20BalanceResponse> = app
         .wrap()
         .query_wasm_smart(
@@ -255,14 +255,14 @@ fn test_v1_v2_full_migration() {
                     // more tokens than the DAO posseses.
                     amount: Uint128::new(101),
                 })
-                    .unwrap(),
+                .unwrap(),
                 funds: vec![],
             }
-                .into()],
+            .into()],
         },
         &[],
     )
-        .unwrap();
+    .unwrap();
     app.execute_contract(
         sender.clone(),
         proposal.clone(),
@@ -272,15 +272,15 @@ fn test_v1_v2_full_migration() {
         },
         &[],
     )
-        .unwrap();
+    .unwrap();
     app.execute_contract(
         sender.clone(),
         proposal.clone(),
         &cw_proposal_single_v1::msg::ExecuteMsg::Execute { proposal_id: 2 },
         &[],
     )
-        // can not be executed.
-        .unwrap_err();
+    // can not be executed.
+    .unwrap_err();
     let cw_proposal_single_v1::query::ProposalResponse {
         proposal: cw_proposal_single_v1::proposal::Proposal { status, .. },
         ..
@@ -323,9 +323,9 @@ fn test_v1_v2_full_migration() {
                         dao_uri: Some("dao-uri".to_string()),
                         params: None,
                     })
-                        .unwrap(),
+                    .unwrap(),
                 }
-                    .into(),
+                .into(),
                 WasmMsg::Migrate {
                     contract_addr: proposal.to_string(),
                     new_code_id: v2_proposal_code,
@@ -346,7 +346,7 @@ fn test_v1_v2_full_migration() {
         },
         &[],
     )
-        .unwrap();
+    .unwrap();
     app.execute_contract(
         sender.clone(),
         proposal.clone(),
@@ -356,14 +356,14 @@ fn test_v1_v2_full_migration() {
         },
         &[],
     )
-        .unwrap();
+    .unwrap();
     app.execute_contract(
         sender.clone(),
         proposal.clone(),
         &cw_proposal_single_v1::msg::ExecuteMsg::Execute { proposal_id: 3 },
         &[],
     )
-        .unwrap();
+    .unwrap();
 
     // ----
     // execute proposal two. the addition of
@@ -379,7 +379,7 @@ fn test_v1_v2_full_migration() {
     let count = query_proposal_count(&app, &proposal);
     assert_eq!(count, 3);
 
-    let migrated_existing_props = query_list_proposals(&mut app, &proposal, None, None);
+    let migrated_existing_props = query_list_proposals(&app, &proposal, None, None);
     // assert that even though we migrate with a veto config,
     // existing proposals are not affected
     for prop in migrated_existing_props.proposals {
@@ -432,10 +432,10 @@ fn test_v1_v2_full_migration() {
                 to_add: vec![],
                 to_remove: vec![token.into_string()],
             })
-                .unwrap(),
+            .unwrap(),
             funds: vec![],
         }
-            .into()],
+        .into()],
     );
     vote_on_proposal(
         &mut app,
@@ -445,13 +445,16 @@ fn test_v1_v2_full_migration() {
         dao_voting::voting::Vote::Yes,
     );
 
-    let new_prop = query_proposal(&mut app, &proposal, 4);
-    assert_eq!(new_prop.proposal.veto, Some(VetoConfig {
-        timelock_duration: Duration::Time(1000),
-        vetoer: sender.to_string(),
-        early_execute: true,
-        veto_before_passed: false,
-    }));
+    let new_prop = query_proposal(&app, &proposal, 4);
+    assert_eq!(
+        new_prop.proposal.veto,
+        Some(VetoConfig {
+            timelock_duration: Duration::Time(1000),
+            vetoer: sender.to_string(),
+            early_execute: true,
+            veto_before_passed: false,
+        })
+    );
 
     execute_proposal(&mut app, &proposal, sender.as_str(), 4);
     let tokens: Vec<dao_interface::query::Cw20BalanceResponse> = app

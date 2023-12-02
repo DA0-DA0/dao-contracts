@@ -28,7 +28,9 @@ use dao_voting::voting::{get_total_power, get_voting_power, validate_voting_peri
 use crate::msg::MigrateMsg;
 use crate::proposal::{next_proposal_id, SingleChoiceProposal};
 use crate::state::{Config, CREATION_POLICY};
-use cw_proposal_single_v1 as v1;
+use crate::v1_state::{
+    v1_duration_to_v2, v1_expiration_to_v2, v1_status_to_v2, v1_threshold_to_v2, v1_votes_to_v2,
+};
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
@@ -37,9 +39,7 @@ use crate::{
     query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
     state::{Ballot, BALLOTS, CONFIG, PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS},
 };
-use crate::v1_state::{
-    v1_duration_to_v2, v1_expiration_to_v2, v1_status_to_v2, v1_threshold_to_v2, v1_votes_to_v2,
-};
+use cw_proposal_single_v1 as v1;
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-proposal-single";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -954,7 +954,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
         MigrateMsg::FromV1 {
             close_proposal_on_execution_failure,
             pre_propose_info,
-            veto
+            veto,
         } => {
             // `CONTRACT_VERSION` here is from the data section of the
             // blob we are migrating to. `version` is from storage. If
@@ -1034,7 +1034,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                 .add_attribute("action", "migrate")
                 .add_attribute("from", "v1")
                 .add_submessages(pre_propose_messages))
-        },
+        }
         MigrateMsg::FromCompatible {} => Ok(Response::default()
             .add_attribute("action", "migrate")
             .add_attribute("from", "compatible")),
