@@ -8,7 +8,7 @@ pub enum VetoError {
     #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error("Proposal is {status}, this proposal status is unable to be vetoed.")]
+    #[error("Proposal is {status} and thus is unable to be vetoed.")]
     InvalidProposalStatus { status: String },
 
     #[error("Early execution for timelocked proposals is not enabled. Proposal can not be executed before the timelock delay has expired.")]
@@ -20,10 +20,10 @@ pub enum VetoError {
     #[error("Vetoing before a proposal passes is not enabled.")]
     NoVetoBeforePassed {},
 
-    #[error("The proposal is time locked and cannot be executed.")]
+    #[error("The proposal is timelocked and cannot be executed.")]
     Timelocked {},
 
-    #[error("The timelock duration has expired.")]
+    #[error("The veto timelock duration has expired.")]
     TimelockExpired {},
 
     #[error("Only vetoer can veto a proposal.")]

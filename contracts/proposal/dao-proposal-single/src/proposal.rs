@@ -73,11 +73,20 @@ impl SingleChoiceProposal {
     pub fn current_status(&self, block: &BlockInfo) -> Status {
         match self.status {
             Status::Open if self.is_passed(block) => match &self.veto {
-                // if prop is passed and time lock is configured,
-                // calculate lock expiration and set status to `VetoTimelock`.
-                Some(veto_config) => Status::VetoTimelock {
-                    expiration: veto_config.timelock_duration.after(block),
-                },
+                // if prop is passed and veto is configured, calculate timelock
+                // expiration. if it's expired, this proposal has passed.
+                // otherwise, set status to `VetoTimelock`.
+                Some(veto_config) => {
+                    let expiration = veto_config.timelock_duration.after(block);
+
+                    if expiration.is_expired(block) {
+                        Status::Passed
+                    } else {
+                        Status::VetoTimelock {
+                            expiration: veto_config.timelock_duration.after(block),
+                        }
+                    }
+                }
                 // Otherwise the proposal is simply passed
                 None => Status::Passed,
             },
