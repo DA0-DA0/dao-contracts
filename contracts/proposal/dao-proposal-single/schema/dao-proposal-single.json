@@ -633,7 +633,7 @@
                 ]
               },
               "veto": {
-                "description": "Optional time delay on proposal execution, during which the proposal maybe vetoed",
+                "description": "Optional time delay on proposal execution, during which the proposal may be vetoed.",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/VetoConfig"
@@ -2154,7 +2154,7 @@
                 ]
               },
               "veto": {
-                "description": "This field was not present in DAO DAO v2. To migrate, a value must be specified.\n\noptional configuration for veto feature",
+                "description": "This field was not present in DAO DAO v1. To migrate, a value must be specified.\n\noptional configuration for veto feature",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/VetoConfig"
