@@ -36,7 +36,10 @@ use crate::{
     query::{ProposalResponse, VoteInfo},
     state::Config,
     testing::{
-        contracts::{pre_propose_single_contract, proposal_single_contract, cw20_base_contract, cw20_stake_contract, cw20_staked_balances_voting_contract, cw_core_contract},
+        contracts::{
+            cw20_base_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
+            cw_core_contract, pre_propose_single_contract, proposal_single_contract,
+        },
         execute::{
             add_proposal_hook, add_proposal_hook_should_fail, add_vote_hook,
             add_vote_hook_should_fail, close_proposal, close_proposal_should_fail,
@@ -3903,7 +3906,6 @@ fn test_proposal_count_goes_up() {
     assert_eq!(next, 3);
 }
 
-
 #[test]
 fn test_prop_veto_config_validation() {
     let mut app = App::default();
@@ -3922,7 +3924,7 @@ fn test_prop_veto_config_validation() {
         Cw20Coin {
             address: "a-2".to_string(),
             amount: Uint128::new(100_000_000),
-        }
+        },
     ]);
 
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
@@ -3994,5 +3996,8 @@ fn test_prop_veto_config_validation() {
         .downcast()
         .unwrap();
 
-    assert_eq!(err, ContractError::VetoError(VetoError::DurationMisconfiguration {  }));
+    assert_eq!(
+        err,
+        ContractError::VetoError(VetoError::DurationMisconfiguration {})
+    );
 }

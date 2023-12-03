@@ -53,7 +53,7 @@ impl VetoConfig {
             Duration::Time(t) => t,
         };
         if timelock_duration == 0 && !self.veto_before_passed {
-            Err(VetoError::DurationMisconfiguration {  })
+            Err(VetoError::DurationMisconfiguration {})
         } else {
             Ok(())
         }

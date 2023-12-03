@@ -8,7 +8,9 @@ use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Execut
 use cw_utils::Duration;
 use dao_interface::state::ProposalModule;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
-use dao_testing::contracts::{cw20_stake_contract, dao_dao_contract, cw20_staked_balances_voting_contract};
+use dao_testing::contracts::{
+    cw20_stake_contract, cw20_staked_balances_voting_contract, dao_dao_contract,
+};
 use dao_voting::veto::{VetoConfig, VetoError};
 use dao_voting::{
     deposit::{CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
@@ -4996,7 +4998,7 @@ fn test_veto_when_veto_timelock_expired() {
     );
 
     // pass enough time to expire the timelock
-    app.update_block(|b| b.height = b.height + 10);
+    app.update_block(|b| b.height += 10);
 
     let err: ContractError = app
         .execute_contract(
@@ -5030,7 +5032,7 @@ fn test_prop_veto_config_validation() {
         Cw20Coin {
             address: "a-2".to_string(),
             amount: Uint128::new(100_000_000),
-        }
+        },
     ]);
     let instantiate_msg = InstantiateMsg {
         min_voting_period: None,
@@ -5044,7 +5046,7 @@ fn test_prop_veto_config_validation() {
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: Some(veto_config),
     };
-    
+
     let proposal_module_code_id = app.store_code(proposal_multiple_contract());
 
     let initial_balances = initial_balances.unwrap_or_else(|| {
@@ -5128,7 +5130,10 @@ fn test_prop_veto_config_validation() {
         .downcast()
         .unwrap();
 
-    assert_eq!(err, ContractError::VetoError(VetoError::DurationMisconfiguration {  }));
+    assert_eq!(
+        err,
+        ContractError::VetoError(VetoError::DurationMisconfiguration {})
+    );
 }
 
 #[test]
@@ -5226,21 +5231,17 @@ fn test_veto_sets_prop_status_to_vetoed() {
         },
     );
 
-    app
-        .execute_contract(
-            Addr::unchecked("vetoer"),
-            proposal_module.clone(),
-            &ExecuteMsg::Veto { proposal_id: 1 },
-            &[],
-        )
-        .unwrap();
+    app.execute_contract(
+        Addr::unchecked("vetoer"),
+        proposal_module.clone(),
+        &ExecuteMsg::Veto { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
 
     let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
 
-    assert_eq!(
-        proposal.proposal.status,
-        Status::Vetoed {},
-    );
+    assert_eq!(proposal.proposal.status, Status::Vetoed {},);
 }
 
 #[test]
@@ -5330,7 +5331,7 @@ fn test_veto_from_catchall_state() {
     .unwrap();
 
     // pass enough time to expire the timelock
-    app.update_block(|b| b.height = b.height + 10);
+    app.update_block(|b| b.height += 10);
 
     app.execute_contract(
         Addr::unchecked("vetoer"),
@@ -5580,7 +5581,7 @@ fn test_veto_timelock_expires_happy() {
     );
 
     // pass enough time to expire the timelock
-    app.update_block(|b| b.height = b.height + 10);
+    app.update_block(|b| b.height += 10);
 
     app.execute_contract(
         Addr::unchecked("a-1"),
