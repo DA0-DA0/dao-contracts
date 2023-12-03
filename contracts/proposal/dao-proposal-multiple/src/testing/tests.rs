@@ -8,6 +8,7 @@ use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Execut
 use cw_utils::Duration;
 use dao_interface::state::ProposalModule;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
+use dao_voting::veto::{VetoConfig, VetoError};
 use dao_voting::{
     deposit::{CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
     multiple_choice::{
@@ -4547,4 +4548,816 @@ fn test_update_rationale() {
         vote.rationale,
         Some("This may be a good idea, but I'm not sure. YOLO".to_string())
     );
+}
+
+#[test]
+fn test_open_proposal_passes_with_zero_timelock_veto_duration() {
+    let mut app = App::default();
+    let timelock_duration = 0;
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Height(timelock_duration),
+        vetoer: "vetoer".to_string(),
+        early_execute: false,
+        veto_before_passed: false,
+    };
+
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        InstantiateMsg {
+            min_voting_period: None,
+            max_voting_period: Duration::Height(6),
+            only_members_execute: false,
+            allow_revoting: false,
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Majority {},
+            },
+            close_proposal_on_execution_failure: false,
+            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+            veto: Some(veto_config),
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "a-1".to_string(),
+                amount: Uint128::new(110_000_000),
+            },
+            Cw20Coin {
+                address: "a-2".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]),
+    );
+    let govmod = query_multiple_proposal_module(&app, &core_addr);
+
+    let proposal_module = query_multiple_proposal_module(&app, &core_addr);
+
+    let next_proposal_id: u64 = app
+        .wrap()
+        .query_wasm_smart(&proposal_module, &QueryMsg::NextProposalId {})
+        .unwrap();
+    assert_eq!(next_proposal_id, 1);
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+    ];
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Create a basic proposal with 2 options
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options,
+            proposer: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // zero duration timelock goes straight to passed status
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
+
+    assert_eq!(proposal.proposal.status, Status::Passed {},);
+
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("vetoer"),
+            proposal_module.clone(),
+            &ExecuteMsg::Veto { proposal_id: 1 },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert_eq!(err, ContractError::VetoError(VetoError::TimelockExpired {}));
+}
+
+#[test]
+fn test_veto_non_existing_prop_id() {
+    let mut app = App::default();
+    let timelock_duration = 0;
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Height(timelock_duration),
+        vetoer: "vetoer".to_string(),
+        early_execute: false,
+        veto_before_passed: false,
+    };
+
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        InstantiateMsg {
+            min_voting_period: None,
+            max_voting_period: Duration::Height(6),
+            only_members_execute: false,
+            allow_revoting: false,
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Majority {},
+            },
+            close_proposal_on_execution_failure: false,
+            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+            veto: Some(veto_config),
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "a-1".to_string(),
+                amount: Uint128::new(110_000_000),
+            },
+            Cw20Coin {
+                address: "a-2".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]),
+    );
+
+    let proposal_module = query_multiple_proposal_module(&app, &core_addr);
+
+    // veto from non open/passed/veto state should return an error
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("vetoer"),
+            proposal_module.clone(),
+            &ExecuteMsg::Veto { proposal_id: 69 },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert_eq!(err, ContractError::NoSuchProposal { id: 69 });
+}
+
+#[test]
+fn test_veto_with_no_veto_configuration() {
+    let mut app = App::default();
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        InstantiateMsg {
+            min_voting_period: None,
+            max_voting_period: Duration::Height(6),
+            only_members_execute: false,
+            allow_revoting: false,
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Majority {},
+            },
+            close_proposal_on_execution_failure: false,
+            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+            veto: None,
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "a-1".to_string(),
+                amount: Uint128::new(110_000_000),
+            },
+            Cw20Coin {
+                address: "a-2".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]),
+    );
+
+    let proposal_module = query_multiple_proposal_module(&app, &core_addr);
+
+    let next_proposal_id: u64 = app
+        .wrap()
+        .query_wasm_smart(&proposal_module, &QueryMsg::NextProposalId {})
+        .unwrap();
+    assert_eq!(next_proposal_id, 1);
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+    ];
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Create a basic proposal with 2 options
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options,
+            proposer: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // veto from non open/passed/veto state should return an error
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("vetoer"),
+            proposal_module.clone(),
+            &ExecuteMsg::Veto { proposal_id: 1 },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert_eq!(
+        err,
+        ContractError::VetoError(VetoError::NoVetoConfiguration {})
+    );
+}
+
+#[test]
+fn test_veto_open_prop_with_veto_before_passed_disabled() {
+    let mut app = App::default();
+    let timelock_duration = 0;
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Height(timelock_duration),
+        vetoer: "vetoer".to_string(),
+        early_execute: false,
+        veto_before_passed: false,
+    };
+
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        InstantiateMsg {
+            min_voting_period: None,
+            max_voting_period: Duration::Height(6),
+            only_members_execute: false,
+            allow_revoting: false,
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Majority {},
+            },
+            close_proposal_on_execution_failure: false,
+            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+            veto: Some(veto_config),
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "a-1".to_string(),
+                amount: Uint128::new(110_000_000),
+            },
+            Cw20Coin {
+                address: "a-2".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]),
+    );
+    let govmod = query_multiple_proposal_module(&app, &core_addr);
+
+    let proposal_module = query_multiple_proposal_module(&app, &core_addr);
+
+    let next_proposal_id: u64 = app
+        .wrap()
+        .query_wasm_smart(&proposal_module, &QueryMsg::NextProposalId {})
+        .unwrap();
+    assert_eq!(next_proposal_id, 1);
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+    ];
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Create a basic proposal with 2 options
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options,
+            proposer: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("a-2"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
+
+    assert_eq!(proposal.proposal.status, Status::Open {},);
+
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("vetoer"),
+            proposal_module.clone(),
+            &ExecuteMsg::Veto { proposal_id: 1 },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert_eq!(
+        err,
+        ContractError::VetoError(VetoError::NoVetoBeforePassed {})
+    );
+}
+
+#[test]
+fn test_veto_when_veto_timelock_expired() {
+    let mut app = App::default();
+    let timelock_duration = 3;
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Height(timelock_duration),
+        vetoer: "vetoer".to_string(),
+        early_execute: false,
+        veto_before_passed: false,
+    };
+
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        InstantiateMsg {
+            min_voting_period: None,
+            max_voting_period: Duration::Height(6),
+            only_members_execute: false,
+            allow_revoting: false,
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Majority {},
+            },
+            close_proposal_on_execution_failure: false,
+            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+            veto: Some(veto_config),
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "a-1".to_string(),
+                amount: Uint128::new(110_000_000),
+            },
+            Cw20Coin {
+                address: "a-2".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]),
+    );
+    let govmod = query_multiple_proposal_module(&app, &core_addr);
+
+    let proposal_module = query_multiple_proposal_module(&app, &core_addr);
+
+    let next_proposal_id: u64 = app
+        .wrap()
+        .query_wasm_smart(&proposal_module, &QueryMsg::NextProposalId {})
+        .unwrap();
+    assert_eq!(next_proposal_id, 1);
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+    ];
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Create a basic proposal with 2 options
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options,
+            proposer: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
+
+    assert_eq!(
+        proposal.proposal.status,
+        Status::VetoTimelock {
+            expiration: cw_utils::Expiration::AtHeight(app.block_info().height + timelock_duration),
+        },
+    );
+
+    // pass enough time to expire the timelock
+    app.update_block(|b| b.height = b.height + 10);
+
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("vetoer"),
+            proposal_module.clone(),
+            &ExecuteMsg::Veto { proposal_id: 1 },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert_eq!(err, ContractError::VetoError(VetoError::TimelockExpired {}),);
+}
+
+#[test]
+fn test_veto_from_catchall_state() {
+    let mut app = App::default();
+    let timelock_duration = 3;
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Height(timelock_duration),
+        vetoer: "vetoer".to_string(),
+        early_execute: true,
+        veto_before_passed: false,
+    };
+
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        InstantiateMsg {
+            min_voting_period: None,
+            max_voting_period: Duration::Height(6),
+            only_members_execute: false,
+            allow_revoting: false,
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Majority {},
+            },
+            close_proposal_on_execution_failure: false,
+            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+            veto: Some(veto_config),
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "a-1".to_string(),
+                amount: Uint128::new(110_000_000),
+            },
+            Cw20Coin {
+                address: "a-2".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]),
+    );
+    let govmod = query_multiple_proposal_module(&app, &core_addr);
+
+    let proposal_module = query_multiple_proposal_module(&app, &core_addr);
+
+    let next_proposal_id: u64 = app
+        .wrap()
+        .query_wasm_smart(&proposal_module, &QueryMsg::NextProposalId {})
+        .unwrap();
+    assert_eq!(next_proposal_id, 1);
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+    ];
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Create a basic proposal with 2 options
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options,
+            proposer: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // pass enough time to expire the timelock
+    app.update_block(|b| b.height = b.height + 10);
+
+    app.execute_contract(
+        Addr::unchecked("vetoer"),
+        proposal_module.clone(),
+        &ExecuteMsg::Execute { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
+    assert_eq!(proposal.proposal.status, Status::Executed {},);
+
+    // veto from non open/passed/veto state should return an error
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("vetoer"),
+            proposal_module.clone(),
+            &ExecuteMsg::Veto { proposal_id: 1 },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert_eq!(
+        err,
+        ContractError::VetoError(VetoError::InvalidProposalStatus {
+            status: "executed".to_string(),
+        })
+    );
+}
+
+#[test]
+fn test_veto_timelock_early_execute_happy() {
+    let mut app = App::default();
+    let timelock_duration = 3;
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Height(timelock_duration),
+        vetoer: "vetoer".to_string(),
+        early_execute: true,
+        veto_before_passed: false,
+    };
+
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        InstantiateMsg {
+            min_voting_period: None,
+            max_voting_period: Duration::Height(6),
+            only_members_execute: true,
+            allow_revoting: false,
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Majority {},
+            },
+            close_proposal_on_execution_failure: false,
+            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+            veto: Some(veto_config),
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "a-1".to_string(),
+                amount: Uint128::new(110_000_000),
+            },
+            Cw20Coin {
+                address: "a-2".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]),
+    );
+    let govmod = query_multiple_proposal_module(&app, &core_addr);
+
+    let proposal_module = query_multiple_proposal_module(&app, &core_addr);
+
+    let next_proposal_id: u64 = app
+        .wrap()
+        .query_wasm_smart(&proposal_module, &QueryMsg::NextProposalId {})
+        .unwrap();
+    assert_eq!(next_proposal_id, 1);
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+    ];
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Create a basic proposal with 2 options
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options,
+            proposer: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
+
+    assert_eq!(
+        proposal.proposal.status,
+        Status::VetoTimelock {
+            expiration: cw_utils::Expiration::AtHeight(app.block_info().height + timelock_duration),
+        },
+    );
+
+    // first we try unauthorized early execution
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("not-the-vetoer"),
+            proposal_module.clone(),
+            &ExecuteMsg::Execute { proposal_id: 1 },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    app.execute_contract(
+        Addr::unchecked("vetoer"),
+        proposal_module.clone(),
+        &ExecuteMsg::Execute { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
+    assert_eq!(proposal.proposal.status, Status::Executed {},);
+}
+
+#[test]
+fn test_veto_timelock_expires_happy() {
+    let mut app = App::default();
+    let timelock_duration = 3;
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Height(timelock_duration),
+        vetoer: "vetoer".to_string(),
+        early_execute: false,
+        veto_before_passed: false,
+    };
+
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        InstantiateMsg {
+            min_voting_period: None,
+            max_voting_period: Duration::Height(6),
+            only_members_execute: false,
+            allow_revoting: false,
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Majority {},
+            },
+            close_proposal_on_execution_failure: false,
+            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+            veto: Some(veto_config),
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "a-1".to_string(),
+                amount: Uint128::new(110_000_000),
+            },
+            Cw20Coin {
+                address: "a-2".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]),
+    );
+    let govmod = query_multiple_proposal_module(&app, &core_addr);
+
+    let proposal_module = query_multiple_proposal_module(&app, &core_addr);
+
+    let next_proposal_id: u64 = app
+        .wrap()
+        .query_wasm_smart(&proposal_module, &QueryMsg::NextProposalId {})
+        .unwrap();
+    assert_eq!(next_proposal_id, 1);
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+    ];
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Create a basic proposal with 2 options
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options,
+            proposer: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
+
+    assert_eq!(
+        proposal.proposal.status,
+        Status::VetoTimelock {
+            expiration: cw_utils::Expiration::AtHeight(app.block_info().height + timelock_duration),
+        },
+    );
+
+    // pass enough time to expire the timelock
+    app.update_block(|b| b.height = b.height + 10);
+
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Execute { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
+    assert_eq!(proposal.proposal.status, Status::Executed {},);
 }
