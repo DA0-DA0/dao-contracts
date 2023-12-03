@@ -8,10 +8,9 @@ use dao_testing::contracts::{
     cw20_base_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
     dao_dao_contract, proposal_single_contract, v1_dao_dao_contract, v1_proposal_single_contract,
 };
-use dao_voting::veto::{VetoConfig, VetoError};
+use dao_voting::veto::VetoConfig;
 use dao_voting::{deposit::UncheckedDepositInfo, status::Status};
 
-use crate::ContractError;
 use crate::testing::queries::query_list_proposals;
 use crate::testing::{
     execute::{execute_proposal, make_proposal, vote_on_proposal},
@@ -313,10 +312,11 @@ fn test_v1_v2_full_migration() {
     );
 
     // first we try to migrate with an invalid veto config and assert the err
-    let err: AnyError = app.migrate_contract(
-        core.clone(), 
-        proposal.clone(),
-        &crate::msg::MigrateMsg::FromV1 {
+    let err: AnyError = app
+        .migrate_contract(
+            core.clone(),
+            proposal.clone(),
+            &crate::msg::MigrateMsg::FromV1 {
                 close_proposal_on_execution_failure: true,
                 pre_propose_info: pre_propose_info.clone(),
                 veto: Some(VetoConfig {
@@ -326,9 +326,10 @@ fn test_v1_v2_full_migration() {
                     veto_before_passed: false,
                 }),
             },
-        v2_proposal_code
-    ).unwrap_err();
-    
+            v2_proposal_code,
+        )
+        .unwrap_err();
+
     assert_eq!(
         "Zero timelock duration is only permitted with veto_before_passed",
         err.root_cause().to_string(),
