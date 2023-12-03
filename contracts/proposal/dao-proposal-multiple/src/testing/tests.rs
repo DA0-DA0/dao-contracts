@@ -5024,7 +5024,7 @@ fn test_prop_veto_config_validation() {
         early_execute: false,
         veto_before_passed: false,
     };
-    let initial_balances = Some(vec![
+    let initial_balances = vec![
         Cw20Coin {
             address: "a-1".to_string(),
             amount: Uint128::new(110_000_000),
@@ -5033,7 +5033,7 @@ fn test_prop_veto_config_validation() {
             address: "a-2".to_string(),
             amount: Uint128::new(100_000_000),
         },
-    ]);
+    ];
     let instantiate_msg = InstantiateMsg {
         min_voting_period: None,
         max_voting_period: Duration::Height(6),
@@ -5048,30 +5048,6 @@ fn test_prop_veto_config_validation() {
     };
 
     let proposal_module_code_id = app.store_code(proposal_multiple_contract());
-
-    let initial_balances = initial_balances.unwrap_or_else(|| {
-        vec![Cw20Coin {
-            address: CREATOR_ADDR.to_string(),
-            amount: Uint128::new(100_000_000),
-        }]
-    });
-
-    // Collapse balances so that we can test double votes.
-    let initial_balances: Vec<Cw20Coin> = {
-        let mut already_seen = vec![];
-        initial_balances
-            .into_iter()
-            .filter(|Cw20Coin { address, amount: _ }| {
-                if already_seen.contains(address) {
-                    false
-                } else {
-                    already_seen.push(address.clone());
-                    true
-                }
-            })
-            .collect()
-    };
-
     let cw20_id = app.store_code(cw20_base_contract());
     let cw20_stake_id = app.store_code(cw20_stake_contract());
     let staked_balances_voting_id = app.store_code(cw20_staked_balances_voting_contract());

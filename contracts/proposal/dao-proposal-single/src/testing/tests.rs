@@ -3916,7 +3916,7 @@ fn test_prop_veto_config_validation() {
         early_execute: false,
         veto_before_passed: false,
     };
-    let initial_balances = Some(vec![
+    let initial_balances = vec![
         Cw20Coin {
             address: "a-1".to_string(),
             amount: Uint128::new(110_000_000),
@@ -3925,19 +3925,11 @@ fn test_prop_veto_config_validation() {
             address: "a-2".to_string(),
             amount: Uint128::new(100_000_000),
         },
-    ]);
+    ];
 
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.veto = Some(veto_config);
     let proposal_module_code_id = app.store_code(proposal_single_contract());
-
-    let initial_balances = initial_balances.unwrap_or_else(|| {
-        vec![Cw20Coin {
-            address: CREATOR_ADDR.to_string(),
-            amount: Uint128::new(100_000_000),
-        }]
-    });
-
     let cw20_id = app.store_code(cw20_base_contract());
     let cw20_stake_id = app.store_code(cw20_stake_contract());
     let staked_balances_voting_id = app.store_code(cw20_staked_balances_voting_contract());
