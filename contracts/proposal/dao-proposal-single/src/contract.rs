@@ -63,6 +63,11 @@ pub fn instantiate(
         .pre_propose_info
         .into_initial_policy_and_messages(dao.clone())?;
 
+    // if veto is configured we validate its fields
+    if let Some(veto_config) = &msg.veto {
+        veto_config.validate()?;
+    };
+
     let config = Config {
         threshold: msg.threshold,
         max_voting_period,
@@ -953,6 +958,11 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
             if version == CONTRACT_VERSION {
                 return Err(ContractError::AlreadyMigrated {});
             }
+
+            // if veto is configured we validate its fields
+            if let Some(veto_config) = &veto {
+                veto_config.validate()?;
+            };
 
             // Update the stored config to have the new
             // `close_proposal_on_execution_failure` field.
