@@ -28,6 +28,9 @@ pub enum VetoError {
 
     #[error("Only vetoer can veto a proposal.")]
     Unauthorized {},
+
+    #[error("Zero timelock duration is only permitted with veto_before_passed")]
+    DurationMisconfiguration {},
 }
 
 #[cw_serde]
@@ -44,6 +47,18 @@ pub struct VetoConfig {
 }
 
 impl VetoConfig {
+    pub fn validate(&self) -> Result<(), VetoError> {
+        let timelock_duration = match self.timelock_duration {
+            Duration::Height(h) => h,
+            Duration::Time(t) => t,
+        };
+        if timelock_duration == 0 && !self.veto_before_passed {
+            Err(VetoError::DurationMisconfiguration {  })
+        } else {
+            Ok(())
+        }
+    }
+
     /// Whether early execute is enabled
     pub fn check_early_execute_enabled(&self) -> Result<(), VetoError> {
         if self.early_execute {

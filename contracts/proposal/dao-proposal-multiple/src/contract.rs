@@ -61,6 +61,11 @@ pub fn instantiate(
     let (initial_policy, pre_propose_messages) = msg
         .pre_propose_info
         .into_initial_policy_and_messages(dao.clone())?;
+    
+    // if veto is configured we validate its fields
+    if let Some(veto_config) = &msg.veto {
+        veto_config.validate()?;
+    };
 
     let config = Config {
         voting_strategy: msg.voting_strategy,

@@ -8,6 +8,7 @@ use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Execut
 use cw_utils::Duration;
 use dao_interface::state::ProposalModule;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
+use dao_testing::contracts::{cw20_stake_contract, dao_dao_contract, cw20_staked_balances_voting_contract};
 use dao_voting::veto::{VetoConfig, VetoError};
 use dao_voting::{
     deposit::{CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
@@ -4558,7 +4559,7 @@ fn test_open_proposal_passes_with_zero_timelock_veto_duration() {
         timelock_duration: Duration::Height(timelock_duration),
         vetoer: "vetoer".to_string(),
         early_execute: false,
-        veto_before_passed: false,
+        veto_before_passed: true,
     };
 
     let core_addr = instantiate_with_staked_balances_governance(
@@ -4663,7 +4664,7 @@ fn test_veto_non_existing_prop_id() {
         timelock_duration: Duration::Height(timelock_duration),
         vetoer: "vetoer".to_string(),
         early_execute: false,
-        veto_before_passed: false,
+        veto_before_passed: true,
     };
 
     let core_addr = instantiate_with_staked_balances_governance(
@@ -4795,7 +4796,7 @@ fn test_veto_with_no_veto_configuration() {
 #[test]
 fn test_veto_open_prop_with_veto_before_passed_disabled() {
     let mut app = App::default();
-    let timelock_duration = 0;
+    let timelock_duration = 10;
     let veto_config = VetoConfig {
         timelock_duration: Duration::Height(timelock_duration),
         vetoer: "vetoer".to_string(),
@@ -5009,6 +5010,237 @@ fn test_veto_when_veto_timelock_expired() {
         .unwrap();
 
     assert_eq!(err, ContractError::VetoError(VetoError::TimelockExpired {}),);
+}
+
+#[test]
+fn test_prop_veto_config_validation() {
+    let mut app = App::default();
+    let timelock_duration = 0;
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Height(timelock_duration),
+        vetoer: "vetoer".to_string(),
+        early_execute: false,
+        veto_before_passed: false,
+    };
+    let initial_balances = Some(vec![
+        Cw20Coin {
+            address: "a-1".to_string(),
+            amount: Uint128::new(110_000_000),
+        },
+        Cw20Coin {
+            address: "a-2".to_string(),
+            amount: Uint128::new(100_000_000),
+        }
+    ]);
+    let instantiate_msg = InstantiateMsg {
+        min_voting_period: None,
+        max_voting_period: Duration::Height(6),
+        only_members_execute: false,
+        allow_revoting: false,
+        voting_strategy: VotingStrategy::SingleChoice {
+            quorum: PercentageThreshold::Majority {},
+        },
+        close_proposal_on_execution_failure: false,
+        pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+        veto: Some(veto_config),
+    };
+    
+    let proposal_module_code_id = app.store_code(proposal_multiple_contract());
+
+    let initial_balances = initial_balances.unwrap_or_else(|| {
+        vec![Cw20Coin {
+            address: CREATOR_ADDR.to_string(),
+            amount: Uint128::new(100_000_000),
+        }]
+    });
+
+    // Collapse balances so that we can test double votes.
+    let initial_balances: Vec<Cw20Coin> = {
+        let mut already_seen = vec![];
+        initial_balances
+            .into_iter()
+            .filter(|Cw20Coin { address, amount: _ }| {
+                if already_seen.contains(address) {
+                    false
+                } else {
+                    already_seen.push(address.clone());
+                    true
+                }
+            })
+            .collect()
+    };
+
+    let cw20_id = app.store_code(cw20_base_contract());
+    let cw20_stake_id = app.store_code(cw20_stake_contract());
+    let staked_balances_voting_id = app.store_code(cw20_staked_balances_voting_contract());
+    let core_contract_id = app.store_code(dao_dao_contract());
+
+    let instantiate_core = dao_interface::msg::InstantiateMsg {
+        admin: None,
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs".to_string(),
+        image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: false,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: staked_balances_voting_id,
+            msg: to_json_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
+                active_threshold: None,
+                token_info: dao_voting_cw20_staked::msg::TokenInfo::New {
+                    code_id: cw20_id,
+                    label: "DAO DAO governance token.".to_string(),
+                    name: "DAO DAO".to_string(),
+                    symbol: "DAO".to_string(),
+                    decimals: 6,
+                    initial_balances: initial_balances.clone(),
+                    marketing: None,
+                    staking_code_id: cw20_stake_id,
+                    unstaking_duration: Some(Duration::Height(6)),
+                    initial_dao_balance: None,
+                },
+            })
+            .unwrap(),
+            admin: None,
+            funds: vec![],
+            label: "DAO DAO voting module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
+            code_id: proposal_module_code_id,
+            msg: to_json_binary(&instantiate_msg).unwrap(),
+            admin: Some(Admin::CoreModule {}),
+            funds: vec![],
+            label: "DAO DAO governance module.".to_string(),
+        }],
+        initial_items: None,
+        dao_uri: None,
+    };
+
+    let err: ContractError = app
+        .instantiate_contract(
+            core_contract_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &instantiate_core,
+            &[],
+            "DAO DAO",
+            None,
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert_eq!(err, ContractError::VetoError(VetoError::DurationMisconfiguration {  }));
+}
+
+#[test]
+fn test_veto_sets_prop_status_to_vetoed() {
+    let mut app = App::default();
+    let timelock_duration = 3;
+    let veto_config = VetoConfig {
+        timelock_duration: Duration::Height(timelock_duration),
+        vetoer: "vetoer".to_string(),
+        early_execute: false,
+        veto_before_passed: false,
+    };
+
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        InstantiateMsg {
+            min_voting_period: None,
+            max_voting_period: Duration::Height(6),
+            only_members_execute: false,
+            allow_revoting: false,
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Majority {},
+            },
+            close_proposal_on_execution_failure: false,
+            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+            veto: Some(veto_config),
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "a-1".to_string(),
+                amount: Uint128::new(110_000_000),
+            },
+            Cw20Coin {
+                address: "a-2".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]),
+    );
+    let govmod = query_multiple_proposal_module(&app, &core_addr);
+
+    let proposal_module = query_multiple_proposal_module(&app, &core_addr);
+
+    let next_proposal_id: u64 = app
+        .wrap()
+        .query_wasm_smart(&proposal_module, &QueryMsg::NextProposalId {})
+        .unwrap();
+    assert_eq!(next_proposal_id, 1);
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+    ];
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Create a basic proposal with 2 options
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options,
+            proposer: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
+
+    assert_eq!(
+        proposal.proposal.status,
+        Status::VetoTimelock {
+            expiration: cw_utils::Expiration::AtHeight(app.block_info().height + timelock_duration),
+        },
+    );
+
+    app
+        .execute_contract(
+            Addr::unchecked("vetoer"),
+            proposal_module.clone(),
+            &ExecuteMsg::Veto { proposal_id: 1 },
+            &[],
+        )
+        .unwrap();
+
+    let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
+
+    assert_eq!(
+        proposal.proposal.status,
+        Status::Vetoed {},
+    );
 }
 
 #[test]
