@@ -1,3 +1,8 @@
+use crate::{
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenInfo},
+    tests::test_tube::test_env::TokenVotingContract,
+    ContractError,
+};
 use cosmwasm_std::{to_json_binary, Addr, Coin, Decimal, Uint128, WasmMsg};
 use cw_ownable::Ownership;
 use cw_tokenfactory_issuer::msg::{DenomUnit, QueryMsg as IssuerQueryMsg};
@@ -15,12 +20,6 @@ use dao_voting::{
 use osmosis_test_tube::{
     osmosis_std::types::cosmos::bank::v1beta1::QueryBalanceRequest, Account, OsmosisTestApp,
     RunnerError,
-};
-
-use crate::{
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenInfo},
-    tests::test_tube::test_env::TokenVotingContract,
-    ContractError,
 };
 
 use super::test_env::{TestEnv, TestEnvBuilder, DENOM};
@@ -397,6 +396,7 @@ fn test_factory() {
                 only_members_execute: true,
                 close_proposal_on_execution_failure: false,
                 pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+                veto: None,
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
@@ -506,6 +506,7 @@ fn test_factory_funds_pass_through() {
                 only_members_execute: true,
                 close_proposal_on_execution_failure: false,
                 pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+                veto: None,
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
@@ -631,6 +632,7 @@ fn test_factory_no_callback() {
                 only_members_execute: true,
                 close_proposal_on_execution_failure: false,
                 pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+                veto: None,
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
@@ -665,7 +667,6 @@ fn test_factory_wrong_callback() {
     } = env.full_dao_setup(&app);
 
     let factory_addr = custom_factory.unwrap().contract_addr.to_string();
-
     // Instantiate a new voting contract using the factory pattern
     let msg = dao_interface::msg::InstantiateMsg {
         dao_uri: None,
@@ -712,6 +713,7 @@ fn test_factory_wrong_callback() {
                 only_members_execute: true,
                 close_proposal_on_execution_failure: false,
                 pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+                veto: None,
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),

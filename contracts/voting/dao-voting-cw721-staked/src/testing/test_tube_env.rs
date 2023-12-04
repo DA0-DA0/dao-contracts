@@ -61,7 +61,6 @@ impl TestEnvBuilder {
         let accounts = app
             .init_accounts(&[Coin::new(1000000000000000u128, "uosmo")], 10)
             .unwrap();
-
         // Upload all needed code ids
         let vp_contract_id = Cw721VotingContract::upload(app, &accounts[0]).unwrap();
         let proposal_single_id = DaoProposalSingle::upload(app, &accounts[0]).unwrap();
@@ -137,6 +136,7 @@ impl TestEnvBuilder {
                     only_members_execute: true,
                     close_proposal_on_execution_failure: false,
                     pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+                    veto: None,
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),

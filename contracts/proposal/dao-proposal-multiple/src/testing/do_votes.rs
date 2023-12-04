@@ -130,6 +130,7 @@ where
         voting_strategy,
         close_proposal_on_execution_failure: true,
         pre_propose_info,
+        veto: None,
     };
 
     let governance_addr = setup_governance(&mut app, instantiate, Some(initial_balances));

@@ -6,10 +6,11 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_hooks::Hooks;
-use cw_proposal_single_v1 as v1;
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration};
-use dao_hooks::proposal::{new_proposal_hooks, proposal_status_changed_hooks};
+use dao_hooks::proposal::{
+    new_proposal_hooks, proposal_completed_hooks, proposal_status_changed_hooks,
+};
 use dao_hooks::vote::new_vote_hooks;
 use dao_interface::voting::IsActiveResponse;
 use dao_voting::pre_propose::{PreProposeInfo, ProposalCreationPolicy};
@@ -21,12 +22,12 @@ use dao_voting::reply::{
 };
 use dao_voting::status::Status;
 use dao_voting::threshold::Threshold;
+use dao_voting::veto::{VetoConfig, VetoError};
 use dao_voting::voting::{get_total_power, get_voting_power, validate_voting_period, Vote, Votes};
 
 use crate::msg::MigrateMsg;
 use crate::proposal::{next_proposal_id, SingleChoiceProposal};
 use crate::state::{Config, CREATION_POLICY};
-
 use crate::v1_state::{
     v1_duration_to_v2, v1_expiration_to_v2, v1_status_to_v2, v1_threshold_to_v2, v1_votes_to_v2,
 };
@@ -38,13 +39,9 @@ use crate::{
     query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
     state::{Ballot, BALLOTS, CONFIG, PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS},
 };
-
+use cw_proposal_single_v1 as v1;
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-proposal-single";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-/// Message type used for firing hooks to this module's pre-propose
-/// module, if one is installed.
-type PreProposeHookMsg = dao_pre_propose_base::msg::ExecuteMsg<Empty, Empty>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -66,6 +63,11 @@ pub fn instantiate(
         .pre_propose_info
         .into_initial_policy_and_messages(dao.clone())?;
 
+    // if veto is configured, validate its fields
+    if let Some(veto_config) = &msg.veto {
+        veto_config.validate(&deps.as_ref(), &max_voting_period)?;
+    };
+
     let config = Config {
         threshold: msg.threshold,
         max_voting_period,
@@ -74,6 +76,7 @@ pub fn instantiate(
         dao: dao.clone(),
         allow_revoting: msg.allow_revoting,
         close_proposal_on_execution_failure: msg.close_proposal_on_execution_failure,
+        veto: msg.veto,
     };
 
     // Initialize proposal count to zero so that queries return zero
@@ -121,6 +124,7 @@ pub fn execute(
             allow_revoting,
             dao,
             close_proposal_on_execution_failure,
+            veto,
         } => execute_update_config(
             deps,
             info,
@@ -131,6 +135,7 @@ pub fn execute(
             allow_revoting,
             dao,
             close_proposal_on_execution_failure,
+            veto,
         ),
         ExecuteMsg::UpdatePreProposeInfo { info: new_info } => {
             execute_update_proposal_creation_policy(deps, info, new_info)
@@ -145,6 +150,7 @@ pub fn execute(
         ExecuteMsg::RemoveVoteHook { address } => {
             execute_remove_vote_hook(deps, env, info, address)
         }
+        ExecuteMsg::Veto { proposal_id } => execute_veto(deps, env, info, proposal_id),
     }
 }
 
@@ -213,10 +219,11 @@ pub fn execute_propose(
             status: Status::Open,
             votes: Votes::zero(),
             allow_revoting: config.allow_revoting,
+            veto: config.veto,
         };
         // Update the proposal's status. Addresses case where proposal
         // expires on the same block as it is created.
-        proposal.update_status(&env.block);
+        proposal.update_status(&env.block)?;
         proposal
     };
     let id = advance_proposal_id(deps.storage)?;
@@ -255,6 +262,79 @@ pub fn execute_propose(
         .add_attribute("status", proposal.status.to_string()))
 }
 
+pub fn execute_veto(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    proposal_id: u64,
+) -> Result<Response, ContractError> {
+    let mut prop = PROPOSALS
+        .may_load(deps.storage, proposal_id)?
+        .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
+
+    // ensure status is up to date
+    prop.update_status(&env.block)?;
+    let old_status = prop.status;
+
+    let veto_config = prop
+        .veto
+        .as_ref()
+        .ok_or(VetoError::NoVetoConfiguration {})?;
+
+    // Check sender is vetoer
+    veto_config.check_is_vetoer(&info)?;
+
+    match prop.status {
+        Status::Open => {
+            // can only veto an open proposal if veto_before_passed is enabled.
+            veto_config.check_veto_before_passed_enabled()?;
+        }
+        Status::Passed => {
+            // if this proposal has veto configured but is in the passed state,
+            // the timelock already expired, so provide a more specific error.
+            return Err(ContractError::VetoError(VetoError::TimelockExpired {}));
+        }
+        Status::VetoTimelock { expiration } => {
+            // vetoer can veto the proposal iff the timelock is active/not
+            // expired. this should never happen since the status updates to
+            // passed after the timelock expires, but let's check anyway.
+            if expiration.is_expired(&env.block) {
+                return Err(ContractError::VetoError(VetoError::TimelockExpired {}));
+            }
+        }
+        // generic status error if the proposal has any other status.
+        _ => {
+            return Err(ContractError::VetoError(VetoError::InvalidProposalStatus {
+                status: prop.status.to_string(),
+            }));
+        }
+    }
+
+    // Update proposal status to vetoed
+    prop.status = Status::Vetoed;
+    PROPOSALS.save(deps.storage, proposal_id, &prop)?;
+
+    // Add proposal status change hooks
+    let proposal_status_changed_hooks = proposal_status_changed_hooks(
+        PROPOSAL_HOOKS,
+        deps.storage,
+        proposal_id,
+        old_status.to_string(),
+        prop.status.to_string(),
+    )?;
+
+    // Add prepropose / deposit module hook which will handle deposit refunds.
+    let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
+    let proposal_completed_hooks =
+        proposal_completed_hooks(proposal_creation_policy, proposal_id, prop.status)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "veto")
+        .add_attribute("proposal_id", proposal_id.to_string())
+        .add_submessages(proposal_status_changed_hooks)
+        .add_submessages(proposal_completed_hooks))
+}
+
 pub fn execute_execute(
     deps: DepsMut,
     env: Env,
@@ -273,18 +353,52 @@ pub fn execute_execute(
             &config.dao,
             Some(prop.start_height),
         )?;
-        if power.is_zero() {
+
+        // if there is no veto config, then caller is not the vetoer
+        // if there is, we validate the caller addr
+        let vetoer_call = prop
+            .veto
+            .as_ref()
+            .map_or(false, |veto_config| veto_config.vetoer == info.sender);
+
+        if power.is_zero() && !vetoer_call {
             return Err(ContractError::Unauthorized {});
         }
     }
 
-    // Check here that the proposal is passed. Allow it to be executed
-    // even if it is expired so long as it passed during its voting
-    // period.
+    // Check here that the proposal is passed or timelocked.
+    // Allow it to be executed even if it is expired so long
+    // as it passed during its voting period. Allow it to be
+    // executed in timelock state if early_execute is enabled
+    // and the sender is the vetoer.
+    prop.update_status(&env.block)?;
     let old_status = prop.status;
-    prop.update_status(&env.block);
-    if prop.status != Status::Passed {
-        return Err(ContractError::NotPassed {});
+    match &prop.status {
+        Status::Passed => (),
+        Status::VetoTimelock { expiration } => {
+            let veto_config = prop
+                .veto
+                .as_ref()
+                .ok_or(VetoError::NoVetoConfiguration {})?;
+
+            // Check if the sender is the vetoer
+            match veto_config.vetoer == info.sender {
+                // if sender is the vetoer we validate the early exec flag
+                true => veto_config.check_early_execute_enabled()?,
+                // otherwise timelock must be expired in order to execute
+                false => {
+                    // it should never be expired here since the status updates
+                    // to passed after the timelock expires, but let's check
+                    // anyway. i.e. this error should always be returned.
+                    if !expiration.is_expired(&env.block) {
+                        return Err(ContractError::VetoError(VetoError::Timelocked {}));
+                    }
+                }
+            }
+        }
+        _ => {
+            return Err(ContractError::NotPassed {});
+        }
     }
 
     prop.status = Status::Executed;
@@ -313,7 +427,8 @@ pub fn execute_execute(
         }
     };
 
-    let hooks = proposal_status_changed_hooks(
+    // Add proposal status change hooks
+    let proposal_status_changed_hooks = proposal_status_changed_hooks(
         PROPOSAL_HOOKS,
         deps.storage,
         proposal_id,
@@ -323,28 +438,12 @@ pub fn execute_execute(
 
     // Add prepropose / deposit module hook which will handle deposit refunds.
     let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
-    let hooks = match proposal_creation_policy {
-        ProposalCreationPolicy::Anyone {} => hooks,
-        ProposalCreationPolicy::Module { addr } => {
-            let msg = to_json_binary(&PreProposeHookMsg::ProposalCompletedHook {
-                proposal_id,
-                new_status: prop.status,
-            })?;
-            let mut hooks = hooks;
-            hooks.push(SubMsg::reply_on_error(
-                WasmMsg::Execute {
-                    contract_addr: addr.into_string(),
-                    msg,
-                    funds: vec![],
-                },
-                failed_pre_propose_module_hook_id(),
-            ));
-            hooks
-        }
-    };
+    let proposal_completed_hooks =
+        proposal_completed_hooks(proposal_creation_policy, proposal_id, prop.status)?;
 
     Ok(response
-        .add_submessages(hooks)
+        .add_submessages(proposal_status_changed_hooks)
+        .add_submessages(proposal_completed_hooks)
         .add_attribute("action", "execute")
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string())
@@ -420,7 +519,7 @@ pub fn execute_vote(
     let old_status = prop.status;
 
     prop.votes.add_vote(vote, vote_power);
-    prop.update_status(&env.block);
+    prop.update_status(&env.block)?;
 
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
@@ -492,7 +591,7 @@ pub fn execute_close(
 
     // Update status to ensure that proposals which were open and have
     // expired are moved to "rejected."
-    prop.update_status(&env.block);
+    prop.update_status(&env.block)?;
     if prop.status != Status::Rejected {
         return Err(ContractError::WrongCloseStatus {});
     }
@@ -502,7 +601,8 @@ pub fn execute_close(
     prop.status = Status::Closed;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
-    let hooks = proposal_status_changed_hooks(
+    // Add proposal status change hooks
+    let proposal_status_changed_hooks = proposal_status_changed_hooks(
         PROPOSAL_HOOKS,
         deps.storage,
         proposal_id,
@@ -512,28 +612,12 @@ pub fn execute_close(
 
     // Add prepropose / deposit module hook which will handle deposit refunds.
     let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
-    let hooks = match proposal_creation_policy {
-        ProposalCreationPolicy::Anyone {} => hooks,
-        ProposalCreationPolicy::Module { addr } => {
-            let msg = to_json_binary(&PreProposeHookMsg::ProposalCompletedHook {
-                proposal_id,
-                new_status: prop.status,
-            })?;
-            let mut hooks = hooks;
-            hooks.push(SubMsg::reply_on_error(
-                WasmMsg::Execute {
-                    contract_addr: addr.into_string(),
-                    msg,
-                    funds: vec![],
-                },
-                failed_pre_propose_module_hook_id(),
-            ));
-            hooks
-        }
-    };
+    let proposal_completed_hooks =
+        proposal_completed_hooks(proposal_creation_policy, proposal_id, prop.status)?;
 
     Ok(Response::default()
-        .add_submessages(hooks)
+        .add_submessages(proposal_status_changed_hooks)
+        .add_submessages(proposal_completed_hooks)
         .add_attribute("action", "close")
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string()))
@@ -550,6 +634,7 @@ pub fn execute_update_config(
     allow_revoting: bool,
     dao: String,
     close_proposal_on_execution_failure: bool,
+    veto: Option<VetoConfig>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -563,6 +648,11 @@ pub fn execute_update_config(
     let (min_voting_period, max_voting_period) =
         validate_voting_period(min_voting_period, max_voting_period)?;
 
+    // if veto is configured, validate its fields
+    if let Some(veto_config) = &veto {
+        veto_config.validate(&deps.as_ref(), &max_voting_period)?;
+    };
+
     CONFIG.save(
         deps.storage,
         &Config {
@@ -573,6 +663,7 @@ pub fn execute_update_config(
             allow_revoting,
             dao,
             close_proposal_on_execution_failure,
+            veto,
         },
     )?;
 
@@ -747,7 +838,7 @@ pub fn query_dao(deps: Deps) -> StdResult<Binary> {
 
 pub fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<Binary> {
     let proposal = PROPOSALS.load(deps.storage, id)?;
-    to_json_binary(&proposal.into_response(&env.block, id))
+    to_json_binary(&proposal.into_response(&env.block, id)?)
 }
 
 pub fn query_creation_policy(deps: Deps) -> StdResult<Binary> {
@@ -769,7 +860,7 @@ pub fn query_list_proposals(
         .collect::<Result<Vec<(u64, SingleChoiceProposal)>, _>>()?
         .into_iter()
         .map(|(id, proposal)| proposal.into_response(&env.block, id))
-        .collect();
+        .collect::<StdResult<Vec<ProposalResponse>>>()?;
 
     to_json_binary(&ProposalListResponse { proposals: props })
 }
@@ -788,7 +879,7 @@ pub fn query_reverse_proposals(
         .collect::<Result<Vec<(u64, SingleChoiceProposal)>, _>>()?
         .into_iter()
         .map(|(id, proposal)| proposal.into_response(&env.block, id))
-        .collect();
+        .collect::<StdResult<Vec<ProposalResponse>>>()?;
 
     to_json_binary(&ProposalListResponse { proposals: props })
 }
@@ -828,7 +919,7 @@ pub fn query_list_votes(
 
     let votes = BALLOTS
         .prefix(proposal_id)
-        .range(deps.storage, min, None, cosmwasm_std::Order::Ascending)
+        .range(deps.storage, min, None, Order::Ascending)
         .take(limit as usize)
         .map(|item| {
             let (voter, ballot) = item?;
@@ -858,6 +949,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
         MigrateMsg::FromV1 {
             close_proposal_on_execution_failure,
             pre_propose_info,
+            veto,
         } => {
             // `CONTRACT_VERSION` here is from the data section of the
             // blob we are migrating to. `version` is from storage. If
@@ -867,19 +959,27 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                 return Err(ContractError::AlreadyMigrated {});
             }
 
-            // Update the stored config to have the new
-            // `close_proposal_on_execution_falure` field.
             let current_config = v1::state::CONFIG.load(deps.storage)?;
+            let max_voting_period = v1_duration_to_v2(current_config.max_voting_period);
+
+            // if veto is configured, validate its fields
+            if let Some(veto_config) = &veto {
+                veto_config.validate(&deps.as_ref(), &max_voting_period)?;
+            };
+
+            // Update the stored config to have the new
+            // `close_proposal_on_execution_failure` field.
             CONFIG.save(
                 deps.storage,
                 &Config {
                     threshold: v1_threshold_to_v2(current_config.threshold),
-                    max_voting_period: v1_duration_to_v2(current_config.max_voting_period),
+                    max_voting_period,
                     min_voting_period: current_config.min_voting_period.map(v1_duration_to_v2),
                     only_members_execute: current_config.only_members_execute,
                     allow_revoting: current_config.allow_revoting,
                     dao: current_config.dao.clone(),
                     close_proposal_on_execution_failure,
+                    veto,
                 },
             )?;
 
@@ -924,6 +1024,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                         status: v1_status_to_v2(prop.status),
                         votes: v1_votes_to_v2(prop.votes),
                         allow_revoting: prop.allow_revoting,
+                        veto: None,
                     };
 
                     PROPOSALS
@@ -936,7 +1037,6 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                 .add_attribute("from", "v1")
                 .add_submessages(pre_propose_messages))
         }
-
         MigrateMsg::FromCompatible {} => Ok(Response::default()
             .add_attribute("action", "migrate")
             .add_attribute("from", "compatible")),

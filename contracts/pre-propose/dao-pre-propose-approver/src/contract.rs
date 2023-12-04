@@ -180,7 +180,7 @@ pub fn execute_proposal_completed(
             .add_message(msg)
             .add_attribute("method", "execute_proposal_completed_hook")
             .add_attribute("proposal", proposal_id.to_string())),
-        None => Err(PreProposeError::NotClosedOrExecuted { status: new_status }),
+        None => Err(PreProposeError::NotCompleted { status: new_status }),
     }
 }
 
