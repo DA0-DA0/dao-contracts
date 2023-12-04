@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Deps, MessageInfo, StdError, StdResult};
+use cosmwasm_std::{Deps, MessageInfo, StdError};
 use cw_utils::Duration;
 use thiserror::Error;
 
@@ -26,6 +26,9 @@ pub enum VetoError {
     #[error("The veto timelock duration has expired.")]
     TimelockExpired {},
 
+    #[error("The veto timelock duration must have the same units as the max_voting_period of the proposal (height or time).")]
+    TimelockDurationUnitMismatch {},
+
     #[error("Only vetoer can veto a proposal.")]
     Unauthorized {},
 }
@@ -45,9 +48,16 @@ pub struct VetoConfig {
 }
 
 impl VetoConfig {
-    pub fn validate(&self, deps: &Deps) -> StdResult<()> {
+    pub fn validate(&self, deps: &Deps, max_voting_period: &Duration) -> Result<(), VetoError> {
         // Validate vetoer address.
         deps.api.addr_validate(&self.vetoer)?;
+
+        // Validate duration units match voting period.
+        match (self.timelock_duration, max_voting_period) {
+            (Duration::Time(_), Duration::Time(_)) => (),
+            (Duration::Height(_), Duration::Height(_)) => (),
+            _ => return Err(VetoError::TimelockDurationUnitMismatch {}),
+        };
 
         Ok(())
     }

@@ -93,6 +93,14 @@ impl MultipleChoiceProposal {
             Status::Open if self.expiration.is_expired(block) || self.is_rejected(block)? => {
                 Ok(Status::Rejected)
             }
+            Status::VetoTimelock { expiration } => {
+                // if prop timelock expired, proposal is now passed.
+                if expiration.is_expired(block) {
+                    Ok(Status::Passed)
+                } else {
+                    Ok(self.status)
+                }
+            }
             _ => Ok(self.status),
         }
     }

@@ -1851,6 +1851,7 @@ dependencies = [
 name = "dao-proposal-multiple"
 version = "2.3.0"
 dependencies = [
+ "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
@@ -1888,6 +1889,7 @@ dependencies = [
 name = "dao-proposal-single"
 version = "2.3.0"
 dependencies = [
+ "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",

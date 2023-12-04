@@ -64,7 +64,7 @@ pub fn instantiate(
 
     // if veto is configured, validate its fields
     if let Some(veto_config) = &msg.veto {
-        veto_config.validate(&deps.as_ref())?;
+        veto_config.validate(&deps.as_ref(), &max_voting_period)?;
     };
 
     let config = Config {
@@ -631,7 +631,7 @@ pub fn execute_update_config(
 
     // if veto is configured, validate its fields
     if let Some(veto_config) = &veto {
-        veto_config.validate(&deps.as_ref())?;
+        veto_config.validate(&deps.as_ref(), &max_voting_period)?;
     };
 
     CONFIG.save(

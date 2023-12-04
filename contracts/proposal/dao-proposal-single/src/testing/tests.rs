@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use cosmwasm_std::{
     coins,
     testing::{mock_dependencies, mock_env},
@@ -380,7 +382,7 @@ fn test_proposal_message_execution() {
 }
 
 #[test]
-fn test_proposal_message_timelock_execution() {
+fn test_proposal_message_timelock_execution() -> anyhow::Result<()> {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     let veto_config = VetoConfig {
@@ -445,11 +447,14 @@ fn test_proposal_message_timelock_execution() {
     );
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
 
-    // Proposal is timelocked to the moment of prop passing + timelock delay
+    // Proposal is timelocked to the moment of prop expiring + timelock delay
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: veto_config.timelock_duration.after(&app.block_info()),
+            expiration: proposal
+                .proposal
+                .expiration
+                .add(veto_config.timelock_duration)?,
         }
     );
 
@@ -485,13 +490,15 @@ fn test_proposal_message_timelock_execution() {
 
     // Time passes
     app.update_block(|block| {
-        block.time = block.time.plus_seconds(604800);
+        block.time = block.time.plus_seconds(604800 + 200);
     });
 
     // Proposal executes successfully
     execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Executed);
+
+    Ok(())
 }
 
 // only the authorized vetoer can veto an open proposal
@@ -817,7 +824,7 @@ fn test_open_proposal_veto_early() {
 
 // only the vetoer can veto during timelock period
 #[test]
-fn test_timelocked_proposal_veto_unauthorized() {
+fn test_timelocked_proposal_veto_unauthorized() -> anyhow::Result<()> {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
@@ -878,11 +885,14 @@ fn test_timelocked_proposal_veto_unauthorized() {
     );
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
 
-    // Proposal is timelocked to the moment of prop passing + timelock delay
+    // Proposal is timelocked to the moment of prop expiring + timelock delay
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: veto_config.timelock_duration.after(&app.block_info()),
+            expiration: proposal
+                .proposal
+                .expiration
+                .add(veto_config.timelock_duration)?,
         }
     );
 
@@ -902,14 +912,19 @@ fn test_timelocked_proposal_veto_unauthorized() {
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: veto_config.timelock_duration.after(&app.block_info()),
+            expiration: proposal
+                .proposal
+                .expiration
+                .add(veto_config.timelock_duration)?,
         }
     );
+
+    Ok(())
 }
 
 // vetoer can only veto the proposal before the timelock expires
 #[test]
-fn test_timelocked_proposal_veto_expired_timelock() {
+fn test_timelocked_proposal_veto_expired_timelock() -> anyhow::Result<()> {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
@@ -970,14 +985,17 @@ fn test_timelocked_proposal_veto_expired_timelock() {
     );
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
 
-    // Proposal is timelocked to the moment of prop passing + timelock delay
+    // Proposal is timelocked to the moment of prop expiring + timelock delay
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: veto_config.timelock_duration.after(&app.block_info()),
+            expiration: proposal
+                .proposal
+                .expiration
+                .add(veto_config.timelock_duration)?,
         }
     );
-    app.update_block(|b| b.time = b.time.plus_seconds(200));
+    app.update_block(|b| b.time = b.time.plus_seconds(604800 + 200));
 
     let err: ContractError = app
         .execute_contract(
@@ -991,11 +1009,13 @@ fn test_timelocked_proposal_veto_expired_timelock() {
         .unwrap();
 
     assert_eq!(err, ContractError::VetoError(VetoError::TimelockExpired {}),);
+
+    Ok(())
 }
 
 // vetoer can only exec timelocked prop if the early exec flag is enabled
 #[test]
-fn test_timelocked_proposal_execute_no_early_exec() {
+fn test_timelocked_proposal_execute_no_early_exec() -> anyhow::Result<()> {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
@@ -1050,11 +1070,14 @@ fn test_timelocked_proposal_execute_no_early_exec() {
     );
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
 
-    // Proposal is timelocked to the moment of prop passing + timelock delay
+    // Proposal is timelocked to the moment of prop expiring + timelock delay
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: veto_config.timelock_duration.after(&app.block_info()),
+            expiration: proposal
+                .proposal
+                .expiration
+                .add(veto_config.timelock_duration)?,
         }
     );
 
@@ -1070,10 +1093,12 @@ fn test_timelocked_proposal_execute_no_early_exec() {
         .unwrap();
 
     assert_eq!(err, ContractError::VetoError(VetoError::NoEarlyExecute {}),);
+
+    Ok(())
 }
 
 #[test]
-fn test_timelocked_proposal_execute_early() {
+fn test_timelocked_proposal_execute_early() -> anyhow::Result<()> {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
@@ -1128,11 +1153,14 @@ fn test_timelocked_proposal_execute_early() {
     );
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
 
-    // Proposal is timelocked to the moment of prop passing + timelock delay
+    // Proposal is timelocked to the moment of prop expiring + timelock delay
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: veto_config.timelock_duration.after(&app.block_info()),
+            expiration: proposal
+                .proposal
+                .expiration
+                .add(veto_config.timelock_duration)?,
         }
     );
 
@@ -1153,11 +1181,13 @@ fn test_timelocked_proposal_execute_early() {
 
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Executed {});
+
+    Ok(())
 }
 
 // only vetoer can exec timelocked prop early
 #[test]
-fn test_timelocked_proposal_execute_active_timelock_unauthorized() {
+fn test_timelocked_proposal_execute_active_timelock_unauthorized() -> anyhow::Result<()> {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
@@ -1212,11 +1242,14 @@ fn test_timelocked_proposal_execute_active_timelock_unauthorized() {
     );
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
 
-    // Proposal is timelocked to the moment of prop passing + timelock delay
+    // Proposal is timelocked to the moment of prop expiring + timelock delay
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: veto_config.timelock_duration.after(&app.block_info()),
+            expiration: proposal
+                .proposal
+                .expiration
+                .add(veto_config.timelock_duration)?,
         }
     );
 
@@ -1238,11 +1271,13 @@ fn test_timelocked_proposal_execute_active_timelock_unauthorized() {
         .unwrap();
 
     assert_eq!(err, ContractError::VetoError(VetoError::Timelocked {}),);
+
+    Ok(())
 }
 
 // anyone can exec the prop after the timelock expires
 #[test]
-fn test_timelocked_proposal_execute_expired_timelock_not_vetoer() {
+fn test_timelocked_proposal_execute_expired_timelock_not_vetoer() -> anyhow::Result<()> {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
@@ -1297,14 +1332,17 @@ fn test_timelocked_proposal_execute_expired_timelock_not_vetoer() {
     );
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
 
-    // Proposal is timelocked to the moment of prop passing + timelock delay
-    let expiration = veto_config.timelock_duration.after(&app.block_info());
+    // Proposal is timelocked to the moment of prop expiring + timelock delay
+    let expiration = proposal
+        .proposal
+        .expiration
+        .add(veto_config.timelock_duration)?;
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock { expiration }
     );
 
-    app.update_block(|b| b.time = b.time.plus_seconds(201));
+    app.update_block(|b| b.time = b.time.plus_seconds(604800 + 201));
     // assert timelock is expired
     assert!(expiration.is_expired(&app.block_info()));
     mint_natives(&mut app, core_addr.as_str(), coins(10, "ujuno"));
@@ -1319,10 +1357,12 @@ fn test_timelocked_proposal_execute_expired_timelock_not_vetoer() {
 
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Executed {},);
+
+    Ok(())
 }
 
 #[test]
-fn test_proposal_message_timelock_veto() {
+fn test_proposal_message_timelock_veto() -> anyhow::Result<()> {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
@@ -1398,11 +1438,14 @@ fn test_proposal_message_timelock_veto() {
     );
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
 
-    // Proposal is timelocked to the moment of prop passing + timelock delay
+    // Proposal is timelocked to the moment of prop expiring + timelock delay
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: veto_config.timelock_duration.after(&app.block_info()),
+            expiration: proposal
+                .proposal
+                .expiration
+                .add(veto_config.timelock_duration)?,
         }
     );
 
@@ -1432,10 +1475,12 @@ fn test_proposal_message_timelock_veto() {
 
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Vetoed);
+
+    Ok(())
 }
 
 #[test]
-fn test_proposal_message_timelock_early_execution() {
+fn test_proposal_message_timelock_early_execution() -> anyhow::Result<()> {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
@@ -1500,11 +1545,14 @@ fn test_proposal_message_timelock_early_execution() {
     );
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
 
-    // Proposal is timelocked to the moment of prop passing + timelock delay
+    // Proposal is timelocked to the moment of prop expiring + timelock delay
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: veto_config.timelock_duration.after(&app.block_info()),
+            expiration: proposal
+                .proposal
+                .expiration
+                .add(veto_config.timelock_duration)?,
         }
     );
 
@@ -1514,6 +1562,8 @@ fn test_proposal_message_timelock_early_execution() {
     execute_proposal(&mut app, &proposal_module, "oversight", proposal_id);
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Executed);
+
+    Ok(())
 }
 
 #[test]
@@ -1794,7 +1844,7 @@ fn test_update_config() {
             contract_addr: proposal_module.to_string(),
             msg: to_json_binary(&ExecuteMsg::UpdateConfig {
                 veto: Some(VetoConfig {
-                    timelock_duration: Duration::Time(100),
+                    timelock_duration: Duration::Height(2),
                     vetoer: CREATOR_ADDR.to_string(),
                     early_execute: false,
                     veto_before_passed: false,
@@ -1828,7 +1878,7 @@ fn test_update_config() {
         config,
         Config {
             veto: Some(VetoConfig {
-                timelock_duration: Duration::Time(100),
+                timelock_duration: Duration::Height(2),
                 vetoer: CREATOR_ADDR.to_string(),
                 early_execute: false,
                 veto_before_passed: false,
@@ -1849,7 +1899,7 @@ fn test_update_config() {
     let err: ContractError = app
         .execute_contract(
             Addr::unchecked(CREATOR_ADDR),
-            proposal_module,
+            proposal_module.clone(),
             &&ExecuteMsg::UpdateConfig {
                 veto: None,
                 threshold: Threshold::AbsoluteCount {
@@ -1867,7 +1917,39 @@ fn test_update_config() {
         .unwrap_err()
         .downcast()
         .unwrap();
-    assert!(matches!(err, ContractError::Unauthorized {}))
+    assert!(matches!(err, ContractError::Unauthorized {}));
+
+    // Check that veto config is validated (mismatching duration units).
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(core_addr.clone()),
+            proposal_module,
+            &&ExecuteMsg::UpdateConfig {
+                veto: Some(VetoConfig {
+                    timelock_duration: Duration::Time(100),
+                    vetoer: CREATOR_ADDR.to_string(),
+                    early_execute: false,
+                    veto_before_passed: false,
+                }),
+                threshold: Threshold::AbsoluteCount {
+                    threshold: Uint128::new(10_000),
+                },
+                max_voting_period: Duration::Height(6),
+                min_voting_period: None,
+                only_members_execute: true,
+                allow_revoting: false,
+                dao: core_addr.to_string(),
+                close_proposal_on_execution_failure: false,
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(
+        err,
+        ContractError::VetoError(VetoError::TimelockDurationUnitMismatch {})
+    ))
 }
 
 #[test]

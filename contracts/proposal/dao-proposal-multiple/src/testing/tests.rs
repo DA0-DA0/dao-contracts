@@ -20,6 +20,7 @@ use dao_voting::{
     status::Status,
     threshold::{ActiveThreshold, PercentageThreshold, Threshold},
 };
+use std::ops::Add;
 use std::panic;
 
 use crate::{
@@ -4637,6 +4638,9 @@ fn test_open_proposal_passes_with_zero_timelock_veto_duration() {
     )
     .unwrap();
 
+    // pass enough time to expire the proposal voting
+    app.update_block(|b| b.height += 7);
+
     let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
 
     assert_eq!(proposal.proposal.status, Status::Passed {},);
@@ -4900,11 +4904,11 @@ fn test_veto_open_prop_with_veto_before_passed_disabled() {
 }
 
 #[test]
-fn test_veto_when_veto_timelock_expired() {
+fn test_veto_when_veto_timelock_expired() -> anyhow::Result<()> {
     let mut app = App::default();
-    let timelock_duration = 3;
+    let timelock_duration = Duration::Height(3);
     let veto_config = VetoConfig {
-        timelock_duration: Duration::Height(timelock_duration),
+        timelock_duration,
         vetoer: "vetoer".to_string(),
         early_execute: false,
         veto_before_passed: false,
@@ -4990,7 +4994,7 @@ fn test_veto_when_veto_timelock_expired() {
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: cw_utils::Expiration::AtHeight(app.block_info().height + timelock_duration),
+            expiration: proposal.proposal.expiration.add(timelock_duration)?,
         },
     );
 
@@ -5009,14 +5013,16 @@ fn test_veto_when_veto_timelock_expired() {
         .unwrap();
 
     assert_eq!(err, ContractError::VetoError(VetoError::TimelockExpired {}),);
+
+    Ok(())
 }
 
 #[test]
-fn test_veto_sets_prop_status_to_vetoed() {
+fn test_veto_sets_prop_status_to_vetoed() -> anyhow::Result<()> {
     let mut app = App::default();
-    let timelock_duration = 3;
+    let timelock_duration = Duration::Height(3);
     let veto_config = VetoConfig {
-        timelock_duration: Duration::Height(timelock_duration),
+        timelock_duration,
         vetoer: "vetoer".to_string(),
         early_execute: false,
         veto_before_passed: false,
@@ -5102,7 +5108,7 @@ fn test_veto_sets_prop_status_to_vetoed() {
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: cw_utils::Expiration::AtHeight(app.block_info().height + timelock_duration),
+            expiration: proposal.proposal.expiration.add(timelock_duration)?,
         },
     );
 
@@ -5117,6 +5123,8 @@ fn test_veto_sets_prop_status_to_vetoed() {
     let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
 
     assert_eq!(proposal.proposal.status, Status::Vetoed {},);
+
+    Ok(())
 }
 
 #[test]
@@ -5240,11 +5248,11 @@ fn test_veto_from_catchall_state() {
 }
 
 #[test]
-fn test_veto_timelock_early_execute_happy() {
+fn test_veto_timelock_early_execute_happy() -> anyhow::Result<()> {
     let mut app = App::default();
-    let timelock_duration = 3;
+    let timelock_duration = Duration::Height(3);
     let veto_config = VetoConfig {
-        timelock_duration: Duration::Height(timelock_duration),
+        timelock_duration,
         vetoer: "vetoer".to_string(),
         early_execute: true,
         veto_before_passed: false,
@@ -5330,7 +5338,7 @@ fn test_veto_timelock_early_execute_happy() {
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: cw_utils::Expiration::AtHeight(app.block_info().height + timelock_duration),
+            expiration: proposal.proposal.expiration.add(timelock_duration)?,
         },
     );
 
@@ -5358,14 +5366,16 @@ fn test_veto_timelock_early_execute_happy() {
 
     let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
     assert_eq!(proposal.proposal.status, Status::Executed {},);
+
+    Ok(())
 }
 
 #[test]
-fn test_veto_timelock_expires_happy() {
+fn test_veto_timelock_expires_happy() -> anyhow::Result<()> {
     let mut app = App::default();
-    let timelock_duration = 3;
+    let timelock_duration = Duration::Height(3);
     let veto_config = VetoConfig {
-        timelock_duration: Duration::Height(timelock_duration),
+        timelock_duration,
         vetoer: "vetoer".to_string(),
         early_execute: false,
         veto_before_passed: false,
@@ -5451,7 +5461,7 @@ fn test_veto_timelock_expires_happy() {
     assert_eq!(
         proposal.proposal.status,
         Status::VetoTimelock {
-            expiration: cw_utils::Expiration::AtHeight(app.block_info().height + timelock_duration),
+            expiration: proposal.proposal.expiration.add(timelock_duration)?,
         },
     );
 
@@ -5468,4 +5478,6 @@ fn test_veto_timelock_expires_happy() {
 
     let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
     assert_eq!(proposal.proposal.status, Status::Executed {},);
+
+    Ok(())
 }

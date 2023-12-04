@@ -65,7 +65,7 @@ pub fn instantiate(
 
     // if veto is configured, validate its fields
     if let Some(veto_config) = &msg.veto {
-        veto_config.validate(&deps.as_ref())?;
+        veto_config.validate(&deps.as_ref(), &max_voting_period)?;
     };
 
     let config = Config {
@@ -650,7 +650,7 @@ pub fn execute_update_config(
 
     // if veto is configured, validate its fields
     if let Some(veto_config) = &veto {
-        veto_config.validate(&deps.as_ref())?;
+        veto_config.validate(&deps.as_ref(), &max_voting_period)?;
     };
 
     CONFIG.save(
@@ -959,19 +959,21 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                 return Err(ContractError::AlreadyMigrated {});
             }
 
+            let current_config = v1::state::CONFIG.load(deps.storage)?;
+            let max_voting_period = v1_duration_to_v2(current_config.max_voting_period);
+
             // if veto is configured, validate its fields
             if let Some(veto_config) = &veto {
-                veto_config.validate(&deps.as_ref())?;
+                veto_config.validate(&deps.as_ref(), &max_voting_period)?;
             };
 
             // Update the stored config to have the new
             // `close_proposal_on_execution_failure` field.
-            let current_config = v1::state::CONFIG.load(deps.storage)?;
             CONFIG.save(
                 deps.storage,
                 &Config {
                     threshold: v1_threshold_to_v2(current_config.threshold),
-                    max_voting_period: v1_duration_to_v2(current_config.max_voting_period),
+                    max_voting_period,
                     min_voting_period: current_config.min_voting_period.map(v1_duration_to_v2),
                     only_members_execute: current_config.only_members_execute,
                     allow_revoting: current_config.allow_revoting,
