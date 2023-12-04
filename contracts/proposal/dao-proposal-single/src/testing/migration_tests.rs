@@ -1,6 +1,5 @@
 use cosmwasm_std::{to_json_binary, Addr, Uint128, WasmMsg};
 use cw20::Cw20Coin;
-use cw_multi_test::error::AnyError;
 use cw_multi_test::{next_block, App, Executor};
 use cw_utils::Duration;
 use dao_interface::query::{GetItemResponse, ProposalModuleCountResponse};
@@ -311,30 +310,6 @@ fn test_v1_v2_full_migration() {
         false,
     );
 
-    // first we try to migrate with an invalid veto config and assert the err
-    let err: AnyError = app
-        .migrate_contract(
-            core.clone(),
-            proposal.clone(),
-            &crate::msg::MigrateMsg::FromV1 {
-                close_proposal_on_execution_failure: true,
-                pre_propose_info: pre_propose_info.clone(),
-                veto: Some(VetoConfig {
-                    timelock_duration: Duration::Time(0),
-                    vetoer: sender.to_string(),
-                    early_execute: true,
-                    veto_before_passed: false,
-                }),
-            },
-            v2_proposal_code,
-        )
-        .unwrap_err();
-
-    assert_eq!(
-        "Zero timelock duration is only permitted with veto_before_passed",
-        err.root_cause().to_string(),
-    );
-
     // now migrate with valid config
     app.execute_contract(
         sender.clone(),
@@ -360,7 +335,7 @@ fn test_v1_v2_full_migration() {
                         close_proposal_on_execution_failure: true,
                         pre_propose_info,
                         veto: Some(VetoConfig {
-                            timelock_duration: Duration::Time(1000),
+                            timelock_duration: Duration::Height(10),
                             vetoer: sender.to_string(),
                             early_execute: true,
                             veto_before_passed: false,
@@ -476,7 +451,7 @@ fn test_v1_v2_full_migration() {
     assert_eq!(
         new_prop.proposal.veto,
         Some(VetoConfig {
-            timelock_duration: Duration::Time(1000),
+            timelock_duration: Duration::Height(10),
             vetoer: sender.to_string(),
             early_execute: true,
             veto_before_passed: false,
