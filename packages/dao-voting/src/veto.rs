@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{MessageInfo, StdError};
+use cosmwasm_std::{Deps, MessageInfo, StdError, StdResult};
 use cw_utils::Duration;
 use thiserror::Error;
 
@@ -28,14 +28,12 @@ pub enum VetoError {
 
     #[error("Only vetoer can veto a proposal.")]
     Unauthorized {},
-
-    #[error("Zero timelock duration is only permitted with veto_before_passed")]
-    DurationMisconfiguration {},
 }
 
 #[cw_serde]
 pub struct VetoConfig {
-    /// The time duration to delay proposal execution for.
+    /// The time duration to lock a proposal for after its expiration to allow
+    /// the vetoer to veto.
     pub timelock_duration: Duration,
     /// The address able to veto proposals.
     pub vetoer: String,
@@ -47,16 +45,11 @@ pub struct VetoConfig {
 }
 
 impl VetoConfig {
-    pub fn validate(&self) -> Result<(), VetoError> {
-        let timelock_duration = match self.timelock_duration {
-            Duration::Height(h) => h,
-            Duration::Time(t) => t,
-        };
-        if timelock_duration == 0 && !self.veto_before_passed {
-            Err(VetoError::DurationMisconfiguration {})
-        } else {
-            Ok(())
-        }
+    pub fn validate(&self, deps: &Deps) -> StdResult<()> {
+        // Validate vetoer address.
+        deps.api.addr_validate(&self.vetoer)?;
+
+        Ok(())
     }
 
     /// Whether early execute is enabled

@@ -388,7 +388,7 @@
             "type": "boolean"
           },
           "timelock_duration": {
-            "description": "The time duration to delay proposal execution for.",
+            "description": "The time duration to lock a proposal for after its expiration to allow the vetoer to veto.",
             "allOf": [
               {
                 "$ref": "#/definitions/Duration"
@@ -1616,7 +1616,7 @@
             "type": "boolean"
           },
           "timelock_duration": {
-            "description": "The time duration to delay proposal execution for.",
+            "description": "The time duration to lock a proposal for after its expiration to allow the vetoer to veto.",
             "allOf": [
               {
                 "$ref": "#/definitions/Duration"
@@ -2386,7 +2386,7 @@
             "type": "boolean"
           },
           "timelock_duration": {
-            "description": "The time duration to delay proposal execution for.",
+            "description": "The time duration to lock a proposal for after its expiration to allow the vetoer to veto.",
             "allOf": [
               {
                 "$ref": "#/definitions/Duration"
@@ -2650,7 +2650,7 @@
               "type": "boolean"
             },
             "timelock_duration": {
-              "description": "The time duration to delay proposal execution for.",
+              "description": "The time duration to lock a proposal for after its expiration to allow the vetoer to veto.",
               "allOf": [
                 {
                   "$ref": "#/definitions/Duration"
@@ -3777,7 +3777,7 @@
               "type": "boolean"
             },
             "timelock_duration": {
-              "description": "The time duration to delay proposal execution for.",
+              "description": "The time duration to lock a proposal for after its expiration to allow the vetoer to veto.",
               "allOf": [
                 {
                   "$ref": "#/definitions/Duration"
@@ -5057,7 +5057,7 @@
               "type": "boolean"
             },
             "timelock_duration": {
-              "description": "The time duration to delay proposal execution for.",
+              "description": "The time duration to lock a proposal for after its expiration to allow the vetoer to veto.",
               "allOf": [
                 {
                   "$ref": "#/definitions/Duration"
@@ -6322,7 +6322,7 @@
               "type": "boolean"
             },
             "timelock_duration": {
-              "description": "The time duration to delay proposal execution for.",
+              "description": "The time duration to lock a proposal for after its expiration to allow the vetoer to veto.",
               "allOf": [
                 {
                   "$ref": "#/definitions/Duration"

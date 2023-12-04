@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use crate::query::ProposalResponse;
 use crate::state::PROPOSAL_COUNT;
 use cosmwasm_schema::cw_serde;
@@ -64,43 +66,42 @@ impl SingleChoiceProposal {
     /// a vote has occurred, the status we read from the proposal status
     /// may be out of date. This method recomputes the status so that
     /// queries get accurate information.
-    pub fn into_response(mut self, block: &BlockInfo, id: u64) -> ProposalResponse {
-        self.update_status(block);
-        ProposalResponse { id, proposal: self }
+    pub fn into_response(mut self, block: &BlockInfo, id: u64) -> StdResult<ProposalResponse> {
+        self.update_status(block)?;
+        Ok(ProposalResponse { id, proposal: self })
     }
 
     /// Gets the current status of the proposal.
-    pub fn current_status(&self, block: &BlockInfo) -> Status {
+    pub fn current_status(&self, block: &BlockInfo) -> StdResult<Status> {
         match self.status {
             Status::Open if self.is_passed(block) => match &self.veto {
                 // if prop is passed and veto is configured, calculate timelock
                 // expiration. if it's expired, this proposal has passed.
                 // otherwise, set status to `VetoTimelock`.
                 Some(veto_config) => {
-                    let expiration = veto_config.timelock_duration.after(block);
+                    let expiration = self.expiration.add(veto_config.timelock_duration)?;
 
                     if expiration.is_expired(block) {
-                        Status::Passed
+                        Ok(Status::Passed)
                     } else {
-                        Status::VetoTimelock {
-                            expiration: veto_config.timelock_duration.after(block),
-                        }
+                        Ok(Status::VetoTimelock { expiration })
                     }
                 }
                 // Otherwise the proposal is simply passed
-                None => Status::Passed,
+                None => Ok(Status::Passed),
             },
             Status::Open if self.expiration.is_expired(block) || self.is_rejected(block) => {
-                Status::Rejected
+                Ok(Status::Rejected)
             }
-            _ => self.status,
+            _ => Ok(self.status),
         }
     }
 
     /// Sets a proposals status to its current status.
-    pub fn update_status(&mut self, block: &BlockInfo) {
-        let new_status = self.current_status(block);
-        self.status = new_status
+    pub fn update_status(&mut self, block: &BlockInfo) -> StdResult<()> {
+        let new_status = self.current_status(block)?;
+        self.status = new_status;
+        Ok(())
     }
 
     /// Returns true iff this proposal is sure to pass (even before

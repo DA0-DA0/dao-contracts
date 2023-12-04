@@ -63,9 +63,9 @@ pub fn instantiate(
         .pre_propose_info
         .into_initial_policy_and_messages(dao.clone())?;
 
-    // if veto is configured we validate its fields
+    // if veto is configured, validate its fields
     if let Some(veto_config) = &msg.veto {
-        veto_config.validate()?;
+        veto_config.validate(&deps.as_ref())?;
     };
 
     let config = Config {
@@ -223,7 +223,7 @@ pub fn execute_propose(
         };
         // Update the proposal's status. Addresses case where proposal
         // expires on the same block as it is created.
-        proposal.update_status(&env.block);
+        proposal.update_status(&env.block)?;
         proposal
     };
     let id = advance_proposal_id(deps.storage)?;
@@ -273,7 +273,7 @@ pub fn execute_veto(
         .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
 
     // ensure status is up to date
-    prop.update_status(&env.block);
+    prop.update_status(&env.block)?;
     let old_status = prop.status;
 
     let veto_config = prop
@@ -371,7 +371,7 @@ pub fn execute_execute(
     // as it passed during its voting period. Allow it to be
     // executed in timelock state if early_execute is enabled
     // and the sender is the vetoer.
-    prop.update_status(&env.block);
+    prop.update_status(&env.block)?;
     let old_status = prop.status;
     match &prop.status {
         Status::Passed => (),
@@ -519,7 +519,7 @@ pub fn execute_vote(
     let old_status = prop.status;
 
     prop.votes.add_vote(vote, vote_power);
-    prop.update_status(&env.block);
+    prop.update_status(&env.block)?;
 
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
@@ -591,7 +591,7 @@ pub fn execute_close(
 
     // Update status to ensure that proposals which were open and have
     // expired are moved to "rejected."
-    prop.update_status(&env.block);
+    prop.update_status(&env.block)?;
     if prop.status != Status::Rejected {
         return Err(ContractError::WrongCloseStatus {});
     }
@@ -648,10 +648,10 @@ pub fn execute_update_config(
     let (min_voting_period, max_voting_period) =
         validate_voting_period(min_voting_period, max_voting_period)?;
 
-    if let Some(ref veto_config) = veto {
-        // If veto is enabled, validate the vetoer address
-        deps.api.addr_validate(&veto_config.vetoer)?;
-    }
+    // if veto is configured, validate its fields
+    if let Some(veto_config) = &veto {
+        veto_config.validate(&deps.as_ref())?;
+    };
 
     CONFIG.save(
         deps.storage,
@@ -838,7 +838,7 @@ pub fn query_dao(deps: Deps) -> StdResult<Binary> {
 
 pub fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<Binary> {
     let proposal = PROPOSALS.load(deps.storage, id)?;
-    to_json_binary(&proposal.into_response(&env.block, id))
+    to_json_binary(&proposal.into_response(&env.block, id)?)
 }
 
 pub fn query_creation_policy(deps: Deps) -> StdResult<Binary> {
@@ -860,7 +860,7 @@ pub fn query_list_proposals(
         .collect::<Result<Vec<(u64, SingleChoiceProposal)>, _>>()?
         .into_iter()
         .map(|(id, proposal)| proposal.into_response(&env.block, id))
-        .collect();
+        .collect::<StdResult<Vec<ProposalResponse>>>()?;
 
     to_json_binary(&ProposalListResponse { proposals: props })
 }
@@ -879,7 +879,7 @@ pub fn query_reverse_proposals(
         .collect::<Result<Vec<(u64, SingleChoiceProposal)>, _>>()?
         .into_iter()
         .map(|(id, proposal)| proposal.into_response(&env.block, id))
-        .collect();
+        .collect::<StdResult<Vec<ProposalResponse>>>()?;
 
     to_json_binary(&ProposalListResponse { proposals: props })
 }
@@ -959,9 +959,9 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                 return Err(ContractError::AlreadyMigrated {});
             }
 
-            // if veto is configured we validate its fields
+            // if veto is configured, validate its fields
             if let Some(veto_config) = &veto {
-                veto_config.validate()?;
+                veto_config.validate(&deps.as_ref())?;
             };
 
             // Update the stored config to have the new
