@@ -8,9 +8,6 @@ use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Execut
 use cw_utils::Duration;
 use dao_interface::state::ProposalModule;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
-use dao_testing::contracts::{
-    cw20_stake_contract, cw20_staked_balances_voting_contract, dao_dao_contract,
-};
 use dao_voting::veto::{VetoConfig, VetoError};
 use dao_voting::{
     deposit::{CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
@@ -5012,104 +5009,6 @@ fn test_veto_when_veto_timelock_expired() {
         .unwrap();
 
     assert_eq!(err, ContractError::VetoError(VetoError::TimelockExpired {}),);
-}
-
-#[test]
-fn test_prop_veto_config_validation() {
-    let mut app = App::default();
-    let timelock_duration = 0;
-    let veto_config = VetoConfig {
-        timelock_duration: Duration::Height(timelock_duration),
-        vetoer: "vetoer".to_string(),
-        early_execute: false,
-        veto_before_passed: false,
-    };
-    let initial_balances = vec![
-        Cw20Coin {
-            address: "a-1".to_string(),
-            amount: Uint128::new(110_000_000),
-        },
-        Cw20Coin {
-            address: "a-2".to_string(),
-            amount: Uint128::new(100_000_000),
-        },
-    ];
-    let instantiate_msg = InstantiateMsg {
-        min_voting_period: None,
-        max_voting_period: Duration::Height(6),
-        only_members_execute: false,
-        allow_revoting: false,
-        voting_strategy: VotingStrategy::SingleChoice {
-            quorum: PercentageThreshold::Majority {},
-        },
-        close_proposal_on_execution_failure: false,
-        pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
-        veto: Some(veto_config),
-    };
-
-    let proposal_module_code_id = app.store_code(proposal_multiple_contract());
-    let cw20_id = app.store_code(cw20_base_contract());
-    let cw20_stake_id = app.store_code(cw20_stake_contract());
-    let staked_balances_voting_id = app.store_code(cw20_staked_balances_voting_contract());
-    let core_contract_id = app.store_code(dao_dao_contract());
-
-    let instantiate_core = dao_interface::msg::InstantiateMsg {
-        admin: None,
-        name: "DAO DAO".to_string(),
-        description: "A DAO that builds DAOs".to_string(),
-        image_url: None,
-        automatically_add_cw20s: true,
-        automatically_add_cw721s: false,
-        voting_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: staked_balances_voting_id,
-            msg: to_json_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
-                active_threshold: None,
-                token_info: dao_voting_cw20_staked::msg::TokenInfo::New {
-                    code_id: cw20_id,
-                    label: "DAO DAO governance token.".to_string(),
-                    name: "DAO DAO".to_string(),
-                    symbol: "DAO".to_string(),
-                    decimals: 6,
-                    initial_balances: initial_balances.clone(),
-                    marketing: None,
-                    staking_code_id: cw20_stake_id,
-                    unstaking_duration: Some(Duration::Height(6)),
-                    initial_dao_balance: None,
-                },
-            })
-            .unwrap(),
-            admin: None,
-            funds: vec![],
-            label: "DAO DAO voting module".to_string(),
-        },
-        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
-            code_id: proposal_module_code_id,
-            msg: to_json_binary(&instantiate_msg).unwrap(),
-            admin: Some(Admin::CoreModule {}),
-            funds: vec![],
-            label: "DAO DAO governance module.".to_string(),
-        }],
-        initial_items: None,
-        dao_uri: None,
-    };
-
-    let err: ContractError = app
-        .instantiate_contract(
-            core_contract_id,
-            Addr::unchecked(CREATOR_ADDR),
-            &instantiate_core,
-            &[],
-            "DAO DAO",
-            None,
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-
-    assert_eq!(
-        err,
-        ContractError::VetoError(VetoError::DurationMisconfiguration {})
-    );
 }
 
 #[test]

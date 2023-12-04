@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, BlockInfo, StdError, StdResult, Uint128};
 use cw_utils::Expiration;
@@ -77,14 +79,12 @@ impl MultipleChoiceProposal {
                 // expiration. if it's expired, this proposal has passed.
                 // otherwise, set status to `VetoTimelock`.
                 Some(veto_config) => {
-                    let expiration = veto_config.timelock_duration.after(block);
+                    let expiration = self.expiration.add(veto_config.timelock_duration)?;
 
                     if expiration.is_expired(block) {
                         Ok(Status::Passed)
                     } else {
-                        Ok(Status::VetoTimelock {
-                            expiration: veto_config.timelock_duration.after(block),
-                        })
+                        Ok(Status::VetoTimelock { expiration })
                     }
                 }
                 // Otherwise the proposal is simply passed

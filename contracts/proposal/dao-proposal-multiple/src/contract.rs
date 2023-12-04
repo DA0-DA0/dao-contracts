@@ -62,9 +62,9 @@ pub fn instantiate(
         .pre_propose_info
         .into_initial_policy_and_messages(dao.clone())?;
 
-    // if veto is configured we validate its fields
+    // if veto is configured, validate its fields
     if let Some(veto_config) = &msg.veto {
-        veto_config.validate()?;
+        veto_config.validate(&deps.as_ref())?;
     };
 
     let config = Config {
@@ -629,10 +629,10 @@ pub fn execute_update_config(
     let (min_voting_period, max_voting_period) =
         validate_voting_period(min_voting_period, max_voting_period)?;
 
-    if let Some(ref veto_config) = veto {
-        // If veto is enabled, validate the vetoer address
-        deps.api.addr_validate(&veto_config.vetoer)?;
-    }
+    // if veto is configured, validate its fields
+    if let Some(veto_config) = &veto {
+        veto_config.validate(&deps.as_ref())?;
+    };
 
     CONFIG.save(
         deps.storage,
