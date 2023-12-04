@@ -65,9 +65,9 @@ Revoting for the currently cast option will return an error.
 Proposals may be configured with an optional `VetoConfig` - a configuration describing
 the veto flow.
 
-VetoConfig timelock period enables an oversight committee to hold the main DAO 
-accountable by vetoing proposals during (and potentially before entering into) 
-the timelock period.
+VetoConfig timelock period enables a party (such as an oversight committee DAO)
+to hold the main DAO accountable by vetoing proposals once (and potentially
+before) they are passed for a given timelock period.
 
 No actions from DAO members are allowed during the timelock period.
 
@@ -80,32 +80,34 @@ After the timelock expires, the proposal can be executed normally.
 Timelock duration (`cw_utils::Duration`) describes the duration of timelock
 in blocks or seconds.
 
-It comes into effect when a proposal is passed. The delay duration is then
-added to the current block time/height to get `Expiration` to be used for
-the new proposal state of `VetoTimelock { expiration: Expiration}`.
+The delay duration is added to the proposal's expiration to get the timelock
+expiration (`Expiration`) used for the new proposal state of `VetoTimelock {
+expiration: Expiration }`.
 
 If the vetoer address is another DAO, this duration should be carefully
-considered because of the DAO voting period.
+considered based on of the vetoer DAO's voting period.
 
 ### `vetoer`
 
-Vetoer (`String`) is the address allowed to veto the proposals that are in
-`VetoTimelock` state.
+Vetoer (`String`) is the address of the account allowed to veto the proposals
+that are in `VetoTimelock` state.
 
 Vetoer address can be updated via a regular proposal config update.
 
 If you want the `vetoer` role to be shared between multiple organizations or
-individuals, a [cw1-whitelist](https://github.com/CosmWasm/cw-plus/tree/main/contracts/cw1-whitelist) contract address can be used to
-allow multiple accounts to veto the prop.
+individuals, a
+[cw1-whitelist](https://github.com/CosmWasm/cw-plus/tree/main/contracts/cw1-whitelist)
+contract address can be used to allow multiple accounts to veto the prop.
 
 ### `early_execute`
 
-Early execute (`bool`) is a flag used to indicate whether the vetoer can
-execute the proposals before the timelock period is expired. The proposals
-still need to be passed and in the `VetoTimelock` state in order for this to
-be possible.
+Early execute (`bool`) is a flag used to indicate whether the vetoer can execute
+the proposals before the timelock period is expired. The proposals still need to
+be passed and in the `VetoTimelock` state in order for this to be possible. This
+may prevent the veto flow from consistently lengthening the governance process.
 
 ### `veto_before_passed`
 
 Veto before passed (`bool`) is a flag used to indicate whether the vetoer
-can veto a proposal before it passes.
+can veto a proposal before it passes. Votes may still be cast until the
+specified proposal expiration, even once vetoed.
