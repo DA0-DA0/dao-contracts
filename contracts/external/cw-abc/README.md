@@ -2,42 +2,49 @@
 
 Implments an augmented bonding curve.
 
-Forked from and heavily inspired by the work on [cw20-bonding](https://github.com/cosmwasm/cw-tokens/tree/main/contracts/cw20-bonding).
+Forked from and heavily inspired by the work on [cw20-bonding](https://github.com/cosmwasm/cw-tokens/tree/main/contracts/cw20-bonding). This contract uses native and token factory tokens instead.
+
+NOTE: this contract is unaudited and experimental. NOT RECOMMENDED FOR PRODUCTION USE.
+
+## Overview
+Before we get to the *Augmented* part, we must first describe bonding curves themselves.
+
+### Token Bonding Curves
+
+"A token bonding curve (TBC) is a mathematical curve that defines a relationship between price and token supply." ~[Aavegotchi Wiki](https://wiki.aavegotchi.com/en/curve)
+
+Each bonding curve has a pricing function, also known as the price curve (or `curve_fn` in our implementation). The `curve_fn` is used to determine the price of the asset.
+
+With bonding curves, we will always know what the price of an asset will be based on supply! More on benefits later.
+
+This contract implements two methods:
+- `Buy {}` is called with sending along some reserve curency (such as $USDC, or whatever the bonding curve is backed by). The reserve currency is stored by the bonding curve contract, and new tokens are minted and sent to the user.
+- `Sell {}` is called along with sending some supply currency (the token minted by the bonding curve). The supply tokens are burned, and reserve curency is returned.
+
+It is possible to use this contact as a basic bonding curve, without any of the augmented features.
+
+#### Benefits
+
+There are a number of benefits to bonding curves:
+- There is enough liquidity to back the entire supply
+- Easier to wind down projects (there is no going to zero)
+- Transparent pricing: looking at the curve will tell you a lot about what kind of project it is.
+- DAO treasuries can be funded by entry and exit fees on the curve
 
 ## Extended Reading
 
+Augmented Bonding Curves are nothing new, some articles that inspired this implementation:
 - https://medium.com/commonsstack/deep-dive-augmented-bonding-curves-b5ca4fad4436
 - https://tokeneconomy.co/token-bonding-curves-in-practice-3eb904720cb8
 
-## TODO
+Read more about [bonding curve math here](https://yos.io/2018/11/10/bonding-curves/).
+
+## Future Work
 
 Taking inspiration from [this article](https://medium.com/commonsstack/deep-dive-augmented-bonding-curves-b5ca4fad4436) on augmented bonding curves:
 
-- [ ] Implement Hatch Phase to allow projects to raise funds
-- [ ] Implement optional Exit Tax
 - [ ] Optionally vest tokens during the hatch phase
 - [ ] Update `cw-vesting` to allow for partcipating in DAOs?
-
-## Design
-
-There are two variants:
-
-Minting: When the input is sent to the contract via `ExecuteMsg::Buy{}`
-those tokens remain on the contract and it issues it's own token to the
-sender's account (known as _supply_ token).
-
-Burning: We override the burn function to not only burn the requested tokens,
-but also release a proper number of the input tokens to the account that burnt
-the custom token
-
-Curves: `handle` specifies a bonding function, which is sent to parameterize
-`handle_fn` (which does all the work). The curve is set when compiling
-the contract. In fact many contracts can just wrap `cw-abc` and
-specify the custom curve parameter.
-
-Read more about [bonding curve math here](https://yos.io/2018/11/10/bonding-curves/)
-
-Note: the first version only accepts native tokens as the
 
 ### Math
 
