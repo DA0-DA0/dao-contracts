@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
+    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
     Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
@@ -95,7 +95,7 @@ pub fn instantiate(
         WasmMsg::Instantiate {
             admin: Some(info.sender.to_string()),
             code_id: token_issuer_code_id,
-            msg: to_binary(&IssuerInstantiateMsg::NewToken {
+            msg: to_json_binary(&IssuerInstantiateMsg::NewToken {
                 subdenom: supply.subdenom.clone(),
             })?,
             funds: info.funds,
@@ -155,17 +155,17 @@ pub fn do_query(
 ) -> StdResult<Binary> {
     match msg {
         // custom queries
-        QueryMsg::CurveInfo {} => to_binary(&queries::query_curve_info(deps, curve_fn)?),
-        QueryMsg::PhaseConfig {} => to_binary(&queries::query_phase_config(deps)?),
+        QueryMsg::CurveInfo {} => to_json_binary(&queries::query_curve_info(deps, curve_fn)?),
+        QueryMsg::PhaseConfig {} => to_json_binary(&queries::query_phase_config(deps)?),
         QueryMsg::Donations { start_after, limit } => {
-            to_binary(&queries::query_donations(deps, start_after, limit)?)
+            to_json_binary(&queries::query_donations(deps, start_after, limit)?)
         }
         QueryMsg::Hatchers { start_after, limit } => {
-            to_binary(&queries::query_hatchers(deps, start_after, limit)?)
+            to_json_binary(&queries::query_hatchers(deps, start_after, limit)?)
         }
-        QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
-        QueryMsg::Denom {} => to_binary(&queries::get_denom(deps)?),
-        QueryMsg::TokenContract {} => to_binary(&TOKEN_ISSUER_CONTRACT.load(deps.storage)?),
+        QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
+        QueryMsg::Denom {} => to_json_binary(&queries::get_denom(deps)?),
+        QueryMsg::TokenContract {} => to_json_binary(&TOKEN_ISSUER_CONTRACT.load(deps.storage)?),
     }
 }
 
@@ -206,7 +206,7 @@ pub fn reply(
                 // Grant an allowance to mint
                 WasmMsg::Execute {
                     contract_addr: issuer_addr.clone(),
-                    msg: to_binary(&IssuerExecuteMsg::SetMinterAllowance {
+                    msg: to_json_binary(&IssuerExecuteMsg::SetMinterAllowance {
                         address: env.contract.address.to_string(),
                         // Allowance needs to be max as this the is the amount of tokens
                         // the minter is allowed to mint, not to be confused with max supply
@@ -218,7 +218,7 @@ pub fn reply(
                 // Grant an allowance to burn
                 WasmMsg::Execute {
                     contract_addr: issuer_addr.clone(),
-                    msg: to_binary(&IssuerExecuteMsg::SetBurnerAllowance {
+                    msg: to_json_binary(&IssuerExecuteMsg::SetBurnerAllowance {
                         address: env.contract.address.to_string(),
                         allowance: Uint128::MAX,
                     })?,
@@ -247,7 +247,7 @@ pub fn reply(
 
                 msgs.push(WasmMsg::Execute {
                     contract_addr: issuer_addr.clone(),
-                    msg: to_binary(&IssuerExecuteMsg::SetDenomMetadata {
+                    msg: to_json_binary(&IssuerExecuteMsg::SetDenomMetadata {
                         metadata: Metadata {
                             description: metadata.description,
                             denom_units,

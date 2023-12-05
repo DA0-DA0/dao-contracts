@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    ensure, to_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal as StdDecimal, DepsMut, Env,
+    ensure, to_json_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal as StdDecimal, DepsMut, Env,
     MessageInfo, QuerierWrapper, Response, StdError, StdResult, Storage, SubMsg, Uint128, WasmMsg,
 };
 use cw_tokenfactory_issuer::msg::ExecuteMsg as IssuerExecuteMsg;
@@ -97,7 +97,7 @@ pub fn execute_buy(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageInf
     let issuer_addr = TOKEN_ISSUER_CONTRACT.load(deps.storage)?;
     let mint_msg = WasmMsg::Execute {
         contract_addr: issuer_addr.to_string(),
-        msg: to_binary(&IssuerExecuteMsg::Mint {
+        msg: to_json_binary(&IssuerExecuteMsg::Mint {
             to_address: info.sender.to_string(),
             amount: minted,
         })?,
@@ -163,7 +163,7 @@ pub fn execute_sell(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageIn
         // Execute burn on the cw-tokenfactory-issuer contract
         CosmosMsg::<TokenFactoryMsg>::Wasm(WasmMsg::Execute {
             contract_addr: issuer_addr.to_string(),
-            msg: to_binary(&IssuerExecuteMsg::Burn {
+            msg: to_json_binary(&IssuerExecuteMsg::Burn {
                 from_address: info.sender.to_string(),
                 amount: burn_amount,
             })?,
