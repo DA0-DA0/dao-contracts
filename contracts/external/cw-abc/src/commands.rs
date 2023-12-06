@@ -1,9 +1,10 @@
 use cosmwasm_std::{
     ensure, to_json_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal as StdDecimal, DepsMut, Env,
-    MessageInfo, QuerierWrapper, Response, StdError, StdResult, Storage, SubMsg, Uint128, WasmMsg,
+    MessageInfo, QuerierWrapper, Response, StdError, StdResult, Storage, Uint128, WasmMsg,
 };
 use cw_tokenfactory_issuer::msg::ExecuteMsg as IssuerExecuteMsg;
 use cw_utils::must_pay;
+use rust_decimal::Decimal;
 use std::collections::HashSet;
 use std::ops::Deref;
 use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
@@ -12,8 +13,8 @@ use crate::abc::{CommonsPhase, CurveType};
 use crate::contract::CwAbcResult;
 use crate::msg::UpdatePhaseConfigMsg;
 use crate::state::{
-    CURVE_STATE, CURVE_TYPE, DONATIONS, HATCHERS, HATCHER_ALLOWLIST, MAX_SUPPLY, PHASE,
-    PHASE_CONFIG, SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
+    CURVE_STATE, CURVE_TYPE, DONATIONS, FEES_RECIPIENT, HATCHERS, HATCHER_ALLOWLIST, MAX_SUPPLY,
+    PHASE, PHASE_CONFIG, SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
 };
 use crate::ContractError;
 
@@ -95,17 +96,29 @@ pub fn execute_buy(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageInf
 
     // Mint tokens for sender by calling mint on the cw-tokenfactory-issuer contract
     let issuer_addr = TOKEN_ISSUER_CONTRACT.load(deps.storage)?;
-    let mint_msg = WasmMsg::Execute {
+    let mut msgs: Vec<CosmosMsg<TokenFactoryMsg>> = vec![CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: issuer_addr.to_string(),
         msg: to_json_binary(&IssuerExecuteMsg::Mint {
             to_address: info.sender.to_string(),
             amount: minted,
         })?,
         funds: vec![],
+    })];
+
+    // Send funding to fee recipient
+    if funded > Uint128::zero() {
+        let fees_recipient = FEES_RECIPIENT.load(deps.storage)?;
+        msgs.push(CosmosMsg::Bank(BankMsg::Send {
+            to_address: fees_recipient.to_string(),
+            amount: vec![Coin {
+                amount: funded,
+                denom: curve_state.reserve_denom,
+            }],
+        }))
     };
 
     Ok(Response::new()
-        .add_message(mint_msg)
+        .add_messages(msgs)
         .add_attribute("action", "buy")
         .add_attribute("from", info.sender)
         .add_attribute("reserved", reserved)
@@ -164,7 +177,7 @@ pub fn execute_sell(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageIn
         CosmosMsg::<TokenFactoryMsg>::Wasm(WasmMsg::Execute {
             contract_addr: issuer_addr.to_string(),
             msg: to_json_binary(&IssuerExecuteMsg::Burn {
-                from_address: info.sender.to_string(),
+                from_address: issuer_addr.to_string(),
                 amount: burn_amount,
             })?,
             funds: vec![],
@@ -184,9 +197,6 @@ pub fn execute_sell(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageIn
 
     // Calculate the new reserve based on the new supply
     let new_reserve = curve.reserve(curve_state.supply);
-    curve_state.reserve = new_reserve;
-    curve_state.funding += taxed_amount;
-    CURVE_STATE.save(deps.storage, &curve_state)?;
 
     // Calculate how many reserve tokens to release based on the sell amount
     let released_reserve = curve_state
@@ -194,18 +204,37 @@ pub fn execute_sell(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageIn
         .checked_sub(new_reserve)
         .map_err(StdError::overflow)?;
 
-    // Now send the tokens to the sender
-    let msg_send = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-        to_address: info.sender.to_string(),
-        amount: vec![Coin {
-            amount: released_reserve,
-            denom: curve_state.reserve_denom,
-        }],
-    }));
+    // Update the curve state
+    curve_state.reserve = new_reserve;
+    curve_state.funding += taxed_amount;
+    CURVE_STATE.save(deps.storage, &curve_state)?;
+
+    // Now send the tokens to the sender and any fees to the DAO
+    let mut send_msgs: Vec<CosmosMsg<TokenFactoryMsg>> =
+        vec![CosmosMsg::<TokenFactoryMsg>::Bank(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: vec![Coin {
+                // TODO Subtract the taxed amount from the released reserve
+                amount: released_reserve,
+                denom: curve_state.reserve_denom.clone(),
+            }],
+        })];
+
+    // Send exit fees to the to the fee recipient
+    if taxed_amount > Uint128::zero() {
+        let fees_recipient = FEES_RECIPIENT.load(deps.storage)?;
+        send_msgs.push(CosmosMsg::Bank(BankMsg::Send {
+            to_address: fees_recipient.to_string(),
+            amount: vec![Coin {
+                amount: taxed_amount,
+                denom: curve_state.reserve_denom,
+            }],
+        }))
+    }
 
     Ok(Response::<TokenFactoryMsg>::new()
         .add_messages(burn_msgs)
-        .add_submessage(msg_send)
+        .add_messages(send_msgs)
         .add_attribute("action", "burn")
         .add_attribute("from", info.sender)
         .add_attribute("amount", burn_amount)
@@ -223,9 +252,10 @@ fn calculate_exit_tax(storage: &dyn Storage, sell_amount: Uint128) -> CwAbcResul
     let exit_tax = match &phase {
         CommonsPhase::Hatch => phase_config.hatch.exit_tax,
         CommonsPhase::Open => phase_config.open.exit_tax,
-        CommonsPhase::Closed => return Err(ContractError::CommonsClosed {}),
+        CommonsPhase::Closed => return Ok(Uint128::zero()),
     };
 
+    // TODO more normal check?
     debug_assert!(
         exit_tax <= StdDecimal::percent(100),
         "Exit tax must be <= 100%"

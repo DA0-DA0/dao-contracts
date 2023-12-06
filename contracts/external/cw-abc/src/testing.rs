@@ -46,6 +46,7 @@ pub fn default_instantiate_msg(
     curve_type: CurveType,
 ) -> InstantiateMsg {
     InstantiateMsg {
+        fees_recipient: TEST_CREATOR.to_string(),
         token_issuer_code_id: 1,
         supply: SupplyToken {
             subdenom: TEST_SUPPLY_DENOM.to_string(),

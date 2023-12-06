@@ -15,10 +15,10 @@ use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 use crate::abc::{CommonsPhase, CurveFn};
 use crate::curves::DecimalPlaces;
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, UpdatePhaseConfigMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{
-    CurveState, CURVE_STATE, CURVE_TYPE, HATCHER_ALLOWLIST, MAX_SUPPLY, PHASE, PHASE_CONFIG,
-    SUPPLY_DENOM, TOKEN_INSTANTIATION_INFO, TOKEN_ISSUER_CONTRACT,
+    CurveState, CURVE_STATE, CURVE_TYPE, FEES_RECIPIENT, HATCHER_ALLOWLIST, MAX_SUPPLY, PHASE,
+    PHASE_CONFIG, SUPPLY_DENOM, TOKEN_INSTANTIATION_INFO, TOKEN_ISSUER_CONTRACT,
 };
 use crate::{commands, queries};
 
@@ -28,21 +28,19 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID: u64 = 0;
 
-// By default, the prefix for token factory tokens is "factory"
-const DENOM_PREFIX: &str = "factory";
-
 pub type CwAbcResult<T = Response<TokenFactoryMsg>> = Result<T, ContractError>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut<TokenFactoryQuery>,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> CwAbcResult {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let InstantiateMsg {
+        fees_recipient,
         supply,
         reserve,
         curve_type,
@@ -58,6 +56,9 @@ pub fn instantiate(
     }
 
     phase_config.validate()?;
+
+    // Validate and store the fees recipient
+    FEES_RECIPIENT.save(deps.storage, &deps.api.addr_validate(&fees_recipient)?)?;
 
     // Save new token info for use in reply
     TOKEN_INSTANTIATION_INFO.save(deps.storage, &supply)?;
@@ -197,6 +198,7 @@ pub fn reply(
             TOKEN_INSTANTIATION_INFO.remove(deps.storage);
 
             // Format the denom and save it
+            // By default, the prefix for token factory tokens is "factory"
             let denom = format!("factory/{}/{}", &issuer_addr, token_info.subdenom);
 
             SUPPLY_DENOM.save(deps.storage, &denom)?;

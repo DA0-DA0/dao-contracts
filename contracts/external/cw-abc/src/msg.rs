@@ -5,6 +5,9 @@ use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType, MinMax, ReserveTok
 
 #[cw_serde]
 pub struct InstantiateMsg {
+    /// The recipient for any fees collected from bonding curve operation
+    pub fees_recipient: String,
+
     /// The code id of the cw-tokenfactory-issuer contract
     pub token_issuer_code_id: u64,
 

@@ -105,6 +105,7 @@ impl TestEnvBuilder {
         let abc = CwAbc::deploy(
             app,
             &InstantiateMsg {
+                fees_recipient: accounts[0].address(),
                 token_issuer_code_id: issuer_id,
                 supply: SupplyToken {
                     subdenom: DENOM.to_string(),
@@ -168,8 +169,9 @@ impl TestEnvBuilder {
 
         let issuer_id = TokenfactoryIssuer::upload(app, &accounts[0])?;
 
-        // Override issuer_id
+        // Override issuer_id and fees_recipient
         msg.token_issuer_code_id = issuer_id;
+        msg.fees_recipient = accounts[0].address();
 
         let abc = CwAbc::deploy(app, &msg, &accounts[0])?;
 

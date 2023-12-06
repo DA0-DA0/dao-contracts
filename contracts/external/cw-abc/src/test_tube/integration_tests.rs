@@ -67,7 +67,7 @@ fn test_happy_path() {
         contract_balance.balance,
         Some(Coin {
             denom: RESERVE.to_string(),
-            amount: "1000".to_string(),
+            amount: "900".to_string(), // Minus 10% to fees_recipient
         })
     );
 
@@ -152,19 +152,19 @@ fn test_happy_path() {
         user_balance.balance,
         Some(Coin {
             denom: denom.clone(),
-            amount: "8800".to_string(),
+            amount: "8900".to_string(),
         })
     );
     assert_eq!(
         contract_balance.balance,
         Some(Coin {
             denom: RESERVE.to_string(),
-            amount: "990".to_string(),
+            amount: "880".to_string(),
         })
     );
 
     // Buy enough tokens to end the hatch phase
-    abc.execute(&ExecuteMsg::Buy {}, &coins(1000000, RESERVE), &accounts[0])
+    abc.execute(&ExecuteMsg::Buy {}, &coins(999999, RESERVE), &accounts[1])
         .unwrap();
 
     // Contract is now in open phase
@@ -280,6 +280,7 @@ fn test_allowlist() {
     let app = OsmosisTestApp::new();
     let builder = TestEnvBuilder::new();
     let instantiate_msg = InstantiateMsg {
+        fees_recipient: "replaced to accounts[0]".to_string(),
         token_issuer_code_id: 0,
         supply: SupplyToken {
             subdenom: DENOM.to_string(),
