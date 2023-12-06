@@ -8,6 +8,7 @@
     "type": "object",
     "required": [
       "curve_type",
+      "fees_recipient",
       "phase_config",
       "reserve",
       "supply",
@@ -21,6 +22,10 @@
             "$ref": "#/definitions/CurveType"
           }
         ]
+      },
+      "fees_recipient": {
+        "description": "The recipient for any fees collected from bonding curve operation",
+        "type": "string"
       },
       "hatcher_allowlist": {
         "description": "TODO different ways of doing this, for example DAO members? Using a whitelist contract? Merkle tree? Hatcher allowlist",
