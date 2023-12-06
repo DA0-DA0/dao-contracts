@@ -233,8 +233,8 @@
         "type": "object",
         "required": [
           "contribution_limits",
-          "exit_tax",
-          "initial_allocation_ratio",
+          "exit_fee",
+          "entry_fee",
           "initial_raise"
         ],
         "properties": {
@@ -246,7 +246,7 @@
               }
             ]
           },
-          "exit_tax": {
+          "exit_fee": {
             "description": "Exit tax for the hatch phase",
             "allOf": [
               {
@@ -254,7 +254,7 @@
               }
             ]
           },
-          "initial_allocation_ratio": {
+          "entry_fee": {
             "description": "The initial allocation (θ), percentage of the initial raise allocated to the Funding Pool",
             "allOf": [
               {
@@ -331,11 +331,11 @@
       "OpenConfig": {
         "type": "object",
         "required": [
-          "allocation_percentage",
-          "exit_tax"
+          "entry_fee",
+          "exit_fee"
         ],
         "properties": {
-          "allocation_percentage": {
+          "entry_fee": {
             "description": "Percentage of capital put into the Reserve Pool during the Open phase when buying from the curve.",
             "allOf": [
               {
@@ -343,7 +343,7 @@
               }
             ]
           },
-          "exit_tax": {
+          "exit_fee": {
             "description": "Exit taxation ratio",
             "allOf": [
               {
@@ -838,7 +838,7 @@
                       }
                     ]
                   },
-                  "exit_tax": {
+                  "exit_fee": {
                     "anyOf": [
                       {
                         "$ref": "#/definitions/Decimal"
@@ -848,7 +848,7 @@
                       }
                     ]
                   },
-                  "initial_allocation_ratio": {
+                  "entry_fee": {
                     "anyOf": [
                       {
                         "$ref": "#/definitions/Decimal"
@@ -884,7 +884,7 @@
               "open": {
                 "type": "object",
                 "properties": {
-                  "allocation_percentage": {
+                  "entry_fee": {
                     "anyOf": [
                       {
                         "$ref": "#/definitions/Decimal"
@@ -894,7 +894,7 @@
                       }
                     ]
                   },
-                  "exit_tax": {
+                  "exit_fee": {
                     "anyOf": [
                       {
                         "$ref": "#/definitions/Decimal"
@@ -1396,8 +1396,8 @@
           "type": "object",
           "required": [
             "contribution_limits",
-            "exit_tax",
-            "initial_allocation_ratio",
+            "exit_fee",
+            "entry_fee",
             "initial_raise"
           ],
           "properties": {
@@ -1409,7 +1409,7 @@
                 }
               ]
             },
-            "exit_tax": {
+            "exit_fee": {
               "description": "Exit tax for the hatch phase",
               "allOf": [
                 {
@@ -1417,7 +1417,7 @@
                 }
               ]
             },
-            "initial_allocation_ratio": {
+            "entry_fee": {
               "description": "The initial allocation (θ), percentage of the initial raise allocated to the Funding Pool",
               "allOf": [
                 {
@@ -1456,11 +1456,11 @@
         "OpenConfig": {
           "type": "object",
           "required": [
-            "allocation_percentage",
-            "exit_tax"
+            "entry_fee",
+            "exit_fee"
           ],
           "properties": {
-            "allocation_percentage": {
+            "entry_fee": {
               "description": "Percentage of capital put into the Reserve Pool during the Open phase when buying from the curve.",
               "allOf": [
                 {
@@ -1468,7 +1468,7 @@
                 }
               ]
             },
-            "exit_tax": {
+            "exit_fee": {
               "description": "Exit taxation ratio",
               "allOf": [
                 {

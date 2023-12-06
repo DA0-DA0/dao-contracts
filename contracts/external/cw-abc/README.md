@@ -107,12 +107,12 @@ Example Instantiation message:
                 "min": "10000000",
                 "max": "100000000000"
             },
-            "initial_allocation_ratio": "0.25",
-            "exit_tax": "0.10"
+            "entry_fee": "0.25",
+            "exit_fee": "0.10"
         },
         "open": {
-            "exit_tax": "0.01",
-            "allocation_percentage": "0.01"
+            "exit_fee": "0.01",
+            "entry_fee": "0.01"
         },
         "closed": {}
     },

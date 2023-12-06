@@ -41,9 +41,9 @@ pub struct HatchConfig {
     /// The initial raise range (min, max) in the reserve token
     pub initial_raise: MinMax,
     /// The initial allocation (θ), percentage of the initial raise allocated to the Funding Pool
-    pub initial_allocation_ratio: StdDecimal,
+    pub entry_fee: StdDecimal,
     /// Exit tax for the hatch phase
-    pub exit_tax: StdDecimal,
+    pub exit_fee: StdDecimal,
 }
 
 impl HatchConfig {
@@ -65,14 +65,14 @@ impl HatchConfig {
         );
 
         ensure!(
-            self.initial_allocation_ratio <= StdDecimal::percent(100u64),
+            self.entry_fee <= StdDecimal::percent(100u64),
             ContractError::HatchPhaseConfigError(
                 "Initial allocation percentage must be between 0 and 100.".to_string()
             )
         );
 
         ensure!(
-            self.exit_tax <= StdDecimal::percent(100u64),
+            self.exit_fee <= StdDecimal::percent(100u64),
             ContractError::HatchPhaseConfigError(
                 "Exit taxation percentage must be less than or equal to 100.".to_string()
             )
@@ -86,23 +86,23 @@ impl HatchConfig {
 pub struct OpenConfig {
     /// Percentage of capital put into the Reserve Pool during the Open phase
     /// when buying from the curve.
-    pub allocation_percentage: StdDecimal,
+    pub entry_fee: StdDecimal,
     /// Exit taxation ratio
-    pub exit_tax: StdDecimal,
+    pub exit_fee: StdDecimal,
 }
 
 impl OpenConfig {
     /// Validate the open config
     pub fn validate(&self) -> Result<(), ContractError> {
         ensure!(
-            self.allocation_percentage <= StdDecimal::percent(100u64),
+            self.entry_fee <= StdDecimal::percent(100u64),
             ContractError::OpenPhaseConfigError(
                 "Reserve percentage must be between 0 and 100.".to_string()
             )
         );
 
         ensure!(
-            self.exit_tax <= StdDecimal::percent(100u64),
+            self.exit_fee <= StdDecimal::percent(100u64),
             ContractError::OpenPhaseConfigError(
                 "Exit taxation percentage must be between 0 and 100.".to_string()
             )
@@ -243,12 +243,12 @@ mod unit_tests {
                     min: Uint128::one(),
                     max: Uint128::from(1000000u128),
                 },
-                initial_allocation_ratio: StdDecimal::percent(10u64),
-                exit_tax: StdDecimal::percent(10u64),
+                entry_fee: StdDecimal::percent(10u64),
+                exit_fee: StdDecimal::percent(10u64),
             },
             open: OpenConfig {
-                allocation_percentage: StdDecimal::percent(10u64),
-                exit_tax: StdDecimal::percent(10u64),
+                entry_fee: StdDecimal::percent(10u64),
+                exit_fee: StdDecimal::percent(10u64),
             },
             closed: ClosedConfig {},
         };

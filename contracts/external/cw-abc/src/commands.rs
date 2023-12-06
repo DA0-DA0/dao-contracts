@@ -61,11 +61,9 @@ pub fn execute_buy(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageInf
                 PHASE.save(deps.storage, &phase)?;
             }
 
-            calculate_reserved_and_funded(payment, hatch_config.initial_allocation_ratio)
+            calculate_reserved_and_funded(payment, hatch_config.entry_fee)
         }
-        CommonsPhase::Open => {
-            calculate_reserved_and_funded(payment, phase_config.open.allocation_percentage)
-        }
+        CommonsPhase::Open => calculate_reserved_and_funded(payment, phase_config.open.entry_fee),
         CommonsPhase::Closed => {
             return Err(ContractError::CommonsClosed {});
         }
@@ -202,7 +200,7 @@ pub fn execute_sell(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageIn
         .map_err(StdError::overflow)?;
 
     // Calculate the exit tax
-    let taxed_amount = calculate_exit_tax(deps.storage, released_reserve)?;
+    let taxed_amount = calculate_exit_fee(deps.storage, released_reserve)?;
 
     // Update the curve state
     curve_state.reserve = new_reserve;
@@ -248,26 +246,26 @@ pub fn execute_sell(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageIn
 }
 
 /// Calculate the exit taxation for the sell amount based on the phase
-fn calculate_exit_tax(storage: &dyn Storage, sell_amount: Uint128) -> CwAbcResult<Uint128> {
+fn calculate_exit_fee(storage: &dyn Storage, sell_amount: Uint128) -> CwAbcResult<Uint128> {
     // Load the phase config and phase
     let phase = PHASE.load(storage)?;
     let phase_config = PHASE_CONFIG.load(storage)?;
 
     // Calculate the exit tax based on the phase
-    let exit_tax = match &phase {
-        CommonsPhase::Hatch => phase_config.hatch.exit_tax,
-        CommonsPhase::Open => phase_config.open.exit_tax,
+    let exit_fee = match &phase {
+        CommonsPhase::Hatch => phase_config.hatch.exit_fee,
+        CommonsPhase::Open => phase_config.open.exit_fee,
         CommonsPhase::Closed => return Ok(Uint128::zero()),
     };
 
     // TODO more normal check?
     debug_assert!(
-        exit_tax <= StdDecimal::percent(100),
+        exit_fee <= StdDecimal::percent(100),
         "Exit tax must be <= 100%"
     );
 
     // This won't ever overflow because it's checked
-    let taxed_amount = sell_amount * exit_tax;
+    let taxed_amount = sell_amount * exit_fee;
     Ok(taxed_amount)
 }
 
@@ -386,9 +384,9 @@ pub fn update_phase_config(
 
     match update_phase_config_msg {
         UpdatePhaseConfigMsg::Hatch {
-            exit_tax,
+            exit_fee,
             initial_raise,
-            initial_allocation_ratio,
+            entry_fee,
             contribution_limits,
         } => {
             // Check we are in the hatch phase
@@ -398,14 +396,14 @@ pub fn update_phase_config(
             if let Some(contribution_limits) = contribution_limits {
                 phase_config.hatch.contribution_limits = contribution_limits;
             }
-            if let Some(exit_tax) = exit_tax {
-                phase_config.hatch.exit_tax = exit_tax;
+            if let Some(exit_fee) = exit_fee {
+                phase_config.hatch.exit_fee = exit_fee;
             }
             if let Some(initial_raise) = initial_raise {
                 phase_config.hatch.initial_raise = initial_raise;
             }
-            if let Some(initial_allocation_ratio) = initial_allocation_ratio {
-                phase_config.hatch.initial_allocation_ratio = initial_allocation_ratio;
+            if let Some(entry_fee) = entry_fee {
+                phase_config.hatch.entry_fee = entry_fee;
             }
 
             // Validate config
@@ -415,18 +413,18 @@ pub fn update_phase_config(
             Ok(Response::new().add_attribute("action", "update_hatch_phase_config"))
         }
         UpdatePhaseConfigMsg::Open {
-            exit_tax,
-            allocation_percentage,
+            exit_fee,
+            entry_fee,
         } => {
             // Check we are in the open phase
             phase.expect_open()?;
 
             // Update the hatch config if new values are provided
-            if let Some(allocation_percentage) = allocation_percentage {
-                phase_config.open.allocation_percentage = allocation_percentage;
+            if let Some(entry_fee) = entry_fee {
+                phase_config.open.entry_fee = entry_fee;
             }
-            if let Some(exit_tax) = exit_tax {
-                phase_config.hatch.exit_tax = exit_tax;
+            if let Some(exit_fee) = exit_fee {
+                phase_config.hatch.exit_fee = exit_fee;
             }
 
             // Validate config

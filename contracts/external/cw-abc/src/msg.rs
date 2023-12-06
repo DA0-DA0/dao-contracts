@@ -36,15 +36,15 @@ pub enum UpdatePhaseConfigMsg {
     /// Update the hatch phase configuration
     Hatch {
         contribution_limits: Option<MinMax>,
-        exit_tax: Option<StdDecimal>,
         // TODO what is the minimum used for?
         initial_raise: Option<MinMax>,
-        initial_allocation_ratio: Option<StdDecimal>,
+        entry_fee: Option<StdDecimal>,
+        exit_fee: Option<StdDecimal>,
     },
     /// Update the open phase configuration.
     Open {
-        exit_tax: Option<StdDecimal>,
-        allocation_percentage: Option<StdDecimal>,
+        exit_fee: Option<StdDecimal>,
+        entry_fee: Option<StdDecimal>,
     },
     /// Update the closed phase configuration.
     /// TODO Set the curve type to be used on close?
