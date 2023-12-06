@@ -125,7 +125,7 @@ fn test_happy_path() {
         CurveInfoResponse {
             reserve: Uint128::new(890),
             supply: Uint128::new(8900),
-            funding: Uint128::new(110),
+            funding: Uint128::new(101),
             spot_price: Decimal::percent(10u64),
             reserve_denom: RESERVE.to_string(),
         }
@@ -159,7 +159,7 @@ fn test_happy_path() {
         contract_balance.balance,
         Some(Coin {
             denom: RESERVE.to_string(),
-            amount: "880".to_string(),
+            amount: "890".to_string(),
         })
     );
 

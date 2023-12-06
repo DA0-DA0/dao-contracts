@@ -4,7 +4,6 @@ use cosmwasm_std::{
 };
 use cw_tokenfactory_issuer::msg::ExecuteMsg as IssuerExecuteMsg;
 use cw_utils::must_pay;
-use rust_decimal::Decimal;
 use std::collections::HashSet;
 use std::ops::Deref;
 use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
@@ -184,8 +183,6 @@ pub fn execute_sell(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageIn
         }),
     ];
 
-    let taxed_amount = calculate_exit_tax(deps.storage, burn_amount)?;
-
     let mut curve_state = CURVE_STATE.load(deps.storage)?;
     let curve = curve_fn(curve_state.clone().decimals);
 
@@ -204,18 +201,26 @@ pub fn execute_sell(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageIn
         .checked_sub(new_reserve)
         .map_err(StdError::overflow)?;
 
+    // Calculate the exit tax
+    let taxed_amount = calculate_exit_tax(deps.storage, released_reserve)?;
+
     // Update the curve state
     curve_state.reserve = new_reserve;
     curve_state.funding += taxed_amount;
     CURVE_STATE.save(deps.storage, &curve_state)?;
+
+    // Calculate the amount of tokens to send to the sender
+    // Subtract the taxed amount from the released amount
+    let released = released_reserve
+        .checked_sub(taxed_amount)
+        .map_err(StdError::overflow)?;
 
     // Now send the tokens to the sender and any fees to the DAO
     let mut send_msgs: Vec<CosmosMsg<TokenFactoryMsg>> =
         vec![CosmosMsg::<TokenFactoryMsg>::Bank(BankMsg::Send {
             to_address: info.sender.to_string(),
             amount: vec![Coin {
-                // TODO Subtract the taxed amount from the released reserve
-                amount: released_reserve,
+                amount: released,
                 denom: curve_state.reserve_denom.clone(),
             }],
         })];
