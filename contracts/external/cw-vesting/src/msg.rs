@@ -4,6 +4,7 @@ use cw20::Cw20ReceiveMsg;
 use cw_denom::UncheckedDenom;
 use cw_ownable::cw_ownable_execute;
 use cw_stake_tracker::StakeTrackerQuery;
+use dao_voting::{proposal::SingleChoiceProposeMsg, voting::Vote};
 
 use crate::vesting::Schedule;
 
@@ -179,6 +180,45 @@ pub enum ExecuteMsg {
         /// the common case where the slash impacted bonding tokens.
         during_unbonding: bool,
     },
+    /// Actions related to staking and voting in DAOs
+    DaoActions(DaoActionsMsg),
+}
+
+// TODO we may need to pass in staking contract address?
+#[cw_serde]
+pub enum DaoActionsMsg {
+    /// Stake to a DAO
+    Stake {
+        /// The amount to stake. Default is full amount.
+        amount: Option<Uint128>,
+    },
+    /// Unstake from a DAO
+    Unstake {
+        /// The amount to unstake. Default is full amount.
+        amount: Option<Uint128>,
+    },
+    /// Vote on single choice proposal
+    Vote {
+        /// The ID of the proposal to vote on.
+        proposal_id: u64,
+        /// The senders position on the proposal.
+        vote: Vote,
+        /// An optional rationale for why this vote was cast. This can
+        /// be updated, set, or removed later by the address casting
+        /// the vote.
+        rationale: Option<String>,
+    },
+    /// TODO need to figure out how to handle this, need to know the right proposal module...
+    /// Create a new proposal... TODO how to handle deposit?
+    Propose(SingleChoiceProposeMsg),
+    // // TODO support multiple choice voting and proposals
+    // /// Vote on multiple choice proposal
+    // VoteMultipleChoice {
+    //     /// The proposal id to vote on.
+    //     proposal_id: u64,
+    //     /// The vote options.
+    //     options: Vec<VoteOption>,
+    // },
 }
 
 #[cw_serde]
