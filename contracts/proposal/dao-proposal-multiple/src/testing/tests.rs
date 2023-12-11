@@ -5481,3 +5481,131 @@ fn test_veto_timelock_expires_happy() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn test_veto_only_members_execute_proposal() -> anyhow::Result<()> {
+    let mut app = App::default();
+    let timelock_duration = Duration::Height(3);
+    let veto_config = VetoConfig {
+        timelock_duration,
+        vetoer: "vetoer".to_string(),
+        early_execute: true,
+        veto_before_passed: false,
+    };
+
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        InstantiateMsg {
+            min_voting_period: None,
+            max_voting_period: Duration::Height(6),
+            only_members_execute: true,
+            allow_revoting: false,
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Majority {},
+            },
+            close_proposal_on_execution_failure: false,
+            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+            veto: Some(veto_config),
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "a-1".to_string(),
+                amount: Uint128::new(110_000_000),
+            },
+            Cw20Coin {
+                address: "a-2".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]),
+    );
+    let govmod = query_multiple_proposal_module(&app, &core_addr);
+
+    let proposal_module = query_multiple_proposal_module(&app, &core_addr);
+
+    let next_proposal_id: u64 = app
+        .wrap()
+        .query_wasm_smart(&proposal_module, &QueryMsg::NextProposalId {})
+        .unwrap();
+    assert_eq!(next_proposal_id, 1);
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+    ];
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Create a basic proposal with 2 options
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options,
+            proposer: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
+
+    let expiration = proposal.proposal.expiration.add(timelock_duration)?;
+    assert_eq!(
+        proposal.proposal.status,
+        Status::VetoTimelock { expiration },
+    );
+
+    app.update_block(|b| b.height += 10);
+    // assert timelock is expired
+    assert!(expiration.is_expired(&app.block_info()));
+
+    let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
+    assert_eq!(proposal.proposal.status, Status::Passed);
+
+    // Proposal cannot be executed by vetoer once timelock expired
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("vetoer"),
+            proposal_module.clone(),
+            &ExecuteMsg::Execute { proposal_id: 1 },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    // Proposal can be executed by member once timelock expired
+    app.execute_contract(
+        Addr::unchecked("a-2"),
+        proposal_module.clone(),
+        &ExecuteMsg::Execute { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+    let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
+    assert_eq!(proposal.proposal.status, Status::Executed {},);
+
+    Ok(())
+}

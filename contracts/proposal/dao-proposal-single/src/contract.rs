@@ -346,6 +346,9 @@ pub fn execute_execute(
         .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
 
     let config = CONFIG.load(deps.storage)?;
+
+    // determine if this sender can execute
+    let mut sender_can_execute = true;
     if config.only_members_execute {
         let power = get_voting_power(
             deps.as_ref(),
@@ -354,16 +357,7 @@ pub fn execute_execute(
             Some(prop.start_height),
         )?;
 
-        // if there is no veto config, then caller is not the vetoer
-        // if there is, we validate the caller addr
-        let vetoer_call = prop
-            .veto
-            .as_ref()
-            .map_or(false, |veto_config| veto_config.vetoer == info.sender);
-
-        if power.is_zero() && !vetoer_call {
-            return Err(ContractError::Unauthorized {});
-        }
+        sender_can_execute = !power.is_zero();
     }
 
     // Check here that the proposal is passed or timelocked.
@@ -374,27 +368,32 @@ pub fn execute_execute(
     prop.update_status(&env.block)?;
     let old_status = prop.status;
     match &prop.status {
-        Status::Passed => (),
-        Status::VetoTimelock { expiration } => {
+        Status::Passed => {
+            // if passed, verify sender can execute
+            if !sender_can_execute {
+                return Err(ContractError::Unauthorized {});
+            }
+        }
+        Status::VetoTimelock { .. } => {
+            // should never error if in veto timelock state
             let veto_config = prop
                 .veto
                 .as_ref()
                 .ok_or(VetoError::NoVetoConfiguration {})?;
 
-            // Check if the sender is the vetoer
-            match veto_config.vetoer == info.sender {
-                // if sender is the vetoer we validate the early exec flag
-                true => veto_config.check_early_execute_enabled()?,
-                // otherwise timelock must be expired in order to execute
-                false => {
-                    // it should never be expired here since the status updates
-                    // to passed after the timelock expires, but let's check
-                    // anyway. i.e. this error should always be returned.
-                    if !expiration.is_expired(&env.block) {
-                        return Err(ContractError::VetoError(VetoError::Timelocked {}));
-                    }
+            // check that the sender is the vetoer
+            if veto_config.vetoer != info.sender {
+                // if the sender can normally execute, but is not the vetoer,
+                // return timelocked error. otherwise return unauthorized.
+                if sender_can_execute {
+                    return Err(ContractError::VetoError(VetoError::Timelocked {}));
+                } else {
+                    return Err(ContractError::Unauthorized {});
                 }
             }
+
+            // if veto timelocked, only allow execution if early_execute enabled
+            veto_config.check_early_execute_enabled()?;
         }
         _ => {
             return Err(ContractError::NotPassed {});
