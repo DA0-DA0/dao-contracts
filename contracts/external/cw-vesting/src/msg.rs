@@ -4,7 +4,7 @@ use cw20::Cw20ReceiveMsg;
 use cw_denom::UncheckedDenom;
 use cw_ownable::cw_ownable_execute;
 use cw_stake_tracker::StakeTrackerQuery;
-use dao_voting::{proposal::SingleChoiceProposeMsg, voting::Vote};
+use dao_voting::voting::Vote;
 
 use crate::{state::DaoStakingLimits, vesting::Schedule};
 
@@ -220,19 +220,6 @@ pub enum DaoActionsMsg {
         /// the vote.
         rationale: Option<String>,
     },
-    // TODO update dao_staking config
-    // UpdateConfig {
-    //     /// Contracts the vesting contract is allowed to stake with.
-    //     staking_contract_allowlist: Option<Vec<String>>,
-    // },
-    /// TODO need to figure out how to handle this, need to know the right proposal module...
-    /// Create a new proposal... TODO how to handle deposit?
-    Propose {
-        // The address of the proposal module you are voting on.
-        proposal_module: String,
-        /// The proposal to create.
-        proposal: SingleChoiceProposeMsg,
-    },
     // // TODO support multiple choice voting and proposals
     // /// Vote on multiple choice proposal
     // VoteMultipleChoice {
@@ -240,6 +227,11 @@ pub enum DaoActionsMsg {
     //     proposal_id: u64,
     //     /// The vote options.
     //     options: Vec<VoteOption>,
+    // },
+    // TODO update dao_staking config
+    // UpdateConfig {
+    //     /// Contracts the vesting contract is allowed to stake with.
+    //     staking_contract_allowlist: Option<Vec<String>>,
     // },
 }
 

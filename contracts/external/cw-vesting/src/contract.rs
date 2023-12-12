@@ -10,9 +10,7 @@ use cw20::Cw20ReceiveMsg;
 use cw_denom::CheckedDenom;
 use cw_ownable::OwnershipError;
 use cw_utils::{must_pay, nonpayable};
-use dao_voting::deposit::DepositRefundPolicy;
-use dao_voting::pre_propose::ProposalCreationPolicy;
-use dao_voting::{proposal::SingleChoiceProposeMsg, voting::Vote};
+use dao_voting::voting::Vote;
 
 use crate::error::ContractError;
 use crate::msg::{DaoActionsMsg, ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
@@ -161,10 +159,6 @@ pub fn execute(
                 vote,
                 rationale,
             ),
-            DaoActionsMsg::Propose {
-                proposal,
-                proposal_module,
-            } => execute_dao_propose(deps, env, info, proposal_module, proposal),
         },
     }
 }
@@ -604,68 +598,6 @@ pub fn execute_dao_vote(
         .add_attribute("proposal_id", proposal_id.to_string())
         .add_attribute("vote", vote.to_string())
         .add_attribute("rationale", rationale.unwrap_or_default()))
-}
-
-// TODO how to handle if a deposit is slashed?
-// TODO maybe we just don't handle proposals?
-// Makes this contract much easier... as we don't have to worry about deposits?
-// Cheeper audit too...
-/// Create a proposal in a DAO
-pub fn execute_dao_propose(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    proposal_module: String,
-    proposal: SingleChoiceProposeMsg,
-) -> Result<Response, ContractError> {
-    // Check sender is the recipient of the vesting contract
-    let vest = PAYMENT.get_vest(deps.storage)?;
-    if info.sender != vest.recipient {
-        return Err(ContractError::NotReceiver);
-    };
-
-    // Validate proposal module contract address
-    let proposal_contract = deps.api.addr_validate(&proposal_module)?;
-
-    // Get proposal creation policy
-    let policy = deps.querier.query_wasm_smart(
-        proposal_contract,
-        &dao_proposal_single::msg::QueryMsg::ProposalCreationPolicy {},
-    )?;
-
-    // Match policy, if anyone proceed to make proposal directly
-    // otherwise check deposits?
-    match policy {
-        ProposalCreationPolicy::Anyone {} => {
-            // Construct message to submit proposal directly
-            let msg = WasmMsg::Execute {
-                contract_addr: proposal_module.clone(),
-                msg: to_json_binary(&dao_proposal_single::msg::ExecuteMsg::Propose(proposal))?,
-                funds: vec![],
-            };
-
-            Ok(Response::default()
-                .add_message(msg)
-                .add_attribute("method", "execute_dao_propose")
-                .add_attribute("proposal_module", proposal_module))
-        }
-        ProposalCreationPolicy::Module { addr } => {
-            // Get the config for the pre-propose module
-            let config: dao_pre_propose_single::Config = deps
-                .querier
-                .query_wasm_smart(addr, &dao_pre_propose_single::QueryMsg::Config {})?;
-
-            if let Some(deposit_info) = config.deposit_info {
-                match deposit_info.refund_policy {
-                    DepositRefundPolicy::Always {} => unimplemented!(),
-                    DepositRefundPolicy::Never {} => unimplemented!(),
-                    DepositRefundPolicy::OnlyPassed {} => unimplemented!(),
-                }
-            }
-
-            unimplemented!();
-        }
-    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

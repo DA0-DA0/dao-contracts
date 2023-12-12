@@ -1103,7 +1103,6 @@ dependencies = [
  "cw2 1.1.2",
  "cw20 1.1.2",
  "cw20-base 1.1.2",
- "dao-pre-propose-single",
  "dao-proposal-single",
  "dao-testing",
  "dao-voting 2.3.0",
