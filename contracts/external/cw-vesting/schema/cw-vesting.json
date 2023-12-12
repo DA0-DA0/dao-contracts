@@ -17,7 +17,7 @@
     ],
     "properties": {
       "dao_staking": {
-        "description": "TODO support limits for native staked tokens as well? Optionally enabling this vesting contract to stake in token DAOs. Set to None if vesting a native token.",
+        "description": "Optionally enabling this vesting contract to stake in token DAOs. Set to None if vesting a native staking token.",
         "anyOf": [
           {
             "$ref": "#/definitions/DaoStakingLimits"

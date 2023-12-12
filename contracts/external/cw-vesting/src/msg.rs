@@ -27,9 +27,10 @@ pub struct InstantiateMsg {
     /// The type and denom of token being vested.
     pub denom: UncheckedDenom,
 
-    /// TODO support limits for native staked tokens as well?
+    // TODO maybe rename this... right now it's just an allowlist of staking contracts
+    // if DAO staking is enabled, this contract will be allowed to stake with these contracts.
     /// Optionally enabling this vesting contract to stake in token DAOs.
-    /// Set to None if vesting a native token.
+    /// Set to None if vesting a native staking token.
     pub dao_staking: Option<DaoStakingLimits>,
 
     /// The vesting schedule, can be either `SaturatingLinear` vesting
