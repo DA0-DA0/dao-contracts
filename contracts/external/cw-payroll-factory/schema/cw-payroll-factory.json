@@ -182,6 +182,21 @@
         },
         "additionalProperties": false
       },
+      "DaoStakingLimits": {
+        "type": "object",
+        "required": [
+          "staking_contract_allowlist"
+        ],
+        "properties": {
+          "staking_contract_allowlist": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "Expiration": {
         "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
         "oneOf": [
@@ -241,6 +256,17 @@
           "vesting_duration_seconds"
         ],
         "properties": {
+          "dao_staking": {
+            "description": "TODO support limits for native staked tokens as well? Optionally enabling this vesting contract to stake in token DAOs. Set to None if vesting a native token.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/DaoStakingLimits"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "denom": {
             "description": "The type and denom of token being vested.",
             "allOf": [

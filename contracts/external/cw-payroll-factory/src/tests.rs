@@ -100,6 +100,7 @@ pub fn test_instantiate_native_payroll_contract() {
             vesting_duration_seconds: 200,
             unbonding_duration_seconds: 2592000, // 30 days
             start_time: None,
+            dao_staking: None,
         },
         label: "Payroll".to_string(),
     };
@@ -275,6 +276,7 @@ pub fn test_instantiate_cw20_payroll_contract() {
         vesting_duration_seconds: 200,
         unbonding_duration_seconds: 2592000, // 30 days
         start_time: None,
+        dao_staking: None,
     };
 
     // Attempting to call InstantiatePayrollContract directly with cw20 fails
@@ -397,6 +399,7 @@ fn test_instantiate_wrong_ownership_native() {
                     vesting_duration_seconds: 200,
                     unbonding_duration_seconds: 2592000, // 30 days
                     start_time: None,
+                    dao_staking: None,
                 },
                 label: "vesting".to_string(),
             },
@@ -481,6 +484,7 @@ fn test_update_vesting_code_id() {
             vesting_duration_seconds: 200,
             unbonding_duration_seconds: 2592000, // 30 days
             start_time: None,
+            dao_staking: None,
         },
         label: "Payroll".to_string(),
     };
@@ -571,6 +575,7 @@ pub fn test_inconsistent_cw20_amount() {
         vesting_duration_seconds: 200,
         unbonding_duration_seconds: 2592000, // 30 days
         start_time: None,
+        dao_staking: None,
     };
     let err: ContractError = app
         .execute_contract(

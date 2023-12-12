@@ -69,6 +69,7 @@ fn test_cw_vesting_staking(chain: &mut Chain) {
                 total: Uint128::new(100_000_000),
                 denom: cw_vesting::UncheckedDenom::Native("ujunox".to_string()),
 
+                dao_staking: None,
                 schedule: Schedule::SaturatingLinear,
                 start_time: None,
                 vesting_duration_seconds: 10,
