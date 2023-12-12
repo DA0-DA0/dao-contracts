@@ -88,9 +88,6 @@ pub enum ExecuteMsg {
     Close {},
 }
 
-// TODO Price queries:
-// - Price to buy a certain amount?
-// - What can be bought for a certain amount?
 #[cw_ownable::cw_ownable_query]
 #[cw_serde]
 #[derive(QueryResponses)]
@@ -99,10 +96,12 @@ pub enum QueryMsg {
     /// Returns [`CurveInfoResponse`]
     #[returns(CurveInfoResponse)]
     CurveInfo {},
-    /// Returns the current phase configuration
-    /// Returns [`CommonsPhaseConfigResponse`]
-    #[returns(CommonsPhaseConfigResponse)]
-    PhaseConfig {},
+    /// Returns information about the curve type (i.e. linear, constant, etc.)
+    #[returns(CurveType)]
+    CurveType {},
+    /// Returns Token Factory Denom for the supply
+    #[returns(DenomResponse)]
+    Denom {},
     /// Returns a list of the donors and their donations
     /// Returns [`DonationsResponse`]
     #[returns(DonationsResponse)]
@@ -110,6 +109,10 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    /// Returns the Fee Recipient for the contract. This is the address that
+    /// recieves any fees collected from bonding curve operation
+    #[returns(::cosmwasm_std::Addr)]
+    FeesRecipient {},
     /// List the hatchers and their contributions
     /// Returns [`HatchersResponse`]
     #[returns(HatchersResponse)]
@@ -117,9 +120,16 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    /// Returns Token Factory Denom for the supply
-    #[returns(DenomResponse)]
-    Denom {},
+    /// Returns the Maxiumum Supply of the supply token
+    #[returns(Uint128)]
+    MaxSupply {},
+    /// Returns the current phase
+    #[returns(CommonsPhase)]
+    Phase {},
+    /// Returns the current phase configuration
+    /// Returns [`CommonsPhaseConfigResponse`]
+    #[returns(CommonsPhaseConfigResponse)]
+    PhaseConfig {},
     /// Returns the address of the cw-tokenfactory-issuer contract
     #[returns(::cosmwasm_std::Addr)]
     TokenContract {},

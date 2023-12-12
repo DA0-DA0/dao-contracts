@@ -4,9 +4,9 @@ use crate::msg::{
     HatchersResponse,
 };
 use crate::state::{
-    CurveState, CURVE_STATE, DONATIONS, HATCHERS, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
+    CurveState, CURVE_STATE, DONATIONS, HATCHERS, MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
 };
-use cosmwasm_std::{Deps, Order, QuerierWrapper, StdResult};
+use cosmwasm_std::{Deps, Order, QuerierWrapper, StdResult, Uint128};
 use std::ops::Deref;
 use token_bindings::TokenFactoryQuery;
 
@@ -33,16 +33,6 @@ pub fn query_curve_info(
         funding,
         spot_price,
         reserve_denom,
-    })
-}
-
-/// Load and return the phase config
-pub fn query_phase_config(deps: Deps<TokenFactoryQuery>) -> StdResult<CommonsPhaseConfigResponse> {
-    let phase = PHASE.load(deps.storage)?;
-    let phase_config = PHASE_CONFIG.load(deps.storage)?;
-    Ok(CommonsPhaseConfigResponse {
-        phase_config,
-        phase,
     })
 }
 
@@ -75,6 +65,7 @@ pub fn query_donations(
     Ok(DonationsResponse { donations })
 }
 
+/// Query hatchers who contributed during the hatch phase
 pub fn query_hatchers(
     deps: Deps<TokenFactoryQuery>,
     start_aftor: Option<String>,
@@ -96,4 +87,20 @@ pub fn query_hatchers(
     )?;
 
     Ok(HatchersResponse { hatchers })
+}
+
+/// Query the max supply of the supply token
+pub fn query_max_supply(deps: Deps<TokenFactoryQuery>) -> StdResult<Uint128> {
+    let max_supply = MAX_SUPPLY.may_load(deps.storage)?;
+    Ok(max_supply.unwrap_or(Uint128::MAX))
+}
+
+/// Load and return the phase config
+pub fn query_phase_config(deps: Deps<TokenFactoryQuery>) -> StdResult<CommonsPhaseConfigResponse> {
+    let phase = PHASE.load(deps.storage)?;
+    let phase_config = PHASE_CONFIG.load(deps.storage)?;
+    Ok(CommonsPhaseConfigResponse {
+        phase_config,
+        phase,
+    })
 }

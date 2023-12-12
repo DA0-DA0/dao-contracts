@@ -157,15 +157,19 @@ pub fn do_query(
     match msg {
         // custom queries
         QueryMsg::CurveInfo {} => to_json_binary(&queries::query_curve_info(deps, curve_fn)?),
-        QueryMsg::PhaseConfig {} => to_json_binary(&queries::query_phase_config(deps)?),
+        QueryMsg::CurveType {} => to_json_binary(&CURVE_TYPE.load(deps.storage)?),
+        QueryMsg::Denom {} => to_json_binary(&queries::get_denom(deps)?),
         QueryMsg::Donations { start_after, limit } => {
             to_json_binary(&queries::query_donations(deps, start_after, limit)?)
         }
+        QueryMsg::FeesRecipient {} => to_json_binary(&FEES_RECIPIENT.load(deps.storage)?),
         QueryMsg::Hatchers { start_after, limit } => {
             to_json_binary(&queries::query_hatchers(deps, start_after, limit)?)
         }
+        QueryMsg::MaxSupply {} => to_json_binary(&queries::query_max_supply(deps)?),
         QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
-        QueryMsg::Denom {} => to_json_binary(&queries::get_denom(deps)?),
+        QueryMsg::PhaseConfig {} => to_json_binary(&queries::query_phase_config(deps)?),
+        QueryMsg::Phase {} => to_json_binary(&PHASE.load(deps.storage)?),
         QueryMsg::TokenContract {} => to_json_binary(&TOKEN_ISSUER_CONTRACT.load(deps.storage)?),
     }
 }
