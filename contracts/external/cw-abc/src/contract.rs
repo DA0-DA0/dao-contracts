@@ -10,7 +10,6 @@ use cw_tokenfactory_issuer::msg::{
 };
 use cw_utils::parse_reply_instantiate_data;
 use std::collections::HashSet;
-use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 
 use crate::abc::{CommonsPhase, CurveFn};
 use crate::curves::DecimalPlaces;
@@ -28,15 +27,13 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID: u64 = 0;
 
-pub type CwAbcResult<T = Response<TokenFactoryMsg>> = Result<T, ContractError>;
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> CwAbcResult {
+) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let InstantiateMsg {
@@ -110,11 +107,11 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> CwAbcResult {
+) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Buy {} => commands::execute_buy(deps, env, info),
         ExecuteMsg::Sell {} => commands::execute_sell(deps, env, info),
@@ -137,7 +134,7 @@ pub fn execute(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps<TokenFactoryQuery>, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     // default implementation stores curve info as enum, you can do something else in a derived
     // contract and just pass in your custom curve to do_execute
     let curve_type = CURVE_TYPE.load(deps.storage)?;
@@ -148,12 +145,7 @@ pub fn query(deps: Deps<TokenFactoryQuery>, env: Env, msg: QueryMsg) -> StdResul
 /// We pull out logic here, so we can import this from another contract and set a different Curve.
 /// This contacts sets a curve with an enum in [`InstantiateMsg`] and stored in state, but you may want
 /// to use custom math not included - make this easily reusable
-pub fn do_query(
-    deps: Deps<TokenFactoryQuery>,
-    _env: Env,
-    msg: QueryMsg,
-    curve_fn: CurveFn,
-) -> StdResult<Binary> {
+pub fn do_query(deps: Deps, _env: Env, msg: QueryMsg, curve_fn: CurveFn) -> StdResult<Binary> {
     match msg {
         // custom queries
         QueryMsg::CurveInfo {} => to_json_binary(&queries::query_curve_info(deps, curve_fn)?),
@@ -175,22 +167,14 @@ pub fn do_query(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(
-    deps: DepsMut<TokenFactoryQuery>,
-    _env: Env,
-    _msg: MigrateMsg,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     // Set contract to version to latest
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    Ok(Response::<TokenFactoryMsg>::default())
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(
-    deps: DepsMut<TokenFactoryQuery>,
-    env: Env,
-    msg: Reply,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
         INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID => {
             // Parse and save address of cw-tokenfactory-issuer

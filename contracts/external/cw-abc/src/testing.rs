@@ -1,23 +1,23 @@
 use cosmwasm_std::{
-    testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage},
-    Decimal, DepsMut, OwnedDeps, Uint128,
+    testing::{mock_env, mock_info},
+    Decimal, DepsMut, Response, Uint128,
 };
 use dao_interface::token::NewDenomMetadata;
-use std::marker::PhantomData;
-use token_bindings::TokenFactoryQuery;
 
-use crate::abc::{
-    ClosedConfig, CommonsPhaseConfig, CurveType, HatchConfig, MinMax, OpenConfig, ReserveToken,
-    SupplyToken,
-};
 use crate::contract;
-use crate::contract::CwAbcResult;
 use crate::msg::InstantiateMsg;
+use crate::{
+    abc::{
+        ClosedConfig, CommonsPhaseConfig, CurveType, HatchConfig, MinMax, OpenConfig, ReserveToken,
+        SupplyToken,
+    },
+    ContractError,
+};
 
 pub(crate) mod prelude {
     pub use super::{
-        default_instantiate_msg, default_supply_metadata, mock_tf_dependencies, TEST_CREATOR,
-        TEST_RESERVE_DENOM, TEST_SUPPLY_DENOM, _TEST_BUYER, _TEST_INVESTOR,
+        default_instantiate_msg, default_supply_metadata, TEST_CREATOR, TEST_RESERVE_DENOM,
+        TEST_SUPPLY_DENOM, _TEST_BUYER, _TEST_INVESTOR,
     };
     pub use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
     pub use speculoos::prelude::*;
@@ -82,21 +82,21 @@ pub fn default_instantiate_msg(
     }
 }
 
-pub fn mock_init(deps: DepsMut<TokenFactoryQuery>, init_msg: InstantiateMsg) -> CwAbcResult {
+pub fn mock_init(deps: DepsMut, init_msg: InstantiateMsg) -> Result<Response, ContractError> {
     let info = mock_info(TEST_CREATOR, &[]);
     let env = mock_env();
     contract::instantiate(deps, env, info, init_msg)
 }
 
-pub fn mock_tf_dependencies(
-) -> OwnedDeps<MockStorage, MockApi, MockQuerier<TokenFactoryQuery>, TokenFactoryQuery> {
-    OwnedDeps {
-        storage: MockStorage::default(),
-        api: MockApi::default(),
-        querier: MockQuerier::<TokenFactoryQuery>::new(&[]),
-        custom_query_type: PhantomData::<TokenFactoryQuery>,
-    }
-}
+// pub fn mock_tf_dependencies(
+// ) -> OwnedDeps<MockStorage, MockApi, MockQuerier<TokenFactoryQuery>, TokenFactoryQuery> {
+//     OwnedDeps {
+//         storage: MockStorage::default(),
+//         api: MockApi::default(),
+//         querier: MockQuerier::<TokenFactoryQuery>::new(&[]),
+//         custom_query_type: PhantomData::<TokenFactoryQuery>,
+//     }
+// }
 
 // fn setup_test(
 //     deps: DepsMut<TokenFactoryMsg>,

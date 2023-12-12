@@ -6,10 +6,8 @@ use cw_tokenfactory_issuer::msg::ExecuteMsg as IssuerExecuteMsg;
 use cw_utils::must_pay;
 use std::collections::HashSet;
 use std::ops::Deref;
-use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 
 use crate::abc::{CommonsPhase, CurveType};
-use crate::contract::CwAbcResult;
 use crate::msg::UpdatePhaseConfigMsg;
 use crate::state::{
     CURVE_STATE, CURVE_TYPE, DONATIONS, FEES_RECIPIENT, HATCHERS, HATCHER_ALLOWLIST, MAX_SUPPLY,
@@ -17,7 +15,7 @@ use crate::state::{
 };
 use crate::ContractError;
 
-pub fn execute_buy(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageInfo) -> CwAbcResult {
+pub fn execute_buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     let curve_type = CURVE_TYPE.load(deps.storage)?;
     let curve_fn = curve_type.to_curve_fn();
 
@@ -93,7 +91,7 @@ pub fn execute_buy(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageInf
 
     // Mint tokens for sender by calling mint on the cw-tokenfactory-issuer contract
     let issuer_addr = TOKEN_ISSUER_CONTRACT.load(deps.storage)?;
-    let mut msgs: Vec<CosmosMsg<TokenFactoryMsg>> = vec![CosmosMsg::Wasm(WasmMsg::Execute {
+    let mut msgs: Vec<CosmosMsg> = vec![CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: issuer_addr.to_string(),
         msg: to_json_binary(&IssuerExecuteMsg::Mint {
             to_address: info.sender.to_string(),
@@ -151,7 +149,11 @@ fn update_hatcher_contributions(
 }
 
 /// Sell tokens on the bonding curve
-pub fn execute_sell(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageInfo) -> CwAbcResult {
+pub fn execute_sell(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
     let curve_type = CURVE_TYPE.load(deps.storage)?;
     let curve_fn = curve_type.to_curve_fn();
 
@@ -161,9 +163,9 @@ pub fn execute_sell(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageIn
     let issuer_addr = TOKEN_ISSUER_CONTRACT.load(deps.storage)?;
 
     // Burn the sent supply tokens
-    let burn_msgs: Vec<CosmosMsg<TokenFactoryMsg>> = vec![
+    let burn_msgs: Vec<CosmosMsg> = vec![
         // Send tokens to the issuer contract to be burned
-        CosmosMsg::<TokenFactoryMsg>::Bank(BankMsg::Send {
+        CosmosMsg::Bank(BankMsg::Send {
             to_address: issuer_addr.to_string().clone(),
             amount: vec![Coin {
                 amount: burn_amount,
@@ -171,7 +173,7 @@ pub fn execute_sell(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageIn
             }],
         }),
         // Execute burn on the cw-tokenfactory-issuer contract
-        CosmosMsg::<TokenFactoryMsg>::Wasm(WasmMsg::Execute {
+        CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: issuer_addr.to_string(),
             msg: to_json_binary(&IssuerExecuteMsg::Burn {
                 from_address: issuer_addr.to_string(),
@@ -214,14 +216,13 @@ pub fn execute_sell(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageIn
         .map_err(StdError::overflow)?;
 
     // Now send the tokens to the sender and any fees to the DAO
-    let mut send_msgs: Vec<CosmosMsg<TokenFactoryMsg>> =
-        vec![CosmosMsg::<TokenFactoryMsg>::Bank(BankMsg::Send {
-            to_address: info.sender.to_string(),
-            amount: vec![Coin {
-                amount: released,
-                denom: curve_state.reserve_denom.clone(),
-            }],
-        })];
+    let mut send_msgs: Vec<CosmosMsg> = vec![CosmosMsg::Bank(BankMsg::Send {
+        to_address: info.sender.to_string(),
+        amount: vec![Coin {
+            amount: released,
+            denom: curve_state.reserve_denom.clone(),
+        }],
+    })];
 
     // Send exit fees to the to the fee recipient
     if taxed_amount > Uint128::zero() {
@@ -235,7 +236,7 @@ pub fn execute_sell(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageIn
         }))
     }
 
-    Ok(Response::<TokenFactoryMsg>::new()
+    Ok(Response::new()
         .add_messages(burn_msgs)
         .add_messages(send_msgs)
         .add_attribute("action", "burn")
@@ -246,7 +247,10 @@ pub fn execute_sell(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageIn
 }
 
 /// Calculate the exit taxation for the sell amount based on the phase
-fn calculate_exit_fee(storage: &dyn Storage, sell_amount: Uint128) -> CwAbcResult<Uint128> {
+fn calculate_exit_fee(
+    storage: &dyn Storage,
+    sell_amount: Uint128,
+) -> Result<Uint128, ContractError> {
     // Load the phase config and phase
     let phase = PHASE.load(storage)?;
     let phase_config = PHASE_CONFIG.load(storage)?;
@@ -270,7 +274,7 @@ fn calculate_exit_fee(storage: &dyn Storage, sell_amount: Uint128) -> CwAbcResul
 }
 
 /// Transitions the bonding curve to a closed phase where only sells are allowed
-pub fn execute_close(deps: DepsMut<TokenFactoryQuery>, info: MessageInfo) -> CwAbcResult {
+pub fn execute_close(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     PHASE.save(deps.storage, &CommonsPhase::Closed)?;
@@ -280,10 +284,10 @@ pub fn execute_close(deps: DepsMut<TokenFactoryQuery>, info: MessageInfo) -> CwA
 
 /// Send a donation to the funding pool
 pub fn execute_donate(
-    deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-) -> CwAbcResult {
+) -> Result<Response, ContractError> {
     let mut curve_state = CURVE_STATE.load(deps.storage)?;
 
     let payment = must_pay(&info, &curve_state.reserve_denom)?;
@@ -317,10 +321,10 @@ fn assert_allowlisted(storage: &dyn Storage, hatcher: &Addr) -> Result<(), Contr
 /// Set the maxiumum supply (only callable by owner)
 /// If `max_supply` is set to None there will be no limit.`
 pub fn update_max_supply(
-    deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut,
     info: MessageInfo,
     max_supply: Option<Uint128>,
-) -> CwAbcResult {
+) -> Result<Response, ContractError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     match max_supply {
@@ -335,11 +339,11 @@ pub fn update_max_supply(
 
 /// Add and remove addresses from the hatcher allowlist
 pub fn update_hatch_allowlist(
-    deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut,
     info: MessageInfo,
     to_add: Vec<String>,
     to_remove: Vec<String>,
-) -> CwAbcResult {
+) -> Result<Response, ContractError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
     let mut allowlist = HATCHER_ALLOWLIST.may_load(deps.storage)?;
 
@@ -368,11 +372,11 @@ pub fn update_hatch_allowlist(
 
 /// Update the configuration of a particular phase
 pub fn update_phase_config(
-    deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     update_phase_config_msg: UpdatePhaseConfigMsg,
-) -> CwAbcResult {
+) -> Result<Response, ContractError> {
     // Assert that the sender is the contract owner
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
@@ -442,10 +446,10 @@ pub fn update_phase_config(
 /// NOTE: this changes the pricing. Use with caution.
 /// TODO: what other limitations do we want to put on this?
 pub fn update_curve(
-    deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut,
     info: MessageInfo,
     curve_type: CurveType,
-) -> CwAbcResult {
+) -> Result<Response, ContractError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     CURVE_TYPE.save(deps.storage, &curve_type)?;
@@ -455,11 +459,11 @@ pub fn update_curve(
 
 /// Update the ownership of the contract
 pub fn update_ownership(
-    deps: DepsMut<TokenFactoryQuery>,
+    deps: DepsMut,
     env: &Env,
     info: &MessageInfo,
     action: cw_ownable::Action,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     let ownership = cw_ownable::update_ownership(
         DepsMut {
             storage: deps.storage,
@@ -489,7 +493,7 @@ mod tests {
 
         const TEST_DONOR: &str = "donor";
 
-        fn exec_donate(deps: DepsMut<TokenFactoryQuery>, donation_amount: u128) -> CwAbcResult {
+        fn exec_donate(deps: DepsMut, donation_amount: u128) -> Result<Response, ContractError> {
             execute_donate(
                 deps,
                 mock_env(),
@@ -498,8 +502,8 @@ mod tests {
         }
 
         #[test]
-        fn should_fail_with_no_funds() -> CwAbcResult<()> {
-            let mut deps = mock_tf_dependencies();
+        fn should_fail_with_no_funds() -> Result<(), ContractError> {
+            let mut deps = mock_dependencies();
             let curve_type = CurveType::Linear {
                 slope: Uint128::new(1),
                 scale: 1,
@@ -516,8 +520,8 @@ mod tests {
         }
 
         #[test]
-        fn should_fail_with_incorrect_denom() -> CwAbcResult<()> {
-            let mut deps = mock_tf_dependencies();
+        fn should_fail_with_incorrect_denom() -> Result<(), ContractError> {
+            let mut deps = mock_dependencies();
             let curve_type = CurveType::Linear {
                 slope: Uint128::new(1),
                 scale: 1,
@@ -540,8 +544,8 @@ mod tests {
         }
 
         #[test]
-        fn should_add_to_funding_pool() -> CwAbcResult<()> {
-            let mut deps = mock_tf_dependencies();
+        fn should_add_to_funding_pool() -> Result<(), ContractError> {
+            let mut deps = mock_dependencies();
             // this matches `linear_curve` test case from curves.rs
             let curve_type = CurveType::SquareRoot {
                 slope: Uint128::new(1),

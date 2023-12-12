@@ -41,7 +41,6 @@ integer-sqrt = { workspace = true }
 integer-cbrt = { workspace = true }
 getrandom = { workspace = true, features = ["js"] }
 thiserror = { workspace = true }
-token-bindings = { workspace = true }
 
 [dev-dependencies]
 speculoos = { workspace = true }

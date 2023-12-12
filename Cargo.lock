@@ -749,7 +749,6 @@ dependencies = [
  "serde_json",
  "speculoos",
  "thiserror",
- "token-bindings",
 ]
 
 [[package]]
