@@ -3,17 +3,20 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_json, to_json_binary, Binary, Coin, CosmosMsg, DelegationResponse, Deps, DepsMut,
     DistributionMsg, Env, MessageInfo, Response, StakingMsg, StakingQuery, StdResult, Timestamp,
-    Uint128,
+    Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
 use cw_denom::CheckedDenom;
 use cw_ownable::OwnershipError;
 use cw_utils::{must_pay, nonpayable};
+use dao_voting::deposit::DepositRefundPolicy;
+use dao_voting::pre_propose::ProposalCreationPolicy;
+use dao_voting::{proposal::SingleChoiceProposeMsg, voting::Vote};
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
-use crate::state::{PAYMENT, UNBONDING_DURATION_SECONDS};
+use crate::msg::{DaoActionsMsg, ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
+use crate::state::{DAO_STAKING_LIMITS, PAYMENT, UNBONDING_DURATION_SECONDS};
 use crate::vesting::{Status, VestInit};
 
 const CONTRACT_NAME: &str = "crates.io:cw-vesting";
@@ -68,12 +71,22 @@ pub fn instantiate(
             // payment receiver so that when they stake vested tokens
             // they receive the rewards.
             if denom.as_str() == deps.querier.query_bonded_denom()? {
+                // Check if dao_staking is enabled. Throw an error if it is.
+                if let Some(_) = msg.dao_staking {
+                    return Err(ContractError::DaoStakingNotSupported {});
+                }
+
                 Some(CosmosMsg::Distribution(
                     DistributionMsg::SetWithdrawAddress {
                         address: vest.recipient.to_string(),
                     },
                 ))
             } else {
+                // Check if dao_staking is enabled, and save dao_staking limits if it is.
+                if let Some(dao_staking) = msg.dao_staking {
+                    DAO_STAKING_LIMITS.save(deps.storage, &dao_staking)?;
+                }
+
                 None
             }
         }
@@ -125,6 +138,34 @@ pub fn execute(
             amount,
             during_unbonding,
         } => execute_register_slash(deps, env, info, validator, time, amount, during_unbonding),
+        ExecuteMsg::DaoActions(action) => match action {
+            DaoActionsMsg::Stake {
+                amount,
+                staking_contract,
+            } => execute_dao_stake(deps, env, info, amount, staking_contract),
+            DaoActionsMsg::Unstake {
+                amount,
+                staking_contract,
+            } => execute_dao_unstake(deps, env, info, amount, staking_contract),
+            DaoActionsMsg::Vote {
+                proposal_module,
+                proposal_id,
+                vote,
+                rationale,
+            } => execute_dao_vote(
+                deps,
+                env,
+                info,
+                proposal_module,
+                proposal_id,
+                vote,
+                rationale,
+            ),
+            DaoActionsMsg::Propose {
+                proposal,
+                proposal_module,
+            } => execute_dao_propose(deps, env, info, proposal_module, proposal),
+        },
     }
 }
 
@@ -440,6 +481,190 @@ pub fn execute_register_slash(
             .add_attribute("validator", validator)
             .add_attribute("time", time.to_string())
             .add_attribute("amount", amount))
+    }
+}
+
+/// Stake tokens in a DAO
+pub fn execute_dao_stake(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    amount: Uint128,
+    staking_contract: String,
+) -> Result<Response, ContractError> {
+    // Validate staking contract address
+    deps.api.addr_validate(&staking_contract)?;
+
+    // Load vest and check status, only recipients can stake
+    let vest = PAYMENT.get_vest(deps.storage)?;
+    match vest.status {
+        Status::Unfunded => return Err(ContractError::NotFunded),
+        Status::Funded => {
+            if info.sender != vest.recipient {
+                return Err(ContractError::NotReceiver);
+            }
+        }
+        Status::Canceled { .. } => return Err(ContractError::Cancelled),
+    }
+
+    // Validate staking contract is on the allowist
+    // Otherwise staking might be abused to get tokens out of this contract
+    let dao_staking = DAO_STAKING_LIMITS.load(deps.storage)?;
+    if !dao_staking
+        .staking_contract_allowlist
+        .contains(&staking_contract)
+    {
+        return Err(ContractError::NotOnAllowlist);
+    }
+
+    // TODO limitations on how much can be staked?
+
+    // Construct stake message
+    let msg = WasmMsg::Execute {
+        contract_addr: staking_contract.clone(),
+        msg: to_json_binary(&dao_voting_token_staked::msg::ExecuteMsg::Stake {})?,
+        funds: vec![Coin {
+            denom: vest.denom.to_string(),
+            amount: amount,
+        }],
+    };
+
+    Ok(Response::default()
+        .add_message(msg)
+        .add_attribute("method", "execute_dao_stake")
+        .add_attribute("staking_contract", staking_contract)
+        .add_attribute("amount", amount))
+}
+
+/// Unstake tokens in a DAO
+pub fn execute_dao_unstake(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    amount: Uint128,
+    staking_contract: String,
+) -> Result<Response, ContractError> {
+    // Validate staking contract address
+    deps.api.addr_validate(&staking_contract)?;
+
+    // Load vest and check status, only recipients can unstake
+    let vest = PAYMENT.get_vest(deps.storage)?;
+    if info.sender != vest.recipient {
+        return Err(ContractError::NotReceiver);
+    };
+
+    // Construct unstake message
+    let msg = WasmMsg::Execute {
+        contract_addr: staking_contract.clone(),
+        msg: to_json_binary(&dao_voting_token_staked::msg::ExecuteMsg::Unstake { amount })?,
+        funds: vec![],
+    };
+
+    Ok(Response::default()
+        .add_message(msg)
+        .add_attribute("method", "execute_dao_unstake")
+        .add_attribute("staking_contract", staking_contract)
+        .add_attribute("amount", amount))
+}
+
+/// Vote in a DAO
+pub fn execute_dao_vote(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    proposal_module: String,
+    proposal_id: u64,
+    vote: Vote,
+    rationale: Option<String>,
+) -> Result<Response, ContractError> {
+    // Validate proposal module contract address
+    deps.api.addr_validate(&proposal_module)?;
+
+    // Check sender is the recipient of the vesting contract
+    let vest = PAYMENT.get_vest(deps.storage)?;
+    if info.sender != vest.recipient {
+        return Err(ContractError::NotReceiver);
+    };
+
+    // Construct voting message
+    let msg = WasmMsg::Execute {
+        contract_addr: proposal_module.clone(),
+        msg: to_json_binary(&dao_proposal_single::msg::ExecuteMsg::Vote {
+            proposal_id,
+            vote,
+            rationale: rationale.clone(),
+        })?,
+        funds: vec![],
+    };
+
+    Ok(Response::default()
+        .add_message(msg)
+        .add_attribute("method", "execute_dao_vote")
+        .add_attribute("proposal_module", proposal_module)
+        .add_attribute("proposal_id", proposal_id.to_string())
+        .add_attribute("vote", vote.to_string())
+        .add_attribute("rationale", rationale.unwrap_or_default()))
+}
+
+// TODO how to handle if a deposit is slashed?
+// TODO maybe we just don't handle proposals?
+// Makes this contract much easier... as we don't have to worry about deposits?
+// Cheeper audit too...
+/// Create a proposal in a DAO
+pub fn execute_dao_propose(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    proposal_module: String,
+    proposal: SingleChoiceProposeMsg,
+) -> Result<Response, ContractError> {
+    // Check sender is the recipient of the vesting contract
+    let vest = PAYMENT.get_vest(deps.storage)?;
+    if info.sender != vest.recipient {
+        return Err(ContractError::NotReceiver);
+    };
+
+    // Validate proposal module contract address
+    let proposal_contract = deps.api.addr_validate(&proposal_module)?;
+
+    // Get proposal creation policy
+    let policy = deps.querier.query_wasm_smart(
+        proposal_contract,
+        &dao_proposal_single::msg::QueryMsg::ProposalCreationPolicy {},
+    )?;
+
+    // Match policy, if anyone proceed to make proposal directly
+    // otherwise check deposits?
+    match policy {
+        ProposalCreationPolicy::Anyone {} => {
+            // Construct message to submit proposal directly
+            let msg = WasmMsg::Execute {
+                contract_addr: proposal_module.clone(),
+                msg: to_json_binary(&dao_proposal_single::msg::ExecuteMsg::Propose(proposal))?,
+                funds: vec![],
+            };
+
+            Ok(Response::default()
+                .add_message(msg)
+                .add_attribute("method", "execute_dao_propose")
+                .add_attribute("proposal_module", proposal_module))
+        }
+        ProposalCreationPolicy::Module { addr } => {
+            // Get the config for the pre-propose module
+            let config: dao_pre_propose_single::Config = deps
+                .querier
+                .query_wasm_smart(addr, &dao_pre_propose_single::QueryMsg::Config {})?;
+
+            if let Some(deposit_info) = config.deposit_info {
+                match deposit_info.refund_policy {
+                    DepositRefundPolicy::Always {} => unimplemented!(),
+                    DepositRefundPolicy::Never {} => unimplemented!(),
+                    DepositRefundPolicy::OnlyPassed {} => unimplemented!(),
+                }
+            }
+
+            unimplemented!();
+        }
     }
 }
 

@@ -128,6 +128,7 @@ pub fn setup_contracts(app: &mut App) -> (Addr, u64, u64) {
 impl Default for InstantiateMsg {
     fn default() -> Self {
         Self {
+            dao_staking: None,
             owner: Some(OWNER.to_string()),
             recipient: BOB.to_string(),
             title: "title".to_string(),

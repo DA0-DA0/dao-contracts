@@ -6,7 +6,7 @@ use cw_ownable::cw_ownable_execute;
 use cw_stake_tracker::StakeTrackerQuery;
 use dao_voting::{proposal::SingleChoiceProposeMsg, voting::Vote};
 
-use crate::vesting::Schedule;
+use crate::{state::DaoStakingLimits, vesting::Schedule};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -26,6 +26,11 @@ pub struct InstantiateMsg {
     pub total: Uint128,
     /// The type and denom of token being vested.
     pub denom: UncheckedDenom,
+
+    /// TODO support limits for native staked tokens as well?
+    /// Optionally enabling this vesting contract to stake in token DAOs.
+    /// Set to None if vesting a native token.
+    pub dao_staking: Option<DaoStakingLimits>,
 
     /// The vesting schedule, can be either `SaturatingLinear` vesting
     /// (which vests evenly over time), or `PiecewiseLinear` which can
@@ -70,6 +75,8 @@ pub enum ExecuteMsg {
     /// Anyone may call this method so long as the contract has not
     /// yet been funded.
     Receive(Cw20ReceiveMsg),
+    /// TODO we need something for things like airdrops? Should we have a general
+    /// execute method that can be used for this?
     /// Distribute vested tokens to the vest receiver. Anyone may call
     /// this method.
     Distribute {
@@ -184,21 +191,26 @@ pub enum ExecuteMsg {
     DaoActions(DaoActionsMsg),
 }
 
-// TODO we may need to pass in staking contract address?
 #[cw_serde]
 pub enum DaoActionsMsg {
     /// Stake to a DAO
     Stake {
-        /// The amount to stake. Default is full amount.
-        amount: Option<Uint128>,
+        /// The staking contract address
+        staking_contract: String,
+        /// The amount to stake.
+        amount: Uint128,
     },
     /// Unstake from a DAO
     Unstake {
-        /// The amount to unstake. Default is full amount.
-        amount: Option<Uint128>,
+        /// The staking contract address
+        staking_contract: String,
+        /// The amount to unstake.
+        amount: Uint128,
     },
     /// Vote on single choice proposal
     Vote {
+        /// The address of the proposal module you are voting on.
+        proposal_module: String,
         /// The ID of the proposal to vote on.
         proposal_id: u64,
         /// The senders position on the proposal.
@@ -208,9 +220,19 @@ pub enum DaoActionsMsg {
         /// the vote.
         rationale: Option<String>,
     },
+    // TODO update dao_staking config
+    // UpdateConfig {
+    //     /// Contracts the vesting contract is allowed to stake with.
+    //     staking_contract_allowlist: Option<Vec<String>>,
+    // },
     /// TODO need to figure out how to handle this, need to know the right proposal module...
     /// Create a new proposal... TODO how to handle deposit?
-    Propose(SingleChoiceProposeMsg),
+    Propose {
+        // The address of the proposal module you are voting on.
+        proposal_module: String,
+        /// The proposal to create.
+        proposal: SingleChoiceProposeMsg,
+    },
     // // TODO support multiple choice voting and proposals
     // /// Vote on multiple choice proposal
     // VoteMultipleChoice {

@@ -28,7 +28,10 @@ cw-utils = { workspace = true }
 cw-wormhole = { workspace = true }
 cw2 = { workspace = true }
 cw20 = { workspace = true }
+dao-pre-propose-single = { workspace = true, features = ["library"] }
+dao-proposal-single = { workspace = true, features = ["library"] }
 dao-voting = { workspace = true }
+dao-voting-token-staked = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 wynd-utils = { workspace = true }

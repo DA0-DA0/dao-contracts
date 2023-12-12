@@ -43,6 +43,14 @@ pub enum ContractError {
     #[error("payment is cancelled")]
     Cancelled,
 
+    // TODO better error message / name
+    #[error("DAO staking is not supported for the native staking token")]
+    DaoStakingNotSupported,
+
+    // TODO better error message / name
+    #[error("staking contract is not on dao staking allowlist")]
+    NotOnAllowlist,
+
     #[error("payment is not cancelled")]
     NotCancelled,
 

@@ -29,6 +29,7 @@ impl Default for SuiteBuilder {
 
         Self {
             instantiate: InstantiateMsg {
+                dao_staking: None,
                 owner: Some("owner".to_string()),
                 recipient: "recipient".to_string(),
                 title: "title".to_string(),
