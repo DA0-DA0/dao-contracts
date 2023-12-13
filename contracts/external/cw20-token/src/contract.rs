@@ -2,16 +2,16 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, SubMsg,
+    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, SubMsg,
     Uint128, WasmMsg,
 };
 
 use cw2::{ensure_from_older_version, set_contract_version};
-use cw20::hooks::{Cw20HookExecuteMsg, Cw20HookMsg};
-use cw20::{
+use dao_cw20::{
     BalanceResponse, Cw20Coin, Cw20ReceiveMsg, DownloadLogoResponse, EmbeddedLogo, Logo, LogoInfo,
     MarketingInfoResponse, MinterResponse, TokenInfoResponse,
 };
+use dao_cw20::{Cw20HookExecuteMsg, Cw20HookMsg};
 
 use crate::allowances::{
     execute_burn_from, execute_decrease_allowance, execute_increase_allowance, execute_send_from,
@@ -26,7 +26,7 @@ use crate::state::{
 };
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:cw20-base";
+const CONTRACT_NAME: &str = "crates.io:cw20-token";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const LOGO_SIZE_CAP: usize = 5 * 1024;
@@ -264,7 +264,7 @@ pub fn execute_transfer(
     let hooks = HOOKS.prepare_hooks(deps.storage, |h| {
         Ok(SubMsg::new(WasmMsg::Execute {
             contract_addr: h.to_string(),
-            msg: to_binary(&Cw20HookExecuteMsg::Cw20Hook(Cw20HookMsg::Transfer {
+            msg: to_json_binary(&Cw20HookExecuteMsg::Cw20Hook(Cw20HookMsg::Transfer {
                 sender: info.sender.to_string(),
                 recipient: recipient.clone(),
                 amount,
@@ -381,7 +381,7 @@ pub fn execute_send(
     let hooks = HOOKS.prepare_hooks(deps.storage, |h| {
         Ok(SubMsg::new(WasmMsg::Execute {
             contract_addr: h.to_string(),
-            msg: to_binary(&Cw20HookExecuteMsg::Cw20Hook(Cw20HookMsg::Send {
+            msg: to_json_binary(&Cw20HookExecuteMsg::Cw20Hook(Cw20HookMsg::Send {
                 sender: info.sender.to_string(),
                 contract: contract.clone(),
                 amount,
@@ -593,33 +593,33 @@ pub fn execute_remove_hook(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Balance { address } => to_binary(&query_balance(deps, address)?),
-        QueryMsg::TokenInfo {} => to_binary(&query_token_info(deps)?),
-        QueryMsg::Minter {} => to_binary(&query_minter(deps)?),
+        QueryMsg::Balance { address } => to_json_binary(&query_balance(deps, address)?),
+        QueryMsg::TokenInfo {} => to_json_binary(&query_token_info(deps)?),
+        QueryMsg::Minter {} => to_json_binary(&query_minter(deps)?),
         QueryMsg::Allowance { owner, spender } => {
-            to_binary(&query_allowance(deps, owner, spender)?)
+            to_json_binary(&query_allowance(deps, owner, spender)?)
         }
         QueryMsg::AllAllowances {
             owner,
             start_after,
             limit,
-        } => to_binary(&query_owner_allowances(deps, owner, start_after, limit)?),
+        } => to_json_binary(&query_owner_allowances(deps, owner, start_after, limit)?),
         QueryMsg::AllSpenderAllowances {
             spender,
             start_after,
             limit,
-        } => to_binary(&query_spender_allowances(
+        } => to_json_binary(&query_spender_allowances(
             deps,
             spender,
             start_after,
             limit,
         )?),
         QueryMsg::AllAccounts { start_after, limit } => {
-            to_binary(&query_all_accounts(deps, start_after, limit)?)
+            to_json_binary(&query_all_accounts(deps, start_after, limit)?)
         }
-        QueryMsg::MarketingInfo {} => to_binary(&query_marketing_info(deps)?),
-        QueryMsg::DownloadLogo {} => to_binary(&query_download_logo(deps)?),
-        QueryMsg::Hooks {} => to_binary(&HOOKS.query_hooks(deps)?),
+        QueryMsg::MarketingInfo {} => to_json_binary(&query_marketing_info(deps)?),
+        QueryMsg::DownloadLogo {} => to_json_binary(&query_download_logo(deps)?),
+        QueryMsg::Hooks {} => to_json_binary(&HOOKS.query_hooks(deps)?),
     }
 }
 
@@ -695,7 +695,7 @@ mod tests {
     use cosmwasm_std::testing::{
         mock_dependencies, mock_dependencies_with_balance, mock_env, mock_info,
     };
-    use cosmwasm_std::{coins, from_binary, Addr, CosmosMsg, StdError, SubMsg, WasmMsg};
+    use cosmwasm_std::{coins, from_json, Addr, CosmosMsg, StdError, SubMsg, WasmMsg};
 
     use super::*;
     use crate::msg::InstantiateMarketingInfo;
@@ -1045,7 +1045,7 @@ mod tests {
         assert!(res.is_ok());
         let query_minter_msg = QueryMsg::Minter {};
         let res = query(deps.as_ref(), env, query_minter_msg);
-        let mint: MinterResponse = from_binary(&res.unwrap()).unwrap();
+        let mint: MinterResponse = from_json(&res.unwrap()).unwrap();
 
         // Minter cannot update cap.
         assert!(mint.cap == cap);
@@ -1095,7 +1095,7 @@ mod tests {
         assert!(res.is_ok());
         let query_minter_msg = QueryMsg::Minter {};
         let res = query(deps.as_ref(), env, query_minter_msg);
-        let mint: Option<MinterResponse> = from_binary(&res.unwrap()).unwrap();
+        let mint: Option<MinterResponse> = from_json(&res.unwrap()).unwrap();
 
         // Check that mint information was removed.
         assert_eq!(mint, None);
@@ -1212,7 +1212,7 @@ mod tests {
             QueryMsg::Balance { address: addr1 },
         )
         .unwrap();
-        let loaded: BalanceResponse = from_binary(&data).unwrap();
+        let loaded: BalanceResponse = from_json(&data).unwrap();
         assert_eq!(loaded.balance, amount1);
 
         // check balance query (empty)
@@ -1224,7 +1224,7 @@ mod tests {
             },
         )
         .unwrap();
-        let loaded: BalanceResponse = from_binary(&data).unwrap();
+        let loaded: BalanceResponse = from_json(&data).unwrap();
         assert_eq!(loaded.balance, Uint128::zero());
     }
 
@@ -1386,7 +1386,7 @@ mod tests {
             amount: transfer,
             msg: send_msg,
         }
-        .into_binary()
+        .into_json_binary()
         .unwrap();
         // and this is how it must be wrapped for the vm to process it
         assert_eq!(
@@ -1412,9 +1412,9 @@ mod tests {
         use super::*;
 
         use cosmwasm_std::Empty;
-        use cw20::{AllAllowancesResponse, AllSpenderAllowancesResponse, SpenderAllowanceInfo};
         use cw_multi_test::{App, Contract, ContractWrapper, Executor};
         use cw_utils::Expiration;
+        use dao_cw20::{AllAllowancesResponse, AllSpenderAllowancesResponse, SpenderAllowanceInfo};
 
         fn cw20_contract() -> Box<dyn Contract<Empty>> {
             let contract = ContractWrapper::new(
@@ -1471,7 +1471,7 @@ mod tests {
             let expires = Expiration::AtHeight(123_456);
             let msg = CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: cw20_addr.to_string(),
-                msg: to_binary(&ExecuteMsg::IncreaseAllowance {
+                msg: to_json_binary(&ExecuteMsg::IncreaseAllowance {
                     spender: "spender".into(),
                     amount: allow1,
                     expires: Some(expires),
@@ -1487,13 +1487,13 @@ mod tests {
                 CosmosMsg::Wasm(WasmMsg::Migrate {
                     contract_addr: cw20_addr.to_string(),
                     new_code_id: cw20_id,
-                    msg: to_binary(&MigrateMsg {}).unwrap(),
+                    msg: to_json_binary(&MigrateMsg {}).unwrap(),
                 }),
             )
             .unwrap();
 
             // Smoke check that the contract still works.
-            let balance: cw20::BalanceResponse = app
+            let balance: dao_cw20::BalanceResponse = app
                 .wrap()
                 .query_wasm_smart(
                     cw20_addr.clone(),

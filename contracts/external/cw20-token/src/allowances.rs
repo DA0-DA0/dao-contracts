@@ -2,7 +2,7 @@ use cosmwasm_std::{
     attr, Addr, Binary, BlockInfo, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
     Storage, Uint128,
 };
-use cw20::{AllowanceResponse, Cw20ReceiveMsg, Expiration};
+use dao_cw20::{AllowanceResponse, Cw20ReceiveMsg, Expiration};
 
 use crate::error::ContractError;
 use crate::state::{ALLOWANCES, ALLOWANCES_SPENDER, BALANCES, TOKEN_INFO};
@@ -258,7 +258,7 @@ mod tests {
 
     use cosmwasm_std::testing::{mock_dependencies_with_balance, mock_env, mock_info};
     use cosmwasm_std::{coins, CosmosMsg, SubMsg, Timestamp, WasmMsg};
-    use cw20::{Cw20Coin, TokenInfoResponse};
+    use dao_cw20::{Cw20Coin, TokenInfoResponse};
 
     use crate::contract::{execute, instantiate, query_balance, query_token_info};
     use crate::msg::{ExecuteMsg, InstantiateMsg};
@@ -697,7 +697,7 @@ mod tests {
             amount: transfer,
             msg: send_msg.clone(),
         }
-        .into_binary()
+        .into_json_binary()
         .unwrap();
         assert_eq!(
             res.messages[0],

@@ -91,8 +91,10 @@ cw-tokenfactory-types = { path = "./packages/cw-tokenfactory-types", version = "
 cw-vesting = { path = "./contracts/external/cw-vesting", version = "2.4.1" }
 cw-wormhole = { path = "./packages/cw-wormhole", version = "2.4.1" }
 cw20-stake = { path = "./contracts/staking/cw20-stake", version = "2.4.1" }
+cw20-token = {path = "./contracts/external/cw20-token", version = "*"}
 cw721-controllers = { path = "./packages/cw721-controllers", version = "2.4.1" }
 cw721-roles = { path = "./contracts/external/cw721-roles", version = "2.4.1" }
+dao-cw20 = {path = "./packages/cw20", version = "*"}
 dao-cw721-extensions = { path = "./packages/dao-cw721-extensions", version = "2.4.1" }
 dao-dao-core = { path = "./contracts/dao-dao-core", version = "2.4.1" }
 dao-dao-macros = { path = "./packages/dao-dao-macros", version = "2.4.1" }

@@ -3,7 +3,7 @@ use cosmwasm_std::{Addr, Uint128};
 use cw_controllers::Hooks;
 use cw_storage_plus::{Item, Map};
 
-use cw20::{AllowanceResponse, Logo, MarketingInfoResponse};
+use dao_cw20::{AllowanceResponse, Logo, MarketingInfoResponse};
 
 #[cw_serde]
 pub struct TokenInfo {

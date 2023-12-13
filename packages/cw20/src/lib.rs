@@ -15,6 +15,7 @@ pub use crate::balance::Balance;
 pub use crate::coin::{Cw20Coin, Cw20CoinVerified};
 pub use crate::denom::{Denom, UncheckedDenom};
 pub use crate::helpers::Cw20Contract;
+pub use crate::hooks::{Cw20HookExecuteMsg, Cw20HookMsg};
 pub use crate::logo::{EmbeddedLogo, Logo, LogoInfo};
 pub use crate::msg::Cw20ExecuteMsg;
 pub use crate::query::{
@@ -28,13 +29,11 @@ mod balance;
 mod coin;
 mod denom;
 mod helpers;
+mod hooks;
 mod logo;
 mod msg;
 mod query;
 mod receiver;
-
-// TODO make consistent with above
-pub mod hooks;
 
 #[cfg(test)]
 mod tests {

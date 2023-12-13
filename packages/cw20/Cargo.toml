@@ -1,9 +1,9 @@
 [package]
-name = "cw20"
+name = "dao-cw20"
 version = "1.1.2"
 authors = ["Ethan Frey <ethanfrey@users.noreply.github.com>"]
 edition = "2021"
-description = "Definition and types for the CosmWasm-20 interface"
+description = "Definition and types for the CosmWasm-20 interface with hooks."
 license = "Apache-2.0"
 repository = "https://github.com/CosmWasm/cw-plus"
 homepage = "https://cosmwasm.com"

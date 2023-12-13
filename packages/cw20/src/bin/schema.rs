@@ -3,7 +3,7 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use cw20::{
+use dao_cw20::{
     AllAccountsResponse, AllAllowancesResponse, AllowanceResponse, BalanceResponse, Cw20ExecuteMsg,
     Cw20QueryMsg, Cw20ReceiveMsg, DownloadLogoResponse, MarketingInfoResponse, MinterResponse,
     TokenInfoResponse,
