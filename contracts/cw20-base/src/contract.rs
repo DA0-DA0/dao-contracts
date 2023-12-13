@@ -2,10 +2,12 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128,
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, SubMsg,
+    Uint128, WasmMsg,
 };
 
 use cw2::{ensure_from_older_version, set_contract_version};
+use cw20::hooks::{Cw20HookExecuteMsg, Cw20HookMsg};
 use cw20::{
     BalanceResponse, Cw20Coin, Cw20ReceiveMsg, DownloadLogoResponse, EmbeddedLogo, Logo, LogoInfo,
     MarketingInfoResponse, MinterResponse, TokenInfoResponse,
@@ -19,7 +21,7 @@ use crate::enumerable::{query_all_accounts, query_owner_allowances, query_spende
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{
-    MinterData, TokenInfo, ALLOWANCES, ALLOWANCES_SPENDER, BALANCES, LOGO, MARKETING_INFO,
+    MinterData, TokenInfo, ALLOWANCES, ALLOWANCES_SPENDER, BALANCES, HOOKS, LOGO, MARKETING_INFO,
     TOKEN_INFO,
 };
 
@@ -232,6 +234,8 @@ pub fn execute(
         ExecuteMsg::UpdateMinter { new_minter } => {
             execute_update_minter(deps, env, info, new_minter)
         }
+        ExecuteMsg::AddHook { addr } => execute_add_hook(deps, info, addr),
+        ExecuteMsg::RemoveHook { addr } => execute_remove_hook(deps, info, addr),
     }
 }
 
@@ -257,11 +261,24 @@ pub fn execute_transfer(
         |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
     )?;
 
+    let hooks = HOOKS.prepare_hooks(deps.storage, |h| {
+        Ok(SubMsg::new(WasmMsg::Execute {
+            contract_addr: h.to_string(),
+            msg: to_binary(&Cw20HookExecuteMsg::Cw20Hook(Cw20HookMsg::Transfer {
+                sender: info.sender.to_string(),
+                recipient: recipient.clone(),
+                amount,
+            }))?,
+            funds: vec![],
+        }))
+    })?;
+
     let res = Response::new()
         .add_attribute("action", "transfer")
         .add_attribute("from", info.sender)
         .add_attribute("to", recipient)
-        .add_attribute("amount", amount);
+        .add_attribute("amount", amount)
+        .add_submessages(hooks);
     Ok(res)
 }
 
@@ -361,6 +378,19 @@ pub fn execute_send(
         |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
     )?;
 
+    let hooks = HOOKS.prepare_hooks(deps.storage, |h| {
+        Ok(SubMsg::new(WasmMsg::Execute {
+            contract_addr: h.to_string(),
+            msg: to_binary(&Cw20HookExecuteMsg::Cw20Hook(Cw20HookMsg::Send {
+                sender: info.sender.to_string(),
+                contract: contract.clone(),
+                amount,
+                msg: msg.clone(),
+            }))?,
+            funds: vec![],
+        }))
+    })?;
+
     let res = Response::new()
         .add_attribute("action", "send")
         .add_attribute("from", &info.sender)
@@ -373,7 +403,8 @@ pub fn execute_send(
                 msg,
             }
             .into_cosmos_msg(contract)?,
-        );
+        )
+        .add_submessages(hooks);
     Ok(res)
 }
 
@@ -503,6 +534,62 @@ pub fn execute_upload_logo(
     Ok(res)
 }
 
+pub fn execute_add_hook(
+    deps: DepsMut,
+    info: MessageInfo,
+    addr: String,
+) -> Result<Response, ContractError> {
+    let config = TOKEN_INFO
+        .may_load(deps.storage)?
+        .ok_or(ContractError::Unauthorized {})?;
+
+    // Check that the sender is the minter
+    if config
+        .mint
+        .as_ref()
+        .ok_or(ContractError::Unauthorized {})?
+        .minter
+        != info.sender
+    {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let hook = deps.api.addr_validate(&addr)?;
+    HOOKS.add_hook(deps.storage, hook.clone())?;
+
+    Ok(Response::new()
+        .add_attribute("action", "add_hook")
+        .add_attribute("hook", hook))
+}
+
+pub fn execute_remove_hook(
+    deps: DepsMut,
+    info: MessageInfo,
+    addr: String,
+) -> Result<Response, ContractError> {
+    let config = TOKEN_INFO
+        .may_load(deps.storage)?
+        .ok_or(ContractError::Unauthorized {})?;
+
+    // Check that the sender is the minter
+    if config
+        .mint
+        .as_ref()
+        .ok_or(ContractError::Unauthorized {})?
+        .minter
+        != info.sender
+    {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let hook = deps.api.addr_validate(&addr)?;
+    HOOKS.add_hook(deps.storage, hook.clone())?;
+
+    Ok(Response::new()
+        .add_attribute("action", "remove_hook")
+        .add_attribute("hook", hook))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -532,6 +619,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::MarketingInfo {} => to_binary(&query_marketing_info(deps)?),
         QueryMsg::DownloadLogo {} => to_binary(&query_download_logo(deps)?),
+        QueryMsg::Hooks {} => to_binary(&HOOKS.query_hooks(deps)?),
     }
 }
 

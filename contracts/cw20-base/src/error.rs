@@ -6,6 +6,9 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
+    #[error(transparent)]
+    HookError(#[from] cw_controllers::HookError),
+
     #[error("Unauthorized")]
     Unauthorized {},
 

@@ -33,6 +33,9 @@ mod msg;
 mod query;
 mod receiver;
 
+// TODO make consistent with above
+pub mod hooks;
+
 #[cfg(test)]
 mod tests {
     #[test]

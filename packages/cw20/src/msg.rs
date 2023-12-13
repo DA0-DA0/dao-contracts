@@ -3,8 +3,8 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Binary, Uint128};
 use cw_utils::Expiration;
 
+// TODO add message to add / remove transfer hooks
 #[cw_serde]
-
 pub enum Cw20ExecuteMsg {
     /// Transfer is a base message to move tokens to another account without triggering actions
     Transfer { recipient: String, amount: Uint128 },
@@ -70,4 +70,10 @@ pub enum Cw20ExecuteMsg {
     },
     /// If set as the "marketing" role on the contract, upload a new URL, SVG, or PNG for the token
     UploadLogo(Logo),
+    /// Adds a hook which is called on transfer / send events.
+    /// Only callable by the minter.
+    AddHook { addr: String },
+    /// Removes a hook which is called on transfer / send events.
+    /// Only callable by the minter.
+    RemoveHook { addr: String },
 }

@@ -120,6 +120,9 @@ pub enum QueryMsg {
     /// contract.
     #[returns(cw20::DownloadLogoResponse)]
     DownloadLogo {},
+    /// Shows all registered transfer / send hooks.
+    #[returns(cw_controllers::HooksResponse)]
+    Hooks {},
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
