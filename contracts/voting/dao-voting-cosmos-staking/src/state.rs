@@ -6,8 +6,6 @@ use cw_storage_plus::{Item, SnapshotItem, SnapshotMap, Strategy};
 use cw_utils::Duration;
 use dao_voting::threshold::ActiveThreshold;
 
-use crate::msg::TokenInfo;
-
 #[cw_serde]
 pub struct Config {
     pub unstaking_duration: Option<Duration>,
@@ -48,9 +46,3 @@ pub const ACTIVE_THRESHOLD: Item<ActiveThreshold> = Item::new("active_threshold"
 
 /// Hooks to contracts that will receive staking and unstaking messages
 pub const HOOKS: Hooks = Hooks::new("hooks");
-
-/// Temporarily holds token_instantiation_info when creating a new Token Factory denom
-pub const TOKEN_INSTANTIATION_INFO: Item<TokenInfo> = Item::new("token_instantiation_info");
-
-/// The address of the cw-tokenfactory-issuer contract
-pub const TOKEN_ISSUER_CONTRACT: Item<Addr> = Item::new("token_issuer_contract");
