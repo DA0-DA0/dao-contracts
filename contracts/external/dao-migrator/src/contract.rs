@@ -115,6 +115,7 @@ fn execute_migration_v1_v2(
                             close_proposal_on_execution_failure: proposal_params
                                 .close_proposal_on_execution_failure,
                             pre_propose_info: proposal_params.pre_propose_info,
+                            veto: proposal_params.veto,
                         },
                     ),
                 ),

@@ -12,4 +12,5 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw4 = { workspace = true }
 cw-hooks = { workspace = true }
+dao-pre-propose-base = { workspace = true }
 dao-voting = { workspace = true }

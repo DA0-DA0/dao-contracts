@@ -3,10 +3,10 @@ use std::u64;
 use cosmwasm_std::StdError;
 use cw_hooks::HookError;
 use cw_utils::ParseReplyError;
-use dao_voting::{reply::error::TagError, threshold::ThresholdError};
+use dao_voting::{reply::error::TagError, threshold::ThresholdError, veto::VetoError};
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
@@ -16,6 +16,9 @@ pub enum ContractError {
 
     #[error("{0}")]
     HookError(#[from] HookError),
+
+    #[error(transparent)]
+    VetoError(#[from] VetoError),
 
     #[error("Unauthorized")]
     Unauthorized {},

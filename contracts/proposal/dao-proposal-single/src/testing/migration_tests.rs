@@ -1,13 +1,16 @@
 use cosmwasm_std::{to_json_binary, Addr, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App, Executor};
+use cw_utils::Duration;
 use dao_interface::query::{GetItemResponse, ProposalModuleCountResponse};
 use dao_testing::contracts::{
     cw20_base_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
     dao_dao_contract, proposal_single_contract, v1_dao_dao_contract, v1_proposal_single_contract,
 };
+use dao_voting::veto::VetoConfig;
 use dao_voting::{deposit::UncheckedDepositInfo, status::Status};
 
+use crate::testing::queries::query_list_proposals;
 use crate::testing::{
     execute::{execute_proposal, make_proposal, vote_on_proposal},
     instantiate::get_pre_propose_info,
@@ -306,6 +309,8 @@ fn test_v1_v2_full_migration() {
         }),
         false,
     );
+
+    // now migrate with valid config
     app.execute_contract(
         sender.clone(),
         proposal.clone(),
@@ -329,6 +334,12 @@ fn test_v1_v2_full_migration() {
                     msg: to_json_binary(&crate::msg::MigrateMsg::FromV1 {
                         close_proposal_on_execution_failure: true,
                         pre_propose_info,
+                        veto: Some(VetoConfig {
+                            timelock_duration: Duration::Height(10),
+                            vetoer: sender.to_string(),
+                            early_execute: true,
+                            veto_before_passed: false,
+                        }),
                     })
                     .unwrap(),
                 }
@@ -370,6 +381,12 @@ fn test_v1_v2_full_migration() {
     let count = query_proposal_count(&app, &proposal);
     assert_eq!(count, 3);
 
+    let migrated_existing_props = query_list_proposals(&app, &proposal, None, None);
+    // assert that even though we migrate with a veto config,
+    // existing proposals are not affected
+    for prop in migrated_existing_props.proposals {
+        assert_eq!(prop.proposal.veto, None);
+    }
     // ----
     // check that proposal module counts have been updated.
     // ----
@@ -429,6 +446,18 @@ fn test_v1_v2_full_migration() {
         4,
         dao_voting::voting::Vote::Yes,
     );
+
+    let new_prop = query_proposal(&app, &proposal, 4);
+    assert_eq!(
+        new_prop.proposal.veto,
+        Some(VetoConfig {
+            timelock_duration: Duration::Height(10),
+            vetoer: sender.to_string(),
+            early_execute: true,
+            veto_before_passed: false,
+        })
+    );
+
     execute_proposal(&mut app, &proposal, sender.as_str(), 4);
     let tokens: Vec<dao_interface::query::Cw20BalanceResponse> = app
         .wrap()

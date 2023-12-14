@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use crate::query::ProposalResponse;
 use crate::state::PROPOSAL_COUNT;
 use cosmwasm_schema::cw_serde;
@@ -5,11 +7,14 @@ use cosmwasm_std::{Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdResult, Storag
 use cw_utils::Expiration;
 use dao_voting::status::Status;
 use dao_voting::threshold::{PercentageThreshold, Threshold};
+use dao_voting::veto::VetoConfig;
 use dao_voting::voting::{does_vote_count_fail, does_vote_count_pass, Votes};
 
 #[cw_serde]
 pub struct SingleChoiceProposal {
+    /// The title of the proposal
     pub title: String,
+    /// The main body of the proposal text
     pub description: String,
     /// The address that created this proposal.
     pub proposer: Addr,
@@ -31,9 +36,16 @@ pub struct SingleChoiceProposal {
     pub total_power: Uint128,
     /// The messages that will be executed should this proposal pass.
     pub msgs: Vec<CosmosMsg<Empty>>,
+    /// The proposal status
     pub status: Status,
+    /// Votes on a particular proposal
     pub votes: Votes,
+    /// Whether or not revoting is enabled. If revoting is enabled, a proposal
+    /// cannot pass until the voting period has elapsed.
     pub allow_revoting: bool,
+    /// Optional veto configuration. If set to `None`, veto option
+    /// is disabled. Otherwise contains the configuration for veto flow.
+    pub veto: Option<VetoConfig>,
 }
 
 pub fn next_proposal_id(store: &dyn Storage) -> StdResult<u64> {
@@ -54,28 +66,50 @@ impl SingleChoiceProposal {
     /// a vote has occurred, the status we read from the proposal status
     /// may be out of date. This method recomputes the status so that
     /// queries get accurate information.
-    pub fn into_response(mut self, block: &BlockInfo, id: u64) -> ProposalResponse {
-        self.update_status(block);
-        ProposalResponse { id, proposal: self }
+    pub fn into_response(mut self, block: &BlockInfo, id: u64) -> StdResult<ProposalResponse> {
+        self.update_status(block)?;
+        Ok(ProposalResponse { id, proposal: self })
     }
 
     /// Gets the current status of the proposal.
-    pub fn current_status(&self, block: &BlockInfo) -> Status {
-        if self.status == Status::Open && self.is_passed(block) {
-            Status::Passed
-        } else if self.status == Status::Open
-            && (self.expiration.is_expired(block) || self.is_rejected(block))
-        {
-            Status::Rejected
-        } else {
-            self.status
+    pub fn current_status(&self, block: &BlockInfo) -> StdResult<Status> {
+        match self.status {
+            Status::Open if self.is_passed(block) => match &self.veto {
+                // if prop is passed and veto is configured, calculate timelock
+                // expiration. if it's expired, this proposal has passed.
+                // otherwise, set status to `VetoTimelock`.
+                Some(veto_config) => {
+                    let expiration = self.expiration.add(veto_config.timelock_duration)?;
+
+                    if expiration.is_expired(block) {
+                        Ok(Status::Passed)
+                    } else {
+                        Ok(Status::VetoTimelock { expiration })
+                    }
+                }
+                // Otherwise the proposal is simply passed
+                None => Ok(Status::Passed),
+            },
+            Status::Open if self.expiration.is_expired(block) || self.is_rejected(block) => {
+                Ok(Status::Rejected)
+            }
+            Status::VetoTimelock { expiration } => {
+                // if prop timelock expired, proposal is now passed.
+                if expiration.is_expired(block) {
+                    Ok(Status::Passed)
+                } else {
+                    Ok(self.status)
+                }
+            }
+            _ => Ok(self.status),
         }
     }
 
     /// Sets a proposals status to its current status.
-    pub fn update_status(&mut self, block: &BlockInfo) {
-        let new_status = self.current_status(block);
-        self.status = new_status
+    pub fn update_status(&mut self, block: &BlockInfo) -> StdResult<()> {
+        let new_status = self.current_status(block)?;
+        self.status = new_status;
+        Ok(())
     }
 
     /// Returns true iff this proposal is sure to pass (even before
@@ -275,6 +309,7 @@ mod test {
             msgs: vec![],
             status: Status::Open,
             threshold,
+            veto: None,
             total_power,
             votes,
         };

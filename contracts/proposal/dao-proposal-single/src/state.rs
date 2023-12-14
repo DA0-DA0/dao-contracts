@@ -3,7 +3,9 @@ use cosmwasm_std::{Addr, Uint128};
 use cw_hooks::Hooks;
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
-use dao_voting::{pre_propose::ProposalCreationPolicy, threshold::Threshold, voting::Vote};
+use dao_voting::{
+    pre_propose::ProposalCreationPolicy, threshold::Threshold, veto::VetoConfig, voting::Vote,
+};
 
 use crate::proposal::SingleChoiceProposal;
 
@@ -21,6 +23,7 @@ pub struct Ballot {
     #[serde(default)]
     pub rationale: Option<String>,
 }
+
 /// The governance module's configuration.
 #[cw_serde]
 pub struct Config {
@@ -55,6 +58,9 @@ pub struct Config {
     /// remain open until the DAO's treasury was large enough for it to be
     /// executed.
     pub close_proposal_on_execution_failure: bool,
+    /// Optional veto configuration. If set to `None`, veto option
+    /// is disabled. Otherwise contains the configuration for veto flow.
+    pub veto: Option<VetoConfig>,
 }
 
 /// The current top level config for the module.  The "config" key was

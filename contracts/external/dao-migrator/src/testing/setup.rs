@@ -275,6 +275,7 @@ pub fn execute_migration(
                         close_proposal_on_execution_failure: true,
                         pre_propose_info:
                             dao_voting::pre_propose::PreProposeInfo::AnyoneMayPropose {},
+                        veto: None,
                     },
                 )
             })

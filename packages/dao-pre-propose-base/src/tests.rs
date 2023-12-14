@@ -38,7 +38,7 @@ fn test_completed_hook_status_invariant() {
 
     assert_eq!(
         res.unwrap_err(),
-        PreProposeError::NotClosedOrExecuted {
+        PreProposeError::NotCompleted {
             status: Status::Passed
         }
     );

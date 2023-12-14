@@ -1,4 +1,5 @@
 use cosmwasm_schema::cw_serde;
+use cw_utils::Expiration;
 
 #[cw_serde]
 #[derive(Copy)]
@@ -16,6 +17,11 @@ pub enum Status {
     Closed,
     /// The proposal's execution failed.
     ExecutionFailed,
+    /// The proposal is timelocked. Only the configured vetoer
+    /// can execute or veto until the timelock expires.
+    VetoTimelock { expiration: Expiration },
+    /// The proposal has been vetoed.
+    Vetoed,
 }
 
 impl std::fmt::Display for Status {
@@ -27,6 +33,10 @@ impl std::fmt::Display for Status {
             Status::Executed => write!(f, "executed"),
             Status::Closed => write!(f, "closed"),
             Status::ExecutionFailed => write!(f, "execution_failed"),
+            Status::VetoTimelock { expiration } => {
+                write!(f, "veto_timelock_until_{:?}", expiration)
+            }
+            Status::Vetoed => write!(f, "vetoed"),
         }
     }
 }

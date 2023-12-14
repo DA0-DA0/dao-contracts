@@ -1,7 +1,11 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_json_binary, StdResult, Storage, SubMsg, WasmMsg};
+use cosmwasm_std::{to_json_binary, Empty, StdResult, Storage, SubMsg, WasmMsg};
 use cw_hooks::Hooks;
-use dao_voting::reply::mask_proposal_hook_index;
+use dao_voting::{
+    pre_propose::ProposalCreationPolicy,
+    reply::{failed_pre_propose_module_hook_id, mask_proposal_hook_index},
+    status::Status,
+};
 
 /// An enum representing proposal hook messages.
 /// Either a new propsoal hook, fired when a new proposal is created,
@@ -86,6 +90,37 @@ pub fn proposal_status_changed_hooks(
     })?;
 
     Ok(messages)
+}
+
+/// Message type used for firing hooks to a proposal module's pre-propose
+/// module, if one is installed.
+pub type PreProposeHookMsg = dao_pre_propose_base::msg::ExecuteMsg<Empty, Empty>;
+
+/// Adds prepropose / deposit module hook which will handle deposit refunds.
+pub fn proposal_completed_hooks(
+    proposal_creation_policy: ProposalCreationPolicy,
+    proposal_id: u64,
+    new_status: Status,
+) -> StdResult<Vec<SubMsg>> {
+    let mut hooks: Vec<SubMsg> = vec![];
+    match proposal_creation_policy {
+        ProposalCreationPolicy::Anyone {} => (),
+        ProposalCreationPolicy::Module { addr } => {
+            let msg = to_json_binary(&PreProposeHookMsg::ProposalCompletedHook {
+                proposal_id,
+                new_status,
+            })?;
+            hooks.push(SubMsg::reply_on_error(
+                WasmMsg::Execute {
+                    contract_addr: addr.into_string(),
+                    msg,
+                    funds: vec![],
+                },
+                failed_pre_propose_module_hook_id(),
+            ));
+        }
+    };
+    Ok(hooks)
 }
 
 #[cw_serde]
