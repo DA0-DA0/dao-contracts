@@ -37,44 +37,6 @@ Problem: no historical info.
         }
 ```
 
-<!-- // Validators
-type SudoMsgAfterValidatorCreated struct {
-	AfterValidatorCreated *Validator `json:"after_validator_created"`
-}
-type SudoMsgAfterValidatorRemoved struct {
-	AfterValidatorRemoved *Validator `json:"after_validator_removed"`
-}
-type SudoMsgBeforeValidatorModified struct {
-	BeforeValidatorModified *Validator `json:"before_validator_modified"`
-}
-type SudoMsgAfterValidatorModified struct {
-	AfterValidatorModified *Validator `json:"after_validator_modified"`
-}
-type SudoMsgAfterValidatorBonded struct {
-	AfterValidatorBonded *Validator `json:"after_validator_bonded"`
-}
-type SudoMsgAfterValidatorBeginUnbonding struct {
-	AfterValidatorBeginUnbonding *Validator `json:"after_validator_begin_unbonding"`
-}
-type SudoMsgBeforeValidatorSlashed struct {
-	BeforeValidatorSlashed *ValidatorSlashed `json:"before_validator_slashed"`
-}
-
-// Delegations
-type SudoMsgBeforeDelegationCreated struct {
-	BeforeDelegationCreated *Delegation `json:"before_delegation_created"`
-}
-type SudoMsgBeforeDelegationSharesModified struct {
-	BeforeDelegationSharesModified *Delegation `json:"before_delegation_shares_modified"`
-}
-type SudoMsgAfterDelegationModified struct {
-	AfterDelegationModified *Delegation `json:"after_delegation_modified"`
-}
-
-type SudoMsgBeforeDelegationRemoved struct {
-	BeforeDelegationRemoved *Delegation `json:"before_delegation_removed"`
-} -->
-
 
 # on change
 - user votes, query current VP delegated

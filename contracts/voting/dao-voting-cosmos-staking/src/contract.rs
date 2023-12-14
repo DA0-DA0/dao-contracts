@@ -2,35 +2,19 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
+    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, StakingQuery, QueryRequest
 };
-use cw2::{get_contract_version, set_contract_version, ContractVersion};
-// use cw_controllers::ClaimsResponse;
-// use cw_storage_plus::Bound;
-// use cw_tokenfactory_issuer::msg::{
-//     DenomUnit, ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg, Metadata,
-// };
-// use cw_utils::{
-//     maybe_addr, must_pay, parse_reply_execute_data, parse_reply_instantiate_data, Duration,
-// };
+use cw2::set_contract_version;
 use dao_interface::voting::{
     TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, GetHooksResponse, InstantiateMsg, MigrateMsg, QueryMsg, SudoMsg};
+use crate::msg::{ExecuteMsg, GetHooksResponse, InstantiateMsg, QueryMsg, SudoMsg};
 use crate::state::{CONFIG, DAO, HOOKS, STAKED_BALANCES, STAKED_TOTAL};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cosmos-staking";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-// Settings for query pagination
-// const MAX_LIMIT: u32 = 30;
-// const DEFAULT_LIMIT: u32 = 10;
-
-// We multiply by this when calculating needed power for being active
-// when using active threshold with percent
-// const PRECISION_FACTOR: u128 = 10u128.pow(9);
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -41,56 +25,18 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    unimplemented!()
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    match msg {
-        ExecuteMsg::AddHook { addr } => execute_add_hook(deps, env, info, addr),
-        ExecuteMsg::RemoveHook { addr } => execute_remove_hook(deps, env, info, addr),
-    }
-}
-
-pub fn execute_add_hook(
-    deps: DepsMut,
+    _deps: DepsMut,
     _env: Env,
-    info: MessageInfo,
-    addr: String,
+    _info: MessageInfo,
+    _msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let dao = DAO.load(deps.storage)?;
-    if info.sender != dao {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    let hook = deps.api.addr_validate(&addr)?;
-    HOOKS.add_hook(deps.storage, hook)?;
-    Ok(Response::new()
-        .add_attribute("action", "add_hook")
-        .add_attribute("hook", addr))
-}
-
-pub fn execute_remove_hook(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    addr: String,
-) -> Result<Response, ContractError> {
-    let dao = DAO.load(deps.storage)?;
-    if info.sender != dao {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    let hook = deps.api.addr_validate(&addr)?;
-    HOOKS.remove_hook(deps.storage, hook)?;
-    Ok(Response::new()
-        .add_attribute("action", "remove_hook")
-        .add_attribute("hook", addr))
+    // TODO return error?
+    unimplemented!()
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -121,7 +67,12 @@ pub fn query_voting_power_at_height(
     let power = STAKED_BALANCES
         .may_load_at_height(deps.storage, &address, height)?
         .unwrap_or_default();
-    Ok(VotingPowerAtHeightResponse { power, height })
+
+    // TODO if power, use that. If not, try manually querying delegations, as the user
+    // has not changed delegations since we started capturing changes with the hooks     
+
+    // Ok(VotingPowerAtHeightResponse { power, height })
+    unimplemented!()
 }
 
 pub fn query_total_power_at_height(
@@ -133,6 +84,7 @@ pub fn query_total_power_at_height(
     let power = STAKED_TOTAL
         .may_load_at_height(deps.storage, height)?
         .unwrap_or_default();
+
     Ok(TotalPowerAtHeightResponse { power, height })
 }
 
@@ -153,41 +105,59 @@ pub fn query_hooks(deps: Deps) -> StdResult<GetHooksResponse> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    let storage_version: ContractVersion = get_contract_version(deps.storage)?;
-
-    // Only migrate if newer
-    if storage_version.version.as_str() < CONTRACT_VERSION {
-        // Set contract to version to latest
-        set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
+    match msg {
+         // TODO: a validator falls out of the active set. Should we check after a validator is slashed / unbonded from the active set ie. AfterValidatorBeginUnbonding
+        SudoMsg::BeforeDelegationSharesModified {
+            validator_address,
+            delegator_address,
+            shares,
+        } => delegation_change(deps, delegator_address, env.block.height),
+        // SudoMsg::BeforeDelegationRemoved {
+        //     validator_address,
+        //     delegator_address,
+        //     shares,
+        // } => delegation_change(deps, delegator_address, env.block.height),
+        // SudoMsg::AfterDelegationModified{
+        //     validator_address,
+        //     delegator_address,
+        //     shares,
+        // } => delegation_change(deps, delegator_address, env.block.height),
     }
 
-    Ok(Response::new().add_attribute("action", "migrate"))
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    match msg.id {
-        _ => Err(ContractError::UnknownReplyId { id: msg.id }),
-    }
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn sudo(_deps: DepsMut, _env: Env, _msg: SudoMsg) -> Result<Response, ContractError> {
-    // SudoMsg::BeforeDelegationCreated {
-    //     validator_address,
-    //     delegator_address,
-    //     shares,
-    // } => last_delegation(deps, validator_address, delegator_address, shares),
-    // SudoMsg::BeforeDelegationSharesModified {
-    //     validator_address,
-    //     delegator_address,
-    //     shares,
-    // } => last_delegation(deps, validator_address, delegator_address, shares),
-    // SudoMsg::BeforeDelegationRemoved {
-    //     validator_address,
-    //     delegator_address,
-    //     shares,
-    // } => last_delegation(deps, validator_address, delegator_address, shares),
     unimplemented!()
+}
+
+/// delegation_change is called any time the chain has delegation events emited.
+/// On the change, we update this for
+fn delegation_change(deps: DepsMut, delegator: String, _block_height: u64) -> StdResult<()>
+ {
+    // with the delegator, if they are in STAKED_TOTAL update their total. Else add it to the map at the current height
+
+    let delegations = deps.querier.query_all_delegations(&delegator)?;
+
+    let mut amount_staked = 0;
+
+    // iter delegations
+    delegations.iter().for_each(|delegation| {
+        amount_staked += delegation.amount.amount.u128();
+    });
+
+    // TODO:
+    STAKED_BALANCES.update(
+        deps.storage,
+        &delegator,
+        env.block.height,
+        |balance| -> StdResult<Uint128> { Ok(balance.unwrap_or_default().checked_add(amount)?) },
+    )?;
+
+    // let total_stake = deps.querier.query_total_power ? / staked? without stargate
+
+    STAKED_TOTAL.update(
+        deps.storage,
+        env.block.height,
+        |total| -> StdResult<Uint128> { Ok(total.unwrap_or_default().checked_add(amount)?) },
+    )?;
+    
+    Ok(())
 }

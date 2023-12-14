@@ -5,12 +5,7 @@ use dao_dao_macros::{active_query, voting_module_query};
 pub struct InstantiateMsg {}
 
 #[cw_serde]
-pub enum ExecuteMsg {
-    /// Adds a hook that fires on staking / unstaking
-    AddHook { addr: String },
-    /// Removes a hook that fires on staking / unstaking
-    RemoveHook { addr: String },
-}
+pub enum ExecuteMsg {}
 
 #[active_query]
 #[voting_module_query]
@@ -27,11 +22,11 @@ pub enum QueryMsg {
 pub enum SudoMsg {
     // Follow delegations with Juno's cw-hooks module
     // https://github.com/CosmosContracts/juno/tree/main/x/cw-hooks
-    BeforeDelegationCreated {
-        validator_address: String,
-        delegator_address: String,
-        shares: String,
-    },
+    // BeforeDelegationCreated {
+    //     validator_address: String,
+    //     delegator_address: String,
+    //     shares: String,
+    // },
 
     BeforeDelegationSharesModified {
         validator_address: String,
@@ -39,17 +34,17 @@ pub enum SudoMsg {
         shares: String,
     },
 
-    AfterDelegationModified {
-        validator_address: String,
-        delegator_address: String,
-        shares: String,
-    },
+    // AfterDelegationModified {
+    //     validator_address: String,
+    //     delegator_address: String,
+    //     shares: String,
+    // },
 
-    BeforeDelegationRemoved {
-        validator_address: String,
-        delegator_address: String,
-        shares: String,
-    },
+    // BeforeDelegationRemoved {
+    //     validator_address: String,
+    //     delegator_address: String,
+    //     shares: String,
+    // },
 }
 
 
