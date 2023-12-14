@@ -26,7 +26,10 @@ use dao_voting::{
 
 use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::InstantiateMsg as ApproverInstantiateMsg;
-use crate::msg::{QueryExt as ApproverQueryExt, QueryMsg as ApproverQueryMsg};
+use crate::msg::{
+    ExecuteExt as ApproverExecuteExt, ExecuteMsg as ApproverExecuteMsg,
+    QueryExt as ApproverQueryExt, QueryMsg as ApproverQueryMsg,
+};
 
 // The approver dao contract is the 6th contract instantiated
 const APPROVER: &str = "contract6";
@@ -166,7 +169,7 @@ struct DefaultTestSetup {
     core_addr: Addr,
     proposal_single: Addr,
     pre_propose: Addr,
-    _approver_core_addr: Addr,
+    approver_core_addr: Addr,
     pre_propose_approver: Addr,
     proposal_single_approver: Addr,
 }
@@ -238,7 +241,7 @@ fn setup_default_test(
         pre_propose.to_string(),
     );
 
-    let _approver_core_addr = instantiate_with_cw4_groups_governance(
+    let approver_core_addr = instantiate_with_cw4_groups_governance(
         app,
         dps_id,
         to_json_binary(&proposal_module_instantiate).unwrap(),
@@ -256,7 +259,7 @@ fn setup_default_test(
     let proposal_modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
-            _approver_core_addr.clone(),
+            approver_core_addr.clone(),
             &dao_interface::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
@@ -283,7 +286,7 @@ fn setup_default_test(
         get_proposal_module(app, pre_propose_approver.clone())
     );
     assert_eq!(
-        _approver_core_addr,
+        approver_core_addr,
         get_dao(app, pre_propose_approver.clone())
     );
 
@@ -291,7 +294,7 @@ fn setup_default_test(
         core_addr,
         proposal_single,
         pre_propose,
-        _approver_core_addr,
+        approver_core_addr,
         proposal_single_approver,
         pre_propose_approver,
     }
@@ -568,7 +571,7 @@ fn test_native_permutation(
         core_addr,
         proposal_single,
         pre_propose,
-        _approver_core_addr: _,
+        approver_core_addr: _,
         proposal_single_approver,
         pre_propose_approver: _,
     } = setup_default_test(
@@ -676,7 +679,7 @@ fn test_cw20_permutation(
         core_addr,
         proposal_single,
         pre_propose,
-        _approver_core_addr: _,
+        approver_core_addr: _,
         proposal_single_approver,
         pre_propose_approver: _,
     } = setup_default_test(
@@ -968,7 +971,7 @@ fn test_multiple_open_proposals() {
         core_addr: _,
         proposal_single,
         pre_propose,
-        _approver_core_addr: _,
+        approver_core_addr: _,
         proposal_single_approver,
         pre_propose_approver: _,
     } = setup_default_test(
@@ -1065,7 +1068,7 @@ fn test_set_version() {
         core_addr: _,
         proposal_single: _,
         pre_propose: _,
-        _approver_core_addr: _,
+        approver_core_addr: _,
         proposal_single_approver: _,
         pre_propose_approver,
     } = setup_default_test(
@@ -1107,7 +1110,7 @@ fn test_permissions() {
         core_addr,
         proposal_single: _,
         pre_propose,
-        _approver_core_addr: _,
+        approver_core_addr: _,
         proposal_single_approver: _,
         pre_propose_approver: _,
     } = setup_default_test(
@@ -1169,7 +1172,7 @@ fn test_approval_and_rejection_permissions() {
         core_addr: _,
         proposal_single: _,
         pre_propose,
-        _approver_core_addr: _,
+        approver_core_addr: _,
         proposal_single_approver: _,
         pre_propose_approver: _,
     } = setup_default_test(
@@ -1235,7 +1238,7 @@ fn test_propose_open_proposal_submission() {
         core_addr: _,
         proposal_single,
         pre_propose,
-        _approver_core_addr: _,
+        approver_core_addr: _,
         proposal_single_approver,
         pre_propose_approver,
     } = setup_default_test(
@@ -1301,7 +1304,7 @@ fn test_update_config() {
         core_addr,
         proposal_single,
         pre_propose,
-        _approver_core_addr: _,
+        approver_core_addr: _,
         proposal_single_approver,
         pre_propose_approver: _,
     } = setup_default_test(&mut app, None, false);
@@ -1418,7 +1421,7 @@ fn test_withdraw() {
         core_addr,
         proposal_single,
         pre_propose,
-        _approver_core_addr: _,
+        approver_core_addr: _,
         proposal_single_approver,
         pre_propose_approver: _,
     } = setup_default_test(&mut app, None, false);
@@ -1570,4 +1573,98 @@ fn test_withdraw() {
     );
     let balance = get_balance_native(&app, core_addr.as_str(), "ujuno");
     assert_eq!(balance, Uint128::new(30));
+}
+
+#[test]
+fn test_reset_approver() {
+    let mut app = App::default();
+
+    // Need to instantiate this so contract addresses match with cw20 test cases
+    let _ = instantiate_cw20_base_default(&mut app);
+
+    let DefaultTestSetup {
+        core_addr: _,
+        proposal_single: _,
+        pre_propose,
+        approver_core_addr,
+        proposal_single_approver: _,
+        pre_propose_approver,
+    } = setup_default_test(
+        &mut app,
+        Some(UncheckedDepositInfo {
+            denom: DepositToken::Token {
+                denom: UncheckedDenom::Native("ujuno".to_string()),
+            },
+            amount: Uint128::new(10),
+            refund_policy: DepositRefundPolicy::Always,
+        }),
+        false,
+    );
+
+    // Ensure approver is set to the pre_propose_approver
+    let approver: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose.clone(),
+            &QueryMsg::QueryExtension {
+                msg: QueryExt::Approver {},
+            },
+        )
+        .unwrap();
+    assert_eq!(approver, pre_propose_approver);
+
+    // Fail to change approver by non-approver.
+    let err: PreProposeError = app
+        .execute_contract(
+            Addr::unchecked("someone"),
+            pre_propose.clone(),
+            &ExecuteMsg::Extension {
+                msg: ExecuteExt::UpdateApprover {
+                    address: "someone".to_string(),
+                },
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, PreProposeError::Unauthorized {});
+
+    // Fail to reset approver back to approver DAO by non-approver.
+    let err: PreProposeError = app
+        .execute_contract(
+            Addr::unchecked("someone"),
+            pre_propose_approver.clone(),
+            &ApproverExecuteMsg::Extension {
+                msg: ApproverExecuteExt::ResetApprover {},
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, PreProposeError::Unauthorized {});
+
+    // Reset approver back to approver DAO.
+    app.execute_contract(
+        approver_core_addr.clone(),
+        pre_propose_approver.clone(),
+        &ApproverExecuteMsg::Extension {
+            msg: ApproverExecuteExt::ResetApprover {},
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Ensure approver is reset back to the approver DAO
+    let approver: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose.clone(),
+            &QueryMsg::QueryExtension {
+                msg: QueryExt::Approver {},
+            },
+        )
+        .unwrap();
+    assert_eq!(approver, approver_core_addr);
 }
