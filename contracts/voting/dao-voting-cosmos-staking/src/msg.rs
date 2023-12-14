@@ -1,6 +1,4 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Binary, Uint128};
-use cw_utils::Duration;
 use dao_dao_macros::{active_query, voting_module_query};
 
 #[cw_serde]
@@ -8,8 +6,6 @@ pub struct InstantiateMsg {}
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    /// Updates the contract configuration
-    UpdateConfig { duration: Option<Duration> },
     /// Adds a hook that fires on staking / unstaking
     AddHook { addr: String },
     /// Removes a hook that fires on staking / unstaking
@@ -26,6 +22,36 @@ pub enum QueryMsg {
     #[returns(GetHooksResponse)]
     GetHooks {},
 }
+
+#[cw_serde]
+pub enum SudoMsg {
+    // Follow delegations with Juno's cw-hooks module
+    // https://github.com/CosmosContracts/juno/tree/main/x/cw-hooks
+    BeforeDelegationCreated {
+        validator_address: String,
+        delegator_address: String,
+        shares: String,
+    },
+
+    BeforeDelegationSharesModified {
+        validator_address: String,
+        delegator_address: String,
+        shares: String,
+    },
+
+    AfterDelegationModified {
+        validator_address: String,
+        delegator_address: String,
+        shares: String,
+    },
+
+    BeforeDelegationRemoved {
+        validator_address: String,
+        delegator_address: String,
+        shares: String,
+    },
+}
+
 
 #[cw_serde]
 pub struct MigrateMsg {}
