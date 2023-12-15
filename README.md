@@ -38,7 +38,7 @@ If you believe you have found a problem, please [let us know](SECURITY.md).
 
 DAO DAO has been audited by [Oak Security](https://www.oaksecurity.io/) on multiple occasions. You can find all the audit reports [here](https://github.com/oak-security/audit-reports/tree/master/DAO%20DAO).
 
-`v2.3.0` is the most recent DAO DAO release; only new feautres related to tokenfactory and improved NFT DAOs have been [audited](https://github.com/oak-security/audit-reports/blob/master/DAO%20DAO/2023-10-16%20Audit%20Report%20-%20DAO%20DAO%20Updates%20v1.0.pdf). Our most recently [full audited](https://github.com/oak-security/audit-reports/blob/master/DAO%20DAO/2023-02-06%20Audit%20Report%20-%20DAO%20DAO%202%20v1.0.pdf) release is `v2.0.0`. Vesting and payroll were added and [audited](https://github.com/oak-security/audit-reports/blob/master/DAO%20DAO/2023-03-22%20Audit%20Report%20-%20DAO%20DAO%20Vesting%20and%20Payroll%20Factory%20v1.0.pdf) in `v2.1.0`.
+`v2.3.0` is the most recent DAO DAO release; only new features related to tokenfactory and improved NFT DAOs have been [audited](https://github.com/oak-security/audit-reports/blob/master/DAO%20DAO/2023-10-16%20Audit%20Report%20-%20DAO%20DAO%20Updates%20v1.0.pdf). Our most recently [full audited](https://github.com/oak-security/audit-reports/blob/master/DAO%20DAO/2023-02-06%20Audit%20Report%20-%20DAO%20DAO%202%20v1.0.pdf) release is `v2.0.0`. Vesting and payroll were added and [audited](https://github.com/oak-security/audit-reports/blob/master/DAO%20DAO/2023-03-22%20Audit%20Report%20-%20DAO%20DAO%20Vesting%20and%20Payroll%20Factory%20v1.0.pdf) in `v2.1.0`.
 
 Audited contracts include:
 - [cw-payroll-factory](https://crates.io/crates/cw-payroll-factory)
