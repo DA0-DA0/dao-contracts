@@ -10,7 +10,10 @@ use dao_interface::state::ProposalModule;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_voting::veto::{VetoConfig, VetoError};
 use dao_voting::{
-    deposit::{CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
+    deposit::{
+        CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo,
+        VotingModuleTokenType,
+    },
     multiple_choice::{
         CheckedMultipleChoiceOption, MultipleChoiceOption, MultipleChoiceOptionType,
         MultipleChoiceOptions, MultipleChoiceVote, MultipleChoiceVotes, VotingStrategy,
@@ -715,7 +718,9 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
         pre_propose_info: get_pre_propose_info(
             &mut app,
             Some(UncheckedDepositInfo {
-                denom: DepositToken::VotingModuleToken {},
+                denom: DepositToken::VotingModuleToken {
+                    token_type: VotingModuleTokenType::Cw20,
+                },
                 amount: Uint128::new(1),
                 refund_policy: DepositRefundPolicy::OnlyPassed,
             }),
@@ -884,7 +889,9 @@ fn test_take_proposal_deposit() {
         pre_propose_info: get_pre_propose_info(
             &mut app,
             Some(UncheckedDepositInfo {
-                denom: DepositToken::VotingModuleToken {},
+                denom: DepositToken::VotingModuleToken {
+                    token_type: VotingModuleTokenType::Cw20,
+                },
                 amount: Uint128::new(1),
                 refund_policy: DepositRefundPolicy::OnlyPassed,
             }),
@@ -1131,7 +1138,9 @@ fn test_deposit_return_on_execute() {
         Status::Passed,
         None,
         Some(UncheckedDepositInfo {
-            denom: DepositToken::VotingModuleToken {},
+            denom: DepositToken::VotingModuleToken {
+                token_type: VotingModuleTokenType::Cw20,
+            },
             amount: Uint128::new(1),
             refund_policy: DepositRefundPolicy::OnlyPassed,
         }),
@@ -1416,7 +1425,9 @@ fn test_cant_propose_zero_power() {
         pre_propose_info: get_pre_propose_info(
             &mut app,
             Some(UncheckedDepositInfo {
-                denom: DepositToken::VotingModuleToken {},
+                denom: DepositToken::VotingModuleToken {
+                    token_type: VotingModuleTokenType::Cw20,
+                },
                 amount: Uint128::new(1),
                 refund_policy: DepositRefundPolicy::Always,
             }),
@@ -1532,7 +1543,9 @@ fn test_cant_vote_not_registered() {
         Status::Open,
         Some(Uint128::new(100)),
         Some(UncheckedDepositInfo {
-            denom: DepositToken::VotingModuleToken {},
+            denom: DepositToken::VotingModuleToken {
+                token_type: VotingModuleTokenType::Cw20,
+            },
             amount: Uint128::new(1),
             refund_policy: DepositRefundPolicy::Always,
         }),
@@ -1887,7 +1900,9 @@ fn test_close_open_proposal() {
         Status::Open,
         Some(Uint128::new(100)),
         Some(UncheckedDepositInfo {
-            denom: DepositToken::VotingModuleToken {},
+            denom: DepositToken::VotingModuleToken {
+                token_type: VotingModuleTokenType::Cw20,
+            },
             amount: Uint128::new(1),
             refund_policy: DepositRefundPolicy::Always,
         }),
@@ -1955,7 +1970,9 @@ fn test_no_refund_failed_proposal() {
         Status::Open,
         Some(Uint128::new(100)),
         Some(UncheckedDepositInfo {
-            denom: DepositToken::VotingModuleToken {},
+            denom: DepositToken::VotingModuleToken {
+                token_type: VotingModuleTokenType::Cw20,
+            },
             amount: Uint128::new(1),
             refund_policy: DepositRefundPolicy::OnlyPassed,
         }),
@@ -2033,7 +2050,9 @@ fn test_deposit_return_on_close() {
         Status::Rejected,
         None,
         Some(UncheckedDepositInfo {
-            denom: DepositToken::VotingModuleToken {},
+            denom: DepositToken::VotingModuleToken {
+                token_type: VotingModuleTokenType::Cw20,
+            },
             amount: Uint128::new(1),
             refund_policy: DepositRefundPolicy::Always,
         }),
@@ -2333,7 +2352,9 @@ fn test_no_return_if_no_refunds() {
         Status::Rejected,
         None,
         Some(UncheckedDepositInfo {
-            denom: DepositToken::VotingModuleToken {},
+            denom: DepositToken::VotingModuleToken {
+                token_type: VotingModuleTokenType::Cw20,
+            },
             amount: Uint128::new(1),
             refund_policy: DepositRefundPolicy::OnlyPassed,
         }),
@@ -3529,7 +3550,9 @@ fn test_return_deposit_to_dao_on_proposal_failure() {
         Status::Open,
         Some(Uint128::new(100)),
         Some(UncheckedDepositInfo {
-            denom: DepositToken::VotingModuleToken {},
+            denom: DepositToken::VotingModuleToken {
+                token_type: VotingModuleTokenType::Cw20,
+            },
             amount: Uint128::new(1),
             refund_policy: DepositRefundPolicy::OnlyPassed,
         }),
@@ -3832,7 +3855,9 @@ fn test_no_double_refund_on_execute_fail_and_close() {
         pre_propose_info: get_pre_propose_info(
             &mut app,
             Some(UncheckedDepositInfo {
-                denom: DepositToken::VotingModuleToken {},
+                denom: DepositToken::VotingModuleToken {
+                    token_type: VotingModuleTokenType::Cw20,
+                },
                 amount: Uint128::new(1),
                 // Important to set to true here as we want to be sure
                 // that we don't get a second refund on close. Refunds on

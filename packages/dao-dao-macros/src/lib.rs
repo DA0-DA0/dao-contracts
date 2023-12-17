@@ -152,16 +152,16 @@ pub fn voting_module_query(metadata: TokenStream, input: TokenStream) -> TokenSt
 }
 
 /// Adds the necessary fields to an enum such that it implements the
-/// interface needed to be a voting module with a token.
+/// interface needed to be a voting module with a cw20 token.
 ///
 /// For example:
 ///
 /// ```
-/// use dao_dao_macros::token_query;
+/// use dao_dao_macros::cw20_token_query;
 /// use cosmwasm_schema::{cw_serde, QueryResponses};
 /// use cosmwasm_std::Addr;
 ///
-/// #[token_query]
+/// #[cw20_token_query]
 /// #[cw_serde]
 /// #[derive(QueryResponses)]
 /// enum QueryMsg {}
@@ -181,11 +181,11 @@ pub fn voting_module_query(metadata: TokenStream, input: TokenStream) -> TokenSt
 /// occurs before the addition of the field.
 ///
 /// ```compile_fail
-/// use dao_dao_macros::token_query;
+/// use dao_dao_macros::cw20_token_query;
 /// use cosmwasm_schema::{cw_serde, QueryResponses};
 ///
 /// #[derive(Clone)]
-/// #[token_query]
+/// #[cw20_token_query]
 /// #[allow(dead_code)]
 /// #[cw_serde]
 /// #[derive(QueryResponses)]
@@ -196,7 +196,7 @@ pub fn voting_module_query(metadata: TokenStream, input: TokenStream) -> TokenSt
 /// }
 /// ```
 #[proc_macro_attribute]
-pub fn token_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
+pub fn cw20_token_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
     merge_variants(
         metadata,
         input,
@@ -204,6 +204,65 @@ pub fn token_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
         enum Right {
             #[returns(::cosmwasm_std::Addr)]
             TokenContract {}
+        }
+        }
+        .into(),
+    )
+}
+
+/// Adds the necessary fields to an enum such that it implements the
+/// interface needed to be a voting module with a native token.
+///
+/// For example:
+///
+/// ```
+/// use dao_dao_macros::native_token_query;
+/// use cosmwasm_schema::{cw_serde, QueryResponses};
+/// use cosmwasm_std::Addr;
+///
+/// #[native_token_query]
+/// #[cw_serde]
+/// #[derive(QueryResponses)]
+/// enum QueryMsg {}
+/// ```
+///
+/// Will transform the enum to:
+///
+/// ```
+/// enum QueryMsg {
+///     Denom {},
+/// }
+/// ```
+///
+/// Note that other derive macro invocations must occur after this
+/// procedural macro as they may depend on the new fields. For
+/// example, the following will fail becase the `Clone` derivation
+/// occurs before the addition of the field.
+///
+/// ```compile_fail
+/// use dao_dao_macros::native_token_query;
+/// use cosmwasm_schema::{cw_serde, QueryResponses};
+///
+/// #[derive(Clone)]
+/// #[native_token_query]
+/// #[allow(dead_code)]
+/// #[cw_serde]
+/// #[derive(QueryResponses)]
+/// enum Test {
+///     Foo,
+///     Bar(u64),
+///     Baz { foo: u64 },
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn native_token_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
+    merge_variants(
+        metadata,
+        input,
+        quote! {
+        enum Right {
+            #[returns(::dao_interface::voting::DenomResponse)]
+            Denom {}
         }
         }
         .into(),

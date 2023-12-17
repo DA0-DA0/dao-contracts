@@ -4,6 +4,7 @@ use cosmwasm_std::{
 };
 use cw_utils::{must_pay, PaymentError};
 
+use dao_interface::voting::DenomResponse;
 use thiserror::Error;
 
 use cw_denom::{CheckedDenom, DenomError, UncheckedDenom};
@@ -27,18 +28,27 @@ pub enum DepositError {
     InvalidDeposit { actual: Uint128, expected: Uint128 },
 }
 
+// The voting module token type to expect.
+#[cw_serde]
+pub enum VotingModuleTokenType {
+    Native,
+    Cw20,
+}
+
 /// Information about the token to use for proposal deposits.
 #[cw_serde]
 pub enum DepositToken {
     /// Use a specific token address as the deposit token.
     Token { denom: UncheckedDenom },
-    /// Use the token address of the associated DAO's voting
-    /// module. NOTE: in order to use the token address of the voting
-    /// module the voting module must (1) use a cw20 token and (2)
+    /// Use the token native denom or cw20 contract address of the associated
+    /// DAO's voting module. NOTE: in order to retrieve the token automatically
+    /// via this variant, the voting module must either (1) use a native token
+    /// and implement the `Denom {}` query type defined by
+    /// `dao_dao_macros::native_token_query` OR (2) use a cw20 token and
     /// implement the `TokenContract {}` query type defined by
-    /// `dao_dao_macros::token_query`. Failing to implement that
-    /// and using this option will cause instantiation to fail.
-    VotingModuleToken {},
+    /// `dao_dao_macros::cw20_token_query`. Failing to implement correctly will
+    /// cause this option to fail to instantiate.
+    VotingModuleToken { token_type: VotingModuleTokenType },
 }
 
 /// Information about the deposit required to create a proposal.
@@ -98,21 +108,32 @@ impl UncheckedDepositInfo {
 
         let denom = match denom {
             DepositToken::Token { denom } => denom.into_checked(deps),
-            DepositToken::VotingModuleToken {} => {
+            DepositToken::VotingModuleToken { token_type } => {
                 let voting_module: Addr = deps
                     .querier
                     .query_wasm_smart(dao, &dao_interface::msg::QueryMsg::VotingModule {})?;
-                // If the voting module has no token this will
-                // error. This is desirable.
-                let token_addr: Addr = deps.querier.query_wasm_smart(
-                    voting_module,
-                    &dao_interface::voting::Query::TokenContract {},
-                )?;
-                // We don't assume here that the voting module has
-                // returned a valid token. Conversion of the unchecked
-                // denom into a checked one will do a `TokenInfo {}`
-                // query.
-                UncheckedDenom::Cw20(token_addr.into_string()).into_checked(deps)
+
+                if token_type == VotingModuleTokenType::Native {
+                    // If the voting module has no native token denom this will
+                    // error. This is desirable.
+                    let denom: DenomResponse = deps
+                        .querier
+                        .query_wasm_smart(voting_module, &dao_interface::voting::Query::Denom {})?;
+                    // Validate that native denom is formatted correctly.
+                    UncheckedDenom::Native(denom.denom).into_checked(deps)
+                } else {
+                    // If the voting module has no cw20 token this will error.
+                    // This is desirable.
+                    let token_addr: Addr = deps.querier.query_wasm_smart(
+                        voting_module,
+                        &dao_interface::voting::Query::TokenContract {},
+                    )?;
+                    // We don't assume here that the voting module has
+                    // returned a valid token. Conversion of the unchecked
+                    // denom into a checked one will do a `TokenInfo {}`
+                    // query.
+                    UncheckedDenom::Cw20(token_addr.into_string()).into_checked(deps)
+                }
             }
         }?;
 

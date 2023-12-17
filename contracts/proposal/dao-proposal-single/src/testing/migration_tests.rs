@@ -8,7 +8,10 @@ use dao_testing::contracts::{
     dao_dao_contract, proposal_single_contract, v1_dao_dao_contract, v1_proposal_single_contract,
 };
 use dao_voting::veto::VetoConfig;
-use dao_voting::{deposit::UncheckedDepositInfo, status::Status};
+use dao_voting::{
+    deposit::{UncheckedDepositInfo, VotingModuleTokenType},
+    status::Status,
+};
 
 use crate::testing::queries::query_list_proposals;
 use crate::testing::{
@@ -303,7 +306,9 @@ fn test_v1_v2_full_migration() {
     let pre_propose_info = get_pre_propose_info(
         &mut app,
         Some(UncheckedDepositInfo {
-            denom: dao_voting::deposit::DepositToken::VotingModuleToken {},
+            denom: dao_voting::deposit::DepositToken::VotingModuleToken {
+                token_type: VotingModuleTokenType::Cw20,
+            },
             amount: Uint128::new(1),
             refund_policy: dao_voting::deposit::DepositRefundPolicy::OnlyPassed,
         }),

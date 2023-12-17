@@ -18,7 +18,7 @@ use dao_interface::{
 };
 use dao_testing::{ShouldExecute, TestSingleChoiceVote};
 use dao_voting::{
-    deposit::{CheckedDepositInfo, UncheckedDepositInfo},
+    deposit::{CheckedDepositInfo, UncheckedDepositInfo, VotingModuleTokenType},
     pre_propose::{PreProposeInfo, ProposalCreationPolicy},
     proposal::{SingleChoiceProposeMsg as ProposeMsg, MAX_PROPOSAL_SIZE},
     reply::{
@@ -2995,7 +2995,9 @@ pub fn test_migrate_updates_version() {
 //         only_members_execute: false,
 //         allow_revoting: false,
 //         deposit_info: Some(v1::msg::DepositInfo {
-//             token: v1::msg::DepositToken::VotingModuleToken {},
+//             token: v1::msg::DepositToken::VotingModuleToken {
+//                 token_type: VotingModuleTokenType::Cw20,
+//             },
 //             deposit: Uint128::new(1),
 //             refund_failed_proposals: true,
 //         }),
@@ -3798,7 +3800,9 @@ fn test_update_pre_propose_module() {
                         code_id: pre_propose_id,
                         msg: to_json_binary(&dao_pre_propose_single::InstantiateMsg {
                             deposit_info: Some(UncheckedDepositInfo {
-                                denom: dao_voting::deposit::DepositToken::VotingModuleToken {},
+                                denom: dao_voting::deposit::DepositToken::VotingModuleToken {
+                                    token_type: VotingModuleTokenType::Cw20,
+                                },
                                 amount: Uint128::new(1),
                                 refund_policy: dao_voting::deposit::DepositRefundPolicy::OnlyPassed,
                             }),

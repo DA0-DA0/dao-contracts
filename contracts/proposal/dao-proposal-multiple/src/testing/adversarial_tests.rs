@@ -14,7 +14,7 @@ use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App, Executor};
 use cw_utils::Duration;
 use dao_voting::{
-    deposit::{DepositRefundPolicy, UncheckedDepositInfo},
+    deposit::{DepositRefundPolicy, UncheckedDepositInfo, VotingModuleTokenType},
     multiple_choice::{
         MultipleChoiceOption, MultipleChoiceOptions, MultipleChoiceVote, VotingStrategy,
     },
@@ -273,7 +273,9 @@ pub fn test_allow_voting_after_proposal_execution_pre_expiration_cw20() {
         pre_propose_info: get_pre_propose_info(
             &mut app,
             Some(UncheckedDepositInfo {
-                denom: dao_voting::deposit::DepositToken::VotingModuleToken {},
+                denom: dao_voting::deposit::DepositToken::VotingModuleToken {
+                    token_type: VotingModuleTokenType::Cw20,
+                },
                 amount: Uint128::new(10_000_000),
                 refund_policy: DepositRefundPolicy::OnlyPassed,
             }),

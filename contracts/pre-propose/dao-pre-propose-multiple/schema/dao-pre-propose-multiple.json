@@ -88,7 +88,7 @@
             "additionalProperties": false
           },
           {
-            "description": "Use the token address of the associated DAO's voting module. NOTE: in order to use the token address of the voting module the voting module must (1) use a cw20 token and (2) implement the `TokenContract {}` query type defined by `dao_dao_macros::token_query`. Failing to implement that and using this option will cause instantiation to fail.",
+            "description": "Use the token native denom or cw20 contract address of the associated DAO's voting module. NOTE: in order to retrieve the token automatically via this variant, the voting module must either (1) use a native token and implement the `Denom {}` query type defined by `dao_dao_macros::native_token_query` OR (2) use a cw20 token and implement the `TokenContract {}` query type defined by `dao_dao_macros::cw20_token_query`. Failing to implement correctly will cause this option to fail to instantiate.",
             "type": "object",
             "required": [
               "voting_module_token"
@@ -96,6 +96,14 @@
             "properties": {
               "voting_module_token": {
                 "type": "object",
+                "required": [
+                  "token_type"
+                ],
+                "properties": {
+                  "token_type": {
+                    "$ref": "#/definitions/VotingModuleTokenType"
+                  }
+                },
                 "additionalProperties": false
               }
             },
@@ -177,6 +185,13 @@
           }
         },
         "additionalProperties": false
+      },
+      "VotingModuleTokenType": {
+        "type": "string",
+        "enum": [
+          "native",
+          "cw20"
+        ]
       }
     }
   },
@@ -601,7 +616,7 @@
             "additionalProperties": false
           },
           {
-            "description": "Use the token address of the associated DAO's voting module. NOTE: in order to use the token address of the voting module the voting module must (1) use a cw20 token and (2) implement the `TokenContract {}` query type defined by `dao_dao_macros::token_query`. Failing to implement that and using this option will cause instantiation to fail.",
+            "description": "Use the token native denom or cw20 contract address of the associated DAO's voting module. NOTE: in order to retrieve the token automatically via this variant, the voting module must either (1) use a native token and implement the `Denom {}` query type defined by `dao_dao_macros::native_token_query` OR (2) use a cw20 token and implement the `TokenContract {}` query type defined by `dao_dao_macros::cw20_token_query`. Failing to implement correctly will cause this option to fail to instantiate.",
             "type": "object",
             "required": [
               "voting_module_token"
@@ -609,6 +624,14 @@
             "properties": {
               "voting_module_token": {
                 "type": "object",
+                "required": [
+                  "token_type"
+                ],
+                "properties": {
+                  "token_type": {
+                    "$ref": "#/definitions/VotingModuleTokenType"
+                  }
+                },
                 "additionalProperties": false
               }
             },
@@ -1228,6 +1251,13 @@
           "no",
           "abstain",
           "no_with_veto"
+        ]
+      },
+      "VotingModuleTokenType": {
+        "type": "string",
+        "enum": [
+          "native",
+          "cw20"
         ]
       },
       "WasmMsg": {

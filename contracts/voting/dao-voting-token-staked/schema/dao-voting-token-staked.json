@@ -590,19 +590,6 @@
       {
         "type": "object",
         "required": [
-          "denom"
-        ],
-        "properties": {
-          "denom": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
           "claims"
         ],
         "properties": {
@@ -683,6 +670,19 @@
         ],
         "properties": {
           "token_contract": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "denom"
+        ],
+        "properties": {
+          "denom": {
             "type": "object",
             "additionalProperties": false
           }

@@ -10,7 +10,7 @@ use dao_testing::contracts::{
     dao_dao_contract, native_staked_balances_voting_contract, pre_propose_multiple_contract,
 };
 use dao_voting::{
-    deposit::{DepositRefundPolicy, UncheckedDepositInfo},
+    deposit::{DepositRefundPolicy, UncheckedDepositInfo, VotingModuleTokenType},
     multiple_choice::VotingStrategy,
     pre_propose::PreProposeInfo,
     threshold::{ActiveThreshold, ActiveThreshold::AbsoluteCount, PercentageThreshold},
@@ -58,7 +58,9 @@ pub fn _get_default_token_dao_proposal_module_instantiate(app: &mut App) -> Inst
         pre_propose_info: get_pre_propose_info(
             app,
             Some(UncheckedDepositInfo {
-                denom: dao_voting::deposit::DepositToken::VotingModuleToken {},
+                denom: dao_voting::deposit::DepositToken::VotingModuleToken {
+                    token_type: VotingModuleTokenType::Cw20,
+                },
                 amount: Uint128::new(10_000_000),
                 refund_policy: DepositRefundPolicy::OnlyPassed,
             }),

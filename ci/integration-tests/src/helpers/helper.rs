@@ -7,7 +7,7 @@ use cw_utils::Duration;
 use dao_interface::query::DumpStateResponse;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_voting::{
-    deposit::{DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
+    deposit::{DepositRefundPolicy, DepositToken, UncheckedDepositInfo, VotingModuleTokenType},
     pre_propose::{PreProposeInfo, ProposalCreationPolicy},
     threshold::PercentageThreshold,
     threshold::Threshold,
@@ -78,7 +78,9 @@ pub fn create_dao(
                         code_id: chain.orc.contract_map.code_id("dao_pre_propose_single")?,
                         msg: to_json_binary(&dao_pre_propose_single::InstantiateMsg {
                             deposit_info: Some(UncheckedDepositInfo {
-                                denom: DepositToken::VotingModuleToken {},
+                                denom: DepositToken::VotingModuleToken {
+                                    token_type: VotingModuleTokenType::Cw20,
+                                },
                                 amount: DEPOSIT_AMOUNT,
                                 refund_policy: DepositRefundPolicy::OnlyPassed,
                             }),

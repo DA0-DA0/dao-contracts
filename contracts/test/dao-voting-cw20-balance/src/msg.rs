@@ -3,7 +3,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw20::Cw20Coin;
 use cw20_base::msg::InstantiateMarketingInfo;
 
-use dao_dao_macros::{token_query, voting_module_query};
+use dao_dao_macros::{cw20_token_query, voting_module_query};
 
 #[cw_serde]
 pub enum TokenInfo {
@@ -30,7 +30,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {}
 
-#[token_query]
+#[cw20_token_query]
 #[voting_module_query]
 #[cw_serde]
 #[derive(QueryResponses)]

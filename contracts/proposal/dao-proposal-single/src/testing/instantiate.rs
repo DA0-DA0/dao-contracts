@@ -7,7 +7,7 @@ use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_pre_propose_single as cppbps;
 
 use dao_voting::{
-    deposit::{DepositRefundPolicy, UncheckedDepositInfo},
+    deposit::{DepositRefundPolicy, UncheckedDepositInfo, VotingModuleTokenType},
     pre_propose::PreProposeInfo,
     threshold::{ActiveThreshold, PercentageThreshold, Threshold::ThresholdQuorum},
 };
@@ -61,7 +61,9 @@ pub(crate) fn get_default_token_dao_proposal_module_instantiate(app: &mut App) -
         pre_propose_info: get_pre_propose_info(
             app,
             Some(UncheckedDepositInfo {
-                denom: dao_voting::deposit::DepositToken::VotingModuleToken {},
+                denom: dao_voting::deposit::DepositToken::VotingModuleToken {
+                    token_type: VotingModuleTokenType::Cw20,
+                },
                 amount: Uint128::new(10_000_000),
                 refund_policy: DepositRefundPolicy::OnlyPassed,
             }),

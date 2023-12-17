@@ -5,7 +5,7 @@ use cosmwasm_std::{to_json_binary, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_voting::{
-    deposit::{DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
+    deposit::{DepositRefundPolicy, DepositToken, UncheckedDepositInfo, VotingModuleTokenType},
     pre_propose::PreProposeInfo,
     threshold::PercentageThreshold,
     threshold::Threshold,
@@ -93,7 +93,9 @@ fn main() -> Result<()> {
                         code_id: orc.contract_map.code_id("dao_pre_propose_single")?,
                         msg: to_json_binary(&dao_pre_propose_single::InstantiateMsg {
                             deposit_info: Some(UncheckedDepositInfo {
-                                denom: DepositToken::VotingModuleToken {},
+                                denom: DepositToken::VotingModuleToken {
+                                    token_type: VotingModuleTokenType::Cw20,
+                                },
                                 amount: Uint128::new(1000000000),
                                 refund_policy: DepositRefundPolicy::OnlyPassed,
                             }),
