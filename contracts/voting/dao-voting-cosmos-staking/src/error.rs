@@ -10,5 +10,5 @@ pub enum ContractError {
     OverflowError(#[from] OverflowError),
 
     #[error("Execution is not enabled on this contract.")]
-    NoExecution {}
+    NoExecution {},
 }
