@@ -1,7 +1,10 @@
 use cosmwasm_std::{Addr, Empty, to_json_binary};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor, SudoMsg, WasmSudo};
+use dao_interface::voting::{
+    TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
+};
 
-use crate::msg::InstantiateMsg;
+use crate::msg::{InstantiateMsg, QueryMsg};
 
 fn cosmos_staking_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -33,15 +36,23 @@ fn happy_path() {
         )
         .unwrap();
 
-    // TODO stake!     
+    // TODO stake!   
 
     // Manually update a delegation, normally this would be called by cw-hooks
     app.sudo(SudoMsg::Wasm(WasmSudo {
-        contract_addr: vp_contract,
+        contract_addr: vp_contract.clone(),
         msg: to_json_binary(&crate::msg::SudoMsg::AfterDelegationModified {
             validator_address: VALIDATOR.to_string(),
             delegator_address: DELEGATOR.to_string(),
             shares: "100000".to_string(),
         }).unwrap()
     })).unwrap();
+
+    println!("{:?}", app.block_info());
+
+    // Query voting power
+    let _vp: VotingPowerAtHeightResponse = app.wrap().query_wasm_smart(vp_contract.clone(), &QueryMsg::VotingPowerAtHeight {height: Some(12345), address: DELEGATOR.to_string()}).unwrap();
+
+    // Query total voting power
+    let _tp: TotalPowerAtHeightResponse = app.wrap().query_wasm_smart(vp_contract, &QueryMsg::TotalPowerAtHeight {height: Some(12345)}).unwrap();
 }

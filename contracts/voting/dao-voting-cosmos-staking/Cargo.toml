@@ -1,6 +1,6 @@
 [package]
 name = "dao-voting-cosmos-staking"
-authors = ["Callum Anderson <callumanderson745@gmail.com>", "Noah Saso <no-reply@no-reply.com>", "Jake Hartnell <no-reply@no-reply.com>"]
+authors = ["Callum Anderson <callumanderson745@gmail.com>", "Noah Saso <no-reply@no-reply.com>", "Jake Hartnell <no-reply@no-reply.com>", "Joel Smith <joelsmith.2019@gmail.com>", "Reece Williams <reecepbcups@gmail.com>"]
 description = "A DAO DAO voting module based on native Cosmos Staking."
 edition = { workspace = true }
 license = { workspace = true }
