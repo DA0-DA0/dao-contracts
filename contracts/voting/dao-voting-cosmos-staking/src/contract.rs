@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, StakingQuery, QueryRequest
+    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, StakingQuery, QueryRequest, Uint128
 };
 use cw2::set_contract_version;
 use dao_interface::voting::{
@@ -107,57 +107,52 @@ pub fn query_hooks(deps: Deps) -> StdResult<GetHooksResponse> {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
     match msg {
-         // TODO: a validator falls out of the active set. Should we check after a validator is slashed / unbonded from the active set ie. AfterValidatorBeginUnbonding
-        SudoMsg::BeforeDelegationSharesModified {
-            validator_address,
-            delegator_address,
-            shares,
-        } => delegation_change(deps, delegator_address, env.block.height),
+        // TODO: a validator falls out of the active set. Should we check after a validator is slashed / unbonded from the active set ie. AfterValidatorBeginUnbonding
         // SudoMsg::BeforeDelegationRemoved {
         //     validator_address,
         //     delegator_address,
         //     shares,
         // } => delegation_change(deps, delegator_address, env.block.height),
-        // SudoMsg::AfterDelegationModified{
-        //     validator_address,
-        //     delegator_address,
-        //     shares,
-        // } => delegation_change(deps, delegator_address, env.block.height),
+        SudoMsg::AfterDelegationModified{
+             delegator_address,
+             ..
+        } => delegation_change(deps, delegator_address, env.block.height),
     }
-
-    unimplemented!()
 }
 
 /// delegation_change is called any time the chain has delegation events emited.
 /// On the change, we update this for
-fn delegation_change(deps: DepsMut, delegator: String, _block_height: u64) -> StdResult<()>
+fn delegation_change(deps: DepsMut, delegator: String, block_height: u64) -> Result<Response, ContractError>
  {
     // with the delegator, if they are in STAKED_TOTAL update their total. Else add it to the map at the current height
 
     let delegations = deps.querier.query_all_delegations(&delegator)?;
 
-    let mut amount_staked = 0;
+    let mut amount_staked = Uint128::zero();
 
     // iter delegations
     delegations.iter().for_each(|delegation| {
-        amount_staked += delegation.amount.amount.u128();
+        amount_staked += delegation.amount.amount;
     });
+
+    let delegator_addr = deps.api.addr_validate(&delegator)?;
 
     // TODO:
     STAKED_BALANCES.update(
         deps.storage,
-        &delegator,
-        env.block.height,
-        |balance| -> StdResult<Uint128> { Ok(balance.unwrap_or_default().checked_add(amount)?) },
+        &delegator_addr,
+        block_height,
+        |balance| -> StdResult<Uint128> { Ok(balance.unwrap_or_default().checked_add(amount_staked)?) },
     )?;
 
     // let total_stake = deps.querier.query_total_power ? / staked? without stargate
 
     STAKED_TOTAL.update(
         deps.storage,
-        env.block.height,
-        |total| -> StdResult<Uint128> { Ok(total.unwrap_or_default().checked_add(amount)?) },
+        block_height,
+        |total| -> StdResult<Uint128> { Ok(total.unwrap_or_default().checked_add(amount_staked)?) },
     )?;
-    
-    Ok(())
+
+    // TODO add attributes
+    Ok(Response::new())
 }

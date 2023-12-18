@@ -8,7 +8,7 @@ fn cosmos_staking_contract() -> Box<dyn Contract<Empty>> {
         crate::contract::execute,
         crate::contract::instantiate,
         crate::contract::query,
-    );
+    ).with_sudo(crate::contract::sudo);
     Box::new(contract)
 }
 
@@ -33,10 +33,12 @@ fn happy_path() {
         )
         .unwrap();
 
+    // TODO stake!     
+
     // Manually update a delegation, normally this would be called by cw-hooks
     app.sudo(SudoMsg::Wasm(WasmSudo {
         contract_addr: vp_contract,
-        msg: to_json_binary(&crate::msg::SudoMsg::BeforeDelegationSharesModified {
+        msg: to_json_binary(&crate::msg::SudoMsg::AfterDelegationModified {
             validator_address: VALIDATOR.to_string(),
             delegator_address: DELEGATOR.to_string(),
             shares: "100000".to_string(),

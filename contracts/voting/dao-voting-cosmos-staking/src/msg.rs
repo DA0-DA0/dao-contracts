@@ -28,17 +28,17 @@ pub enum SudoMsg {
     //     shares: String,
     // },
 
-    BeforeDelegationSharesModified {
-        validator_address: String,
-        delegator_address: String,
-        shares: String,
-    },
-
-    // AfterDelegationModified {
+    // BeforeDelegationSharesModified {
     //     validator_address: String,
     //     delegator_address: String,
     //     shares: String,
     // },
+
+    AfterDelegationModified {
+        validator_address: String,
+        delegator_address: String,
+        shares: String,
+    },
 
     // BeforeDelegationRemoved {
     //     validator_address: String,
