@@ -2,7 +2,10 @@
 // see https://github.com/rust-lang/rust/issues/46379
 #![allow(dead_code)]
 
-use cosmwasm_std::{Addr, Coin, Uint128};
+#[cfg(feature = "osmosis_tokenfactory")]
+use cosmwasm_std::Uint128;
+use cosmwasm_std::{Addr, Coin};
+
 use cw_tokenfactory_issuer::msg::{AllowlistResponse, DenylistResponse, Metadata, MigrateMsg};
 use cw_tokenfactory_issuer::{
     msg::{
@@ -272,6 +275,7 @@ impl TokenfactoryIssuer {
         )
     }
 
+    #[cfg(feature = "osmosis_tokenfactory")]
     pub fn set_before_send_hook(
         &self,
         cosmwasm_address: String,
@@ -284,6 +288,7 @@ impl TokenfactoryIssuer {
         )
     }
 
+    #[cfg(feature = "osmosis_tokenfactory")]
     pub fn force_transfer(
         &self,
         signer: &SigningAccount,

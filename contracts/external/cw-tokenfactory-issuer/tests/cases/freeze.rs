@@ -2,6 +2,7 @@ use cw_tokenfactory_issuer::ContractError;
 
 use crate::test_env::{TestEnv, TokenfactoryIssuer};
 
+#[cfg(feature = "osmosis_tokenfactory")]
 #[test]
 fn freeze_by_owener_should_pass() {
     let env = TestEnv::default();
@@ -33,6 +34,7 @@ fn freeze_by_owener_should_pass() {
     );
 }
 
+#[cfg(feature = "osmosis_tokenfactory")]
 #[test]
 fn freeze_by_non_owner_should_fail() {
     let env = TestEnv::default();

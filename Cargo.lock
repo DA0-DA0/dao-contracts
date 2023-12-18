@@ -438,7 +438,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "20b42021d8488665b1a0d9748f1f81df7235362d194f44481e2e61bf376b77b4"
 dependencies = [
  "prost 0.11.9",
- "prost-types",
+ "prost-types 0.11.9",
  "tendermint-proto 0.23.9",
 ]
 
@@ -449,7 +449,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "673d31bd830c0772d78545de20d975129b6ab2f7db4e4e9313c3b8777d319194"
 dependencies = [
  "prost 0.11.9",
- "prost-types",
+ "prost-types 0.11.9",
  "tendermint-proto 0.26.0",
  "tonic 0.8.3",
 ]
@@ -461,7 +461,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73c9d2043a9e617b0d602fbc0a0ecd621568edbf3a9774890a6d562389bd8e1c"
 dependencies = [
  "prost 0.11.9",
- "prost-types",
+ "prost-types 0.11.9",
  "tendermint-proto 0.32.2",
  "tonic 0.9.2",
 ]
@@ -1020,15 +1020,32 @@ dependencies = [
  "cw-multi-test",
  "cw-ownable",
  "cw-storage-plus 1.2.0",
+ "cw-tokenfactory-types",
  "cw2 1.1.2",
+ "dao-interface",
  "osmosis-std",
  "osmosis-test-tube",
- "prost 0.11.9",
+ "prost 0.12.3",
  "schemars",
  "serde",
  "serde_json",
  "thiserror",
- "token-bindings",
+]
+
+[[package]]
+name = "cw-tokenfactory-types"
+version = "2.4.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "dao-interface",
+ "osmosis-std",
+ "osmosis-std-derive",
+ "prost 0.12.3",
+ "prost-types 0.12.3",
+ "schemars",
+ "serde",
+ "serde-cw-value",
 ]
 
 [[package]]
@@ -2004,7 +2021,6 @@ dependencies = [
  "serde",
  "serde_json",
  "stake-cw20",
- "token-bindings",
 ]
 
 [[package]]
@@ -3154,7 +3170,7 @@ dependencies = [
  "cosmwasm-std",
  "osmosis-std-derive",
  "prost 0.11.9",
- "prost-types",
+ "prost-types 0.11.9",
  "schemars",
  "serde",
  "serde-cw-value",
@@ -3168,7 +3184,7 @@ checksum = "c5ebdfd1bc8ed04db596e110c6baa9b174b04f6ed1ec22c666ddc5cb3fa91bd7"
 dependencies = [
  "itertools 0.10.5",
  "proc-macro2",
- "prost-types",
+ "prost-types 0.11.9",
  "quote",
  "syn 1.0.109",
 ]
@@ -3438,6 +3454,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "213622a1460818959ac1181aaeb2dc9c7f63df720db7d788b3e24eacd1983e13"
 dependencies = [
  "prost 0.11.9",
+]
+
+[[package]]
+name = "prost-types"
+version = "0.12.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "193898f59edcf43c26227dcd4c8427f00d99d61e95dcde58dabd49fa291d470e"
+dependencies = [
+ "prost 0.12.3",
 ]
 
 [[package]]
@@ -4104,7 +4129,7 @@ dependencies = [
  "num-traits",
  "once_cell",
  "prost 0.11.9",
- "prost-types",
+ "prost-types 0.11.9",
  "ripemd160",
  "serde",
  "serde_bytes",
@@ -4135,7 +4160,7 @@ dependencies = [
  "num-traits",
  "once_cell",
  "prost 0.11.9",
- "prost-types",
+ "prost-types 0.11.9",
  "ripemd160",
  "serde",
  "serde_bytes",
@@ -4189,7 +4214,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "prost 0.11.9",
- "prost-types",
+ "prost-types 0.11.9",
  "serde",
  "serde_bytes",
  "subtle-encoding",
@@ -4207,7 +4232,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "prost 0.11.9",
- "prost-types",
+ "prost-types 0.11.9",
  "serde",
  "serde_bytes",
  "subtle-encoding",
@@ -4225,7 +4250,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "prost 0.11.9",
- "prost-types",
+ "prost-types 0.11.9",
  "serde",
  "serde_bytes",
  "subtle-encoding",
@@ -4396,18 +4421,6 @@ name = "tinyvec_macros"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
-
-[[package]]
-name = "token-bindings"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9be1c893c90d2993320d9722516ece705460f464616313a62edadb9e71df4502"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "schemars",
- "serde",
-]
 
 [[package]]
 name = "tokio"

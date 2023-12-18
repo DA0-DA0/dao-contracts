@@ -5,6 +5,7 @@ use crate::test_env::{
     test_query_over_default_limit, test_query_within_default_limit, TestEnv, TokenfactoryIssuer,
 };
 
+#[cfg(feature = "osmosis_tokenfactory")]
 #[test]
 fn denylist_by_owner_should_pass() {
     let env = TestEnv::default();
@@ -41,6 +42,7 @@ fn denylist_by_owner_should_pass() {
     );
 }
 
+#[cfg(feature = "osmosis_tokenfactory")]
 #[test]
 fn denylist_by_non_owner_should_fail() {
     let env = TestEnv::default();
@@ -67,6 +69,7 @@ fn denylist_by_non_owner_should_fail() {
     );
 }
 
+#[cfg(feature = "osmosis_tokenfactory")]
 #[test]
 fn set_denylist_to_issuer_itself_fails() {
     let env = TestEnv::default();
@@ -89,6 +92,7 @@ fn set_denylist_to_issuer_itself_fails() {
     );
 }
 
+#[cfg(feature = "osmosis_tokenfactory")]
 #[test]
 fn query_denylist_within_default_limit() {
     test_query_within_default_limit::<StatusInfo, _, _>(
@@ -122,6 +126,7 @@ fn query_denylist_within_default_limit() {
     );
 }
 
+#[cfg(feature = "osmosis_tokenfactory")]
 #[test]
 fn query_denylist_over_default_limit() {
     test_query_over_default_limit::<StatusInfo, _, _>(

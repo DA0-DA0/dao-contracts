@@ -22,6 +22,7 @@ fn before_send_should_not_block_anything_by_default() {
         .unwrap();
 }
 
+#[cfg(feature = "osmosis_tokenfactory")]
 #[test]
 fn before_send_should_block_on_frozen() {
     let env = TestEnv::default();
@@ -48,6 +49,7 @@ fn before_send_should_block_on_frozen() {
     assert_eq!(err, RunnerError::ExecuteError { msg:  format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The contract is frozen for denom \"{denom}\". Addresses need to be added to the allowlist to enable transfers to or from an account.: execute wasm contract failed") });
 }
 
+#[cfg(feature = "osmosis_tokenfactory")]
 #[test]
 fn allowlisted_addresses_can_transfer_when_token_frozen() {
     let env = TestEnv::default();
@@ -95,6 +97,7 @@ fn allowlisted_addresses_can_transfer_when_token_frozen() {
         .unwrap();
 }
 
+#[cfg(feature = "osmosis_tokenfactory")]
 #[test]
 fn non_allowlisted_accounts_can_transfer_to_allowlisted_address_frozen() {
     let env = TestEnv::default();
@@ -129,6 +132,7 @@ fn non_allowlisted_accounts_can_transfer_to_allowlisted_address_frozen() {
         .unwrap();
 }
 
+#[cfg(feature = "osmosis_tokenfactory")]
 #[test]
 fn before_send_should_block_sending_from_denylist_address() {
     let env = TestEnv::default();
@@ -167,6 +171,7 @@ fn before_send_should_block_sending_from_denylist_address() {
     assert_eq!(err, RunnerError::ExecuteError { msg:  format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The address '{denylistee_addr}' is denied transfer abilities: execute wasm contract failed") });
 }
 
+#[cfg(feature = "osmosis_tokenfactory")]
 #[test]
 fn before_send_should_block_sending_to_denylist_address() {
     let env = TestEnv::default();

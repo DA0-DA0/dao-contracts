@@ -33,7 +33,6 @@ osmosis-test-tube = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-token-bindings = { workspace = true }
 
 cw-core-v1 = { workspace = true, features = ["library"] }
 cw-hooks = { workspace = true }
