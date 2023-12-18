@@ -1,0 +1,69 @@
+{
+    "chains": [
+        {
+            "name": "juno",
+            "chain_id": "localjuno-1",
+            "denom": "ujuno",
+            "binary": "junod",
+            "bech32_prefix": "juno",
+            "docker_image": {
+                "repository": "ghcr.io/cosmoscontracts/juno",
+                "version": "v18.0.0"
+            },
+            "use_new_genesis_command": false,
+            "gas_prices": "0%DENOM%",
+            "chain_type": "cosmos",
+            "coin_type": 118,
+            "trusting_period": "112h",
+            "gas_adjustment": 2,
+            "number_vals": 1,
+            "number_node": 0,
+            "debugging": true,
+            "block_time": "500ms",
+            "encoding-options": [
+                "juno"
+            ],
+            "genesis": {
+                "modify": [
+                    {
+                        "key": "app_state.gov.params.voting_period",
+                        "value": "15s"
+                    },
+                    {
+                        "key": "app_state.gov.params.max_deposit_period",
+                        "value": "15s"
+                    },
+                    {
+                        "key": "app_state.gov.params.min_deposit.0.denom",
+                        "value": "ujuno"
+                    },
+                    {
+                        "key": "app_state.gov.params.min_deposit.0.amount",
+                        "value": "1"
+                    },
+                    {
+                        "key": "app_state.cw-hooks.params.contract_gas_limit",
+                        "value": "5000000"
+                    }
+                ],
+                "accounts": [
+                    {
+                        "name": "acc0",
+                        "address": "juno1hj5fveer5cjtn4wd6wstzugjfdxzl0xps73ftl",
+                        "amount": "10000000000%DENOM%",
+                        "mnemonic": "decorate bright ozone fork gallery riot bus exhaust worth way bone indoor calm squirrel merry zero scheme cotton until shop any excess stage laundry"
+                    },
+                    {
+                        "name": "acc1",
+                        "address": "juno1efd63aw40lxf3n4mhf7dzhjkr453axurv2zdzk",
+                        "amount": "10000000000%DENOM%",
+                        "mnemonic": "wealth flavor believe regret funny network recall kiss grape useless pepper cram hint member few certain unveil rather brick bargain curious require crowd raise"
+                    }
+                ],
+                "startup_commands": [
+                    "%BIN% keys add example-key-after --keyring-backend test --home %HOME%"
+                ]
+            }
+        }
+    ]
+}
