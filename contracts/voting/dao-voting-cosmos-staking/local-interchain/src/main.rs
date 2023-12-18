@@ -2,7 +2,6 @@
 
 use localic_std::modules::cosmwasm::CosmWasm;
 use reqwest::blocking::Client;
-use serde_json::json;
 
 use localic_std::polling::*;
 use localic_std::transactions::*;
@@ -28,7 +27,7 @@ fn main() {
 fn test_cosmos_staking(rb: &ChainRequestBuilder) {
     let mut cw = CosmWasm::new(&rb);
 
-    let file_path = get_contract_path().join("dao-voting-cosmos-staking.wasm");
+    let file_path = get_contract_path().join("dao_voting_token_staked.wasm");
     let code_id = cw.store("acc0", &file_path);
     if code_id.is_err() {
         panic!("code_id error: {:?}", code_id);
@@ -64,11 +63,15 @@ fn test_cosmos_staking(rb: &ChainRequestBuilder) {
     // println!("updated_res: {}", updated_res);
 }
 
-fn parent_dir() -> std::path::PathBuf {
-    return std::env::current_dir().unwrap().parent().unwrap().to_path_buf();
+fn root_dir() -> std::path::PathBuf {
+    let mut parent = std::env::current_dir().unwrap().parent().unwrap().to_path_buf();
+    parent = parent.parent().unwrap().to_path_buf();
+    parent = parent.parent().unwrap().to_path_buf();
+    parent = parent.parent().unwrap().to_path_buf();
+    return parent;
 }
 
 // get_contract_path returns the artifacts dire from parent_dir
 fn get_contract_path() -> std::path::PathBuf {
-    parent_dir().join("artifacts")
+    root_dir().join("artifacts")
 }
