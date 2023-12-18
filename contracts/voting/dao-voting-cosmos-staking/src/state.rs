@@ -23,8 +23,8 @@ pub const DENOM: Item<String> = Item::new("denom");
 /// Keeps track of staked balances by address over time
 pub const STAKED_BALANCES: SnapshotMap<&Addr, Uint128> = SnapshotMap::new(
     "staked_balances",
-    "staked_balance__checkpoints",
-    "staked_balance__changelog",
+    "staked_balances__checkpoints",
+    "staked_balances__changelog",
     Strategy::EveryBlock,
 );
 
