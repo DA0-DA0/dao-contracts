@@ -2,12 +2,10 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128
+    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use cw2::set_contract_version;
-use dao_interface::voting::{
-    TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
-};
+use dao_interface::voting::{TotalPowerAtHeightResponse, VotingPowerAtHeightResponse};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, GetHooksResponse, InstantiateMsg, QueryMsg, SudoMsg};
@@ -35,8 +33,7 @@ pub fn execute(
     _info: MessageInfo,
     _msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    // TODO return error?
-    unimplemented!()
+    Err(ContractError::NoExecution {  })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -52,7 +49,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Dao {} => query_dao(deps),
         QueryMsg::GetConfig {} => to_json_binary(&CONFIG.load(deps.storage)?),
         QueryMsg::GetHooks {} => to_json_binary(&query_hooks(deps)?),
-        QueryMsg::IsActive {} => unimplemented!(),
     }
 }
 
@@ -64,8 +60,7 @@ pub fn query_voting_power_at_height(
 ) -> StdResult<VotingPowerAtHeightResponse> {
     let height = height.unwrap_or(env.block.height);
     let delegator_addr = deps.api.addr_validate(&address)?;
-    let power = STAKED_BALANCES
-        .may_load_at_height(deps.storage, &delegator_addr, height)?;
+    let power = STAKED_BALANCES.may_load_at_height(deps.storage, &delegator_addr, height)?;
 
     // If there is voting power history, we use that. If not, we try manually
     // querying delegations, as the user has not changed delegations since we
@@ -74,9 +69,9 @@ pub fn query_voting_power_at_height(
         Some(power) => Ok(VotingPowerAtHeightResponse { power, height }),
         None => {
             let power = get_total_delegations(deps, address)?;
-            Ok(VotingPowerAtHeightResponse { power, height})
+            Ok(VotingPowerAtHeightResponse { power, height })
         }
-    }   
+    }
 }
 
 pub fn query_total_power_at_height(
@@ -84,20 +79,18 @@ pub fn query_total_power_at_height(
     env: Env,
     height: Option<u64>,
 ) -> StdResult<TotalPowerAtHeightResponse> {
-    let height = height.unwrap_or(env.block.height);    
-    let power = STAKED_TOTAL
-        .may_load_at_height(deps.storage, height)?;
+    let height = height.unwrap_or(env.block.height);
+    let power = STAKED_TOTAL.may_load_at_height(deps.storage, height)?;
 
     match power {
         // If we have history, which should be the case 99.9% of the time
         // we return the total power
         Some(power) => Ok(TotalPowerAtHeightResponse { power, height }),
-        // TODO: how do we want to handle this? Maybe just throw an error?
+        // TODO: fallback to getting the total stake
         // We may not have history if no one has staked or unstaked since this
         // contract was instantiated, in that case we fall back to a manual query
-        None => unimplemented!()
+        None => unimplemented!(),
     }
-
 }
 
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
@@ -125,20 +118,21 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
         //     delegator_address,
         //     shares,
         // } => delegation_change(deps, delegator_address, env.block.height),
-        SudoMsg::AfterDelegationModified{
-             delegator_address,
-             ..
+        SudoMsg::AfterDelegationModified {
+            delegator_address, ..
         } => delegation_change(deps, delegator_address, env.block.height),
     }
 }
 
 /// delegation_change is called any time the chain has delegation events emited.
 /// On the change, we update this for
-fn delegation_change(deps: DepsMut, delegator: String, block_height: u64) -> Result<Response, ContractError>
- {
-    
+fn delegation_change(
+    deps: DepsMut,
+    delegator: String,
+    block_height: u64,
+) -> Result<Response, ContractError> {
     let delegator_addr = deps.api.addr_validate(&delegator)?;
-    
+
     let amount_staked = get_total_delegations(deps.as_ref(), delegator)?;
 
     // TODO:
@@ -146,24 +140,24 @@ fn delegation_change(deps: DepsMut, delegator: String, block_height: u64) -> Res
         deps.storage,
         &delegator_addr,
         block_height,
-        |balance| -> StdResult<Uint128> { Ok(balance.unwrap_or_default().checked_add(amount_staked)?) },
+        |balance| -> StdResult<Uint128> {
+            Ok(balance.unwrap_or_default().checked_add(amount_staked)?)
+        },
     )?;
 
     // TODO get all the total stake at the current height (pool.bonded_tokens)
     // "/cosmos.staking.v1beta1.Query/Pool": &stakingtypes.QueryPoolResponse{}, // https://lcd.juno.strange.love/cosmos/staking/v1beta1/pool
 
-    STAKED_TOTAL.update(
-        deps.storage,
-        block_height,
-        |total| -> StdResult<Uint128> { Ok(total.unwrap_or_default().checked_add(amount_staked)?) },
-    )?;
+    STAKED_TOTAL.update(deps.storage, block_height, |total| -> StdResult<Uint128> {
+        Ok(total.unwrap_or_default().checked_add(amount_staked)?)
+    })?;
 
     // TODO add attributes
     Ok(Response::new())
 }
 
 fn get_total_delegations(deps: Deps, delegator: String) -> StdResult<Uint128> {
-    let delegations = deps.querier.query_all_delegations(&delegator)?;
+    let delegations = deps.querier.query_all_delegations(delegator)?;
 
     let mut amount_staked = Uint128::zero();
 
