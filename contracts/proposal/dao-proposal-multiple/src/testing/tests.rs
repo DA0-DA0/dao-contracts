@@ -35,8 +35,9 @@ use crate::{
         do_votes::do_test_votes_cw20_balances,
         execute::make_proposal,
         instantiate::{
-            instantiate_with_cw20_balances_governance, instantiate_with_staked_balances_governance,
-            instantiate_with_staking_active_threshold,
+            instantiate_with_cw20_balances_governance,
+            instantiate_with_native_staked_balances_governance,
+            instantiate_with_staked_balances_governance, instantiate_with_staking_active_threshold,
         },
         queries::{
             query_balance_cw20, query_balance_native, query_cw20_token_staking_contracts,
@@ -971,6 +972,100 @@ fn test_take_proposal_deposit() {
 
         // Proposal has been executed so deposit has been refunded.
         let balance = query_balance_cw20(&app, token, "blue".to_string());
+        assert_eq!(balance, Uint128::new(1));
+    } else {
+        panic!()
+    };
+}
+
+#[test]
+fn test_take_native_proposal_deposit() {
+    let mut app = App::default();
+    let _govmod_id = app.store_code(proposal_multiple_contract());
+
+    let quorum = PercentageThreshold::Percent(Decimal::percent(10));
+    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+    let max_voting_period = cw_utils::Duration::Height(6);
+
+    let instantiate = InstantiateMsg {
+        min_voting_period: None,
+        close_proposal_on_execution_failure: true,
+        max_voting_period,
+        only_members_execute: false,
+        allow_revoting: false,
+        voting_strategy,
+        pre_propose_info: get_pre_propose_info(
+            &mut app,
+            Some(UncheckedDepositInfo {
+                denom: DepositToken::VotingModuleToken {
+                    token_type: VotingModuleTokenType::Native,
+                },
+                amount: Uint128::new(1),
+                refund_policy: DepositRefundPolicy::OnlyPassed,
+            }),
+            false,
+        ),
+        veto: None,
+    };
+
+    let core_addr = instantiate_with_native_staked_balances_governance(
+        &mut app,
+        instantiate,
+        Some(vec![Cw20Coin {
+            address: "blue".to_string(),
+            amount: Uint128::new(2),
+        }]),
+    );
+
+    let gov_state: dao_interface::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &dao_interface::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let governance_modules = gov_state.proposal_modules;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod = governance_modules.into_iter().next().unwrap().address;
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+    ];
+
+    let mc_options = MultipleChoiceOptions { options };
+
+    let (deposit_config, pre_propose_module) =
+        query_deposit_config_and_pre_propose_module(&app, &govmod);
+    if let CheckedDepositInfo {
+        denom: CheckedDenom::Native(ref denom),
+        ..
+    } = deposit_config.deposit_info.unwrap()
+    {
+        app.execute_contract(
+            Addr::unchecked("blue"),
+            pre_propose_module,
+            &cppm::ExecuteMsg::Propose {
+                msg: cppm::ProposeMessage::Propose {
+                    title: "title".to_string(),
+                    description: "description".to_string(),
+                    choices: mc_options.clone(),
+                },
+            },
+            &[],
+        )
+        .unwrap_err();
+
+        make_proposal(&mut app, &govmod, "blue", mc_options);
+
+        // Proposal has been executed so deposit has been refunded.
+        let balance = query_balance_native(&app, "blue", denom);
         assert_eq!(balance, Uint128::new(1));
     } else {
         panic!()

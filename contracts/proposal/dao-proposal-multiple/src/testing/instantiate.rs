@@ -229,7 +229,7 @@ pub fn _instantiate_with_staked_cw721_governance(
     core_addr
 }
 
-pub fn _instantiate_with_native_staked_balances_governance(
+pub fn instantiate_with_native_staked_balances_governance(
     app: &mut App,
     proposal_module_instantiate: InstantiateMsg,
     initial_balances: Option<Vec<Cw20Coin>>,
@@ -319,7 +319,8 @@ pub fn _instantiate_with_native_staked_balances_governance(
             to_address: address.clone(),
             amount: vec![Coin {
                 denom: "ujuno".to_string(),
-                amount,
+                // Double the amount so that we can stake half the balance.
+                amount: amount * Uint128::new(2),
             }],
         }))
         .unwrap();
