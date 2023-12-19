@@ -1,7 +1,7 @@
 [package]
 name = "cw-tokenfactory-types"
 authors = ["Noah Saso <noah@daodao.zone>"]
-description = "A package for the handling of variou tokenfactory types."
+description = "A package for the handling of various tokenfactory types."
 edition = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
