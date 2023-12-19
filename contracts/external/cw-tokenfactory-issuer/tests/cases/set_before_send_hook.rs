@@ -5,6 +5,7 @@ use osmosis_test_tube::{Account, RunnerError};
 
 use crate::test_env::{TestEnv, TokenfactoryIssuer};
 
+#[cfg(feature = "osmosis_tokenfactory")]
 #[test]
 fn test_set_before_send_hook() {
     let env = TestEnv::default();
@@ -37,6 +38,7 @@ fn test_set_before_send_hook() {
     assert!(info.advanced_features_enabled);
 }
 
+#[cfg(feature = "osmosis_tokenfactory")]
 #[test]
 fn test_set_before_send_hook_nil() {
     let env = TestEnv::default();
@@ -55,6 +57,7 @@ fn test_set_before_send_hook_nil() {
     assert!(!info.advanced_features_enabled);
 }
 
+#[cfg(feature = "osmosis_tokenfactory")]
 #[test]
 fn test_set_before_send_hook_invalid_address_fails() {
     let env = TestEnv::default();
@@ -72,6 +75,7 @@ fn test_set_before_send_hook_invalid_address_fails() {
     );
 }
 
+#[cfg(feature = "osmosis_tokenfactory")]
 #[test]
 fn test_set_before_send_hook_to_a_different_contract() {
     let env = TestEnv::default();

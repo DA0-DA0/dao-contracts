@@ -102,6 +102,7 @@ fn used_up_allowance_should_be_removed_from_storage() {
     );
 }
 
+#[cfg(feature = "osmosis_tokenfactory")]
 #[test]
 fn granular_minting_permissions_when_frozen() {
     let env = TestEnv::default();

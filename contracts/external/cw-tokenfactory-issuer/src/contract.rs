@@ -3,12 +3,10 @@ use std::convert::TryInto;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg,
+    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
 };
-use cosmwasm_std::{CosmosMsg, Reply};
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
-use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgCreateDenom, MsgCreateDenomResponse};
-use token_bindings::TokenFactoryMsg;
+use cw_tokenfactory_types::msg::{msg_create_denom, MsgCreateDenomResponse};
 
 use crate::error::ContractError;
 use crate::execute;
@@ -29,7 +27,7 @@ pub fn instantiate(
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     // Owner is the sender of the initial InstantiateMsg
@@ -54,10 +52,7 @@ pub fn instantiate(
                 .add_submessage(
                     // Create new denom, denom info is saved in the reply
                     SubMsg::reply_on_success(
-                        <CosmosMsg<TokenFactoryMsg>>::from(MsgCreateDenom {
-                            sender: env.contract.address.to_string(),
-                            subdenom,
-                        }),
+                        msg_create_denom(env.contract.address.to_string(), subdenom),
                         CREATE_DENOM_REPLY_ID,
                     ),
                 ))
@@ -79,7 +74,7 @@ pub fn execute(
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     match msg {
         // Executive Functions
         ExecuteMsg::Mint { to_address, amount } => {
@@ -92,6 +87,8 @@ pub fn execute(
         ExecuteMsg::Deny { address, status } => execute::deny(deps, env, info, address, status),
         ExecuteMsg::Allow { address, status } => execute::allow(deps, info, address, status),
         ExecuteMsg::Freeze { status } => execute::freeze(deps, env, info, status),
+
+        #[cfg(feature = "osmosis_tokenfactory")]
         ExecuteMsg::ForceTransfer {
             amount,
             from_address,
@@ -100,7 +97,7 @@ pub fn execute(
 
         // Admin functions
         ExecuteMsg::UpdateTokenFactoryAdmin { new_admin } => {
-            execute::update_tokenfactory_admin(deps, info, new_admin)
+            execute::update_tokenfactory_admin(deps, env, info, new_admin)
         }
         ExecuteMsg::UpdateOwnership(action) => {
             execute::update_contract_owner(deps, env, info, action)
@@ -111,6 +108,7 @@ pub fn execute(
         ExecuteMsg::SetBurnerAllowance { address, allowance } => {
             execute::set_burner(deps, info, address, allowance)
         }
+        #[cfg(feature = "osmosis_tokenfactory")]
         ExecuteMsg::SetBeforeSendHook { cosmwasm_address } => {
             execute::set_before_send_hook(deps, env, info, cosmwasm_address)
         }
@@ -177,11 +175,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(
-    deps: DepsMut,
-    _env: Env,
-    msg: Reply,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
         CREATE_DENOM_REPLY_ID => {
             let MsgCreateDenomResponse { new_token_denom } = msg.result.try_into()?;

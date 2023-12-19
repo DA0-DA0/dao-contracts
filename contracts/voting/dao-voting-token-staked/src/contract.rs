@@ -106,7 +106,7 @@ pub fn instantiate(
             // Save new token info for use in reply
             TOKEN_INSTANTIATION_INFO.save(deps.storage, &msg.token_info)?;
 
-            // Tnstantiate cw-token-factory-issuer contract
+            // Instantiate cw-token-factory-issuer contract
             // DAO (sender) is set as contract admin
             let issuer_instantiate_msg = SubMsg::reply_on_success(
                 WasmMsg::Instantiate {

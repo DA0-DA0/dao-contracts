@@ -4,6 +4,7 @@ use osmosis_test_tube::Account;
 
 use crate::test_env::{TestEnv, TokenfactoryIssuer};
 
+#[cfg(feature = "osmosis_tokenfactory")]
 #[test]
 fn test_force_transfer() {
     let env = TestEnv::default();

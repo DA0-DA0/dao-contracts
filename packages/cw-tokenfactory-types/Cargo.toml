@@ -1,0 +1,27 @@
+[package]
+name = "cw-tokenfactory-types"
+authors = ["Noah Saso <noah@daodao.zone>"]
+description = "A package for the handling of various tokenfactory types."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[features]
+default = ["osmosis_tokenfactory"]
+# use the /cosmwasm.tokenfactory... msg types
+cosmwasm_tokenfactory = []
+# use the /osmosis.tokenfactory... msg types
+osmosis_tokenfactory = []
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+dao-interface = { workspace = true }
+osmosis-std = { workspace = true }
+osmosis-std-derive = { workspace = true }
+prost = { workspace = true }
+prost-types = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+serde-cw-value = { workspace = true }

@@ -1,16 +1,17 @@
-use cosmwasm_std::{coins, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, Uint128};
-use osmosis_std::types::cosmos::bank::v1beta1::Metadata;
-use osmosis_std::types::osmosis::tokenfactory::v1beta1::{
-    MsgBurn, MsgForceTransfer, MsgSetBeforeSendHook, MsgSetDenomMetadata,
-};
-use token_bindings::TokenFactoryMsg;
+use cosmwasm_std::{coins, BankMsg, CosmosMsg, DepsMut, Env, MessageInfo, Response, Uint128};
+
+use cw_tokenfactory_types::msg::{msg_burn, msg_change_admin, msg_mint, msg_set_denom_metadata};
+#[cfg(feature = "osmosis_tokenfactory")]
+use cw_tokenfactory_types::msg::{msg_force_transfer, msg_set_before_send_hook};
+
+use dao_interface::token::Metadata;
 
 use crate::error::ContractError;
 use crate::helpers::{check_before_send_hook_features_enabled, check_is_not_frozen};
-use crate::state::{
-    BeforeSendHookInfo, ALLOWLIST, BEFORE_SEND_HOOK_INFO, BURNER_ALLOWANCES, DENOM, DENYLIST,
-    IS_FROZEN, MINTER_ALLOWANCES,
-};
+
+#[cfg(feature = "osmosis_tokenfactory")]
+use crate::state::{BeforeSendHookInfo, BEFORE_SEND_HOOK_INFO};
+use crate::state::{ALLOWLIST, BURNER_ALLOWANCES, DENOM, DENYLIST, IS_FROZEN, MINTER_ALLOWANCES};
 
 /// Mints new tokens. To mint new tokens, the address calling this method must
 /// have an allowance of tokens to mint. This allowance is set by the contract through
@@ -21,7 +22,7 @@ pub fn mint(
     info: MessageInfo,
     to_address: String,
     amount: Uint128,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     // Validate that to_address is a valid address
     deps.api.addr_validate(&to_address)?;
 
@@ -54,10 +55,10 @@ pub fn mint(
     check_is_not_frozen(deps.as_ref(), info.sender.as_str(), &to_address, &denom)?;
 
     // Create tokenfactory MsgMint which mints coins to the contract address
-    let mint_tokens_msg = TokenFactoryMsg::mint_contract_tokens(
+    let mint_tokens_msg = msg_mint(
+        env.contract.address.to_string(),
+        amount.u128(),
         denom.clone(),
-        amount,
-        env.contract.address.into_string(),
     );
 
     // Send newly minted coins from contract to designated recipient
@@ -85,7 +86,7 @@ pub fn burn(
     info: MessageInfo,
     amount: Uint128,
     address: String,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     // Don't allow burning of 0 coins
     if amount.is_zero() {
         return Err(ContractError::ZeroAmount {});
@@ -114,11 +115,12 @@ pub fn burn(
     // Create tokenfactory MsgBurn which burns coins from the contract address
     // NOTE: this requires the contract to own the tokens already
     let burn_from_address = deps.api.addr_validate(&address)?;
-    let burn_tokens_msg: cosmwasm_std::CosmosMsg<TokenFactoryMsg> = MsgBurn {
-        sender: env.contract.address.to_string(),
-        amount: Some(Coin::new(amount.u128(), denom).into()),
-        burn_from_address: burn_from_address.to_string(),
-    }
+    let burn_tokens_msg: CosmosMsg = msg_burn(
+        env.contract.address.to_string(),
+        amount.u128(),
+        denom,
+        burn_from_address.to_string(),
+    )
     .into();
 
     Ok(Response::new()
@@ -136,7 +138,7 @@ pub fn update_contract_owner(
     env: Env,
     info: MessageInfo,
     action: cw_ownable::Action,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     // cw-ownable performs all validation and ownership checks for us
     let ownership = cw_ownable::update_ownership(deps, &env.block, &info.sender, action)?;
     Ok(Response::default().add_attributes(ownership.into_attributes()))
@@ -149,9 +151,10 @@ pub fn update_contract_owner(
 /// Must be the contract owner to call this method.
 pub fn update_tokenfactory_admin(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     new_admin: String,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     // Only allow current contract owner to change tokenfactory admin
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
@@ -159,10 +162,11 @@ pub fn update_tokenfactory_admin(
     let new_admin_addr = deps.api.addr_validate(&new_admin)?;
 
     // Construct tokenfactory change admin msg
-    let update_admin_msg = TokenFactoryMsg::ChangeAdmin {
-        denom: DENOM.load(deps.storage)?,
-        new_admin_address: new_admin_addr.into(),
-    };
+    let update_admin_msg = msg_change_admin(
+        env.contract.address.to_string(),
+        DENOM.load(deps.storage)?,
+        new_admin_addr.into(),
+    );
 
     Ok(Response::new()
         .add_message(update_admin_msg)
@@ -178,16 +182,16 @@ pub fn set_denom_metadata(
     env: Env,
     info: MessageInfo,
     metadata: Metadata,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     // Only allow current contract owner to set denom metadata
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     Ok(Response::new()
         .add_attribute("action", "set_denom_metadata")
-        .add_message(MsgSetDenomMetadata {
-            sender: env.contract.address.to_string(),
-            metadata: Some(metadata),
-        }))
+        .add_message(msg_set_denom_metadata(
+            env.contract.address.to_string(),
+            metadata,
+        )))
 }
 
 /// Calls `MsgSetBeforeSendHook` and enables BeforeSendHook related features.
@@ -199,12 +203,13 @@ pub fn set_denom_metadata(
 /// is intended to be called should chains add this feature at a later date.
 ///
 /// Must be the contract owner to call this method.
+#[cfg(feature = "osmosis_tokenfactory")]
 pub fn set_before_send_hook(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     cosmwasm_address: String,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     // Only allow current contract owner
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
@@ -247,12 +252,8 @@ pub fn set_before_send_hook(
     // SetBeforeSendHook to this contract.
     // This will trigger sudo endpoint before any bank send,
     // which makes denylisting / freezing possible.
-    let msg_set_beforesend_hook: CosmosMsg<TokenFactoryMsg> = MsgSetBeforeSendHook {
-        sender: env.contract.address.to_string(),
-        denom,
-        cosmwasm_address,
-    }
-    .into();
+    let msg_set_beforesend_hook: CosmosMsg =
+        msg_set_before_send_hook(env.contract.address.to_string(), denom, cosmwasm_address).into();
 
     Ok(Response::new()
         .add_attribute("action", "set_before_send_hook")
@@ -268,7 +269,7 @@ pub fn set_burner(
     info: MessageInfo,
     address: String,
     allowance: Uint128,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     // Only allow current contract owner to set burner allowance
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
@@ -297,7 +298,7 @@ pub fn set_minter(
     info: MessageInfo,
     address: String,
     allowance: Uint128,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     // Only allow current contract owner to set minter allowance
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
@@ -337,7 +338,7 @@ pub fn freeze(
     env: Env,
     info: MessageInfo,
     status: bool,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     check_before_send_hook_features_enabled(deps.as_ref())?;
 
     // Only allow current contract owner to call this method
@@ -371,7 +372,7 @@ pub fn deny(
     info: MessageInfo,
     address: String,
     status: bool,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     check_before_send_hook_features_enabled(deps.as_ref())?;
 
     // Only allow current contract owner to call this method
@@ -411,7 +412,7 @@ pub fn allow(
     info: MessageInfo,
     address: String,
     status: bool,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     check_before_send_hook_features_enabled(deps.as_ref())?;
 
     // Only allow current contract owner to call this method
@@ -439,6 +440,7 @@ pub fn allow(
 /// admin to be a null address or the address of the bank module.
 ///
 /// Must be the contract owner to call this method.
+#[cfg(feature = "osmosis_tokenfactory")]
 pub fn force_transfer(
     deps: DepsMut,
     env: Env,
@@ -446,7 +448,7 @@ pub fn force_transfer(
     amount: Uint128,
     from_address: String,
     to_address: String,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     // Only allow current contract owner to change owner
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
@@ -454,12 +456,13 @@ pub fn force_transfer(
     let denom = DENOM.load(deps.storage)?;
 
     // Force transfer tokens
-    let force_transfer_msg: CosmosMsg<TokenFactoryMsg> = MsgForceTransfer {
-        transfer_from_address: from_address.clone(),
-        transfer_to_address: to_address.clone(),
-        amount: Some(Coin::new(amount.u128(), denom).into()),
-        sender: env.contract.address.to_string(),
-    }
+    let force_transfer_msg: CosmosMsg = msg_force_transfer(
+        env.contract.address.to_string(),
+        amount.u128(),
+        denom,
+        from_address.clone(),
+        to_address.clone(),
+    )
     .into();
 
     Ok(Response::new()

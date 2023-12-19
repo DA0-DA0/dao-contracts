@@ -53,6 +53,7 @@ fn change_owner_by_non_owner_should_fail() {
     );
 }
 
+#[cfg(feature = "osmosis_tokenfactory")]
 #[test]
 fn renounce_ownership() {
     let env = TestEnv::default();

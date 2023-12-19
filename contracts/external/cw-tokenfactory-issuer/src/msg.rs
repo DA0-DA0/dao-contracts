@@ -1,8 +1,8 @@
+use crate::state::BeforeSendHookInfo;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Uint128};
-pub use osmosis_std::types::cosmos::bank::v1beta1::{DenomUnit, Metadata};
 
-use crate::state::BeforeSendHookInfo;
+pub use dao_interface::token::{DenomUnit, Metadata};
 
 /// The message used to create a new instance of this smart contract.
 #[cw_serde]
@@ -52,6 +52,7 @@ pub enum ExecuteMsg {
     Freeze { status: bool },
 
     /// Force transfer token from one address to another.
+    #[cfg(feature = "osmosis_tokenfactory")]
     ForceTransfer {
         amount: Uint128,
         from_address: String,
@@ -70,6 +71,7 @@ pub enum ExecuteMsg {
     /// Setting the address to an empty string will remove the SetBeforeSendHook.
     ///
     /// This method can only be called by the contract owner.
+    #[cfg(feature = "osmosis_tokenfactory")]
     SetBeforeSendHook { cosmwasm_address: String },
 
     /// Grant/revoke burn allowance.
