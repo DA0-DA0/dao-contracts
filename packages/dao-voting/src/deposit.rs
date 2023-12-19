@@ -113,26 +113,32 @@ impl UncheckedDepositInfo {
                     .querier
                     .query_wasm_smart(dao, &dao_interface::msg::QueryMsg::VotingModule {})?;
 
-                if token_type == VotingModuleTokenType::Native {
-                    // If the voting module has no native token denom this will
-                    // error. This is desirable.
-                    let denom: DenomResponse = deps
-                        .querier
-                        .query_wasm_smart(voting_module, &dao_interface::voting::Query::Denom {})?;
-                    // Validate that native denom is formatted correctly.
-                    UncheckedDenom::Native(denom.denom).into_checked(deps)
-                } else {
-                    // If the voting module has no cw20 token this will error.
-                    // This is desirable.
-                    let token_addr: Addr = deps.querier.query_wasm_smart(
-                        voting_module,
-                        &dao_interface::voting::Query::TokenContract {},
-                    )?;
-                    // We don't assume here that the voting module has
-                    // returned a valid token. Conversion of the unchecked
-                    // denom into a checked one will do a `TokenInfo {}`
-                    // query.
-                    UncheckedDenom::Cw20(token_addr.into_string()).into_checked(deps)
+                match token_type {
+                    VotingModuleTokenType::Native => {
+                        // If the voting module has no native token denom this
+                        // will error. This is desirable.
+                        let denom: DenomResponse = deps.querier.query_wasm_smart(
+                            voting_module,
+                            &dao_interface::voting::Query::Denom {},
+                        )?;
+
+                        // Validate that native denom is formatted correctly.
+                        UncheckedDenom::Native(denom.denom).into_checked(deps)
+                    }
+                    VotingModuleTokenType::Cw20 => {
+                        // If the voting module has no cw20 token this will
+                        // error. This is desirable.
+                        let token_addr: Addr = deps.querier.query_wasm_smart(
+                            voting_module,
+                            &dao_interface::voting::Query::TokenContract {},
+                        )?;
+
+                        // We don't assume here that the voting module has
+                        // returned a valid token. Conversion of the unchecked
+                        // denom into a checked one will do a `TokenInfo {}`
+                        // query.
+                        UncheckedDenom::Cw20(token_addr.into_string()).into_checked(deps)
+                    }
                 }
             }
         }?;
