@@ -22,7 +22,6 @@ mod tokenfactory_msg {
         }
     }
 
-    // TODO figure out if it is problematic to not have burn_from_address here (ie check if it works the same as osmosis' message or not)
     pub fn msg_burn(
         sender: String,
         amount: u128,
