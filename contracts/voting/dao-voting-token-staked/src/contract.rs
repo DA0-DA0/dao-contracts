@@ -18,7 +18,9 @@ use dao_hooks::stake::{stake_hook_msgs, unstake_hook_msgs};
 use dao_interface::{
     state::ModuleInstantiateCallback,
     token::{InitialBalance, NewTokenInfo, TokenFactoryCallback},
-    voting::{IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse},
+    voting::{
+        DenomResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
+    },
 };
 use dao_voting::{
     duration::validate_duration,
@@ -30,8 +32,8 @@ use dao_voting::{
 
 use crate::error::ContractError;
 use crate::msg::{
-    DenomResponse, ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg,
-    QueryMsg, StakerBalanceResponse, TokenInfo,
+    ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg,
+    StakerBalanceResponse, TokenInfo,
 };
 use crate::state::{
     Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, DENOM, HOOKS, MAX_CLAIMS, STAKED_BALANCES,

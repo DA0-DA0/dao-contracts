@@ -4,7 +4,7 @@ use cw20::Cw20Coin;
 use cw20_base::msg::InstantiateMarketingInfo;
 use cw_utils::Duration;
 
-use dao_dao_macros::{active_query, token_query, voting_module_query};
+use dao_dao_macros::{active_query, cw20_token_query, voting_module_query};
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
 /// Information about the staking contract to be used with this voting
@@ -71,7 +71,7 @@ pub enum ExecuteMsg {
 }
 
 #[voting_module_query]
-#[token_query]
+#[cw20_token_query]
 #[active_query]
 #[cw_serde]
 #[derive(QueryResponses)]

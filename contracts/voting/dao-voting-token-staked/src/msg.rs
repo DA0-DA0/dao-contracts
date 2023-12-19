@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Uint128};
 use cw_utils::Duration;
-use dao_dao_macros::{active_query, voting_module_query};
+use dao_dao_macros::{active_query, native_token_query, voting_module_query};
 use dao_interface::token::NewTokenInfo;
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
@@ -57,6 +57,7 @@ pub enum ExecuteMsg {
     RemoveHook { addr: String },
 }
 
+#[native_token_query]
 #[active_query]
 #[voting_module_query]
 #[cw_serde]
@@ -64,8 +65,6 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(crate::state::Config)]
     GetConfig {},
-    #[returns(DenomResponse)]
-    Denom {},
     #[returns(cw_controllers::ClaimsResponse)]
     Claims { address: String },
     #[returns(ListStakersResponse)]
@@ -93,11 +92,6 @@ pub struct ListStakersResponse {
 pub struct StakerBalanceResponse {
     pub address: String,
     pub balance: Uint128,
-}
-
-#[cw_serde]
-pub struct DenomResponse {
-    pub denom: String,
 }
 
 #[cw_serde]

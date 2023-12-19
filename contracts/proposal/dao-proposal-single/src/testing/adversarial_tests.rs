@@ -16,7 +16,7 @@ use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App};
 use cw_utils::Duration;
 use dao_voting::{
-    deposit::{DepositRefundPolicy, UncheckedDepositInfo},
+    deposit::{DepositRefundPolicy, UncheckedDepositInfo, VotingModuleTokenType},
     status::Status,
     threshold::{PercentageThreshold, Threshold::AbsolutePercentage},
     voting::Vote,
@@ -171,7 +171,9 @@ pub fn test_executed_prop_state_remains_after_vote_swing() {
         pre_propose_info: get_pre_propose_info(
             &mut app,
             Some(UncheckedDepositInfo {
-                denom: dao_voting::deposit::DepositToken::VotingModuleToken {},
+                denom: dao_voting::deposit::DepositToken::VotingModuleToken {
+                    token_type: VotingModuleTokenType::Cw20,
+                },
                 amount: Uint128::new(10_000_000),
                 refund_policy: DepositRefundPolicy::OnlyPassed,
             }),
@@ -268,7 +270,9 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
         pre_propose_info: get_pre_propose_info(
             &mut app,
             Some(UncheckedDepositInfo {
-                denom: dao_voting::deposit::DepositToken::VotingModuleToken {},
+                denom: dao_voting::deposit::DepositToken::VotingModuleToken {
+                    token_type: VotingModuleTokenType::Cw20,
+                },
                 amount: Uint128::new(10_000_000),
                 refund_policy: DepositRefundPolicy::OnlyPassed,
             }),
