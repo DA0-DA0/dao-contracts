@@ -64,7 +64,6 @@ osmosis-test-tube = "20.1.2"
 proc-macro2 = "1.0"
 prost = { version = "0.12.3", features = ["prost-derive"] }
 prost-types = { version = "0.12.3", default-features = false }
-prost = "0.11"
 rust_decimal = "1.14.3"
 quote = "1.0"
 rand = "0.8"
