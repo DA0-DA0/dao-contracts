@@ -1672,6 +1672,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "dao-abc-factory"
+version = "2.4.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-abc",
+ "cw-multi-test",
+ "cw-ownable",
+ "cw-storage-plus 1.2.0",
+ "cw-tokenfactory-issuer",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "dao-dao-macros",
+ "dao-interface",
+ "dao-voting 2.4.0",
+ "thiserror",
+]
+
+[[package]]
 name = "dao-cw721-extensions"
 version = "2.4.1"
 dependencies = [

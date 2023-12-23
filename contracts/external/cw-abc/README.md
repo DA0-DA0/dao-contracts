@@ -4,7 +4,7 @@ Implments an [Augmented Bonding Curve](https://medium.com/commonsstack/deep-dive
 
 Forked from and heavily inspired by the work on [cw20-bonding](https://github.com/cosmwasm/cw-tokens/tree/main/contracts/cw20-bonding). This contract uses native and token factory tokens instead.
 
-NOTE: this contract is unaudited and experimental. NOT RECOMMENDED FOR PRODUCTION USE.
+NOTE: this contract is NOT AUDITED and experimental. NOT RECOMMENDED FOR PRODUCTION USE. Use at your own risk.
 
 ## What are Augmented Bonding Curves?
 Before we get to the *Augmented* part, we must first describe bonding curves themselves.

@@ -1,0 +1,35 @@
+[package]
+name = "dao-abc-factory"
+authors = ["Jake Hartnell"]
+description = "A factory contract for cw-abc, intended for use with DAO DAO."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cosmwasm-storage = { workspace = true }
+cw-abc = { workspace = true }
+cw2 = { workspace = true }
+cw-ownable = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-utils = { workspace = true }
+thiserror = { workspace = true }
+dao-dao-macros = { workspace = true }
+dao-interface = { workspace = true }
+dao-voting = { workspace = true }
+cw-tokenfactory-issuer = { workspace = true, features = ["library"] }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }

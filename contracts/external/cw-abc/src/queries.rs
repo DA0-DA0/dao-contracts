@@ -40,7 +40,7 @@ pub fn get_denom(deps: Deps) -> StdResult<DenomResponse> {
 
 pub fn query_donations(
     deps: Deps,
-    start_aftor: Option<String>,
+    start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<DonationsResponse> {
     let donations = cw_paginate_storage::paginate_map(
@@ -50,7 +50,7 @@ pub fn query_donations(
             querier: QuerierWrapper::new(deps.querier.deref()),
         },
         &DONATIONS,
-        start_aftor
+        start_after
             .map(|addr| deps.api.addr_validate(&addr))
             .transpose()?
             .as_ref(),
@@ -64,7 +64,7 @@ pub fn query_donations(
 /// Query hatchers who contributed during the hatch phase
 pub fn query_hatchers(
     deps: Deps,
-    start_aftor: Option<String>,
+    start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<HatchersResponse> {
     let hatchers = cw_paginate_storage::paginate_map(
@@ -74,7 +74,7 @@ pub fn query_hatchers(
             querier: QuerierWrapper::new(deps.querier.deref()),
         },
         &HATCHERS,
-        start_aftor
+        start_after
             .map(|addr| deps.api.addr_validate(&addr))
             .transpose()?
             .as_ref(),
