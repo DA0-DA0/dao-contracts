@@ -43,6 +43,7 @@ cw20-stake = { workspace = true }
 cw721-base = { workspace = true }
 cw721-roles = { workspace = true }
 cw-tokenfactory-issuer = { workspace = true }
+dao-abc-factory = { workspace = true }
 dao-dao-core = { workspace = true, features = ["library"] }
 dao-interface = { workspace = true }
 dao-pre-propose-multiple = { workspace = true }

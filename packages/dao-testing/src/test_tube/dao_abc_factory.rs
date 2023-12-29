@@ -1,27 +1,24 @@
 use cosmwasm_std::Coin;
-use cw_abc::{
-    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+use dao_abc_factory::{
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     ContractError,
 };
 use osmosis_test_tube::{
-    osmosis_std::types::cosmwasm::wasm::v1::{
-        MsgExecuteContractResponse, MsgMigrateContract, MsgMigrateContractResponse,
-    },
-    Account, Module, OsmosisTestApp, Runner, RunnerError, RunnerExecuteResult, SigningAccount,
-    Wasm,
+    osmosis_std::types::cosmwasm::wasm::v1::MsgExecuteContractResponse, Account, Module,
+    OsmosisTestApp, RunnerError, RunnerExecuteResult, SigningAccount, Wasm,
 };
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
 #[derive(Debug)]
-pub struct CwAbc<'a> {
+pub struct AbcFactoryContract<'a> {
     pub app: &'a OsmosisTestApp,
     pub code_id: u64,
     pub contract_addr: String,
 }
 
-impl<'a> CwAbc<'a> {
+impl<'a> AbcFactoryContract<'a> {
     pub fn new(
         app: &'a OsmosisTestApp,
         instantiate_msg: &InstantiateMsg,
@@ -78,32 +75,6 @@ impl<'a> CwAbc<'a> {
         Ok(code_id)
     }
 
-    pub fn instantiate(
-        app: &'a OsmosisTestApp,
-        code_id: u64,
-        instantiate_msg: &InstantiateMsg,
-        signer: &SigningAccount,
-    ) -> Result<Self, RunnerError> {
-        let wasm = Wasm::new(app);
-        let contract_addr = wasm
-            .instantiate(
-                code_id,
-                &instantiate_msg,
-                Some(&signer.address()),
-                None,
-                &[],
-                signer,
-            )?
-            .data
-            .address;
-
-        Ok(Self {
-            app,
-            code_id,
-            contract_addr,
-        })
-    }
-
     // executes
     pub fn execute(
         &self,
@@ -124,29 +95,6 @@ impl<'a> CwAbc<'a> {
         wasm.query(&self.contract_addr, query_msg)
     }
 
-    pub fn migrate(
-        &self,
-        testdata: &str,
-        signer: &SigningAccount,
-    ) -> RunnerExecuteResult<MsgMigrateContractResponse> {
-        let wasm = Wasm::new(self.app);
-        let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let wasm_byte_code =
-            std::fs::read(manifest_path.join("tests").join("testdata").join(testdata)).unwrap();
-
-        let code_id = wasm.store_code(&wasm_byte_code, None, signer)?.data.code_id;
-        self.app.execute(
-            MsgMigrateContract {
-                sender: signer.address(),
-                contract: self.contract_addr.clone(),
-                code_id,
-                msg: serde_json::to_vec(&MigrateMsg {}).unwrap(),
-            },
-            "/cosmwasm.wasm.v1.MsgMigrateContract",
-            signer,
-        )
-    }
-
     fn get_wasm_byte_code() -> Vec<u8> {
         let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         let byte_code = std::fs::read(
@@ -154,7 +102,7 @@ impl<'a> CwAbc<'a> {
                 .join("..")
                 .join("..")
                 .join("artifacts")
-                .join("cw_abc.wasm"),
+                .join("dao_abc_factory.wasm"),
         );
         match byte_code {
             Ok(byte_code) => byte_code,
@@ -164,7 +112,7 @@ impl<'a> CwAbc<'a> {
                     .join("..")
                     .join("..")
                     .join("artifacts")
-                    .join("cw_abc-aarch64.wasm"),
+                    .join("dao_abc_factory-aarch64.wasm"),
             )
             .unwrap(),
         }

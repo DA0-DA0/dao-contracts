@@ -1675,6 +1675,7 @@ dependencies = [
 name = "dao-abc-factory"
 version = "2.4.0"
 dependencies = [
+ "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
@@ -1687,7 +1688,14 @@ dependencies = [
  "cw2 1.1.2",
  "dao-dao-macros",
  "dao-interface",
+ "dao-proposal-hook-counter",
+ "dao-proposal-single",
+ "dao-testing",
  "dao-voting 2.4.0",
+ "dao-voting-token-staked",
+ "osmosis-std",
+ "osmosis-test-tube",
+ "serde",
  "thiserror",
 ]
 
@@ -2092,6 +2100,7 @@ dependencies = [
  "cw4-group 1.1.2",
  "cw721-base 0.18.0",
  "cw721-roles",
+ "dao-abc-factory",
  "dao-dao-core",
  "dao-interface",
  "dao-pre-propose-multiple",

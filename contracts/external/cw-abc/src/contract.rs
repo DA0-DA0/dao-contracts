@@ -86,12 +86,11 @@ pub fn instantiate(
     // Initialize owner to sender
     cw_ownable::initialize_owner(deps.storage, deps.api, Some(info.sender.as_str()))?;
 
-    // TODO Potential renounce admin?
     // Tnstantiate cw-token-factory-issuer contract
-    // Sender is set as contract admin
+    // Contract is immutable, no admin
     let issuer_instantiate_msg = SubMsg::reply_always(
         WasmMsg::Instantiate {
-            admin: Some(info.sender.to_string()),
+            admin: None,
             code_id: token_issuer_code_id,
             msg: to_json_binary(&IssuerInstantiateMsg::NewToken {
                 subdenom: supply.subdenom.clone(),

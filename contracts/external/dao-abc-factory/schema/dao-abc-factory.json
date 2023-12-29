@@ -13,14 +13,28 @@
     "title": "ExecuteMsg",
     "oneOf": [
       {
-        "description": "Example Factory Implementation",
         "type": "object",
         "required": [
           "abc_factory"
         ],
         "properties": {
           "abc_factory": {
-            "$ref": "#/definitions/InstantiateMsg"
+            "type": "object",
+            "required": [
+              "code_id",
+              "instantiate_msg"
+            ],
+            "properties": {
+              "code_id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "instantiate_msg": {
+                "$ref": "#/definitions/InstantiateMsg"
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false

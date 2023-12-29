@@ -15,6 +15,9 @@ pub mod cw_tokenfactory_issuer;
 pub mod cw721_base;
 
 #[cfg(feature = "test-tube")]
+pub mod dao_abc_factory;
+
+#[cfg(feature = "test-tube")]
 pub mod dao_dao_core;
 
 #[cfg(feature = "test-tube")]
@@ -22,3 +25,6 @@ pub mod dao_proposal_single;
 
 #[cfg(feature = "test-tube")]
 pub mod dao_test_custom_factory;
+
+#[cfg(feature = "test-tube")]
+pub mod dao_voting_token_staked;

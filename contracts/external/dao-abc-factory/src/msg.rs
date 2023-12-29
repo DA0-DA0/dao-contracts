@@ -6,8 +6,10 @@ pub struct InstantiateMsg {}
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    /// Example Factory Implementation
-    AbcFactory(AbcInstantiateMsg),
+    AbcFactory {
+        instantiate_msg: AbcInstantiateMsg,
+        code_id: u64,
+    },
 }
 
 #[cw_serde]

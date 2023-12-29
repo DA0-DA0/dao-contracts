@@ -1,14 +1,20 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply, Response,
-    StdResult, SubMsg, WasmMsg,
+    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
+    Response, StdResult, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw_abc::msg::{InstantiateMsg as AbcInstantiateMsg, QueryMsg as AbcQueryMsg};
+use cw_abc::msg::{
+    DenomResponse, ExecuteMsg as AbcExecuteMsg, InstantiateMsg as AbcInstantiateMsg,
+    QueryMsg as AbcQueryMsg,
+};
 use cw_storage_plus::{Bound, Item, Map};
 use cw_utils::parse_reply_instantiate_data;
-use dao_interface::{token::TokenFactoryCallback, voting::Query as VotingModuleQueryMsg};
+use dao_interface::{
+    state::ModuleInstantiateCallback, token::TokenFactoryCallback,
+    voting::Query as VotingModuleQueryMsg,
+};
 
 use crate::{
     error::ContractError,
@@ -21,6 +27,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const INSTANTIATE_ABC_REPLY_ID: u64 = 1;
 
 const DAOS: Map<Addr, Empty> = Map::new("daos");
+const CURRENT_DAO: Item<Addr> = Item::new("current_dao");
 const VOTING_MODULE: Item<Addr> = Item::new("voting_module");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -43,7 +50,10 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AbcFactory(msg) => execute_token_factory_factory(deps, env, info, msg),
+        ExecuteMsg::AbcFactory {
+            code_id,
+            instantiate_msg,
+        } => execute_token_factory_factory(deps, env, info, code_id, instantiate_msg),
     }
 }
 
@@ -51,6 +61,7 @@ pub fn execute_token_factory_factory(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
+    code_id: u64,
     msg: AbcInstantiateMsg,
 ) -> Result<Response, ContractError> {
     // Save voting module address
@@ -61,7 +72,8 @@ pub fn execute_token_factory_factory(
         .querier
         .query_wasm_smart(info.sender, &VotingModuleQueryMsg::Dao {})?;
 
-    DAOS.save(deps.storage, dao, &Empty {})?;
+    DAOS.save(deps.storage, dao.clone(), &Empty {})?;
+    CURRENT_DAO.save(deps.storage, &dao)?;
 
     // Instantiate new contract, further setup is handled in the
     // SubMsg reply.
@@ -69,7 +81,7 @@ pub fn execute_token_factory_factory(
         WasmMsg::Instantiate {
             // No admin as we want the bonding curve contract to be immutable
             admin: None,
-            code_id: msg.token_issuer_code_id,
+            code_id,
             msg: to_json_binary(&msg)?,
             funds: vec![],
             label: "cw_abc".to_string(),
@@ -118,11 +130,14 @@ pub fn query_daos(
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
         INSTANTIATE_ABC_REPLY_ID => {
+            // Load DAO
+            let dao = CURRENT_DAO.load(deps.storage)?;
+
             // Parse issuer address from instantiate reply
             let abc_addr = parse_reply_instantiate_data(msg)?.contract_address;
 
             // Query for denom
-            let denom = deps
+            let denom: DenomResponse = deps
                 .querier
                 .query_wasm_smart(abc_addr.clone(), &AbcQueryMsg::Denom {})?;
 
@@ -131,15 +146,41 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                 .querier
                 .query_wasm_smart(abc_addr.clone(), &AbcQueryMsg::TokenContract {})?;
 
+            // Update the owner to be the DAO
+            let msg = WasmMsg::Execute {
+                contract_addr: abc_addr.clone(),
+                msg: to_json_binary(&AbcExecuteMsg::UpdateOwnership(
+                    cw_ownable::Action::TransferOwnership {
+                        new_owner: dao.to_string(),
+                        expiry: None,
+                    },
+                ))?,
+                funds: vec![],
+            };
+
+            // DAO must accept ownership transfer. Here we include a
+            // ModuleInstantiateCallback message that will be called by the
+            // dao-dao-core contract when voting module instantiation is
+            // complete.
+            let callback = ModuleInstantiateCallback {
+                msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: abc_addr.clone(),
+                    msg: to_json_binary(&AbcExecuteMsg::UpdateOwnership(
+                        cw_ownable::Action::AcceptOwnership {},
+                    ))?,
+                    funds: vec![],
+                })],
+            };
+
             // Responses for `dao-voting-token-staked` MUST include a
             // TokenFactoryCallback.
-            Ok(
-                Response::new().set_data(to_json_binary(&TokenFactoryCallback {
-                    denom,
+            Ok(Response::new()
+                .add_message(msg)
+                .set_data(to_json_binary(&TokenFactoryCallback {
+                    denom: denom.denom,
                     token_contract: Some(token_contract.to_string()),
-                    module_instantiate_callback: None,
-                })?),
-            )
+                    module_instantiate_callback: Some(callback),
+                })?))
         }
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }
