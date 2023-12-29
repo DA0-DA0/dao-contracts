@@ -3,7 +3,8 @@ use std::cmp::Ordering;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, BankMsg, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult,
+    to_json_binary, BankMsg, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Order, Response,
+    StdResult,
 };
 use cw2::set_contract_version;
 use cw_paginate_storage::paginate_map_values;
@@ -292,15 +293,15 @@ pub fn update_owner(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Bounty { id } => to_binary(&BOUNTIES.load(deps.storage, id)?),
-        QueryMsg::Bounties { start_after, limit } => to_binary(&paginate_map_values(
+        QueryMsg::Bounty { id } => to_json_binary(&BOUNTIES.load(deps.storage, id)?),
+        QueryMsg::Bounties { start_after, limit } => to_json_binary(&paginate_map_values(
             deps,
             &BOUNTIES,
             start_after,
             limit,
             Order::Descending,
         )?),
-        QueryMsg::Count {} => to_binary(&ID.load(deps.storage)?),
-        QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
+        QueryMsg::Count {} => to_json_binary(&ID.load(deps.storage)?),
+        QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
     }
 }
