@@ -15,11 +15,7 @@ use crate::{
 };
 
 pub(crate) mod prelude {
-    pub use super::{
-        default_instantiate_msg, default_supply_metadata, TEST_CREATOR, TEST_RESERVE_DENOM,
-        TEST_SUPPLY_DENOM, _TEST_BUYER, _TEST_INVESTOR,
-    };
-    pub use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+    pub use super::{default_instantiate_msg, TEST_RESERVE_DENOM};
     pub use speculoos::prelude::*;
 }
 
