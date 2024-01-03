@@ -7,7 +7,8 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw20::Denom::Cw20;
 use cw20::{Cw20ReceiveMsg, Denom};
-use dao_hooks::stake::StakeChangedHookMsg;
+use cw4::MemberChangedHookMsg;
+use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 use dao_interface::voting::{
     Query as VotingQueryMsg, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
@@ -51,18 +52,18 @@ pub fn instantiate(
         &VotingQueryMsg::TotalPowerAtHeight { height: None },
     )?;
 
-    let staking_contract: Option<Addr>;
-    match msg.staking_contract {
+    let hook_caller: Option<Addr>;
+    match msg.hook_caller {
         Some(addr) => {
-            staking_contract = Some(deps.api.addr_validate(&addr)?);
+            hook_caller = Some(deps.api.addr_validate(&addr)?);
         }
         None => {
-            staking_contract = None;
+            hook_caller = None;
         }
     }
     let config = Config {
         vp_contract: deps.api.addr_validate(&msg.vp_contract)?,
-        staking_contract,
+        hook_caller,
         reward_token,
     };
     CONFIG.save(deps.storage, &config)?;
@@ -102,6 +103,8 @@ pub fn execute(
 ) -> Result<Response<Empty>, ContractError> {
     match msg {
         ExecuteMsg::StakeChangeHook(msg) => execute_stake_changed(deps, env, info, msg),
+        ExecuteMsg::NftStakeChangeHook(msg) => execute_nft_stake_changed(deps, env, info, msg),
+        ExecuteMsg::MemberChangedHook(msg) => execute_membership_changed(deps, env, info, msg),
         ExecuteMsg::Claim {} => execute_claim(deps, env, info),
         ExecuteMsg::Fund {} => execute_fund_native(deps, env, info),
         ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
@@ -188,22 +191,8 @@ pub fn execute_stake_changed(
     info: MessageInfo,
     msg: StakeChangedHookMsg,
 ) -> Result<Response<Empty>, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-
-    // Only the voting power contract or a staking contract (if configured) can
-    // call this hook.
-    match config.staking_contract {
-        Some(staking_contract) => {
-            if info.sender != staking_contract {
-                return Err(ContractError::InvalidHookSender {});
-            }
-        }
-        None => {
-            if info.sender != config.vp_contract {
-                return Err(ContractError::InvalidHookSender {});
-            };
-        }
-    }
+    // Check that the sender is the vp_contract (or the hook_caller if configured).
+    check_hook_caller(deps.as_ref(), info)?;
 
     match msg {
         StakeChangedHookMsg::Stake { addr, .. } => execute_stake(deps, env, addr),
@@ -211,6 +200,40 @@ pub fn execute_stake_changed(
     }
 }
 
+pub fn execute_membership_changed(
+    mut deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: MemberChangedHookMsg,
+) -> Result<Response<Empty>, ContractError> {
+    // Check that the sender is the vp_contract (or the hook_caller if configured).
+    check_hook_caller(deps.as_ref(), info)?;
+
+    // Get the addresses of members whose voting power has changed.
+    let _ = msg.diffs.iter().map(|member| -> Result<(), StdError> {
+        let addr = deps.api.addr_validate(&member.key)?;
+        update_rewards(&mut deps, &env, &addr)
+    });
+
+    Ok(Response::new().add_attribute("action", "membership_changed"))
+}
+
+pub fn execute_nft_stake_changed(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: NftStakeChangedHookMsg,
+) -> Result<Response<Empty>, ContractError> {
+    // Check that the sender is the vp_contract (or the hook_caller if configured).
+    check_hook_caller(deps.as_ref(), info)?;
+
+    match msg {
+        NftStakeChangedHookMsg::Stake { addr, .. } => execute_stake(deps, env, addr),
+        NftStakeChangedHookMsg::Unstake { addr, .. } => execute_unstake(deps, env, addr),
+    }
+}
+
+// TODO better attributes?
 pub fn execute_stake(
     mut deps: DepsMut,
     env: Env,
@@ -220,6 +243,7 @@ pub fn execute_stake(
     Ok(Response::new().add_attribute("action", "stake"))
 }
 
+// TODO better attributes?
 pub fn execute_unstake(
     mut deps: DepsMut,
     env: Env,
@@ -258,6 +282,26 @@ pub fn execute_update_owner(
 ) -> Result<Response, ContractError> {
     let ownership = cw_ownable::update_ownership(deps, &env.block, &info.sender, action)?;
     Ok(Response::default().add_attributes(ownership.into_attributes()))
+}
+
+pub fn check_hook_caller(deps: Deps, info: MessageInfo) -> Result<(), ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+
+    // Only the voting power contract or the designated hook_caller contract (if configured)
+    // can call this hook.
+    match config.hook_caller {
+        Some(hook_caller) => {
+            if info.sender != hook_caller {
+                return Err(ContractError::InvalidHookSender {});
+            }
+        }
+        None => {
+            if info.sender != config.vp_contract {
+                return Err(ContractError::InvalidHookSender {});
+            };
+        }
+    }
+    Ok(())
 }
 
 pub fn get_transfer_msg(recipient: Addr, amount: Uint128, denom: Denom) -> StdResult<CosmosMsg> {
@@ -466,6 +510,7 @@ mod tests {
         Box::new(contract)
     }
 
+    // TODO import these from dao-testing
     pub fn contract_staking() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
             cw20_stake::contract::execute,
@@ -608,7 +653,7 @@ mod tests {
         let msg = crate::msg::InstantiateMsg {
             owner: Some(owner.clone().into_string()),
             vp_contract: vp_contract.clone().into_string(),
-            staking_contract: Some(stake_contract.clone().into_string()),
+            hook_caller: Some(stake_contract.clone().into_string()),
             reward_token,
             reward_duration: 100000,
         };
@@ -713,7 +758,7 @@ mod tests {
         let msg = crate::msg::InstantiateMsg {
             owner: Some(owner.clone().into_string()),
             vp_contract: vp_addr.to_string(),
-            staking_contract: Some(staking_addr.to_string()),
+            hook_caller: Some(staking_addr.to_string()),
             reward_token,
             reward_duration: 0,
         };
