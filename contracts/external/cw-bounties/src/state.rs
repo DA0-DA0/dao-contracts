@@ -2,7 +2,6 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Coin;
 use cw_storage_plus::{Item, Map};
 
-// TODO add timestamps
 // A struct representing a bounty
 #[cw_serde]
 pub struct Bounty {

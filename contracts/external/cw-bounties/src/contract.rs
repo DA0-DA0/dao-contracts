@@ -89,7 +89,7 @@ pub fn create(
         return Err(ContractError::EmptyTitle {});
     }
 
-    // Increment and get the next bounty ID
+    // Increment and get the next bounty ID, the first bounty will have ID 1
     let id = ID.update(deps.storage, |mut id| -> StdResult<u64> {
         id += 1;
         Ok(id)
@@ -221,7 +221,7 @@ pub fn update(
         .add_attribute("bounty_id", id.to_string())
         .add_attribute("amount", new_amount.amount.to_string());
 
-    // check if new amount has different denom
+    // Check if new amount has different denom
     if new_amount.denom != bounty.amount.denom {
         // If denom is different, check funds sent match new amount
         let sent_amount = must_pay(&info, &new_amount.denom)?;
@@ -231,7 +231,7 @@ pub fn update(
                 actual: sent_amount,
             });
         }
-        // send back old amount
+        // Send back old amount
         let msg = BankMsg::Send {
             to_address: info.sender.to_string(),
             amount: vec![Coin {

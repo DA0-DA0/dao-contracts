@@ -33,7 +33,6 @@ pub enum ExecuteMsg {
         /// Recipient address where funds from bounty are claimed
         recipient: String,
     },
-    /// TODO make vesting payout?
     /// Updates a bounty (only owner)
     Update {
         /// The ID of the bounty
