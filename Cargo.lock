@@ -1932,6 +1932,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "dao-rewards-distributor"
+version = "2.4.0"
+dependencies = [
+ "anyhow",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-controllers 1.1.2",
+ "cw-multi-test",
+ "cw-ownable",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20 1.1.2",
+ "cw20-base 1.1.2",
+ "cw20-stake 2.4.0",
+ "dao-hooks",
+ "dao-interface",
+ "dao-voting 2.4.0",
+ "dao-voting-cw20-staked",
+ "thiserror",
+]
+
+[[package]]
 name = "dao-test-custom-factory"
 version = "2.4.2"
 dependencies = [
