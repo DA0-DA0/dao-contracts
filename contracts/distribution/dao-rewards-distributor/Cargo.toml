@@ -19,21 +19,22 @@ library = []
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cosmwasm-storage = { workspace = true }
-cw-storage-plus = { workspace = true }
-cw-controllers = { workspace = true }
+cw2 = { workspace = true }
 cw4 = { workspace = true }
 cw20 = { workspace = true }
-cw-utils = { workspace = true }
 cw20-base = {  workspace = true, features = ["library"] }
-cw2 = { workspace = true }
-thiserror = { workspace = true }
+cw-controllers = { workspace = true }
 cw-ownable = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-utils = { workspace = true }
 dao-hooks = { workspace = true }
 dao-interface = { workspace = true }
 dao-voting = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
 anyhow = { workspace = true }
 cw20-stake = { workspace = true, features = ["library"] }
 dao-voting-cw20-staked = { workspace = true, features = ["library"] }
+dao-testing = { workspace = true }
