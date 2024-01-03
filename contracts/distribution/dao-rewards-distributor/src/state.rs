@@ -7,7 +7,7 @@ use cw_storage_plus::{Item, Map};
 #[cw_serde]
 pub struct Config {
     pub vp_contract: Addr,
-    pub staking_contract: Option<Addr>,
+    pub hook_caller: Option<Addr>,
     pub reward_token: Denom,
 }
 

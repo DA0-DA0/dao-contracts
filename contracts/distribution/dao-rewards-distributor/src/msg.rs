@@ -1,8 +1,9 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw20::{Cw20ReceiveMsg, Denom};
+use cw4::MemberChangedHookMsg;
 use cw_ownable::cw_ownable_execute;
-use dao_hooks::stake::StakeChangedHookMsg;
+use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 
 use crate::state::{Config, RewardConfig};
 
@@ -18,9 +19,11 @@ pub struct InstantiateMsg {
     pub owner: Option<String>,
     /// A DAO DAO voting power module contract address.
     pub vp_contract: String,
-    /// An optional staking contract that is allowed to call the StakeChangedHook.
-    /// Often, this is the same as the vp_contract, but sometimes they are separate.
-    pub staking_contract: Option<String>,
+    /// An optional contract that is allowed to call the StakeChangedHook.
+    /// Often, the vp_contract calls hooks for power change events, but sometimes
+    /// they are separate. For example, the cw20-stake contract is separate from
+    /// the dao-voting-cw20-staked contract.
+    pub hook_caller: Option<String>,
     /// The Denom in which rewards are paid out.
     pub reward_token: Denom,
     /// The duration of the reward period in blocks.
@@ -30,10 +33,20 @@ pub struct InstantiateMsg {
 #[cw_ownable_execute]
 #[cw_serde]
 pub enum ExecuteMsg {
+    /// Called when a member is added or removed
+    /// to a cw4-groups or cw721-roles contract.
+    MemberChangedHook(MemberChangedHookMsg),
+    /// Called when NFTs are staked or unstaked.
+    NftStakeChangeHook(NftStakeChangedHookMsg),
+    /// Called when tokens are staked or unstaked.
     StakeChangeHook(StakeChangedHookMsg),
+    /// Claims rewards for the sender.
     Claim {},
+    /// Used to fund this contract with cw20 tokens.
     Receive(Cw20ReceiveMsg),
+    /// Used to fund this contract with native tokens.
     Fund {},
+    /// Updates the reward duration which controls the rate that rewards are issued.
     UpdateRewardDuration { new_duration: u64 },
 }
 
