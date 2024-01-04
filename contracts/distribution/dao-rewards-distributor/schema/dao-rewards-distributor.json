@@ -1,5 +1,5 @@
 {
-  "contract_name": "cw20-stake-external-rewards",
+  "contract_name": "dao-rewards-distributor",
   "contract_version": "2.4.0",
   "idl_version": "1.0.0",
   "instantiate": {
@@ -9,24 +9,39 @@
     "required": [
       "reward_duration",
       "reward_token",
-      "staking_contract"
+      "vp_contract"
     ],
     "properties": {
+      "hook_caller": {
+        "description": "An optional contract that is allowed to call the StakeChangedHook. Often, the vp_contract calls hooks for power change events, but sometimes they are separate. For example, the cw20-stake contract is separate from the dao-voting-cw20-staked contract.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "owner": {
+        "description": "The owner of the contract. Is able to fund the contract and update the reward duration.",
         "type": [
           "string",
           "null"
         ]
       },
       "reward_duration": {
+        "description": "The duration of the reward period in blocks.",
         "type": "integer",
         "format": "uint64",
         "minimum": 0.0
       },
       "reward_token": {
-        "$ref": "#/definitions/Denom"
+        "description": "The Denom in which rewards are paid out.",
+        "allOf": [
+          {
+            "$ref": "#/definitions/Denom"
+          }
+        ]
       },
-      "staking_contract": {
+      "vp_contract": {
+        "description": "A DAO DAO voting power module contract address.",
         "type": "string"
       }
     },
@@ -71,6 +86,33 @@
     "title": "ExecuteMsg",
     "oneOf": [
       {
+        "description": "Called when a member is added or removed to a cw4-groups or cw721-roles contract.",
+        "type": "object",
+        "required": [
+          "member_changed_hook"
+        ],
+        "properties": {
+          "member_changed_hook": {
+            "$ref": "#/definitions/MemberChangedHookMsg"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Called when NFTs are staked or unstaked.",
+        "type": "object",
+        "required": [
+          "nft_stake_change_hook"
+        ],
+        "properties": {
+          "nft_stake_change_hook": {
+            "$ref": "#/definitions/NftStakeChangedHookMsg"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Called when tokens are staked or unstaked.",
         "type": "object",
         "required": [
           "stake_change_hook"
@@ -83,6 +125,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Claims rewards for the sender.",
         "type": "object",
         "required": [
           "claim"
@@ -96,6 +139,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Used to fund this contract with cw20 tokens.",
         "type": "object",
         "required": [
           "receive"
@@ -108,6 +152,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Used to fund this contract with native tokens.",
         "type": "object",
         "required": [
           "fund"
@@ -121,6 +166,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Updates the reward duration which controls the rate that rewards are issued.",
         "type": "object",
         "required": [
           "update_reward_duration"
@@ -285,6 +331,109 @@
           }
         ]
       },
+      "MemberChangedHookMsg": {
+        "description": "MemberChangedHookMsg should be de/serialized under `MemberChangedHook()` variant in a ExecuteMsg. This contains a list of all diffs on the given transaction.",
+        "type": "object",
+        "required": [
+          "diffs"
+        ],
+        "properties": {
+          "diffs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/MemberDiff"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "MemberDiff": {
+        "description": "MemberDiff shows the old and new states for a given cw4 member They cannot both be None. old = None, new = Some -> Insert old = Some, new = Some -> Update old = Some, new = None -> Delete",
+        "type": "object",
+        "required": [
+          "key"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "new": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "old": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      },
+      "NftStakeChangedHookMsg": {
+        "description": "An enum representing NFT staking hooks.",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "stake"
+            ],
+            "properties": {
+              "stake": {
+                "type": "object",
+                "required": [
+                  "addr",
+                  "token_id"
+                ],
+                "properties": {
+                  "addr": {
+                    "$ref": "#/definitions/Addr"
+                  },
+                  "token_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "unstake"
+            ],
+            "properties": {
+              "unstake": {
+                "type": "object",
+                "required": [
+                  "addr",
+                  "token_ids"
+                ],
+                "properties": {
+                  "addr": {
+                    "$ref": "#/definitions/Addr"
+                  },
+                  "token_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
       "StakeChangedHookMsg": {
         "description": "An enum representing staking hooks.",
         "oneOf": [
@@ -414,22 +563,8 @@
   "migrate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "MigrateMsg",
-    "oneOf": [
-      {
-        "description": "Migrates from version 0.2.6 to 2.0.0. The significant changes being the addition of a two-step ownership transfer using `cw_ownable` and the removal of the manager. Migrating will automatically remove the current manager.",
-        "type": "object",
-        "required": [
-          "from_v1"
-        ],
-        "properties": {
-          "from_v1": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      }
-    ]
+    "type": "string",
+    "enum": []
   },
   "sudo": null,
   "responses": {
@@ -525,14 +660,35 @@
           "type": "object",
           "required": [
             "reward_token",
-            "staking_contract"
+            "vp_contract"
           ],
           "properties": {
-            "reward_token": {
-              "$ref": "#/definitions/Denom"
+            "hook_caller": {
+              "description": "An optional contract that is allowed to call the StakeChangedHook in place of the voting power contract.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
-            "staking_contract": {
-              "$ref": "#/definitions/Addr"
+            "reward_token": {
+              "description": "The Denom in which rewards are paid out.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Denom"
+                }
+              ]
+            },
+            "vp_contract": {
+              "description": "The address of a DAO DAO voting power module contract.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                }
+              ]
             }
           },
           "additionalProperties": false
