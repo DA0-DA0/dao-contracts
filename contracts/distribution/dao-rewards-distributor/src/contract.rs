@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_json, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
+    from_json, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
     MessageInfo, Response, StdError, StdResult, Uint128, Uint256, WasmMsg,
 };
 use cw2::set_contract_version;
@@ -36,7 +36,7 @@ pub fn instantiate(
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
-) -> Result<Response<Empty>, ContractError> {
+) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     // Intialize the contract owner
@@ -107,7 +107,7 @@ pub fn execute(
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> Result<Response<Empty>, ContractError> {
+) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::StakeChangeHook(msg) => execute_stake_changed(deps, env, info, msg),
         ExecuteMsg::NftStakeChangeHook(msg) => execute_nft_stake_changed(deps, env, info, msg),
@@ -127,7 +127,7 @@ pub fn execute_receive(
     env: Env,
     info: MessageInfo,
     wrapper: Cw20ReceiveMsg,
-) -> Result<Response<Empty>, ContractError> {
+) -> Result<Response, ContractError> {
     let msg: ReceiveMsg = from_json(&wrapper.msg)?;
     let config = CONFIG.load(deps.storage)?;
     let sender = deps.api.addr_validate(&wrapper.sender)?;
@@ -146,7 +146,7 @@ pub fn execute_fund_native(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-) -> Result<Response<Empty>, ContractError> {
+) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
     match config.reward_token {
@@ -164,7 +164,7 @@ pub fn execute_fund(
     env: Env,
     sender: Addr,
     amount: Uint128,
-) -> Result<Response<Empty>, ContractError> {
+) -> Result<Response, ContractError> {
     // Ensure that the sender is the owner
     cw_ownable::assert_owner(deps.storage, &sender)?;
 
@@ -206,7 +206,7 @@ pub fn execute_stake_changed(
     env: Env,
     info: MessageInfo,
     msg: StakeChangedHookMsg,
-) -> Result<Response<Empty>, ContractError> {
+) -> Result<Response, ContractError> {
     // Check that the sender is the vp_contract (or the hook_caller if configured).
     check_hook_caller(deps.as_ref(), info)?;
 
@@ -221,7 +221,7 @@ pub fn execute_membership_changed(
     env: Env,
     info: MessageInfo,
     msg: MemberChangedHookMsg,
-) -> Result<Response<Empty>, ContractError> {
+) -> Result<Response, ContractError> {
     // Check that the sender is the vp_contract (or the hook_caller if configured).
     check_hook_caller(deps.as_ref(), info)?;
 
@@ -239,7 +239,7 @@ pub fn execute_nft_stake_changed(
     env: Env,
     info: MessageInfo,
     msg: NftStakeChangedHookMsg,
-) -> Result<Response<Empty>, ContractError> {
+) -> Result<Response, ContractError> {
     // Check that the sender is the vp_contract (or the hook_caller if configured).
     check_hook_caller(deps.as_ref(), info)?;
 
@@ -249,20 +249,12 @@ pub fn execute_nft_stake_changed(
     }
 }
 
-pub fn execute_stake(
-    mut deps: DepsMut,
-    env: Env,
-    addr: Addr,
-) -> Result<Response<Empty>, ContractError> {
+pub fn execute_stake(mut deps: DepsMut, env: Env, addr: Addr) -> Result<Response, ContractError> {
     update_rewards(&mut deps, &env, &addr)?;
     Ok(Response::new().add_attribute("action", "stake"))
 }
 
-pub fn execute_unstake(
-    mut deps: DepsMut,
-    env: Env,
-    addr: Addr,
-) -> Result<Response<Empty>, ContractError> {
+pub fn execute_unstake(mut deps: DepsMut, env: Env, addr: Addr) -> Result<Response, ContractError> {
     update_rewards(&mut deps, &env, &addr)?;
     Ok(Response::new().add_attribute("action", "unstake"))
 }
@@ -271,7 +263,7 @@ pub fn execute_claim(
     mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
-) -> Result<Response<Empty>, ContractError> {
+) -> Result<Response, ContractError> {
     // Update the rewards information for the sender.
     update_rewards(&mut deps, &env, &info.sender)?;
 
@@ -383,6 +375,7 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr) -> StdResult<(
     // Update the last time rewards were updated.
     let last_time_reward_applicable = get_last_time_reward_applicable(deps.as_ref(), env)?;
     LAST_UPDATE_BLOCK.save(deps.storage, &last_time_reward_applicable)?;
+
     Ok(())
 }
 
@@ -390,7 +383,7 @@ pub fn get_reward_per_token(deps: Deps, env: &Env, vp_contract: &Addr) -> StdRes
     let reward_config = REWARD_CONFIG.load(deps.storage)?;
 
     // Get the total voting power at this block height.
-    let total_power = get_total_voting_power(deps, vp_contract)?;
+    let total_power = get_total_voting_power(deps, &env, vp_contract)?;
 
     // Get information on the last time rewards were updated.
     let last_time_reward_applicable = get_last_time_reward_applicable(deps, env)?;
@@ -398,6 +391,7 @@ pub fn get_reward_per_token(deps: Deps, env: &Env, vp_contract: &Addr) -> StdRes
 
     // Get the amount of rewards per unit of voting power.
     let prev_reward_per_token = REWARD_PER_TOKEN.load(deps.storage).unwrap_or_default();
+
     let additional_reward_per_token = if total_power == Uint128::zero() {
         Uint256::zero()
     } else {
@@ -418,13 +412,14 @@ pub fn get_reward_per_token(deps: Deps, env: &Env, vp_contract: &Addr) -> StdRes
 
 pub fn get_rewards_earned(
     deps: Deps,
-    _env: &Env,
+    env: &Env,
     addr: &Addr,
     reward_per_token: Uint256,
     vp_contract: &Addr,
 ) -> StdResult<Uint128> {
     // Get the users voting power at the current height.
-    let voting_power = Uint256::from(get_voting_power(deps, vp_contract, addr)?);
+    let voting_power = Uint256::from(get_voting_power(deps, env, vp_contract, addr)?);
+
     // Load the users latest reward per token value.
     let user_reward_per_token = USER_REWARD_PER_TOKEN
         .load(deps.storage, addr.clone())
@@ -447,16 +442,23 @@ fn get_last_time_reward_applicable(deps: Deps, env: &Env) -> StdResult<u64> {
     Ok(min(env.block.height, reward_config.period_finish))
 }
 
-fn get_total_voting_power(deps: Deps, contract_addr: &Addr) -> StdResult<Uint128> {
-    let msg = VotingQueryMsg::TotalPowerAtHeight { height: None };
+fn get_total_voting_power(deps: Deps, env: &Env, contract_addr: &Addr) -> StdResult<Uint128> {
+    let msg = VotingQueryMsg::TotalPowerAtHeight {
+        height: Some(env.block.height),
+    };
     let resp: TotalPowerAtHeightResponse = deps.querier.query_wasm_smart(contract_addr, &msg)?;
     Ok(resp.power)
 }
 
-fn get_voting_power(deps: Deps, contract_addr: &Addr, addr: &Addr) -> StdResult<Uint128> {
+fn get_voting_power(
+    deps: Deps,
+    env: &Env,
+    contract_addr: &Addr,
+    addr: &Addr,
+) -> StdResult<Uint128> {
     let msg = VotingQueryMsg::VotingPowerAtHeight {
         address: addr.into(),
-        height: None,
+        height: Some(env.block.height),
     };
     let resp: VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(contract_addr, &msg)?;
     Ok(resp.power)
@@ -467,7 +469,7 @@ pub fn execute_update_reward_duration(
     env: Env,
     info: MessageInfo,
     new_duration: u64,
-) -> Result<Response<Empty>, ContractError> {
+) -> Result<Response, ContractError> {
     // Ensure the sender is the owner.
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
