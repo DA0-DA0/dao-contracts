@@ -39,6 +39,7 @@ pub fn instantiate(
 ) -> Result<Response<Empty>, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
+    // Intialize the contract owner
     cw_ownable::initialize_owner(deps.storage, deps.api, msg.owner.as_deref())?;
 
     let reward_token = match msg.reward_token {
@@ -52,6 +53,8 @@ pub fn instantiate(
         &VotingQueryMsg::TotalPowerAtHeight { height: None },
     )?;
 
+    // Optional hook caller is allowed to call voting power change hooks.
+    // If not provided, only the voting power contract is used.
     let hook_caller: Option<Addr>;
     match msg.hook_caller {
         Some(addr) => {
@@ -61,6 +64,8 @@ pub fn instantiate(
             hook_caller = None;
         }
     }
+
+    // Save the contract configuration
     let config = Config {
         vp_contract: deps.api.addr_validate(&msg.vp_contract)?,
         hook_caller,
@@ -68,10 +73,12 @@ pub fn instantiate(
     };
     CONFIG.save(deps.storage, &config)?;
 
+    // Reward duration must be greater than 0
     if msg.reward_duration == 0 {
         return Err(ContractError::ZeroRewardDuration {});
     }
 
+    // Initialize the reward config
     let reward_config = RewardConfig {
         period_finish: 0,
         reward_rate: Uint128::zero(),
@@ -124,9 +131,12 @@ pub fn execute_receive(
     let msg: ReceiveMsg = from_json(&wrapper.msg)?;
     let config = CONFIG.load(deps.storage)?;
     let sender = deps.api.addr_validate(&wrapper.sender)?;
+
+    // This method is only to be used by cw20 tokens
     if config.reward_token != Denom::Cw20(info.sender) {
         return Err(InvalidCw20 {});
     };
+
     match msg {
         ReceiveMsg::Fund {} => execute_fund(deps, env, sender, wrapper.amount),
     }
@@ -141,6 +151,7 @@ pub fn execute_fund_native(
 
     match config.reward_token {
         Denom::Native(denom) => {
+            // Check that the correct denom has been sent
             let amount = cw_utils::must_pay(&info, &denom).map_err(|_| InvalidFunds {})?;
             execute_fund(deps, env, info.sender, amount)
         }
@@ -154,13 +165,18 @@ pub fn execute_fund(
     sender: Addr,
     amount: Uint128,
 ) -> Result<Response<Empty>, ContractError> {
+    // Ensure that the sender is the owner
     cw_ownable::assert_owner(deps.storage, &sender)?;
 
     update_rewards(&mut deps, &env, &sender)?;
+
     let reward_config = REWARD_CONFIG.load(deps.storage)?;
+
+    // Ensure that the current reward period has ended
     if reward_config.period_finish > env.block.height {
         return Err(RewardPeriodNotFinished {});
     }
+
     let new_reward_config = RewardConfig {
         period_finish: env.block.height + reward_config.reward_duration,
         reward_rate: amount
@@ -256,15 +272,25 @@ pub fn execute_claim(
     env: Env,
     info: MessageInfo,
 ) -> Result<Response<Empty>, ContractError> {
+    // Update the rewards information for the sender.
     update_rewards(&mut deps, &env, &info.sender)?;
+
+    // Get the pending rewards for the sender.
     let rewards = PENDING_REWARDS
         .load(deps.storage, info.sender.clone())
         .map_err(|_| NoRewardsClaimable {})?;
+
+    // If there are no rewards to claim, return an error.
     if rewards == Uint128::zero() {
         return Err(ContractError::NoRewardsClaimable {});
     }
+
+    // Save the pending rewards for the sender, it will now be zero.
     PENDING_REWARDS.save(deps.storage, info.sender.clone(), &Uint128::zero())?;
+
     let config = CONFIG.load(deps.storage)?;
+
+    // Transfer the rewards to the sender.
     let transfer_msg = get_transfer_msg(info.sender, rewards, config.reward_token)?;
     Ok(Response::new()
         .add_message(transfer_msg)
@@ -278,6 +304,9 @@ pub fn execute_update_owner(
     env: Env,
     action: cw_ownable::Action,
 ) -> Result<Response, ContractError> {
+    // Update the current contract owner.
+    // Note, this is a two step process, the new owner must accept this ownership transfer.
+    // First the owner specifies the new owner, then the new owner must accept.
     let ownership = cw_ownable::update_ownership(deps, &env.block, &info.sender, action)?;
     Ok(Response::default().add_attributes(ownership.into_attributes()))
 }
@@ -330,9 +359,11 @@ pub fn get_transfer_msg(recipient: Addr, amount: Uint128, denom: Denom) -> StdRe
 pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr) -> StdResult<()> {
     let config = CONFIG.load(deps.storage)?;
 
+    // Reward per token represents the amount of rewards per unit of voting power.
     let reward_per_token = get_reward_per_token(deps.as_ref(), env, &config.vp_contract)?;
     REWARD_PER_TOKEN.save(deps.storage, &reward_per_token)?;
 
+    // The amount of rewards earned up until this point.
     let earned_rewards = get_rewards_earned(
         deps.as_ref(),
         env,
@@ -341,11 +372,15 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr) -> StdResult<(
         &config.vp_contract,
     )?;
 
+    // Update the users pending rewards
     PENDING_REWARDS.update::<_, StdError>(deps.storage, addr.clone(), |r| {
         Ok(r.unwrap_or_default() + earned_rewards)
     })?;
+
+    // Update the users latest reward per token value.
     USER_REWARD_PER_TOKEN.save(deps.storage, addr.clone(), &reward_per_token)?;
 
+    // Update the last time rewards were updated.
     let last_time_reward_applicable = get_last_time_reward_applicable(deps.as_ref(), env)?;
     LAST_UPDATE_BLOCK.save(deps.storage, &last_time_reward_applicable)?;
     Ok(())
@@ -353,9 +388,15 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr) -> StdResult<(
 
 pub fn get_reward_per_token(deps: Deps, env: &Env, vp_contract: &Addr) -> StdResult<Uint256> {
     let reward_config = REWARD_CONFIG.load(deps.storage)?;
+
+    // Get the total voting power at this block height.
     let total_power = get_total_voting_power(deps, vp_contract)?;
+
+    // Get information on the last time rewards were updated.
     let last_time_reward_applicable = get_last_time_reward_applicable(deps, env)?;
     let last_update_block = LAST_UPDATE_BLOCK.load(deps.storage).unwrap_or_default();
+
+    // Get the amount of rewards per unit of voting power.
     let prev_reward_per_token = REWARD_PER_TOKEN.load(deps.storage).unwrap_or_default();
     let additional_reward_per_token = if total_power == Uint128::zero() {
         Uint256::zero()
@@ -382,11 +423,17 @@ pub fn get_rewards_earned(
     reward_per_token: Uint256,
     vp_contract: &Addr,
 ) -> StdResult<Uint128> {
+    // Get the users voting power at the current height.
     let voting_power = Uint256::from(get_voting_power(deps, vp_contract, addr)?);
+    // Load the users latest reward per token value.
     let user_reward_per_token = USER_REWARD_PER_TOKEN
         .load(deps.storage, addr.clone())
         .unwrap_or_default();
+    // Calculate the difference between the current reward per token value and the users latest
     let reward_factor = reward_per_token.checked_sub(user_reward_per_token)?;
+
+    // Calculate the amount of rewards earned.
+    // voting_power * reward_factor / scale_factor
     Ok(voting_power
         .checked_mul(reward_factor)?
         .checked_div(scale_factor())?
@@ -395,6 +442,8 @@ pub fn get_rewards_earned(
 
 fn get_last_time_reward_applicable(deps: Deps, env: &Env) -> StdResult<u64> {
     let reward_config = REWARD_CONFIG.load(deps.storage)?;
+
+    // Take the minimum of the current block height and the period finish height.
     Ok(min(env.block.height, reward_config.period_finish))
 }
 
@@ -419,6 +468,7 @@ pub fn execute_update_reward_duration(
     info: MessageInfo,
     new_duration: u64,
 ) -> Result<Response<Empty>, ContractError> {
+    // Ensure the sender is the owner.
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     let mut reward_config = REWARD_CONFIG.load(deps.storage)?;
