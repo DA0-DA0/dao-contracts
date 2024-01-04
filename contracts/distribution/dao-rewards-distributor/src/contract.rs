@@ -42,7 +42,7 @@ pub fn instantiate(
     // Intialize the contract owner
     cw_ownable::initialize_owner(deps.storage, deps.api, msg.owner.as_deref())?;
 
-    let reward_token = match msg.reward_token {
+    let reward_denom = match msg.reward_denom {
         Denom::Native(denom) => Denom::Native(denom),
         Cw20(addr) => Cw20(deps.api.addr_validate(addr.as_ref())?),
     };
@@ -69,7 +69,7 @@ pub fn instantiate(
     let config = Config {
         vp_contract: deps.api.addr_validate(&msg.vp_contract)?,
         hook_caller,
-        reward_token,
+        reward_denom,
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -90,8 +90,8 @@ pub fn instantiate(
         .add_attribute("owner", msg.owner.unwrap_or_else(|| "None".to_string()))
         .add_attribute("vp_contract", config.vp_contract)
         .add_attribute(
-            "reward_token",
-            match config.reward_token {
+            "reward_denom",
+            match config.reward_denom {
                 Denom::Native(denom) => denom,
                 Cw20(addr) => addr.into_string(),
             },
@@ -133,7 +133,7 @@ pub fn execute_receive(
     let sender = deps.api.addr_validate(&wrapper.sender)?;
 
     // This method is only to be used by cw20 tokens
-    if config.reward_token != Denom::Cw20(info.sender) {
+    if config.reward_denom != Denom::Cw20(info.sender) {
         return Err(InvalidCw20 {});
     };
 
@@ -149,7 +149,7 @@ pub fn execute_fund_native(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
-    match config.reward_token {
+    match config.reward_denom {
         Denom::Native(denom) => {
             // Check that the correct denom has been sent
             let amount = cw_utils::must_pay(&info, &denom).map_err(|_| InvalidFunds {})?;
@@ -283,7 +283,7 @@ pub fn execute_claim(
     let config = CONFIG.load(deps.storage)?;
 
     // Transfer the rewards to the sender.
-    let transfer_msg = get_transfer_msg(info.sender, rewards, config.reward_token)?;
+    let transfer_msg = get_transfer_msg(info.sender, rewards, config.reward_denom)?;
     Ok(Response::new()
         .add_message(transfer_msg)
         .add_attribute("action", "claim")
@@ -530,7 +530,7 @@ pub fn query_pending_rewards(
     Ok(PendingRewardsResponse {
         address: addr.to_string(),
         pending_rewards,
-        denom: config.reward_token,
+        denom: config.reward_denom,
         last_update_block: LAST_UPDATE_BLOCK.load(deps.storage).unwrap_or_default(),
     })
 }

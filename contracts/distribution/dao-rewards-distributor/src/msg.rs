@@ -24,8 +24,8 @@ pub struct InstantiateMsg {
     /// they are separate. For example, the cw20-stake contract is separate from
     /// the dao-voting-cw20-staked contract.
     pub hook_caller: Option<String>,
-    /// The Denom in which rewards are paid out.
-    pub reward_token: Denom,
+    /// The denom in which rewards are paid out.
+    pub reward_denom: Denom,
     /// The duration of the reward period in blocks.
     pub reward_duration: u64,
 }
@@ -55,16 +55,20 @@ pub enum MigrateMsg {}
 
 #[cw_serde]
 pub enum ReceiveMsg {
+    /// Used to fund this contract with cw20 tokens.
     Fund {},
 }
 
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
+    /// Returns configuration information about this contract.
     #[returns(InfoResponse)]
     Info {},
+    /// Returns the pending rewards for the given address.
     #[returns(PendingRewardsResponse)]
     GetPendingRewards { address: String },
+    /// Returns information about the ownership of this contract.
     #[returns(::cw_ownable::Ownership<::cosmwasm_std::Addr>)]
     Ownership {},
 }
