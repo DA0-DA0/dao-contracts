@@ -49,6 +49,67 @@ fn instantiate_cw20(app: &mut App, initial_balances: Vec<Cw20Coin>) -> Addr {
         .unwrap()
 }
 
+fn instantiate_cw20_staking(
+    app: &mut App,
+    cw20: Addr,
+    unstaking_duration: Option<Duration>,
+) -> Addr {
+    let staking_code_id = app.store_code(cw20_stake_contract());
+    let msg = cw20_stake::msg::InstantiateMsg {
+        owner: Some(OWNER.to_string()),
+        token_address: cw20.to_string(),
+        unstaking_duration,
+    };
+    app.instantiate_contract(
+        staking_code_id,
+        Addr::unchecked(ADDR1),
+        &msg,
+        &[],
+        "staking",
+        None,
+    )
+    .unwrap()
+}
+
+fn instantiate_cw20_vp_contract(app: &mut App, cw20: Addr, staking_contract: Addr) -> Addr {
+    let vp_code_id = app.store_code(cw20_staked_balances_voting_contract());
+    let msg = dao_voting_cw20_staked::msg::InstantiateMsg {
+        token_info: dao_voting_cw20_staked::msg::TokenInfo::Existing {
+            address: cw20.to_string(),
+            staking_contract: dao_voting_cw20_staked::msg::StakingInfo::Existing {
+                staking_contract_address: staking_contract.to_string(),
+            },
+        },
+        active_threshold: None,
+    };
+    app.instantiate_contract(vp_code_id, Addr::unchecked(ADDR1), &msg, &[], "vp", None)
+        .unwrap()
+}
+
+fn setup_cw20_test(app: &mut App, initial_balances: Vec<Cw20Coin>) -> (Addr, Addr, Addr) {
+    // Instantiate cw20 contract
+    let cw20_addr = instantiate_cw20(app, initial_balances.clone());
+    app.update_block(next_block);
+
+    // Instantiate staking contract
+    let staking_addr = instantiate_cw20_staking(app, cw20_addr.clone(), None);
+    app.update_block(next_block);
+
+    // Instantiate vp contract
+    let vp_addr = instantiate_cw20_vp_contract(app, cw20_addr.clone(), staking_addr.clone());
+
+    for coin in initial_balances {
+        stake_cw20_tokens(
+            app,
+            &staking_addr,
+            &cw20_addr,
+            coin.address,
+            coin.amount.u128(),
+        );
+    }
+    (staking_addr, cw20_addr, vp_addr)
+}
+
 fn setup_cw4_test(app: &mut App) -> (Addr, Addr) {
     let cw4_group_code_id = app.store_code(cw4_group_contract());
     let vp_code_id = app.store_code(dao_voting_cw4_contract());
@@ -189,135 +250,6 @@ fn setup_cw721_test(app: &mut App) -> (Addr, Addr) {
     (vp_addr, cw721_addr)
 }
 
-fn instantiate_cw20_staking(
-    app: &mut App,
-    cw20: Addr,
-    unstaking_duration: Option<Duration>,
-) -> Addr {
-    let staking_code_id = app.store_code(cw20_stake_contract());
-    let msg = cw20_stake::msg::InstantiateMsg {
-        owner: Some(OWNER.to_string()),
-        token_address: cw20.to_string(),
-        unstaking_duration,
-    };
-    app.instantiate_contract(
-        staking_code_id,
-        Addr::unchecked(ADDR1),
-        &msg,
-        &[],
-        "staking",
-        None,
-    )
-    .unwrap()
-}
-
-fn instantiate_cw20_vp_contract(app: &mut App, cw20: Addr, staking_contract: Addr) -> Addr {
-    let vp_code_id = app.store_code(cw20_staked_balances_voting_contract());
-    let msg = dao_voting_cw20_staked::msg::InstantiateMsg {
-        token_info: dao_voting_cw20_staked::msg::TokenInfo::Existing {
-            address: cw20.to_string(),
-            staking_contract: dao_voting_cw20_staked::msg::StakingInfo::Existing {
-                staking_contract_address: staking_contract.to_string(),
-            },
-        },
-        active_threshold: None,
-    };
-    app.instantiate_contract(vp_code_id, Addr::unchecked(ADDR1), &msg, &[], "vp", None)
-        .unwrap()
-}
-
-fn stake_cw20_tokens<T: Into<String>>(
-    app: &mut App,
-    staking_addr: &Addr,
-    cw20_addr: &Addr,
-    sender: T,
-    amount: u128,
-) {
-    let msg = cw20::Cw20ExecuteMsg::Send {
-        contract: staking_addr.to_string(),
-        amount: Uint128::new(amount),
-        msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
-    };
-    app.execute_contract(Addr::unchecked(sender), cw20_addr.clone(), &msg, &[])
-        .unwrap();
-}
-
-fn unstake_cw20_tokens(app: &mut App, staking_addr: &Addr, address: &str, amount: u128) {
-    let msg = cw20_stake::msg::ExecuteMsg::Unstake {
-        amount: Uint128::new(amount),
-    };
-    app.execute_contract(Addr::unchecked(address), staking_addr.clone(), &msg, &[])
-        .unwrap();
-}
-
-fn stake_nft(app: &mut App, vp_addr: &Addr, cw721_addr: &Addr, address: &str, token_id: &str) {
-    let msg = cw721_base::msg::ExecuteMsg::<Empty, Empty>::SendNft {
-        contract: vp_addr.to_string(),
-        token_id: token_id.to_string(),
-        msg: Binary::default(),
-    };
-
-    app.execute_contract(Addr::unchecked(address), cw721_addr.clone(), &msg, &[])
-        .unwrap();
-}
-
-fn unstake_nft(app: &mut App, vp_addr: &Addr, address: &str, token_id: &str) {
-    let msg = dao_voting_cw721_staked::msg::ExecuteMsg::Unstake {
-        token_ids: vec![token_id.to_string()],
-    };
-    app.execute_contract(Addr::unchecked(address), vp_addr.clone(), &msg, &[])
-        .unwrap();
-}
-
-fn stake_native_tokens(app: &mut App, staking_addr: &Addr, address: &str, amount: u128) {
-    let msg = dao_voting_token_staked::msg::ExecuteMsg::Stake {};
-    app.execute_contract(
-        Addr::unchecked(address),
-        staking_addr.clone(),
-        &msg,
-        &coins(amount, DENOM),
-    )
-    .unwrap();
-}
-
-fn unstake_native_tokens(app: &mut App, staking_addr: &Addr, address: &str, amount: u128) {
-    let msg = dao_voting_token_staked::msg::ExecuteMsg::Unstake {
-        amount: Uint128::new(amount),
-    };
-    app.execute_contract(Addr::unchecked(address), staking_addr.clone(), &msg, &[])
-        .unwrap();
-}
-
-fn update_members(app: &mut App, cw4_addr: &Addr, remove: Vec<String>, add: Vec<Member>) {
-    let msg = cw4_group::msg::ExecuteMsg::UpdateMembers { remove, add };
-    app.execute_contract(Addr::unchecked(OWNER), cw4_addr.clone(), &msg, &[])
-        .unwrap();
-}
-
-fn setup_cw20_dao(app: &mut App, initial_balances: Vec<Cw20Coin>) -> (Addr, Addr, Addr) {
-    // Instantiate cw20 contract
-    let cw20_addr = instantiate_cw20(app, initial_balances.clone());
-    app.update_block(next_block);
-
-    // Instantiate staking contract
-    let staking_addr = instantiate_cw20_staking(app, cw20_addr.clone(), None);
-    app.update_block(next_block);
-
-    // Instantiate vp contract
-    let vp_addr = instantiate_cw20_vp_contract(app, cw20_addr.clone(), staking_addr.clone());
-
-    for coin in initial_balances {
-        stake_cw20_tokens(
-            app,
-            &staking_addr,
-            &cw20_addr,
-            coin.address,
-            coin.amount.u128(),
-        );
-    }
-    (staking_addr, cw20_addr, vp_addr)
-}
-
 fn setup_reward_contract(
     app: &mut App,
     vp_contract: Addr,
@@ -429,13 +361,81 @@ fn fund_rewards_cw20(
         .unwrap();
 }
 
+fn stake_cw20_tokens<T: Into<String>>(
+    app: &mut App,
+    staking_addr: &Addr,
+    cw20_addr: &Addr,
+    sender: T,
+    amount: u128,
+) {
+    let msg = cw20::Cw20ExecuteMsg::Send {
+        contract: staking_addr.to_string(),
+        amount: Uint128::new(amount),
+        msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+    };
+    app.execute_contract(Addr::unchecked(sender), cw20_addr.clone(), &msg, &[])
+        .unwrap();
+}
+
+fn unstake_cw20_tokens(app: &mut App, staking_addr: &Addr, address: &str, amount: u128) {
+    let msg = cw20_stake::msg::ExecuteMsg::Unstake {
+        amount: Uint128::new(amount),
+    };
+    app.execute_contract(Addr::unchecked(address), staking_addr.clone(), &msg, &[])
+        .unwrap();
+}
+
+fn stake_nft(app: &mut App, vp_addr: &Addr, cw721_addr: &Addr, address: &str, token_id: &str) {
+    let msg = cw721_base::msg::ExecuteMsg::<Empty, Empty>::SendNft {
+        contract: vp_addr.to_string(),
+        token_id: token_id.to_string(),
+        msg: Binary::default(),
+    };
+
+    app.execute_contract(Addr::unchecked(address), cw721_addr.clone(), &msg, &[])
+        .unwrap();
+}
+
+fn unstake_nft(app: &mut App, vp_addr: &Addr, address: &str, token_id: &str) {
+    let msg = dao_voting_cw721_staked::msg::ExecuteMsg::Unstake {
+        token_ids: vec![token_id.to_string()],
+    };
+    app.execute_contract(Addr::unchecked(address), vp_addr.clone(), &msg, &[])
+        .unwrap();
+}
+
+fn stake_native_tokens(app: &mut App, staking_addr: &Addr, address: &str, amount: u128) {
+    let msg = dao_voting_token_staked::msg::ExecuteMsg::Stake {};
+    app.execute_contract(
+        Addr::unchecked(address),
+        staking_addr.clone(),
+        &msg,
+        &coins(amount, DENOM),
+    )
+    .unwrap();
+}
+
+fn unstake_native_tokens(app: &mut App, staking_addr: &Addr, address: &str, amount: u128) {
+    let msg = dao_voting_token_staked::msg::ExecuteMsg::Unstake {
+        amount: Uint128::new(amount),
+    };
+    app.execute_contract(Addr::unchecked(address), staking_addr.clone(), &msg, &[])
+        .unwrap();
+}
+
+fn update_members(app: &mut App, cw4_addr: &Addr, remove: Vec<String>, add: Vec<Member>) {
+    let msg = cw4_group::msg::ExecuteMsg::UpdateMembers { remove, add };
+    app.execute_contract(Addr::unchecked(OWNER), cw4_addr.clone(), &msg, &[])
+        .unwrap();
+}
+
 #[test]
 fn test_zero_rewards_duration() {
     let mut app = mock_app();
     let admin = Addr::unchecked(OWNER);
     app.borrow_mut().update_block(|b| b.height = 0);
     let denom = DENOM.to_string();
-    let (staking_addr, _, vp_addr) = setup_cw20_dao(&mut app, vec![]);
+    let (staking_addr, _, vp_addr) = setup_cw20_test(&mut app, vec![]);
     let reward_funding = vec![coin(100000000, denom.clone())];
     app.sudo(SudoMsg::Bank({
         BankSudo::Mint {
@@ -483,7 +483,7 @@ fn test_native_rewards() {
         },
     ];
     let denom = DENOM.to_string();
-    let (staking_addr, cw20_addr, vp_addr) = setup_cw20_dao(&mut app, initial_balances);
+    let (staking_addr, cw20_addr, vp_addr) = setup_cw20_test(&mut app, initial_balances);
     let reward_funding = vec![coin(100000000, denom.clone())];
     app.sudo(SudoMsg::Bank({
         BankSudo::Mint {
@@ -720,7 +720,7 @@ fn test_cw20_rewards() {
         },
     ];
     let denom = DENOM.to_string();
-    let (staking_addr, cw20_addr, vp_addr) = setup_cw20_dao(&mut app, initial_balances);
+    let (staking_addr, cw20_addr, vp_addr) = setup_cw20_test(&mut app, initial_balances);
     let reward_token = instantiate_cw20(
         &mut app,
         vec![Cw20Coin {
@@ -951,7 +951,7 @@ fn update_rewards() {
         },
     ];
     let denom = DENOM.to_string();
-    let (staking_addr, _cw20_addr, vp_addr) = setup_cw20_dao(&mut app, initial_balances);
+    let (staking_addr, _cw20_addr, vp_addr) = setup_cw20_test(&mut app, initial_balances);
     let reward_funding = vec![coin(200000000, denom.clone())];
     app.sudo(SudoMsg::Bank({
         BankSudo::Mint {
@@ -1097,7 +1097,7 @@ fn update_reward_duration() {
         },
     ];
     let denom = DENOM.to_string();
-    let (staking_addr, _cw20_addr, vp_addr) = setup_cw20_dao(&mut app, initial_balances);
+    let (staking_addr, _cw20_addr, vp_addr) = setup_cw20_test(&mut app, initial_balances);
 
     let reward_addr = setup_reward_contract(
         &mut app,
@@ -1244,7 +1244,7 @@ fn test_update_owner() {
         },
     ];
     let denom = DENOM.to_string();
-    let (staking_addr, _cw20_addr, vp_addr) = setup_cw20_dao(&mut app, initial_balances);
+    let (staking_addr, _cw20_addr, vp_addr) = setup_cw20_test(&mut app, initial_balances);
 
     let reward_addr = setup_reward_contract(
         &mut app,
@@ -1344,7 +1344,7 @@ fn test_cannot_fund_with_wrong_coin_native() {
         },
     ];
     let denom = DENOM.to_string();
-    let (staking_addr, _cw20_addr, vp_addr) = setup_cw20_dao(&mut app, initial_balances);
+    let (staking_addr, _cw20_addr, vp_addr) = setup_cw20_test(&mut app, initial_balances);
 
     let reward_addr = setup_reward_contract(
         &mut app,
@@ -1460,7 +1460,7 @@ fn test_cannot_fund_with_wrong_coin_cw20() {
         },
     ];
     let _denom = DENOM.to_string();
-    let (staking_addr, _cw20_addr, vp_addr) = setup_cw20_dao(&mut app, initial_balances);
+    let (staking_addr, _cw20_addr, vp_addr) = setup_cw20_test(&mut app, initial_balances);
     let reward_token = instantiate_cw20(
         &mut app,
         vec![Cw20Coin {
@@ -1626,7 +1626,7 @@ fn test_small_rewards() {
         },
     ];
     let denom = DENOM.to_string();
-    let (staking_addr, _, vp_addr) = setup_cw20_dao(&mut app, initial_balances);
+    let (staking_addr, _, vp_addr) = setup_cw20_test(&mut app, initial_balances);
     let reward_funding = vec![coin(1000000, denom.clone())];
     app.sudo(SudoMsg::Bank({
         BankSudo::Mint {
@@ -1690,7 +1690,7 @@ fn test_zero_reward_rate_failed() {
         },
     ];
     let denom = DENOM.to_string();
-    let (staking_addr, _, vp_addr) = setup_cw20_dao(&mut app, initial_balances);
+    let (staking_addr, _, vp_addr) = setup_cw20_test(&mut app, initial_balances);
     let reward_funding = vec![coin(10000, denom.clone())];
     app.sudo(SudoMsg::Bank({
         BankSudo::Mint {
@@ -1893,6 +1893,7 @@ fn test_cw721_dao_rewards() {
     stake_nft(&mut app, &vp_addr, &cw721_addr, ADDR2, "3");
     stake_nft(&mut app, &vp_addr, &cw721_addr, ADDR3, "4");
 
+    // Mint tokens to fund the reward contract
     let reward_funding = vec![coin(100000000, denom.clone())];
     app.sudo(SudoMsg::Bank({
         BankSudo::Mint {
@@ -1901,6 +1902,8 @@ fn test_cw721_dao_rewards() {
         }
     }))
     .unwrap();
+
+    // Setup reward contract
     let reward_addr = setup_reward_contract(
         &mut app,
         vp_addr.clone(),
@@ -1967,6 +1970,7 @@ fn test_cw721_dao_rewards() {
     unstake_nft(&mut app, &vp_addr, ADDR3, "4");
 
     app.borrow_mut().update_block(|b| b.height += 10);
+
     assert_pending_rewards(&mut app, &reward_addr, ADDR1, 15000);
     assert_pending_rewards(&mut app, &reward_addr, ADDR2, 3500);
     assert_pending_rewards(&mut app, &reward_addr, ADDR3, 3500);
