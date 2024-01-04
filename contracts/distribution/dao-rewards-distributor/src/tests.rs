@@ -254,7 +254,7 @@ fn setup_reward_contract(
     app: &mut App,
     vp_contract: Addr,
     hook_caller: Option<String>,
-    reward_token: Denom,
+    reward_denom: Denom,
     owner: Addr,
 ) -> Addr {
     let reward_code_id = app.store_code(contract_rewards());
@@ -262,7 +262,7 @@ fn setup_reward_contract(
         owner: Some(owner.clone().into_string()),
         vp_contract: vp_contract.clone().into_string(),
         hook_caller: hook_caller.clone(),
-        reward_token,
+        reward_denom,
         reward_duration: 100000,
     };
     let reward_addr = app
@@ -345,7 +345,7 @@ fn claim_rewards(app: &mut App, reward_addr: Addr, address: &str) {
 fn fund_rewards_cw20(
     app: &mut App,
     admin: &Addr,
-    reward_token: Addr,
+    reward_denom: Addr,
     reward_addr: &Addr,
     amount: u128,
 ) {
@@ -357,7 +357,7 @@ fn fund_rewards_cw20(
     };
     let _res = app
         .borrow_mut()
-        .execute_contract(admin.clone(), reward_token, &fund_msg, &[])
+        .execute_contract(admin.clone(), reward_denom, &fund_msg, &[])
         .unwrap();
 }
 
@@ -445,14 +445,14 @@ fn test_zero_rewards_duration() {
     }))
     .unwrap();
 
-    let reward_token = Denom::Native(denom);
+    let reward_denom = Denom::Native(denom);
     let owner = admin;
     let reward_code_id = app.store_code(contract_rewards());
     let msg = crate::msg::InstantiateMsg {
         owner: Some(owner.clone().into_string()),
         vp_contract: vp_addr.to_string(),
         hook_caller: Some(staking_addr.to_string()),
-        reward_token,
+        reward_denom,
         reward_duration: 0,
     };
     let err: ContractError = app
@@ -721,7 +721,7 @@ fn test_cw20_rewards() {
     ];
     let denom = DENOM.to_string();
     let (staking_addr, cw20_addr, vp_addr) = setup_cw20_test(&mut app, initial_balances);
-    let reward_token = instantiate_cw20(
+    let reward_denom = instantiate_cw20(
         &mut app,
         vec![Cw20Coin {
             address: OWNER.to_string(),
@@ -732,7 +732,7 @@ fn test_cw20_rewards() {
         &mut app,
         vp_addr.clone(),
         Some(staking_addr.clone().to_string()),
-        Denom::Cw20(reward_token.clone()),
+        Denom::Cw20(reward_denom.clone()),
         admin.clone(),
     );
 
@@ -741,7 +741,7 @@ fn test_cw20_rewards() {
     fund_rewards_cw20(
         &mut app,
         &admin,
-        reward_token.clone(),
+        reward_denom.clone(),
         &reward_addr,
         100000000,
     );
@@ -777,12 +777,12 @@ fn test_cw20_rewards() {
     assert_pending_rewards(&mut app, &reward_addr, ADDR3, 1000);
 
     assert_eq!(
-        get_balance_cw20(&app, &reward_token, ADDR1),
+        get_balance_cw20(&app, &reward_denom, ADDR1),
         Uint128::zero()
     );
     claim_rewards(&mut app, reward_addr.clone(), ADDR1);
     assert_eq!(
-        get_balance_cw20(&app, &reward_token, ADDR1),
+        get_balance_cw20(&app, &reward_denom, ADDR1),
         Uint128::new(2000)
     );
     assert_pending_rewards(&mut app, &reward_addr, ADDR1, 0);
@@ -802,13 +802,13 @@ fn test_cw20_rewards() {
 
     claim_rewards(&mut app, reward_addr.clone(), ADDR1);
     assert_eq!(
-        get_balance_cw20(&app, &reward_token, ADDR1),
+        get_balance_cw20(&app, &reward_denom, ADDR1),
         Uint128::new(17000)
     );
 
     claim_rewards(&mut app, reward_addr.clone(), ADDR2);
     assert_eq!(
-        get_balance_cw20(&app, &reward_token, ADDR2),
+        get_balance_cw20(&app, &reward_denom, ADDR2),
         Uint128::new(3500)
     );
 
@@ -828,19 +828,19 @@ fn test_cw20_rewards() {
     claim_rewards(&mut app, reward_addr.clone(), ADDR1);
     claim_rewards(&mut app, reward_addr.clone(), ADDR2);
     assert_eq!(
-        get_balance_cw20(&app, &reward_token, ADDR1),
+        get_balance_cw20(&app, &reward_denom, ADDR1),
         Uint128::new(50005000)
     );
     assert_eq!(
-        get_balance_cw20(&app, &reward_token, ADDR2),
+        get_balance_cw20(&app, &reward_denom, ADDR2),
         Uint128::new(24997500)
     );
     assert_eq!(
-        get_balance_cw20(&app, &reward_token, ADDR3),
+        get_balance_cw20(&app, &reward_denom, ADDR3),
         Uint128::new(0)
     );
     assert_eq!(
-        get_balance_cw20(&app, &reward_token, &reward_addr),
+        get_balance_cw20(&app, &reward_denom, &reward_addr),
         Uint128::new(24997500)
     );
 
@@ -858,7 +858,7 @@ fn test_cw20_rewards() {
     fund_rewards_cw20(
         &mut app,
         &admin,
-        reward_token.clone(),
+        reward_denom.clone(),
         &reward_addr,
         200000000,
     );
@@ -871,19 +871,19 @@ fn test_cw20_rewards() {
     claim_rewards(&mut app, reward_addr.clone(), ADDR1);
     claim_rewards(&mut app, reward_addr.clone(), ADDR2);
     assert_eq!(
-        get_balance_cw20(&app, &reward_token, ADDR1),
+        get_balance_cw20(&app, &reward_denom, ADDR1),
         Uint128::new(150005000)
     );
     assert_eq!(
-        get_balance_cw20(&app, &reward_token, ADDR2),
+        get_balance_cw20(&app, &reward_denom, ADDR2),
         Uint128::new(74997500)
     );
     assert_eq!(
-        get_balance_cw20(&app, &reward_token, ADDR3),
+        get_balance_cw20(&app, &reward_denom, ADDR3),
         Uint128::zero()
     );
     assert_eq!(
-        get_balance_cw20(&app, &reward_token, &reward_addr),
+        get_balance_cw20(&app, &reward_denom, &reward_addr),
         Uint128::new(74997500)
     );
 
@@ -891,7 +891,7 @@ fn test_cw20_rewards() {
     fund_rewards_cw20(
         &mut app,
         &admin,
-        reward_token.clone(),
+        reward_denom.clone(),
         &reward_addr,
         200000000,
     );
@@ -905,19 +905,19 @@ fn test_cw20_rewards() {
     claim_rewards(&mut app, reward_addr.clone(), ADDR2);
     claim_rewards(&mut app, reward_addr.clone(), ADDR3);
     assert_eq!(
-        get_balance_cw20(&app, &reward_token, ADDR1),
+        get_balance_cw20(&app, &reward_denom, ADDR1),
         Uint128::new(250005000)
     );
     assert_eq!(
-        get_balance_cw20(&app, &reward_token, ADDR2),
+        get_balance_cw20(&app, &reward_denom, ADDR2),
         Uint128::new(124997500)
     );
     assert_eq!(
-        get_balance_cw20(&app, &reward_token, ADDR3),
+        get_balance_cw20(&app, &reward_denom, ADDR3),
         Uint128::new(124997500)
     );
     assert_eq!(
-        get_balance_cw20(&app, &reward_token, &reward_addr),
+        get_balance_cw20(&app, &reward_denom, &reward_addr),
         Uint128::zero()
     );
 
@@ -1461,7 +1461,7 @@ fn test_cannot_fund_with_wrong_coin_cw20() {
     ];
     let _denom = DENOM.to_string();
     let (staking_addr, _cw20_addr, vp_addr) = setup_cw20_test(&mut app, initial_balances);
-    let reward_token = instantiate_cw20(
+    let reward_denom = instantiate_cw20(
         &mut app,
         vec![Cw20Coin {
             address: OWNER.to_string(),
@@ -1487,7 +1487,7 @@ fn test_cannot_fund_with_wrong_coin_cw20() {
     };
     let err: ContractError = app
         .borrow_mut()
-        .execute_contract(admin.clone(), reward_token, &fund_msg, &[])
+        .execute_contract(admin.clone(), reward_denom, &fund_msg, &[])
         .unwrap_err()
         .downcast()
         .unwrap();
