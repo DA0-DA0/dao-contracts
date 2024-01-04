@@ -379,7 +379,7 @@ mod tests {
             map.save(
                 &mut deps.storage,
                 ctr,
-                &Uint128::new(ctr.try_into().unwrap()),
+                &Uint128::new(<u32 as std::convert::Into<u128>>::into(ctr)),
                 env.block.height,
             )
             .unwrap();
