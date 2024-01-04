@@ -1949,11 +1949,16 @@ dependencies = [
  "cw20-base 1.1.2",
  "cw20-stake 2.4.0",
  "cw4 1.1.2",
+ "cw4-group 1.1.2",
+ "cw721-base 0.18.0",
  "dao-hooks",
  "dao-interface",
  "dao-testing",
  "dao-voting 2.4.0",
  "dao-voting-cw20-staked",
+ "dao-voting-cw4",
+ "dao-voting-cw721-staked",
+ "dao-voting-token-staked",
  "thiserror",
 ]
 
