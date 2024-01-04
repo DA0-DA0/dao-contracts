@@ -210,10 +210,10 @@ pub fn execute_membership_changed(
     check_hook_caller(deps.as_ref(), info)?;
 
     // Get the addresses of members whose voting power has changed.
-    let _ = msg.diffs.iter().map(|member| -> Result<(), StdError> {
+    for member in msg.diffs {
         let addr = deps.api.addr_validate(&member.key)?;
-        update_rewards(&mut deps, &env, &addr)
-    });
+        update_rewards(&mut deps, &env, &addr)?;
+    }
 
     Ok(Response::new().add_attribute("action", "membership_changed"))
 }
@@ -282,6 +282,8 @@ pub fn execute_update_owner(
     Ok(Response::default().add_attributes(ownership.into_attributes()))
 }
 
+/// Ensures hooks that update voting power are only called by the voting power contract
+/// or the designated hook_caller contract (if configured).
 pub fn check_hook_caller(deps: Deps, info: MessageInfo) -> Result<(), ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -302,6 +304,7 @@ pub fn check_hook_caller(deps: Deps, info: MessageInfo) -> Result<(), ContractEr
     Ok(())
 }
 
+/// Returns the appropriate CosmosMsg for transferring the reward token.
 pub fn get_transfer_msg(recipient: Addr, amount: Uint128, denom: Denom) -> StdResult<CosmosMsg> {
     match denom {
         Denom::Native(denom) => Ok(BankMsg::Send {
@@ -336,6 +339,7 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr) -> StdResult<(
         reward_per_token,
         &config.vp_contract,
     )?;
+    println!("earned_rewards: {}", earned_rewards);
     PENDING_REWARDS.update::<_, StdError>(deps.storage, addr.clone(), |r| {
         Ok(r.unwrap_or_default() + earned_rewards)
     })?;
@@ -377,7 +381,6 @@ pub fn get_rewards_earned(
     reward_per_token: Uint256,
     vp_contract: &Addr,
 ) -> StdResult<Uint128> {
-    let _config = CONFIG.load(deps.storage)?;
     let staked_balance = Uint256::from(get_voting_power(deps, vp_contract, addr)?);
     let user_reward_per_token = USER_REWARD_PER_TOKEN
         .load(deps.storage, addr.clone())
