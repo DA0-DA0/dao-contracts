@@ -7,8 +7,8 @@
     "title": "InstantiateMsg",
     "type": "object",
     "required": [
+      "reward_denom",
       "reward_duration",
-      "reward_token",
       "vp_contract"
     ],
     "properties": {
@@ -26,19 +26,19 @@
           "null"
         ]
       },
-      "reward_duration": {
-        "description": "The duration of the reward period in blocks.",
-        "type": "integer",
-        "format": "uint64",
-        "minimum": 0.0
-      },
-      "reward_token": {
-        "description": "The Denom in which rewards are paid out.",
+      "reward_denom": {
+        "description": "The denom in which rewards are paid out.",
         "allOf": [
           {
             "$ref": "#/definitions/Denom"
           }
         ]
+      },
+      "reward_duration": {
+        "description": "The duration of the reward period in blocks.",
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
       },
       "vp_contract": {
         "description": "A DAO DAO voting power module contract address.",
@@ -512,6 +512,7 @@
     "title": "QueryMsg",
     "oneOf": [
       {
+        "description": "Returns configuration information about this contract.",
         "type": "object",
         "required": [
           "info"
@@ -525,6 +526,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Returns the pending rewards for the given address.",
         "type": "object",
         "required": [
           "get_pending_rewards"
@@ -546,6 +548,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Returns information about the ownership of this contract.",
         "type": "object",
         "required": [
           "ownership"
@@ -659,7 +662,7 @@
         "Config": {
           "type": "object",
           "required": [
-            "reward_token",
+            "reward_denom",
             "vp_contract"
           ],
           "properties": {
@@ -674,7 +677,7 @@
                 }
               ]
             },
-            "reward_token": {
+            "reward_denom": {
               "description": "The Denom in which rewards are paid out.",
               "allOf": [
                 {

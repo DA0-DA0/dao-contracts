@@ -11,7 +11,7 @@ pub struct Config {
     /// place of the voting power contract.
     pub hook_caller: Option<Addr>,
     /// The Denom in which rewards are paid out.
-    pub reward_token: Denom,
+    pub reward_denom: Denom,
 }
 pub const CONFIG: Item<Config> = Item::new("config");
 
