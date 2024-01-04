@@ -329,6 +329,7 @@ pub fn get_transfer_msg(recipient: Addr, amount: Uint128, denom: Denom) -> StdRe
 
 pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr) -> StdResult<()> {
     let config = CONFIG.load(deps.storage)?;
+
     let reward_per_token = get_reward_per_token(deps.as_ref(), env, &config.vp_contract)?;
     REWARD_PER_TOKEN.save(deps.storage, &reward_per_token)?;
 
@@ -339,12 +340,12 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr) -> StdResult<(
         reward_per_token,
         &config.vp_contract,
     )?;
-    println!("earned_rewards: {}", earned_rewards);
+
     PENDING_REWARDS.update::<_, StdError>(deps.storage, addr.clone(), |r| {
         Ok(r.unwrap_or_default() + earned_rewards)
     })?;
-
     USER_REWARD_PER_TOKEN.save(deps.storage, addr.clone(), &reward_per_token)?;
+
     let last_time_reward_applicable = get_last_time_reward_applicable(deps.as_ref(), env)?;
     LAST_UPDATE_BLOCK.save(deps.storage, &last_time_reward_applicable)?;
     Ok(())
@@ -352,11 +353,11 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr) -> StdResult<(
 
 pub fn get_reward_per_token(deps: Deps, env: &Env, vp_contract: &Addr) -> StdResult<Uint256> {
     let reward_config = REWARD_CONFIG.load(deps.storage)?;
-    let total_staked = get_total_voting_power(deps, vp_contract)?;
+    let total_power = get_total_voting_power(deps, vp_contract)?;
     let last_time_reward_applicable = get_last_time_reward_applicable(deps, env)?;
     let last_update_block = LAST_UPDATE_BLOCK.load(deps.storage).unwrap_or_default();
     let prev_reward_per_token = REWARD_PER_TOKEN.load(deps.storage).unwrap_or_default();
-    let additional_reward_per_token = if total_staked == Uint128::zero() {
+    let additional_reward_per_token = if total_power == Uint128::zero() {
         Uint256::zero()
     } else {
         // It is impossible for this to overflow as total rewards can never exceed max value of
@@ -367,7 +368,7 @@ pub fn get_reward_per_token(deps: Deps, env: &Env, vp_contract: &Addr) -> StdRes
                 last_time_reward_applicable - last_update_block,
             ))
             .checked_mul(scale_factor())?;
-        let denominator = Uint256::from(total_staked);
+        let denominator = Uint256::from(total_power);
         numerator.checked_div(denominator)?
     };
 
@@ -381,12 +382,12 @@ pub fn get_rewards_earned(
     reward_per_token: Uint256,
     vp_contract: &Addr,
 ) -> StdResult<Uint128> {
-    let staked_balance = Uint256::from(get_voting_power(deps, vp_contract, addr)?);
+    let voting_power = Uint256::from(get_voting_power(deps, vp_contract, addr)?);
     let user_reward_per_token = USER_REWARD_PER_TOKEN
         .load(deps.storage, addr.clone())
         .unwrap_or_default();
     let reward_factor = reward_per_token.checked_sub(user_reward_per_token)?;
-    Ok(staked_balance
+    Ok(voting_power
         .checked_mul(reward_factor)?
         .checked_div(scale_factor())?
         .try_into()?)
@@ -442,6 +443,7 @@ pub fn execute_update_reward_duration(
 fn scale_factor() -> Uint256 {
     Uint256::from(10u8).pow(39)
 }
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -469,7 +471,6 @@ pub fn query_pending_rewards(
     let reward_per_token = get_reward_per_token(deps, &env, &config.vp_contract)?;
     let earned_rewards =
         get_rewards_earned(deps, &env, &addr, reward_per_token, &config.vp_contract)?;
-
     let existing_rewards = PENDING_REWARDS
         .load(deps.storage, addr.clone())
         .unwrap_or_default();
