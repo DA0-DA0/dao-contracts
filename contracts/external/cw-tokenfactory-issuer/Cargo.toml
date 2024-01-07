@@ -43,7 +43,6 @@ cosmwasm_tokenfactory = ["cw-tokenfactory-types/cosmwasm_tokenfactory"]
 [dependencies]
 cosmwasm-schema = { workspace = true }
 cosmwasm-std = { workspace = true }
-cosmwasm-storage = { workspace = true }
 cw2 = { workspace = true }
 cw-ownable = { workspace = true }
 cw-storage-plus = { workspace = true }

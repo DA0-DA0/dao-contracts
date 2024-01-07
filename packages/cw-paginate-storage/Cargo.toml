@@ -9,7 +9,6 @@ version = { workspace = true }
 
 [dependencies]
 cosmwasm-std = { workspace = true }
-cosmwasm-storage = { workspace = true }
 cw-storage-plus = { workspace = true }
 serde = { workspace = true }
 
