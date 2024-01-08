@@ -667,7 +667,6 @@ version = "2.4.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cosmwasm-storage",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
@@ -892,7 +891,6 @@ name = "cw-paginate-storage"
 version = "2.4.0"
 dependencies = [
  "cosmwasm-std",
- "cosmwasm-storage",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "serde",
@@ -932,7 +930,7 @@ dependencies = [
  "cw-utils 0.13.4",
  "cw2 0.13.4",
  "cw20 0.13.4",
- "cw3 0.13.4",
+ "cw3",
  "dao-voting 0.1.0",
  "indexable-hooks",
  "proposal-hooks",
@@ -1016,7 +1014,6 @@ version = "2.4.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cosmwasm-storage",
  "cw-multi-test",
  "cw-ownable",
  "cw-storage-plus 1.2.0",
@@ -1112,7 +1109,6 @@ dependencies = [
  "cw-denom",
  "cw-multi-test",
  "cw-ownable",
- "cw-paginate-storage 2.4.0",
  "cw-stake-tracker",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
@@ -1300,7 +1296,6 @@ dependencies = [
  "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cosmwasm-storage",
  "cw-controllers 1.1.2",
  "cw-hooks",
  "cw-multi-test",
@@ -1325,7 +1320,6 @@ dependencies = [
  "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cosmwasm-storage",
  "cw-controllers 1.1.2",
  "cw-multi-test",
  "cw-ownable",
@@ -1390,21 +1384,6 @@ dependencies = [
  "cw-utils 0.13.4",
  "schemars",
  "serde",
-]
-
-[[package]]
-name = "cw3"
-version = "1.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2967fbd073d4b626dd9e7148e05a84a3bebd9794e71342e12351110ffbb12395"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-utils 1.0.3",
- "cw20 1.1.2",
- "schemars",
- "serde",
- "thiserror",
 ]
 
 [[package]]
@@ -1658,7 +1637,6 @@ version = "2.4.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-hooks",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
  "cw20 1.1.2",
@@ -1871,7 +1849,6 @@ dependencies = [
  "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cosmwasm-storage",
  "cw-denom",
  "cw-hooks",
  "cw-multi-test",
@@ -1881,7 +1858,6 @@ dependencies = [
  "cw20 1.1.2",
  "cw20-base 1.1.2",
  "cw20-stake 2.4.0",
- "cw3 1.1.2",
  "cw4 1.1.2",
  "cw4-group 1.1.2",
  "cw721-base 0.18.0",
@@ -1909,7 +1885,6 @@ dependencies = [
  "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cosmwasm-storage",
  "cw-core",
  "cw-denom",
  "cw-hooks",
@@ -1922,7 +1897,6 @@ dependencies = [
  "cw20 1.1.2",
  "cw20-base 1.1.2",
  "cw20-stake 2.4.0",
- "cw3 1.1.2",
  "cw4 1.1.2",
  "cw4-group 1.1.2",
  "cw721-base 0.18.0",
@@ -1949,7 +1923,6 @@ version = "2.4.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cosmwasm-storage",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw2 1.1.2",
@@ -1964,7 +1937,6 @@ version = "2.4.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cosmwasm-storage",
  "cw-multi-test",
  "cw-ownable",
  "cw-storage-plus 1.2.0",
@@ -2073,7 +2045,6 @@ version = "2.4.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cosmwasm-storage",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
@@ -2093,7 +2064,6 @@ version = "2.4.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cosmwasm-storage",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
@@ -2114,7 +2084,6 @@ dependencies = [
  "cosmwasm-std",
  "cw-multi-test",
  "cw-ownable",
- "cw-paginate-storage 2.4.0",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
@@ -2140,7 +2109,6 @@ dependencies = [
  "cw-controllers 1.1.2",
  "cw-hooks",
  "cw-multi-test",
- "cw-paginate-storage 2.4.0",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
@@ -2168,12 +2136,10 @@ dependencies = [
  "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cosmwasm-storage",
  "cw-controllers 1.1.2",
  "cw-hooks",
  "cw-multi-test",
  "cw-ownable",
- "cw-paginate-storage 2.4.0",
  "cw-storage-plus 1.2.0",
  "cw-tokenfactory-issuer",
  "cw-utils 1.0.3",

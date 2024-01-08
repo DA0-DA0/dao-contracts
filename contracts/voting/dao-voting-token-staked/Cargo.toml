@@ -24,7 +24,6 @@ test-tube = []
 [dependencies]
 cosmwasm-std    = { workspace = true, features = ["cosmwasm_1_1"] }
 cosmwasm-schema = { workspace = true }
-cosmwasm-storage = { workspace = true }
 cw-ownable = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
@@ -36,7 +35,6 @@ dao-dao-macros = { workspace = true }
 dao-hooks = { workspace = true }
 dao-interface = { workspace = true }
 dao-voting = { workspace = true }
-cw-paginate-storage = { workspace = true }
 cw-tokenfactory-issuer = { workspace = true, features = ["library"] }
 
 [dev-dependencies]

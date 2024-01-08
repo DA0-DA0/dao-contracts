@@ -1398,7 +1398,7 @@ fn test_query_cw20_entitlements() {
         .unwrap();
 
     assert_eq!(res.len(), 1);
-    let entitlement = res.get(0).unwrap();
+    let entitlement = res.first().unwrap();
     assert_eq!(entitlement.amount.u128(), 500000);
     assert_eq!(entitlement.token_contract, token_address);
 }
@@ -1451,7 +1451,7 @@ fn test_query_native_entitlements() {
         .unwrap();
 
     assert_eq!(res.len(), 1);
-    let entitlement = res.get(0).unwrap();
+    let entitlement = res.first().unwrap();
     assert_eq!(entitlement.amount.u128(), 500000);
     assert_eq!(entitlement.denom, FEE_DENOM);
 }
@@ -1601,7 +1601,7 @@ fn test_query_cw20_tokens() {
         .unwrap();
 
     assert_eq!(res.len(), 1);
-    let cw20 = res.get(0).unwrap();
+    let cw20 = res.first().unwrap();
     assert_eq!(cw20.token, "contract1");
     assert_eq!(cw20.contract_balance.u128(), 500000);
 }
@@ -1642,7 +1642,7 @@ fn test_query_native_denoms() {
 
     // assert distributor now contains one expected native token
     assert_eq!(res.len(), 1);
-    let denom = res.get(0).unwrap();
+    let denom = res.first().unwrap();
     assert_eq!(denom.denom, FEE_DENOM.to_string());
     assert_eq!(denom.contract_balance.u128(), 500000);
 }

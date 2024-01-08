@@ -25,13 +25,11 @@ library = []
 
 [dependencies]
 cosmwasm-std = { workspace = true, features = ["ibc3"] }
-cosmwasm-storage = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
 cw20 = { workspace = true }
-cw3 = { workspace = true }
 thiserror = { workspace = true }
 dao-dao-macros = { workspace = true }
 dao-pre-propose-base = { workspace = true }
