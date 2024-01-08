@@ -55,15 +55,10 @@ pub fn instantiate(
 
     // Optional hook caller is allowed to call voting power change hooks.
     // If not provided, only the voting power contract is used.
-    let hook_caller: Option<Addr>;
-    match msg.hook_caller {
-        Some(addr) => {
-            hook_caller = Some(deps.api.addr_validate(&addr)?);
-        }
-        None => {
-            hook_caller = None;
-        }
-    }
+    let hook_caller: Option<Addr> = match msg.hook_caller {
+        Some(addr) => Some(deps.api.addr_validate(&addr)?),
+        None => None,
+    };
 
     // Save the contract configuration
     let config = Config {
@@ -383,7 +378,7 @@ pub fn get_reward_per_token(deps: Deps, env: &Env, vp_contract: &Addr) -> StdRes
     let reward_config = REWARD_CONFIG.load(deps.storage)?;
 
     // Get the total voting power at this block height.
-    let total_power = get_total_voting_power(deps, &env, vp_contract)?;
+    let total_power = get_total_voting_power(deps, env, vp_contract)?;
 
     // Get information on the last time rewards were updated.
     let last_time_reward_applicable = get_last_time_reward_applicable(deps, env)?;
