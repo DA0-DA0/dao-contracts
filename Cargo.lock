@@ -1678,7 +1678,6 @@ dependencies = [
  "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cosmwasm-storage",
  "cw-abc",
  "cw-multi-test",
  "cw-ownable",
