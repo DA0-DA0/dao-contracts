@@ -63,6 +63,7 @@ prost-types = { version = "0.12.3", default-features = false }
 quote = "1.0"
 rand = "0.8"
 schemars = "0.8"
+semver = "1.0"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde-cw-value = "0.7"
 serde_json = "1.0"
