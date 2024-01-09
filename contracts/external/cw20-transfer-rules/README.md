@@ -1,14 +1,6 @@
-# cw-admin-factory
+# cw20-transfer-rules
 
-[![cw-admin-factory on crates.io](https://img.shields.io/crates/v/cw-admin-factory.svg?logo=rust)](https://crates.io/crates/cw-admin-factory)
-[![docs.rs](https://img.shields.io/docsrs/cw-admin-factory?logo=docsdotrs)](https://docs.rs/cw-admin-factory/latest/cw_admin_factory/)
+[![cw20-transfer-rules on crates.io](https://img.shields.io/crates/v/cw20-transfer-rules.svg?logo=rust)](https://crates.io/crates/cw20-transfer-rules)
+[![docs.rs](https://img.shields.io/docsrs/cw20-transfer-rules?logo=docsdotrs)](https://docs.rs/cw20-transfer-rules/latest/cw_admin_factory/)
 
-Serves as a factory that instantiates contracts and sets them as their
-own wasm admins.
-
-Useful for allowing contracts (e.g. DAOs) to migrate themselves.
-
-Example instantiation flow:
-
-![](https://bafkreibqsrdnht5chc5mdzbb6pgiyqfjke3yvukvjrokyefwwbl3k3iwaa.ipfs.nftstorage.link)
-
+Enforces transfer rules on cw20 token transfer such that the `recipient` must be a member of the DAO or on a DAO-managed allowlist.
