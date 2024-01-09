@@ -262,10 +262,10 @@ fn calculate_exit_fee(
         CommonsPhase::Closed => return Ok(Uint128::zero()),
     };
 
-    // TODO more normal check?
-    debug_assert!(
+    // Ensure the exit fee is not greater than 100%
+    ensure!(
         exit_fee <= StdDecimal::percent(100),
-        "Exit tax must be <= 100%"
+        ContractError::InvalidExitFee {}
     );
 
     // This won't ever overflow because it's checked

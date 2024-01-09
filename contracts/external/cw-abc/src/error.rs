@@ -28,6 +28,9 @@ pub enum ContractError {
     #[error("Hatch phase config error {0}")]
     HatchPhaseConfigError(String),
 
+    #[error("Invalid exit fee, must be less than 100%.")]
+    InvalidExitFee {},
+
     #[error("Invalid subdenom: {subdenom:?}")]
     InvalidSubdenom { subdenom: String },
 
