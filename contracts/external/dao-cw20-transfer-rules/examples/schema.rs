@@ -1,5 +1,5 @@
 use cosmwasm_schema::write_api;
-use cw20_transfer_rules::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use dao_cw20_transfer_rules::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
 fn main() {
     write_api! {

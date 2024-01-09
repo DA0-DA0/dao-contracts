@@ -1393,25 +1393,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw20-transfer-rules"
-version = "2.4.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-ownable",
- "cw-paginate-storage 2.4.0",
- "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
- "cw2 1.1.2",
- "cw20-base 1.1.2",
- "dao-cw20",
- "dao-dao-core",
- "dao-interface",
- "thiserror",
-]
-
-[[package]]
 name = "cw3"
 version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1618,6 +1599,26 @@ dependencies = [
  "cw-utils 1.0.3",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "dao-cw20-transfer-rules"
+version = "2.4.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-ownable",
+ "cw-paginate-storage 2.4.0",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20-base 1.1.2",
+ "dao-cw20",
+ "dao-dao-core",
+ "dao-interface",
+ "dao-testing",
+ "thiserror",
 ]
 
 [[package]]
