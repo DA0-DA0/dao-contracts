@@ -17,7 +17,10 @@ use dao_voting::{
     threshold::Threshold,
 };
 
-use crate::msg::{ExecuteMsg, InstantiateMsg};
+use crate::{
+    msg::{ExecuteMsg, InstantiateMsg},
+    ContractError,
+};
 
 fn dao_cw20_transfer_rules_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -44,8 +47,7 @@ const ALLOWED: &str = "allowed";
 const OWNER: &str = "owner";
 const RANDOM: &str = "random";
 
-// TODO refactor for cw20-stake?
-fn setup_cw20_dao(app: &mut App) -> Addr {
+fn setup_cw20_dao(app: &mut App) -> (Addr, Addr, Addr, Addr) {
     let cw20_code_id = app.store_code(cw20_contract());
     let dao_dao_core_id = app.store_code(dao_dao_contract());
     let prop_single_id = app.store_code(proposal_single_contract());
@@ -170,7 +172,10 @@ fn setup_cw20_dao(app: &mut App) -> Addr {
     // Get DAO cw20 token addr
     let cw20_addr: Addr = app
         .wrap()
-        .query_wasm_smart(voting_module_addr, &VotingQueryMsg::TokenContract {})
+        .query_wasm_smart(
+            voting_module_addr.clone(),
+            &VotingQueryMsg::TokenContract {},
+        )
         .unwrap();
 
     // Stake tokens in the DAO
@@ -191,41 +196,27 @@ fn setup_cw20_dao(app: &mut App) -> Addr {
     // Update the block so staked balances take effect
     app.update_block(next_block);
 
-    dao_addr
+    (dao_addr, voting_module_addr, cw20_addr, staking_addr)
 }
 
-// TODO test with cw20 send
 #[test]
-pub fn test() {
+pub fn test_transfer_rules() {
     let mut app = App::default();
-    let dao_addr = setup_cw20_dao(&mut app);
+    let (dao_addr, _, cw20_addr, _) = setup_cw20_dao(&mut app);
     let dao_cw20_transfer_rules_code_id = app.store_code(dao_cw20_transfer_rules_contract());
 
-    let instantiate = InstantiateMsg {
-        dao: dao_addr.to_string(),
-        allowlist: None,
-    };
     let transfer_rules_addr = app
         .instantiate_contract(
             dao_cw20_transfer_rules_code_id,
             Addr::unchecked("owner"),
-            &instantiate,
+            &InstantiateMsg {
+                dao: dao_addr.to_string(),
+                allowlist: None,
+            },
             &[],
             "dao-cw20-transfer-rules",
             None,
         )
-        .unwrap();
-
-    // Get DAO voting module addr
-    let voting_module_addr: Addr = app
-        .wrap()
-        .query_wasm_smart(dao_addr.clone(), &DaoQueryMsg::VotingModule {})
-        .unwrap();
-
-    // Get DAO cw20 token addr
-    let cw20_addr: Addr = app
-        .wrap()
-        .query_wasm_smart(voting_module_addr, &VotingQueryMsg::TokenContract {})
         .unwrap();
 
     // Can't add hook if not owner / minter
@@ -251,7 +242,7 @@ pub fn test() {
     .unwrap();
 
     // Now that hook is added, members can't transfer to non-members
-    let _err = app
+    let err: ContractError = app
         .execute_contract(
             Addr::unchecked(ADDR1),
             cw20_addr.clone(),
@@ -261,9 +252,10 @@ pub fn test() {
             },
             &[],
         )
-        .unwrap_err();
-    // println!("{:?}", err);
-    // assert_eq!(err, cw20_token::ContractError::Unauthorized {});
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
 
     // Members can transfer to members
     app.execute_contract(
@@ -278,7 +270,7 @@ pub fn test() {
     .unwrap();
 
     // Non-owner can't update allowlist
-    let _err = app
+    let err: ContractError = app
         .execute_contract(
             Addr::unchecked(ADDR1),
             transfer_rules_addr.clone(),
@@ -288,8 +280,13 @@ pub fn test() {
             },
             &[],
         )
-        .unwrap_err();
-    // println!("{:?}", err);
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::Ownable(cw_ownable::OwnershipError::NotOwner)
+    );
 
     // Add a new address to the allowlist
     app.execute_contract(
@@ -338,4 +335,123 @@ pub fn test() {
         &[],
     )
     .unwrap();
+}
+
+#[test]
+pub fn test_send_rules() {
+    let mut app = App::default();
+    let (dao_addr, _, cw20_addr, staking_addr) = setup_cw20_dao(&mut app);
+    let dao_cw20_transfer_rules_code_id = app.store_code(dao_cw20_transfer_rules_contract());
+
+    let transfer_rules_addr = app
+        .instantiate_contract(
+            dao_cw20_transfer_rules_code_id,
+            Addr::unchecked("owner"),
+            &InstantiateMsg {
+                dao: dao_addr.to_string(),
+                allowlist: None,
+            },
+            &[],
+            "dao-cw20-transfer-rules",
+            None,
+        )
+        .unwrap();
+
+    // Can't add hook if not owner / minter
+    app.execute_contract(
+        Addr::unchecked(RANDOM),
+        cw20_addr.clone(),
+        &dao_cw20::Cw20ExecuteMsg::AddHook {
+            addr: transfer_rules_addr.to_string(),
+        },
+        &[],
+    )
+    .unwrap_err();
+
+    // Add hook to the cw20 contract
+    app.execute_contract(
+        dao_addr.clone(),
+        cw20_addr.clone(),
+        &dao_cw20::Cw20ExecuteMsg::AddHook {
+            addr: transfer_rules_addr.to_string(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Now that hook is added, members can't send to non-members or non-allowlisted contracts
+    // Including the staking contract.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(ADDR1.to_string()),
+            cw20_addr.clone(),
+            &cw20_token::msg::ExecuteMsg::Send {
+                contract: staking_addr.to_string(),
+                amount: Uint128::new(50_000),
+                msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    // Members can send to the DAO contract
+    app.execute_contract(
+        Addr::unchecked(ADDR1.to_string()),
+        cw20_addr.clone(),
+        &cw20_token::msg::ExecuteMsg::Send {
+            contract: dao_addr.to_string(),
+            amount: Uint128::new(5000),
+            msg: to_json_binary(&Empty {}).unwrap(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Add staking contract to the allowlist
+    app.execute_contract(
+        dao_addr.clone(),
+        transfer_rules_addr.clone(),
+        &ExecuteMsg::UpdateAllowlist {
+            add: vec![staking_addr.clone().to_string()],
+            remove: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Members can now send to the staking contract
+    app.execute_contract(
+        Addr::unchecked(ADDR1.to_string()),
+        cw20_addr.clone(),
+        &cw20_token::msg::ExecuteMsg::Send {
+            contract: staking_addr.to_string(),
+            amount: Uint128::new(50_000),
+            msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+        },
+        &[],
+    )
+    .unwrap();
+}
+
+#[test]
+pub fn test_instantiate_invalid_dao_fails() {
+    let mut app = App::default();
+    let (_, _, cw20_addr, _) = setup_cw20_dao(&mut app);
+    let dao_cw20_transfer_rules_code_id = app.store_code(dao_cw20_transfer_rules_contract());
+
+    app.instantiate_contract(
+        dao_cw20_transfer_rules_code_id,
+        Addr::unchecked("owner"),
+        &InstantiateMsg {
+            dao: cw20_addr.to_string(),
+            allowlist: None,
+        },
+        &[],
+        "dao-cw20-transfer-rules",
+        None,
+    )
+    .unwrap_err();
 }

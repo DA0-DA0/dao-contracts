@@ -74,8 +74,6 @@ pub fn execute_check_transfer(
     _info: MessageInfo,
     msg: Cw20HookMsg,
 ) -> Result<Response, ContractError> {
-    // TODO check this comes from the correct cw20 contract?
-
     let (recipient, sender) = match msg {
         Cw20HookMsg::Transfer {
             recipient, sender, ..
@@ -94,8 +92,8 @@ pub fn execute_check_transfer(
     let dao = DAO.load(deps.storage)?;
     let dao_voting_module = DAO_VOTING_MODULE.load(deps.storage)?;
 
-    // Check if sender is the DAO, if so it's allowed to transfer
-    if dao == sender {
+    // Check if sender or recipient  is the DAO, if so it's allowed to transfer
+    if dao == sender || dao == recipient {
         return Ok(Response::default());
     }
 
