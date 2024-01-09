@@ -76,12 +76,28 @@ pub fn execute_check_transfer(
 ) -> Result<Response, ContractError> {
     // TODO check this comes from the correct cw20 contract?
 
-    let recipient = match msg {
-        Cw20HookMsg::Transfer { recipient, .. } => deps.api.addr_validate(&recipient)?,
-        Cw20HookMsg::Send { contract, .. } => deps.api.addr_validate(&contract)?,
+    let (recipient, sender) = match msg {
+        Cw20HookMsg::Transfer {
+            recipient, sender, ..
+        } => (
+            deps.api.addr_validate(&recipient)?,
+            deps.api.addr_validate(&sender)?,
+        ),
+        Cw20HookMsg::Send {
+            contract, sender, ..
+        } => (
+            deps.api.addr_validate(&contract)?,
+            deps.api.addr_validate(&sender)?,
+        ),
     };
 
+    let dao = DAO.load(deps.storage)?;
     let dao_voting_module = DAO_VOTING_MODULE.load(deps.storage)?;
+
+    // Check if sender is the DAO, if so it's allowed to transfer
+    if dao == sender {
+        return Ok(Response::default());
+    }
 
     // Check if recipient is in allowlist
     let allowlist = ALLOWLIST.may_load(deps.storage, &recipient)?;

@@ -1613,11 +1613,17 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
- "cw20-base 1.1.2",
+ "cw20 1.1.2",
+ "cw20-stake 2.4.0",
+ "cw20-token",
  "dao-cw20",
  "dao-dao-core",
  "dao-interface",
+ "dao-pre-propose-single",
+ "dao-proposal-single",
  "dao-testing",
+ "dao-voting 2.4.0",
+ "dao-voting-cw20-staked",
  "thiserror",
 ]
 
