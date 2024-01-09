@@ -189,7 +189,7 @@ pub fn update(
     env: Env,
     info: MessageInfo,
     id: u64,
-    new_amount: Coin,
+    new_coin: Coin,
     title: String,
     description: Option<String>,
 ) -> Result<Response, ContractError> {
@@ -207,7 +207,7 @@ pub fn update(
         bounty.id,
         &Bounty {
             id: bounty.id,
-            amount: new_amount.clone(),
+            amount: new_coin.clone(),
             title,
             description,
             status: bounty.status,
@@ -219,15 +219,15 @@ pub fn update(
     let res = Response::new()
         .add_attribute("action", "update_bounty")
         .add_attribute("bounty_id", id.to_string())
-        .add_attribute("amount", new_amount.amount.to_string());
+        .add_attribute("amount", new_coin.amount.to_string());
 
     // Check if new amount has different denom
-    if new_amount.denom != bounty.amount.denom {
+    if new_coin.denom != bounty.amount.denom {
         // If denom is different, check funds sent match new amount
-        let sent_amount = must_pay(&info, &new_amount.denom)?;
-        if sent_amount != new_amount.amount {
+        let sent_amount = must_pay(&info, &new_coin.denom)?;
+        if sent_amount != new_coin.amount {
             return Err(ContractError::InvalidAmount {
-                expected: new_amount.amount,
+                expected: new_coin.amount,
                 actual: sent_amount,
             });
         }
@@ -245,14 +245,14 @@ pub fn update(
 
     // Check if amount is greater or less than original amount
     let old_amount = bounty.amount.clone();
-    match new_amount.amount.cmp(&old_amount.amount) {
+    match new_coin.amount.cmp(&old_amount.amount) {
         Ordering::Greater => {
             // If new amount is greater, check funds sent plus
             // original amount match new amount
-            let sent_amount = must_pay(&info, &new_amount.denom)?;
-            if sent_amount + old_amount.amount != new_amount.amount {
+            let sent_amount = must_pay(&info, &new_coin.denom)?;
+            if sent_amount + old_amount.amount != new_coin.amount {
                 return Err(ContractError::InvalidAmount {
-                    expected: new_amount.amount - old_amount.amount,
+                    expected: new_coin.amount - old_amount.amount,
                     actual: sent_amount + old_amount.amount,
                 });
             }
@@ -262,7 +262,7 @@ pub fn update(
             // If new amount is less, pay out difference to owner
             // in case owner accidentally sent funds, send back as well
             let funds_send = may_pay(&info, &bounty.amount.denom)?;
-            let diff = old_amount.amount - new_amount.amount + funds_send;
+            let diff = old_amount.amount - new_coin.amount + funds_send;
             let msg = BankMsg::Send {
                 to_address: info.sender.to_string(),
                 amount: vec![Coin {
