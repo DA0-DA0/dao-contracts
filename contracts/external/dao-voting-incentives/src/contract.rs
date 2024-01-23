@@ -9,7 +9,6 @@ use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
 pub(crate) const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const INSTANTIATE_CONTRACT_REPLY_ID: u64 = 0;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -37,8 +36,8 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Claim {} => unimplemented!(),
-        ExecuteMsg::VoteHook(msg) => unimplemented!(),
+        ExecuteMsg::Claim {} => execute_claim(deps, env, info),
+        ExecuteMsg::VoteHook(msg) => execute_vote_hook(deps, env, info, msg),
     }
 }
 
@@ -59,8 +58,9 @@ pub fn execute_vote_hook(
     // Check epoch
 
     // TODO what is the best data structure to use here?
-    // Save vote
-    // Save prop ID
+    // Save vote? Save prop ID?
+    // Save (user, epoch, vote count)
+    // Save (epoch, prop count)
 
     Ok(Response::default().add_attribute("action", "vote_hook"))
 }

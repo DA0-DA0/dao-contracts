@@ -1,10 +1,13 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Timestamp;
 use dao_hooks::vote::VoteHookMsg;
 
 #[cw_serde]
 pub struct InstantiateMsg {
     /// DAO address
     pub dao: String,
+    /// Epoch duration in seconds. Used for reward calculation.
+    pub epoch_duration: Timestamp,
 }
 
 #[cw_serde]
