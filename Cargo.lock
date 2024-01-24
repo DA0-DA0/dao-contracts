@@ -2062,6 +2062,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "dao-proposal-incentives"
+version = "2.4.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20-base 1.1.2",
+ "dao-dao-core 2.5.0",
+ "dao-hooks 2.5.0",
+ "dao-interface 2.5.0",
+ "dao-proposal-single 2.5.0",
+ "dao-voting 2.5.0",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-proposal-incentives"
+version = "2.4.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20-base 1.1.2",
+ "dao-dao-core",
+ "dao-hooks",
+ "dao-interface",
+ "dao-voting 2.4.0",
+ "thiserror",
+]
+
+[[package]]
 name = "dao-proposal-multiple"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
