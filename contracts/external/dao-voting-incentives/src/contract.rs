@@ -2,6 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{BankMsg, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
+use cw_utils::must_pay;
 use dao_hooks::vote::VoteHookMsg;
 
 use crate::error::ContractError;
@@ -24,9 +25,16 @@ pub fn instantiate(
     DAO.save(deps.storage, &deps.api.addr_validate(&msg.dao)?)?;
 
     // Save voting incentives config
+    VOTING_INCENTIVES.save(deps.storage, &msg.voting_incentives)?;
 
-    // TODO Check initial deposit is enough to pay out rewards for at
-    // least one epoch
+    // Check initial deposit is enough to pay out rewards for at least one epoch
+    let amount = must_pay(&info, &msg.voting_incentives.rewards_per_epoch.denom)?;
+    if amount < msg.voting_incentives.rewards_per_epoch.amount {
+        return Err(ContractError::InsufficientInitialDeposit {
+            expected: msg.voting_incentives.rewards_per_epoch.amount,
+            actual: amount,
+        });
+    };
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
