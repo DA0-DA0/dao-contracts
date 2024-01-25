@@ -5,6 +5,7 @@ use cosmwasm_std::{
     SubMsg,
 };
 use cw2::set_contract_version;
+use cw_utils::must_pay;
 use dao_hooks::proposal::ProposalHookMsg;
 use dao_voting::status::Status;
 
@@ -32,8 +33,15 @@ pub fn instantiate(
     // Save proposal incentives config
     PROPOSAL_INCENTIVES.save(deps.storage, &msg.proposal_incentives)?;
 
-    // TODO Check initial deposit contains enough funds to pay out rewards
+    // Check initial deposit contains enough funds to pay out rewards
     // for at least one proposal
+    let amount = must_pay(&info, &msg.proposal_incentives.rewards_per_proposal.denom)?;
+    if amount < msg.proposal_incentives.rewards_per_proposal.amount {
+        return Err(ContractError::InsufficientInitialDeposit {
+            expected: msg.proposal_incentives.rewards_per_proposal.amount,
+            actual: amount,
+        });
+    };
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
@@ -55,7 +63,7 @@ pub fn execute(
 // TODO support cw20 tokens
 pub fn execute_proposal_hook(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     msg: ProposalHookMsg,
 ) -> Result<Response, ContractError> {
@@ -101,7 +109,7 @@ pub fn query_config(deps: Deps) -> StdResult<Binary> {
     let proposal_incentives = PROPOSAL_INCENTIVES.load(deps.storage)?;
 
     to_json_binary(&ConfigResponse {
-        dao,
+        dao: dao.to_string(),
         proposal_incentives,
     })
 }

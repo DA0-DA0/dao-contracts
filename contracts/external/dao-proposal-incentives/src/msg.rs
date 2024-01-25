@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use dao_hooks::{proposal::ProposalHookMsg, vote::VoteHookMsg};
+use dao_hooks::proposal::ProposalHookMsg;
 
-use crate::state::{ProposalIncentives, VotingIncentives};
+use crate::state::ProposalIncentives;
 
 #[cw_serde]
 pub struct InstantiateMsg {
