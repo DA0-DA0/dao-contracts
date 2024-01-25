@@ -10,4 +10,5 @@ To setup this contract, the DAO needs to add this contract as a `ProposalHook` t
 ## TODO
 - [ ] Unit and Integration tests with a full DAO
 - [ ] Support Cw20
+- [ ] Use `cw-ownable` to configure a contract owner who can update the proposal incentives config.
 - [ ] Add more info to the readme and delete this TODO section
