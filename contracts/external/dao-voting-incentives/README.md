@@ -1,14 +1,23 @@
-# cw-admin-factory
+# dao-voting-incentives
 
-[![cw-admin-factory on crates.io](https://img.shields.io/crates/v/cw-admin-factory.svg?logo=rust)](https://crates.io/crates/cw-admin-factory)
-[![docs.rs](https://img.shields.io/docsrs/cw-admin-factory?logo=docsdotrs)](https://docs.rs/cw-admin-factory/latest/cw_admin_factory/)
+[![dao-voting-incentives on crates.io](https://img.shields.io/crates/v/dao-voting-incentives.svg?logo=rust)](https://crates.io/crates/dao-voting-incentives)
+[![docs.rs](https://img.shields.io/docsrs/dao-voting-incentives?logo=docsdotrs)](https://docs.rs/dao-voting-incentives/latest/cw_admin_factory/)
 
-Serves as a factory that instantiates contracts and sets them as their
-own wasm admins.
+Allows for DAOs to offer incentives for voting on DAO proposals.
 
-Useful for allowing contracts (e.g. DAOs) to migrate themselves.
+When creating this contract, the DAO specifies an `epoch_duration` and an amount to pay out per epoch. Then, the DAO needs to add this contract as a `VoteHook` to the `dao-voting-single` or `dao-voting-multiple` proposal module. When DAO members vote, this contract keeps track of the proposals and who voted.
 
-Example instantiation flow:
+At the end of the epoch, rewards are payable as follows:
 
-![](https://bafkreibqsrdnht5chc5mdzbb6pgiyqfjke3yvukvjrokyefwwbl3k3iwaa.ipfs.nftstorage.link)
+```
+rewards = (user vote count / prop count) / total_vote_count * voting incentives
+```
 
+If no proposals happen during an epoch, no rewards are paid out.
+
+## TODO
+- [ ] Unit and Integration tests with a full DAO
+- [ ] Make sure it works with multiple proposal modules (i.e. multiple choice and single choice)
+- [ ] Make sure claiming rewards is gas effecient even if many epochs have passed.
+- [ ] Support Cw20.
+- [ ] Add more info to the readme and delete this TODO section.
