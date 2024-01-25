@@ -20,4 +20,5 @@ If no proposals happen during an epoch, no rewards are paid out.
 - [ ] Make sure it works with multiple proposal modules (i.e. multiple choice and single choice)
 - [ ] Make sure claiming rewards is gas effecient even if many epochs have passed.
 - [ ] Support Cw20.
+- [ ] Use `cw-ownable` to configure a contract owner who can update the voting incentives config.
 - [ ] Add more info to the readme and delete this TODO section.
