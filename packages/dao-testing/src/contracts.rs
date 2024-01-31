@@ -206,3 +206,13 @@ pub fn dao_test_custom_factory() -> Box<dyn Contract<Empty>> {
     .with_reply(dao_test_custom_factory::contract::reply);
     Box::new(contract)
 }
+
+pub fn dao_proposal_incentives_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        dao_proposal_incentives::contract::execute,
+        dao_proposal_incentives::contract::instantiate,
+        dao_proposal_incentives::contract::query,
+    );
+
+    Box::new(contract)
+}

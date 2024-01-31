@@ -842,7 +842,14 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::ProposalHooks {} => to_json_binary(&PROPOSAL_HOOKS.query_hooks(deps)?),
         QueryMsg::VoteHooks {} => to_json_binary(&VOTE_HOOKS.query_hooks(deps)?),
         QueryMsg::Dao {} => query_dao(deps),
+        QueryMsg::GenericProposalInfo { proposal_id } => {
+            query_generic_proposal_info(deps, proposal_id)
+        }
     }
+}
+
+pub fn query_generic_proposal_info(deps: Deps, id: u64) -> StdResult<Binary> {
+    to_json_binary(&PROPOSALS.load(deps.storage, id)?.into_generic())
 }
 
 pub fn query_config(deps: Deps) -> StdResult<Binary> {

@@ -1,9 +1,16 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Addr;
 use cw2::ContractVersion;
 
 #[cw_serde]
 pub struct InfoResponse {
     pub info: ContractVersion,
+}
+
+#[cw_serde]
+pub struct GenericProposalInfo {
+    pub proposer: Addr,
+    pub start_height: u64,
 }
 
 #[cw_serde]
@@ -19,6 +26,9 @@ pub enum Query {
     /// next proposal created.
     #[returns(::std::primitive::u64)]
     NextProposalId {},
+    /// Returns generic proposal information
+    #[returns(GenericProposalInfo)]
+    GenericProposalInfo { proposal_id: ::std::primitive::u64 },
 }
 
 mod tests {
@@ -34,6 +44,7 @@ mod tests {
             Query::Dao {} => (),
             Query::Info {} => (),
             Query::NextProposalId {} => (),
+            Query::GenericProposalInfo { proposal_id: _ } => (),
         }
     }
 }

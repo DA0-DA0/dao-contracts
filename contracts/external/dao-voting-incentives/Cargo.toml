@@ -32,3 +32,4 @@ cosmwasm-schema = { workspace = true }
 cw-multi-test = { workspace = true }
 dao-dao-core = { workspace = true, features = ["library"] }
 cw20-base = { workspace = true, features = ["library"] }
+cw-hooks = { workspace = true }

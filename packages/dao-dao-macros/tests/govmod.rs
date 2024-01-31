@@ -24,5 +24,6 @@ fn proposal_module_query_derive() {
         Test::Foo | Test::Bar(_) | Test::Baz { .. } | Test::Dao {} => "yay",
         Test::Info {} => "yay",
         Test::NextProposalId {} => "yay",
+        Test::GenericProposalInfo { proposal_id: _ } => "yay",
     };
 }
