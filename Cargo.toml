@@ -111,6 +111,7 @@ dao-pre-propose-multiple = { path = "./contracts/pre-propose/dao-pre-propose-mul
 dao-pre-propose-single = { path = "./contracts/pre-propose/dao-pre-propose-single", version = "2.5.0" }
 dao-proposal-condorcet = { path = "./contracts/proposal/dao-proposal-condorcet", version = "2.5.0" }
 dao-proposal-hook-counter = { path = "./contracts/test/dao-proposal-hook-counter", version = "2.5.0" }
+dao-proposal-incentives = { path = "./contracts/external/dao-proposal-incentives", version = "2.5.0" }
 dao-proposal-multiple = { path = "./contracts/proposal/dao-proposal-multiple", version = "2.5.0" }
 dao-proposal-single = { path = "./contracts/proposal/dao-proposal-single", version = "2.5.0" }
 dao-proposal-sudo = { path = "./contracts/test/dao-proposal-sudo", version = "2.5.0" }

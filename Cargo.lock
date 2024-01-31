@@ -2063,38 +2063,25 @@ dependencies = [
 
 [[package]]
 name = "dao-proposal-incentives"
-version = "2.4.0"
+version = "2.5.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-denom 2.5.0",
+ "cw-hooks 2.5.0",
  "cw-multi-test",
+ "cw-ownable",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
+ "cw20 1.1.2",
  "cw20-base 1.1.2",
  "dao-dao-core 2.5.0",
  "dao-hooks 2.5.0",
  "dao-interface 2.5.0",
  "dao-proposal-single 2.5.0",
+ "dao-testing",
  "dao-voting 2.5.0",
- "thiserror",
-]
-
-[[package]]
-name = "dao-proposal-incentives"
-version = "2.4.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
- "cw2 1.1.2",
- "cw20-base 1.1.2",
- "dao-dao-core",
- "dao-hooks",
- "dao-interface",
- "dao-voting 2.4.0",
  "thiserror",
 ]
 
@@ -2209,6 +2196,7 @@ dependencies = [
  "dao-interface 2.5.0",
  "dao-pre-propose-base 2.5.0",
  "dao-pre-propose-single 2.5.0",
+ "dao-proposal-incentives",
  "dao-testing",
  "dao-voting 0.1.0",
  "dao-voting 2.5.0",
@@ -2312,6 +2300,7 @@ dependencies = [
  "dao-pre-propose-multiple 2.5.0",
  "dao-pre-propose-single 2.5.0",
  "dao-proposal-condorcet",
+ "dao-proposal-incentives",
  "dao-proposal-single 2.5.0",
  "dao-test-custom-factory",
  "dao-voting 0.1.0",
@@ -2506,6 +2495,7 @@ version = "2.5.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-hooks 2.5.0",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
@@ -2514,6 +2504,7 @@ dependencies = [
  "dao-dao-core 2.5.0",
  "dao-hooks 2.5.0",
  "dao-interface 2.5.0",
+ "dao-voting 2.5.0",
  "thiserror",
 ]
 

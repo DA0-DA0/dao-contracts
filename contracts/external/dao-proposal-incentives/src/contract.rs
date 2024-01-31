@@ -1,51 +1,39 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_json_binary, BankMsg, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
-    SubMsg,
-};
+use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
-use cw_utils::must_pay;
-use dao_hooks::proposal::ProposalHookMsg;
-use dao_voting::status::Status;
+use cw_ownable::get_ownership;
 
-use crate::error::ContractError;
-use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state::{DAO, PROPOSAL_INCENTIVES};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::state::PROPOSAL_INCENTIVES;
+use crate::{execute, query, ContractError};
 
 pub(crate) const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub const REPLY_PROPOSAL_HOOK_ID: u64 = 1;
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // Save DAO, assumes the sender is the DAO
-    DAO.save(deps.storage, &deps.api.addr_validate(&msg.dao)?)?;
+    // Save ownership
+    let ownership = cw_ownable::initialize_owner(deps.storage, deps.api, Some(&msg.owner))?;
+
+    // Validate proposal incentives
+    let proposal_incentives = msg.proposal_incentives.into_checked(deps.as_ref())?;
 
     // Save proposal incentives config
-    PROPOSAL_INCENTIVES.save(deps.storage, &msg.proposal_incentives)?;
-
-    // Check initial deposit contains enough funds to pay out rewards
-    // for at least one proposal
-    let amount = must_pay(&info, &msg.proposal_incentives.rewards_per_proposal.denom)?;
-    if amount < msg.proposal_incentives.rewards_per_proposal.amount {
-        return Err(ContractError::InsufficientInitialDeposit {
-            expected: msg.proposal_incentives.rewards_per_proposal.amount,
-            actual: amount,
-        });
-    };
+    PROPOSAL_INCENTIVES.save(deps.storage, &proposal_incentives, env.block.height)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("creator", info.sender))
+        .add_attribute("creator", info.sender)
+        .add_attributes(ownership.into_attributes())
+        .add_attributes(proposal_incentives.into_attributes()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -56,62 +44,25 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::ProposalHook(msg) => execute_proposal_hook(deps, env, info, msg),
-    }
-}
-
-// TODO support cw20 tokens
-pub fn execute_proposal_hook(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    msg: ProposalHookMsg,
-) -> Result<Response, ContractError> {
-    let mut payout_msgs: Vec<SubMsg> = vec![];
-
-    // Check prop status and type of hook
-    match msg {
-        ProposalHookMsg::ProposalStatusChanged { new_status, .. } => {
-            // If prop status is success, add message to pay out rewards
-            // Otherwise, do nothing
-            if new_status == Status::Passed.to_string() {
-                // Load proposal incentives config
-                let proposal_incentives = PROPOSAL_INCENTIVES.load(deps.storage)?;
-
-                // We handle payout messages in a SubMsg so the error be caught
-                // if need be. This is to prevent running out of funds locking the DAO.
-                payout_msgs.push(SubMsg::reply_on_error(
-                    BankMsg::Send {
-                        to_address: info.sender.to_string(),
-                        amount: vec![proposal_incentives.rewards_per_proposal],
-                    },
-                    REPLY_PROPOSAL_HOOK_ID,
-                ));
-            }
+        ExecuteMsg::ProposalHook(msg) => execute::proposal_hook(deps, env, info, msg),
+        ExecuteMsg::UpdateOwnership(action) => execute::update_ownership(deps, env, info, action),
+        ExecuteMsg::UpdateProposalIncentives {
+            proposal_incentives,
+        } => execute::update_proposal_incentives(deps, env, info, proposal_incentives),
+        ExecuteMsg::Receive(cw20_receive_msg) => {
+            execute::receive_cw20(deps, env, info, cw20_receive_msg)
         }
-        _ => {}
     }
-
-    Ok(Response::default()
-        .add_attribute("action", "proposal_hook")
-        .add_submessages(payout_msgs))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Config {} => query_config(deps),
+        QueryMsg::ProposalIncentives { height } => {
+            to_json_binary(&query::proposal_incentives(deps, height)?)
+        }
+        QueryMsg::Ownership {} => to_json_binary(&get_ownership(deps.storage)?),
     }
-}
-
-pub fn query_config(deps: Deps) -> StdResult<Binary> {
-    let dao = DAO.load(deps.storage)?;
-    let proposal_incentives = PROPOSAL_INCENTIVES.load(deps.storage)?;
-
-    to_json_binary(&ConfigResponse {
-        dao: dao.to_string(),
-        proposal_incentives,
-    })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -119,16 +70,4 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     // Set contract to version to latest
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(Response::default())
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    match msg.id {
-        REPLY_PROPOSAL_HOOK_ID => {
-            // If an error occurred with payout, we still return an ok response
-            // because we don't want to fail the proposal hook and lock the DAO.
-            Ok(Response::default())
-        }
-        _ => Err(ContractError::UnknownReplyID {}),
-    }
 }

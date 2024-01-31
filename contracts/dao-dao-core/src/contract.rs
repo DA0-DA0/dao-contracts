@@ -582,6 +582,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::ProposalModules { start_after, limit } => {
             query_proposal_modules(deps, start_after, limit)
         }
+        QueryMsg::ProposalModule { address } => query_proposal_module(deps, address),
         QueryMsg::ProposalModuleCount {} => query_proposal_module_count(deps),
         QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, height),
         QueryMsg::VotingModule {} => query_voting_module(deps),
@@ -596,6 +597,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::DaoURI {} => query_dao_uri(deps),
     }
+}
+
+pub fn query_proposal_module(deps: Deps, address: String) -> StdResult<Binary> {
+    let address = deps.api.addr_validate(&address)?;
+    let proposal_module = &PROPOSAL_MODULES.load(deps.storage, address)?;
+
+    to_json_binary(&proposal_module)
 }
 
 pub fn query_admin(deps: Deps) -> StdResult<Binary> {
