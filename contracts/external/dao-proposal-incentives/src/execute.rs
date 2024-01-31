@@ -29,36 +29,34 @@ pub fn proposal_hook(
         )?;
 
         // Check prop status and type of hook
-        match msg {
-            ProposalHookMsg::ProposalStatusChanged { id, new_status, .. } => {
-                // If prop status is success, add message to pay out rewards
-                // Otherwise, do nothing
-                if new_status == Status::Passed.to_string() {
-                    // Query for the proposal
-                    let proposal_info: GenericProposalInfo = deps.querier.query_wasm_smart(
-                        info.sender,
-                        &dao_interface::proposal::Query::GenericProposalInfo { proposal_id: id },
-                    )?;
 
-                    // Load proposal incentives config
-                    let proposal_incentives = PROPOSAL_INCENTIVES
-                        .may_load_at_height(deps.storage, proposal_info.start_height)?;
+        if let ProposalHookMsg::ProposalStatusChanged { id, new_status, .. } = msg {
+            // If prop status is success, add message to pay out rewards
+            // Otherwise, do nothing
+            if new_status == Status::Passed.to_string() {
+                // Query for the proposal
+                let proposal_info: GenericProposalInfo = deps.querier.query_wasm_smart(
+                    info.sender,
+                    &dao_interface::proposal::Query::GenericProposalInfo { proposal_id: id },
+                )?;
 
-                    // Append the message if found
-                    if let Some(proposal_incentives) = proposal_incentives {
-                        msgs.push(proposal_incentives.denom.get_transfer_to_message(
-                            &proposal_info.proposer,
-                            proposal_incentives.rewards_per_proposal,
-                        )?);
-                        attrs = proposal_incentives.into_attributes();
-                        attrs.push(Attribute {
-                            key: "proposer".to_string(),
-                            value: proposal_info.proposer.to_string(),
-                        });
-                    }
+                // Load proposal incentives config
+                let proposal_incentives = PROPOSAL_INCENTIVES
+                    .may_load_at_height(deps.storage, proposal_info.start_height)?;
+
+                // Append the message if found
+                if let Some(proposal_incentives) = proposal_incentives {
+                    msgs.push(proposal_incentives.denom.get_transfer_to_message(
+                        &proposal_info.proposer,
+                        proposal_incentives.rewards_per_proposal,
+                    )?);
+                    attrs = proposal_incentives.into_attributes();
+                    attrs.push(Attribute {
+                        key: "proposer".to_string(),
+                        value: proposal_info.proposer.to_string(),
+                    });
                 }
             }
-            _ => {}
         }
     }
 

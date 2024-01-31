@@ -57,8 +57,8 @@ pub fn execute(
 // TODO how to claim for many epochs efficiently?
 pub fn execute_claim(
     deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    _env: Env,
+    _info: MessageInfo,
 ) -> Result<Response, ContractError> {
     // Check epoch should advance
 
@@ -69,7 +69,7 @@ pub fn execute_claim(
     // Load prop count for epoch
 
     // Load voting incentives config
-    let voting_incentives = VOTING_INCENTIVES.load(deps.storage)?;
+    let _voting_incentives = VOTING_INCENTIVES.load(deps.storage)?;
 
     // Need total vote count for epoch
     // Rewards = (user vote count / prop count) / total_vote_count * voting incentives
@@ -82,10 +82,10 @@ pub fn execute_claim(
 // TODO support cw20 tokens
 // TODO make sure config can't lock DAO
 pub fn execute_vote_hook(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: VoteHookMsg,
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+    _msg: VoteHookMsg,
 ) -> Result<Response, ContractError> {
     // Check epoch should advance
 
@@ -102,7 +102,7 @@ pub fn execute_vote_hook(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Rewards { address } => unimplemented!(),
+        QueryMsg::Rewards { address: _ } => unimplemented!(),
         QueryMsg::Config {} => unimplemented!(),
     }
 }
