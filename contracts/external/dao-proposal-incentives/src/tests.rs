@@ -142,7 +142,7 @@ fn vote_yes_on_proposal(context: &mut Context, proposal_id: u64) -> AnyResult<Ap
             vote: dao_voting::voting::Vote::Yes,
             rationale: None,
         },
-        &vec![],
+        &[],
     )
 }
 
@@ -153,7 +153,7 @@ fn execute_proposal(context: &mut Context, proposal_id: u64) {
             Addr::unchecked(ADDR1),
             context.proposal_single_addr.clone(),
             &dao_proposal_single::msg::ExecuteMsg::Execute { proposal_id },
-            &vec![],
+            &[],
         )
         .unwrap();
 }
@@ -173,7 +173,7 @@ pub fn test_setup_native() {
                 denom: UncheckedDenom::Native(DENOM.to_string()),
             },
         },
-        &vec![],
+        &[],
         "dao_proposal_incentives".to_string(),
         None,
     );
@@ -190,7 +190,7 @@ pub fn test_setup_native() {
                 denom: UncheckedDenom::Native(DENOM.to_string()),
             },
         },
-        &vec![],
+        &[],
         "dao_proposal_incentives".to_string(),
         None,
     );
@@ -303,7 +303,7 @@ pub fn test_hook() {
                     denom: UncheckedDenom::Native(DENOM.to_string()),
                 },
             },
-            &vec![],
+            &[],
             "dao_proposal_incentives".to_string(),
             None,
         )
@@ -371,7 +371,7 @@ pub fn test_hook() {
                 })],
                 proposer: None,
             }),
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -404,7 +404,7 @@ pub fn test_hook() {
                 msgs: vec![],
                 proposer: None,
             }),
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -432,7 +432,7 @@ pub fn test_hook() {
                 msgs: vec![],
                 proposer: None,
             }),
-            &vec![],
+            &[],
         )
         .unwrap();
 
