@@ -31,6 +31,7 @@ pub(crate) fn make_proposal(
     proposal_single: &Addr,
     proposer: &str,
     msgs: Vec<CosmosMsg>,
+    vote: Option<SingleChoiceAutoVote>,
 ) -> u64 {
     let proposal_creation_policy = query_creation_policy(app, proposal_single);
 
@@ -80,7 +81,7 @@ pub(crate) fn make_proposal(
                     description: "description".to_string(),
                     msgs: msgs.clone(),
                     proposer: None,
-                    vote: None,
+                    vote,
                 }),
                 &[],
             )
@@ -94,7 +95,7 @@ pub(crate) fn make_proposal(
                         title: "title".to_string(),
                         description: "description".to_string(),
                         msgs: msgs.clone(),
-                        vote: None,
+                        vote,
                     },
                 },
                 &funds,

@@ -8,6 +8,7 @@ use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Execut
 use cw_utils::Duration;
 use dao_interface::state::ProposalModule;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
+use dao_voting::multiple_choice::MultipleChoiceAutoVote;
 use dao_voting::veto::{VetoConfig, VetoError};
 use dao_voting::{
     deposit::{
@@ -156,7 +157,7 @@ fn test_propose() {
             title: "title".to_string(),
         },
         MultipleChoiceOption {
-            description: "multiple choice option 1".to_string(),
+            description: "multiple choice option 2".to_string(),
             msgs: vec![],
             title: "title".to_string(),
         },
@@ -165,7 +166,7 @@ fn test_propose() {
     let mc_options = MultipleChoiceOptions { options };
 
     // Create a new proposal.
-    make_proposal(&mut app, &govmod, CREATOR_ADDR, mc_options.clone());
+    make_proposal(&mut app, &govmod, CREATOR_ADDR, mc_options.clone(), None);
 
     let created: ProposalResponse = query_proposal(&app, &govmod, 1);
 
@@ -310,6 +311,255 @@ fn test_proposal_count_initialized_to_zero() {
         .unwrap();
 
     assert_eq!(proposal_count, 0);
+}
+
+#[test]
+fn test_propose_auto_vote_winner() {
+    let mut app = App::default();
+    let _govmod_id = app.store_code(proposal_multiple_contract());
+
+    let max_voting_period = Duration::Height(6);
+    let quorum = PercentageThreshold::Majority {};
+
+    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+
+    let instantiate = InstantiateMsg {
+        max_voting_period,
+        only_members_execute: false,
+        allow_revoting: false,
+        voting_strategy: voting_strategy.clone(),
+        min_voting_period: None,
+        close_proposal_on_execution_failure: true,
+        pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+        veto: None,
+    };
+
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
+    let govmod = query_multiple_proposal_module(&app, &core_addr);
+
+    // Check that the config has been configured correctly.
+    let config: Config = query_proposal_config(&app, &govmod);
+    let expected = Config {
+        max_voting_period,
+        only_members_execute: false,
+        allow_revoting: false,
+        dao: core_addr,
+        voting_strategy: voting_strategy.clone(),
+        min_voting_period: None,
+        close_proposal_on_execution_failure: true,
+        veto: None,
+    };
+    assert_eq!(config, expected);
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+    ];
+
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Create a new proposal and auto-vote on the first option.
+    make_proposal(
+        &mut app,
+        &govmod,
+        CREATOR_ADDR,
+        mc_options.clone(),
+        Some(MultipleChoiceAutoVote {
+            vote: MultipleChoiceVote { option_id: 0 },
+            rationale: Some("rationale".to_string()),
+        }),
+    );
+
+    let created: ProposalResponse = query_proposal(&app, &govmod, 1);
+
+    let current_block = app.block_info();
+    let checked_options = mc_options.into_checked().unwrap();
+    let expected = MultipleChoiceProposal {
+        title: "title".to_string(),
+        description: "description".to_string(),
+        proposer: Addr::unchecked(CREATOR_ADDR),
+        start_height: current_block.height,
+        expiration: max_voting_period.after(&current_block),
+        choices: checked_options.options,
+        status: Status::Passed,
+        voting_strategy,
+        total_power: Uint128::new(100_000_000),
+        votes: MultipleChoiceVotes {
+            vote_weights: vec![Uint128::new(100_000_000), Uint128::zero(), Uint128::zero()],
+        },
+        allow_revoting: false,
+        min_voting_period: None,
+        veto: None,
+    };
+
+    assert_eq!(created.proposal, expected);
+    assert_eq!(created.id, 1u64);
+}
+
+#[test]
+fn test_propose_auto_vote_reject() {
+    let mut app = App::default();
+    let _govmod_id = app.store_code(proposal_multiple_contract());
+
+    let max_voting_period = Duration::Height(6);
+    let quorum = PercentageThreshold::Majority {};
+
+    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+
+    let instantiate = InstantiateMsg {
+        max_voting_period,
+        only_members_execute: false,
+        allow_revoting: false,
+        voting_strategy: voting_strategy.clone(),
+        min_voting_period: None,
+        close_proposal_on_execution_failure: true,
+        pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+        veto: None,
+    };
+
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
+    let govmod = query_multiple_proposal_module(&app, &core_addr);
+
+    // Check that the config has been configured correctly.
+    let config: Config = query_proposal_config(&app, &govmod);
+    let expected = Config {
+        max_voting_period,
+        only_members_execute: false,
+        allow_revoting: false,
+        dao: core_addr,
+        voting_strategy: voting_strategy.clone(),
+        min_voting_period: None,
+        close_proposal_on_execution_failure: true,
+        veto: None,
+    };
+    assert_eq!(config, expected);
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+    ];
+
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Create a new proposal and auto-vote on the first option.
+    make_proposal(
+        &mut app,
+        &govmod,
+        CREATOR_ADDR,
+        mc_options.clone(),
+        Some(MultipleChoiceAutoVote {
+            vote: MultipleChoiceVote { option_id: 2 },
+            rationale: Some("rationale".to_string()),
+        }),
+    );
+
+    let created: ProposalResponse = query_proposal(&app, &govmod, 1);
+
+    let current_block = app.block_info();
+    let checked_options = mc_options.into_checked().unwrap();
+    let expected = MultipleChoiceProposal {
+        title: "title".to_string(),
+        description: "description".to_string(),
+        proposer: Addr::unchecked(CREATOR_ADDR),
+        start_height: current_block.height,
+        expiration: max_voting_period.after(&current_block),
+        choices: checked_options.options,
+        status: Status::Rejected,
+        voting_strategy,
+        total_power: Uint128::new(100_000_000),
+        votes: MultipleChoiceVotes {
+            vote_weights: vec![Uint128::zero(), Uint128::zero(), Uint128::new(100_000_000)],
+        },
+        allow_revoting: false,
+        min_voting_period: None,
+        veto: None,
+    };
+
+    assert_eq!(created.proposal, expected);
+    assert_eq!(created.id, 1u64);
+}
+
+#[test]
+#[should_panic(expected = "Not registered to vote (no voting power) at time of proposal creation")]
+fn test_propose_non_member_auto_vote_fail() {
+    let mut app = App::default();
+    let _govmod_id = app.store_code(proposal_multiple_contract());
+
+    let max_voting_period = Duration::Height(6);
+    let quorum = PercentageThreshold::Majority {};
+
+    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+
+    let instantiate = InstantiateMsg {
+        max_voting_period,
+        only_members_execute: false,
+        allow_revoting: false,
+        voting_strategy: voting_strategy.clone(),
+        min_voting_period: None,
+        close_proposal_on_execution_failure: true,
+        pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+        veto: None,
+    };
+
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
+    let govmod = query_multiple_proposal_module(&app, &core_addr);
+
+    // Check that the config has been configured correctly.
+    let config: Config = query_proposal_config(&app, &govmod);
+    let expected = Config {
+        max_voting_period,
+        only_members_execute: false,
+        allow_revoting: false,
+        dao: core_addr,
+        voting_strategy: voting_strategy.clone(),
+        min_voting_period: None,
+        close_proposal_on_execution_failure: true,
+        veto: None,
+    };
+    assert_eq!(config, expected);
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+    ];
+
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Should fail if non-member tries to vote on proposal creation.
+    make_proposal(
+        &mut app,
+        &govmod,
+        "anyone",
+        mc_options.clone(),
+        Some(MultipleChoiceAutoVote {
+            vote: MultipleChoiceVote { option_id: 0 },
+            rationale: Some("rationale".to_string()),
+        }),
+    );
 }
 
 #[test]
@@ -975,7 +1225,7 @@ fn test_take_proposal_deposit() {
         )
         .unwrap();
 
-        make_proposal(&mut app, &govmod, "blue", mc_options);
+        make_proposal(&mut app, &govmod, "blue", mc_options, None);
 
         // Proposal has been executed so deposit has been refunded.
         let balance = query_balance_cw20(&app, token, "blue".to_string());
@@ -1070,7 +1320,7 @@ fn test_take_native_proposal_deposit() {
         )
         .unwrap_err();
 
-        make_proposal(&mut app, &govmod, "blue", mc_options);
+        make_proposal(&mut app, &govmod, "blue", mc_options, None);
 
         // Proposal has been executed so deposit has been refunded.
         let balance = query_balance_native(&app, "blue", denom);
@@ -1179,7 +1429,7 @@ fn test_native_proposal_deposit() {
         .unwrap();
 
         // Adding deposit will work
-        make_proposal(&mut app, &govmod, "blue", mc_options);
+        make_proposal(&mut app, &govmod, "blue", mc_options, None);
 
         // "blue" has been refunded
         let balance = query_balance_native(&app, "blue", "ujuno");
@@ -1940,6 +2190,7 @@ fn test_open_proposal_submission() {
                 },
             ],
         },
+        None,
     );
 
     let created: ProposalResponse = query_proposal(&app, &govmod, 1);
@@ -4101,6 +4352,7 @@ fn test_no_double_refund_on_execute_fail_and_close() {
         &govmod,
         Addr::unchecked(CREATOR_ADDR).as_str(),
         choices,
+        None,
     );
 
     // Vote on proposal

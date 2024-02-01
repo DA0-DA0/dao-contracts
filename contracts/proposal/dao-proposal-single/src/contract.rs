@@ -104,7 +104,7 @@ pub fn execute(
             proposal_id,
             vote,
             rationale,
-        } => execute_vote(deps, env, info, proposal_id, vote, rationale),
+        } => execute_vote(deps, env, info.sender, proposal_id, vote, rationale),
         ExecuteMsg::UpdateRationale {
             proposal_id,
             rationale,
@@ -256,7 +256,7 @@ pub fn execute_propose(
 
     // Auto cast vote if given.
     let (vote_hooks, vote_attributes) = if let Some(vote) = vote {
-        let response = execute_vote(deps, env, info, id, vote.vote, vote.rationale.clone())?;
+        let response = execute_vote(deps, env, proposer, id, vote.vote, vote.rationale.clone())?;
         (
             response.messages,
             vec![
@@ -474,7 +474,7 @@ pub fn execute_execute(
 pub fn execute_vote(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    sender: Addr,
     proposal_id: u64,
     vote: Vote,
     rationale: Option<String>,
@@ -497,7 +497,7 @@ pub fn execute_vote(
 
     let vote_power = get_voting_power(
         deps.as_ref(),
-        info.sender.clone(),
+        sender.clone(),
         &config.dao,
         Some(prop.start_height),
     )?;
@@ -505,7 +505,7 @@ pub fn execute_vote(
         return Err(ContractError::NotRegistered {});
     }
 
-    BALLOTS.update(deps.storage, (proposal_id, &info.sender), |bal| match bal {
+    BALLOTS.update(deps.storage, (proposal_id, &sender), |bal| match bal {
         Some(current_ballot) => {
             if prop.allow_revoting {
                 if current_ballot.vote == vote {
@@ -557,7 +557,7 @@ pub fn execute_vote(
         VOTE_HOOKS,
         deps.storage,
         proposal_id,
-        info.sender.to_string(),
+        sender.to_string(),
         vote.to_string(),
     )?;
 
@@ -565,7 +565,7 @@ pub fn execute_vote(
         .add_submessages(change_hooks)
         .add_submessages(vote_hooks)
         .add_attribute("action", "vote")
-        .add_attribute("sender", info.sender)
+        .add_attribute("sender", sender)
         .add_attribute("proposal_id", proposal_id.to_string())
         .add_attribute("position", vote.to_string())
         .add_attribute(

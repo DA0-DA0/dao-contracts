@@ -4,8 +4,10 @@ use cw_multi_test::{App, Executor};
 use cw_denom::CheckedDenom;
 use dao_pre_propose_multiple as cppm;
 use dao_voting::{
-    deposit::CheckedDepositInfo, multiple_choice::MultipleChoiceOptions,
-    pre_propose::ProposalCreationPolicy, proposal::MultipleChoiceProposeMsg as ProposeMsg,
+    deposit::CheckedDepositInfo,
+    multiple_choice::{MultipleChoiceAutoVote, MultipleChoiceOptions},
+    pre_propose::ProposalCreationPolicy,
+    proposal::MultipleChoiceProposeMsg as ProposeMsg,
 };
 
 use crate::{
@@ -24,6 +26,7 @@ pub fn make_proposal(
     proposal_multiple: &Addr,
     proposer: &str,
     choices: MultipleChoiceOptions,
+    vote: Option<MultipleChoiceAutoVote>,
 ) -> u64 {
     let proposal_creation_policy = query_creation_policy(app, proposal_multiple);
 
@@ -73,7 +76,7 @@ pub fn make_proposal(
                     description: "description".to_string(),
                     choices,
                     proposer: None,
-                    vote: None,
+                    vote,
                 }),
                 &[],
             )
@@ -87,7 +90,7 @@ pub fn make_proposal(
                         title: "title".to_string(),
                         description: "description".to_string(),
                         choices,
-                        vote: None,
+                        vote,
                     },
                 },
                 &funds,

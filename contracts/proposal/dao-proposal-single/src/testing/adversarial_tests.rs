@@ -39,7 +39,7 @@ fn setup_test(messages: Vec<CosmosMsg>) -> CommonTest {
 
     // Mint some tokens to pay the proposal deposit.
     mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
-    let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, messages);
+    let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, messages, None);
 
     CommonTest {
         app,
@@ -204,7 +204,7 @@ pub fn test_executed_prop_state_remains_after_vote_swing() {
     let gov_token = query_dao_token(&app, &core_addr);
 
     mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
-    let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, vec![]);
+    let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, vec![], None);
 
     // someone quickly votes, proposal gets executed
     vote_on_proposal(
@@ -320,6 +320,7 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
             funds: vec![],
         }
         .into()],
+        None,
     );
 
     // assert that the initial "threshold" address balance is 0

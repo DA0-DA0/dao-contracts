@@ -53,7 +53,7 @@ fn setup_test(_messages: Vec<CosmosMsg>) -> CommonTest {
 
     let mc_options = MultipleChoiceOptions { options };
 
-    let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, mc_options);
+    let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, mc_options, None);
 
     CommonTest {
         app,
@@ -332,7 +332,7 @@ pub fn test_allow_voting_after_proposal_execution_pre_expiration_cw20() {
 
     let mc_options = MultipleChoiceOptions { options };
 
-    let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, mc_options);
+    let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, mc_options, None);
 
     // assert initial CREATOR_ADDR address balance is 0
     let balance = query_balance_cw20(&app, gov_token.to_string(), CREATOR_ADDR);
