@@ -376,7 +376,12 @@ fn test_slash_while_cancelled_counts_against_owner() {
     assert_eq!(balance, distributable);
 
     let vest = suite.query_vest();
-    let Status::Canceled { owner_withdrawable: pre_slash } = vest.status else { panic!("should be canceled") };
+    let Status::Canceled {
+        owner_withdrawable: pre_slash,
+    } = vest.status
+    else {
+        panic!("should be canceled")
+    };
 
     // register the slash. even though the time of the slash was
     // during the vest, the contract should deduct this from
@@ -390,7 +395,9 @@ fn test_slash_while_cancelled_counts_against_owner() {
         .unwrap();
 
     let vest = suite.query_vest();
-    let Status::Canceled { owner_withdrawable } = vest.status else { panic!("should be canceled") };
+    let Status::Canceled { owner_withdrawable } = vest.status else {
+        panic!("should be canceled")
+    };
     assert_eq!(pre_slash - Uint128::new(10_000_000), owner_withdrawable);
 }
 

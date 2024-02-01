@@ -118,15 +118,16 @@ pub fn create_dao(
         .unwrap();
 
     let ProposalCreationPolicy::Module { addr: pre_propose } = chain
-	.orc
-	.query(
-	    "dao_proposal_single",
-	    &dao_proposal_single::msg::QueryMsg::ProposalCreationPolicy {}
-	).unwrap()
-	.data()
-	.unwrap()
+        .orc
+        .query(
+            "dao_proposal_single",
+            &dao_proposal_single::msg::QueryMsg::ProposalCreationPolicy {},
+        )
+        .unwrap()
+        .data()
+        .unwrap()
     else {
-	panic!("expected pre-propose module")
+        panic!("expected pre-propose module")
     };
     chain
         .orc
