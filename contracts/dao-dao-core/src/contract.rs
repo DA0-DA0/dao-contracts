@@ -106,12 +106,13 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    // No actions can be performed while the DAO is paused.
+    // No actions can be performed while the DAO is paused except for unpause.
     match &msg {
         &ExecuteMsg::Unpause {} => {
             // Allow the unpause action to pass through
         }
         _ => {
+            // Check if the DAO is currently paused
             if let Some(expiration) = PAUSED.may_load(deps.storage)? {
                 if !expiration.is_expired(&env.block) {
                     return Err(ContractError::Paused {});
@@ -167,10 +168,7 @@ pub fn execute_pause(
     sender: Addr,
     pause_duration: Duration,
 ) -> Result<Response, ContractError> {
-    let admin = ADMIN.load(deps.storage)?;
-
-    // Only the core contract or admin may call this method.
-    if sender != env.contract.address && sender != admin {
+    if sender != env.contract.address {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -187,7 +185,7 @@ pub fn execute_pause(
 pub fn execute_unpause(deps: DepsMut, sender: Addr) -> Result<Response, ContractError> {
     let admin = ADMIN.load(deps.storage)?;
 
-    // Only the admin may call this method.
+    // Only the admin can unpause
     if sender != admin {
         return Err(ContractError::Unauthorized {});
     }

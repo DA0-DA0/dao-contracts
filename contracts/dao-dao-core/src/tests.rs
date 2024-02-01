@@ -1117,6 +1117,17 @@ fn test_admin_permissions() {
     );
     res.unwrap_err();
 
+    // Admin cannot directly pause the DAO
+    let res = app.execute_contract(
+        Addr::unchecked("admin"),
+        core_with_admin_addr.clone(),
+        &ExecuteMsg::Pause {
+            duration: Duration::Height(10),
+        },
+        &[],
+    );
+    assert!(res.is_err());
+
     // Admin can call ExecuteAdminMsgs, here an admin pauses the DAO
     let res = app.execute_contract(
         Addr::unchecked("admin"),
@@ -1134,7 +1145,7 @@ fn test_admin_permissions() {
         },
         &[],
     );
-    res.unwrap();
+    assert!(res.is_ok());
 
     let paused: PauseInfoResponse = app
         .wrap()
@@ -1150,29 +1161,33 @@ fn test_admin_permissions() {
     // DAO unpauses after 10 blocks
     app.update_block(|block| block.height += 11);
 
-    // Admin can directly pause the DAO
-    let res = app.execute_contract(
-        Addr::unchecked("admin"),
-        core_with_admin_addr.clone(),
-        &ExecuteMsg::Pause {
-            duration: Duration::Height(10),
-        },
-        &[],
-    );
-    res.unwrap();
-
+    // Check we are unpaused
     let paused: PauseInfoResponse = app
         .wrap()
         .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::PauseInfo {})
         .unwrap();
-    assert_eq!(
-        paused,
-        PauseInfoResponse::Paused {
-            expiration: Expiration::AtHeight(start_height + 21)
-        }
-    );
+    assert_eq!(paused, PauseInfoResponse::Unpaused {});
 
-    // DAO cannot unpause itself
+    // Admin pauses DAO again
+    let res = app.execute_contract(
+        Addr::unchecked("admin"),
+        core_with_admin_addr.clone(),
+        &ExecuteMsg::ExecuteAdminMsgs {
+            msgs: vec![WasmMsg::Execute {
+                contract_addr: core_with_admin_addr.to_string(),
+                msg: to_binary(&ExecuteMsg::Pause {
+                    duration: Duration::Height(10),
+                })
+                .unwrap(),
+                funds: vec![],
+            }
+            .into()],
+        },
+        &[],
+    );
+    assert!(res.is_ok());
+
+    // DAO with admin cannot unpause itself
     let res = app.execute_contract(
         core_with_admin_addr.clone(),
         core_with_admin_addr.clone(),
@@ -1201,15 +1216,16 @@ fn test_admin_permissions() {
     );
     assert!(res.is_err());
 
-    // Admin can unpause the DAO
+    // Admin can unpause the DAO directly
     let res = app.execute_contract(
         Addr::unchecked("admin"),
         core_with_admin_addr.clone(),
         &ExecuteMsg::Unpause {},
         &[],
     );
-    res.unwrap();
+    assert!(res.is_ok());
 
+    // Check we are unpaused
     let paused: PauseInfoResponse = app
         .wrap()
         .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::PauseInfo {})
