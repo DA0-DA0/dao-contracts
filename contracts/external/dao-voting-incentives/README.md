@@ -9,9 +9,9 @@ When creating this contract, the DAO specifies an `epoch_duration` and an amount
 
 At the end of the epoch, rewards are payable as follows:
 
-```
+``
 rewards = (user vote count / prop count) / total_vote_count * voting incentives
-```
+``
 
 If no proposals happen during an epoch, no rewards are paid out.
 
