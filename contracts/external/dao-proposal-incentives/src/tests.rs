@@ -331,7 +331,7 @@ pub fn test_hook() {
         .send_tokens(
             Addr::unchecked(ADMIN),
             dao_proposal_incentives_addr.clone(),
-            &vec![Coin {
+            &[Coin {
                 denom: DENOM.to_string(),
                 amount: Uint128::new(1000),
             }],
