@@ -1192,6 +1192,15 @@ fn test_admin_permissions() {
     );
     assert!(res.is_err());
 
+    // Random person cannot unpause the DAO
+    let res = app.execute_contract(
+        Addr::unchecked("random"),
+        core_with_admin_addr.clone(),
+        &ExecuteMsg::Unpause {},
+        &[],
+    );
+    assert!(res.is_err());
+
     // Admin can unpause the DAO
     let res = app.execute_contract(
         Addr::unchecked("admin"),
