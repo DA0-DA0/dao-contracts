@@ -11,7 +11,7 @@ use dao_pre_propose_base::{
     msg::{ExecuteMsg as ExecuteBase, InstantiateMsg as InstantiateBase, QueryMsg as QueryBase},
     state::PreProposeContract,
 };
-use dao_voting::proposal::SingleChoiceProposeMsg as ProposeMsg;
+use dao_voting::{proposal::SingleChoiceProposeMsg as ProposeMsg, voting::SingleChoiceAutoVote};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-pre-propose-single";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -26,6 +26,7 @@ pub enum ProposeMessage {
         title: String,
         description: String,
         msgs: Vec<CosmosMsg<Empty>>,
+        vote: Option<SingleChoiceAutoVote>,
     },
 }
 
@@ -74,6 +75,7 @@ pub fn execute(
                     title,
                     description,
                     msgs,
+                    vote,
                 },
         } => ExecuteInternal::Propose {
             msg: ProposeMessageInternal::Propose(ProposeMsg {
@@ -82,6 +84,7 @@ pub fn execute(
                 title,
                 description,
                 msgs,
+                vote,
             }),
         },
         ExecuteMsg::Extension { msg } => ExecuteInternal::Extension { msg },

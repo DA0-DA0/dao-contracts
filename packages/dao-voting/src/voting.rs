@@ -29,6 +29,16 @@ pub enum Vote {
     Abstain,
 }
 
+#[cw_serde]
+pub struct SingleChoiceAutoVote {
+    /// The proposer's position on the proposal.
+    pub vote: Vote,
+    /// An optional rationale for why this vote was cast. This can
+    /// be updated, set, or removed later by the address casting
+    /// the vote.
+    pub rationale: Option<String>,
+}
+
 pub enum VoteCmp {
     Greater,
     Geq,

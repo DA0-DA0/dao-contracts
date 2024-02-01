@@ -207,6 +207,7 @@ where
                 title: "A simple text proposal".to_string(),
                 description: "This is a simple text proposal".to_string(),
                 msgs: vec![],
+                vote: None,
             },
         },
         &funds,

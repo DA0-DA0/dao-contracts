@@ -213,6 +213,7 @@ where
                 title: "A simple text proposal".to_string(),
                 description: "This is a simple text proposal".to_string(),
                 choices: mc_options,
+                vote: None,
             },
         },
         &funds,

@@ -929,6 +929,30 @@
           }
         }
       },
+      "MultipleChoiceAutoVote": {
+        "type": "object",
+        "required": [
+          "vote"
+        ],
+        "properties": {
+          "rationale": {
+            "description": "An optional rationale for why this vote was cast. This can be updated, set, or removed later by the address casting the vote.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vote": {
+            "description": "The proposer's position on the proposal.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MultipleChoiceVote"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
       "MultipleChoiceOption": {
         "description": "Unchecked multiple choice option",
         "type": "object",
@@ -969,6 +993,21 @@
         },
         "additionalProperties": false
       },
+      "MultipleChoiceVote": {
+        "description": "A multiple choice vote, picking the desired option",
+        "type": "object",
+        "required": [
+          "option_id"
+        ],
+        "properties": {
+          "option_id": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      },
       "ProposeMessage": {
         "oneOf": [
           {
@@ -993,6 +1032,16 @@
                   },
                   "title": {
                     "type": "string"
+                  },
+                  "vote": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/MultipleChoiceAutoVote"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "additionalProperties": false

@@ -170,6 +170,16 @@ impl MultipleChoiceOptions {
     }
 }
 
+#[cw_serde]
+pub struct MultipleChoiceAutoVote {
+    /// The proposer's position on the proposal.
+    pub vote: MultipleChoiceVote,
+    /// An optional rationale for why this vote was cast. This can
+    /// be updated, set, or removed later by the address casting
+    /// the vote.
+    pub rationale: Option<String>,
+}
+
 #[cfg(test)]
 mod test {
     use std::vec;

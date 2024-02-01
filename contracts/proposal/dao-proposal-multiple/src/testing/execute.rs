@@ -5,7 +5,7 @@ use cw_denom::CheckedDenom;
 use dao_pre_propose_multiple as cppm;
 use dao_voting::{
     deposit::CheckedDepositInfo, multiple_choice::MultipleChoiceOptions,
-    pre_propose::ProposalCreationPolicy,
+    pre_propose::ProposalCreationPolicy, proposal::MultipleChoiceProposeMsg as ProposeMsg,
 };
 
 use crate::{
@@ -68,12 +68,13 @@ pub fn make_proposal(
             .execute_contract(
                 Addr::unchecked(proposer),
                 proposal_multiple.clone(),
-                &ExecuteMsg::Propose {
+                &ExecuteMsg::Propose(ProposeMsg {
                     title: "title".to_string(),
                     description: "description".to_string(),
                     choices,
                     proposer: None,
-                },
+                    vote: None,
+                }),
                 &[],
             )
             .unwrap(),
@@ -86,6 +87,7 @@ pub fn make_proposal(
                         title: "title".to_string(),
                         description: "description".to_string(),
                         choices,
+                        vote: None,
                     },
                 },
                 &funds,

@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply, Response,
-    StdResult, Storage, SubMsg, WasmMsg,
+    to_json_binary, Addr, Attribute, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
+    Response, StdResult, Storage, SubMsg, WasmMsg,
 };
 
 use cw2::set_contract_version;
@@ -14,17 +14,15 @@ use dao_hooks::proposal::{
 };
 use dao_hooks::vote::new_vote_hooks;
 use dao_interface::voting::IsActiveResponse;
-use dao_voting::veto::{VetoConfig, VetoError};
 use dao_voting::{
-    multiple_choice::{
-        MultipleChoiceOptions, MultipleChoiceVote, MultipleChoiceVotes, VotingStrategy,
-    },
+    multiple_choice::{MultipleChoiceVote, MultipleChoiceVotes, VotingStrategy},
     pre_propose::{PreProposeInfo, ProposalCreationPolicy},
-    proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE},
+    proposal::{MultipleChoiceProposeMsg as ProposeMsg, DEFAULT_LIMIT, MAX_PROPOSAL_SIZE},
     reply::{
         failed_pre_propose_module_hook_id, mask_proposal_execution_proposal_id, TaggedReplyId,
     },
     status::Status,
+    veto::{VetoConfig, VetoError},
     voting::{get_total_power, get_voting_power, validate_voting_period},
 };
 
@@ -98,20 +96,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response<Empty>, ContractError> {
     match msg {
-        ExecuteMsg::Propose {
-            title,
-            description,
-            choices,
-            proposer,
-        } => execute_propose(
-            deps,
-            env,
-            info.sender,
-            title,
-            description,
-            choices,
-            proposer,
-        ),
+        ExecuteMsg::Propose(propose_msg) => execute_propose(deps, env, info, propose_msg),
         ExecuteMsg::Vote {
             proposal_id,
             vote,
@@ -164,17 +149,20 @@ pub fn execute(
 pub fn execute_propose(
     deps: DepsMut,
     env: Env,
-    sender: Addr,
-    title: String,
-    description: String,
-    options: MultipleChoiceOptions,
-    proposer: Option<String>,
+    info: MessageInfo,
+    ProposeMsg {
+        title,
+        description,
+        choices,
+        proposer,
+        vote,
+    }: ProposeMsg,
 ) -> Result<Response<Empty>, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
 
     // Check that the sender is permitted to create proposals.
-    if !proposal_creation_policy.is_permitted(&sender) {
+    if !proposal_creation_policy.is_permitted(&info.sender) {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -182,7 +170,7 @@ pub fn execute_propose(
     // pre-propose module, it must be specified. Otherwise, the
     // proposer should not be specified.
     let proposer = match (proposer, &proposal_creation_policy) {
-        (None, ProposalCreationPolicy::Anyone {}) => sender.clone(),
+        (None, ProposalCreationPolicy::Anyone {}) => info.sender.clone(),
         // `is_permitted` above checks that an allowed module is
         // actually sending the propose message.
         (Some(proposer), ProposalCreationPolicy::Module { .. }) => {
@@ -208,7 +196,7 @@ pub fn execute_propose(
     }
 
     // Validate options.
-    let checked_multiple_choice_options = options.into_checked()?.options;
+    let checked_multiple_choice_options = choices.into_checked()?.options;
 
     let expiration = config.max_voting_period.after(&env.block);
     let total_power = get_total_power(deps.as_ref(), &config.dao, None)?;
@@ -263,11 +251,35 @@ pub fn execute_propose(
 
     let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id, proposer.as_str())?;
 
+    let sender = info.sender.clone();
+
+    // Auto cast vote if given.
+    let (vote_hooks, vote_attributes) = if let Some(vote) = vote {
+        let response = execute_vote(deps, env, info, id, vote.vote, vote.rationale.clone())?;
+        (
+            response.messages,
+            vec![
+                Attribute {
+                    key: "position".to_string(),
+                    value: vote.vote.to_string(),
+                },
+                Attribute {
+                    key: "rationale".to_string(),
+                    value: vote.rationale.unwrap_or_else(|| "_none".to_string()),
+                },
+            ],
+        )
+    } else {
+        (vec![], vec![])
+    };
+
     Ok(Response::default()
         .add_submessages(hooks)
+        .add_submessages(vote_hooks)
         .add_attribute("action", "propose")
         .add_attribute("sender", sender)
         .add_attribute("proposal_id", id.to_string())
+        .add_attributes(vote_attributes)
         .add_attribute("status", proposal.status.to_string()))
 }
 
@@ -398,7 +410,7 @@ pub fn execute_vote(
                     Ok(Ballot {
                         power: vote_power,
                         vote,
-                        rationale,
+                        rationale: rationale.clone(),
                     })
                 }
             } else {
@@ -408,7 +420,7 @@ pub fn execute_vote(
         None => Ok(Ballot {
             vote,
             power: vote_power,
-            rationale,
+            rationale: rationale.clone(),
         }),
     })?;
 
@@ -439,6 +451,10 @@ pub fn execute_vote(
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string())
         .add_attribute("position", vote.to_string())
+        .add_attribute(
+            "rationale",
+            rationale.unwrap_or_else(|| "_none".to_string()),
+        )
         .add_attribute("status", prop.status.to_string()))
 }
 

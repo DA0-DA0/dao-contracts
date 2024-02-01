@@ -957,6 +957,16 @@
                   },
                   "title": {
                     "type": "string"
+                  },
+                  "vote": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/SingleChoiceAutoVote"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "additionalProperties": false
@@ -965,6 +975,30 @@
             "additionalProperties": false
           }
         ]
+      },
+      "SingleChoiceAutoVote": {
+        "type": "object",
+        "required": [
+          "vote"
+        ],
+        "properties": {
+          "rationale": {
+            "description": "An optional rationale for why this vote was cast. This can be updated, set, or removed later by the address casting the vote.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vote": {
+            "description": "The proposer's position on the proposal.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Vote"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
       },
       "StakingMsg": {
         "description": "The message types of the staking module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto",
@@ -1207,6 +1241,31 @@
           }
         },
         "additionalProperties": false
+      },
+      "Vote": {
+        "oneOf": [
+          {
+            "description": "Marks support for the proposal.",
+            "type": "string",
+            "enum": [
+              "yes"
+            ]
+          },
+          {
+            "description": "Marks opposition to the proposal.",
+            "type": "string",
+            "enum": [
+              "no"
+            ]
+          },
+          {
+            "description": "Marks participation but does not count towards the ratio of support / opposed.",
+            "type": "string",
+            "enum": [
+              "abstain"
+            ]
+          }
+        ]
       },
       "VoteOption": {
         "type": "string",

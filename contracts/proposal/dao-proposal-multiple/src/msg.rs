@@ -2,8 +2,9 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw_utils::Duration;
 use dao_dao_macros::proposal_module_query;
 use dao_voting::{
-    multiple_choice::{MultipleChoiceOptions, MultipleChoiceVote, VotingStrategy},
+    multiple_choice::{MultipleChoiceVote, VotingStrategy},
     pre_propose::PreProposeInfo,
+    proposal::MultipleChoiceProposeMsg,
     veto::VetoConfig,
 };
 
@@ -49,20 +50,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Creates a proposal in the governance module.
-    Propose {
-        /// The title of the proposal.
-        title: String,
-        /// A description of the proposal.
-        description: String,
-        /// The multiple choices.
-        choices: MultipleChoiceOptions,
-        /// The address creating the proposal. If no pre-propose
-        /// module is attached to this module this must always be None
-        /// as the proposer is the sender of the propose message. If a
-        /// pre-propose module is attached, this must be Some and will
-        /// set the proposer of the proposal it creates.
-        proposer: Option<String>,
-    },
+    Propose(MultipleChoiceProposeMsg),
     /// Votes on a proposal. Voting power is determined by the DAO's
     /// voting power module.
     Vote {
