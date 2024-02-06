@@ -99,7 +99,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Propose(propose_msg) => execute_propose(deps, env, info, propose_msg),
+        ExecuteMsg::Propose(propose_msg) => execute_propose(deps, env, info.sender, propose_msg),
         ExecuteMsg::Vote {
             proposal_id,
             vote,
@@ -152,7 +152,7 @@ pub fn execute(
 pub fn execute_propose(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    sender: Addr,
     ProposeMsg {
         title,
         description,
@@ -165,7 +165,7 @@ pub fn execute_propose(
     let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
 
     // Check that the sender is permitted to create proposals.
-    if !proposal_creation_policy.is_permitted(&info.sender) {
+    if !proposal_creation_policy.is_permitted(&sender) {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -173,7 +173,7 @@ pub fn execute_propose(
     // pre-propose module, it must be specified. Otherwise, the
     // proposer should not be specified.
     let proposer = match (proposer, &proposal_creation_policy) {
-        (None, ProposalCreationPolicy::Anyone {}) => info.sender.clone(),
+        (None, ProposalCreationPolicy::Anyone {}) => sender.clone(),
         // `is_permitted` above checks that an allowed module is
         // actually sending the propose message.
         (Some(proposer), ProposalCreationPolicy::Module { .. }) => {
@@ -251,8 +251,6 @@ pub fn execute_propose(
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
     let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id, proposer.as_str())?;
-
-    let sender = info.sender.clone();
 
     // Auto cast vote if given.
     let (vote_hooks, vote_attributes) = if let Some(vote) = vote {
