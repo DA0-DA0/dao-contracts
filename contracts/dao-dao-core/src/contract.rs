@@ -106,27 +106,12 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    // No actions can be performed while the DAO is paused except for unpause.
-    match &msg {
-        &ExecuteMsg::Unpause {} => {
-            // Allow the unpause action to pass through
-        }
-        _ => {
-            // Check if the DAO is currently paused
-            if let Some(expiration) = PAUSED.may_load(deps.storage)? {
-                if !expiration.is_expired(&env.block) {
-                    return Err(ContractError::Paused {});
-                }
-            }
-        }
-    }
-
     match msg {
         ExecuteMsg::ExecuteAdminMsgs { msgs } => {
             execute_admin_msgs(deps.as_ref(), info.sender, msgs)
         }
         ExecuteMsg::ExecuteProposalHook { msgs } => {
-            execute_proposal_hook(deps.as_ref(), info.sender, msgs)
+            execute_proposal_hook(deps.as_ref(), env, info.sender, msgs)
         }
         ExecuteMsg::Pause { duration } => execute_pause(deps, env, info.sender, duration),
         ExecuteMsg::Unpause {} => execute_unpause(deps, info.sender),
@@ -168,6 +153,7 @@ pub fn execute_pause(
     sender: Addr,
     pause_duration: Duration,
 ) -> Result<Response, ContractError> {
+    // Only the core contract may call this method.
     if sender != env.contract.address {
         return Err(ContractError::Unauthorized {});
     }
@@ -216,6 +202,7 @@ pub fn execute_admin_msgs(
 
 pub fn execute_proposal_hook(
     deps: Deps,
+    env: Env,
     sender: Addr,
     msgs: Vec<CosmosMsg<Empty>>,
 ) -> Result<Response, ContractError> {
@@ -226,6 +213,12 @@ pub fn execute_proposal_hook(
     // Check that the message has come from an active module
     if module.status != ProposalModuleStatus::Enabled {
         return Err(ContractError::ModuleDisabledCannotExecute { address: sender });
+    }
+
+    if let Some(expiration) = PAUSED.may_load(deps.storage)? {
+        if !expiration.is_expired(&env.block) {
+            return Err(ContractError::Paused {});
+        }
     }
 
     Ok(Response::default()

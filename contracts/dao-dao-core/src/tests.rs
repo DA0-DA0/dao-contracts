@@ -1128,6 +1128,17 @@ fn test_admin_permissions() {
     );
     assert!(res.is_err());
 
+    // Random person cannot pause the DAO
+    let res = app.execute_contract(
+        Addr::unchecked("random"),
+        core_with_admin_addr.clone(),
+        &ExecuteMsg::Pause {
+            duration: Duration::Height(10),
+        },
+        &[],
+    );
+    assert!(res.is_err());
+
     // Admin can call ExecuteAdminMsgs, here an admin pauses the DAO
     let res = app.execute_contract(
         Addr::unchecked("admin"),
@@ -1147,6 +1158,7 @@ fn test_admin_permissions() {
     );
     assert!(res.is_ok());
 
+    // Ensure we are paused for 10 blocks
     let paused: PauseInfoResponse = app
         .wrap()
         .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::PauseInfo {})
@@ -1192,17 +1204,6 @@ fn test_admin_permissions() {
         core_with_admin_addr.clone(),
         core_with_admin_addr.clone(),
         &ExecuteMsg::Unpause {},
-        &[],
-    );
-    assert!(res.is_err());
-
-    // Random person cannot pause the DAO
-    let res = app.execute_contract(
-        Addr::unchecked("random"),
-        core_with_admin_addr.clone(),
-        &ExecuteMsg::Pause {
-            duration: Duration::Height(10),
-        },
         &[],
     );
     assert!(res.is_err());
@@ -2465,27 +2466,23 @@ fn test_pause() {
         }
     );
 
-    let err: ContractError = app
-        .execute_contract(
-            core_addr.clone(),
-            core_addr.clone(),
-            &ExecuteMsg::UpdateConfig {
-                config: Config {
-                    dao_uri: None,
-                    name: "The Empire Strikes Back Again".to_string(),
-                    description: "haha lol we have pwned your DAO again".to_string(),
-                    image_url: None,
-                    automatically_add_cw20s: true,
-                    automatically_add_cw721s: true,
-                },
+    // This should actually be allowed to enable the admin to execute
+    let result = app.execute_contract(
+        core_addr.clone(),
+        core_addr.clone(),
+        &ExecuteMsg::UpdateConfig {
+            config: Config {
+                dao_uri: None,
+                name: "The Empire Strikes Back Again".to_string(),
+                description: "haha lol we have pwned your DAO again".to_string(),
+                image_url: None,
+                automatically_add_cw20s: true,
+                automatically_add_cw721s: true,
             },
-            &[],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-
-    assert!(matches!(err, ContractError::Paused { .. }));
+        },
+        &[],
+    );
+    assert!(result.is_ok());
 
     let err: ContractError = app
         .execute_contract(
