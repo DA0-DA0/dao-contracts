@@ -9,7 +9,7 @@ use dao_interface::{
 };
 
 use crate::{
-    state::{reward, CONFIG, GENERIC_PROPOSAL_INFO, USER_VOTE_COUNT},
+    state::{reward, CONFIG, GENERIC_PROPOSAL_INFO, USER_PROPOSAL_HAS_VOTED, USER_VOTE_COUNT},
     ContractError,
 };
 
@@ -113,32 +113,42 @@ pub fn vote_hook(
 
                     // Check if the vote came from a proposal at or after the start of the voting incentives
                     if proposal_info.start_height >= config.start_height {
-                        // Increment counts
-                        let user_votes = USER_VOTE_COUNT.update(
-                            deps.storage,
-                            &voter,
-                            |x| -> StdResult<Uint128> {
-                                Ok(x.unwrap_or_default().checked_add(Uint128::one())?)
-                            },
-                        )?;
-                        config.total_votes = config.total_votes.checked_add(Uint128::one())?;
-                        CONFIG.save(deps.storage, &config)?;
+                        // Check if the user has already voted for the proposal
+                        if !USER_PROPOSAL_HAS_VOTED.has(deps.storage, (&voter, proposal_id)) {
+                            // Increment counts
+                            let user_votes = USER_VOTE_COUNT.update(
+                                deps.storage,
+                                &voter,
+                                |x| -> StdResult<Uint128> {
+                                    Ok(x.unwrap_or_default().checked_add(Uint128::one())?)
+                                },
+                            )?;
+                            config.total_votes = config.total_votes.checked_add(Uint128::one())?;
+                            CONFIG.save(deps.storage, &config)?;
 
-                        // Set attributes
-                        attrs = vec![
-                            Attribute {
-                                key: "total_votes".to_string(),
-                                value: config.total_votes.to_string(),
-                            },
-                            Attribute {
-                                key: "user_votes".to_string(),
-                                value: user_votes.to_string(),
-                            },
-                            Attribute {
-                                key: "user".to_string(),
-                                value: voter.to_string(),
-                            },
-                        ];
+                            // Set has voted
+                            USER_PROPOSAL_HAS_VOTED.save(
+                                deps.storage,
+                                (&voter, proposal_id),
+                                &true,
+                            )?;
+
+                            // Set attributes
+                            attrs = vec![
+                                Attribute {
+                                    key: "total_votes".to_string(),
+                                    value: config.total_votes.to_string(),
+                                },
+                                Attribute {
+                                    key: "user_votes".to_string(),
+                                    value: user_votes.to_string(),
+                                },
+                                Attribute {
+                                    key: "user".to_string(),
+                                    value: voter.to_string(),
+                                },
+                            ];
+                        }
                     }
                 }
             }
@@ -187,6 +197,7 @@ pub fn expire(deps: DepsMut, env: Env, _info: MessageInfo) -> Result<Response, C
 
     // Clean state
     GENERIC_PROPOSAL_INFO.clear(deps.storage);
+    USER_PROPOSAL_HAS_VOTED.clear(deps.storage);
 
     Ok(Response::new()
         .add_attribute("action", "expire")

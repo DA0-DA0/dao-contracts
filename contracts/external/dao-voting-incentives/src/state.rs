@@ -24,6 +24,9 @@ pub struct Config {
 
 /// A map of user address to vote count
 pub const USER_VOTE_COUNT: Map<&Addr, Uint128> = Map::new("user_vote_count");
+/// A map of user address with proposal id to has voted value
+/// This map is useful for cases where a proposal module allows revoting, so users cannot spam votes for more rewards
+pub const USER_PROPOSAL_HAS_VOTED: Map<(&Addr, u64), bool> = Map::new("user_proposal_has_voted");
 /// The voting incentives config
 pub const CONFIG: Item<Config> = Item::new("config");
 /// A cache of generic proposal information (proposal_module, proposal_id)
