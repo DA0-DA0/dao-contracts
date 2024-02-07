@@ -29,4 +29,7 @@ pub enum ContractError {
 
     #[error("No reward per proposal given")]
     NoRewardPerProposal {},
+
+    #[error("Proposal module is inactive")]
+    ProposalModuleIsInactive {},
 }

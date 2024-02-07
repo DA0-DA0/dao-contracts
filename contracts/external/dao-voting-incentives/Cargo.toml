@@ -1,6 +1,6 @@
 [package]
 name ="dao-voting-incentives"
-authors = ["Jake Hartnell <no-reply@no-reply.com>"]
+authors = ["Jake Hartnell <no-reply@no-reply.com>", "ismellike"]
 description = "A contract that implements incentives for voting in a DAO."
 edition = { workspace = true }
 license = { workspace = true }
@@ -26,6 +26,9 @@ dao-interface = { workspace = true }
 dao-voting = { workspace = true }
 thiserror = { workspace = true }
 cw-utils = { workspace = true }
+cw-denom = { workspace = true }
+cw-ownable = { workspace = true }
+cw20 = { workspace = true }
 
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }

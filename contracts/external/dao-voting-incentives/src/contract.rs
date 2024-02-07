@@ -1,13 +1,15 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{
+    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+};
 use cw2::set_contract_version;
-use cw_utils::must_pay;
-use dao_hooks::vote::VoteHookMsg;
+use cw_ownable::get_ownership;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state::{DAO, VOTING_INCENTIVES};
+use crate::state::{Config, CONFIG};
+use crate::{execute, query};
 
 pub(crate) const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -15,30 +17,41 @@ pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // Save DAO, assumes the sender is the DAO
-    DAO.save(deps.storage, &deps.api.addr_validate(&msg.dao)?)?;
+    // Save ownership
+    let ownership = cw_ownable::initialize_owner(deps.storage, deps.api, Some(&msg.owner))?;
+
+    // Validate denom
+    let denom = msg.denom.into_checked(deps.as_ref())?;
+
+    // Validate expiration
+    if msg.expiration.is_expired(&env.block) {
+        return Err(ContractError::AlreadyExpired {});
+    }
 
     // Save voting incentives config
-    VOTING_INCENTIVES.save(deps.storage, &msg.voting_incentives)?;
-
-    // Check initial deposit is enough to pay out rewards for at least one epoch
-    let amount = must_pay(&info, &msg.voting_incentives.rewards_per_epoch.denom)?;
-    if amount < msg.voting_incentives.rewards_per_epoch.amount {
-        return Err(ContractError::InsufficientInitialDeposit {
-            expected: msg.voting_incentives.rewards_per_epoch.amount,
-            actual: amount,
-        });
-    };
+    CONFIG.save(
+        deps.storage,
+        &Config {
+            start_height: env.block.height,
+            expiration: msg.expiration,
+            denom: denom.clone(),
+            total_votes: Uint128::zero(),
+            expiration_balance: None,
+        },
+    )?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("creator", info.sender))
+        .add_attribute("creator", info.sender)
+        .add_attribute("expiration", msg.expiration.to_string())
+        .add_attribute("denom", denom.to_string())
+        .add_attributes(ownership.into_attributes()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -49,61 +62,25 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Claim {} => execute_claim(deps, env, info),
-        ExecuteMsg::VoteHook(msg) => execute_vote_hook(deps, env, info, msg),
+        ExecuteMsg::Claim {} => execute::claim(deps, env, info),
+        ExecuteMsg::VoteHook(msg) => execute::vote_hook(deps, env, info, msg),
+        ExecuteMsg::Expire {} => execute::expire(deps, env, info),
+        ExecuteMsg::UpdateOwnership(action) => execute::update_ownership(deps, env, info, action),
+        ExecuteMsg::Receive(cw20_receive_msg) => {
+            execute::receive_cw20(deps, env, info, cw20_receive_msg)
+        }
     }
 }
 
-// TODO how to claim for many epochs efficiently?
-pub fn execute_claim(
-    deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
-) -> Result<Response, ContractError> {
-    // Check epoch should advance
-
-    // Save last claimed epoch
-
-    // Load user vote count for epoch?
-
-    // Load prop count for epoch
-
-    // Load voting incentives config
-    let _voting_incentives = VOTING_INCENTIVES.load(deps.storage)?;
-
-    // Need total vote count for epoch
-    // Rewards = (user vote count / prop count) / total_vote_count * voting incentives
-
-    // Pay out rewards
-
-    Ok(Response::default().add_attribute("action", "claim"))
-}
-
-// TODO support cw20 tokens
-// TODO make sure config can't lock DAO
-pub fn execute_vote_hook(
-    _deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
-    _msg: VoteHookMsg,
-) -> Result<Response, ContractError> {
-    // Check epoch should advance
-
-    // TODO need some state to handle this
-    // Check that the vote is not a changed vote (i.e. the user has already voted
-    // on the prop).
-
-    // Save (user, epoch), vote count
-    // Update (epoch, prop count)
-
-    Ok(Response::default().add_attribute("action", "vote_hook"))
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Rewards { address: _ } => unimplemented!(),
-        QueryMsg::Config {} => unimplemented!(),
+        QueryMsg::Rewards { address } => to_json_binary(&query::rewards(deps, address)?),
+        QueryMsg::ExpectedRewards { address } => {
+            to_json_binary(&query::expected_rewards(deps, env, address)?)
+        }
+        QueryMsg::Config {} => to_json_binary(&query::config(deps)?),
+        QueryMsg::Ownership {} => to_json_binary(&get_ownership(deps.storage)?),
     }
 }
 
