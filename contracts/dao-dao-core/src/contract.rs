@@ -215,6 +215,7 @@ pub fn execute_proposal_hook(
         return Err(ContractError::ModuleDisabledCannotExecute { address: sender });
     }
 
+    // If the DAO is paused, then proposal modules cannot execute messages until expiration
     if let Some(expiration) = PAUSED.may_load(deps.storage)? {
         if !expiration.is_expired(&env.block) {
             return Err(ContractError::Paused {});
