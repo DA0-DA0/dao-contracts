@@ -2,7 +2,10 @@ use cosmwasm_std::{Attribute, CosmosMsg, DepsMut, Env, MessageInfo, Response};
 use cw20::Cw20ReceiveMsg;
 use cw_ownable::{assert_owner, get_ownership};
 use dao_hooks::proposal::ProposalHookMsg;
-use dao_interface::{proposal::GenericProposalInfo, state::ProposalModule};
+use dao_interface::{
+    proposal::GenericProposalInfo,
+    state::{ProposalModule, ProposalModuleStatus},
+};
 use dao_voting::status::Status;
 
 use crate::{msg::ProposalIncentivesUnchecked, state::PROPOSAL_INCENTIVES, ContractError};
@@ -21,15 +24,19 @@ pub fn proposal_hook(
 
     if let Some(owner) = ownership.owner {
         // Validate the message is coming from a proposal module of the owner (DAO)
-        deps.querier.query_wasm_smart::<ProposalModule>(
+        let proposal_module = deps.querier.query_wasm_smart::<ProposalModule>(
             owner,
             &dao_interface::msg::QueryMsg::ProposalModule {
                 address: info.sender.to_string(),
             },
         )?;
 
-        // Check prop status and type of hook
+        // If the proposal module is disabled, then return error
+        if proposal_module.status == ProposalModuleStatus::Disabled {
+            return Err(ContractError::ProposalModuleIsInactive {});
+        }
 
+        // Check prop status and type of hook
         if let ProposalHookMsg::ProposalStatusChanged { id, new_status, .. } = msg {
             // If prop status is success, add message to pay out rewards
             // Otherwise, do nothing
@@ -104,6 +111,7 @@ pub fn receive_cw20(
     info: MessageInfo,
     _cw20_receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
+    // We do not check cw20, because the expected fund can change over time
     Ok(Response::new()
         .add_attribute("action", "receive_cw20")
         .add_attribute("cw20", info.sender))
