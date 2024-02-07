@@ -1,3 +1,8 @@
+# dao-voting-incentives
+
+[![dao-voting-incentives on crates.io](https://img.shields.io/crates/v/dao-voting-incentives.svg?logo=rust)](https://crates.io/crates/dao-voting-incentives)
+[![docs.rs](https://img.shields.io/docsrs/dao-voting-incentives?logo=docsdotrs)](https://docs.rs/dao-voting-incentives/latest/cw_admin_factory/)
+
 This contract enables DAOs to offer incentives for voting on DAO proposals. By rewarding active voters, DAOs can encourage greater community involvement and decision-making.
 
 ## Instantiate
