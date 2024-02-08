@@ -2310,6 +2310,7 @@ dependencies = [
  "dao-voting-cw4 2.5.0",
  "dao-voting-cw721-roles",
  "dao-voting-cw721-staked",
+ "dao-voting-incentives",
  "dao-voting-onft-staked",
  "dao-voting-token-staked",
  "osmosis-std",
@@ -2507,6 +2508,8 @@ dependencies = [
  "dao-dao-core 2.5.0",
  "dao-hooks 2.5.0",
  "dao-interface 2.5.0",
+ "dao-proposal-single 2.5.0",
+ "dao-testing",
  "dao-voting 2.5.0",
  "thiserror",
 ]

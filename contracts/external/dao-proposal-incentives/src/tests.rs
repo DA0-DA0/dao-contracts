@@ -2,17 +2,15 @@ use std::vec;
 
 use cosmwasm_std::{
     testing::{mock_dependencies, mock_env},
-    to_json_binary, Addr, Binary, Coin, CosmosMsg, Empty, Uint128, WasmMsg,
+    to_json_binary, Addr, Binary, Coin, CosmosMsg, Uint128, WasmMsg,
 };
 
 use cw20::Cw20Coin;
 use cw_denom::{CheckedDenom, UncheckedDenom};
-use cw_multi_test::{
-    error::AnyResult, App, AppBuilder, AppResponse, Contract, ContractWrapper, Executor,
-};
+use cw_multi_test::{error::AnyResult, App, AppBuilder, AppResponse, Executor};
 use cw_ownable::Ownership;
 use dao_testing::{
-    contracts::{dao_proposal_incentives_contract, proposal_single_contract},
+    contracts::{cw20_base_contract, dao_proposal_incentives_contract, proposal_single_contract},
     helpers::instantiate_with_cw4_groups_governance,
 };
 use dao_voting::{proposal::SingleChoiceProposeMsg, threshold::Threshold};
@@ -33,15 +31,6 @@ struct Context {
     proposal_single_addr: Addr,
     dao_addr: Addr,
     dao_proposal_incentives_code_id: u64,
-}
-
-fn cw20_base_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        cw20_base::contract::execute,
-        cw20_base::contract::instantiate,
-        cw20_base::contract::query,
-    );
-    Box::new(contract)
 }
 
 fn get_context() -> Context {
@@ -352,28 +341,26 @@ pub fn test_hook() {
     assert!(result.is_ok());
 
     // Propose adding a hook
-    context
-        .app
-        .execute_contract(
-            Addr::unchecked(ADDR1),
-            context.proposal_single_addr.clone(),
-            &dao_proposal_single::msg::ExecuteMsg::Propose(SingleChoiceProposeMsg {
-                title: "Add proposal hook".to_string(),
-                description: "Adding a proposal hook to test the dao_proposal_incentives contract"
-                    .to_string(),
-                msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: context.proposal_single_addr.to_string(),
-                    msg: to_json_binary(&dao_proposal_single::msg::ExecuteMsg::AddProposalHook {
-                        address: dao_proposal_incentives_addr.to_string(),
-                    })
-                    .unwrap(),
-                    funds: vec![],
-                })],
-                proposer: None,
-            }),
-            &[],
-        )
-        .unwrap();
+    let result = context.app.execute_contract(
+        Addr::unchecked(ADDR1),
+        context.proposal_single_addr.clone(),
+        &dao_proposal_single::msg::ExecuteMsg::Propose(SingleChoiceProposeMsg {
+            title: "Add proposal hook".to_string(),
+            description: "Adding a proposal hook to test the dao_proposal_incentives contract"
+                .to_string(),
+            msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: context.proposal_single_addr.to_string(),
+                msg: to_json_binary(&dao_proposal_single::msg::ExecuteMsg::AddProposalHook {
+                    address: dao_proposal_incentives_addr.to_string(),
+                })
+                .unwrap(),
+                funds: vec![],
+            })],
+            proposer: None,
+        }),
+        &[],
+    );
+    assert!(result.is_ok());
 
     // Vote and execute the proposal to add the proposal hook
     vote_yes_on_proposal(&mut context, 1u64).unwrap();

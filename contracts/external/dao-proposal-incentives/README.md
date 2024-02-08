@@ -12,10 +12,12 @@ To instantiate the contract, provide the following parameters:
 - `owner`: The DAO sending this contract proposal hooks.
 - `proposal_incentives`: Configuration for the incentives to be awarded for successful proposals. This should be specified using the `ProposalIncentivesUnchecked` structure.
 
-## Setup
+## Configuration
 
 - This contract should be added as a `ProposalHook` to either the `dao-voting-single` or `dao-voting-multiple` proposal modules.
 - The DAO must be set as the `owner` of this contract to manage incentives and ownership.
+
+The incentives can be adjusted at any time by the owner of the contract. The rewards are determined based on the configuration at the proposal's `start_time`. This allows for dynamic adjustment of incentives to reflect the DAO's evolving priorities and resources.
 
 ## Execute
 
@@ -27,7 +29,3 @@ To instantiate the contract, provide the following parameters:
 ## Query
 
 - **ProposalIncentives { height: Option<u64> }**: Returns the current configuration of the proposal incentives. The `height` parameter is optional and can be used to query the incentives at a specific blockchain height, providing a snapshot of the incentives at that point in time.
-
-## Configuration
-
-The incentives can be adjusted at any time by the owner of the contract. The rewards are determined based on the configuration at the proposal's `start_time`. This allows for dynamic adjustment of incentives to reflect the DAO's evolving priorities and resources.

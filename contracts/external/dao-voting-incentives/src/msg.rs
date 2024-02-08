@@ -42,6 +42,9 @@ pub enum QueryMsg {
     /// Returns the expected rewards for the given address
     #[returns(RewardResponse)]
     ExpectedRewards { address: String },
+    /// Returns the votes count for the given address
+    #[returns(Uint128)]
+    Votes { address: String },
 }
 
 #[cw_serde]
