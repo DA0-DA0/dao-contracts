@@ -2012,6 +2012,7 @@ dependencies = [
  "dao-voting-cw4",
  "dao-voting-cw721-roles",
  "dao-voting-cw721-staked",
+ "dao-voting-incentives",
  "dao-voting-token-staked",
  "osmosis-std",
  "osmosis-test-tube",
@@ -2173,6 +2174,8 @@ dependencies = [
  "dao-dao-core",
  "dao-hooks",
  "dao-interface",
+ "dao-proposal-single",
+ "dao-testing",
  "dao-voting 2.4.0",
  "thiserror",
 ]

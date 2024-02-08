@@ -5,6 +5,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_ownable::get_ownership;
+use cw_utils::Expiration;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -32,6 +33,11 @@ pub fn instantiate(
     // Validate expiration
     if msg.expiration.is_expired(&env.block) {
         return Err(ContractError::AlreadyExpired {});
+    }
+    if let Expiration::Never {} = msg.expiration {
+        return Err(ContractError::NotExpired {
+            expiration: Expiration::Never {},
+        });
     }
 
     // Save voting incentives config
@@ -81,6 +87,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::Config {} => to_json_binary(&query::config(deps)?),
         QueryMsg::Ownership {} => to_json_binary(&get_ownership(deps.storage)?),
+        QueryMsg::Votes { address } => to_json_binary(&query::votes(deps, address)?),
     }
 }
 
