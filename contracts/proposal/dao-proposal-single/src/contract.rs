@@ -27,7 +27,9 @@ use dao_voting::voting::{get_total_power, get_voting_power, validate_voting_peri
 
 use crate::msg::MigrateMsg;
 use crate::proposal::{next_proposal_id, SingleChoiceProposal};
-use crate::state::{Config, CREATION_POLICY};
+use crate::state::{
+    Config, CREATION_POLICY, REMOVED_PROPOSAL_HOOKS_BY_INDEX, REMOVED_VOTE_HOOKS_BY_INDEX,
+};
 use crate::v1_state::{
     v1_duration_to_v2, v1_expiration_to_v2, v1_status_to_v2, v1_threshold_to_v2, v1_votes_to_v2,
 };
@@ -250,6 +252,7 @@ pub fn execute_propose(
 
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
+    REMOVED_PROPOSAL_HOOKS_BY_INDEX.remove(deps.storage);
     let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id, proposer.as_str())?;
 
     // Auto cast vote if given.
@@ -335,6 +338,7 @@ pub fn execute_veto(
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
     // Add proposal status change hooks
+    REMOVED_PROPOSAL_HOOKS_BY_INDEX.remove(deps.storage);
     let proposal_status_changed_hooks = proposal_status_changed_hooks(
         PROPOSAL_HOOKS,
         deps.storage,
@@ -447,6 +451,7 @@ pub fn execute_execute(
     };
 
     // Add proposal status change hooks
+    REMOVED_PROPOSAL_HOOKS_BY_INDEX.remove(deps.storage);
     let proposal_status_changed_hooks = proposal_status_changed_hooks(
         PROPOSAL_HOOKS,
         deps.storage,
@@ -543,6 +548,7 @@ pub fn execute_vote(
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
     let new_status = prop.status;
+    REMOVED_PROPOSAL_HOOKS_BY_INDEX.remove(deps.storage);
     let change_hooks = proposal_status_changed_hooks(
         PROPOSAL_HOOKS,
         deps.storage,
@@ -551,6 +557,7 @@ pub fn execute_vote(
         new_status.to_string(),
     )?;
 
+    REMOVED_VOTE_HOOKS_BY_INDEX.remove(deps.storage);
     let vote_hooks = new_vote_hooks(
         VOTE_HOOKS,
         deps.storage,
@@ -624,6 +631,7 @@ pub fn execute_close(
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
     // Add proposal status change hooks
+    REMOVED_PROPOSAL_HOOKS_BY_INDEX.remove(deps.storage);
     let proposal_status_changed_hooks = proposal_status_changed_hooks(
         PROPOSAL_HOOKS,
         deps.storage,
@@ -1094,11 +1102,19 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                 ))
         }
         TaggedReplyId::FailedProposalHook(idx) => {
-            let addr = PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?;
+            let addr = PROPOSAL_HOOKS.remove_hook_by_index_from_reply(
+                deps.storage,
+                idx,
+                REMOVED_PROPOSAL_HOOKS_BY_INDEX,
+            )?;
             Ok(Response::new().add_attribute("removed_proposal_hook", format!("{addr}:{idx}")))
         }
         TaggedReplyId::FailedVoteHook(idx) => {
-            let addr = VOTE_HOOKS.remove_hook_by_index(deps.storage, idx)?;
+            let addr = VOTE_HOOKS.remove_hook_by_index_from_reply(
+                deps.storage,
+                idx,
+                REMOVED_VOTE_HOOKS_BY_INDEX,
+            )?;
             Ok(Response::new().add_attribute("removed_vote_hook", format!("{addr}:{idx}")))
         }
         TaggedReplyId::PreProposeModuleInstantiation => {
