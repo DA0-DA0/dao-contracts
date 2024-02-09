@@ -247,6 +247,7 @@ pub fn create_proposal(
                     title: "title".to_string(),
                     description: "desc".to_string(),
                     msgs,
+                    vote: None,
                 },
             },
             key,

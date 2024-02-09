@@ -8,6 +8,7 @@ use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Execut
 use cw_utils::Duration;
 use dao_interface::state::ProposalModule;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
+use dao_voting::multiple_choice::MultipleChoiceAutoVote;
 use dao_voting::veto::{VetoConfig, VetoError};
 use dao_voting::{
     deposit::{
@@ -20,6 +21,7 @@ use dao_voting::{
         MAX_NUM_CHOICES,
     },
     pre_propose::PreProposeInfo,
+    proposal::MultipleChoiceProposeMsg as ProposeMsg,
     status::Status,
     threshold::{ActiveThreshold, PercentageThreshold, Threshold},
 };
@@ -155,7 +157,7 @@ fn test_propose() {
             title: "title".to_string(),
         },
         MultipleChoiceOption {
-            description: "multiple choice option 1".to_string(),
+            description: "multiple choice option 2".to_string(),
             msgs: vec![],
             title: "title".to_string(),
         },
@@ -164,7 +166,7 @@ fn test_propose() {
     let mc_options = MultipleChoiceOptions { options };
 
     // Create a new proposal.
-    make_proposal(&mut app, &govmod, CREATOR_ADDR, mc_options.clone());
+    make_proposal(&mut app, &govmod, CREATOR_ADDR, mc_options.clone(), None);
 
     let created: ProposalResponse = query_proposal(&app, &govmod, 1);
 
@@ -237,12 +239,13 @@ fn test_propose_wrong_num_choices() {
     let err = app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         govmod.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     );
     assert!(err.is_err());
@@ -263,12 +266,13 @@ fn test_propose_wrong_num_choices() {
     let err = app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         govmod,
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     );
     assert!(err.is_err());
@@ -307,6 +311,255 @@ fn test_proposal_count_initialized_to_zero() {
         .unwrap();
 
     assert_eq!(proposal_count, 0);
+}
+
+#[test]
+fn test_propose_auto_vote_winner() {
+    let mut app = App::default();
+    let _govmod_id = app.store_code(proposal_multiple_contract());
+
+    let max_voting_period = Duration::Height(6);
+    let quorum = PercentageThreshold::Majority {};
+
+    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+
+    let instantiate = InstantiateMsg {
+        max_voting_period,
+        only_members_execute: false,
+        allow_revoting: false,
+        voting_strategy: voting_strategy.clone(),
+        min_voting_period: None,
+        close_proposal_on_execution_failure: true,
+        pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+        veto: None,
+    };
+
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
+    let govmod = query_multiple_proposal_module(&app, &core_addr);
+
+    // Check that the config has been configured correctly.
+    let config: Config = query_proposal_config(&app, &govmod);
+    let expected = Config {
+        max_voting_period,
+        only_members_execute: false,
+        allow_revoting: false,
+        dao: core_addr,
+        voting_strategy: voting_strategy.clone(),
+        min_voting_period: None,
+        close_proposal_on_execution_failure: true,
+        veto: None,
+    };
+    assert_eq!(config, expected);
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+    ];
+
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Create a new proposal and auto-vote on the first option.
+    make_proposal(
+        &mut app,
+        &govmod,
+        CREATOR_ADDR,
+        mc_options.clone(),
+        Some(MultipleChoiceAutoVote {
+            vote: MultipleChoiceVote { option_id: 0 },
+            rationale: Some("rationale".to_string()),
+        }),
+    );
+
+    let created: ProposalResponse = query_proposal(&app, &govmod, 1);
+
+    let current_block = app.block_info();
+    let checked_options = mc_options.into_checked().unwrap();
+    let expected = MultipleChoiceProposal {
+        title: "title".to_string(),
+        description: "description".to_string(),
+        proposer: Addr::unchecked(CREATOR_ADDR),
+        start_height: current_block.height,
+        expiration: max_voting_period.after(&current_block),
+        choices: checked_options.options,
+        status: Status::Passed,
+        voting_strategy,
+        total_power: Uint128::new(100_000_000),
+        votes: MultipleChoiceVotes {
+            vote_weights: vec![Uint128::new(100_000_000), Uint128::zero(), Uint128::zero()],
+        },
+        allow_revoting: false,
+        min_voting_period: None,
+        veto: None,
+    };
+
+    assert_eq!(created.proposal, expected);
+    assert_eq!(created.id, 1u64);
+}
+
+#[test]
+fn test_propose_auto_vote_reject() {
+    let mut app = App::default();
+    let _govmod_id = app.store_code(proposal_multiple_contract());
+
+    let max_voting_period = Duration::Height(6);
+    let quorum = PercentageThreshold::Majority {};
+
+    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+
+    let instantiate = InstantiateMsg {
+        max_voting_period,
+        only_members_execute: false,
+        allow_revoting: false,
+        voting_strategy: voting_strategy.clone(),
+        min_voting_period: None,
+        close_proposal_on_execution_failure: true,
+        pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+        veto: None,
+    };
+
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
+    let govmod = query_multiple_proposal_module(&app, &core_addr);
+
+    // Check that the config has been configured correctly.
+    let config: Config = query_proposal_config(&app, &govmod);
+    let expected = Config {
+        max_voting_period,
+        only_members_execute: false,
+        allow_revoting: false,
+        dao: core_addr,
+        voting_strategy: voting_strategy.clone(),
+        min_voting_period: None,
+        close_proposal_on_execution_failure: true,
+        veto: None,
+    };
+    assert_eq!(config, expected);
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+    ];
+
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Create a new proposal and auto-vote on the first option.
+    make_proposal(
+        &mut app,
+        &govmod,
+        CREATOR_ADDR,
+        mc_options.clone(),
+        Some(MultipleChoiceAutoVote {
+            vote: MultipleChoiceVote { option_id: 2 },
+            rationale: Some("rationale".to_string()),
+        }),
+    );
+
+    let created: ProposalResponse = query_proposal(&app, &govmod, 1);
+
+    let current_block = app.block_info();
+    let checked_options = mc_options.into_checked().unwrap();
+    let expected = MultipleChoiceProposal {
+        title: "title".to_string(),
+        description: "description".to_string(),
+        proposer: Addr::unchecked(CREATOR_ADDR),
+        start_height: current_block.height,
+        expiration: max_voting_period.after(&current_block),
+        choices: checked_options.options,
+        status: Status::Rejected,
+        voting_strategy,
+        total_power: Uint128::new(100_000_000),
+        votes: MultipleChoiceVotes {
+            vote_weights: vec![Uint128::zero(), Uint128::zero(), Uint128::new(100_000_000)],
+        },
+        allow_revoting: false,
+        min_voting_period: None,
+        veto: None,
+    };
+
+    assert_eq!(created.proposal, expected);
+    assert_eq!(created.id, 1u64);
+}
+
+#[test]
+#[should_panic(expected = "Not registered to vote (no voting power) at time of proposal creation")]
+fn test_propose_non_member_auto_vote_fail() {
+    let mut app = App::default();
+    let _govmod_id = app.store_code(proposal_multiple_contract());
+
+    let max_voting_period = Duration::Height(6);
+    let quorum = PercentageThreshold::Majority {};
+
+    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+
+    let instantiate = InstantiateMsg {
+        max_voting_period,
+        only_members_execute: false,
+        allow_revoting: false,
+        voting_strategy: voting_strategy.clone(),
+        min_voting_period: None,
+        close_proposal_on_execution_failure: true,
+        pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+        veto: None,
+    };
+
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
+    let govmod = query_multiple_proposal_module(&app, &core_addr);
+
+    // Check that the config has been configured correctly.
+    let config: Config = query_proposal_config(&app, &govmod);
+    let expected = Config {
+        max_voting_period,
+        only_members_execute: false,
+        allow_revoting: false,
+        dao: core_addr,
+        voting_strategy: voting_strategy.clone(),
+        min_voting_period: None,
+        close_proposal_on_execution_failure: true,
+        veto: None,
+    };
+    assert_eq!(config, expected);
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+    ];
+
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Should fail if non-member tries to vote on proposal creation.
+    make_proposal(
+        &mut app,
+        &govmod,
+        "anyone",
+        mc_options.clone(),
+        Some(MultipleChoiceAutoVote {
+            vote: MultipleChoiceVote { option_id: 0 },
+            rationale: Some("rationale".to_string()),
+        }),
+    );
 }
 
 #[test]
@@ -368,12 +621,13 @@ fn test_no_early_pass_with_min_duration() {
     app.execute_contract(
         Addr::unchecked("whale"),
         govmod.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "This is a simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -482,12 +736,13 @@ fn test_propose_with_messages() {
     app.execute_contract(
         Addr::unchecked("whale"),
         govmod.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "This is a simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -649,12 +904,13 @@ fn test_min_duration_same_as_proposal_duration() {
     app.execute_contract(
         Addr::unchecked("whale"),
         govmod.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "This is a simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -949,6 +1205,7 @@ fn test_take_proposal_deposit() {
                     title: "title".to_string(),
                     description: "description".to_string(),
                     choices: mc_options.clone(),
+                    vote: None,
                 },
             },
             &[],
@@ -968,7 +1225,7 @@ fn test_take_proposal_deposit() {
         )
         .unwrap();
 
-        make_proposal(&mut app, &govmod, "blue", mc_options);
+        make_proposal(&mut app, &govmod, "blue", mc_options, None);
 
         // Proposal has been executed so deposit has been refunded.
         let balance = query_balance_cw20(&app, token, "blue".to_string());
@@ -1056,13 +1313,14 @@ fn test_take_native_proposal_deposit() {
                     title: "title".to_string(),
                     description: "description".to_string(),
                     choices: mc_options.clone(),
+                    vote: None,
                 },
             },
             &[],
         )
         .unwrap_err();
 
-        make_proposal(&mut app, &govmod, "blue", mc_options);
+        make_proposal(&mut app, &govmod, "blue", mc_options, None);
 
         // Proposal has been executed so deposit has been refunded.
         let balance = query_balance_native(&app, "blue", denom);
@@ -1153,6 +1411,7 @@ fn test_native_proposal_deposit() {
                     title: "title".to_string(),
                     description: "description".to_string(),
                     choices: mc_options.clone(),
+                    vote: None,
                 },
             },
             &[],
@@ -1170,7 +1429,7 @@ fn test_native_proposal_deposit() {
         .unwrap();
 
         // Adding deposit will work
-        make_proposal(&mut app, &govmod, "blue", mc_options);
+        make_proposal(&mut app, &govmod, "blue", mc_options, None);
 
         // "blue" has been refunded
         let balance = query_balance_native(&app, "blue", "ujuno");
@@ -1600,6 +1859,7 @@ fn test_cant_propose_zero_power() {
                 title: "A simple text proposal".to_string(),
                 description: "A simple text proposal".to_string(),
                 choices: mc_options.clone(),
+                vote: None,
             },
         },
         &[],
@@ -1615,6 +1875,7 @@ fn test_cant_propose_zero_power() {
                 title: "A simple text proposal".to_string(),
                 description: "A simple text proposal".to_string(),
                 choices: mc_options,
+                vote: None,
             },
         },
         &[],
@@ -1727,12 +1988,13 @@ fn test_cant_execute_not_member() {
     app.execute_contract(
         Addr::unchecked("blue"),
         govmod.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -1818,12 +2080,13 @@ fn test_cant_execute_not_member_when_proposal_created() {
     app.execute_contract(
         Addr::unchecked("blue"),
         govmod.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -1927,6 +2190,7 @@ fn test_open_proposal_submission() {
                 },
             ],
         },
+        None,
     );
 
     let created: ProposalResponse = query_proposal(&app, &govmod, 1);
@@ -2250,12 +2514,13 @@ fn test_execute_expired_proposal() {
     app.execute_contract(
         Addr::unchecked("blue"),
         govmod.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -2547,12 +2812,13 @@ fn test_query_list_proposals() {
         app.execute_contract(
             Addr::unchecked(CREATOR_ADDR),
             govmod.clone(),
-            &ExecuteMsg::Propose {
+            &ExecuteMsg::Propose(ProposeMsg {
                 title: "A simple text proposal".to_string(),
                 description: "A simple text proposal".to_string(),
                 choices: mc_options.clone(),
                 proposer: None,
-            },
+                vote: None,
+            }),
             &[],
         )
         .unwrap();
@@ -2820,12 +3086,13 @@ fn test_active_threshold_absolute() {
         .execute_contract(
             Addr::unchecked(CREATOR_ADDR),
             govmod.clone(),
-            &crate::msg::ExecuteMsg::Propose {
+            &crate::msg::ExecuteMsg::Propose(ProposeMsg {
                 title: "A simple text proposal".to_string(),
                 description: "This is a simple text proposal".to_string(),
                 choices: mc_options.clone(),
                 proposer: None,
-            },
+                vote: None,
+            }),
             &[],
         )
         .unwrap_err();
@@ -2845,12 +3112,13 @@ fn test_active_threshold_absolute() {
         .execute_contract(
             Addr::unchecked(CREATOR_ADDR),
             govmod.clone(),
-            &crate::msg::ExecuteMsg::Propose {
+            &crate::msg::ExecuteMsg::Propose(ProposeMsg {
                 title: "A simple text proposal".to_string(),
                 description: "This is a simple text proposal".to_string(),
                 choices: mc_options.clone(),
                 proposer: None,
-            },
+                vote: None,
+            }),
             &[],
         )
         .unwrap();
@@ -2868,12 +3136,13 @@ fn test_active_threshold_absolute() {
         .execute_contract(
             Addr::unchecked(CREATOR_ADDR),
             govmod,
-            &crate::msg::ExecuteMsg::Propose {
+            &crate::msg::ExecuteMsg::Propose(ProposeMsg {
                 title: "A simple text proposal".to_string(),
                 description: "This is a simple text proposal".to_string(),
                 choices: mc_options,
                 proposer: None,
-            },
+                vote: None,
+            }),
             &[],
         )
         .unwrap_err();
@@ -2949,12 +3218,13 @@ fn test_active_threshold_percent() {
         .execute_contract(
             Addr::unchecked(CREATOR_ADDR),
             govmod.clone(),
-            &ExecuteMsg::Propose {
+            &ExecuteMsg::Propose(ProposeMsg {
                 title: "A simple text proposal".to_string(),
                 description: "A simple text proposal".to_string(),
                 choices: mc_options.clone(),
                 proposer: None,
-            },
+                vote: None,
+            }),
             &[],
         )
         .unwrap_err();
@@ -2974,12 +3244,13 @@ fn test_active_threshold_percent() {
         .execute_contract(
             Addr::unchecked(CREATOR_ADDR),
             govmod.clone(),
-            &ExecuteMsg::Propose {
+            &ExecuteMsg::Propose(ProposeMsg {
                 title: "A simple text proposal".to_string(),
                 description: "A simple text proposal".to_string(),
                 choices: mc_options.clone(),
                 proposer: None,
-            },
+                vote: None,
+            }),
             &[],
         )
         .unwrap();
@@ -2997,12 +3268,13 @@ fn test_active_threshold_percent() {
         .execute_contract(
             Addr::unchecked(CREATOR_ADDR),
             govmod,
-            &ExecuteMsg::Propose {
+            &ExecuteMsg::Propose(ProposeMsg {
                 title: "A simple text proposal".to_string(),
                 description: "A simple text proposal".to_string(),
                 choices: mc_options,
                 proposer: None,
-            },
+                vote: None,
+            }),
             &[],
         )
         .unwrap_err();
@@ -3081,12 +3353,13 @@ fn test_active_threshold_none() {
         .execute_contract(
             Addr::unchecked(CREATOR_ADDR),
             govmod,
-            &ExecuteMsg::Propose {
+            &ExecuteMsg::Propose(ProposeMsg {
                 title: "A simple text proposal".to_string(),
                 description: "A simple text proposal".to_string(),
                 choices: mc_options.clone(),
                 proposer: None,
-            },
+                vote: None,
+            }),
             &[],
         )
         .unwrap();
@@ -3106,12 +3379,13 @@ fn test_active_threshold_none() {
         .execute_contract(
             Addr::unchecked(CREATOR_ADDR),
             govmod,
-            &ExecuteMsg::Propose {
+            &ExecuteMsg::Propose(ProposeMsg {
                 title: "A simple text proposal".to_string(),
                 description: "A simple text proposal".to_string(),
                 choices: mc_options,
                 proposer: None,
-            },
+                vote: None,
+            }),
             &[],
         )
         .unwrap();
@@ -3168,12 +3442,13 @@ fn test_revoting() {
     app.execute_contract(
         Addr::unchecked("a-1"),
         govmod.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -3301,12 +3576,13 @@ fn test_allow_revoting_config_changes() {
     app.execute_contract(
         Addr::unchecked("a-1"),
         proposal_module.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
             choices: mc_options.clone(),
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -3362,12 +3638,13 @@ fn test_allow_revoting_config_changes() {
     app.execute_contract(
         Addr::unchecked("a-2"),
         proposal_module.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A very complex text proposal".to_string(),
             description: "A very complex text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -3454,12 +3731,13 @@ fn test_revoting_same_vote_twice() {
     app.execute_contract(
         Addr::unchecked("a-1"),
         proprosal_module.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -3549,12 +3827,13 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
     app.execute_contract(
         Addr::unchecked("a-1"),
         proposal_module.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -3780,12 +4059,13 @@ fn test_close_failed_proposal() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         govmod.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple burn tokens proposal".to_string(),
             description: "Burning more tokens, than dao treasury have".to_string(),
             choices: mc_options.clone(),
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -3827,7 +4107,7 @@ fn test_close_failed_proposal() {
         app.execute_contract(
             Addr::unchecked(CREATOR_ADDR),
             govmod.clone(),
-            &ExecuteMsg::Propose {
+            &ExecuteMsg::Propose(ProposeMsg {
                 title: "Disable closing failed proposals".to_string(),
                 description: "We want to re-execute failed proposals".to_string(),
                 choices: MultipleChoiceOptions {
@@ -3860,7 +4140,8 @@ fn test_close_failed_proposal() {
                     ],
                 },
                 proposer: None,
-            },
+                vote: None,
+            }),
             &[],
         )
         .unwrap();
@@ -3892,12 +4173,13 @@ fn test_close_failed_proposal() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         govmod.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple burn tokens proposal".to_string(),
             description: "Burning more tokens, than dao treasury have".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -4070,6 +4352,7 @@ fn test_no_double_refund_on_execute_fail_and_close() {
         &govmod,
         Addr::unchecked(CREATOR_ADDR).as_str(),
         choices,
+        None,
     );
 
     // Vote on proposal
@@ -4177,12 +4460,13 @@ pub fn test_not_allow_voting_on_expired_proposal() {
     app.execute_contract(
         Addr::unchecked("a-1"),
         proposal_module.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -4272,12 +4556,13 @@ fn test_next_proposal_id() {
     app.execute_contract(
         Addr::unchecked("a-1"),
         proposal_module.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -4344,12 +4629,13 @@ fn test_vote_with_rationale() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         govmod.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A proposal".to_string(),
             description: "A simple proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -4441,12 +4727,13 @@ fn test_revote_with_rationale() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         govmod.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A proposal".to_string(),
             description: "A simple proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -4597,12 +4884,13 @@ fn test_update_rationale() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         govmod.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A proposal".to_string(),
             description: "A simple proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -4735,12 +5023,13 @@ fn test_open_proposal_passes_with_zero_timelock_veto_duration() {
     app.execute_contract(
         Addr::unchecked("a-1"),
         proposal_module.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -4888,12 +5177,13 @@ fn test_veto_with_no_veto_configuration() {
     app.execute_contract(
         Addr::unchecked("a-1"),
         proposal_module.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -4980,12 +5270,13 @@ fn test_veto_open_prop_with_veto_before_passed_disabled() {
     app.execute_contract(
         Addr::unchecked("a-1"),
         proposal_module.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -5087,12 +5378,13 @@ fn test_veto_when_veto_timelock_expired() -> anyhow::Result<()> {
     app.execute_contract(
         Addr::unchecked("a-1"),
         proposal_module.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -5201,12 +5493,13 @@ fn test_veto_sets_prop_status_to_vetoed() -> anyhow::Result<()> {
     app.execute_contract(
         Addr::unchecked("a-1"),
         proposal_module.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -5311,12 +5604,13 @@ fn test_veto_from_catchall_state() {
     app.execute_contract(
         Addr::unchecked("a-1"),
         proposal_module.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -5431,12 +5725,13 @@ fn test_veto_timelock_early_execute_happy() -> anyhow::Result<()> {
     app.execute_contract(
         Addr::unchecked("a-1"),
         proposal_module.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -5554,12 +5849,13 @@ fn test_veto_timelock_expires_happy() -> anyhow::Result<()> {
     app.execute_contract(
         Addr::unchecked("a-1"),
         proposal_module.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();
@@ -5666,12 +5962,13 @@ fn test_veto_only_members_execute_proposal() -> anyhow::Result<()> {
     app.execute_contract(
         Addr::unchecked("a-1"),
         proposal_module.clone(),
-        &ExecuteMsg::Propose {
+        &ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
             choices: mc_options,
             proposer: None,
-        },
+            vote: None,
+        }),
         &[],
     )
     .unwrap();

@@ -94,11 +94,13 @@ pub fn execute_propose(
             title,
             description,
             msgs,
+            vote,
         } => ProposeMsg {
             title,
             description,
             msgs,
             proposer: Some(info.sender.to_string()),
+            vote,
         },
     };
 

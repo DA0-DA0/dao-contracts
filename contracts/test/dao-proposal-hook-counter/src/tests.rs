@@ -260,6 +260,7 @@ fn test_counters() {
             description: "This is a simple text proposal".to_string(),
             msgs: vec![],
             proposer: None,
+            vote: None,
         }),
         &[],
     )
@@ -360,6 +361,7 @@ fn test_counters() {
             description: "This is a simple text proposal 2nd".to_string(),
             msgs: vec![],
             proposer: None,
+            vote: None,
         }),
         &[],
     )
