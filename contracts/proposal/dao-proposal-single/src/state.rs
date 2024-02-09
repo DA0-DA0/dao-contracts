@@ -74,6 +74,10 @@ pub const BALLOTS: Map<(u64, &Addr), Ballot> = Map::new("ballots");
 pub const PROPOSAL_HOOKS: Hooks = Hooks::new("proposal_hooks");
 /// Consumers of vote hooks.
 pub const VOTE_HOOKS: Hooks = Hooks::new("vote_hooks");
+/// Lists of hook indexes removed to adjust for in submsg replies
+pub const REMOVED_VOTE_HOOKS_BY_INDEX: Item<Vec<u64>> = Item::new("removed_vote_hooks_by_index");
+pub const REMOVED_PROPOSAL_HOOKS_BY_INDEX: Item<Vec<u64>> =
+    Item::new("removed_proposal_hooks_by_index");
 /// The address of the pre-propose module associated with this
 /// proposal module (if any).
 pub const CREATION_POLICY: Item<ProposalCreationPolicy> = Item::new("creation_policy");
