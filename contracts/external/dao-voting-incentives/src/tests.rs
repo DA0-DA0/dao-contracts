@@ -5,7 +5,7 @@ use cosmwasm_std::{
     to_json_binary, Addr, Binary, Coin, CosmosMsg, Uint128, WasmMsg,
 };
 
-use cw20::{Cw20Coin, Cw20ReceiveMsg};
+use cw20::{BalanceResponse, Cw20Coin, Cw20QueryMsg, Cw20ReceiveMsg};
 use cw_denom::UncheckedDenom;
 use cw_multi_test::{error::AnyResult, App, AppBuilder, AppResponse, Executor};
 use cw_utils::Expiration;
@@ -457,6 +457,145 @@ pub fn test_hooks() {
                     && y.value == format!("{0}:1", dao_voting_incentives_cw20_addr.clone()))));
         }
     }
+
+    // Expire the vote hooks
+    let result = context.app.execute_contract(
+        Addr::unchecked(ADMIN),
+        dao_voting_incentives_addr.clone(),
+        &ExecuteMsg::Expire {},
+        &[],
+    );
+    assert!(result.is_ok());
+    let result = context.app.execute_contract(
+        Addr::unchecked(ADMIN),
+        dao_voting_incentives_cw20_addr.clone(),
+        &ExecuteMsg::Expire {},
+        &[],
+    );
+    assert!(result.is_ok());
+
+    // Ensure expire errors if already expired
+    let result = context.app.execute_contract(
+        Addr::unchecked(ADMIN),
+        dao_voting_incentives_addr.clone(),
+        &ExecuteMsg::Expire {},
+        &[],
+    );
+    assert!(result.is_err());
+
+    // Random person cannot claim
+    let result = context.app.execute_contract(
+        Addr::unchecked("random"),
+        dao_voting_incentives_addr.clone(),
+        &ExecuteMsg::Claim {},
+        &[],
+    );
+    assert!(result.is_err());
+
+    // User claims rewards
+    let result = context.app.execute_contract(
+        Addr::unchecked(ADDR1),
+        dao_voting_incentives_addr.clone(),
+        &ExecuteMsg::Claim {},
+        &[],
+    );
+    assert!(result.is_ok());
+
+    // User balance has increased by 500, because 1000 reward with 2 voters during the period
+    let balance = context
+        .app
+        .wrap()
+        .query_balance(Addr::unchecked(ADDR1), DENOM)
+        .unwrap();
+    assert_eq!(balance.amount, Uint128::new(500));
+
+    // User cannot claim again
+    let result = context.app.execute_contract(
+        Addr::unchecked(ADDR1),
+        dao_voting_incentives_addr.clone(),
+        &ExecuteMsg::Claim {},
+        &[],
+    );
+    assert!(result.is_err());
+
+    // User claims rewards cw20
+    let result = context.app.execute_contract(
+        Addr::unchecked(ADDR1),
+        dao_voting_incentives_cw20_addr.clone(),
+        &ExecuteMsg::Claim {},
+        &[],
+    );
+    assert!(result.is_ok());
+
+    // User balance has increased by 500, because 1000 reward with 2 voters during the period
+    let balance_response: BalanceResponse = context
+        .app
+        .wrap()
+        .query_wasm_smart(
+            context.cw20_addr,
+            &Cw20QueryMsg::Balance {
+                address: ADDR1.to_string(),
+            },
+        )
+        .unwrap();
+    assert_eq!(balance_response.balance, Uint128::new(500));
+}
+
+#[test]
+pub fn test_expire_sends_funds_to_owner() {
+    let mut context = get_context();
+
+    // Create the voting incentives contract for native
+    // The expiration is 10 blocks from start (12345 height)
+    let dao_voting_incentives_addr = context
+        .app
+        .instantiate_contract(
+            context.dao_voting_incentives_code_id,
+            Addr::unchecked(ADMIN),
+            &InstantiateMsg {
+                owner: context.dao_addr.to_string(),
+                denom: UncheckedDenom::Native(DENOM.to_string()),
+                expiration: Expiration::AtHeight(12355u64),
+            },
+            &[],
+            "dao_voting_incentives".to_string(),
+            None,
+        )
+        .unwrap();
+
+    // Fund the incentives contracts for 1000
+    context
+        .app
+        .send_tokens(
+            Addr::unchecked(ADMIN),
+            dao_voting_incentives_addr.clone(),
+            &[Coin {
+                denom: DENOM.to_string(),
+                amount: Uint128::new(1000),
+            }],
+        )
+        .unwrap();
+
+    // Blocks have passed the voting incentives' expirations
+    context.app.update_block(|x| x.height += 100);
+
+    // Expire the vote hooks
+    // No votes were received during the period, so the funds should be sent to the owner on expiration
+    let result = context.app.execute_contract(
+        Addr::unchecked(ADMIN),
+        dao_voting_incentives_addr.clone(),
+        &ExecuteMsg::Expire {},
+        &[],
+    );
+    assert!(result.is_ok());
+
+    // Ensure funds were sent to the DAO
+    let balance = context
+        .app
+        .wrap()
+        .query_balance(context.dao_addr, DENOM)
+        .unwrap();
+    assert_eq!(balance.amount, Uint128::new(1000));
 }
 
 #[test]

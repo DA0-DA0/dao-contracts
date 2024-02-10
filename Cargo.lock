@@ -2196,7 +2196,6 @@ dependencies = [
  "dao-interface 2.5.0",
  "dao-pre-propose-base 2.5.0",
  "dao-pre-propose-single 2.5.0",
- "dao-proposal-incentives",
  "dao-testing",
  "dao-voting 0.1.0",
  "dao-voting 2.5.0",

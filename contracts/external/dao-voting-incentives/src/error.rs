@@ -38,4 +38,7 @@ pub enum ContractError {
         expected: CheckedDenom,
         received: CheckedDenom,
     },
+
+    #[error("NothingToClaim")]
+    NothingToClaim {},
 }

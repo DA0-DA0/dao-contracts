@@ -14,6 +14,11 @@ use crate::{
 };
 
 pub fn claim(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
+    // Ensure the user has something to claim
+    if !USER_VOTE_COUNT.has(deps.storage, &info.sender) {
+        return Err(ContractError::NothingToClaim {});
+    }
+
     // Get reward information
     let reward = reward(deps.as_ref(), &info.sender)?;
 
