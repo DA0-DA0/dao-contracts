@@ -1930,7 +1930,6 @@ dependencies = [
  "dao-interface",
  "dao-pre-propose-base",
  "dao-pre-propose-single",
- "dao-proposal-incentives",
  "dao-testing",
  "dao-voting 0.1.0",
  "dao-voting 2.4.0",

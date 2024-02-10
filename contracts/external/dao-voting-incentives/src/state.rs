@@ -87,5 +87,5 @@ fn calculate_reward(
         return Ok(Uint128::zero());
     }
 
-    balance.checked_div_floor((user_votes, total_votes))
+    balance.checked_mul_floor((user_votes, total_votes))
 }
