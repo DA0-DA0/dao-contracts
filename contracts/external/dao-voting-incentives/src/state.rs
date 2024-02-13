@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, CheckedMultiplyFractionError, Deps, Env, Uint128};
+use cosmwasm_std::{Addr, CheckedMultiplyFractionError, Deps, Uint128};
 use cw_denom::CheckedDenom;
 use cw_storage_plus::{Item, Map};
 use cw_utils::Expiration;
@@ -34,15 +34,25 @@ pub const GENERIC_PROPOSAL_INFO: Map<(&Addr, u64), GenericProposalInfo> =
     Map::new("generic_proposal_info");
 
 /// A method to load reward information
-pub fn reward(deps: Deps, addr: &Addr) -> Result<RewardResponse, ContractError> {
+pub fn reward(deps: Deps, contract: &Addr, addr: &Addr) -> Result<RewardResponse, ContractError> {
     let config = CONFIG.load(deps.storage)?;
+
+    // Get the user's votes
+    let user_votes = USER_VOTE_COUNT
+        .may_load(deps.storage, addr)?
+        .unwrap_or_default();
 
     match config.expiration_balance {
         Some(balance) => {
-            // Get the user's votes
-            let user_votes = USER_VOTE_COUNT
-                .may_load(deps.storage, addr)?
-                .unwrap_or_default();
+            // Calculate the reward
+            Ok(RewardResponse {
+                denom: config.denom,
+                amount: calculate_reward(config.total_votes, user_votes, balance)?,
+            })
+        }
+        None => {
+            // Get the current voting incentives balance
+            let balance = config.denom.query_balance(&deps.querier, contract)?;
 
             // Calculate the reward
             Ok(RewardResponse {
@@ -50,32 +60,7 @@ pub fn reward(deps: Deps, addr: &Addr) -> Result<RewardResponse, ContractError> 
                 amount: calculate_reward(config.total_votes, user_votes, balance)?,
             })
         }
-        None => Err(ContractError::NotExpired {
-            expiration: config.expiration,
-        }),
     }
-}
-
-/// A method to load the expected reward information
-/// The expected reward method can differ from the actual reward, because the balance is saved in state after expiration
-pub fn expected_reward(deps: Deps, env: Env, addr: &Addr) -> Result<RewardResponse, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-
-    // Get the voting incentives balance
-    let balance = config
-        .denom
-        .query_balance(&deps.querier, &env.contract.address)?;
-
-    // Get the user's votes
-    let user_votes = USER_VOTE_COUNT
-        .may_load(deps.storage, addr)?
-        .unwrap_or_default();
-
-    // Calculate the reward
-    Ok(RewardResponse {
-        denom: config.denom,
-        amount: calculate_reward(config.total_votes, user_votes, balance)?,
-    })
 }
 
 fn calculate_reward(

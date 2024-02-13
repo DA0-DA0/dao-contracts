@@ -5,16 +5,10 @@ use crate::{
     state::{self, Config, CONFIG, USER_VOTE_COUNT},
 };
 
-pub fn rewards(deps: Deps, address: String) -> StdResult<RewardResponse> {
+pub fn rewards(deps: Deps, env: Env, address: String) -> StdResult<RewardResponse> {
     let address = deps.api.addr_validate(&address)?;
 
-    state::reward(deps, &address).map_err(|x| StdError::GenericErr { msg: x.to_string() })
-}
-
-pub fn expected_rewards(deps: Deps, env: Env, address: String) -> StdResult<RewardResponse> {
-    let address = deps.api.addr_validate(&address)?;
-
-    state::expected_reward(deps, env, &address)
+    state::reward(deps, &env.contract.address, &address)
         .map_err(|x| StdError::GenericErr { msg: x.to_string() })
 }
 
