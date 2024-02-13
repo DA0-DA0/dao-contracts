@@ -81,10 +81,7 @@ pub fn execute(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Rewards { address } => to_json_binary(&query::rewards(deps, address)?),
-        QueryMsg::ExpectedRewards { address } => {
-            to_json_binary(&query::expected_rewards(deps, env, address)?)
-        }
+        QueryMsg::Rewards { address } => to_json_binary(&query::rewards(deps, env, address)?),
         QueryMsg::Config {} => to_json_binary(&query::config(deps)?),
         QueryMsg::Ownership {} => to_json_binary(&get_ownership(deps.storage)?),
         QueryMsg::Votes { address } => to_json_binary(&query::votes(deps, address)?),

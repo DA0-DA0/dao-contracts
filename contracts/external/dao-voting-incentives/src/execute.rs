@@ -13,14 +13,14 @@ use crate::{
     ContractError,
 };
 
-pub fn claim(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn claim(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     // Ensure the user has something to claim
     if !USER_VOTE_COUNT.has(deps.storage, &info.sender) {
         return Err(ContractError::NothingToClaim {});
     }
 
     // Get reward information
-    let reward = reward(deps.as_ref(), &info.sender)?;
+    let reward = reward(deps.as_ref(), &env.contract.address, &info.sender)?;
 
     // If the user has rewards, then we should generate a message
     let mut msgs = vec![];
@@ -212,13 +212,16 @@ pub fn expire(deps: DepsMut, env: Env, _info: MessageInfo) -> Result<Response, C
 
 pub fn receive_cw20(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     _cw20_receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
     // Do not accept unexpected cw20
+    if config.expiration.is_expired(&env.block) {
+        return Err(ContractError::AlreadyExpired {});
+    }
     match &config.denom {
         CheckedDenom::Native(_) => {
             return Err(ContractError::UnexpectedFunds {

@@ -36,12 +36,9 @@ pub enum QueryMsg {
     /// Returns the config
     #[returns(Config)]
     Config {},
-    /// Returns the claimable rewards for the given address.
+    /// Returns the rewards for the given address.
     #[returns(RewardResponse)]
     Rewards { address: String },
-    /// Returns the expected rewards for the given address
-    #[returns(RewardResponse)]
-    ExpectedRewards { address: String },
     /// Returns the votes count for the given address
     #[returns(Uint128)]
     Votes { address: String },
