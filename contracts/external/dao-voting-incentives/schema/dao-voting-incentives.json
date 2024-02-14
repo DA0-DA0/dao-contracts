@@ -620,7 +620,8 @@
       "type": "object",
       "required": [
         "amount",
-        "denom"
+        "denom",
+        "is_claimable"
       ],
       "properties": {
         "amount": {
@@ -628,6 +629,9 @@
         },
         "denom": {
           "$ref": "#/definitions/CheckedDenom"
+        },
+        "is_claimable": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
