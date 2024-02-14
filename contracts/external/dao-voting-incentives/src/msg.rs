@@ -53,4 +53,5 @@ pub enum MigrateMsg {
 pub struct RewardResponse {
     pub denom: CheckedDenom,
     pub amount: Uint128,
+    pub is_claimable: bool,
 }

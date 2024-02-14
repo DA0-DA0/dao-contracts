@@ -48,6 +48,7 @@ pub fn reward(deps: Deps, contract: &Addr, addr: &Addr) -> Result<RewardResponse
             Ok(RewardResponse {
                 denom: config.denom,
                 amount: calculate_reward(config.total_votes, user_votes, balance)?,
+                is_claimable: true,
             })
         }
         None => {
@@ -58,6 +59,7 @@ pub fn reward(deps: Deps, contract: &Addr, addr: &Addr) -> Result<RewardResponse
             Ok(RewardResponse {
                 denom: config.denom,
                 amount: calculate_reward(config.total_votes, user_votes, balance)?,
+                is_claimable: false,
             })
         }
     }

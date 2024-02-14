@@ -6,7 +6,7 @@ use cosmwasm_std::{
 };
 
 use cw20::{BalanceResponse, Cw20Coin, Cw20QueryMsg, Cw20ReceiveMsg};
-use cw_denom::UncheckedDenom;
+use cw_denom::{CheckedDenom, UncheckedDenom};
 use cw_multi_test::{error::AnyResult, App, AppBuilder, AppResponse, Executor};
 use cw_utils::Expiration;
 use dao_testing::{
@@ -17,7 +17,7 @@ use dao_voting::{proposal::SingleChoiceProposeMsg, threshold::Threshold};
 
 use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
-    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, RewardResponse},
     state::Config,
 };
 
@@ -491,6 +491,26 @@ pub fn test_hooks() {
         &[],
     );
     assert!(result.is_err());
+
+    // Check rewards
+    let rewards: RewardResponse = context
+        .app
+        .wrap()
+        .query_wasm_smart(
+            dao_voting_incentives_addr.clone(),
+            &QueryMsg::Rewards {
+                address: ADDR1.to_string(),
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        rewards,
+        RewardResponse {
+            denom: CheckedDenom::Native(DENOM.to_string()),
+            amount: Uint128::new(500),
+            is_claimable: true,
+        }
+    );
 
     // User claims rewards
     let result = context.app.execute_contract(
