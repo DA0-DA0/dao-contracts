@@ -191,6 +191,9 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    // Gets a proposal module
+    #[returns(crate::state::ProposalModule)]
+    ProposalModule { address: String },
     /// Gets the active proposal modules associated with the
     /// contract.
     #[returns(Vec<crate::state::ProposalModule>)]

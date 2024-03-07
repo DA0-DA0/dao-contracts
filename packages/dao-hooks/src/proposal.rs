@@ -8,7 +8,7 @@ use dao_voting::{
 };
 
 /// An enum representing proposal hook messages.
-/// Either a new propsoal hook, fired when a new proposal is created,
+/// Either a new proposal hook, fired when a new proposal is created,
 /// or a proposal status hook, fired when a proposal changes status.
 #[cw_serde]
 pub enum ProposalHookMsg {

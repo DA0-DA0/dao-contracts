@@ -102,6 +102,41 @@ impl<'a> Hooks<'a> {
         let hooks = hooks.into_iter().map(String::from).collect();
         Ok(HooksResponse { hooks })
     }
+
+    /// Use this method to remove a hook by index from a reply
+    /// The removed_hook_indexes should be cleared when submsgs are sent
+    pub fn remove_hook_by_index_from_reply(
+        &self,
+        storage: &mut dyn Storage,
+        index: u64,
+        removed_hook_indexes: Item<Vec<u64>>,
+    ) -> Result<Addr, HookError> {
+        let adjusted_index = match removed_hook_indexes.may_load(storage)? {
+            Some(mut removed_indexes) => {
+                let mut result = index;
+
+                for removed_index in removed_indexes.iter() {
+                    if removed_index < &index {
+                        result -= 1;
+                    }
+                }
+
+                // Update the removed indexes
+                removed_indexes.push(index);
+                removed_hook_indexes.save(storage, &removed_indexes)?;
+
+                result
+            }
+            None => {
+                // Set the removed indexes
+                removed_hook_indexes.save(storage, &vec![index])?;
+
+                index
+            }
+        };
+
+        self.remove_hook_by_index(storage, adjusted_index)
+    }
 }
 
 #[cfg(test)]

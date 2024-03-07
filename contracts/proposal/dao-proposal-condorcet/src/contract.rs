@@ -260,6 +260,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Info {} => to_json_binary(&dao_interface::voting::InfoResponse {
             info: cw2::get_contract_version(deps.storage)?,
         }),
+        QueryMsg::GenericProposalInfo { proposal_id: _ } => unimplemented!(),
     }
 }
 

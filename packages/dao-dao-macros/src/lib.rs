@@ -392,6 +392,9 @@ pub fn proposal_module_query(metadata: TokenStream, input: TokenStream) -> Token
             /// next proposal created.
             #[returns(::std::primitive::u64)]
             NextProposalId {},
+            /// Returns generic proposal information
+            #[returns(dao_interface::proposal::GenericProposalInfo)]
+            GenericProposalInfo { proposal_id: ::std::primitive::u64 },
         }
         }
         .into(),
