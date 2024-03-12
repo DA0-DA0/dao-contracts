@@ -508,7 +508,7 @@ pub fn execute_update_sub_daos_list(
 
     for subdao in to_add {
         let addr = deps.api.addr_validate(&subdao.addr)?;
-        SUBDAO_LIST.save(deps.storage, &addr, &subdao.charter)?;
+        SUBDAO_LIST.save(deps.storage, &addr, &subdao)?; // Save the entire SubDao object.
     }
 
     Ok(Response::default()
@@ -814,19 +814,21 @@ pub fn query_list_sub_daos(
         .map(|addr| deps.api.addr_validate(&addr))
         .transpose()?;
 
-    let subdaos = cw_paginate_storage::paginate_map(
+    let subdaos = paginate_map(
         deps,
         &SUBDAO_LIST,
         start_at.as_ref(),
         limit,
-        cosmwasm_std::Order::Ascending,
+        Order::Ascending,
     )?;
 
     let subdaos: Vec<SubDao> = subdaos
         .into_iter()
-        .map(|(address, charter)| SubDao {
+        .map(|(address, subdao)| SubDao {
             addr: address.into_string(),
-            charter,
+            charter: subdao.charter, // mapping correctly to the updated SubDao structure.
+            member_count: subdao.member_count, // Include member count.
+            active_threshold: subdao.active_threshold, // Include active threshold.
         })
         .collect();
 

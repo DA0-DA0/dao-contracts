@@ -1,6 +1,7 @@
 use cosmwasm_std::{Addr, Empty};
 use cw_storage_plus::{Item, Map};
 use cw_utils::Expiration;
+use dao_interface::query::SubDao;
 use dao_interface::state::{Config, ProposalModule};
 
 /// The admin of the contract. Typically a DAO. The contract admin may
@@ -52,4 +53,4 @@ pub const CW20_LIST: Map<Addr, Empty> = Map::new("cw20s");
 pub const CW721_LIST: Map<Addr, Empty> = Map::new("cw721s");
 
 /// List of SubDAOs associated to this DAO. Each SubDAO has an optional charter.
-pub const SUBDAO_LIST: Map<&Addr, Option<String>> = Map::new("sub_daos");
+pub const SUBDAO_LIST: Map<&Addr, SubDao> = Map::new("sub_daos");

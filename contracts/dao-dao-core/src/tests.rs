@@ -3003,18 +3003,26 @@ fn test_add_remove_subdaos() {
         SubDao {
             addr: "subdao001".to_string(),
             charter: None,
+            member_count: 10,
+            active_threshold: 5,
         },
         SubDao {
             addr: "subdao002".to_string(),
             charter: Some("cool charter bro".to_string()),
+            member_count: 20,
+            active_threshold: 10,
         },
         SubDao {
             addr: "subdao005".to_string(),
             charter: None,
+            member_count: 15,
+            active_threshold: 7,
         },
         SubDao {
             addr: "subdao007".to_string(),
             charter: None,
+            member_count: 25,
+            active_threshold: 12,
         },
     ];
     let to_remove: Vec<String> = vec![];
@@ -3025,7 +3033,7 @@ fn test_add_remove_subdaos() {
         &ExecuteMsg::UpdateSubDaos { to_add, to_remove },
         &[],
     )
-    .unwrap();
+        .unwrap();
 
     let res: Vec<SubDao> = app
         .wrap()
@@ -3051,7 +3059,7 @@ fn test_add_remove_subdaos() {
         },
         &[],
     )
-    .unwrap();
+        .unwrap();
 
     let res: Vec<SubDao> = app
         .wrap()
@@ -3069,6 +3077,8 @@ fn test_add_remove_subdaos() {
     let test_res: SubDao = SubDao {
         addr: "subdao002".to_string(),
         charter: Some("cool charter bro".to_string()),
+        member_count: 20,
+        active_threshold: 10,
     };
 
     assert_eq!(res[1], test_res);
@@ -3077,14 +3087,20 @@ fn test_add_remove_subdaos() {
         SubDao {
             addr: "subdao001".to_string(),
             charter: None,
+            member_count: 10,
+            active_threshold: 5,
         },
         SubDao {
             addr: "subdao002".to_string(),
             charter: Some("cool charter bro".to_string()),
+            member_count: 20,
+            active_threshold: 10,
         },
         SubDao {
             addr: "subdao007".to_string(),
             charter: None,
+            member_count: 25,
+            active_threshold: 12,
         },
     ];
 

@@ -336,6 +336,8 @@ fn test_sub_daos() {
     let sub_dao = SubDao {
         addr: "sub_dao_1".to_string(),
         charter: None,
+        member_count: 0,
+        active_threshold: 1,
     };
 
     execute_migration(

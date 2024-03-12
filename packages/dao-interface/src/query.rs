@@ -64,8 +64,12 @@ pub struct AdminNominationResponse {
 pub struct SubDao {
     /// The contract address of the SubDAO
     pub addr: String,
-    /// The purpose/constitution for the SubDAO
+    /// The purpose/constitution for the SubDAO. This field is optional.
     pub charter: Option<String>,
+    /// The current number of members in the SubDAO.
+    pub member_count: u32,
+    /// The minimum number of members required for the SubDAO to be considered active.
+    pub active_threshold: u32,
 }
 
 #[cw_serde]
