@@ -130,6 +130,7 @@ where
         voting_strategy,
         close_proposal_on_execution_failure: true,
         pre_propose_info,
+        veto: None,
     };
 
     let governance_addr = setup_governance(&mut app, instantiate, Some(initial_balances));
@@ -212,6 +213,7 @@ where
                 title: "A simple text proposal".to_string(),
                 description: "This is a simple text proposal".to_string(),
                 choices: mc_options,
+                vote: None,
             },
         },
         &funds,
@@ -240,7 +242,6 @@ where
         match should_execute {
             ShouldExecute::Yes => {
                 if res.is_err() {
-                    println!("{:?}", res.err());
                     panic!()
                 }
                 // Check that the vote was recorded correctly.
@@ -702,7 +703,7 @@ where
         let one_sum: u64 = one.iter().sum();
         let none_sum: u64 = none.iter().sum();
 
-        let mut sums = vec![zero_sum, one_sum, none_sum];
+        let mut sums = [zero_sum, one_sum, none_sum];
         sums.sort_unstable();
 
         // If none of the above wins or there is a tie between second and first choice.

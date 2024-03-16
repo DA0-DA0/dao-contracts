@@ -4,8 +4,10 @@ use cw_multi_test::{App, BankSudo, Executor};
 use cw_denom::CheckedDenom;
 use dao_pre_propose_single as cppbps;
 use dao_voting::{
-    deposit::CheckedDepositInfo, pre_propose::ProposalCreationPolicy,
-    proposal::SingleChoiceProposeMsg as ProposeMsg, voting::Vote,
+    deposit::CheckedDepositInfo,
+    pre_propose::ProposalCreationPolicy,
+    proposal::SingleChoiceProposeMsg as ProposeMsg,
+    voting::{SingleChoiceAutoVote, Vote},
 };
 
 use crate::{
@@ -29,6 +31,7 @@ pub(crate) fn make_proposal(
     proposal_single: &Addr,
     proposer: &str,
     msgs: Vec<CosmosMsg>,
+    vote: Option<SingleChoiceAutoVote>,
 ) -> u64 {
     let proposal_creation_policy = query_creation_policy(app, proposal_single);
 
@@ -78,6 +81,7 @@ pub(crate) fn make_proposal(
                     description: "description".to_string(),
                     msgs: msgs.clone(),
                     proposer: None,
+                    vote,
                 }),
                 &[],
             )
@@ -91,6 +95,7 @@ pub(crate) fn make_proposal(
                         title: "title".to_string(),
                         description: "description".to_string(),
                         msgs: msgs.clone(),
+                        vote,
                     },
                 },
                 &funds,

@@ -1,0 +1,50 @@
+[package]
+name = "dao-voting-token-staked"
+authors = ["Callum Anderson <callumanderson745@gmail.com>", "Noah Saso <no-reply@no-reply.com>", "Jake Hartnell <no-reply@no-reply.com>"]
+description = "A DAO DAO voting module based on staked token factory or native tokens. Only works with chains that support Token Factory."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+# use test tube feature to enable test-tube integration tests, for example
+# cargo test --features "test-tube"
+test-tube = []
+# when writing tests you may wish to enable test-tube as a default feature
+# default = ["test-tube"]
+
+[dependencies]
+cosmwasm-std    = { workspace = true, features = ["cosmwasm_1_1"] }
+cosmwasm-schema = { workspace = true }
+cw-ownable = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+cw-utils = { workspace = true }
+cw-controllers = { workspace = true }
+cw-hooks = { workspace = true }
+thiserror = { workspace = true }
+dao-dao-macros = { workspace = true }
+dao-hooks = { workspace = true }
+dao-interface = { workspace = true }
+dao-voting = { workspace = true }
+cw-tokenfactory-issuer = { workspace = true, features = ["library"] }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+cw-multi-test = { workspace = true }
+cw-tokenfactory-issuer = { workspace = true }
+dao-proposal-single = { workspace = true }
+dao-proposal-hook-counter = { workspace = true }
+dao-test-custom-factory = { workspace = true }
+dao-testing = { workspace = true, features = ["test-tube"] }
+osmosis-std = { workspace = true }
+osmosis-test-tube = { workspace = true }
+serde = { workspace = true }

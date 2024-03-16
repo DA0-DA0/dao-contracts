@@ -38,8 +38,8 @@ pub enum PreProposeError {
     #[error("Nothing to withdraw")]
     NothingToWithdraw {},
 
-    #[error("Proposal status ({status}) not closed or executed")]
-    NotClosedOrExecuted { status: Status },
+    #[error("Proposal status ({status}) is not completed")]
+    NotCompleted { status: Status },
 
     #[error("Proposal not found")]
     ProposalNotFound {},

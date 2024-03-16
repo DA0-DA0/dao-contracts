@@ -1,0 +1,37 @@
+[package]
+name = "dao-proposal-hook-counter"
+authors = ["Callum Anderson <callumanderson745@gmail.com>"]
+description = "A DAO DAO test contract for counting proposal hook calls."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+thiserror = { workspace = true }
+dao-hooks = { workspace = true }
+
+[dev-dependencies]
+cw-hooks = { workspace = true }
+cw20 = { workspace = true }
+dao-voting-cw20-balance = { workspace = true }
+cw20-base = { workspace = true }
+cw-utils = { workspace = true }
+dao-voting = { workspace = true }
+dao-interface = { workspace = true }
+dao-dao-core = { workspace = true }
+dao-proposal-single = { workspace = true }
+cw-multi-test = { workspace = true }

@@ -11,12 +11,12 @@ use crate::testing::{
     },
     queries::{query_balance_cw20, query_dao_token, query_proposal, query_single_proposal_module},
 };
-use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Decimal, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App};
 use cw_utils::Duration;
 use dao_voting::{
-    deposit::{DepositRefundPolicy, UncheckedDepositInfo},
+    deposit::{DepositRefundPolicy, UncheckedDepositInfo, VotingModuleTokenType},
     status::Status,
     threshold::{PercentageThreshold, Threshold::AbsolutePercentage},
     voting::Vote,
@@ -39,7 +39,7 @@ fn setup_test(messages: Vec<CosmosMsg>) -> CommonTest {
 
     // Mint some tokens to pay the proposal deposit.
     mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
-    let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, messages);
+    let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, messages, None);
 
     CommonTest {
         app,
@@ -160,6 +160,7 @@ pub fn test_executed_prop_state_remains_after_vote_swing() {
     let mut app = App::default();
 
     let instantiate = InstantiateMsg {
+        veto: None,
         threshold: AbsolutePercentage {
             percentage: PercentageThreshold::Percent(Decimal::percent(15)),
         },
@@ -170,7 +171,9 @@ pub fn test_executed_prop_state_remains_after_vote_swing() {
         pre_propose_info: get_pre_propose_info(
             &mut app,
             Some(UncheckedDepositInfo {
-                denom: dao_voting::deposit::DepositToken::VotingModuleToken {},
+                denom: dao_voting::deposit::DepositToken::VotingModuleToken {
+                    token_type: VotingModuleTokenType::Cw20,
+                },
                 amount: Uint128::new(10_000_000),
                 refund_policy: DepositRefundPolicy::OnlyPassed,
             }),
@@ -201,7 +204,7 @@ pub fn test_executed_prop_state_remains_after_vote_swing() {
     let gov_token = query_dao_token(&app, &core_addr);
 
     mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
-    let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, vec![]);
+    let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, vec![], None);
 
     // someone quickly votes, proposal gets executed
     vote_on_proposal(
@@ -256,6 +259,7 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
     let mut app = App::default();
 
     let instantiate = InstantiateMsg {
+        veto: None,
         threshold: AbsolutePercentage {
             percentage: PercentageThreshold::Percent(Decimal::percent(15)),
         },
@@ -266,7 +270,9 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
         pre_propose_info: get_pre_propose_info(
             &mut app,
             Some(UncheckedDepositInfo {
-                denom: dao_voting::deposit::DepositToken::VotingModuleToken {},
+                denom: dao_voting::deposit::DepositToken::VotingModuleToken {
+                    token_type: VotingModuleTokenType::Cw20,
+                },
                 amount: Uint128::new(10_000_000),
                 refund_policy: DepositRefundPolicy::OnlyPassed,
             }),
@@ -301,7 +307,7 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
         recipient: "threshold".to_string(),
         amount: Uint128::new(100_000_000),
     };
-    let binary_msg = to_binary(&msg).unwrap();
+    let binary_msg = to_json_binary(&msg).unwrap();
 
     mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
     let proposal_id = make_proposal(
@@ -314,6 +320,7 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
             funds: vec![],
         }
         .into()],
+        None,
     );
 
     // assert that the initial "threshold" address balance is 0

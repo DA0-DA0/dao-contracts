@@ -1,6 +1,6 @@
 [package]
 name = "dao-voting-cw721-staked"
-authors = ["CypherApe cypherape@protonmail.com"]
+authors = ["CypherApe cypherape@protonmail.com", "Jake Hartnell", "ekez"]
 description = "A DAO DAO voting module based on staked cw721 tokens."
 edition = { workspace = true }
 license = { workspace = true }
@@ -11,30 +11,41 @@ version = { workspace = true }
 crate-type = ["cdylib", "rlib"]
 
 [features]
+# for more explicit tests, cargo test --features=backtraces
 backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
 library = []
+# use test tube feature to enable test-tube integration tests, for example
+# cargo test --features "test-tube"
+test-tube = []
+# when writing tests you may wish to enable test-tube as a default feature
+# default = ["test-tube"]
+
 
 [dependencies]
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-controllers = { workspace = true }
-dao-dao-macros = { workspace = true }
-dao-interface = { workspace = true }
+cw-hooks = { workspace = true }
 cw721 = { workspace = true }
 cw721-base = { workspace = true, features = ["library"] }
 cw721-controllers = { workspace = true }
-cw-paginate-storage = { workspace = true }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
+dao-dao-macros = { workspace = true }
+dao-hooks = { workspace = true }
+dao-interface = { workspace = true }
 dao-voting = { workspace = true }
-sg-std = { workspace = true }
-sg721 = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }
 cw-multi-test = { workspace = true }
-dao-testing = { workspace = true }
-sg721-base = { workspace = true, features = ["library"] }
-sg-multi-test = { workspace = true }
+dao-proposal-single = { workspace = true }
+dao-proposal-hook-counter = { workspace = true }
+dao-test-custom-factory = { workspace = true }
+dao-testing = { workspace = true, features = ["test-tube"] }
+osmosis-std = { workspace = true }
+osmosis-test-tube = { workspace = true }
+serde = { workspace = true }

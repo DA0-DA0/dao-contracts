@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary, CosmosMsg, WasmMsg};
+use cosmwasm_std::{Addr, Binary, Coin, CosmosMsg, WasmMsg};
 
 /// Top level config type for core module.
 #[cw_serde]
@@ -60,6 +60,8 @@ pub struct ModuleInstantiateInfo {
     /// CosmWasm level admin of the instantiated contract. See:
     /// <https://docs.cosmwasm.com/docs/1.0/smart-contracts/migration>
     pub admin: Option<Admin>,
+    /// Funds to be sent to the instantiated contract.
+    pub funds: Vec<Coin>,
     /// Label for the instantiated contract.
     pub label: String,
 }
@@ -73,7 +75,7 @@ impl ModuleInstantiateInfo {
             }),
             code_id: self.code_id,
             msg: self.msg,
-            funds: vec![],
+            funds: self.funds,
             label: self.label,
         }
     }
@@ -89,22 +91,23 @@ pub struct ModuleInstantiateCallback {
 mod tests {
     use super::*;
 
-    use cosmwasm_std::{to_binary, Addr, WasmMsg};
+    use cosmwasm_std::{to_json_binary, Addr, WasmMsg};
 
     #[test]
     fn test_module_instantiate_admin_none() {
         let no_admin = ModuleInstantiateInfo {
             code_id: 42,
-            msg: to_binary("foo").unwrap(),
+            msg: to_json_binary("foo").unwrap(),
             admin: None,
             label: "bar".to_string(),
+            funds: vec![],
         };
         assert_eq!(
             no_admin.into_wasm_msg(Addr::unchecked("ekez")),
             WasmMsg::Instantiate {
                 admin: None,
                 code_id: 42,
-                msg: to_binary("foo").unwrap(),
+                msg: to_json_binary("foo").unwrap(),
                 funds: vec![],
                 label: "bar".to_string()
             }
@@ -115,18 +118,19 @@ mod tests {
     fn test_module_instantiate_admin_addr() {
         let no_admin = ModuleInstantiateInfo {
             code_id: 42,
-            msg: to_binary("foo").unwrap(),
+            msg: to_json_binary("foo").unwrap(),
             admin: Some(Admin::Address {
                 addr: "core".to_string(),
             }),
             label: "bar".to_string(),
+            funds: vec![],
         };
         assert_eq!(
             no_admin.into_wasm_msg(Addr::unchecked("ekez")),
             WasmMsg::Instantiate {
                 admin: Some("core".to_string()),
                 code_id: 42,
-                msg: to_binary("foo").unwrap(),
+                msg: to_json_binary("foo").unwrap(),
                 funds: vec![],
                 label: "bar".to_string()
             }
@@ -137,16 +141,17 @@ mod tests {
     fn test_module_instantiate_instantiator_addr() {
         let no_admin = ModuleInstantiateInfo {
             code_id: 42,
-            msg: to_binary("foo").unwrap(),
+            msg: to_json_binary("foo").unwrap(),
             admin: Some(Admin::CoreModule {}),
             label: "bar".to_string(),
+            funds: vec![],
         };
         assert_eq!(
             no_admin.into_wasm_msg(Addr::unchecked("ekez")),
             WasmMsg::Instantiate {
                 admin: Some("ekez".to_string()),
                 code_id: 42,
-                msg: to_binary("foo").unwrap(),
+                msg: to_json_binary("foo").unwrap(),
                 funds: vec![],
                 label: "bar".to_string()
             }

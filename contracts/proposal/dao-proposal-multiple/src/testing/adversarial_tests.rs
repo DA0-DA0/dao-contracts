@@ -9,12 +9,12 @@ use crate::testing::queries::{
 };
 use crate::testing::tests::{get_pre_propose_info, ALTERNATIVE_ADDR, CREATOR_ADDR};
 use crate::ContractError;
-use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Decimal, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App, Executor};
 use cw_utils::Duration;
 use dao_voting::{
-    deposit::{DepositRefundPolicy, UncheckedDepositInfo},
+    deposit::{DepositRefundPolicy, UncheckedDepositInfo, VotingModuleTokenType},
     multiple_choice::{
         MultipleChoiceOption, MultipleChoiceOptions, MultipleChoiceVote, VotingStrategy,
     },
@@ -53,7 +53,7 @@ fn setup_test(_messages: Vec<CosmosMsg>) -> CommonTest {
 
     let mc_options = MultipleChoiceOptions { options };
 
-    let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, mc_options);
+    let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, mc_options, None);
 
     CommonTest {
         app,
@@ -273,13 +273,16 @@ pub fn test_allow_voting_after_proposal_execution_pre_expiration_cw20() {
         pre_propose_info: get_pre_propose_info(
             &mut app,
             Some(UncheckedDepositInfo {
-                denom: dao_voting::deposit::DepositToken::VotingModuleToken {},
+                denom: dao_voting::deposit::DepositToken::VotingModuleToken {
+                    token_type: VotingModuleTokenType::Cw20,
+                },
                 amount: Uint128::new(10_000_000),
                 refund_policy: DepositRefundPolicy::OnlyPassed,
             }),
             false,
         ),
         close_proposal_on_execution_failure: true,
+        veto: None,
     };
 
     let core_addr = instantiate_with_multiple_staked_balances_governance(
@@ -307,7 +310,7 @@ pub fn test_allow_voting_after_proposal_execution_pre_expiration_cw20() {
         recipient: CREATOR_ADDR.to_string(),
         amount: Uint128::new(100_000_000),
     };
-    let binary_msg = to_binary(&msg).unwrap();
+    let binary_msg = to_json_binary(&msg).unwrap();
 
     let options = vec![
         MultipleChoiceOption {
@@ -329,7 +332,7 @@ pub fn test_allow_voting_after_proposal_execution_pre_expiration_cw20() {
 
     let mc_options = MultipleChoiceOptions { options };
 
-    let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, mc_options);
+    let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, mc_options, None);
 
     // assert initial CREATOR_ADDR address balance is 0
     let balance = query_balance_cw20(&app, gov_token.to_string(), CREATOR_ADDR);

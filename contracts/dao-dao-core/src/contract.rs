@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
-    Reply, Response, StdError, StdResult, SubMsg, WasmMsg,
+    from_json, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
+    Order, Reply, Response, StdError, StdResult, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_paginate_storage::{paginate_map, paginate_map_keys, paginate_map_values};
@@ -600,22 +600,22 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 pub fn query_admin(deps: Deps) -> StdResult<Binary> {
     let admin = ADMIN.load(deps.storage)?;
-    to_binary(&admin)
+    to_json_binary(&admin)
 }
 
 pub fn query_admin_nomination(deps: Deps) -> StdResult<Binary> {
     let nomination = NOMINATED_ADMIN.may_load(deps.storage)?;
-    to_binary(&AdminNominationResponse { nomination })
+    to_json_binary(&AdminNominationResponse { nomination })
 }
 
 pub fn query_config(deps: Deps) -> StdResult<Binary> {
     let config = CONFIG.load(deps.storage)?;
-    to_binary(&config)
+    to_json_binary(&config)
 }
 
 pub fn query_voting_module(deps: Deps) -> StdResult<Binary> {
     let voting_module = VOTING_MODULE.load(deps.storage)?;
-    to_binary(&voting_module)
+    to_json_binary(&voting_module)
 }
 
 pub fn query_proposal_modules(
@@ -636,7 +636,7 @@ pub fn query_proposal_modules(
     //
     // Even if this does lock up one can determine the existing
     // proposal modules by looking at past transactions on chain.
-    to_binary(&paginate_map_values(
+    to_json_binary(&paginate_map_values(
         deps,
         &PROPOSAL_MODULES,
         start_after
@@ -666,7 +666,7 @@ pub fn query_active_proposal_modules(
 
     let limit = limit.unwrap_or(values.len() as u32);
 
-    to_binary::<Vec<ProposalModule>>(
+    to_json_binary::<Vec<ProposalModule>>(
         &values
             .into_iter()
             .filter(|module: &ProposalModule| module.status == ProposalModuleStatus::Enabled)
@@ -689,7 +689,7 @@ fn get_pause_info(deps: Deps, env: Env) -> StdResult<PauseInfoResponse> {
 }
 
 pub fn query_paused(deps: Deps, env: Env) -> StdResult<Binary> {
-    to_binary(&get_pause_info(deps, env)?)
+    to_json_binary(&get_pause_info(deps, env)?)
 }
 
 pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
@@ -704,7 +704,7 @@ pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
     let version = get_contract_version(deps.storage)?;
     let active_proposal_module_count = ACTIVE_PROPOSAL_MODULE_COUNT.load(deps.storage)?;
     let total_proposal_module_count = TOTAL_PROPOSAL_MODULE_COUNT.load(deps.storage)?;
-    to_binary(&DumpStateResponse {
+    to_json_binary(&DumpStateResponse {
         admin,
         config,
         version,
@@ -726,7 +726,7 @@ pub fn query_voting_power_at_height(
         voting_module,
         &voting::Query::VotingPowerAtHeight { height, address },
     )?;
-    to_binary(&voting_power)
+    to_json_binary(&voting_power)
 }
 
 pub fn query_total_power_at_height(deps: Deps, height: Option<u64>) -> StdResult<Binary> {
@@ -734,17 +734,17 @@ pub fn query_total_power_at_height(deps: Deps, height: Option<u64>) -> StdResult
     let total_power: voting::TotalPowerAtHeightResponse = deps
         .querier
         .query_wasm_smart(voting_module, &voting::Query::TotalPowerAtHeight { height })?;
-    to_binary(&total_power)
+    to_json_binary(&total_power)
 }
 
 pub fn query_get_item(deps: Deps, item: String) -> StdResult<Binary> {
     let item = ITEMS.may_load(deps.storage, item)?;
-    to_binary(&GetItemResponse { item })
+    to_json_binary(&GetItemResponse { item })
 }
 
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
-    to_binary(&dao_interface::voting::InfoResponse { info })
+    to_json_binary(&dao_interface::voting::InfoResponse { info })
 }
 
 pub fn query_list_items(
@@ -752,7 +752,7 @@ pub fn query_list_items(
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<Binary> {
-    to_binary(&paginate_map(
+    to_json_binary(&paginate_map(
         deps,
         &ITEMS,
         start_after,
@@ -766,7 +766,7 @@ pub fn query_cw20_list(
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<Binary> {
-    to_binary(&paginate_map_keys(
+    to_json_binary(&paginate_map_keys(
         deps,
         &CW20_LIST,
         start_after
@@ -782,7 +782,7 @@ pub fn query_cw721_list(
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<Binary> {
-    to_binary(&paginate_map_keys(
+    to_json_binary(&paginate_map_keys(
         deps,
         &CW721_LIST,
         start_after
@@ -823,7 +823,7 @@ pub fn query_cw20_balances(
             })
         })
         .collect::<StdResult<Vec<_>>>()?;
-    to_binary(&balances)
+    to_json_binary(&balances)
 }
 
 pub fn query_list_sub_daos(
@@ -851,18 +851,18 @@ pub fn query_list_sub_daos(
         })
         .collect();
 
-    to_binary(&subdaos)
+    to_json_binary(&subdaos)
 }
 
 pub fn query_dao_uri(deps: Deps) -> StdResult<Binary> {
     let config = CONFIG.load(deps.storage)?;
-    to_binary(&DaoURIResponse {
+    to_json_binary(&DaoURIResponse {
         dao_uri: config.dao_uri,
     })
 }
 
 pub fn query_proposal_module_count(deps: Deps) -> StdResult<Binary> {
-    to_binary(&ProposalModuleCountResponse {
+    to_json_binary(&ProposalModuleCountResponse {
         active_proposal_module_count: ACTIVE_PROPOSAL_MODULE_COUNT.load(deps.storage)?,
         total_proposal_module_count: TOTAL_PROPOSAL_MODULE_COUNT.load(deps.storage)?,
     })
@@ -925,12 +925,13 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
             let response = if let Some(migrate_params) = params {
                 let msg = WasmMsg::Execute {
                     contract_addr: env.contract.address.to_string(),
-                    msg: to_binary(&ExecuteMsg::UpdateProposalModules {
+                    msg: to_json_binary(&ExecuteMsg::UpdateProposalModules {
                         to_add: vec![ModuleInstantiateInfo {
                             code_id: migrate_params.migrator_code_id,
-                            msg: to_binary(&migrate_params.params).unwrap(),
+                            msg: to_json_binary(&migrate_params.params).unwrap(),
                             admin: Some(Admin::CoreModule {}),
                             label: "migrator".to_string(),
+                            funds: vec![],
                         }],
                         to_disable: vec![],
                     })
@@ -972,7 +973,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
             // Check for module instantiation callbacks
             let callback_msgs = match res.data {
-                Some(data) => from_binary::<ModuleInstantiateCallback>(&data)
+                Some(data) => from_json::<ModuleInstantiateCallback>(&data)
                     .map(|m| m.msgs)
                     .unwrap_or_else(|_| vec![]),
                 None => vec![],
@@ -998,7 +999,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
             // Check for module instantiation callbacks
             let callback_msgs = match res.data {
-                Some(data) => from_binary::<ModuleInstantiateCallback>(&data)
+                Some(data) => from_json::<ModuleInstantiateCallback>(&data)
                     .map(|m| m.msgs)
                     .unwrap_or_else(|_| vec![]),
                 None => vec![],

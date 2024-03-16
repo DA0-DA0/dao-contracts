@@ -3,7 +3,7 @@ use crate::msg::{
     NativeEntitlementResponse, QueryMsg, TotalPowerResponse, VotingContractResponse,
 };
 use crate::ContractError;
-use cosmwasm_std::{to_binary, Addr, Binary, Coin, Empty, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, Binary, Coin, Empty, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 
@@ -114,7 +114,7 @@ fn setup_test(initial_balances: Vec<Cw20Coin>) -> BaseTest {
             &cw20_base::msg::ExecuteMsg::Send {
                 contract: staking_contract.to_string(),
                 amount,
-                msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+                msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
             },
             &[],
         )
@@ -1044,7 +1044,7 @@ pub fn test_redistribute_unclaimed_funds() {
         WasmMsg::Migrate {
             contract_addr: distributor_address.to_string(),
             new_code_id: distributor_id,
-            msg: to_binary(migrate_msg).unwrap(),
+            msg: to_json_binary(migrate_msg).unwrap(),
         }
         .into(),
     )
@@ -1121,7 +1121,7 @@ pub fn test_unauthorized_redistribute_unclaimed_funds() {
         WasmMsg::Migrate {
             contract_addr: distributor_address.to_string(),
             new_code_id: distributor_id,
-            msg: to_binary(migrate_msg).unwrap(),
+            msg: to_json_binary(migrate_msg).unwrap(),
         }
         .into(),
     )
@@ -1398,7 +1398,7 @@ fn test_query_cw20_entitlements() {
         .unwrap();
 
     assert_eq!(res.len(), 1);
-    let entitlement = res.get(0).unwrap();
+    let entitlement = res.first().unwrap();
     assert_eq!(entitlement.amount.u128(), 500000);
     assert_eq!(entitlement.token_contract, token_address);
 }
@@ -1451,7 +1451,7 @@ fn test_query_native_entitlements() {
         .unwrap();
 
     assert_eq!(res.len(), 1);
-    let entitlement = res.get(0).unwrap();
+    let entitlement = res.first().unwrap();
     assert_eq!(entitlement.amount.u128(), 500000);
     assert_eq!(entitlement.denom, FEE_DENOM);
 }
@@ -1601,7 +1601,7 @@ fn test_query_cw20_tokens() {
         .unwrap();
 
     assert_eq!(res.len(), 1);
-    let cw20 = res.get(0).unwrap();
+    let cw20 = res.first().unwrap();
     assert_eq!(cw20.token, "contract1");
     assert_eq!(cw20.contract_balance.u128(), 500000);
 }
@@ -1642,7 +1642,7 @@ fn test_query_native_denoms() {
 
     // assert distributor now contains one expected native token
     assert_eq!(res.len(), 1);
-    let denom = res.get(0).unwrap();
+    let denom = res.first().unwrap();
     assert_eq!(denom.denom, FEE_DENOM.to_string());
     assert_eq!(denom.contract_balance.u128(), 500000);
 }

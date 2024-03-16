@@ -4,6 +4,7 @@ use osmosis_test_tube::Account;
 
 use crate::test_env::{TestEnv, TokenfactoryIssuer};
 
+#[cfg(feature = "osmosis_tokenfactory")]
 #[test]
 fn test_force_transfer() {
     let env = TestEnv::default();
@@ -37,7 +38,9 @@ fn test_force_transfer() {
 
     assert_eq!(
         err,
-        TokenfactoryIssuer::execute_error(ContractError::Unauthorized {})
+        TokenfactoryIssuer::execute_error(ContractError::Ownership(
+            cw_ownable::OwnershipError::NotOwner
+        ))
     );
 
     // Owner can force transfer tokens

@@ -1,5 +1,9 @@
 [package]
-authors = ["Maurits Bos <maurits.bos@gmail.com>", "Sunny Aggarwal <sunny@osmsosis.team>", "Jake Hartnell <no-reply@no-reply.com>"]
+authors = [
+  "Maurits Bos <maurits.bos@gmail.com>",
+  "Sunny Aggarwal <sunny@osmsosis.team>",
+  "Jake Hartnell <no-reply@no-reply.com>",
+]
 name = "cw-tokenfactory-issuer"
 description = "A CosmWasm contract that issues new Token Factory tokens on supported chains."
 version = { workspace = true }
@@ -23,28 +27,32 @@ exclude = [
 crate-type = ["cdylib", "rlib"]
 
 [features]
+default = ["osmosis_tokenfactory"]
 # for more explicit tests, cargo test --features=backtraces
 backtraces = ["cosmwasm-std/backtraces"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
 # use test tube feature to enable test-tube integration tests, for example
 # cargo test --features "test-tube"
-test-tube = []
-# when writing tests you may wish to enable test-tube as a default feature
-# default = ["test-tube"]
+test-tube = ["osmosis_tokenfactory"]
+# different tokenfactory cosmos sdk module standards. enable corresponding
+# standard in types library
+osmosis_tokenfactory = ["cw-tokenfactory-types/osmosis_tokenfactory"]
+cosmwasm_tokenfactory = ["cw-tokenfactory-types/cosmwasm_tokenfactory"]
 
 [dependencies]
 cosmwasm-schema = { workspace = true }
 cosmwasm-std = { workspace = true }
-cosmwasm-storage = { workspace = true }
-cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
+cw-ownable = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-tokenfactory-types = { workspace = true, default-features = false }
+dao-interface = { workspace = true }
 osmosis-std = { workspace = true }
 prost = { workspace = true }
 schemars = { workspace = true }
-serde = { workspace = true, default-features = false, features = ["derive"]}
+serde = { workspace = true, default-features = false, features = ["derive"] }
 thiserror = { workspace = true }
-token-bindings = { workspace = true }
 
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }

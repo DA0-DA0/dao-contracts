@@ -1,0 +1,71 @@
+name: Test Tube Tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    env:
+      GAS_OUT_DIR: gas_reports
+      GAS_LIMIT: 100000000
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install latest nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly-2024-01-08
+          target: wasm32-unknown-unknown
+          override: true
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+
+      - name: Clone libwasmv (needed for test-tube)
+        uses: actions/checkout@v2
+        with:
+          repository: CosmWasm/wasmvm
+          path: ./wasmvm
+          ref: v1.4.1
+
+      - name: Install libwasmv
+        run: cd ./wasmvm && make build-rust && cd ../
+
+      - name: Rust Dependencies Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+            artifacts/
+          key: ${{ runner.os }}-cargo-with-artifacts-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Set latest just version
+        run: echo "JUST_VERSION=$(cargo search just -q | sed -n -e '/^just[[:space:]]/p' | cut -d '"' -f 2)" >> $GITHUB_ENV
+
+      - name: Get cached just
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/bin/just
+          key: ${{ runner.os }}-just-${{ env.JUST_VERSION }}
+
+      - name: Install just
+        run: cargo install just || true
+
+      - name: Run download deps
+        run: just download-deps
+
+      - name: Run workspace optimize
+        run: just workspace-optimize
+
+      - name: Run Test Tube Integration Tests
+        run: just test-tube

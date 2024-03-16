@@ -55,6 +55,10 @@ cd packages/cw721-controllers
 cargo publish
 cd "$START_DIR"
 
+cd packages/dao-cw721-extensions
+cargo hack publish --no-dev-deps --allow-dirty
+cd "$START_DIR"
+
 cd packages/dao-interface
 cargo publish
 cd "$START_DIR"
@@ -67,36 +71,40 @@ cd packages/dao-voting
 cargo publish
 cd "$START_DIR"
 
-cd packages/dao-vote-hooks
+cd packages/dao-hooks
 cargo publish
 cd "$START_DIR"
 
 sleep 120
 
-cd packages/dao-proposal-hooks
-cargo publish
-cd "$START_DIR"
-
 cd packages/dao-pre-propose-base
 cargo publish
 cd "$START_DIR"
 
-# Test contracts
-cd test-contracts/dao-proposal-sudo
+Test contracts
+cd contracts/test/dao-proposal-sudo
 cargo publish
 cd "$START_DIR"
 
-cd test-contracts/dao-voting-cw20-balance
+cd contracts/test/dao-voting-cw20-balance
 cargo publish
 cd "$START_DIR"
 
-cd test-contracts/dao-proposal-hook-counter
+cd contracts/test/dao-proposal-hook-counter
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
 
 sleep 120
 
 # Contracts
+cd contracts/external/cw-tokenfactory-issuer
+cargo hack publish --no-dev-deps --allow-dirty
+cd "$START_DIR"
+
+cd contracts/test/dao-test-custom-factory
+cargo hack publish --no-dev-deps --allow-dirty
+cd "$START_DIR"
+
 cd contracts/external/cw-token-swap
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
@@ -106,6 +114,10 @@ cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
 
 cd contracts/external/cw-payroll-factory
+cargo hack publish --no-dev-deps --allow-dirty
+cd "$START_DIR"
+
+cd contracts/external/cw721-roles
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
 
@@ -163,11 +175,15 @@ cd contracts/voting/dao-voting-cw20-staked
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
 
+cd contracts/voting/dao-voting-cw721-roles
+cargo hack publish --no-dev-deps --allow-dirty
+cd "$START_DIR"
+
 cd contracts/voting/dao-voting-cw721-staked
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
 
-cd contracts/voting/dao-voting-native-staked
+cd contracts/voting/dao-voting-token-staked
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
 
@@ -189,6 +205,7 @@ sleep 120
 cd contracts/external/dao-migrator
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
+
 
 cd packages/dao-testing
 cargo publish

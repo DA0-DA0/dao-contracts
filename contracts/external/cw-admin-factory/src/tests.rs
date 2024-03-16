@@ -2,7 +2,7 @@ use std::vec;
 
 use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, Addr, Binary, Empty, Reply, SubMsg, SubMsgResponse, SubMsgResult, WasmMsg,
+    to_json_binary, Addr, Binary, Empty, Reply, SubMsg, SubMsgResponse, SubMsgResult, WasmMsg,
 };
 
 use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
@@ -82,21 +82,24 @@ pub fn test_set_admin() {
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: cw20_code_id,
-            msg: to_binary(&cw20_instantiate).unwrap(),
+            msg: to_json_binary(&cw20_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
+            funds: vec![],
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![
             ModuleInstantiateInfo {
                 code_id: cw20_code_id,
-                msg: to_binary(&cw20_instantiate).unwrap(),
+                msg: to_json_binary(&cw20_instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
+                funds: vec![],
                 label: "prop module".to_string(),
             },
             ModuleInstantiateInfo {
                 code_id: cw20_code_id,
-                msg: to_binary(&cw20_instantiate).unwrap(),
+                msg: to_json_binary(&cw20_instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
+                funds: vec![],
                 label: "prop module 2".to_string(),
             },
         ],
@@ -108,7 +111,7 @@ pub fn test_set_admin() {
             Addr::unchecked("CREATOR"),
             factory_addr,
             &ExecuteMsg::InstantiateContractWithSelfAdmin {
-                instantiate_msg: to_binary(&instantiate_core).unwrap(),
+                instantiate_msg: to_json_binary(&instantiate_core).unwrap(),
                 code_id: cw_core_code_id,
                 label: "my contract".to_string(),
             },

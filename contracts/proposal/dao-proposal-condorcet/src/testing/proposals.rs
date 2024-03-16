@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, WasmMsg};
+use cosmwasm_std::{to_json_binary, WasmMsg};
 use cw_utils::Duration;
 
 use crate::{
@@ -171,7 +171,7 @@ fn test_proposal_set_config() {
             suite.sender(),
             vec![vec![WasmMsg::Execute {
                 contract_addr: suite.condorcet.to_string(),
-                msg: to_binary(&ExecuteMsg::SetConfig(UncheckedConfig {
+                msg: to_json_binary(&ExecuteMsg::SetConfig(UncheckedConfig {
                     quorum: config.quorum,
                     voting_period: config.voting_period,
                     min_voting_period: None,
@@ -194,7 +194,7 @@ fn test_proposal_set_config() {
             suite.sender(),
             vec![vec![WasmMsg::Execute {
                 contract_addr: suite.condorcet.to_string(),
-                msg: to_binary(&ExecuteMsg::SetConfig(UncheckedConfig {
+                msg: to_json_binary(&ExecuteMsg::SetConfig(UncheckedConfig {
                     quorum: config.quorum,
                     voting_period: config.voting_period,
                     min_voting_period: Some(Duration::Height(10)),

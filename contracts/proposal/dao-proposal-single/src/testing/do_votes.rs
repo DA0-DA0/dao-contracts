@@ -1,7 +1,9 @@
-use cosmwasm_std::{coins, Addr, Uint128};
+use std::mem::discriminant;
+
+use cosmwasm_std::{coins, Addr, Coin, Uint128};
 use cw20::Cw20Coin;
 
-use cw_multi_test::{App, BankSudo, Executor};
+use cw_multi_test::{App, BankSudo, Executor, SudoMsg};
 use dao_interface::state::ProposalModule;
 use dao_pre_propose_single as cppbps;
 
@@ -96,6 +98,17 @@ where
 {
     let mut app = App::default();
 
+    // Mint some ujuno so that it exists for native staking tests
+    // Otherwise denom validation will fail
+    app.sudo(SudoMsg::Bank(BankSudo::Mint {
+        to_address: "sodenomexists".to_string(),
+        amount: vec![Coin {
+            amount: Uint128::new(10),
+            denom: "ujuno".to_string(),
+        }],
+    }))
+    .unwrap();
+
     let mut initial_balances = votes
         .iter()
         .map(|TestSingleChoiceVote { voter, weight, .. }| Cw20Coin {
@@ -121,6 +134,7 @@ where
 
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
+        veto: None,
         threshold,
         max_voting_period,
         min_voting_period: None,
@@ -193,6 +207,7 @@ where
                 title: "A simple text proposal".to_string(),
                 description: "This is a simple text proposal".to_string(),
                 msgs: vec![],
+                vote: None,
             },
         },
         &funds,
@@ -269,7 +284,11 @@ where
         .query_wasm_smart(proposal_single, &QueryMsg::Proposal { proposal_id: 1 })
         .unwrap();
 
-    assert_eq!(proposal.proposal.status, expected_status);
+    // We just care about getting the right variant
+    assert_eq!(
+        discriminant::<Status>(&proposal.proposal.status),
+        discriminant::<Status>(&expected_status)
+    );
 
     (app, core_addr)
 }

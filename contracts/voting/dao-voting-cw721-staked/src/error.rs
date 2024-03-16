@@ -1,4 +1,6 @@
 use cosmwasm_std::{Addr, StdError};
+use cw_utils::ParseReplyError;
+use dao_voting::threshold::ActiveThresholdError;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
@@ -6,14 +8,20 @@ pub enum ContractError {
     #[error(transparent)]
     Std(#[from] StdError),
 
-    #[error("Can not stake that which has already been staked")]
-    AlreadyStaked {},
+    #[error(transparent)]
+    ActiveThresholdError(#[from] ActiveThresholdError),
 
     #[error(transparent)]
-    HookError(#[from] cw_controllers::HookError),
+    HookError(#[from] cw_hooks::HookError),
 
-    #[error("Active threshold percentage must be greater than 0 and less than 1")]
-    InvalidActivePercentage {},
+    #[error(transparent)]
+    ParseReplyError(#[from] ParseReplyError),
+
+    #[error(transparent)]
+    UnstakingDurationError(#[from] dao_voting::duration::UnstakingDurationError),
+
+    #[error("Can not stake that which has already been staked")]
+    AlreadyStaked {},
 
     #[error("Invalid token. Got ({received}), expected ({expected})")]
     InvalidToken { received: Addr, expected: Addr },
@@ -23,6 +31,9 @@ pub enum ContractError {
 
     #[error("New NFT contract must be instantiated with at least one NFT")]
     NoInitialNfts {},
+
+    #[error("Factory contract did not implment the required NftFactoryCallback interface")]
+    NoFactoryCallback {},
 
     #[error("Nothing to claim")]
     NothingToClaim {},
@@ -42,8 +53,8 @@ pub enum ContractError {
     #[error("Got a submessage reply with unknown id: {id}")]
     UnknownReplyId { id: u64 },
 
-    #[error("Active threshold count must be greater than zero")]
-    ZeroActiveCount {},
+    #[error("Factory message must serialize to WasmMsg::Execute")]
+    UnsupportedFactoryMsg {},
 
     #[error("Can't unstake zero NFTs.")]
     ZeroUnstake {},

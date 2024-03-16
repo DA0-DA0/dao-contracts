@@ -13,8 +13,8 @@ cosmwasm-schema = { workspace = true }
 cw2 = { workspace = true }
 cw20 = { workspace = true }
 cw721 = { workspace = true }
-cw-hooks = { workspace = true }
 cw-utils = { workspace = true }
+osmosis-std = { workspace = true }
 
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }

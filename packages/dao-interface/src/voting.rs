@@ -8,6 +8,9 @@ pub enum Query {
     /// Returns the token contract address, if set.
     #[returns(::cosmwasm_std::Addr)]
     TokenContract {},
+    /// Returns the native token denom, if used.
+    #[returns(DenomResponse)]
+    Denom {},
     /// Returns the voting power for an address at a given height.
     #[returns(VotingPowerAtHeightResponse)]
     VotingPowerAtHeight {
@@ -31,6 +34,11 @@ pub enum Query {
 }
 
 #[cw_serde]
+pub enum ActiveThresholdQuery {
+    ActiveThreshold {},
+}
+
+#[cw_serde]
 pub struct VotingPowerAtHeightResponse {
     pub power: Uint128,
     pub height: u64,
@@ -50,4 +58,9 @@ pub struct InfoResponse {
 #[cw_serde]
 pub struct IsActiveResponse {
     pub active: bool,
+}
+
+#[cw_serde]
+pub struct DenomResponse {
+    pub denom: String,
 }

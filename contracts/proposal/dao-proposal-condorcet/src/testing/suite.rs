@@ -1,4 +1,4 @@
-use cosmwasm_std::{coins, to_binary, Addr, BankMsg, CosmosMsg, Decimal};
+use cosmwasm_std::{coins, to_json_binary, Addr, BankMsg, CosmosMsg, Decimal};
 use cw_multi_test::{next_block, App, Executor};
 use cw_utils::Duration;
 use dao_interface::{
@@ -88,7 +88,7 @@ impl SuiteBuilder {
             automatically_add_cw721s: false,
             voting_module_instantiate_info: ModuleInstantiateInfo {
                 code_id: cw4_voting_id,
-                msg: to_binary(&dao_voting_cw4::msg::InstantiateMsg {
+                msg: to_json_binary(&dao_voting_cw4::msg::InstantiateMsg {
                     group_contract: GroupContract::New {
                         cw4_group_code_id: cw4_id,
                         initial_members,
@@ -96,12 +96,14 @@ impl SuiteBuilder {
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
+                funds: vec![],
                 label: "voting module".to_string(),
             },
             proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
                 code_id: condorcet_id,
-                msg: to_binary(&self.instantiate).unwrap(),
+                msg: to_json_binary(&self.instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
+                funds: vec![],
                 label: "condorcet module".to_string(),
             }],
             initial_items: None,

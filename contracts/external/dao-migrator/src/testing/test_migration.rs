@@ -189,6 +189,7 @@ fn test_duplicate_proposal_params() {
             ProposalParams {
                 close_proposal_on_execution_failure: true,
                 pre_propose_info: dao_voting::pre_propose::PreProposeInfo::AnyoneMayPropose {},
+                veto: None,
             },
         ),
         (
@@ -196,6 +197,7 @@ fn test_duplicate_proposal_params() {
             ProposalParams {
                 close_proposal_on_execution_failure: true,
                 pre_propose_info: dao_voting::pre_propose::PreProposeInfo::AnyoneMayPropose {},
+                veto: None,
             },
         ),
     ];

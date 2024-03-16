@@ -11,17 +11,20 @@ version = { workspace = true }
 crate-type = ["cdylib", "rlib"]
 
 [features]
+default = ["staking"]
 # for more explicit tests, cargo test --features=backtraces
 backtraces = ["cosmwasm-std/backtraces"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
+# enable staking features on chains that support staking. most do, so this is a
+# default. Neutron does not, for example.
+staking = ["cosmwasm-std/staking"]
 
 [dependencies]
 cosmwasm-schema = { workspace = true }
-cosmwasm-std = { workspace = true, features = ["staking"] }
+cosmwasm-std = { workspace = true }
 cw-denom = { workspace = true }
 cw-ownable = { workspace = true }
-cw-paginate-storage = { workspace = true }
 cw-stake-tracker = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }

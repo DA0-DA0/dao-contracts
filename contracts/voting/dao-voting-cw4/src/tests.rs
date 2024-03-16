@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     testing::{mock_dependencies, mock_env},
-    to_binary, Addr, CosmosMsg, Empty, Uint128, WasmMsg,
+    to_json_binary, Addr, CosmosMsg, Empty, Uint128, WasmMsg,
 };
 use cw2::ContractVersion;
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
@@ -608,7 +608,7 @@ fn test_migrate() {
         CosmosMsg::Wasm(WasmMsg::Migrate {
             contract_addr: voting_addr.to_string(),
             new_code_id: voting_id,
-            msg: to_binary(&MigrateMsg {}).unwrap(),
+            msg: to_json_binary(&MigrateMsg {}).unwrap(),
         }),
     )
     .unwrap();
@@ -735,7 +735,7 @@ fn test_zero_voting_power() {
 #[test]
 pub fn test_migrate_update_version() {
     let mut deps = mock_dependencies();
-    cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
+    cw2::set_contract_version(&mut deps.storage, "my-contract", "1.0.0").unwrap();
     migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
     let version = cw2::get_contract_version(&deps.storage).unwrap();
     assert_eq!(version.version, CONTRACT_VERSION);

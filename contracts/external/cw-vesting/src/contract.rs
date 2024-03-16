@@ -1,9 +1,12 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, Coin, CosmosMsg, DelegationResponse, Deps, DepsMut,
-    DistributionMsg, Env, MessageInfo, Response, StakingMsg, StakingQuery, StdResult, Timestamp,
-    Uint128,
+    from_json, to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
+    StdResult, Uint128,
+};
+#[cfg(feature = "staking")]
+use cosmwasm_std::{
+    Coin, DelegationResponse, DistributionMsg, StakingMsg, StakingQuery, Timestamp,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
@@ -52,7 +55,7 @@ pub fn instantiate(
     )?;
     UNBONDING_DURATION_SECONDS.save(deps.storage, &msg.unbonding_duration_seconds)?;
 
-    let resp = match vest.denom {
+    let resp: Option<CosmosMsg> = match vest.denom {
         CheckedDenom::Native(ref denom) => {
             let sent = must_pay(&info, denom)?;
             if vest.total() != sent {
@@ -67,6 +70,7 @@ pub fn instantiate(
             // denomination, set the staking rewards receiver to the
             // payment receiver so that when they stake vested tokens
             // they receive the rewards.
+            #[cfg(feature = "staking")]
             if denom.as_str() == deps.querier.query_bonded_denom()? {
                 Some(CosmosMsg::Distribution(
                     DistributionMsg::SetWithdrawAddress {
@@ -76,6 +80,9 @@ pub fn instantiate(
             } else {
                 None
             }
+
+            #[cfg(not(feature = "staking"))]
+            None
         }
         CheckedDenom::Cw20(_) => {
             nonpayable(&info)?; // Funding happens in ExecuteMsg::Receive.
@@ -98,27 +105,33 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Receive(msg) => execute_receive_cw20(env, deps, info, msg),
-        ExecuteMsg::Distribute { amount } => execute_distribute(env, deps, amount),
         ExecuteMsg::Cancel {} => execute_cancel_vesting_payment(env, deps, info),
+        ExecuteMsg::Distribute { amount } => execute_distribute(env, deps, amount),
+        ExecuteMsg::WithdrawCanceledPayment { amount } => {
+            execute_withdraw_canceled_payment(deps, env, amount)
+        }
         ExecuteMsg::UpdateOwnership(action) => execute_update_owner(deps, info, env, action),
+        #[cfg(feature = "staking")]
         ExecuteMsg::Delegate { validator, amount } => {
             execute_delegate(env, deps, info, validator, amount)
         }
+        #[cfg(feature = "staking")]
         ExecuteMsg::Redelegate {
             src_validator,
             dst_validator,
             amount,
         } => execute_redelegate(env, deps, info, src_validator, dst_validator, amount),
+        #[cfg(feature = "staking")]
         ExecuteMsg::Undelegate { validator, amount } => {
             execute_undelegate(env, deps, info, validator, amount)
         }
+        #[cfg(feature = "staking")]
         ExecuteMsg::SetWithdrawAddress { address } => {
             execute_set_withdraw_address(deps, env, info, address)
         }
+        #[cfg(feature = "staking")]
         ExecuteMsg::WithdrawDelegatorReward { validator } => execute_withdraw_rewards(validator),
-        ExecuteMsg::WithdrawCanceledPayment { amount } => {
-            execute_withdraw_canceled_payment(deps, env, amount)
-        }
+        #[cfg(feature = "staking")]
         ExecuteMsg::RegisterSlash {
             validator,
             time,
@@ -137,7 +150,7 @@ pub fn execute_receive_cw20(
     // Only accepts cw20 tokens
     nonpayable(&info)?;
 
-    let msg: ReceiveMsg = from_binary(&receive_msg.msg)?;
+    let msg: ReceiveMsg = from_json(&receive_msg.msg)?;
 
     match msg {
         ReceiveMsg::Fund {} => {
@@ -227,6 +240,7 @@ pub fn execute_update_owner(
     Ok(Response::default().add_attributes(ownership.into_attributes()))
 }
 
+#[cfg(feature = "staking")]
 pub fn execute_delegate(
     env: Env,
     deps: DepsMut,
@@ -267,6 +281,7 @@ pub fn execute_delegate(
         .add_message(msg))
 }
 
+#[cfg(feature = "staking")]
 pub fn execute_redelegate(
     env: Env,
     deps: DepsMut,
@@ -333,6 +348,7 @@ pub fn execute_redelegate(
         .add_message(msg))
 }
 
+#[cfg(feature = "staking")]
 pub fn execute_undelegate(
     env: Env,
     deps: DepsMut,
@@ -375,6 +391,7 @@ pub fn execute_undelegate(
         .add_attribute("amount", amount))
 }
 
+#[cfg(feature = "staking")]
 pub fn execute_set_withdraw_address(
     deps: DepsMut,
     env: Env,
@@ -407,6 +424,7 @@ pub fn execute_set_withdraw_address(
         .add_message(msg))
 }
 
+#[cfg(feature = "staking")]
 pub fn execute_withdraw_rewards(validator: String) -> Result<Response, ContractError> {
     let withdraw_msg = DistributionMsg::WithdrawDelegatorReward { validator };
     Ok(Response::default()
@@ -414,6 +432,7 @@ pub fn execute_withdraw_rewards(validator: String) -> Result<Response, ContractE
         .add_message(withdraw_msg))
 }
 
+#[cfg(feature = "staking")]
 pub fn execute_register_slash(
     deps: DepsMut,
     env: Env,
@@ -446,20 +465,20 @@ pub fn execute_register_slash(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
-        QueryMsg::Info {} => to_binary(&PAYMENT.get_vest(deps.storage)?),
-        QueryMsg::Distributable { t } => to_binary(&PAYMENT.distributable(
+        QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
+        QueryMsg::Info {} => to_json_binary(&PAYMENT.get_vest(deps.storage)?),
+        QueryMsg::Distributable { t } => to_json_binary(&PAYMENT.distributable(
             deps.storage,
             &PAYMENT.get_vest(deps.storage)?,
             t.unwrap_or(env.block.time),
         )?),
         QueryMsg::Stake(q) => PAYMENT.query_stake(deps.storage, q),
-        QueryMsg::Vested { t } => to_binary(
+        QueryMsg::Vested { t } => to_json_binary(
             &PAYMENT
                 .get_vest(deps.storage)?
                 .vested(t.unwrap_or(env.block.time)),
         ),
-        QueryMsg::TotalToVest {} => to_binary(&PAYMENT.get_vest(deps.storage)?.total()),
-        QueryMsg::VestDuration {} => to_binary(&PAYMENT.duration(deps.storage)?),
+        QueryMsg::TotalToVest {} => to_json_binary(&PAYMENT.get_vest(deps.storage)?.total()),
+        QueryMsg::VestDuration {} => to_json_binary(&PAYMENT.duration(deps.storage)?),
     }
 }

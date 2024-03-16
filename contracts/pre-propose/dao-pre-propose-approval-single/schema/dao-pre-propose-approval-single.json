@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-pre-propose-approval-single",
-  "contract_version": "2.2.0",
+  "contract_version": "2.4.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -88,7 +88,7 @@
             "additionalProperties": false
           },
           {
-            "description": "Use the token address of the associated DAO's voting module. NOTE: in order to use the token address of the voting module the voting module must (1) use a cw20 token and (2) implement the `TokenContract {}` query type defined by `dao_dao_macros::token_query`. Failing to implement that and using this option will cause instantiation to fail.",
+            "description": "Use the token native denom or cw20 contract address of the associated DAO's voting module. NOTE: in order to retrieve the token automatically via this variant, the voting module must either (1) use a native token and implement the `Denom {}` query type defined by `dao_dao_macros::native_token_query` OR (2) use a cw20 token and implement the `TokenContract {}` query type defined by `dao_dao_macros::cw20_token_query`. Failing to implement correctly will cause this option to fail to instantiate.",
             "type": "object",
             "required": [
               "voting_module_token"
@@ -96,6 +96,14 @@
             "properties": {
               "voting_module_token": {
                 "type": "object",
+                "required": [
+                  "token_type"
+                ],
+                "properties": {
+                  "token_type": {
+                    "$ref": "#/definitions/VotingModuleTokenType"
+                  }
+                },
                 "additionalProperties": false
               }
             },
@@ -185,6 +193,13 @@
           }
         },
         "additionalProperties": false
+      },
+      "VotingModuleTokenType": {
+        "type": "string",
+        "enum": [
+          "native",
+          "cw20"
+        ]
       }
     }
   },
@@ -609,7 +624,7 @@
             "additionalProperties": false
           },
           {
-            "description": "Use the token address of the associated DAO's voting module. NOTE: in order to use the token address of the voting module the voting module must (1) use a cw20 token and (2) implement the `TokenContract {}` query type defined by `dao_dao_macros::token_query`. Failing to implement that and using this option will cause instantiation to fail.",
+            "description": "Use the token native denom or cw20 contract address of the associated DAO's voting module. NOTE: in order to retrieve the token automatically via this variant, the voting module must either (1) use a native token and implement the `Denom {}` query type defined by `dao_dao_macros::native_token_query` OR (2) use a cw20 token and implement the `TokenContract {}` query type defined by `dao_dao_macros::cw20_token_query`. Failing to implement correctly will cause this option to fail to instantiate.",
             "type": "object",
             "required": [
               "voting_module_token"
@@ -617,6 +632,14 @@
             "properties": {
               "voting_module_token": {
                 "type": "object",
+                "required": [
+                  "token_type"
+                ],
+                "properties": {
+                  "token_type": {
+                    "$ref": "#/definitions/VotingModuleTokenType"
+                  }
+                },
                 "additionalProperties": false
               }
             },
@@ -751,6 +774,53 @@
           }
         ]
       },
+      "Expiration": {
+        "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
+        "oneOf": [
+          {
+            "description": "AtHeight will expire when `env.block.height` >= height",
+            "type": "object",
+            "required": [
+              "at_height"
+            ],
+            "properties": {
+              "at_height": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "AtTime will expire when `env.block.time` >= time",
+            "type": "object",
+            "required": [
+              "at_time"
+            ],
+            "properties": {
+              "at_time": {
+                "$ref": "#/definitions/Timestamp"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Never will never expire. Used to express the empty variant",
+            "type": "object",
+            "required": [
+              "never"
+            ],
+            "properties": {
+              "never": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
       "GovMsg": {
         "description": "This message type allows the contract interact with the [x/gov] module in order to cast votes.\n\n[x/gov]: https://github.com/cosmos/cosmos-sdk/tree/v0.45.12/x/gov\n\n## Examples\n\nCast a simple vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); use cosmwasm_std::{GovMsg, VoteOption};\n\n#[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::Vote { proposal_id: 4, vote: VoteOption::Yes, })) } ```\n\nCast a weighted vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); # #[cfg(feature = \"cosmwasm_1_2\")] use cosmwasm_std::{Decimal, GovMsg, VoteOption, WeightedVoteOption};\n\n# #[cfg(feature = \"cosmwasm_1_2\")] #[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::VoteWeighted { proposal_id: 4, options: vec![ WeightedVoteOption { option: VoteOption::Yes, weight: Decimal::percent(65), }, WeightedVoteOption { option: VoteOption::Abstain, weight: Decimal::percent(35), }, ], })) } ```",
         "oneOf": [
@@ -816,7 +886,7 @@
                     ]
                   },
                   "channel_id": {
-                    "description": "exisiting channel to send the tokens over",
+                    "description": "existing channel to send the tokens over",
                     "type": "string"
                   },
                   "timeout": {
@@ -934,7 +1004,7 @@
             "minimum": 0.0
           },
           "revision": {
-            "description": "the version that the client is currently on (eg. after reseting the chain this could increment 1 as height drops to 0)",
+            "description": "the version that the client is currently on (e.g. after resetting the chain this could increment 1 as height drops to 0)",
             "type": "integer",
             "format": "uint64",
             "minimum": 0.0
@@ -968,6 +1038,16 @@
                   },
                   "title": {
                     "type": "string"
+                  },
+                  "vote": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/SingleChoiceAutoVote"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "additionalProperties": false
@@ -976,6 +1056,30 @@
             "additionalProperties": false
           }
         ]
+      },
+      "SingleChoiceAutoVote": {
+        "type": "object",
+        "required": [
+          "vote"
+        ],
+        "properties": {
+          "rationale": {
+            "description": "An optional rationale for why this vote was cast. This can be updated, set, or removed later by the address casting the vote.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vote": {
+            "description": "The proposer's position on the proposal.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Vote"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
       },
       "StakingMsg": {
         "description": "The message types of the staking module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto",
@@ -1104,6 +1208,35 @@
             "enum": [
               "execution_failed"
             ]
+          },
+          {
+            "description": "The proposal is timelocked. Only the configured vetoer can execute or veto until the timelock expires.",
+            "type": "object",
+            "required": [
+              "veto_timelock"
+            ],
+            "properties": {
+              "veto_timelock": {
+                "type": "object",
+                "required": [
+                  "expiration"
+                ],
+                "properties": {
+                  "expiration": {
+                    "$ref": "#/definitions/Expiration"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "The proposal has been vetoed.",
+            "type": "string",
+            "enum": [
+              "vetoed"
+            ]
           }
         ]
       },
@@ -1190,6 +1323,31 @@
         },
         "additionalProperties": false
       },
+      "Vote": {
+        "oneOf": [
+          {
+            "description": "Marks support for the proposal.",
+            "type": "string",
+            "enum": [
+              "yes"
+            ]
+          },
+          {
+            "description": "Marks opposition to the proposal.",
+            "type": "string",
+            "enum": [
+              "no"
+            ]
+          },
+          {
+            "description": "Marks participation but does not count towards the ratio of support / opposed.",
+            "type": "string",
+            "enum": [
+              "abstain"
+            ]
+          }
+        ]
+      },
       "VoteOption": {
         "type": "string",
         "enum": [
@@ -1197,6 +1355,13 @@
           "no",
           "abstain",
           "no_with_veto"
+        ]
+      },
+      "VotingModuleTokenType": {
+        "type": "string",
+        "enum": [
+          "native",
+          "cw20"
         ]
       },
       "WasmMsg": {
@@ -1273,7 +1438,7 @@
                     }
                   },
                   "label": {
-                    "description": "A human-readbale label for the contract",
+                    "description": "A human-readable label for the contract.\n\nValid values should: - not be empty - not be bigger than 128 bytes (or some chain-specific limit) - not start / end with whitespace",
                     "type": "string"
                   },
                   "msg": {
@@ -1501,6 +1666,54 @@
             "additionalProperties": false
           },
           {
+            "description": "Return whether or not the proposal is pending",
+            "type": "object",
+            "required": [
+              "is_pending"
+            ],
+            "properties": {
+              "is_pending": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "A proposal, pending or completed.",
+            "type": "object",
+            "required": [
+              "proposal"
+            ],
+            "properties": {
+              "proposal": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
             "description": "A pending proposal",
             "type": "object",
             "required": [
@@ -1578,6 +1791,117 @@
                       "integer",
                       "null"
                     ],
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "A completed proposal",
+            "type": "object",
+            "required": [
+              "completed_proposal"
+            ],
+            "properties": {
+              "completed_proposal": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "List of completed proposals",
+            "type": "object",
+            "required": [
+              "completed_proposals"
+            ],
+            "properties": {
+              "completed_proposals": {
+                "type": "object",
+                "properties": {
+                  "limit": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "format": "uint32",
+                    "minimum": 0.0
+                  },
+                  "start_after": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "reverse_completed_proposals"
+            ],
+            "properties": {
+              "reverse_completed_proposals": {
+                "type": "object",
+                "properties": {
+                  "limit": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "format": "uint32",
+                    "minimum": 0.0
+                  },
+                  "start_before": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "The completed approval ID for a created proposal ID.",
+            "type": "object",
+            "required": [
+              "completed_proposal_id_for_created_proposal_id"
+            ],
+            "properties": {
+              "completed_proposal_id_for_created_proposal_id": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
                     "format": "uint64",
                     "minimum": 0.0
                   }

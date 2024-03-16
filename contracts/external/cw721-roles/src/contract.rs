@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response,
+    from_json, to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response,
     StdResult, SubMsg, Uint64,
 };
 use cw4::{
@@ -154,7 +154,7 @@ pub fn execute_burn(
     token_id: String,
 ) -> Result<Response, ContractError> {
     // Lookup the owner of the NFT
-    let owner: OwnerOfResponse = from_binary(&Cw721Roles::default().query(
+    let owner: OwnerOfResponse = from_json(Cw721Roles::default().query(
         deps.as_ref(),
         env.clone(),
         QueryMsg::OwnerOf {
@@ -164,7 +164,7 @@ pub fn execute_burn(
     )?)?;
 
     // Get the weight of the token
-    let nft_info: NftInfoResponse<MetadataExt> = from_binary(&Cw721Roles::default().query(
+    let nft_info: NftInfoResponse<MetadataExt> = from_json(Cw721Roles::default().query(
         deps.as_ref(),
         env.clone(),
         QueryMsg::NftInfo {
@@ -438,14 +438,16 @@ pub fn execute_update_token_weight(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Extension { msg } => match msg {
-            QueryExt::Hooks {} => to_binary(&HOOKS.query_hooks(deps)?),
+            QueryExt::Hooks {} => to_json_binary(&HOOKS.query_hooks(deps)?),
             QueryExt::ListMembers { start_after, limit } => {
-                to_binary(&query_list_members(deps, start_after, limit)?)
+                to_json_binary(&query_list_members(deps, start_after, limit)?)
             }
             QueryExt::Member { addr, at_height } => {
-                to_binary(&query_member(deps, addr, at_height)?)
+                to_json_binary(&query_member(deps, addr, at_height)?)
             }
-            QueryExt::TotalWeight { at_height } => to_binary(&query_total_weight(deps, at_height)?),
+            QueryExt::TotalWeight { at_height } => {
+                to_json_binary(&query_total_weight(deps, at_height)?)
+            }
         },
         _ => Cw721Roles::default().query(deps, env, msg),
     }

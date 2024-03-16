@@ -1,7 +1,7 @@
 use cosmwasm_std::{
-    from_binary,
+    from_json,
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, Addr, Binary, ContractResult, Empty, Response, SubMsg, WasmMsg,
+    to_json_binary, Addr, Binary, ContractResult, Empty, Response, SubMsg, WasmMsg,
 };
 use cw_hooks::HooksResponse;
 use dao_voting::status::Status;
@@ -38,7 +38,7 @@ fn test_completed_hook_status_invariant() {
 
     assert_eq!(
         res.unwrap_err(),
-        PreProposeError::NotClosedOrExecuted {
+        PreProposeError::NotCompleted {
             status: Status::Passed
         }
     );
@@ -97,8 +97,8 @@ fn test_proposal_submitted_hooks() {
     module
         .execute_add_proposal_submitted_hook(deps.as_mut(), info, "one".to_string())
         .unwrap();
-    let hooks: HooksResponse = from_binary(
-        &module
+    let hooks: HooksResponse = from_json(
+        module
             .query(
                 deps.as_ref(),
                 mock_env(),
@@ -118,7 +118,7 @@ fn test_proposal_submitted_hooks() {
 
     deps.querier.update_wasm(|_| {
         // for responding to the next proposal ID query that gets fired by propose.
-        cosmwasm_std::SystemResult::Ok(ContractResult::Ok(to_binary(&1u64).unwrap()))
+        cosmwasm_std::SystemResult::Ok(ContractResult::Ok(to_json_binary(&1u64).unwrap()))
     });
 
     // The hooks fire when a proposal is created.
@@ -136,7 +136,7 @@ fn test_proposal_submitted_hooks() {
         res.messages[1],
         SubMsg::new(WasmMsg::Execute {
             contract_addr: "one".to_string(),
-            msg: to_binary(&Empty::default()).unwrap(),
+            msg: to_json_binary(&Empty::default()).unwrap(),
             funds: vec![],
         })
     );
@@ -153,8 +153,8 @@ fn test_proposal_submitted_hooks() {
     module
         .execute_remove_proposal_submitted_hook(deps.as_mut(), info, "one".to_string())
         .unwrap();
-    let hooks: HooksResponse = from_binary(
-        &module
+    let hooks: HooksResponse = from_json(
+        module
             .query(
                 deps.as_ref(),
                 mock_env(),

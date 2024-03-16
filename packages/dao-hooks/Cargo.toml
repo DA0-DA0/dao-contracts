@@ -1,0 +1,16 @@
+[package]
+name = "dao-hooks"
+authors = ["ekez ekez@withoutdoing.com", "Jake Hartnell <no-reply@no-reply.com>"]
+description = "A package for managing DAO vote, proposal, and stake hooks."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw4 = { workspace = true }
+cw-hooks = { workspace = true }
+dao-pre-propose-base = { workspace = true }
+dao-voting = { workspace = true }

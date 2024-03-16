@@ -1,60 +1,55 @@
 use cosmwasm_std::{Addr, Deps, Order, StdResult, Uint128};
 use cw_storage_plus::{Bound, Map};
-use token_bindings::TokenFactoryQuery;
 
 use crate::msg::{
-    AllowanceInfo, AllowanceResponse, AllowancesResponse, BlacklisteesResponse,
-    BlacklisterAllowancesResponse, DenomResponse, FreezerAllowancesResponse, IsFrozenResponse,
-    OwnerResponse, StatusInfo, StatusResponse, WhitelisteesResponse, WhitelisterAllowancesResponse,
+    AllowanceInfo, AllowanceResponse, AllowancesResponse, AllowlistResponse, DenomResponse,
+    DenylistResponse, IsFrozenResponse, StatusInfo, StatusResponse,
 };
 use crate::state::{
-    BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, DENOM, FREEZER_ALLOWANCES,
-    IS_FROZEN, MINTER_ALLOWANCES, OWNER, WHITELISTED_ADDRESSES, WHITELISTER_ALLOWANCES,
+    BeforeSendHookInfo, ALLOWLIST, BEFORE_SEND_HOOK_INFO, BURNER_ALLOWANCES, DENOM, DENYLIST,
+    IS_FROZEN, MINTER_ALLOWANCES,
 };
 
 // Default settings for pagination
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 
-pub fn query_denom(deps: Deps<TokenFactoryQuery>) -> StdResult<DenomResponse> {
+/// Returns the token denom that this contract is the admin for. Response: DenomResponse
+pub fn query_denom(deps: Deps) -> StdResult<DenomResponse> {
     let denom = DENOM.load(deps.storage)?;
     Ok(DenomResponse { denom })
 }
 
-pub fn query_is_frozen(deps: Deps<TokenFactoryQuery>) -> StdResult<IsFrozenResponse> {
+/// Returns if token transfer is disabled. Response: IsFrozenResponse
+pub fn query_is_frozen(deps: Deps) -> StdResult<IsFrozenResponse> {
     let is_frozen = IS_FROZEN.load(deps.storage)?;
     Ok(IsFrozenResponse { is_frozen })
 }
 
-pub fn query_owner(deps: Deps<TokenFactoryQuery>) -> StdResult<OwnerResponse> {
-    let owner = OWNER.load(deps.storage)?;
-    Ok(OwnerResponse {
-        address: owner.into_string(),
-    })
+/// Returns the owner of the contract. Response: Ownership
+pub fn query_owner(deps: Deps) -> StdResult<cw_ownable::Ownership<::cosmwasm_std::Addr>> {
+    cw_ownable::get_ownership(deps.storage)
 }
 
-pub fn query_mint_allowance(
-    deps: Deps<TokenFactoryQuery>,
-    address: String,
-) -> StdResult<AllowanceResponse> {
+/// Returns the mint allowance of the specified user. Response: AllowanceResponse
+pub fn query_mint_allowance(deps: Deps, address: String) -> StdResult<AllowanceResponse> {
     let allowance = MINTER_ALLOWANCES
         .may_load(deps.storage, &deps.api.addr_validate(&address)?)?
         .unwrap_or_else(Uint128::zero);
     Ok(AllowanceResponse { allowance })
 }
 
-pub fn query_burn_allowance(
-    deps: Deps<TokenFactoryQuery>,
-    address: String,
-) -> StdResult<AllowanceResponse> {
+/// Returns the allowance of the specified address. Response: AllowanceResponse
+pub fn query_burn_allowance(deps: Deps, address: String) -> StdResult<AllowanceResponse> {
     let allowance = BURNER_ALLOWANCES
         .may_load(deps.storage, &deps.api.addr_validate(&address)?)?
         .unwrap_or_else(Uint128::zero);
     Ok(AllowanceResponse { allowance })
 }
 
+/// Helper function used in allowance list queries.
 pub fn query_allowances(
-    deps: Deps<TokenFactoryQuery>,
+    deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
     allowances: Map<&Addr, Uint128>,
@@ -84,8 +79,9 @@ pub fn query_allowances(
         .collect()
 }
 
+/// Enumerates over all allownances. Response: AllowancesResponse
 pub fn query_mint_allowances(
-    deps: Deps<TokenFactoryQuery>,
+    deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<AllowancesResponse> {
@@ -94,8 +90,9 @@ pub fn query_mint_allowances(
     })
 }
 
+/// Enumerates over all burn allownances. Response: AllowancesResponse
 pub fn query_burn_allowances(
-    deps: Deps<TokenFactoryQuery>,
+    deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<AllowancesResponse> {
@@ -104,28 +101,31 @@ pub fn query_burn_allowances(
     })
 }
 
-pub fn query_is_blacklisted(
-    deps: Deps<TokenFactoryQuery>,
-    address: String,
-) -> StdResult<StatusResponse> {
-    let status = BLACKLISTED_ADDRESSES
+/// Returns wether the user is on denylist or not. Response: StatusResponse
+pub fn query_is_denied(deps: Deps, address: String) -> StdResult<StatusResponse> {
+    let status = DENYLIST
         .load(deps.storage, &deps.api.addr_validate(&address)?)
         .unwrap_or(false);
     Ok(StatusResponse { status })
 }
 
-pub fn query_is_whitelisted(
-    deps: Deps<TokenFactoryQuery>,
-    address: String,
-) -> StdResult<StatusResponse> {
-    let status = WHITELISTED_ADDRESSES
+/// Returns wether the user is on the allowlist or not. Response: StatusResponse
+pub fn query_is_allowed(deps: Deps, address: String) -> StdResult<StatusResponse> {
+    let status = ALLOWLIST
         .load(deps.storage, &deps.api.addr_validate(&address)?)
         .unwrap_or(false);
     Ok(StatusResponse { status })
 }
 
+/// Returns whether features that require MsgBeforeSendHook are enabled.
+/// Most Cosmos chains do not support this feature yet.
+pub fn query_before_send_hook_features(deps: Deps) -> StdResult<BeforeSendHookInfo> {
+    BEFORE_SEND_HOOK_INFO.load(deps.storage)
+}
+
+/// A helper function used in list queries
 pub fn query_status_map(
-    deps: Deps<TokenFactoryQuery>,
+    deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
     map: Map<&Addr, bool>,
@@ -152,84 +152,24 @@ pub fn query_status_map(
         .collect()
 }
 
-pub fn query_blacklistees(
-    deps: Deps<TokenFactoryQuery>,
+/// Enumerates over all addresses on the allowlist. Response: AllowlistResponse
+pub fn query_allowlist(
+    deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> StdResult<BlacklisteesResponse> {
-    Ok(BlacklisteesResponse {
-        blacklistees: query_status_map(deps, start_after, limit, BLACKLISTED_ADDRESSES)?,
+) -> StdResult<AllowlistResponse> {
+    Ok(AllowlistResponse {
+        allowlist: query_status_map(deps, start_after, limit, ALLOWLIST)?,
     })
 }
 
-pub fn query_is_blacklister(
-    deps: Deps<TokenFactoryQuery>,
-    address: String,
-) -> StdResult<StatusResponse> {
-    let status = BLACKLISTER_ALLOWANCES
-        .load(deps.storage, &deps.api.addr_validate(&address)?)
-        .unwrap_or(false);
-    Ok(StatusResponse { status })
-}
-
-pub fn query_blacklister_allowances(
-    deps: Deps<TokenFactoryQuery>,
+/// Enumerates over all addresses on the denylist. Response: DenylistResponse
+pub fn query_denylist(
+    deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> StdResult<BlacklisterAllowancesResponse> {
-    Ok(BlacklisterAllowancesResponse {
-        blacklisters: query_status_map(deps, start_after, limit, BLACKLISTER_ALLOWANCES)?,
+) -> StdResult<DenylistResponse> {
+    Ok(DenylistResponse {
+        denylist: query_status_map(deps, start_after, limit, DENYLIST)?,
     })
 }
-
-pub fn query_whitelistees(
-    deps: Deps<TokenFactoryQuery>,
-    start_after: Option<String>,
-    limit: Option<u32>,
-) -> StdResult<WhitelisteesResponse> {
-    Ok(WhitelisteesResponse {
-        whitelistees: query_status_map(deps, start_after, limit, WHITELISTED_ADDRESSES)?,
-    })
-}
-
-pub fn query_is_whitelister(
-    deps: Deps<TokenFactoryQuery>,
-    address: String,
-) -> StdResult<StatusResponse> {
-    let status = WHITELISTER_ALLOWANCES
-        .load(deps.storage, &deps.api.addr_validate(&address)?)
-        .unwrap_or(false);
-    Ok(StatusResponse { status })
-}
-
-pub fn query_whitelister_allowances(
-    deps: Deps<TokenFactoryQuery>,
-    start_after: Option<String>,
-    limit: Option<u32>,
-) -> StdResult<WhitelisterAllowancesResponse> {
-    Ok(WhitelisterAllowancesResponse {
-        whitelisters: query_status_map(deps, start_after, limit, WHITELISTER_ALLOWANCES)?,
-    })
-}
-
-pub fn query_freezer_allowances(
-    deps: Deps<TokenFactoryQuery>,
-    start_after: Option<String>,
-    limit: Option<u32>,
-) -> StdResult<FreezerAllowancesResponse> {
-    Ok(FreezerAllowancesResponse {
-        freezers: query_status_map(deps, start_after, limit, FREEZER_ALLOWANCES)?,
-    })
-}
-
-pub fn query_is_freezer(
-    deps: Deps<TokenFactoryQuery>,
-    address: String,
-) -> StdResult<StatusResponse> {
-    let status = FREEZER_ALLOWANCES
-        .load(deps.storage, &deps.api.addr_validate(&address)?)
-        .unwrap_or(false);
-    Ok(StatusResponse { status })
-}
-
-// query inspiration see https://github.com/mars-protocol/fields-of-mars/blob/v1.0.0/packages/fields-of-mars/src/martian_field.rs#L465-L473

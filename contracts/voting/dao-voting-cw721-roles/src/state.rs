@@ -13,4 +13,4 @@ pub const CONFIG: Item<Config> = Item::new("config");
 pub const DAO: Item<Addr> = Item::new("dao");
 
 // Holds initial NFTs messages during instantiation.
-pub const INITITIAL_NFTS: Item<Vec<NftMintMsg>> = Item::new("initial_nfts");
+pub const INITIAL_NFTS: Item<Vec<NftMintMsg>> = Item::new("initial_nfts");

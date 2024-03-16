@@ -1,6 +1,6 @@
 use std::borrow::BorrowMut;
 
-use cosmwasm_std::{to_binary, Addr, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, WasmMsg};
 use cw_multi_test::{next_block, App, AppResponse, Executor};
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_testing::contracts::stake_cw20_v03_contract;
@@ -21,11 +21,11 @@ pub fn init_v1(app: &mut App, sender: Addr, voting_type: VotingType) -> (Addr, V
     let (voting_code_id, msg) = match voting_type {
         VotingType::Cw4 => (
             code_ids.cw4_voting,
-            to_binary(&get_cw4_init_msg(code_ids.clone())).unwrap(),
+            to_json_binary(&get_cw4_init_msg(code_ids.clone())).unwrap(),
         ),
         VotingType::Cw20 => (
             code_ids.cw20_voting,
-            to_binary(&get_cw20_init_msg(code_ids.clone())).unwrap(),
+            to_json_binary(&get_cw20_init_msg(code_ids.clone())).unwrap(),
         ),
         VotingType::Cw20V03 => {
             // The simple change we need to do is to swap the cw20_stake with the one in v0.3.0
@@ -35,7 +35,7 @@ pub fn init_v1(app: &mut App, sender: Addr, voting_type: VotingType) -> (Addr, V
 
             (
                 code_ids.cw20_voting,
-                to_binary(&get_cw20_init_msg(code_ids.clone())).unwrap(),
+                to_json_binary(&get_cw20_init_msg(code_ids.clone())).unwrap(),
             )
         }
     };
@@ -59,7 +59,7 @@ pub fn init_v1(app: &mut App, sender: Addr, voting_type: VotingType) -> (Addr, V
                 },
                 proposal_modules_instantiate_info: vec![cw_core_v1::msg::ModuleInstantiateInfo {
                     code_id: code_ids.proposal_single,
-                    msg: to_binary(&cw_proposal_single_v1::msg::InstantiateMsg {
+                    msg: to_json_binary(&cw_proposal_single_v1::msg::InstantiateMsg {
                         threshold: voting_v1::Threshold::AbsolutePercentage {
                             percentage: voting_v1::PercentageThreshold::Majority {},
                         },
@@ -109,11 +109,11 @@ pub fn init_v1_with_multiple_proposals(
     let (voting_code_id, msg) = match voting_type {
         VotingType::Cw4 => (
             code_ids.cw4_voting,
-            to_binary(&get_cw4_init_msg(code_ids.clone())).unwrap(),
+            to_json_binary(&get_cw4_init_msg(code_ids.clone())).unwrap(),
         ),
         VotingType::Cw20 => (
             code_ids.cw20_voting,
-            to_binary(&get_cw20_init_msg(code_ids.clone())).unwrap(),
+            to_json_binary(&get_cw20_init_msg(code_ids.clone())).unwrap(),
         ),
         VotingType::Cw20V03 => {
             let v03_cw20_stake = app.store_code(stake_cw20_v03_contract());
@@ -122,7 +122,7 @@ pub fn init_v1_with_multiple_proposals(
 
             (
                 code_ids.cw20_voting,
-                to_binary(&get_cw20_init_msg(code_ids.clone())).unwrap(),
+                to_json_binary(&get_cw20_init_msg(code_ids.clone())).unwrap(),
             )
         }
     };
@@ -147,7 +147,7 @@ pub fn init_v1_with_multiple_proposals(
                 proposal_modules_instantiate_info: vec![
                     cw_core_v1::msg::ModuleInstantiateInfo {
                         code_id: code_ids.proposal_single,
-                        msg: to_binary(&cw_proposal_single_v1::msg::InstantiateMsg {
+                        msg: to_json_binary(&cw_proposal_single_v1::msg::InstantiateMsg {
                             threshold: voting_v1::Threshold::AbsolutePercentage {
                                 percentage: voting_v1::PercentageThreshold::Majority {},
                             },
@@ -163,7 +163,7 @@ pub fn init_v1_with_multiple_proposals(
                     },
                     cw_core_v1::msg::ModuleInstantiateInfo {
                         code_id: code_ids.proposal_single,
-                        msg: to_binary(&cw_proposal_single_v1::msg::InstantiateMsg {
+                        msg: to_json_binary(&cw_proposal_single_v1::msg::InstantiateMsg {
                             threshold: voting_v1::Threshold::AbsolutePercentage {
                                 percentage: voting_v1::PercentageThreshold::Majority {},
                             },
@@ -275,6 +275,7 @@ pub fn execute_migration(
                         close_proposal_on_execution_failure: true,
                         pre_propose_info:
                             dao_voting::pre_propose::PreProposeInfo::AnyoneMayPropose {},
+                        veto: None,
                     },
                 )
             })
@@ -291,7 +292,7 @@ pub fn execute_migration(
                 WasmMsg::Migrate {
                     contract_addr: module_addrs.core.to_string(),
                     new_code_id: new_code_ids.core,
-                    msg: to_binary(&dao_interface::msg::MigrateMsg::FromV1 {
+                    msg: to_json_binary(&dao_interface::msg::MigrateMsg::FromV1 {
                         dao_uri: None,
                         params: None,
                     })
@@ -300,10 +301,10 @@ pub fn execute_migration(
                 .into(),
                 WasmMsg::Execute {
                     contract_addr: module_addrs.core.to_string(),
-                    msg: to_binary(&dao_interface::msg::ExecuteMsg::UpdateProposalModules {
+                    msg: to_json_binary(&dao_interface::msg::ExecuteMsg::UpdateProposalModules {
                         to_add: vec![ModuleInstantiateInfo {
                             code_id: migrator_code_id,
-                            msg: to_binary(&crate::msg::InstantiateMsg {
+                            msg: to_json_binary(&crate::msg::InstantiateMsg {
                                 sub_daos: params.sub_daos.unwrap(),
                                 migration_params: MigrationParams {
                                     migrate_stake_cw20_manager: params.migrate_cw20,
@@ -314,6 +315,7 @@ pub fn execute_migration(
                             })
                             .unwrap(),
                             admin: Some(Admin::CoreModule {}),
+                            funds: vec![],
                             label: "migrator".to_string(),
                         }],
                         to_disable: vec![],
@@ -397,7 +399,7 @@ pub fn execute_migration_from_core(
             msgs: vec![WasmMsg::Migrate {
                 contract_addr: module_addrs.core.to_string(),
                 new_code_id: new_code_ids.core,
-                msg: to_binary(&dao_interface::msg::MigrateMsg::FromV1 {
+                msg: to_json_binary(&dao_interface::msg::MigrateMsg::FromV1 {
                     dao_uri: None,
                     params: Some(dao_interface::migrate_msg::MigrateParams {
                         migrator_code_id,

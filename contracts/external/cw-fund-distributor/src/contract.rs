@@ -10,8 +10,8 @@ use crate::state::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env, Fraction, MessageInfo,
-    Order, Response, StdError, StdResult, Uint128, WasmMsg,
+    to_json_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env, Fraction,
+    MessageInfo, Order, Response, StdError, StdResult, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_paginate_storage::paginate_map;
@@ -247,7 +247,7 @@ fn get_cw20_claim_wasm_messages(
 
             messages.push(WasmMsg::Execute {
                 contract_addr: addr,
-                msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                msg: to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
                     recipient: sender.to_string(),
                     amount: entitlement,
                 })?,
@@ -406,7 +406,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn query_voting_contract(deps: Deps) -> StdResult<Binary> {
     let contract = VOTING_CONTRACT.load(deps.storage)?;
     let distribution_height = DISTRIBUTION_HEIGHT.load(deps.storage)?;
-    to_binary(&VotingContractResponse {
+    to_json_binary(&VotingContractResponse {
         contract,
         distribution_height,
     })
@@ -414,7 +414,7 @@ pub fn query_voting_contract(deps: Deps) -> StdResult<Binary> {
 
 pub fn query_total_power(deps: Deps) -> StdResult<Binary> {
     let total_power: Uint128 = TOTAL_POWER.may_load(deps.storage)?.unwrap_or_default();
-    to_binary(&TotalPowerResponse { total_power })
+    to_json_binary(&TotalPowerResponse { total_power })
 }
 
 pub fn query_native_denoms(deps: Deps) -> StdResult<Binary> {
@@ -429,7 +429,7 @@ pub fn query_native_denoms(deps: Deps) -> StdResult<Binary> {
         });
     }
 
-    to_binary(&denom_responses)
+    to_json_binary(&denom_responses)
 }
 
 pub fn query_cw20_tokens(deps: Deps) -> StdResult<Binary> {
@@ -444,7 +444,7 @@ pub fn query_cw20_tokens(deps: Deps) -> StdResult<Binary> {
         });
     }
 
-    to_binary(&cw20_responses)
+    to_json_binary(&cw20_responses)
 }
 
 pub fn query_native_entitlement(deps: Deps, sender: Addr, denom: String) -> StdResult<Binary> {
@@ -461,7 +461,7 @@ pub fn query_native_entitlement(deps: Deps, sender: Addr, denom: String) -> StdR
         total_bal.multiply_ratio(relative_share.numerator(), relative_share.denominator());
     let entitlement = total_share.checked_sub(prev_claim)?;
 
-    to_binary(&NativeEntitlementResponse {
+    to_json_binary(&NativeEntitlementResponse {
         amount: entitlement,
         denom,
     })
@@ -483,7 +483,7 @@ pub fn query_cw20_entitlement(deps: Deps, sender: Addr, token: String) -> StdRes
         total_bal.multiply_ratio(relative_share.numerator(), relative_share.denominator());
     let entitlement = total_share.checked_sub(prev_claim)?;
 
-    to_binary(&CW20EntitlementResponse {
+    to_json_binary(&CW20EntitlementResponse {
         amount: entitlement,
         token_contract: token,
     })
@@ -514,7 +514,7 @@ pub fn query_native_entitlements(
         });
     }
 
-    to_binary(&entitlements)
+    to_json_binary(&entitlements)
 }
 
 pub fn query_cw20_entitlements(
@@ -544,7 +544,7 @@ pub fn query_cw20_entitlements(
         });
     }
 
-    to_binary(&entitlements)
+    to_json_binary(&entitlements)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

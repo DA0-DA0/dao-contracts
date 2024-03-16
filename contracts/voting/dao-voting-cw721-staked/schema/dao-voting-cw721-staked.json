@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-voting-cw721-staked",
-  "contract_version": "2.2.0",
+  "contract_version": "2.4.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -26,17 +26,6 @@
         "allOf": [
           {
             "$ref": "#/definitions/NftContract"
-          }
-        ]
-      },
-      "owner": {
-        "description": "May change unstaking duration and add hooks.",
-        "anyOf": [
-          {
-            "$ref": "#/definitions/Admin"
-          },
-          {
-            "type": "null"
           }
         ]
       },
@@ -103,47 +92,6 @@
           }
         ]
       },
-      "Admin": {
-        "description": "Information about the CosmWasm level admin of a contract. Used in conjunction with `ModuleInstantiateInfo` to instantiate modules.",
-        "oneOf": [
-          {
-            "description": "Set the admin to a specified address.",
-            "type": "object",
-            "required": [
-              "address"
-            ],
-            "properties": {
-              "address": {
-                "type": "object",
-                "required": [
-                  "addr"
-                ],
-                "properties": {
-                  "addr": {
-                    "type": "string"
-                  }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "description": "Sets the admin as the core module address.",
-            "type": "object",
-            "required": [
-              "core_module"
-            ],
-            "properties": {
-              "core_module": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          }
-        ]
-      },
       "Binary": {
         "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
         "type": "string"
@@ -189,6 +137,7 @@
       "NftContract": {
         "oneOf": [
           {
+            "description": "Uses an existing cw721 or sg721 token contract.",
             "type": "object",
             "required": [
               "existing"
@@ -201,7 +150,7 @@
                 ],
                 "properties": {
                   "address": {
-                    "description": "Address of an already instantiated cw721 token contract.",
+                    "description": "Address of an already instantiated cw721 or sg721 token contract.",
                     "type": "string"
                   }
                 },
@@ -211,6 +160,7 @@
             "additionalProperties": false
           },
           {
+            "description": "Creates a new NFT collection used for staking and governance.",
             "type": "object",
             "required": [
               "new"
@@ -247,6 +197,19 @@
                   }
                 },
                 "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Uses a factory contract that must return the address of the NFT contract. The binary must serialize to a `WasmMsg::Execute` message. Validation happens in the factory contract itself, so be sure to use a trusted factory contract.",
+            "type": "object",
+            "required": [
+              "factory"
+            ],
+            "properties": {
+              "factory": {
+                "$ref": "#/definitions/Binary"
               }
             },
             "additionalProperties": false
@@ -302,6 +265,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Claim NFTs that have been unstaked for the specified duration.",
         "type": "object",
         "required": [
           "claim_nfts"
@@ -315,6 +279,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Updates the contract configuration, namely unstaking duration. Only callable by the DAO that initialized this voting contract.",
         "type": "object",
         "required": [
           "update_config"
@@ -332,12 +297,6 @@
                     "type": "null"
                   }
                 ]
-              },
-              "owner": {
-                "type": [
-                  "string",
-                  "null"
-                ]
               }
             },
             "additionalProperties": false
@@ -346,6 +305,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Adds a hook which is called on staking / unstaking events. Only callable by the DAO that initialized this voting contract.",
         "type": "object",
         "required": [
           "add_hook"
@@ -367,6 +327,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Removes a hook which is called on staking / unstaking events. Only callable by the DAO that initialized this voting contract.",
         "type": "object",
         "required": [
           "remove_hook"
@@ -388,7 +349,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Sets the active threshold to a new value. Only the instantiator this contract (a DAO most likely) may call this method.",
+        "description": "Sets the active threshold to a new value. Only callable by the DAO that initialized this voting contract.",
         "type": "object",
         "required": [
           "update_active_threshold"
@@ -819,16 +780,6 @@
       "properties": {
         "nft_address": {
           "$ref": "#/definitions/Addr"
-        },
-        "owner": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Addr"
-            },
-            {
-              "type": "null"
-            }
-          ]
         },
         "unstaking_duration": {
           "anyOf": [

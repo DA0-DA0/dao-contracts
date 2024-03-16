@@ -1,13 +1,19 @@
-use cosmwasm_std::{to_binary, Addr, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App, Executor};
+use cw_utils::Duration;
 use dao_interface::query::{GetItemResponse, ProposalModuleCountResponse};
 use dao_testing::contracts::{
     cw20_base_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
     dao_dao_contract, proposal_single_contract, v1_dao_dao_contract, v1_proposal_single_contract,
 };
-use dao_voting::{deposit::UncheckedDepositInfo, status::Status};
+use dao_voting::veto::VetoConfig;
+use dao_voting::{
+    deposit::{UncheckedDepositInfo, VotingModuleTokenType},
+    status::Status,
+};
 
+use crate::testing::queries::query_list_proposals;
 use crate::testing::{
     execute::{execute_proposal, make_proposal, vote_on_proposal},
     instantiate::get_pre_propose_info,
@@ -68,7 +74,7 @@ fn test_v1_v2_full_migration() {
                 automatically_add_cw721s: true,
                 voting_module_instantiate_info: cw_core_v1::msg::ModuleInstantiateInfo {
                     code_id: voting_code,
-                    msg: to_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
+                    msg: to_json_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
                         active_threshold: None,
                         token_info: dao_voting_cw20_staked::msg::TokenInfo::New {
                             code_id: cw20_code,
@@ -89,7 +95,7 @@ fn test_v1_v2_full_migration() {
                 },
                 proposal_modules_instantiate_info: vec![cw_core_v1::msg::ModuleInstantiateInfo {
                     code_id: proposal_code,
-                    msg: to_binary(&cw_proposal_single_v1::msg::InstantiateMsg {
+                    msg: to_json_binary(&cw_proposal_single_v1::msg::InstantiateMsg {
                         threshold: voting_v1::Threshold::AbsolutePercentage {
                             percentage: voting_v1::PercentageThreshold::Majority {},
                         },
@@ -152,7 +158,7 @@ fn test_v1_v2_full_migration() {
             &cw20::Cw20ExecuteMsg::Send {
                 contract: staking.into_string(),
                 amount: Uint128::new(1),
-                msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+                msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
             },
             &[],
         )
@@ -188,7 +194,7 @@ fn test_v1_v2_full_migration() {
             description: "d".to_string(),
             msgs: vec![WasmMsg::Execute {
                 contract_addr: core.to_string(),
-                msg: to_binary(&cw_core_v1::msg::ExecuteMsg::UpdateCw20List {
+                msg: to_json_binary(&cw_core_v1::msg::ExecuteMsg::UpdateCw20List {
                     to_add: vec![token.to_string()],
                     to_remove: vec![],
                 })
@@ -247,7 +253,7 @@ fn test_v1_v2_full_migration() {
             description: "d".to_string(),
             msgs: vec![WasmMsg::Execute {
                 contract_addr: token.to_string(),
-                msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                msg: to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
                     recipient: sender.to_string(),
                     // more tokens than the DAO posseses.
                     amount: Uint128::new(101),
@@ -300,12 +306,16 @@ fn test_v1_v2_full_migration() {
     let pre_propose_info = get_pre_propose_info(
         &mut app,
         Some(UncheckedDepositInfo {
-            denom: dao_voting::deposit::DepositToken::VotingModuleToken {},
+            denom: dao_voting::deposit::DepositToken::VotingModuleToken {
+                token_type: VotingModuleTokenType::Cw20,
+            },
             amount: Uint128::new(1),
             refund_policy: dao_voting::deposit::DepositRefundPolicy::OnlyPassed,
         }),
         false,
     );
+
+    // now migrate with valid config
     app.execute_contract(
         sender.clone(),
         proposal.clone(),
@@ -316,7 +326,7 @@ fn test_v1_v2_full_migration() {
                 WasmMsg::Migrate {
                     contract_addr: core.to_string(),
                     new_code_id: v2_core_code,
-                    msg: to_binary(&dao_interface::msg::MigrateMsg::FromV1 {
+                    msg: to_json_binary(&dao_interface::msg::MigrateMsg::FromV1 {
                         dao_uri: Some("dao-uri".to_string()),
                         params: None,
                     })
@@ -326,9 +336,15 @@ fn test_v1_v2_full_migration() {
                 WasmMsg::Migrate {
                     contract_addr: proposal.to_string(),
                     new_code_id: v2_proposal_code,
-                    msg: to_binary(&crate::msg::MigrateMsg::FromV1 {
+                    msg: to_json_binary(&crate::msg::MigrateMsg::FromV1 {
                         close_proposal_on_execution_failure: true,
                         pre_propose_info,
+                        veto: Some(VetoConfig {
+                            timelock_duration: Duration::Height(10),
+                            vetoer: sender.to_string(),
+                            early_execute: true,
+                            veto_before_passed: false,
+                        }),
                     })
                     .unwrap(),
                 }
@@ -370,6 +386,12 @@ fn test_v1_v2_full_migration() {
     let count = query_proposal_count(&app, &proposal);
     assert_eq!(count, 3);
 
+    let migrated_existing_props = query_list_proposals(&app, &proposal, None, None);
+    // assert that even though we migrate with a veto config,
+    // existing proposals are not affected
+    for prop in migrated_existing_props.proposals {
+        assert_eq!(prop.proposal.veto, None);
+    }
     // ----
     // check that proposal module counts have been updated.
     // ----
@@ -413,7 +435,7 @@ fn test_v1_v2_full_migration() {
         sender.as_str(),
         vec![WasmMsg::Execute {
             contract_addr: core.to_string(),
-            msg: to_binary(&dao_interface::msg::ExecuteMsg::UpdateCw20List {
+            msg: to_json_binary(&dao_interface::msg::ExecuteMsg::UpdateCw20List {
                 to_add: vec![],
                 to_remove: vec![token.into_string()],
             })
@@ -421,6 +443,7 @@ fn test_v1_v2_full_migration() {
             funds: vec![],
         }
         .into()],
+        None,
     );
     vote_on_proposal(
         &mut app,
@@ -429,6 +452,18 @@ fn test_v1_v2_full_migration() {
         4,
         dao_voting::voting::Vote::Yes,
     );
+
+    let new_prop = query_proposal(&app, &proposal, 4);
+    assert_eq!(
+        new_prop.proposal.veto,
+        Some(VetoConfig {
+            timelock_duration: Duration::Height(10),
+            vetoer: sender.to_string(),
+            early_execute: true,
+            veto_before_passed: false,
+        })
+    );
+
     execute_proposal(&mut app, &proposal, sender.as_str(), 4);
     let tokens: Vec<dao_interface::query::Cw20BalanceResponse> = app
         .wrap()

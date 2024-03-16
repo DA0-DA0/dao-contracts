@@ -6,7 +6,7 @@ use crate::{
 
 use cw20_stake_reward_distributor_v1 as v1;
 
-use cosmwasm_std::{to_binary, Addr, Empty, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, Empty, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 use cw_ownable::{Action, Expiration, Ownership, OwnershipError};
@@ -711,7 +711,7 @@ fn test_migrate_from_v1() {
         WasmMsg::Migrate {
             contract_addr: distributor.to_string(),
             new_code_id: v2_code,
-            msg: to_binary(&MigrateMsg::FromV1 {}).unwrap(),
+            msg: to_json_binary(&MigrateMsg::FromV1 {}).unwrap(),
         }
         .into(),
     )
@@ -747,7 +747,7 @@ fn test_migrate_from_v1() {
             WasmMsg::Migrate {
                 contract_addr: distributor.to_string(),
                 new_code_id: v2_code,
-                msg: to_binary(&MigrateMsg::FromV1 {}).unwrap(),
+                msg: to_json_binary(&MigrateMsg::FromV1 {}).unwrap(),
             }
             .into(),
         )

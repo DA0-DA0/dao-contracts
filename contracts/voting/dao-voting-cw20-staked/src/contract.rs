@@ -1,10 +1,10 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
-    SubMsg, Uint128, Uint256, WasmMsg,
+    to_json_binary, Addr, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    StdResult, SubMsg, Uint128, Uint256, WasmMsg,
 };
-use cw2::set_contract_version;
+use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw20::{Cw20Coin, TokenInfoResponse};
 use cw_utils::parse_reply_instantiate_data;
 use dao_interface::voting::IsActiveResponse;
@@ -89,7 +89,7 @@ pub fn instantiate(
                         funds: vec![],
                         admin: Some(info.sender.to_string()),
                         label: env.contract.address.to_string(),
-                        msg: to_binary(&cw20_stake::msg::InstantiateMsg {
+                        msg: to_json_binary(&cw20_stake::msg::InstantiateMsg {
                             owner: Some(info.sender.to_string()),
                             unstaking_duration,
                             token_address: address.to_string(),
@@ -141,7 +141,7 @@ pub fn instantiate(
             let msg = WasmMsg::Instantiate {
                 admin: Some(info.sender.to_string()),
                 code_id,
-                msg: to_binary(&cw20_base::msg::InstantiateMsg {
+                msg: to_json_binary(&cw20_base::msg::InstantiateMsg {
                     name,
                     symbol,
                     decimals,
@@ -245,12 +245,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 pub fn query_token_contract(deps: Deps) -> StdResult<Binary> {
     let token = TOKEN.load(deps.storage)?;
-    to_binary(&token)
+    to_json_binary(&token)
 }
 
 pub fn query_staking_contract(deps: Deps) -> StdResult<Binary> {
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
-    to_binary(&staking_contract)
+    to_json_binary(&staking_contract)
 }
 
 pub fn query_voting_power_at_height(
@@ -268,7 +268,7 @@ pub fn query_voting_power_at_height(
             height,
         },
     )?;
-    to_binary(&dao_interface::voting::VotingPowerAtHeightResponse {
+    to_json_binary(&dao_interface::voting::VotingPowerAtHeightResponse {
         power: res.balance,
         height: res.height,
     })
@@ -284,7 +284,7 @@ pub fn query_total_power_at_height(
         staking_contract,
         &cw20_stake::msg::QueryMsg::TotalStakedAtHeight { height },
     )?;
-    to_binary(&dao_interface::voting::TotalPowerAtHeightResponse {
+    to_json_binary(&dao_interface::voting::TotalPowerAtHeightResponse {
         power: res.total,
         height: res.height,
     })
@@ -292,12 +292,12 @@ pub fn query_total_power_at_height(
 
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
-    to_binary(&dao_interface::voting::InfoResponse { info })
+    to_json_binary(&dao_interface::voting::InfoResponse { info })
 }
 
 pub fn query_dao(deps: Deps) -> StdResult<Binary> {
     let dao = DAO.load(deps.storage)?;
-    to_binary(&dao)
+    to_json_binary(&dao)
 }
 
 pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
@@ -311,7 +311,7 @@ pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
                 &cw20_stake::msg::QueryMsg::TotalStakedAtHeight { height: None },
             )?;
         match threshold {
-            ActiveThreshold::AbsoluteCount { count } => to_binary(&IsActiveResponse {
+            ActiveThreshold::AbsoluteCount { count } => to_json_binary(&IsActiveResponse {
                 active: actual_power.total >= count,
             }),
             ActiveThreshold::Percentage { percent } => {
@@ -354,27 +354,33 @@ pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
                 let rounded = (applied + Uint256::from(PRECISION_FACTOR) - Uint256::from(1u128))
                     / Uint256::from(PRECISION_FACTOR);
                 let count: Uint128 = rounded.try_into().unwrap();
-                to_binary(&IsActiveResponse {
+                to_json_binary(&IsActiveResponse {
                     active: actual_power.total >= count,
                 })
             }
         }
     } else {
-        to_binary(&IsActiveResponse { active: true })
+        to_json_binary(&IsActiveResponse { active: true })
     }
 }
 
 pub fn query_active_threshold(deps: Deps) -> StdResult<Binary> {
-    to_binary(&ActiveThresholdResponse {
+    to_json_binary(&ActiveThresholdResponse {
         active_threshold: ACTIVE_THRESHOLD.may_load(deps.storage)?,
     })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // Set contract to version to latest
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    Ok(Response::default())
+    let storage_version: ContractVersion = get_contract_version(deps.storage)?;
+
+    // Only migrate if newer
+    if storage_version.version.as_str() < CONTRACT_VERSION {
+        // Set contract to version to latest
+        set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    }
+
+    Ok(Response::new().add_attribute("action", "migrate"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -407,7 +413,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         funds: vec![],
                         admin: Some(dao.to_string()),
                         label: env.contract.address.to_string(),
-                        msg: to_binary(&cw20_stake::msg::InstantiateMsg {
+                        msg: to_json_binary(&cw20_stake::msg::InstantiateMsg {
                             owner: Some(dao.to_string()),
                             unstaking_duration,
                             token_address: token.to_string(),

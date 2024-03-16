@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, Addr, Binary};
+use cosmwasm_std::{to_json_binary, Addr, Binary};
 use cw4::{HooksResponse, Member, MemberListResponse, MemberResponse, TotalWeightResponse};
 use cw721::{NftInfoResponse, OwnerOfResponse};
 use cw_multi_test::{App, Executor};
@@ -260,7 +260,6 @@ fn test_send_permissions() {
             dao_voting_cw721_staked_id,
             Addr::unchecked(DAO),
             &Cw721StakedInstantiateMsg {
-                owner: None,
                 nft_contract: NftContract::Existing {
                     address: cw721_addr.to_string(),
                 },
@@ -277,7 +276,7 @@ fn test_send_permissions() {
     let msg = ExecuteMsg::SendNft {
         contract: cw721_staked_addr.to_string(),
         token_id: "1".to_string(),
-        msg: to_binary(&Binary::default()).unwrap(),
+        msg: to_json_binary(&Binary::default()).unwrap(),
     };
     app.execute_contract(Addr::unchecked(ALICE), cw721_addr.clone(), &msg, &[])
         .unwrap_err();

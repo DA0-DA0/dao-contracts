@@ -25,30 +25,28 @@ library = []
 
 [dependencies]
 cosmwasm-std = { workspace = true, features = ["ibc3"] }
-cosmwasm-storage = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
 cw20 = { workspace = true }
-cw3 = { workspace = true }
 thiserror = { workspace = true }
 dao-dao-macros = { workspace = true }
 dao-pre-propose-base = { workspace = true }
 dao-interface = { workspace = true }
 dao-voting = { workspace = true }
 cw-hooks = { workspace = true }
-dao-proposal-hooks = { workspace = true }
-dao-vote-hooks = { workspace = true }
+dao-hooks = { workspace = true }
 dao-pre-propose-multiple = { workspace = true }
 voting-v1 = { workspace = true }
 
 [dev-dependencies]
+anyhow = { workspace = true }
 cw-multi-test = { workspace = true }
 dao-voting-cw4 = { workspace = true }
 dao-voting-cw20-balance = { workspace = true }
 dao-voting-cw20-staked = { workspace = true }
-dao-voting-native-staked = { workspace = true }
+dao-voting-token-staked = { workspace = true }
 dao-voting-cw721-staked = { workspace = true }
 cw-denom = { workspace = true }
 dao-testing = { workspace = true }

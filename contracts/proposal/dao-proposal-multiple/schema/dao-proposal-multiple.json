@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-proposal-multiple",
-  "contract_version": "2.2.0",
+  "contract_version": "2.4.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -51,6 +51,17 @@
         "allOf": [
           {
             "$ref": "#/definitions/PreProposeInfo"
+          }
+        ]
+      },
+      "veto": {
+        "description": "Optional veto configuration for proposal execution. If set, proposals can only be executed after the timelock delay expiration. During this period an oversight account (`veto.vetoer`) can veto the proposal.",
+        "anyOf": [
+          {
+            "$ref": "#/definitions/VetoConfig"
+          },
+          {
+            "type": "null"
           }
         ]
       },
@@ -110,6 +121,21 @@
         "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
         "type": "string"
       },
+      "Coin": {
+        "type": "object",
+        "required": [
+          "amount",
+          "denom"
+        ],
+        "properties": {
+          "amount": {
+            "$ref": "#/definitions/Uint128"
+          },
+          "denom": {
+            "type": "string"
+          }
+        }
+      },
       "Decimal": {
         "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
         "type": "string"
@@ -153,6 +179,7 @@
         "type": "object",
         "required": [
           "code_id",
+          "funds",
           "label",
           "msg"
         ],
@@ -173,6 +200,13 @@
             "type": "integer",
             "format": "uint64",
             "minimum": 0.0
+          },
+          "funds": {
+            "description": "Funds to be sent to the instantiated contract.",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Coin"
+            }
           },
           "label": {
             "description": "Label for the instantiated contract.",
@@ -261,6 +295,42 @@
           }
         ]
       },
+      "Uint128": {
+        "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+        "type": "string"
+      },
+      "VetoConfig": {
+        "type": "object",
+        "required": [
+          "early_execute",
+          "timelock_duration",
+          "veto_before_passed",
+          "vetoer"
+        ],
+        "properties": {
+          "early_execute": {
+            "description": "Whether or not the vetoer can execute a proposal early before the timelock duration has expired",
+            "type": "boolean"
+          },
+          "timelock_duration": {
+            "description": "The time duration to lock a proposal for after its expiration to allow the vetoer to veto.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Duration"
+              }
+            ]
+          },
+          "veto_before_passed": {
+            "description": "Whether or not the vetoer can veto a proposal before it passes.",
+            "type": "boolean"
+          },
+          "vetoer": {
+            "description": "The address able to veto proposals.",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "VotingStrategy": {
         "description": "Determines how many choices may be selected.",
         "oneOf": [
@@ -301,38 +371,7 @@
         ],
         "properties": {
           "propose": {
-            "type": "object",
-            "required": [
-              "choices",
-              "description",
-              "title"
-            ],
-            "properties": {
-              "choices": {
-                "description": "The multiple choices.",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/MultipleChoiceOptions"
-                  }
-                ]
-              },
-              "description": {
-                "description": "A description of the proposal.",
-                "type": "string"
-              },
-              "proposer": {
-                "description": "The address creating the proposal. If no pre-propose module is attached to this module this must always be None as the proposer is the sender of the propose message. If a pre-propose module is attached, this must be Some and will set the proposer of the proposal it creates.",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "title": {
-                "description": "The title of the proposal.",
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
+            "$ref": "#/definitions/MultipleChoiceProposeMsg"
           }
         },
         "additionalProperties": false
@@ -393,6 +432,31 @@
             "properties": {
               "proposal_id": {
                 "description": "The ID of the proposal to execute.",
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Callable only if veto is configured",
+        "type": "object",
+        "required": [
+          "veto"
+        ],
+        "properties": {
+          "veto": {
+            "type": "object",
+            "required": [
+              "proposal_id"
+            ],
+            "properties": {
+              "proposal_id": {
+                "description": "The ID of the proposal to veto.",
                 "type": "integer",
                 "format": "uint64",
                 "minimum": 0.0
@@ -480,6 +544,17 @@
               "only_members_execute": {
                 "description": "If set to true only members may execute passed proposals. Otherwise, any address may execute a passed proposal. Applies to all outstanding and future proposals.",
                 "type": "boolean"
+              },
+              "veto": {
+                "description": "Optional time delay on proposal execution, during which the proposal may be vetoed.",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/VetoConfig"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "voting_strategy": {
                 "description": "The new proposal voting strategy. This will only apply to proposals created after the config update.",
@@ -1019,7 +1094,7 @@
                     ]
                   },
                   "channel_id": {
-                    "description": "exisiting channel to send the tokens over",
+                    "description": "existing channel to send the tokens over",
                     "type": "string"
                   },
                   "timeout": {
@@ -1137,7 +1212,7 @@
             "minimum": 0.0
           },
           "revision": {
-            "description": "the version that the client is currently on (eg. after reseting the chain this could increment 1 as height drops to 0)",
+            "description": "the version that the client is currently on (e.g. after resetting the chain this could increment 1 as height drops to 0)",
             "type": "integer",
             "format": "uint64",
             "minimum": 0.0
@@ -1149,6 +1224,7 @@
         "type": "object",
         "required": [
           "code_id",
+          "funds",
           "label",
           "msg"
         ],
@@ -1170,6 +1246,13 @@
             "format": "uint64",
             "minimum": 0.0
           },
+          "funds": {
+            "description": "Funds to be sent to the instantiated contract.",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
           "label": {
             "description": "Label for the instantiated contract.",
             "type": "string"
@@ -1179,6 +1262,30 @@
             "allOf": [
               {
                 "$ref": "#/definitions/Binary"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "MultipleChoiceAutoVote": {
+        "type": "object",
+        "required": [
+          "vote"
+        ],
+        "properties": {
+          "rationale": {
+            "description": "An optional rationale for why this vote was cast. This can be updated, set, or removed later by the address casting the vote.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vote": {
+            "description": "The proposer's position on the proposal.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MultipleChoiceVote"
               }
             ]
           }
@@ -1221,6 +1328,52 @@
             "items": {
               "$ref": "#/definitions/MultipleChoiceOption"
             }
+          }
+        },
+        "additionalProperties": false
+      },
+      "MultipleChoiceProposeMsg": {
+        "description": "The contents of a message to create a proposal in the multiple choice proposal module.\n\nWe break this type out of `ExecuteMsg` because we want pre-propose modules that interact with this contract to be able to get type checking on their propose messages.\n\nWe move this type to this package so that pre-propose modules can import it without importing dao-proposal-multiple with the library feature which (as it is not additive) cause the execute exports to not be included in wasm builds.",
+        "type": "object",
+        "required": [
+          "choices",
+          "description",
+          "title"
+        ],
+        "properties": {
+          "choices": {
+            "description": "The multiple choices.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MultipleChoiceOptions"
+              }
+            ]
+          },
+          "description": {
+            "description": "A description of the proposal.",
+            "type": "string"
+          },
+          "proposer": {
+            "description": "The address creating the proposal. If no pre-propose module is attached to this module this must always be None as the proposer is the sender of the propose message. If a pre-propose module is attached, this must be Some and will set the proposer of the proposal it creates.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "description": "The title of the proposal.",
+            "type": "string"
+          },
+          "vote": {
+            "description": "An optional vote cast by the proposer.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/MultipleChoiceAutoVote"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -1412,6 +1565,38 @@
         "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
         "type": "string"
       },
+      "VetoConfig": {
+        "type": "object",
+        "required": [
+          "early_execute",
+          "timelock_duration",
+          "veto_before_passed",
+          "vetoer"
+        ],
+        "properties": {
+          "early_execute": {
+            "description": "Whether or not the vetoer can execute a proposal early before the timelock duration has expired",
+            "type": "boolean"
+          },
+          "timelock_duration": {
+            "description": "The time duration to lock a proposal for after its expiration to allow the vetoer to veto.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Duration"
+              }
+            ]
+          },
+          "veto_before_passed": {
+            "description": "Whether or not the vetoer can veto a proposal before it passes.",
+            "type": "boolean"
+          },
+          "vetoer": {
+            "description": "The address able to veto proposals.",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "VoteOption": {
         "type": "string",
         "enum": [
@@ -1521,7 +1706,7 @@
                     }
                   },
                   "label": {
-                    "description": "A human-readbale label for the contract",
+                    "description": "A human-readable label for the contract.\n\nValid values should: - not be empty - not be bigger than 128 bytes (or some chain-specific limit) - not start / end with whitespace",
                     "type": "string"
                   },
                   "msg": {
@@ -1924,6 +2109,17 @@
                     "$ref": "#/definitions/PreProposeInfo"
                   }
                 ]
+              },
+              "veto": {
+                "description": "This field was not present in DAO DAO v1. To migrate, a value must be specified.\n\noptional configuration for veto feature",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/VetoConfig"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             },
             "additionalProperties": false
@@ -1991,11 +2187,61 @@
         "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
         "type": "string"
       },
+      "Coin": {
+        "type": "object",
+        "required": [
+          "amount",
+          "denom"
+        ],
+        "properties": {
+          "amount": {
+            "$ref": "#/definitions/Uint128"
+          },
+          "denom": {
+            "type": "string"
+          }
+        }
+      },
+      "Duration": {
+        "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "height"
+            ],
+            "properties": {
+              "height": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Time in seconds",
+            "type": "object",
+            "required": [
+              "time"
+            ],
+            "properties": {
+              "time": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
       "ModuleInstantiateInfo": {
         "description": "Information needed to instantiate a module.",
         "type": "object",
         "required": [
           "code_id",
+          "funds",
           "label",
           "msg"
         ],
@@ -2016,6 +2262,13 @@
             "type": "integer",
             "format": "uint64",
             "minimum": 0.0
+          },
+          "funds": {
+            "description": "Funds to be sent to the instantiated contract.",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Coin"
+            }
           },
           "label": {
             "description": "Label for the instantiated contract.",
@@ -2071,6 +2324,42 @@
             "additionalProperties": false
           }
         ]
+      },
+      "Uint128": {
+        "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+        "type": "string"
+      },
+      "VetoConfig": {
+        "type": "object",
+        "required": [
+          "early_execute",
+          "timelock_duration",
+          "veto_before_passed",
+          "vetoer"
+        ],
+        "properties": {
+          "early_execute": {
+            "description": "Whether or not the vetoer can execute a proposal early before the timelock duration has expired",
+            "type": "boolean"
+          },
+          "timelock_duration": {
+            "description": "The time duration to lock a proposal for after its expiration to allow the vetoer to veto.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Duration"
+              }
+            ]
+          },
+          "veto_before_passed": {
+            "description": "Whether or not the vetoer can veto a proposal before it passes.",
+            "type": "boolean"
+          },
+          "vetoer": {
+            "description": "The address able to veto proposals.",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
       }
     }
   },
@@ -2128,6 +2417,17 @@
         "only_members_execute": {
           "description": "If set to true only members may execute passed proposals. Otherwise, any address may execute a passed proposal.",
           "type": "boolean"
+        },
+        "veto": {
+          "description": "Optional veto configuration. If set to `None`, veto option is disabled. Otherwise contains the configuration for veto flow.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/VetoConfig"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "voting_strategy": {
           "description": "The threshold a proposal must reach to complete.",
@@ -2213,6 +2513,38 @@
               "additionalProperties": false
             }
           ]
+        },
+        "VetoConfig": {
+          "type": "object",
+          "required": [
+            "early_execute",
+            "timelock_duration",
+            "veto_before_passed",
+            "vetoer"
+          ],
+          "properties": {
+            "early_execute": {
+              "description": "Whether or not the vetoer can execute a proposal early before the timelock duration has expired",
+              "type": "boolean"
+            },
+            "timelock_duration": {
+              "description": "The time duration to lock a proposal for after its expiration to allow the vetoer to veto.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Duration"
+                }
+              ]
+            },
+            "veto_before_passed": {
+              "description": "Whether or not the vetoer can veto a proposal before it passes.",
+              "type": "boolean"
+            },
+            "vetoer": {
+              "description": "The address able to veto proposals.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
         },
         "VotingStrategy": {
           "description": "Determines how many choices may be selected.",
@@ -2669,6 +3001,40 @@
             }
           ]
         },
+        "Duration": {
+          "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "height"
+              ],
+              "properties": {
+                "height": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "Time in seconds",
+              "type": "object",
+              "required": [
+                "time"
+              ],
+              "properties": {
+                "time": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
         "Empty": {
           "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
           "type": "object"
@@ -2785,7 +3151,7 @@
                       ]
                     },
                     "channel_id": {
-                      "description": "exisiting channel to send the tokens over",
+                      "description": "existing channel to send the tokens over",
                       "type": "string"
                     },
                     "timeout": {
@@ -2903,7 +3269,7 @@
               "minimum": 0.0
             },
             "revision": {
-              "description": "the version that the client is currently on (eg. after reseting the chain this could increment 1 as height drops to 0)",
+              "description": "the version that the client is currently on (e.g. after resetting the chain this could increment 1 as height drops to 0)",
               "type": "integer",
               "format": "uint64",
               "minimum": 0.0
@@ -2956,6 +3322,7 @@
               }
             },
             "description": {
+              "description": "The main body of the proposal text",
               "type": "string"
             },
             "expiration": {
@@ -2992,7 +3359,7 @@
               "minimum": 0.0
             },
             "status": {
-              "description": "Prosal status (Open, rejected, executed, execution failed, closed, passed)",
+              "description": "The proposal status",
               "allOf": [
                 {
                   "$ref": "#/definitions/Status"
@@ -3000,6 +3367,7 @@
               ]
             },
             "title": {
+              "description": "The title of the proposal",
               "type": "string"
             },
             "total_power": {
@@ -3007,6 +3375,17 @@
               "allOf": [
                 {
                   "$ref": "#/definitions/Uint128"
+                }
+              ]
+            },
+            "veto": {
+              "description": "Optional veto configuration. If set to `None`, veto option is disabled. Otherwise contains the configuration for veto flow.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/VetoConfig"
+                },
+                {
+                  "type": "null"
                 }
               ]
             },
@@ -3222,6 +3601,35 @@
               "enum": [
                 "execution_failed"
               ]
+            },
+            {
+              "description": "The proposal is timelocked. Only the configured vetoer can execute or veto until the timelock expires.",
+              "type": "object",
+              "required": [
+                "veto_timelock"
+              ],
+              "properties": {
+                "veto_timelock": {
+                  "type": "object",
+                  "required": [
+                    "expiration"
+                  ],
+                  "properties": {
+                    "expiration": {
+                      "$ref": "#/definitions/Expiration"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "The proposal has been vetoed.",
+              "type": "string",
+              "enum": [
+                "vetoed"
+              ]
             }
           ]
         },
@@ -3240,6 +3648,38 @@
         "Uint64": {
           "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
           "type": "string"
+        },
+        "VetoConfig": {
+          "type": "object",
+          "required": [
+            "early_execute",
+            "timelock_duration",
+            "veto_before_passed",
+            "vetoer"
+          ],
+          "properties": {
+            "early_execute": {
+              "description": "Whether or not the vetoer can execute a proposal early before the timelock duration has expired",
+              "type": "boolean"
+            },
+            "timelock_duration": {
+              "description": "The time duration to lock a proposal for after its expiration to allow the vetoer to veto.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Duration"
+                }
+              ]
+            },
+            "veto_before_passed": {
+              "description": "Whether or not the vetoer can veto a proposal before it passes.",
+              "type": "boolean"
+            },
+            "vetoer": {
+              "description": "The address able to veto proposals.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
         },
         "VoteOption": {
           "type": "string",
@@ -3350,7 +3790,7 @@
                       }
                     },
                     "label": {
-                      "description": "A human-readbale label for the contract",
+                      "description": "A human-readable label for the contract.\n\nValid values should: - not be empty - not be bigger than 128 bytes (or some chain-specific limit) - not start / end with whitespace",
                       "type": "string"
                     },
                     "msg": {
@@ -3850,6 +4290,40 @@
             }
           ]
         },
+        "Duration": {
+          "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "height"
+              ],
+              "properties": {
+                "height": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "Time in seconds",
+              "type": "object",
+              "required": [
+                "time"
+              ],
+              "properties": {
+                "time": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
         "Empty": {
           "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
           "type": "object"
@@ -3966,7 +4440,7 @@
                       ]
                     },
                     "channel_id": {
-                      "description": "exisiting channel to send the tokens over",
+                      "description": "existing channel to send the tokens over",
                       "type": "string"
                     },
                     "timeout": {
@@ -4084,7 +4558,7 @@
               "minimum": 0.0
             },
             "revision": {
-              "description": "the version that the client is currently on (eg. after reseting the chain this could increment 1 as height drops to 0)",
+              "description": "the version that the client is currently on (e.g. after resetting the chain this could increment 1 as height drops to 0)",
               "type": "integer",
               "format": "uint64",
               "minimum": 0.0
@@ -4137,6 +4611,7 @@
               }
             },
             "description": {
+              "description": "The main body of the proposal text",
               "type": "string"
             },
             "expiration": {
@@ -4173,7 +4648,7 @@
               "minimum": 0.0
             },
             "status": {
-              "description": "Prosal status (Open, rejected, executed, execution failed, closed, passed)",
+              "description": "The proposal status",
               "allOf": [
                 {
                   "$ref": "#/definitions/Status"
@@ -4181,6 +4656,7 @@
               ]
             },
             "title": {
+              "description": "The title of the proposal",
               "type": "string"
             },
             "total_power": {
@@ -4188,6 +4664,17 @@
               "allOf": [
                 {
                   "$ref": "#/definitions/Uint128"
+                }
+              ]
+            },
+            "veto": {
+              "description": "Optional veto configuration. If set to `None`, veto option is disabled. Otherwise contains the configuration for veto flow.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/VetoConfig"
+                },
+                {
+                  "type": "null"
                 }
               ]
             },
@@ -4384,6 +4871,35 @@
               "enum": [
                 "execution_failed"
               ]
+            },
+            {
+              "description": "The proposal is timelocked. Only the configured vetoer can execute or veto until the timelock expires.",
+              "type": "object",
+              "required": [
+                "veto_timelock"
+              ],
+              "properties": {
+                "veto_timelock": {
+                  "type": "object",
+                  "required": [
+                    "expiration"
+                  ],
+                  "properties": {
+                    "expiration": {
+                      "$ref": "#/definitions/Expiration"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "The proposal has been vetoed.",
+              "type": "string",
+              "enum": [
+                "vetoed"
+              ]
             }
           ]
         },
@@ -4402,6 +4918,38 @@
         "Uint64": {
           "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
           "type": "string"
+        },
+        "VetoConfig": {
+          "type": "object",
+          "required": [
+            "early_execute",
+            "timelock_duration",
+            "veto_before_passed",
+            "vetoer"
+          ],
+          "properties": {
+            "early_execute": {
+              "description": "Whether or not the vetoer can execute a proposal early before the timelock duration has expired",
+              "type": "boolean"
+            },
+            "timelock_duration": {
+              "description": "The time duration to lock a proposal for after its expiration to allow the vetoer to veto.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Duration"
+                }
+              ]
+            },
+            "veto_before_passed": {
+              "description": "Whether or not the vetoer can veto a proposal before it passes.",
+              "type": "boolean"
+            },
+            "vetoer": {
+              "description": "The address able to veto proposals.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
         },
         "VoteOption": {
           "type": "string",
@@ -4512,7 +5060,7 @@
                       }
                     },
                     "label": {
-                      "description": "A human-readbale label for the contract",
+                      "description": "A human-readable label for the contract.\n\nValid values should: - not be empty - not be bigger than 128 bytes (or some chain-specific limit) - not start / end with whitespace",
                       "type": "string"
                     },
                     "msg": {
@@ -4988,6 +5536,40 @@
             }
           ]
         },
+        "Duration": {
+          "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "height"
+              ],
+              "properties": {
+                "height": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "Time in seconds",
+              "type": "object",
+              "required": [
+                "time"
+              ],
+              "properties": {
+                "time": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
         "Empty": {
           "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
           "type": "object"
@@ -5104,7 +5686,7 @@
                       ]
                     },
                     "channel_id": {
-                      "description": "exisiting channel to send the tokens over",
+                      "description": "existing channel to send the tokens over",
                       "type": "string"
                     },
                     "timeout": {
@@ -5222,7 +5804,7 @@
               "minimum": 0.0
             },
             "revision": {
-              "description": "the version that the client is currently on (eg. after reseting the chain this could increment 1 as height drops to 0)",
+              "description": "the version that the client is currently on (e.g. after resetting the chain this could increment 1 as height drops to 0)",
               "type": "integer",
               "format": "uint64",
               "minimum": 0.0
@@ -5275,6 +5857,7 @@
               }
             },
             "description": {
+              "description": "The main body of the proposal text",
               "type": "string"
             },
             "expiration": {
@@ -5311,7 +5894,7 @@
               "minimum": 0.0
             },
             "status": {
-              "description": "Prosal status (Open, rejected, executed, execution failed, closed, passed)",
+              "description": "The proposal status",
               "allOf": [
                 {
                   "$ref": "#/definitions/Status"
@@ -5319,6 +5902,7 @@
               ]
             },
             "title": {
+              "description": "The title of the proposal",
               "type": "string"
             },
             "total_power": {
@@ -5326,6 +5910,17 @@
               "allOf": [
                 {
                   "$ref": "#/definitions/Uint128"
+                }
+              ]
+            },
+            "veto": {
+              "description": "Optional veto configuration. If set to `None`, veto option is disabled. Otherwise contains the configuration for veto flow.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/VetoConfig"
+                },
+                {
+                  "type": "null"
                 }
               ]
             },
@@ -5541,6 +6136,35 @@
               "enum": [
                 "execution_failed"
               ]
+            },
+            {
+              "description": "The proposal is timelocked. Only the configured vetoer can execute or veto until the timelock expires.",
+              "type": "object",
+              "required": [
+                "veto_timelock"
+              ],
+              "properties": {
+                "veto_timelock": {
+                  "type": "object",
+                  "required": [
+                    "expiration"
+                  ],
+                  "properties": {
+                    "expiration": {
+                      "$ref": "#/definitions/Expiration"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "The proposal has been vetoed.",
+              "type": "string",
+              "enum": [
+                "vetoed"
+              ]
             }
           ]
         },
@@ -5559,6 +6183,38 @@
         "Uint64": {
           "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
           "type": "string"
+        },
+        "VetoConfig": {
+          "type": "object",
+          "required": [
+            "early_execute",
+            "timelock_duration",
+            "veto_before_passed",
+            "vetoer"
+          ],
+          "properties": {
+            "early_execute": {
+              "description": "Whether or not the vetoer can execute a proposal early before the timelock duration has expired",
+              "type": "boolean"
+            },
+            "timelock_duration": {
+              "description": "The time duration to lock a proposal for after its expiration to allow the vetoer to veto.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Duration"
+                }
+              ]
+            },
+            "veto_before_passed": {
+              "description": "Whether or not the vetoer can veto a proposal before it passes.",
+              "type": "boolean"
+            },
+            "vetoer": {
+              "description": "The address able to veto proposals.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
         },
         "VoteOption": {
           "type": "string",
@@ -5669,7 +6325,7 @@
                       }
                     },
                     "label": {
-                      "description": "A human-readbale label for the contract",
+                      "description": "A human-readable label for the contract.\n\nValid values should: - not be empty - not be bigger than 128 bytes (or some chain-specific limit) - not start / end with whitespace",
                       "type": "string"
                     },
                     "msg": {

@@ -1,5 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
+use dao_voting::veto::VetoConfig;
 
 use crate::ContractError;
 
@@ -46,6 +47,7 @@ impl V2CodeIds {
 pub struct ProposalParams {
     pub close_proposal_on_execution_failure: bool,
     pub pre_propose_info: dao_voting::pre_propose::PreProposeInfo,
+    pub veto: Option<VetoConfig>,
 }
 
 #[cw_serde]

@@ -25,6 +25,7 @@ dao-dao-core = { workspace = true }
 dao-interface = { workspace = true }
 dao-pre-propose-single = { workspace = true }
 dao-proposal-single = { workspace = true }
+dao-test-custom-factory = { workspace = true }
 dao-voting = { workspace = true }
 dao-voting-cw20-staked = { workspace = true }
 dao-voting-cw721-staked = { workspace = true }

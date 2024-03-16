@@ -42,7 +42,9 @@ fn set_burner_performed_by_non_contract_owner_should_fail() {
 
     assert_eq!(
         err,
-        TokenfactoryIssuer::execute_error(ContractError::Unauthorized {})
+        TokenfactoryIssuer::execute_error(ContractError::Ownership(
+            cw_ownable::OwnershipError::NotOwner
+        ))
     );
 }
 
@@ -52,18 +54,18 @@ fn set_allowance_to_0_should_remove_it_from_storage() {
     let owner = &env.test_accs[0];
     let burner = &env.test_accs[1];
 
-    // set allowance to some value
+    // Set allowance to some value
     let allowance = 1000000;
     env.cw_tokenfactory_issuer
         .set_burner(&burner.address(), allowance, owner)
         .unwrap();
 
-    // set allowance to 0
+    // Set allowance to 0
     env.cw_tokenfactory_issuer
         .set_burner(&burner.address(), 0, owner)
         .unwrap();
 
-    // check if key for the minter address is removed
+    // Check if key for the minter address is removed
     assert_eq!(
         env.cw_tokenfactory_issuer
             .query_burn_allowances(None, None)
@@ -79,13 +81,13 @@ fn used_up_allowance_should_be_removed_from_storage() {
     let owner = &env.test_accs[0];
     let burner = &env.test_accs[1];
 
-    // set allowance to some value
+    // Set allowance to some value
     let allowance = 1000000;
     env.cw_tokenfactory_issuer
         .set_minter(&burner.address(), allowance, owner)
         .unwrap();
 
-    // mint the whole allowance to be burned the same amount later
+    // Mint the whole allowance to be burned the same amount later
     env.cw_tokenfactory_issuer
         .mint(&burner.address(), allowance, burner)
         .unwrap();
@@ -94,12 +96,12 @@ fn used_up_allowance_should_be_removed_from_storage() {
         .set_burner(&burner.address(), allowance, owner)
         .unwrap();
 
-    // use all allowance
+    // Use all allowance
     env.cw_tokenfactory_issuer
         .burn(&burner.address(), allowance, burner)
         .unwrap();
 
-    // check if key for the burner address is removed
+    // Check if key for the burner address is removed
     assert_eq!(
         env.cw_tokenfactory_issuer
             .query_burn_allowances(None, None)
@@ -127,7 +129,7 @@ fn burn_whole_balance_but_less_than_or_eq_allowance_should_work_and_deduct_allow
         let burner = &env.test_accs[1];
         let burn_to = &env.test_accs[2];
 
-        // mint
+        // Mint
         env.cw_tokenfactory_issuer
             .set_minter(&burner.address(), allowance, owner)
             .unwrap();
@@ -136,7 +138,7 @@ fn burn_whole_balance_but_less_than_or_eq_allowance_should_work_and_deduct_allow
             .mint(&burn_to.address(), burn_amount, burner)
             .unwrap();
 
-        // burn
+        // Burn
         env.cw_tokenfactory_issuer
             .set_burner(&burner.address(), allowance, owner)
             .unwrap();
@@ -145,7 +147,7 @@ fn burn_whole_balance_but_less_than_or_eq_allowance_should_work_and_deduct_allow
             .burn(&burn_to.address(), burn_amount, burner)
             .unwrap();
 
-        // check if allowance is deducted properly
+        // Check if allowance is deducted properly
         let resulted_allowance = env
             .cw_tokenfactory_issuer
             .query_burn_allowance(&burner.address())
@@ -155,7 +157,7 @@ fn burn_whole_balance_but_less_than_or_eq_allowance_should_work_and_deduct_allow
 
         assert_eq!(resulted_allowance, allowance - burn_amount);
 
-        // check if resulted balance is 0
+        // Check if resulted balance is 0
         let amount = env
             .bank()
             .query_balance(&QueryBalanceRequest {
@@ -185,7 +187,7 @@ fn burn_more_than_balance_should_fail_and_not_deduct_allowance() {
 
         let allowance = burn_amount;
 
-        // mint
+        // Mint
         env.cw_tokenfactory_issuer
             .set_minter(&burner.address(), balance, owner)
             .unwrap();
@@ -194,7 +196,7 @@ fn burn_more_than_balance_should_fail_and_not_deduct_allowance() {
             .mint(&burn_from.address(), balance, burner)
             .unwrap();
 
-        // burn
+        // Burn
         env.cw_tokenfactory_issuer
             .set_burner(&burner.address(), allowance, owner)
             .unwrap();
@@ -211,7 +213,7 @@ fn burn_more_than_balance_should_fail_and_not_deduct_allowance() {
             }
         );
 
-        // check if allowance stays the same
+        // Check if allowance stays the same
         let resulted_allowance = env
            .cw_tokenfactory_issuer
            .query_burn_allowance(&burner.address())
@@ -251,7 +253,7 @@ fn burn_over_allowance_should_fail_and_not_deduct_allowance() {
             ))
         );
 
-        // check if allowance stays the same
+        // Check if allowance stays the same
         let resulted_allowance = env
             .cw_tokenfactory_issuer
             .query_burn_allowance(&burner.address())
@@ -288,7 +290,7 @@ fn burn_0_should_fail_and_not_deduct_allowance() {
             TokenfactoryIssuer::execute_error(ContractError::ZeroAmount {})
         );
 
-        // check if allowance stays the same
+        // Check if allowance stays the same
         let resulted_allowance = env
             .cw_tokenfactory_issuer
             .query_burn_allowance(&burner.address())

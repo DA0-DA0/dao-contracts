@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
-    WasmMsg,
+    to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response, StdResult,
+    SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw4::{MemberResponse, TotalWeightResponse};
@@ -14,7 +14,7 @@ use cw_utils::parse_reply_instantiate_data;
 use dao_cw721_extensions::roles::{ExecuteExt, MetadataExt, QueryExt};
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, NftContract, QueryMsg};
-use crate::state::{Config, CONFIG, DAO, INITITIAL_NFTS};
+use crate::state::{Config, CONFIG, DAO, INITIAL_NFTS};
 use crate::ContractError;
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw721-roles";
@@ -57,7 +57,7 @@ pub fn instantiate(
             }
 
             // Save initial NFTs for use in reply
-            INITITIAL_NFTS.save(deps.storage, &initial_nfts)?;
+            INITIAL_NFTS.save(deps.storage, &initial_nfts)?;
 
             // Create instantiate submessage for NFT roles contract
             let msg = SubMsg::reply_on_success(
@@ -66,7 +66,7 @@ pub fn instantiate(
                     funds: vec![],
                     admin: Some(info.sender.to_string()),
                     label,
-                    msg: to_binary(&Cw721InstantiateMsg {
+                    msg: to_json_binary(&Cw721InstantiateMsg {
                         name,
                         symbol,
                         // Admin must be set to contract to mint initial NFTs
@@ -121,7 +121,7 @@ pub fn query_voting_power_at_height(
         },
     )?;
 
-    to_binary(&dao_interface::voting::VotingPowerAtHeightResponse {
+    to_json_binary(&dao_interface::voting::VotingPowerAtHeightResponse {
         power: member.weight.unwrap_or(0).into(),
         height: at_height.unwrap_or(env.block.height),
     })
@@ -140,7 +140,7 @@ pub fn query_total_power_at_height(
         },
     )?;
 
-    to_binary(&dao_interface::voting::TotalPowerAtHeightResponse {
+    to_json_binary(&dao_interface::voting::TotalPowerAtHeightResponse {
         power: total.weight.into(),
         height: at_height.unwrap_or(env.block.height),
     })
@@ -148,17 +148,17 @@ pub fn query_total_power_at_height(
 
 pub fn query_config(deps: Deps) -> StdResult<Binary> {
     let config = CONFIG.load(deps.storage)?;
-    to_binary(&config)
+    to_json_binary(&config)
 }
 
 pub fn query_dao(deps: Deps) -> StdResult<Binary> {
     let dao = DAO.load(deps.storage)?;
-    to_binary(&dao)
+    to_json_binary(&dao)
 }
 
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
-    to_binary(&dao_interface::voting::InfoResponse { info })
+    to_json_binary(&dao_interface::voting::InfoResponse { info })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -177,7 +177,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     };
                     CONFIG.save(deps.storage, &config)?;
 
-                    let initial_nfts = INITITIAL_NFTS.load(deps.storage)?;
+                    let initial_nfts = INITIAL_NFTS.load(deps.storage)?;
 
                     // Add mint submessages
                     let mint_submessages: Vec<SubMsg> = initial_nfts
@@ -186,7 +186,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                             Ok(SubMsg::new(WasmMsg::Execute {
                                 contract_addr: nft_contract.clone(),
                                 funds: vec![],
-                                msg: to_binary(
+                                msg: to_json_binary(
                                     &Cw721ExecuteMsg::<MetadataExt, ExecuteExt>::Mint {
                                         token_id: nft.token_id.clone(),
                                         owner: nft.owner.clone(),
@@ -202,12 +202,12 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                         .collect::<Vec<SubMsg>>();
 
                     // Clear space
-                    INITITIAL_NFTS.remove(deps.storage);
+                    INITIAL_NFTS.remove(deps.storage);
 
                     // Update minter message
                     let update_minter_msg = WasmMsg::Execute {
                         contract_addr: nft_contract.clone(),
-                        msg: to_binary(
+                        msg: to_json_binary(
                             &Cw721ExecuteMsg::<MetadataExt, ExecuteExt>::UpdateOwnership(
                                 Action::TransferOwnership {
                                     new_owner: dao.to_string(),

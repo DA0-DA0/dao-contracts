@@ -1,9 +1,9 @@
-use cosmwasm_std::{coins, from_slice, to_binary, Addr, Coin, Empty, Uint128};
-use cps::query::{ProposalListResponse, ProposalResponse};
+use cosmwasm_std::{coins, from_json, to_json_binary, Addr, Coin, Empty, Uint128};
 use cw2::ContractVersion;
 use cw20::Cw20Coin;
 use cw_denom::UncheckedDenom;
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor};
+use dps::query::{ProposalListResponse, ProposalResponse};
 
 use dao_interface::state::ProposalModule;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
@@ -11,10 +11,10 @@ use dao_pre_propose_approval_single::{
     msg::{
         ExecuteExt, ExecuteMsg, InstantiateExt, InstantiateMsg, ProposeMessage, QueryExt, QueryMsg,
     },
-    state::PendingProposal,
+    state::Proposal,
 };
 use dao_pre_propose_base::{error::PreProposeError, msg::DepositInfoResponse, state::Config};
-use dao_proposal_single as cps;
+use dao_proposal_single as dps;
 use dao_testing::helpers::instantiate_with_cw4_groups_governance;
 use dao_voting::{
     deposit::{CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
@@ -26,18 +26,22 @@ use dao_voting::{
 
 use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::InstantiateMsg as ApproverInstantiateMsg;
+use crate::msg::{
+    ExecuteExt as ApproverExecuteExt, ExecuteMsg as ApproverExecuteMsg,
+    QueryExt as ApproverQueryExt, QueryMsg as ApproverQueryMsg,
+};
 
 // The approver dao contract is the 6th contract instantiated
 const APPROVER: &str = "contract6";
 
 fn cw_dao_proposal_single_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        cps::contract::execute,
-        cps::contract::instantiate,
-        cps::contract::query,
+        dps::contract::execute,
+        dps::contract::instantiate,
+        dps::contract::query,
     )
-    .with_migrate(cps::contract::migrate)
-    .with_reply(cps::contract::reply);
+    .with_migrate(dps::contract::migrate)
+    .with_reply(dps::contract::reply);
     Box::new(contract)
 }
 
@@ -72,10 +76,10 @@ fn get_proposal_module_approval_single_instantiate(
     app: &mut App,
     deposit_info: Option<UncheckedDepositInfo>,
     open_proposal_submission: bool,
-) -> cps::msg::InstantiateMsg {
+) -> dps::msg::InstantiateMsg {
     let pre_propose_id = app.store_code(cw_pre_propose_base_proposal_single());
 
-    cps::msg::InstantiateMsg {
+    dps::msg::InstantiateMsg {
         threshold: Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Majority {},
         },
@@ -86,7 +90,7 @@ fn get_proposal_module_approval_single_instantiate(
         pre_propose_info: PreProposeInfo::ModuleMayPropose {
             info: ModuleInstantiateInfo {
                 code_id: pre_propose_id,
-                msg: to_binary(&InstantiateMsg {
+                msg: to_json_binary(&InstantiateMsg {
                     deposit_info,
                     open_proposal_submission,
                     extension: InstantiateExt {
@@ -95,10 +99,12 @@ fn get_proposal_module_approval_single_instantiate(
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
+                funds: vec![],
                 label: "baby's first pre-propose module, needs supervision".to_string(),
             },
         },
         close_proposal_on_execution_failure: false,
+        veto: None,
     }
 }
 
@@ -107,10 +113,10 @@ fn get_proposal_module_approver_instantiate(
     _deposit_info: Option<UncheckedDepositInfo>,
     _open_proposal_submission: bool,
     pre_propose_approval_contract: String,
-) -> cps::msg::InstantiateMsg {
+) -> dps::msg::InstantiateMsg {
     let pre_propose_id = app.store_code(pre_propose_approver_contract());
 
-    cps::msg::InstantiateMsg {
+    dps::msg::InstantiateMsg {
         threshold: Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Majority {},
         },
@@ -121,15 +127,17 @@ fn get_proposal_module_approver_instantiate(
         pre_propose_info: PreProposeInfo::ModuleMayPropose {
             info: ModuleInstantiateInfo {
                 code_id: pre_propose_id,
-                msg: to_binary(&ApproverInstantiateMsg {
+                msg: to_json_binary(&ApproverInstantiateMsg {
                     pre_propose_approval_contract,
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
+                funds: vec![],
                 label: "approver module".to_string(),
             },
         },
         close_proposal_on_execution_failure: false,
+        veto: None,
     }
 }
 
@@ -161,7 +169,7 @@ struct DefaultTestSetup {
     core_addr: Addr,
     proposal_single: Addr,
     pre_propose: Addr,
-    _approver_core_addr: Addr,
+    approver_core_addr: Addr,
     pre_propose_approver: Addr,
     proposal_single_approver: Addr,
 }
@@ -171,7 +179,7 @@ fn setup_default_test(
     deposit_info: Option<UncheckedDepositInfo>,
     open_proposal_submission: bool,
 ) -> DefaultTestSetup {
-    let cps_id = app.store_code(cw_dao_proposal_single_contract());
+    let dps_id = app.store_code(cw_dao_proposal_single_contract());
 
     // Instantiate SubDAO with pre-propose-approval-single
     let proposal_module_instantiate = get_proposal_module_approval_single_instantiate(
@@ -181,8 +189,8 @@ fn setup_default_test(
     );
     let core_addr = instantiate_with_cw4_groups_governance(
         app,
-        cps_id,
-        to_binary(&proposal_module_instantiate).unwrap(),
+        dps_id,
+        to_json_binary(&proposal_module_instantiate).unwrap(),
         Some(vec![
             cw20::Cw20Coin {
                 address: "ekez".to_string(),
@@ -212,7 +220,7 @@ fn setup_default_test(
         .wrap()
         .query_wasm_smart(
             proposal_single.clone(),
-            &cps::msg::QueryMsg::ProposalCreationPolicy {},
+            &dps::msg::QueryMsg::ProposalCreationPolicy {},
         )
         .unwrap();
     let pre_propose = match proposal_creation_policy {
@@ -233,10 +241,10 @@ fn setup_default_test(
         pre_propose.to_string(),
     );
 
-    let _approver_core_addr = instantiate_with_cw4_groups_governance(
+    let approver_core_addr = instantiate_with_cw4_groups_governance(
         app,
-        cps_id,
-        to_binary(&proposal_module_instantiate).unwrap(),
+        dps_id,
+        to_json_binary(&proposal_module_instantiate).unwrap(),
         Some(vec![
             cw20::Cw20Coin {
                 address: "ekez".to_string(),
@@ -251,7 +259,7 @@ fn setup_default_test(
     let proposal_modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
-            _approver_core_addr.clone(),
+            approver_core_addr.clone(),
             &dao_interface::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
@@ -266,7 +274,7 @@ fn setup_default_test(
         .wrap()
         .query_wasm_smart(
             proposal_single_approver.clone(),
-            &cps::msg::QueryMsg::ProposalCreationPolicy {},
+            &dps::msg::QueryMsg::ProposalCreationPolicy {},
         )
         .unwrap();
     let pre_propose_approver = match proposal_creation_policy {
@@ -278,7 +286,7 @@ fn setup_default_test(
         get_proposal_module(app, pre_propose_approver.clone())
     );
     assert_eq!(
-        _approver_core_addr,
+        approver_core_addr,
         get_dao(app, pre_propose_approver.clone())
     );
 
@@ -286,7 +294,7 @@ fn setup_default_test(
         core_addr,
         proposal_single,
         pre_propose,
-        _approver_core_addr,
+        approver_core_addr,
         proposal_single_approver,
         pre_propose_approver,
     }
@@ -301,6 +309,7 @@ fn make_pre_proposal(app: &mut App, pre_propose: Addr, proposer: &str, funds: &[
                 title: "title".to_string(),
                 description: "description".to_string(),
                 msgs: vec![],
+                vote: None,
             },
         },
         funds,
@@ -308,7 +317,7 @@ fn make_pre_proposal(app: &mut App, pre_propose: Addr, proposer: &str, funds: &[
     .unwrap();
 
     // Query for pending proposal and return latest id
-    let mut pending: Vec<PendingProposal> = app
+    let mut pending: Vec<Proposal> = app
         .wrap()
         .query_wasm_smart(
             pre_propose,
@@ -369,7 +378,7 @@ fn vote(app: &mut App, module: Addr, sender: &str, id: u64, position: Vote) -> S
     app.execute_contract(
         Addr::unchecked(sender),
         module.clone(),
-        &cps::msg::ExecuteMsg::Vote {
+        &dps::msg::ExecuteMsg::Vote {
             proposal_id: id,
             vote: position,
             rationale: None,
@@ -380,7 +389,7 @@ fn vote(app: &mut App, module: Addr, sender: &str, id: u64, position: Vote) -> S
 
     let proposal: ProposalResponse = app
         .wrap()
-        .query_wasm_smart(module, &cps::msg::QueryMsg::Proposal { proposal_id: id })
+        .query_wasm_smart(module, &dps::msg::QueryMsg::Proposal { proposal_id: id })
         .unwrap();
 
     proposal.proposal.status
@@ -414,7 +423,7 @@ fn get_proposals(app: &App, module: Addr) -> ProposalListResponse {
     app.wrap()
         .query_wasm_smart(
             module,
-            &cps::msg::QueryMsg::ListProposals {
+            &dps::msg::QueryMsg::ListProposals {
                 start_after: None,
                 limit: None,
             },
@@ -428,7 +437,7 @@ fn get_latest_proposal_id(app: &App, module: Addr) -> u64 {
         .wrap()
         .query_wasm_smart(
             module,
-            &cps::msg::QueryMsg::ListProposals {
+            &dps::msg::QueryMsg::ListProposals {
                 start_after: None,
                 limit: None,
             },
@@ -510,7 +519,7 @@ fn close_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64) {
     app.execute_contract(
         Addr::unchecked(sender),
         module,
-        &cps::msg::ExecuteMsg::Close { proposal_id },
+        &dps::msg::ExecuteMsg::Close { proposal_id },
         &[],
     )
     .unwrap();
@@ -520,7 +529,7 @@ fn execute_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64)
     app.execute_contract(
         Addr::unchecked(sender),
         module,
-        &cps::msg::ExecuteMsg::Execute { proposal_id },
+        &dps::msg::ExecuteMsg::Execute { proposal_id },
         &[],
     )
     .unwrap();
@@ -563,7 +572,7 @@ fn test_native_permutation(
         core_addr,
         proposal_single,
         pre_propose,
-        _approver_core_addr: _,
+        approver_core_addr: _,
         proposal_single_approver,
         pre_propose_approver: _,
     } = setup_default_test(
@@ -671,7 +680,7 @@ fn test_cw20_permutation(
         core_addr,
         proposal_single,
         pre_propose,
-        _approver_core_addr: _,
+        approver_core_addr: _,
         proposal_single_approver,
         pre_propose_approver: _,
     } = setup_default_test(
@@ -963,7 +972,7 @@ fn test_multiple_open_proposals() {
         core_addr: _,
         proposal_single,
         pre_propose,
-        _approver_core_addr: _,
+        approver_core_addr: _,
         proposal_single_approver,
         pre_propose_approver: _,
     } = setup_default_test(
@@ -1060,7 +1069,7 @@ fn test_set_version() {
         core_addr: _,
         proposal_single: _,
         pre_propose: _,
-        _approver_core_addr: _,
+        approver_core_addr: _,
         proposal_single_approver: _,
         pre_propose_approver,
     } = setup_default_test(
@@ -1075,8 +1084,8 @@ fn test_set_version() {
         false,
     );
 
-    let info: ContractVersion = from_slice(
-        &app.wrap()
+    let info: ContractVersion = from_json(
+        app.wrap()
             .query_wasm_raw(pre_propose_approver, "contract_info".as_bytes())
             .unwrap()
             .unwrap(),
@@ -1102,7 +1111,7 @@ fn test_permissions() {
         core_addr,
         proposal_single: _,
         pre_propose,
-        _approver_core_addr: _,
+        approver_core_addr: _,
         proposal_single_approver: _,
         pre_propose_approver: _,
     } = setup_default_test(
@@ -1143,6 +1152,7 @@ fn test_permissions() {
                     title: "I would like to join the DAO".to_string(),
                     description: "though, I am currently not a member.".to_string(),
                     msgs: vec![],
+                    vote: None,
                 },
             },
             &[],
@@ -1164,7 +1174,7 @@ fn test_approval_and_rejection_permissions() {
         core_addr: _,
         proposal_single: _,
         pre_propose,
-        _approver_core_addr: _,
+        approver_core_addr: _,
         proposal_single_approver: _,
         pre_propose_approver: _,
     } = setup_default_test(
@@ -1230,9 +1240,9 @@ fn test_propose_open_proposal_submission() {
         core_addr: _,
         proposal_single,
         pre_propose,
-        _approver_core_addr: _,
+        approver_core_addr: _,
         proposal_single_approver,
-        pre_propose_approver: _,
+        pre_propose_approver,
     } = setup_default_test(
         &mut app,
         Some(UncheckedDepositInfo {
@@ -1247,11 +1257,36 @@ fn test_propose_open_proposal_submission() {
 
     // Non-member proposes.
     mint_natives(&mut app, "nonmember", coins(10, "ujuno"));
-    let _pre_propose_id =
-        make_pre_proposal(&mut app, pre_propose, "nonmember", &coins(10, "ujuno"));
+    let pre_propose_id = make_pre_proposal(&mut app, pre_propose, "nonmember", &coins(10, "ujuno"));
+
+    let approver_prop_id = get_latest_proposal_id(&app, proposal_single_approver.clone());
+    let pre_propose_id_from_proposal: u64 = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose_approver.clone(),
+            &ApproverQueryMsg::QueryExtension {
+                msg: ApproverQueryExt::PreProposeApprovalIdForApproverProposalId {
+                    id: approver_prop_id,
+                },
+            },
+        )
+        .unwrap();
+    assert_eq!(pre_propose_id_from_proposal, pre_propose_id);
+
+    let proposal_id_from_pre_propose: u64 = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose_approver.clone(),
+            &ApproverQueryMsg::QueryExtension {
+                msg: ApproverQueryExt::ApproverProposalIdForPreProposeApprovalId {
+                    id: pre_propose_id,
+                },
+            },
+        )
+        .unwrap();
+    assert_eq!(proposal_id_from_pre_propose, approver_prop_id);
 
     // Approver DAO votes to approves
-    let approver_prop_id = get_latest_proposal_id(&app, proposal_single_approver.clone());
     approve_proposal(&mut app, proposal_single_approver, "ekez", approver_prop_id);
     let id = get_latest_proposal_id(&app, proposal_single.clone());
 
@@ -1271,7 +1306,7 @@ fn test_update_config() {
         core_addr,
         proposal_single,
         pre_propose,
-        _approver_core_addr: _,
+        approver_core_addr: _,
         proposal_single_approver,
         pre_propose_approver: _,
     } = setup_default_test(&mut app, None, false);
@@ -1388,7 +1423,7 @@ fn test_withdraw() {
         core_addr,
         proposal_single,
         pre_propose,
-        _approver_core_addr: _,
+        approver_core_addr: _,
         proposal_single_approver,
         pre_propose_approver: _,
     } = setup_default_test(&mut app, None, false);
@@ -1517,7 +1552,7 @@ fn test_withdraw() {
         .wrap()
         .query_wasm_smart(
             proposal_single.clone(),
-            &cps::msg::QueryMsg::ProposalCreationPolicy {},
+            &dps::msg::QueryMsg::ProposalCreationPolicy {},
         )
         .unwrap();
 
@@ -1540,4 +1575,98 @@ fn test_withdraw() {
     );
     let balance = get_balance_native(&app, core_addr.as_str(), "ujuno");
     assert_eq!(balance, Uint128::new(30));
+}
+
+#[test]
+fn test_reset_approver() {
+    let mut app = App::default();
+
+    // Need to instantiate this so contract addresses match with cw20 test cases
+    let _ = instantiate_cw20_base_default(&mut app);
+
+    let DefaultTestSetup {
+        core_addr: _,
+        proposal_single: _,
+        pre_propose,
+        approver_core_addr,
+        proposal_single_approver: _,
+        pre_propose_approver,
+    } = setup_default_test(
+        &mut app,
+        Some(UncheckedDepositInfo {
+            denom: DepositToken::Token {
+                denom: UncheckedDenom::Native("ujuno".to_string()),
+            },
+            amount: Uint128::new(10),
+            refund_policy: DepositRefundPolicy::Always,
+        }),
+        false,
+    );
+
+    // Ensure approver is set to the pre_propose_approver
+    let approver: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose.clone(),
+            &QueryMsg::QueryExtension {
+                msg: QueryExt::Approver {},
+            },
+        )
+        .unwrap();
+    assert_eq!(approver, pre_propose_approver);
+
+    // Fail to change approver by non-approver.
+    let err: PreProposeError = app
+        .execute_contract(
+            Addr::unchecked("someone"),
+            pre_propose.clone(),
+            &ExecuteMsg::Extension {
+                msg: ExecuteExt::UpdateApprover {
+                    address: "someone".to_string(),
+                },
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, PreProposeError::Unauthorized {});
+
+    // Fail to reset approver back to approver DAO by non-approver.
+    let err: PreProposeError = app
+        .execute_contract(
+            Addr::unchecked("someone"),
+            pre_propose_approver.clone(),
+            &ApproverExecuteMsg::Extension {
+                msg: ApproverExecuteExt::ResetApprover {},
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, PreProposeError::Unauthorized {});
+
+    // Reset approver back to approver DAO.
+    app.execute_contract(
+        approver_core_addr.clone(),
+        pre_propose_approver.clone(),
+        &ApproverExecuteMsg::Extension {
+            msg: ApproverExecuteExt::ResetApprover {},
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Ensure approver is reset back to the approver DAO
+    let approver: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose.clone(),
+            &QueryMsg::QueryExtension {
+                msg: QueryExt::Approver {},
+            },
+        )
+        .unwrap();
+    assert_eq!(approver, approver_core_addr);
 }

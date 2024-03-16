@@ -110,9 +110,9 @@ pub fn cw20_balances_voting_contract() -> Box<dyn Contract<Empty>> {
 
 pub fn native_staked_balances_voting_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        dao_voting_native_staked::contract::execute,
-        dao_voting_native_staked::contract::instantiate,
-        dao_voting_native_staked::contract::query,
+        dao_voting_token_staked::contract::execute,
+        dao_voting_token_staked::contract::instantiate,
+        dao_voting_token_staked::contract::query,
     );
     Box::new(contract)
 }
@@ -194,5 +194,15 @@ pub fn stake_cw20_v03_contract() -> Box<dyn Contract<Empty>> {
         stake_cw20_v03::contract::instantiate,
         stake_cw20_v03::contract::query,
     );
+    Box::new(contract)
+}
+
+pub fn dao_test_custom_factory() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        dao_test_custom_factory::contract::execute,
+        dao_test_custom_factory::contract::instantiate,
+        dao_test_custom_factory::contract::query,
+    )
+    .with_reply(dao_test_custom_factory::contract::reply);
     Box::new(contract)
 }

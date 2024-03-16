@@ -1,4 +1,4 @@
-use cosmwasm_std::{from_binary, testing::mock_dependencies, Timestamp, Uint128};
+use cosmwasm_std::{from_json, testing::mock_dependencies, Timestamp, Uint128};
 
 use crate::{StakeTracker, StakeTrackerQuery};
 
@@ -431,8 +431,8 @@ fn test_queries() {
     )
     .unwrap();
 
-    let cardinality: Uint128 = from_binary(
-        &st.query(
+    let cardinality: Uint128 = from_json(
+        st.query(
             storage,
             StakeTrackerQuery::Cardinality {
                 t: Timestamp::from_seconds(11),
@@ -443,8 +443,8 @@ fn test_queries() {
     .unwrap();
     assert_eq!(cardinality, Uint128::one());
 
-    let total_staked: Uint128 = from_binary(
-        &st.query(
+    let total_staked: Uint128 = from_json(
+        st.query(
             storage,
             StakeTrackerQuery::TotalStaked {
                 t: Timestamp::from_seconds(10),
@@ -455,8 +455,8 @@ fn test_queries() {
     .unwrap();
     assert_eq!(total_staked, Uint128::new(42));
 
-    let val_staked: Uint128 = from_binary(
-        &st.query(
+    let val_staked: Uint128 = from_json(
+        st.query(
             storage,
             StakeTrackerQuery::ValidatorStaked {
                 t: Timestamp::from_seconds(10),
@@ -468,8 +468,8 @@ fn test_queries() {
     .unwrap();
     assert_eq!(val_staked, Uint128::new(42));
 
-    let val_staked_before_staking: Uint128 = from_binary(
-        &st.query(
+    let val_staked_before_staking: Uint128 = from_json(
+        st.query(
             storage,
             StakeTrackerQuery::ValidatorStaked {
                 t: Timestamp::from_seconds(9),

@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     testing::{mock_dependencies, mock_env},
-    to_binary, Addr, Coin, Empty, Uint128,
+    to_json_binary, Addr, Coin, Empty, Uint128,
 };
 use cw20::Cw20Coin;
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
@@ -95,7 +95,7 @@ fn test_simple_escrow() {
         &cw20::Cw20ExecuteMsg::Send {
             contract: escrow.to_string(),
             amount: Uint128::new(100),
-            msg: to_binary("").unwrap(),
+            msg: to_json_binary("").unwrap(),
         },
         &[],
     )
@@ -209,7 +209,7 @@ fn test_withdraw() {
         &cw20::Cw20ExecuteMsg::Send {
             contract: escrow.to_string(),
             amount: Uint128::new(100),
-            msg: to_binary("").unwrap(),
+            msg: to_json_binary("").unwrap(),
         },
         &[],
     )
@@ -380,7 +380,7 @@ fn test_withdraw_post_completion() {
         &cw20::Cw20ExecuteMsg::Send {
             contract: escrow.to_string(),
             amount: Uint128::new(100),
-            msg: to_binary("").unwrap(),
+            msg: to_json_binary("").unwrap(),
         },
         &[],
     )
@@ -618,7 +618,7 @@ fn test_fund_non_counterparty() {
             &cw20::Cw20ExecuteMsg::Send {
                 contract: escrow.to_string(),
                 amount: Uint128::new(100),
-                msg: to_binary("").unwrap(),
+                msg: to_json_binary("").unwrap(),
             },
             &[],
         )
@@ -714,7 +714,7 @@ fn test_fund_twice() {
         &cw20::Cw20ExecuteMsg::Send {
             contract: escrow.to_string(),
             amount: Uint128::new(100),
-            msg: to_binary("").unwrap(),
+            msg: to_json_binary("").unwrap(),
         },
         &[],
     )
@@ -763,7 +763,7 @@ fn test_fund_twice() {
             &cw20::Cw20ExecuteMsg::Send {
                 contract: escrow.into_string(),
                 amount: Uint128::new(100),
-                msg: to_binary("").unwrap(),
+                msg: to_json_binary("").unwrap(),
             },
             &[],
         )
@@ -835,7 +835,7 @@ fn test_fund_invalid_amount() {
             &cw20::Cw20ExecuteMsg::Send {
                 contract: escrow.to_string(),
                 amount: Uint128::new(10),
-                msg: to_binary("").unwrap(),
+                msg: to_json_binary("").unwrap(),
             },
             &[],
         )
@@ -1022,7 +1022,7 @@ fn test_fund_invalid_cw20() {
             &cw20::Cw20ExecuteMsg::Send {
                 contract: escrow.to_string(),
                 amount: Uint128::new(100),
-                msg: to_binary("").unwrap(),
+                msg: to_json_binary("").unwrap(),
             },
             &[],
         )
@@ -1041,7 +1041,7 @@ fn test_fund_invalid_cw20() {
             &cw20::Cw20ExecuteMsg::Send {
                 contract: escrow.to_string(),
                 amount: Uint128::new(100),
-                msg: to_binary("").unwrap(),
+                msg: to_json_binary("").unwrap(),
             },
             &[],
         )

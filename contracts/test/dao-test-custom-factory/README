@@ -1,0 +1,2 @@
+# Test Custom Factory contract
+Used for testing custom factories with `dao-voting-token-staked` and `dao-voting-cw721-staked`. This also serves an example for how to build custom factory contracts for token or NFT based DAOs.

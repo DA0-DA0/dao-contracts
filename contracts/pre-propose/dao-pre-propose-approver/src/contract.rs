@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
+    to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
     WasmMsg,
 };
 use cw2::set_contract_version;
@@ -14,14 +14,17 @@ use dao_pre_propose_base::{error::PreProposeError, state::PreProposeContract};
 use dao_voting::status::Status;
 
 use crate::msg::{
-    BaseInstantiateMsg, ExecuteMsg, InstantiateMsg, ProposeMessageInternal, QueryExt, QueryMsg,
+    BaseInstantiateMsg, ExecuteExt, ExecuteMsg, InstantiateMsg, ProposeMessageInternal, QueryExt,
+    QueryMsg,
 };
-use crate::state::{PRE_PROPOSE_APPROVAL_CONTRACT, PROPOSAL_IDS};
+use crate::state::{
+    PRE_PROPOSE_APPROVAL_CONTRACT, PRE_PROPOSE_ID_TO_PROPOSAL_ID, PROPOSAL_ID_TO_PRE_PROPOSE_ID,
+};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-pre-propose-approver";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-type PrePropose = PreProposeContract<Empty, Empty, QueryExt, ApproverProposeMessage>;
+type PrePropose = PreProposeContract<Empty, ExecuteExt, QueryExt, ApproverProposeMessage>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -50,18 +53,18 @@ pub fn instantiate(
     let addr = deps.api.addr_validate(&msg.pre_propose_approval_contract)?;
     PRE_PROPOSE_APPROVAL_CONTRACT.save(deps.storage, &addr)?;
 
-    Ok(resp.set_data(to_binary(&ModuleInstantiateCallback {
+    Ok(resp.set_data(to_json_binary(&ModuleInstantiateCallback {
         msgs: vec![
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: addr.to_string(),
-                msg: to_binary(&PreProposeApprovalExecuteMsg::AddProposalSubmittedHook {
+                msg: to_json_binary(&PreProposeApprovalExecuteMsg::AddProposalSubmittedHook {
                     address: env.contract.address.to_string(),
                 })?,
                 funds: vec![],
             }),
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: addr.to_string(),
-                msg: to_binary(&PreProposeApprovalExecuteMsg::Extension {
+                msg: to_json_binary(&PreProposeApprovalExecuteMsg::Extension {
                     msg: ApprovalExt::UpdateApprover {
                         address: env.contract.address.to_string(),
                     },
@@ -86,6 +89,9 @@ pub fn execute(
             proposal_id,
             new_status,
         } => execute_proposal_completed(deps, info, proposal_id, new_status),
+        ExecuteMsg::Extension { msg } => match msg {
+            ExecuteExt::ResetApprover {} => execute_reset_approver(deps, env, info),
+        },
         _ => PrePropose::default().execute(deps, env, info, msg),
     }
 }
@@ -124,11 +130,12 @@ pub fn execute_propose(
         &proposal_module,
         &dao_interface::proposal::Query::NextProposalId {},
     )?;
-    PROPOSAL_IDS.save(deps.storage, proposal_id, &pre_propose_id)?;
+    PROPOSAL_ID_TO_PRE_PROPOSE_ID.save(deps.storage, proposal_id, &pre_propose_id)?;
+    PRE_PROPOSE_ID_TO_PROPOSAL_ID.save(deps.storage, pre_propose_id, &proposal_id)?;
 
     let propose_messsage = WasmMsg::Execute {
         contract_addr: proposal_module.into_string(),
-        msg: to_binary(&sanitized_msg)?,
+        msg: to_json_binary(&sanitized_msg)?,
         funds: vec![],
     };
     Ok(Response::default().add_message(propose_messsage))
@@ -147,7 +154,7 @@ pub fn execute_proposal_completed(
     }
 
     // Get approval pre-propose id
-    let pre_propose_id = PROPOSAL_IDS.load(deps.storage, proposal_id)?;
+    let pre_propose_id = PROPOSAL_ID_TO_PRE_PROPOSE_ID.load(deps.storage, proposal_id)?;
 
     // Get approval contract address
     let approval_contract = PRE_PROPOSE_APPROVAL_CONTRACT.load(deps.storage)?;
@@ -156,14 +163,14 @@ pub fn execute_proposal_completed(
     let msg = match new_status {
         Status::Closed => Some(WasmMsg::Execute {
             contract_addr: approval_contract.into_string(),
-            msg: to_binary(&PreProposeApprovalExecuteMsg::Extension {
+            msg: to_json_binary(&PreProposeApprovalExecuteMsg::Extension {
                 msg: ApprovalExt::Reject { id: pre_propose_id },
             })?,
             funds: vec![],
         }),
         Status::Executed => Some(WasmMsg::Execute {
             contract_addr: approval_contract.into_string(),
-            msg: to_binary(&PreProposeApprovalExecuteMsg::Extension {
+            msg: to_json_binary(&PreProposeApprovalExecuteMsg::Extension {
                 msg: ApprovalExt::Approve { id: pre_propose_id },
             })?,
             funds: vec![],
@@ -177,8 +184,45 @@ pub fn execute_proposal_completed(
             .add_message(msg)
             .add_attribute("method", "execute_proposal_completed_hook")
             .add_attribute("proposal", proposal_id.to_string())),
-        None => Err(PreProposeError::NotClosedOrExecuted { status: new_status }),
+        None => Err(PreProposeError::NotCompleted { status: new_status }),
     }
+}
+
+pub fn execute_reset_approver(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+) -> Result<Response, PreProposeError> {
+    // Check that this is coming from the DAO.
+    let dao = PrePropose::default().dao.load(deps.storage)?;
+    if info.sender != dao {
+        return Err(PreProposeError::Unauthorized {});
+    }
+
+    let pre_propose_approval_contract = PRE_PROPOSE_APPROVAL_CONTRACT.load(deps.storage)?;
+
+    let reset_messages = vec![
+        // Remove the proposal submitted hook.
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: pre_propose_approval_contract.to_string(),
+            msg: to_json_binary(&PreProposeApprovalExecuteMsg::RemoveProposalSubmittedHook {
+                address: env.contract.address.to_string(),
+            })?,
+            funds: vec![],
+        }),
+        // Set pre-propose-approval approver to the DAO.
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: pre_propose_approval_contract.to_string(),
+            msg: to_json_binary(&PreProposeApprovalExecuteMsg::Extension {
+                msg: ApprovalExt::UpdateApprover {
+                    address: dao.to_string(),
+                },
+            })?,
+            funds: vec![],
+        }),
+    ];
+
+    Ok(Response::default().add_messages(reset_messages))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -186,7 +230,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::QueryExtension { msg } => match msg {
             QueryExt::PreProposeApprovalContract {} => {
-                to_binary(&PRE_PROPOSE_APPROVAL_CONTRACT.load(deps.storage)?)
+                to_json_binary(&PRE_PROPOSE_APPROVAL_CONTRACT.load(deps.storage)?)
+            }
+            QueryExt::PreProposeApprovalIdForApproverProposalId { id } => {
+                to_json_binary(&PROPOSAL_ID_TO_PRE_PROPOSE_ID.may_load(deps.storage, id)?)
+            }
+            QueryExt::ApproverProposalIdForPreProposeApprovalId { id } => {
+                to_json_binary(&PRE_PROPOSE_ID_TO_PROPOSAL_ID.may_load(deps.storage, id)?)
             }
         },
         _ => PrePropose::default().query(deps, env, msg),
