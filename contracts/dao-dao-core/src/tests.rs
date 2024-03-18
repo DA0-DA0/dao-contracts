@@ -1215,7 +1215,7 @@ fn test_admin_permissions() {
         &ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: core_with_admin_addr.to_string(),
-                msg: to_binary(&ExecuteMsg::Pause {
+                msg: to_json_binary(&ExecuteMsg::Pause {
                     duration: Duration::Height(10),
                 })
                 .unwrap(),
