@@ -46,7 +46,6 @@ pub fn execute(
             code_id,
             label,
         } => instantiate_contract(deps, env, info, msg, code_id, label),
-        ExecuteMsg::UpdateAdmin { admin } => execute_update_admin(deps, info, admin),
     }
 }
 
@@ -78,29 +77,6 @@ pub fn instantiate_contract(
     Ok(Response::default()
         .add_attribute("action", "instantiate_cw_core")
         .add_submessage(msg))
-}
-
-pub fn execute_update_admin(
-    deps: DepsMut,
-    info: MessageInfo,
-    admin: Option<String>,
-) -> Result<Response, ContractError> {
-    // Only allow the current admin to update the admin. If no admin, no admin
-    // can ever be set.
-    let current_admin = ADMIN.load(deps.storage)?;
-    if current_admin.map_or(false, |a| a != info.sender) {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    let new_admin = admin.map(|s| deps.api.addr_validate(&s)).transpose()?;
-    ADMIN.save(deps.storage, &new_admin)?;
-
-    Ok(Response::default()
-        .add_attribute("action", "update_admin")
-        .add_attribute(
-            "admin",
-            new_admin.map_or("_none".to_string(), |a| a.to_string()),
-        ))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

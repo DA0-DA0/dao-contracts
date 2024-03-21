@@ -3,7 +3,8 @@ use cosmwasm_std::{Addr, Binary};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    /// The account allowed to execute this contract.
+    /// The account allowed to execute this contract. If no admin, anyone can
+    /// execute it.
     pub admin: Option<String>,
 }
 
@@ -16,9 +17,6 @@ pub enum ExecuteMsg {
         code_id: u64,
         label: String,
     },
-    /// Update the admin that is allowed to execute this contract. If there is
-    /// no admin, this cannot be called and there will never be an admin.
-    UpdateAdmin { admin: Option<String> },
 }
 
 #[cw_serde]

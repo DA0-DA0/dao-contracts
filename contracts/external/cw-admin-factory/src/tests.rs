@@ -17,7 +17,6 @@ use crate::{
 };
 
 const ADMIN_ADDR: &str = "admin";
-const NEW_ADMIN_ADDR: &str = "new_admin";
 
 fn factory_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -244,82 +243,6 @@ pub fn test_authorized_set_self_admin() {
     // Check that admin of core address is itself
     let contract_info = app.wrap().query_wasm_contract_info(&core_addr).unwrap();
     assert_eq!(contract_info.admin, Some(core_addr))
-}
-
-#[test]
-pub fn test_update_admin() {
-    let mut app = App::default();
-    let code_id = app.store_code(factory_contract());
-
-    let instantiate = InstantiateMsg {
-        admin: Some(ADMIN_ADDR.to_string()),
-    };
-    let factory_addr = app
-        .instantiate_contract(
-            code_id,
-            Addr::unchecked(ADMIN_ADDR),
-            &instantiate,
-            &[],
-            "cw-admin-factory",
-            None,
-        )
-        .unwrap();
-
-    // Query admin.
-    let current_admin: AdminResponse = app
-        .wrap()
-        .query_wasm_smart(factory_addr.clone(), &QueryMsg::Admin {})
-        .unwrap();
-    assert_eq!(current_admin.admin, Some(Addr::unchecked(ADMIN_ADDR)));
-
-    // Fails when not the admin.
-    let err: ContractError = app
-        .execute_contract(
-            Addr::unchecked("not_admin"),
-            factory_addr.clone(),
-            &ExecuteMsg::UpdateAdmin {
-                admin: Some(NEW_ADMIN_ADDR.to_string()),
-            },
-            &[],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert_eq!(err, ContractError::Unauthorized {});
-
-    // Succeeds as the admin.
-    app.execute_contract(
-        Addr::unchecked(ADMIN_ADDR),
-        factory_addr.clone(),
-        &ExecuteMsg::UpdateAdmin {
-            admin: Some(NEW_ADMIN_ADDR.to_string()),
-        },
-        &[],
-    )
-    .unwrap();
-
-    // Query new admin.
-    let current_admin: AdminResponse = app
-        .wrap()
-        .query_wasm_smart(factory_addr.clone(), &QueryMsg::Admin {})
-        .unwrap();
-    assert_eq!(current_admin.admin, Some(Addr::unchecked(NEW_ADMIN_ADDR)));
-
-    // Clear the admin.
-    app.execute_contract(
-        Addr::unchecked(NEW_ADMIN_ADDR),
-        factory_addr.clone(),
-        &ExecuteMsg::UpdateAdmin { admin: None },
-        &[],
-    )
-    .unwrap();
-
-    // Query cleared admin.
-    let current_admin: AdminResponse = app
-        .wrap()
-        .query_wasm_smart(factory_addr, &QueryMsg::Admin {})
-        .unwrap();
-    assert_eq!(current_admin.admin, None);
 }
 
 #[test]
