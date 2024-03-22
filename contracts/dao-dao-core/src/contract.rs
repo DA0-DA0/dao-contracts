@@ -111,7 +111,7 @@ pub fn execute(
         if !expiration.is_expired(&env.block) {
             // If paused, then only allow messages from the Admin or DAO itself
             if info.sender != env.contract.address
-                && Some(info.sender.clone()) != ADMIN.may_load(deps.storage)?
+                && info.sender.clone() != ADMIN.load(deps.storage)?
             {
                 return Err(ContractError::Paused {});
             }
