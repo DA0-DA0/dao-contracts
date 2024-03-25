@@ -6,10 +6,15 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
-    "required": ["vesting_code_id"],
+    "required": [
+      "vesting_code_id"
+    ],
     "properties": {
       "owner": {
-        "type": ["string", "null"]
+        "type": [
+          "string",
+          "null"
+        ]
       },
       "vesting_code_id": {
         "type": "integer",
@@ -26,7 +31,9 @@
       {
         "description": "Instantiates a new vesting contract that is funded by a cw20 token.",
         "type": "object",
-        "required": ["receive"],
+        "required": [
+          "receive"
+        ],
         "properties": {
           "receive": {
             "$ref": "#/definitions/Cw20ReceiveMsg"
@@ -37,11 +44,16 @@
       {
         "description": "Instantiates a new vesting contract that is funded by a native token.",
         "type": "object",
-        "required": ["instantiate_native_payroll_contract"],
+        "required": [
+          "instantiate_native_payroll_contract"
+        ],
         "properties": {
           "instantiate_native_payroll_contract": {
             "type": "object",
-            "required": ["instantiate_msg", "label"],
+            "required": [
+              "instantiate_msg",
+              "label"
+            ],
             "properties": {
               "instantiate_msg": {
                 "$ref": "#/definitions/InstantiateMsg"
@@ -58,11 +70,15 @@
       {
         "description": "Callable only by the current owner. Updates the code ID used while instantiating vesting contracts.",
         "type": "object",
-        "required": ["update_code_id"],
+        "required": [
+          "update_code_id"
+        ],
         "properties": {
           "update_code_id": {
             "type": "object",
-            "required": ["vesting_code_id"],
+            "required": [
+              "vesting_code_id"
+            ],
             "properties": {
               "vesting_code_id": {
                 "type": "integer",
@@ -78,7 +94,9 @@
       {
         "description": "Update the contract's ownership. The `action` to be provided can be either to propose transferring ownership to an account, accept a pending ownership transfer, or renounce the ownership permanently.",
         "type": "object",
-        "required": ["update_ownership"],
+        "required": [
+          "update_ownership"
+        ],
         "properties": {
           "update_ownership": {
             "$ref": "#/definitions/Action"
@@ -94,11 +112,15 @@
           {
             "description": "Propose to transfer the contract's ownership to another account, optionally with an expiry time.\n\nCan only be called by the contract's current owner.\n\nAny existing pending ownership transfer is overwritten.",
             "type": "object",
-            "required": ["transfer_ownership"],
+            "required": [
+              "transfer_ownership"
+            ],
             "properties": {
               "transfer_ownership": {
                 "type": "object",
-                "required": ["new_owner"],
+                "required": [
+                  "new_owner"
+                ],
                 "properties": {
                   "expiry": {
                     "anyOf": [
@@ -122,12 +144,16 @@
           {
             "description": "Accept the pending ownership transfer.\n\nCan only be called by the pending owner.",
             "type": "string",
-            "enum": ["accept_ownership"]
+            "enum": [
+              "accept_ownership"
+            ]
           },
           {
             "description": "Give up the contract's ownership and the possibility of appointing a new owner.\n\nCan only be invoked by the contract's current owner.\n\nAny existing pending ownership transfer is canceled.",
             "type": "string",
-            "enum": ["renounce_ownership"]
+            "enum": [
+              "renounce_ownership"
+            ]
           }
         ]
       },
@@ -138,7 +164,11 @@
       "Cw20ReceiveMsg": {
         "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
         "type": "object",
-        "required": ["amount", "msg", "sender"],
+        "required": [
+          "amount",
+          "msg",
+          "sender"
+        ],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -158,7 +188,9 @@
           {
             "description": "AtHeight will expire when `env.block.height` >= height",
             "type": "object",
-            "required": ["at_height"],
+            "required": [
+              "at_height"
+            ],
             "properties": {
               "at_height": {
                 "type": "integer",
@@ -171,7 +203,9 @@
           {
             "description": "AtTime will expire when `env.block.time` >= time",
             "type": "object",
-            "required": ["at_time"],
+            "required": [
+              "at_time"
+            ],
             "properties": {
               "at_time": {
                 "$ref": "#/definitions/Timestamp"
@@ -182,7 +216,9 @@
           {
             "description": "Never will never expire. Used to express the empty variant",
             "type": "object",
-            "required": ["never"],
+            "required": [
+              "never"
+            ],
             "properties": {
               "never": {
                 "type": "object",
@@ -215,11 +251,17 @@
           },
           "description": {
             "description": "A description for the payment to provide more context.",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "owner": {
             "description": "The optional owner address of the contract. If an owner is specified, the owner may cancel the vesting contract at any time and withdraw unvested funds.",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "recipient": {
             "description": "The receiver address of the vesting tokens.",
@@ -276,12 +318,16 @@
           {
             "description": "Vests linearally from `0` to `total`.",
             "type": "string",
-            "enum": ["saturating_linear"]
+            "enum": [
+              "saturating_linear"
+            ]
           },
           {
             "description": "Vests by linearally interpolating between the provided (seconds, amount) points. The first amount must be zero and the last amount the total vesting amount. `seconds` are seconds since the vest start time.\n\nThere is a problem in the underlying Curve library that doesn't allow zero start values, so the first value of `seconds` must be > 1. To start at a particular time (if you need that level of percision), subtract one from the true start time, and make the first `seconds` value `1`.\n\n<https://github.com/cosmorama/wynddao/pull/4>",
             "type": "object",
-            "required": ["piecewise_linear"],
+            "required": [
+              "piecewise_linear"
+            ],
             "properties": {
               "piecewise_linear": {
                 "type": "array",
@@ -328,7 +374,9 @@
           {
             "description": "A native (bank module) asset.",
             "type": "object",
-            "required": ["native"],
+            "required": [
+              "native"
+            ],
             "properties": {
               "native": {
                 "type": "string"
@@ -339,7 +387,9 @@
           {
             "description": "A cw20 asset.",
             "type": "object",
-            "required": ["cw20"],
+            "required": [
+              "cw20"
+            ],
             "properties": {
               "cw20": {
                 "type": "string"
@@ -358,18 +408,26 @@
       {
         "description": "Returns list of all vesting payment contracts",
         "type": "object",
-        "required": ["list_vesting_contracts"],
+        "required": [
+          "list_vesting_contracts"
+        ],
         "properties": {
           "list_vesting_contracts": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": ["integer", "null"],
+                "type": [
+                  "integer",
+                  "null"
+                ],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -380,18 +438,26 @@
       {
         "description": "Returns list of all vesting payment contracts in reverse",
         "type": "object",
-        "required": ["list_vesting_contracts_reverse"],
+        "required": [
+          "list_vesting_contracts_reverse"
+        ],
         "properties": {
           "list_vesting_contracts_reverse": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": ["integer", "null"],
+                "type": [
+                  "integer",
+                  "null"
+                ],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_before": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -402,22 +468,32 @@
       {
         "description": "Returns list of all vesting payment contracts by who instantiated them",
         "type": "object",
-        "required": ["list_vesting_contracts_by_instantiator"],
+        "required": [
+          "list_vesting_contracts_by_instantiator"
+        ],
         "properties": {
           "list_vesting_contracts_by_instantiator": {
             "type": "object",
-            "required": ["instantiator"],
+            "required": [
+              "instantiator"
+            ],
             "properties": {
               "instantiator": {
                 "type": "string"
               },
               "limit": {
-                "type": ["integer", "null"],
+                "type": [
+                  "integer",
+                  "null"
+                ],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -428,22 +504,32 @@
       {
         "description": "Returns list of all vesting payment contracts by who instantiated them in reverse",
         "type": "object",
-        "required": ["list_vesting_contracts_by_instantiator_reverse"],
+        "required": [
+          "list_vesting_contracts_by_instantiator_reverse"
+        ],
         "properties": {
           "list_vesting_contracts_by_instantiator_reverse": {
             "type": "object",
-            "required": ["instantiator"],
+            "required": [
+              "instantiator"
+            ],
             "properties": {
               "instantiator": {
                 "type": "string"
               },
               "limit": {
-                "type": ["integer", "null"],
+                "type": [
+                  "integer",
+                  "null"
+                ],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_before": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -454,14 +540,21 @@
       {
         "description": "Returns list of all vesting payment contracts by recipient",
         "type": "object",
-        "required": ["list_vesting_contracts_by_recipient"],
+        "required": [
+          "list_vesting_contracts_by_recipient"
+        ],
         "properties": {
           "list_vesting_contracts_by_recipient": {
             "type": "object",
-            "required": ["recipient"],
+            "required": [
+              "recipient"
+            ],
             "properties": {
               "limit": {
-                "type": ["integer", "null"],
+                "type": [
+                  "integer",
+                  "null"
+                ],
                 "format": "uint32",
                 "minimum": 0.0
               },
@@ -469,7 +562,10 @@
                 "type": "string"
               },
               "start_after": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -480,14 +576,21 @@
       {
         "description": "Returns list of all vesting payment contracts by recipient in reverse",
         "type": "object",
-        "required": ["list_vesting_contracts_by_recipient_reverse"],
+        "required": [
+          "list_vesting_contracts_by_recipient_reverse"
+        ],
         "properties": {
           "list_vesting_contracts_by_recipient_reverse": {
             "type": "object",
-            "required": ["recipient"],
+            "required": [
+              "recipient"
+            ],
             "properties": {
               "limit": {
-                "type": ["integer", "null"],
+                "type": [
+                  "integer",
+                  "null"
+                ],
                 "format": "uint32",
                 "minimum": 0.0
               },
@@ -495,7 +598,10 @@
                 "type": "string"
               },
               "start_before": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -506,7 +612,9 @@
       {
         "description": "Returns info about the contract ownership, if set",
         "type": "object",
-        "required": ["ownership"],
+        "required": [
+          "ownership"
+        ],
         "properties": {
           "ownership": {
             "type": "object",
@@ -518,7 +626,9 @@
       {
         "description": "Returns the code ID currently being used to instantiate vesting contracts.",
         "type": "object",
-        "required": ["code_id"],
+        "required": [
+          "code_id"
+        ],
         "properties": {
           "code_id": {
             "type": "object",
@@ -549,7 +659,11 @@
       "definitions": {
         "VestingContract": {
           "type": "object",
-          "required": ["contract", "instantiator", "recipient"],
+          "required": [
+            "contract",
+            "instantiator",
+            "recipient"
+          ],
           "properties": {
             "contract": {
               "type": "string"
@@ -575,7 +689,11 @@
       "definitions": {
         "VestingContract": {
           "type": "object",
-          "required": ["contract", "instantiator", "recipient"],
+          "required": [
+            "contract",
+            "instantiator",
+            "recipient"
+          ],
           "properties": {
             "contract": {
               "type": "string"
@@ -601,7 +719,11 @@
       "definitions": {
         "VestingContract": {
           "type": "object",
-          "required": ["contract", "instantiator", "recipient"],
+          "required": [
+            "contract",
+            "instantiator",
+            "recipient"
+          ],
           "properties": {
             "contract": {
               "type": "string"
@@ -627,7 +749,11 @@
       "definitions": {
         "VestingContract": {
           "type": "object",
-          "required": ["contract", "instantiator", "recipient"],
+          "required": [
+            "contract",
+            "instantiator",
+            "recipient"
+          ],
           "properties": {
             "contract": {
               "type": "string"
@@ -653,7 +779,11 @@
       "definitions": {
         "VestingContract": {
           "type": "object",
-          "required": ["contract", "instantiator", "recipient"],
+          "required": [
+            "contract",
+            "instantiator",
+            "recipient"
+          ],
           "properties": {
             "contract": {
               "type": "string"
@@ -679,7 +809,11 @@
       "definitions": {
         "VestingContract": {
           "type": "object",
-          "required": ["contract", "instantiator", "recipient"],
+          "required": [
+            "contract",
+            "instantiator",
+            "recipient"
+          ],
           "properties": {
             "contract": {
               "type": "string"
@@ -747,7 +881,9 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": ["at_height"],
+              "required": [
+                "at_height"
+              ],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -760,7 +896,9 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": ["at_time"],
+              "required": [
+                "at_time"
+              ],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -771,7 +909,9 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": ["never"],
+              "required": [
+                "never"
+              ],
               "properties": {
                 "never": {
                   "type": "object",
