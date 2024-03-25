@@ -33,7 +33,7 @@ jobs:
         with:
           repository: CosmWasm/wasmvm
           path: ./wasmvm
-          ref: v1.4.1
+          ref: v1.5.2
 
       - name: Install libwasmv
         run: cd ./wasmvm && make build-rust && cd ../
