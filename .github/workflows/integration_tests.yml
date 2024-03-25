@@ -6,8 +6,7 @@ on:
     branches:
       - main
 
-
-      jobs:
+jobs:
   test:
     name: Integration tests
     runs-on: ubuntu-latest
