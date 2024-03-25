@@ -1,8 +1,12 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Binary;
+use cosmwasm_std::{Addr, Binary};
 
 #[cw_serde]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    /// The account allowed to execute this contract. If no admin, anyone can
+    /// execute it.
+    pub admin: Option<String>,
+}
 
 #[cw_serde]
 pub enum ExecuteMsg {
@@ -17,7 +21,15 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 #[derive(QueryResponses)]
-pub enum QueryMsg {}
+pub enum QueryMsg {
+    #[returns(AdminResponse)]
+    Admin {},
+}
 
 #[cw_serde]
 pub struct MigrateMsg {}
+
+#[cw_serde]
+pub struct AdminResponse {
+    pub admin: Option<Addr>,
+}
