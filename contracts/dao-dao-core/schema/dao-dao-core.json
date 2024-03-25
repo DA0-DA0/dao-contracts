@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-dao-core",
-  "contract_version": "2.4.0",
+  "contract_version": "2.4.1",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -17,10 +17,7 @@
     "properties": {
       "admin": {
         "description": "Optional Admin with the ability to execute DAO messages directly. Useful for building SubDAOs controlled by a parent DAO. If no admin is specified the contract is set as its own admin so that the admin may be updated later by governance.",
-        "type": [
-          "string",
-          "null"
-        ]
+        "type": ["string", "null"]
       },
       "automatically_add_cw20s": {
         "description": "If true the contract will automatically add received cw20 tokens to its treasury.",
@@ -32,10 +29,7 @@
       },
       "dao_uri": {
         "description": "Implements the DAO Star standard: <https://daostar.one/EIP>",
-        "type": [
-          "string",
-          "null"
-        ]
+        "type": ["string", "null"]
       },
       "description": {
         "description": "A description of the core contract.",
@@ -43,17 +37,11 @@
       },
       "image_url": {
         "description": "An image URL to describe the core module contract.",
-        "type": [
-          "string",
-          "null"
-        ]
+        "type": ["string", "null"]
       },
       "initial_items": {
         "description": "The items to instantiate this DAO with. Items are arbitrary key-value pairs whose contents are controlled by governance.\n\nIt is an error to provide two items with the same key.",
-        "type": [
-          "array",
-          "null"
-        ],
+        "type": ["array", "null"],
         "items": {
           "$ref": "#/definitions/InitialItem"
         }
@@ -86,15 +74,11 @@
           {
             "description": "Set the admin to a specified address.",
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "object",
-                "required": [
-                  "addr"
-                ],
+                "required": ["addr"],
                 "properties": {
                   "addr": {
                     "type": "string"
@@ -108,9 +92,7 @@
           {
             "description": "Sets the admin as the core module address.",
             "type": "object",
-            "required": [
-              "core_module"
-            ],
+            "required": ["core_module"],
             "properties": {
               "core_module": {
                 "type": "object",
@@ -127,10 +109,7 @@
       },
       "Coin": {
         "type": "object",
-        "required": [
-          "amount",
-          "denom"
-        ],
+        "required": ["amount", "denom"],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -143,10 +122,7 @@
       "InitialItem": {
         "description": "Information about an item to be stored in the items list.",
         "type": "object",
-        "required": [
-          "key",
-          "value"
-        ],
+        "required": ["key", "value"],
         "properties": {
           "key": {
             "description": "The name of the item.",
@@ -162,12 +138,7 @@
       "ModuleInstantiateInfo": {
         "description": "Information needed to instantiate a module.",
         "type": "object",
-        "required": [
-          "code_id",
-          "funds",
-          "label",
-          "msg"
-        ],
+        "required": ["code_id", "funds", "label", "msg"],
         "properties": {
           "admin": {
             "description": "CosmWasm level admin of the instantiated contract. See: <https://docs.cosmwasm.com/docs/1.0/smart-contracts/migration>",
@@ -221,15 +192,11 @@
       {
         "description": "Callable by the Admin, if one is configured. Executes messages in order.",
         "type": "object",
-        "required": [
-          "execute_admin_msgs"
-        ],
+        "required": ["execute_admin_msgs"],
         "properties": {
           "execute_admin_msgs": {
             "type": "object",
-            "required": [
-              "msgs"
-            ],
+            "required": ["msgs"],
             "properties": {
               "msgs": {
                 "type": "array",
@@ -246,15 +213,11 @@
       {
         "description": "Callable by proposal modules. The DAO will execute the messages in the hook in order.",
         "type": "object",
-        "required": [
-          "execute_proposal_hook"
-        ],
+        "required": ["execute_proposal_hook"],
         "properties": {
           "execute_proposal_hook": {
             "type": "object",
-            "required": [
-              "msgs"
-            ],
+            "required": ["msgs"],
             "properties": {
               "msgs": {
                 "type": "array",
@@ -271,15 +234,11 @@
       {
         "description": "Pauses the DAO for a set duration. When paused the DAO is unable to execute proposals",
         "type": "object",
-        "required": [
-          "pause"
-        ],
+        "required": ["pause"],
         "properties": {
           "pause": {
             "type": "object",
-            "required": [
-              "duration"
-            ],
+            "required": ["duration"],
             "properties": {
               "duration": {
                 "$ref": "#/definitions/Duration"
@@ -307,9 +266,7 @@
       {
         "description": "Executed when the contract receives a cw20 token. Depending on the contract's configuration the contract will automatically add the token to its treasury.",
         "type": "object",
-        "required": [
-          "receive"
-        ],
+        "required": ["receive"],
         "properties": {
           "receive": {
             "$ref": "#/definitions/Cw20ReceiveMsg"
@@ -320,9 +277,7 @@
       {
         "description": "Executed when the contract receives a cw721 token. Depending on the contract's configuration the contract will automatically add the token to its treasury.",
         "type": "object",
-        "required": [
-          "receive_nft"
-        ],
+        "required": ["receive_nft"],
         "properties": {
           "receive_nft": {
             "$ref": "#/definitions/Cw721ReceiveMsg"
@@ -333,15 +288,11 @@
       {
         "description": "Removes an item from the governance contract's item map.",
         "type": "object",
-        "required": [
-          "remove_item"
-        ],
+        "required": ["remove_item"],
         "properties": {
           "remove_item": {
             "type": "object",
-            "required": [
-              "key"
-            ],
+            "required": ["key"],
             "properties": {
               "key": {
                 "type": "string"
@@ -355,16 +306,11 @@
       {
         "description": "Adds an item to the governance contract's item map. If the item already exists the existing value is overridden. If the item does not exist a new item is added.",
         "type": "object",
-        "required": [
-          "set_item"
-        ],
+        "required": ["set_item"],
         "properties": {
           "set_item": {
             "type": "object",
-            "required": [
-              "key",
-              "value"
-            ],
+            "required": ["key", "value"],
             "properties": {
               "key": {
                 "type": "string"
@@ -381,18 +327,13 @@
       {
         "description": "Callable by the admin of the contract. If ADMIN is None the admin is set as the contract itself so that it may be updated later by vote. If ADMIN is Some a new admin is proposed and that new admin may become the admin by executing the `AcceptAdminNomination` message.\n\nIf there is already a pending admin nomination the `WithdrawAdminNomination` message must be executed before a new admin may be nominated.",
         "type": "object",
-        "required": [
-          "nominate_admin"
-        ],
+        "required": ["nominate_admin"],
         "properties": {
           "nominate_admin": {
             "type": "object",
             "properties": {
               "admin": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -403,9 +344,7 @@
       {
         "description": "Callable by a nominated admin. Admins are nominated via the `NominateAdmin` message. Accepting a nomination will make the nominated address the new admin.\n\nRequiring that the new admin accepts the nomination before becoming the admin protects against a typo causing the admin to change to an invalid address.",
         "type": "object",
-        "required": [
-          "accept_admin_nomination"
-        ],
+        "required": ["accept_admin_nomination"],
         "properties": {
           "accept_admin_nomination": {
             "type": "object",
@@ -417,9 +356,7 @@
       {
         "description": "Callable by the current admin. Withdraws the current admin nomination.",
         "type": "object",
-        "required": [
-          "withdraw_admin_nomination"
-        ],
+        "required": ["withdraw_admin_nomination"],
         "properties": {
           "withdraw_admin_nomination": {
             "type": "object",
@@ -431,15 +368,11 @@
       {
         "description": "Callable by the core contract. Replaces the current governance contract config with the provided config.",
         "type": "object",
-        "required": [
-          "update_config"
-        ],
+        "required": ["update_config"],
         "properties": {
           "update_config": {
             "type": "object",
-            "required": [
-              "config"
-            ],
+            "required": ["config"],
             "properties": {
               "config": {
                 "$ref": "#/definitions/Config"
@@ -453,16 +386,11 @@
       {
         "description": "Updates the list of cw20 tokens this contract has registered.",
         "type": "object",
-        "required": [
-          "update_cw20_list"
-        ],
+        "required": ["update_cw20_list"],
         "properties": {
           "update_cw20_list": {
             "type": "object",
-            "required": [
-              "to_add",
-              "to_remove"
-            ],
+            "required": ["to_add", "to_remove"],
             "properties": {
               "to_add": {
                 "type": "array",
@@ -485,16 +413,11 @@
       {
         "description": "Updates the list of cw721 tokens this contract has registered.",
         "type": "object",
-        "required": [
-          "update_cw721_list"
-        ],
+        "required": ["update_cw721_list"],
         "properties": {
           "update_cw721_list": {
             "type": "object",
-            "required": [
-              "to_add",
-              "to_remove"
-            ],
+            "required": ["to_add", "to_remove"],
             "properties": {
               "to_add": {
                 "type": "array",
@@ -517,16 +440,11 @@
       {
         "description": "Updates the governance contract's governance modules. Module instantiate info in `to_add` is used to create new modules and install them.",
         "type": "object",
-        "required": [
-          "update_proposal_modules"
-        ],
+        "required": ["update_proposal_modules"],
         "properties": {
           "update_proposal_modules": {
             "type": "object",
-            "required": [
-              "to_add",
-              "to_disable"
-            ],
+            "required": ["to_add", "to_disable"],
             "properties": {
               "to_add": {
                 "description": "NOTE: the pre-propose-base package depends on it being the case that the core module instantiates its proposal module.",
@@ -550,15 +468,11 @@
       {
         "description": "Callable by the core contract. Replaces the current voting module with a new one instantiated by the governance contract.",
         "type": "object",
-        "required": [
-          "update_voting_module"
-        ],
+        "required": ["update_voting_module"],
         "properties": {
           "update_voting_module": {
             "type": "object",
-            "required": [
-              "module"
-            ],
+            "required": ["module"],
             "properties": {
               "module": {
                 "$ref": "#/definitions/ModuleInstantiateInfo"
@@ -572,16 +486,11 @@
       {
         "description": "Update the core module to add/remove SubDAOs and their charters",
         "type": "object",
-        "required": [
-          "update_sub_daos"
-        ],
+        "required": ["update_sub_daos"],
         "properties": {
           "update_sub_daos": {
             "type": "object",
-            "required": [
-              "to_add",
-              "to_remove"
-            ],
+            "required": ["to_add", "to_remove"],
             "properties": {
               "to_add": {
                 "type": "array",
@@ -609,15 +518,11 @@
           {
             "description": "Set the admin to a specified address.",
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "object",
-                "required": [
-                  "addr"
-                ],
+                "required": ["addr"],
                 "properties": {
                   "addr": {
                     "type": "string"
@@ -631,9 +536,7 @@
           {
             "description": "Sets the admin as the core module address.",
             "type": "object",
-            "required": [
-              "core_module"
-            ],
+            "required": ["core_module"],
             "properties": {
               "core_module": {
                 "type": "object",
@@ -650,16 +553,11 @@
           {
             "description": "Sends native tokens from the contract to the given address.\n\nThis is translated to a [MsgSend](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto#L19-L28). `from_address` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "send"
-            ],
+            "required": ["send"],
             "properties": {
               "send": {
                 "type": "object",
-                "required": [
-                  "amount",
-                  "to_address"
-                ],
+                "required": ["amount", "to_address"],
                 "properties": {
                   "amount": {
                     "type": "array",
@@ -678,15 +576,11 @@
           {
             "description": "This will burn the given coins from the contract's account. There is no Cosmos SDK message that performs this, but it can be done by calling the bank keeper. Important if a contract controls significant token supply that must be retired.",
             "type": "object",
-            "required": [
-              "burn"
-            ],
+            "required": ["burn"],
             "properties": {
               "burn": {
                 "type": "object",
-                "required": [
-                  "amount"
-                ],
+                "required": ["amount"],
                 "properties": {
                   "amount": {
                     "type": "array",
@@ -707,10 +601,7 @@
       },
       "Coin": {
         "type": "object",
-        "required": [
-          "amount",
-          "denom"
-        ],
+        "required": ["amount", "denom"],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -740,10 +631,7 @@
           },
           "dao_uri": {
             "description": "The URI for the DAO as defined by the DAOstar standard <https://daostar.one/EIP>",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "description": {
             "description": "A description of the contract.",
@@ -751,10 +639,7 @@
           },
           "image_url": {
             "description": "An optional image URL for displaying alongside the contract.",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "name": {
             "description": "The name of the contract.",
@@ -767,9 +652,7 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "bank"
-            ],
+            "required": ["bank"],
             "properties": {
               "bank": {
                 "$ref": "#/definitions/BankMsg"
@@ -779,9 +662,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "custom"
-            ],
+            "required": ["custom"],
             "properties": {
               "custom": {
                 "$ref": "#/definitions/Empty"
@@ -791,9 +672,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "staking"
-            ],
+            "required": ["staking"],
             "properties": {
               "staking": {
                 "$ref": "#/definitions/StakingMsg"
@@ -803,9 +682,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "distribution"
-            ],
+            "required": ["distribution"],
             "properties": {
               "distribution": {
                 "$ref": "#/definitions/DistributionMsg"
@@ -816,16 +693,11 @@
           {
             "description": "A Stargate message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto). This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
             "type": "object",
-            "required": [
-              "stargate"
-            ],
+            "required": ["stargate"],
             "properties": {
               "stargate": {
                 "type": "object",
-                "required": [
-                  "type_url",
-                  "value"
-                ],
+                "required": ["type_url", "value"],
                 "properties": {
                   "type_url": {
                     "type": "string"
@@ -840,9 +712,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "ibc"
-            ],
+            "required": ["ibc"],
             "properties": {
               "ibc": {
                 "$ref": "#/definitions/IbcMsg"
@@ -852,9 +722,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "wasm"
-            ],
+            "required": ["wasm"],
             "properties": {
               "wasm": {
                 "$ref": "#/definitions/WasmMsg"
@@ -864,9 +732,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "gov"
-            ],
+            "required": ["gov"],
             "properties": {
               "gov": {
                 "$ref": "#/definitions/GovMsg"
@@ -879,11 +745,7 @@
       "Cw20ReceiveMsg": {
         "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
         "type": "object",
-        "required": [
-          "amount",
-          "msg",
-          "sender"
-        ],
+        "required": ["amount", "msg", "sender"],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -900,11 +762,7 @@
       "Cw721ReceiveMsg": {
         "description": "Cw721ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
         "type": "object",
-        "required": [
-          "msg",
-          "sender",
-          "token_id"
-        ],
+        "required": ["msg", "sender", "token_id"],
         "properties": {
           "msg": {
             "$ref": "#/definitions/Binary"
@@ -924,15 +782,11 @@
           {
             "description": "This is translated to a [MsgSetWithdrawAddress](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L29-L37). `delegator_address` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "set_withdraw_address"
-            ],
+            "required": ["set_withdraw_address"],
             "properties": {
               "set_withdraw_address": {
                 "type": "object",
-                "required": [
-                  "address"
-                ],
+                "required": ["address"],
                 "properties": {
                   "address": {
                     "description": "The `withdraw_address`",
@@ -946,15 +800,11 @@
           {
             "description": "This is translated to a [[MsgWithdrawDelegatorReward](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L42-L50). `delegator_address` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "withdraw_delegator_reward"
-            ],
+            "required": ["withdraw_delegator_reward"],
             "properties": {
               "withdraw_delegator_reward": {
                 "type": "object",
-                "required": [
-                  "validator"
-                ],
+                "required": ["validator"],
                 "properties": {
                   "validator": {
                     "description": "The `validator_address`",
@@ -972,9 +822,7 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "height"
-            ],
+            "required": ["height"],
             "properties": {
               "height": {
                 "type": "integer",
@@ -987,9 +835,7 @@
           {
             "description": "Time in seconds",
             "type": "object",
-            "required": [
-              "time"
-            ],
+            "required": ["time"],
             "properties": {
               "time": {
                 "type": "integer",
@@ -1011,16 +857,11 @@
           {
             "description": "This maps directly to [MsgVote](https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/gov/v1beta1/tx.proto#L46-L56) in the Cosmos SDK with voter set to the contract address.",
             "type": "object",
-            "required": [
-              "vote"
-            ],
+            "required": ["vote"],
             "properties": {
               "vote": {
                 "type": "object",
-                "required": [
-                  "proposal_id",
-                  "vote"
-                ],
+                "required": ["proposal_id", "vote"],
                 "properties": {
                   "proposal_id": {
                     "type": "integer",
@@ -1048,18 +889,11 @@
           {
             "description": "Sends bank tokens owned by the contract to the given address on another chain. The channel must already be established between the ibctransfer module on this chain and a matching module on the remote chain. We cannot select the port_id, this is whatever the local chain has bound the ibctransfer module to.",
             "type": "object",
-            "required": [
-              "transfer"
-            ],
+            "required": ["transfer"],
             "properties": {
               "transfer": {
                 "type": "object",
-                "required": [
-                  "amount",
-                  "channel_id",
-                  "timeout",
-                  "to_address"
-                ],
+                "required": ["amount", "channel_id", "timeout", "to_address"],
                 "properties": {
                   "amount": {
                     "description": "packet data only supports one coin https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/ibc/applications/transfer/v1/transfer.proto#L11-L20",
@@ -1093,17 +927,11 @@
           {
             "description": "Sends an IBC packet with given data over the existing channel. Data should be encoded in a format defined by the channel version, and the module on the other side should know how to parse this.",
             "type": "object",
-            "required": [
-              "send_packet"
-            ],
+            "required": ["send_packet"],
             "properties": {
               "send_packet": {
                 "type": "object",
-                "required": [
-                  "channel_id",
-                  "data",
-                  "timeout"
-                ],
+                "required": ["channel_id", "data", "timeout"],
                 "properties": {
                   "channel_id": {
                     "type": "string"
@@ -1127,15 +955,11 @@
           {
             "description": "This will close an existing channel that is owned by this contract. Port is auto-assigned to the contract's IBC port",
             "type": "object",
-            "required": [
-              "close_channel"
-            ],
+            "required": ["close_channel"],
             "properties": {
               "close_channel": {
                 "type": "object",
-                "required": [
-                  "channel_id"
-                ],
+                "required": ["channel_id"],
                 "properties": {
                   "channel_id": {
                     "type": "string"
@@ -1176,10 +1000,7 @@
       "IbcTimeoutBlock": {
         "description": "IBCTimeoutHeight Height is a monotonically increasing data type that can be compared against another Height for the purposes of updating and freezing clients. Ordering is (revision_number, timeout_height)",
         "type": "object",
-        "required": [
-          "height",
-          "revision"
-        ],
+        "required": ["height", "revision"],
         "properties": {
           "height": {
             "description": "block height after which the packet times out. the height within the given revision",
@@ -1198,12 +1019,7 @@
       "ModuleInstantiateInfo": {
         "description": "Information needed to instantiate a module.",
         "type": "object",
-        "required": [
-          "code_id",
-          "funds",
-          "label",
-          "msg"
-        ],
+        "required": ["code_id", "funds", "label", "msg"],
         "properties": {
           "admin": {
             "description": "CosmWasm level admin of the instantiated contract. See: <https://docs.cosmwasm.com/docs/1.0/smart-contracts/migration>",
@@ -1250,16 +1066,11 @@
           {
             "description": "This is translated to a [MsgDelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L81-L90). `delegator_address` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "delegate"
-            ],
+            "required": ["delegate"],
             "properties": {
               "delegate": {
                 "type": "object",
-                "required": [
-                  "amount",
-                  "validator"
-                ],
+                "required": ["amount", "validator"],
                 "properties": {
                   "amount": {
                     "$ref": "#/definitions/Coin"
@@ -1275,16 +1086,11 @@
           {
             "description": "This is translated to a [MsgUndelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L112-L121). `delegator_address` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "undelegate"
-            ],
+            "required": ["undelegate"],
             "properties": {
               "undelegate": {
                 "type": "object",
-                "required": [
-                  "amount",
-                  "validator"
-                ],
+                "required": ["amount", "validator"],
                 "properties": {
                   "amount": {
                     "$ref": "#/definitions/Coin"
@@ -1300,17 +1106,11 @@
           {
             "description": "This is translated to a [MsgBeginRedelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L95-L105). `delegator_address` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "redelegate"
-            ],
+            "required": ["redelegate"],
             "properties": {
               "redelegate": {
                 "type": "object",
-                "required": [
-                  "amount",
-                  "dst_validator",
-                  "src_validator"
-                ],
+                "required": ["amount", "dst_validator", "src_validator"],
                 "properties": {
                   "amount": {
                     "$ref": "#/definitions/Coin"
@@ -1330,9 +1130,7 @@
       },
       "SubDao": {
         "type": "object",
-        "required": [
-          "addr"
-        ],
+        "required": ["addr"],
         "properties": {
           "addr": {
             "description": "The contract address of the SubDAO",
@@ -1340,10 +1138,7 @@
           },
           "charter": {
             "description": "The purpose/constitution for the SubDAO",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           }
         },
         "additionalProperties": false
@@ -1366,12 +1161,7 @@
       },
       "VoteOption": {
         "type": "string",
-        "enum": [
-          "yes",
-          "no",
-          "abstain",
-          "no_with_veto"
-        ]
+        "enum": ["yes", "no", "abstain", "no_with_veto"]
       },
       "WasmMsg": {
         "description": "The message types of the wasm module.\n\nSee https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto",
@@ -1379,17 +1169,11 @@
           {
             "description": "Dispatches a call to another contract at a known address (with known ABI).\n\nThis is translated to a [MsgExecuteContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L68-L78). `sender` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "execute"
-            ],
+            "required": ["execute"],
             "properties": {
               "execute": {
                 "type": "object",
-                "required": [
-                  "contract_addr",
-                  "funds",
-                  "msg"
-                ],
+                "required": ["contract_addr", "funds", "msg"],
                 "properties": {
                   "contract_addr": {
                     "type": "string"
@@ -1416,24 +1200,14 @@
           {
             "description": "Instantiates a new contracts from previously uploaded Wasm code.\n\nThe contract address is non-predictable. But it is guaranteed that when emitting the same Instantiate message multiple times, multiple instances on different addresses will be generated. See also Instantiate2.\n\nThis is translated to a [MsgInstantiateContract](https://github.com/CosmWasm/wasmd/blob/v0.29.2/proto/cosmwasm/wasm/v1/tx.proto#L53-L71). `sender` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "instantiate"
-            ],
+            "required": ["instantiate"],
             "properties": {
               "instantiate": {
                 "type": "object",
-                "required": [
-                  "code_id",
-                  "funds",
-                  "label",
-                  "msg"
-                ],
+                "required": ["code_id", "funds", "label", "msg"],
                 "properties": {
                   "admin": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
+                    "type": ["string", "null"]
                   },
                   "code_id": {
                     "type": "integer",
@@ -1466,17 +1240,11 @@
           {
             "description": "Migrates a given contracts to use new wasm code. Passes a MigrateMsg to allow us to customize behavior.\n\nOnly the contract admin (as defined in wasmd), if any, is able to make this call.\n\nThis is translated to a [MsgMigrateContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L86-L96). `sender` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "migrate"
-            ],
+            "required": ["migrate"],
             "properties": {
               "migrate": {
                 "type": "object",
-                "required": [
-                  "contract_addr",
-                  "msg",
-                  "new_code_id"
-                ],
+                "required": ["contract_addr", "msg", "new_code_id"],
                 "properties": {
                   "contract_addr": {
                     "type": "string"
@@ -1503,16 +1271,11 @@
           {
             "description": "Sets a new admin (for migrate) on the given contract. Fails if this contract is not currently admin of the target contract.",
             "type": "object",
-            "required": [
-              "update_admin"
-            ],
+            "required": ["update_admin"],
             "properties": {
               "update_admin": {
                 "type": "object",
-                "required": [
-                  "admin",
-                  "contract_addr"
-                ],
+                "required": ["admin", "contract_addr"],
                 "properties": {
                   "admin": {
                     "type": "string"
@@ -1528,15 +1291,11 @@
           {
             "description": "Clears the admin on the given contract, so no more migration possible. Fails if this contract is not currently admin of the target contract.",
             "type": "object",
-            "required": [
-              "clear_admin"
-            ],
+            "required": ["clear_admin"],
             "properties": {
               "clear_admin": {
                 "type": "object",
-                "required": [
-                  "contract_addr"
-                ],
+                "required": ["contract_addr"],
                 "properties": {
                   "contract_addr": {
                     "type": "string"
@@ -1557,9 +1316,7 @@
       {
         "description": "Get's the DAO's admin. Returns `Addr`.",
         "type": "object",
-        "required": [
-          "admin"
-        ],
+        "required": ["admin"],
         "properties": {
           "admin": {
             "type": "object",
@@ -1571,9 +1328,7 @@
       {
         "description": "Get's the currently nominated admin (if any).",
         "type": "object",
-        "required": [
-          "admin_nomination"
-        ],
+        "required": ["admin_nomination"],
         "properties": {
           "admin_nomination": {
             "type": "object",
@@ -1585,9 +1340,7 @@
       {
         "description": "Gets the contract's config.",
         "type": "object",
-        "required": [
-          "config"
-        ],
+        "required": ["config"],
         "properties": {
           "config": {
             "type": "object",
@@ -1599,26 +1352,18 @@
       {
         "description": "Gets the token balance for each cw20 registered with the contract.",
         "type": "object",
-        "required": [
-          "cw20_balances"
-        ],
+        "required": ["cw20_balances"],
         "properties": {
           "cw20_balances": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -1629,26 +1374,18 @@
       {
         "description": "Lists the addresses of the cw20 tokens in this contract's treasury.",
         "type": "object",
-        "required": [
-          "cw20_token_list"
-        ],
+        "required": ["cw20_token_list"],
         "properties": {
           "cw20_token_list": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -1659,26 +1396,18 @@
       {
         "description": "Lists the addresses of the cw721 tokens in this contract's treasury.",
         "type": "object",
-        "required": [
-          "cw721_token_list"
-        ],
+        "required": ["cw721_token_list"],
         "properties": {
           "cw721_token_list": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -1689,9 +1418,7 @@
       {
         "description": "Dumps all of the core contract's state in a single query. Useful for frontends as performance for queries is more limited by network times than compute times.",
         "type": "object",
-        "required": [
-          "dump_state"
-        ],
+        "required": ["dump_state"],
         "properties": {
           "dump_state": {
             "type": "object",
@@ -1703,15 +1430,11 @@
       {
         "description": "Gets the address associated with an item key.",
         "type": "object",
-        "required": [
-          "get_item"
-        ],
+        "required": ["get_item"],
         "properties": {
           "get_item": {
             "type": "object",
-            "required": [
-              "key"
-            ],
+            "required": ["key"],
             "properties": {
               "key": {
                 "type": "string"
@@ -1725,26 +1448,18 @@
       {
         "description": "Lists all of the items associted with the contract. For example, given the items `{ \"group\": \"foo\", \"subdao\": \"bar\"}` this query would return `[(\"group\", \"foo\"), (\"subdao\", \"bar\")]`.",
         "type": "object",
-        "required": [
-          "list_items"
-        ],
+        "required": ["list_items"],
         "properties": {
           "list_items": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -1755,9 +1470,7 @@
       {
         "description": "Returns contract version info",
         "type": "object",
-        "required": [
-          "info"
-        ],
+        "required": ["info"],
         "properties": {
           "info": {
             "type": "object",
@@ -1769,26 +1482,18 @@
       {
         "description": "Gets all proposal modules associated with the contract.",
         "type": "object",
-        "required": [
-          "proposal_modules"
-        ],
+        "required": ["proposal_modules"],
         "properties": {
           "proposal_modules": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -1799,26 +1504,18 @@
       {
         "description": "Gets the active proposal modules associated with the contract.",
         "type": "object",
-        "required": [
-          "active_proposal_modules"
-        ],
+        "required": ["active_proposal_modules"],
         "properties": {
           "active_proposal_modules": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -1829,9 +1526,7 @@
       {
         "description": "Gets the number of active and total proposal modules registered with this module.",
         "type": "object",
-        "required": [
-          "proposal_module_count"
-        ],
+        "required": ["proposal_module_count"],
         "properties": {
           "proposal_module_count": {
             "type": "object",
@@ -1843,9 +1538,7 @@
       {
         "description": "Returns information about if the contract is currently paused.",
         "type": "object",
-        "required": [
-          "pause_info"
-        ],
+        "required": ["pause_info"],
         "properties": {
           "pause_info": {
             "type": "object",
@@ -1857,9 +1550,7 @@
       {
         "description": "Gets the contract's voting module.",
         "type": "object",
-        "required": [
-          "voting_module"
-        ],
+        "required": ["voting_module"],
         "properties": {
           "voting_module": {
             "type": "object",
@@ -1871,26 +1562,18 @@
       {
         "description": "Returns all SubDAOs with their charters in a vec. start_after is bound exclusive and asks for a string address.",
         "type": "object",
-        "required": [
-          "list_sub_daos"
-        ],
+        "required": ["list_sub_daos"],
         "properties": {
           "list_sub_daos": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -1901,9 +1584,7 @@
       {
         "description": "Implements the DAO Star standard: <https://daostar.one/EIP>",
         "type": "object",
-        "required": [
-          "dao_u_r_i"
-        ],
+        "required": ["dao_u_r_i"],
         "properties": {
           "dao_u_r_i": {
             "type": "object",
@@ -1915,24 +1596,17 @@
       {
         "description": "Returns the voting power for an address at a given height.",
         "type": "object",
-        "required": [
-          "voting_power_at_height"
-        ],
+        "required": ["voting_power_at_height"],
         "properties": {
           "voting_power_at_height": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
               },
               "height": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint64",
                 "minimum": 0.0
               }
@@ -1945,18 +1619,13 @@
       {
         "description": "Returns the total voting power at a given block height.",
         "type": "object",
-        "required": [
-          "total_power_at_height"
-        ],
+        "required": ["total_power_at_height"],
         "properties": {
           "total_power_at_height": {
             "type": "object",
             "properties": {
               "height": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint64",
                 "minimum": 0.0
               }
@@ -1974,18 +1643,13 @@
     "oneOf": [
       {
         "type": "object",
-        "required": [
-          "from_v1"
-        ],
+        "required": ["from_v1"],
         "properties": {
           "from_v1": {
             "type": "object",
             "properties": {
               "dao_uri": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               },
               "params": {
                 "anyOf": [
@@ -2005,9 +1669,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "from_compatible"
-        ],
+        "required": ["from_compatible"],
         "properties": {
           "from_compatible": {
             "type": "object",
@@ -2024,15 +1686,11 @@
           {
             "description": "Set the admin to a specified address.",
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "object",
-                "required": [
-                  "addr"
-                ],
+                "required": ["addr"],
                 "properties": {
                   "addr": {
                     "type": "string"
@@ -2046,9 +1704,7 @@
           {
             "description": "Sets the admin as the core module address.",
             "type": "object",
-            "required": [
-              "core_module"
-            ],
+            "required": ["core_module"],
             "properties": {
               "core_module": {
                 "type": "object",
@@ -2065,10 +1721,7 @@
       },
       "Coin": {
         "type": "object",
-        "required": [
-          "amount",
-          "denom"
-        ],
+        "required": ["amount", "denom"],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -2080,10 +1733,7 @@
       },
       "MigrateParams": {
         "type": "object",
-        "required": [
-          "migrator_code_id",
-          "params"
-        ],
+        "required": ["migrator_code_id", "params"],
         "properties": {
           "migrator_code_id": {
             "type": "integer",
@@ -2125,16 +1775,11 @@
       },
       "MigrationModuleParams": {
         "type": "object",
-        "required": [
-          "proposal_params"
-        ],
+        "required": ["proposal_params"],
         "properties": {
           "migrate_stake_cw20_manager": {
             "description": "Rather or not to migrate the stake_cw20 contract and its manager. If this is not set to true and a stake_cw20 contract is detected in the DAO's configuration the migration will be aborted.",
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "type": ["boolean", "null"]
           },
           "proposal_params": {
             "type": "array",
@@ -2158,12 +1803,7 @@
       "ModuleInstantiateInfo": {
         "description": "Information needed to instantiate a module.",
         "type": "object",
-        "required": [
-          "code_id",
-          "funds",
-          "label",
-          "msg"
-        ],
+        "required": ["code_id", "funds", "label", "msg"],
         "properties": {
           "admin": {
             "description": "CosmWasm level admin of the instantiated contract. See: <https://docs.cosmwasm.com/docs/1.0/smart-contracts/migration>",
@@ -2209,9 +1849,7 @@
           {
             "description": "Anyone may create a proposal free of charge.",
             "type": "object",
-            "required": [
-              "anyone_may_propose"
-            ],
+            "required": ["anyone_may_propose"],
             "properties": {
               "anyone_may_propose": {
                 "type": "object",
@@ -2223,15 +1861,11 @@
           {
             "description": "The module specified in INFO has exclusive rights to proposal creation.",
             "type": "object",
-            "required": [
-              "module_may_propose"
-            ],
+            "required": ["module_may_propose"],
             "properties": {
               "module_may_propose": {
                 "type": "object",
-                "required": [
-                  "info"
-                ],
+                "required": ["info"],
                 "properties": {
                   "info": {
                     "$ref": "#/definitions/ModuleInstantiateInfo"
@@ -2247,10 +1881,7 @@
       "ProposalParams": {
         "description": "The params we need to provide for migration msgs",
         "type": "object",
-        "required": [
-          "close_proposal_on_execution_failure",
-          "pre_propose_info"
-        ],
+        "required": ["close_proposal_on_execution_failure", "pre_propose_info"],
         "properties": {
           "close_proposal_on_execution_failure": {
             "type": "boolean"
@@ -2263,9 +1894,7 @@
       },
       "SubDao": {
         "type": "object",
-        "required": [
-          "addr"
-        ],
+        "required": ["addr"],
         "properties": {
           "addr": {
             "description": "The contract address of the SubDAO",
@@ -2273,10 +1902,7 @@
           },
           "charter": {
             "description": "The purpose/constitution for the SubDAO",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           }
         },
         "additionalProperties": false
@@ -2368,11 +1994,7 @@
         "ProposalModule": {
           "description": "Top level type describing a proposal module.",
           "type": "object",
-          "required": [
-            "address",
-            "prefix",
-            "status"
-          ],
+          "required": ["address", "prefix", "status"],
           "properties": {
             "address": {
               "description": "The address of the proposal module.",
@@ -2400,10 +2022,7 @@
         "ProposalModuleStatus": {
           "description": "The status of a proposal module.",
           "type": "string",
-          "enum": [
-            "enabled",
-            "disabled"
-          ]
+          "enum": ["enabled", "disabled"]
         }
       }
     },
@@ -2461,10 +2080,7 @@
         },
         "dao_uri": {
           "description": "The URI for the DAO as defined by the DAOstar standard <https://daostar.one/EIP>",
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "description": {
           "description": "A description of the contract.",
@@ -2472,10 +2088,7 @@
         },
         "image_url": {
           "description": "An optional image URL for displaying alongside the contract.",
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "name": {
           "description": "The name of the contract.",
@@ -2489,10 +2102,7 @@
       "title": "Cw20BalanceResponse",
       "description": "Returned by the `Cw20Balances` query.",
       "type": "object",
-      "required": [
-        "addr",
-        "balance"
-      ],
+      "required": ["addr", "balance"],
       "properties": {
         "addr": {
           "description": "The address of the token.",
@@ -2557,10 +2167,7 @@
       "type": "object",
       "properties": {
         "dao_uri": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "additionalProperties": false
@@ -2662,10 +2269,7 @@
             },
             "dao_uri": {
               "description": "The URI for the DAO as defined by the DAOstar standard <https://daostar.one/EIP>",
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": ["string", "null"]
             },
             "description": {
               "description": "A description of the contract.",
@@ -2673,10 +2277,7 @@
             },
             "image_url": {
               "description": "An optional image URL for displaying alongside the contract.",
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": ["string", "null"]
             },
             "name": {
               "description": "The name of the contract.",
@@ -2687,10 +2288,7 @@
         },
         "ContractVersion": {
           "type": "object",
-          "required": [
-            "contract",
-            "version"
-          ],
+          "required": ["contract", "version"],
           "properties": {
             "contract": {
               "description": "contract is the crate name of the implementing contract, eg. `crate:cw20-base` we will use other prefixes for other languages, and their standard global namespacing",
@@ -2709,9 +2307,7 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": [
-                "at_height"
-              ],
+              "required": ["at_height"],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -2724,9 +2320,7 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": [
-                "at_time"
-              ],
+              "required": ["at_time"],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -2737,9 +2331,7 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": [
-                "never"
-              ],
+              "required": ["never"],
               "properties": {
                 "never": {
                   "type": "object",
@@ -2755,15 +2347,11 @@
           "oneOf": [
             {
               "type": "object",
-              "required": [
-                "paused"
-              ],
+              "required": ["paused"],
               "properties": {
                 "paused": {
                   "type": "object",
-                  "required": [
-                    "expiration"
-                  ],
+                  "required": ["expiration"],
                   "properties": {
                     "expiration": {
                       "$ref": "#/definitions/Expiration"
@@ -2776,9 +2364,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "unpaused"
-              ],
+              "required": ["unpaused"],
               "properties": {
                 "unpaused": {
                   "type": "object",
@@ -2792,11 +2378,7 @@
         "ProposalModule": {
           "description": "Top level type describing a proposal module.",
           "type": "object",
-          "required": [
-            "address",
-            "prefix",
-            "status"
-          ],
+          "required": ["address", "prefix", "status"],
           "properties": {
             "address": {
               "description": "The address of the proposal module.",
@@ -2824,10 +2406,7 @@
         "ProposalModuleStatus": {
           "description": "The status of a proposal module.",
           "type": "string",
-          "enum": [
-            "enabled",
-            "disabled"
-          ]
+          "enum": ["enabled", "disabled"]
         },
         "Timestamp": {
           "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
@@ -2851,10 +2430,7 @@
       "properties": {
         "item": {
           "description": "`None` if no item with the provided key was found, `Some` otherwise.",
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "additionalProperties": false
@@ -2863,9 +2439,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "InfoResponse",
       "type": "object",
-      "required": [
-        "info"
-      ],
+      "required": ["info"],
       "properties": {
         "info": {
           "$ref": "#/definitions/ContractVersion"
@@ -2875,10 +2449,7 @@
       "definitions": {
         "ContractVersion": {
           "type": "object",
-          "required": [
-            "contract",
-            "version"
-          ],
+          "required": ["contract", "version"],
           "properties": {
             "contract": {
               "description": "contract is the crate name of the implementing contract, eg. `crate:cw20-base` we will use other prefixes for other languages, and their standard global namespacing",
@@ -2911,9 +2482,7 @@
       "definitions": {
         "SubDao": {
           "type": "object",
-          "required": [
-            "addr"
-          ],
+          "required": ["addr"],
           "properties": {
             "addr": {
               "description": "The contract address of the SubDAO",
@@ -2921,10 +2490,7 @@
             },
             "charter": {
               "description": "The purpose/constitution for the SubDAO",
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": ["string", "null"]
             }
           },
           "additionalProperties": false
@@ -2938,15 +2504,11 @@
       "oneOf": [
         {
           "type": "object",
-          "required": [
-            "paused"
-          ],
+          "required": ["paused"],
           "properties": {
             "paused": {
               "type": "object",
-              "required": [
-                "expiration"
-              ],
+              "required": ["expiration"],
               "properties": {
                 "expiration": {
                   "$ref": "#/definitions/Expiration"
@@ -2959,9 +2521,7 @@
         },
         {
           "type": "object",
-          "required": [
-            "unpaused"
-          ],
+          "required": ["unpaused"],
           "properties": {
             "unpaused": {
               "type": "object",
@@ -2978,9 +2538,7 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": [
-                "at_height"
-              ],
+              "required": ["at_height"],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -2993,9 +2551,7 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": [
-                "at_time"
-              ],
+              "required": ["at_time"],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -3006,9 +2562,7 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": [
-                "never"
-              ],
+              "required": ["never"],
               "properties": {
                 "never": {
                   "type": "object",
@@ -3072,11 +2626,7 @@
         "ProposalModule": {
           "description": "Top level type describing a proposal module.",
           "type": "object",
-          "required": [
-            "address",
-            "prefix",
-            "status"
-          ],
+          "required": ["address", "prefix", "status"],
           "properties": {
             "address": {
               "description": "The address of the proposal module.",
@@ -3104,10 +2654,7 @@
         "ProposalModuleStatus": {
           "description": "The status of a proposal module.",
           "type": "string",
-          "enum": [
-            "enabled",
-            "disabled"
-          ]
+          "enum": ["enabled", "disabled"]
         }
       }
     },
@@ -3115,10 +2662,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "TotalPowerAtHeightResponse",
       "type": "object",
-      "required": [
-        "height",
-        "power"
-      ],
+      "required": ["height", "power"],
       "properties": {
         "height": {
           "type": "integer",
@@ -3147,10 +2691,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "VotingPowerAtHeightResponse",
       "type": "object",
-      "required": [
-        "height",
-        "power"
-      ],
+      "required": ["height", "power"],
       "properties": {
         "height": {
           "type": "integer",

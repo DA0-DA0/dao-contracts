@@ -1,6 +1,6 @@
 {
   "contract_name": "cw-vesting",
-  "contract_version": "2.4.0",
+  "contract_version": "2.4.1",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -26,17 +26,11 @@
       },
       "description": {
         "description": "A description for the payment to provide more context.",
-        "type": [
-          "string",
-          "null"
-        ]
+        "type": ["string", "null"]
       },
       "owner": {
         "description": "The optional owner address of the contract. If an owner is specified, the owner may cancel the vesting contract at any time and withdraw unvested funds.",
-        "type": [
-          "string",
-          "null"
-        ]
+        "type": ["string", "null"]
       },
       "recipient": {
         "description": "The receiver address of the vesting tokens.",
@@ -93,16 +87,12 @@
           {
             "description": "Vests linearally from `0` to `total`.",
             "type": "string",
-            "enum": [
-              "saturating_linear"
-            ]
+            "enum": ["saturating_linear"]
           },
           {
             "description": "Vests by linearally interpolating between the provided (seconds, amount) points. The first amount must be zero and the last amount the total vesting amount. `seconds` are seconds since the vest start time.\n\nThere is a problem in the underlying Curve library that doesn't allow zero start values, so the first value of `seconds` must be > 1. To start at a particular time (if you need that level of percision), subtract one from the true start time, and make the first `seconds` value `1`.\n\n<https://github.com/cosmorama/wynddao/pull/4>",
             "type": "object",
-            "required": [
-              "piecewise_linear"
-            ],
+            "required": ["piecewise_linear"],
             "properties": {
               "piecewise_linear": {
                 "type": "array",
@@ -149,9 +139,7 @@
           {
             "description": "A native (bank module) asset.",
             "type": "object",
-            "required": [
-              "native"
-            ],
+            "required": ["native"],
             "properties": {
               "native": {
                 "type": "string"
@@ -162,9 +150,7 @@
           {
             "description": "A cw20 asset.",
             "type": "object",
-            "required": [
-              "cw20"
-            ],
+            "required": ["cw20"],
             "properties": {
               "cw20": {
                 "type": "string"
@@ -183,9 +169,7 @@
       {
         "description": "Fund the contract with a cw20 token. The `msg` field must have the shape `{\"fund\":{}}`, and the amount sent must be the same as the amount to be vested (as set during instantiation). Anyone may call this method so long as the contract has not yet been funded.",
         "type": "object",
-        "required": [
-          "receive"
-        ],
+        "required": ["receive"],
         "properties": {
           "receive": {
             "$ref": "#/definitions/Cw20ReceiveMsg"
@@ -196,9 +180,7 @@
       {
         "description": "Distribute vested tokens to the vest receiver. Anyone may call this method.",
         "type": "object",
-        "required": [
-          "distribute"
-        ],
+        "required": ["distribute"],
         "properties": {
           "distribute": {
             "type": "object",
@@ -223,9 +205,7 @@
       {
         "description": "Cancels the vesting payment. The current amount vested becomes the total amount that will ever vest, and all pending and future staking rewards from tokens staked by this contract will be sent to the owner. Tote that canceling does not impact already vested tokens.\n\nUpon canceling, the contract will use any liquid tokens in the contract to settle pending payments to the vestee, and then returns the rest to the owner. Staked tokens are then split between the owner and the vestee according to the number of tokens that the vestee is entitled to.\n\nThe vestee will no longer receive staking rewards after cancelation, and may unbond and distribute (vested - claimed) tokens at their leisure. the owner will receive staking rewards and may unbond and withdraw (staked - (vested - claimed)) tokens at their leisure.",
         "type": "object",
-        "required": [
-          "cancel"
-        ],
+        "required": ["cancel"],
         "properties": {
           "cancel": {
             "type": "object",
@@ -237,16 +217,11 @@
       {
         "description": "This is translated to a [MsgDelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L81-L90). `delegator_address` is automatically filled with the current contract's address.  Note: this only works with the native staking denom of a Cosmos chain.  Only callable by Vesting Payment Recipient.",
         "type": "object",
-        "required": [
-          "delegate"
-        ],
+        "required": ["delegate"],
         "properties": {
           "delegate": {
             "type": "object",
-            "required": [
-              "amount",
-              "validator"
-            ],
+            "required": ["amount", "validator"],
             "properties": {
               "amount": {
                 "description": "The amount to delegate.",
@@ -269,17 +244,11 @@
       {
         "description": "This is translated to a [MsgBeginRedelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L96). `delegator_address` is automatically filled with the current contract's address.  Only callable by Vesting Payment Recipient.",
         "type": "object",
-        "required": [
-          "redelegate"
-        ],
+        "required": ["redelegate"],
         "properties": {
           "redelegate": {
             "type": "object",
-            "required": [
-              "amount",
-              "dst_validator",
-              "src_validator"
-            ],
+            "required": ["amount", "dst_validator", "src_validator"],
             "properties": {
               "amount": {
                 "$ref": "#/definitions/Uint128"
@@ -299,16 +268,11 @@
       {
         "description": "This is translated to a [MsgUndelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L112-L121). `delegator_address` is automatically filled with the current contract's address.  Only callable by Vesting Payment Recipient.",
         "type": "object",
-        "required": [
-          "undelegate"
-        ],
+        "required": ["undelegate"],
         "properties": {
           "undelegate": {
             "type": "object",
-            "required": [
-              "amount",
-              "validator"
-            ],
+            "required": ["amount", "validator"],
             "properties": {
               "amount": {
                 "description": "The amount to delegate",
@@ -331,15 +295,11 @@
       {
         "description": "This is translated to a [MsgSetWithdrawAddress](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L31-L37). `delegator_address` is automatically filled with the current contract's address.  Only callable by Vesting Payment Recipient.",
         "type": "object",
-        "required": [
-          "set_withdraw_address"
-        ],
+        "required": ["set_withdraw_address"],
         "properties": {
           "set_withdraw_address": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
@@ -353,15 +313,11 @@
       {
         "description": "This is translated to a [MsgWithdrawDelegatorReward](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L42-L50). `delegator_address` is automatically filled with the current contract's address.",
         "type": "object",
-        "required": [
-          "withdraw_delegator_reward"
-        ],
+        "required": ["withdraw_delegator_reward"],
         "properties": {
           "withdraw_delegator_reward": {
             "type": "object",
-            "required": [
-              "validator"
-            ],
+            "required": ["validator"],
             "properties": {
               "validator": {
                 "description": "The validator to claim rewards for.",
@@ -376,9 +332,7 @@
       {
         "description": "If the owner cancels a payment and there are not enough liquid tokens to settle the owner may become entitled to some number of staked tokens. They may then unbond those tokens and then call this method to return them.",
         "type": "object",
-        "required": [
-          "withdraw_canceled_payment"
-        ],
+        "required": ["withdraw_canceled_payment"],
         "properties": {
           "withdraw_canceled_payment": {
             "type": "object",
@@ -403,18 +357,11 @@
       {
         "description": "Registers a slash event bonded or unbonding tokens with the contract. Only callable by the owner as the contract is unable to verify that the slash actually occured. The owner is assumed to be honest.\n\nA future version of this contract may be able to permissionlessly take slashing evidence: <https://github.com/CosmWasm/mesh-security/issues/35>",
         "type": "object",
-        "required": [
-          "register_slash"
-        ],
+        "required": ["register_slash"],
         "properties": {
           "register_slash": {
             "type": "object",
-            "required": [
-              "amount",
-              "during_unbonding",
-              "time",
-              "validator"
-            ],
+            "required": ["amount", "during_unbonding", "time", "validator"],
             "properties": {
               "amount": {
                 "description": "The number of tokens that THIS CONTRACT lost as a result of the slash. Note that this differs from the total amount slashed from the validator.",
@@ -449,9 +396,7 @@
       {
         "description": "Update the contract's ownership. The `action` to be provided can be either to propose transferring ownership to an account, accept a pending ownership transfer, or renounce the ownership permanently.",
         "type": "object",
-        "required": [
-          "update_ownership"
-        ],
+        "required": ["update_ownership"],
         "properties": {
           "update_ownership": {
             "$ref": "#/definitions/Action"
@@ -467,15 +412,11 @@
           {
             "description": "Propose to transfer the contract's ownership to another account, optionally with an expiry time.\n\nCan only be called by the contract's current owner.\n\nAny existing pending ownership transfer is overwritten.",
             "type": "object",
-            "required": [
-              "transfer_ownership"
-            ],
+            "required": ["transfer_ownership"],
             "properties": {
               "transfer_ownership": {
                 "type": "object",
-                "required": [
-                  "new_owner"
-                ],
+                "required": ["new_owner"],
                 "properties": {
                   "expiry": {
                     "anyOf": [
@@ -499,16 +440,12 @@
           {
             "description": "Accept the pending ownership transfer.\n\nCan only be called by the pending owner.",
             "type": "string",
-            "enum": [
-              "accept_ownership"
-            ]
+            "enum": ["accept_ownership"]
           },
           {
             "description": "Give up the contract's ownership and the possibility of appointing a new owner.\n\nCan only be invoked by the contract's current owner.\n\nAny existing pending ownership transfer is canceled.",
             "type": "string",
-            "enum": [
-              "renounce_ownership"
-            ]
+            "enum": ["renounce_ownership"]
           }
         ]
       },
@@ -519,11 +456,7 @@
       "Cw20ReceiveMsg": {
         "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
         "type": "object",
-        "required": [
-          "amount",
-          "msg",
-          "sender"
-        ],
+        "required": ["amount", "msg", "sender"],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -543,9 +476,7 @@
           {
             "description": "AtHeight will expire when `env.block.height` >= height",
             "type": "object",
-            "required": [
-              "at_height"
-            ],
+            "required": ["at_height"],
             "properties": {
               "at_height": {
                 "type": "integer",
@@ -558,9 +489,7 @@
           {
             "description": "AtTime will expire when `env.block.time` >= time",
             "type": "object",
-            "required": [
-              "at_time"
-            ],
+            "required": ["at_time"],
             "properties": {
               "at_time": {
                 "$ref": "#/definitions/Timestamp"
@@ -571,9 +500,7 @@
           {
             "description": "Never will never expire. Used to express the empty variant",
             "type": "object",
-            "required": [
-              "never"
-            ],
+            "required": ["never"],
             "properties": {
               "never": {
                 "type": "object",
@@ -609,9 +536,7 @@
       {
         "description": "Get the current ownership.",
         "type": "object",
-        "required": [
-          "ownership"
-        ],
+        "required": ["ownership"],
         "properties": {
           "ownership": {
             "type": "object",
@@ -623,9 +548,7 @@
       {
         "description": "Returns information about the vesting contract and the status of the payment.",
         "type": "object",
-        "required": [
-          "info"
-        ],
+        "required": ["info"],
         "properties": {
           "info": {
             "type": "object",
@@ -637,9 +560,7 @@
       {
         "description": "Returns the number of tokens currently claimable by the vestee. This is the minimum of the number of unstaked tokens in the contract, and the number of tokens that have been vested at time t.",
         "type": "object",
-        "required": [
-          "distributable"
-        ],
+        "required": ["distributable"],
         "properties": {
           "distributable": {
             "type": "object",
@@ -664,9 +585,7 @@
       {
         "description": "Gets the current value of `vested(t)`. If `t` is `None`, the current time is used.",
         "type": "object",
-        "required": [
-          "vested"
-        ],
+        "required": ["vested"],
         "properties": {
           "vested": {
             "type": "object",
@@ -690,9 +609,7 @@
       {
         "description": "Gets the total amount that will ever vest, `max(vested(t))`.\n\nNote that if the contract is canceled at time c, this value will change to `vested(c)`. Thus, it can not be assumed to be constant over the contract's lifetime.",
         "type": "object",
-        "required": [
-          "total_to_vest"
-        ],
+        "required": ["total_to_vest"],
         "properties": {
           "total_to_vest": {
             "type": "object",
@@ -704,9 +621,7 @@
       {
         "description": "Gets the amount of time between the vest starting, and it completing. Returns `None` if the vest has been cancelled.",
         "type": "object",
-        "required": [
-          "vest_duration"
-        ],
+        "required": ["vest_duration"],
         "properties": {
           "vest_duration": {
             "type": "object",
@@ -718,9 +633,7 @@
       {
         "description": "Queries information about the contract's understanding of it's bonded and unbonding token balances. See the `StakeTrackerQuery` in `packages/cw-stake-tracker/lib.rs` for query methods and their return types.",
         "type": "object",
-        "required": [
-          "stake"
-        ],
+        "required": ["stake"],
         "properties": {
           "stake": {
             "$ref": "#/definitions/StakeTrackerQuery"
@@ -734,15 +647,11 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "cardinality"
-            ],
+            "required": ["cardinality"],
             "properties": {
               "cardinality": {
                 "type": "object",
-                "required": [
-                  "t"
-                ],
+                "required": ["t"],
                 "properties": {
                   "t": {
                     "$ref": "#/definitions/Timestamp"
@@ -755,15 +664,11 @@
           },
           {
             "type": "object",
-            "required": [
-              "total_staked"
-            ],
+            "required": ["total_staked"],
             "properties": {
               "total_staked": {
                 "type": "object",
-                "required": [
-                  "t"
-                ],
+                "required": ["t"],
                 "properties": {
                   "t": {
                     "$ref": "#/definitions/Timestamp"
@@ -776,16 +681,11 @@
           },
           {
             "type": "object",
-            "required": [
-              "validator_staked"
-            ],
+            "required": ["validator_staked"],
             "properties": {
               "validator_staked": {
                 "type": "object",
-                "required": [
-                  "t",
-                  "validator"
-                ],
+                "required": ["t", "validator"],
                 "properties": {
                   "t": {
                     "$ref": "#/definitions/Timestamp"
@@ -851,10 +751,7 @@
           "$ref": "#/definitions/CheckedDenom"
         },
         "description": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "recipient": {
           "$ref": "#/definitions/Addr"
@@ -897,9 +794,7 @@
             {
               "description": "A native (bank module) asset.",
               "type": "object",
-              "required": [
-                "native"
-              ],
+              "required": ["native"],
               "properties": {
                 "native": {
                   "type": "string"
@@ -910,9 +805,7 @@
             {
               "description": "A cw20 asset.",
               "type": "object",
-              "required": [
-                "cw20"
-              ],
+              "required": ["cw20"],
               "properties": {
                 "cw20": {
                   "$ref": "#/definitions/Addr"
@@ -926,15 +819,11 @@
           "oneOf": [
             {
               "type": "object",
-              "required": [
-                "constant"
-              ],
+              "required": ["constant"],
               "properties": {
                 "constant": {
                   "type": "object",
-                  "required": [
-                    "y"
-                  ],
+                  "required": ["y"],
                   "properties": {
                     "y": {
                       "$ref": "#/definitions/Uint128"
@@ -946,9 +835,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "saturating_linear"
-              ],
+              "required": ["saturating_linear"],
               "properties": {
                 "saturating_linear": {
                   "$ref": "#/definitions/SaturatingLinear"
@@ -958,9 +845,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "piecewise_linear"
-              ],
+              "required": ["piecewise_linear"],
               "properties": {
                 "piecewise_linear": {
                   "$ref": "#/definitions/PiecewiseLinear"
@@ -973,9 +858,7 @@
         "PiecewiseLinear": {
           "description": "This is a generalization of SaturatingLinear, steps must be arranged with increasing time (u64). Any point before first step gets the first value, after last step the last value. Otherwise, it is a linear interpolation between the two closest points. Vec of length 1 -> Constant Vec of length 2 -> SaturatingLinear",
           "type": "object",
-          "required": [
-            "steps"
-          ],
+          "required": ["steps"],
           "properties": {
             "steps": {
               "type": "array",
@@ -1000,12 +883,7 @@
         "SaturatingLinear": {
           "description": "min_y for all x <= min_x, max_y for all x >= max_x, linear in between",
           "type": "object",
-          "required": [
-            "max_x",
-            "max_y",
-            "min_x",
-            "min_y"
-          ],
+          "required": ["max_x", "max_y", "min_x", "min_y"],
           "properties": {
             "max_x": {
               "type": "integer",
@@ -1029,22 +907,15 @@
           "oneOf": [
             {
               "type": "string",
-              "enum": [
-                "unfunded",
-                "funded"
-              ]
+              "enum": ["unfunded", "funded"]
             },
             {
               "type": "object",
-              "required": [
-                "canceled"
-              ],
+              "required": ["canceled"],
               "properties": {
                 "canceled": {
                   "type": "object",
-                  "required": [
-                    "owner_withdrawable"
-                  ],
+                  "required": ["owner_withdrawable"],
                   "properties": {
                     "owner_withdrawable": {
                       "description": "owner_withdrawable(t). This is monotonically decreasing and will be zero once the owner has completed withdrawing their funds.",
@@ -1132,9 +1003,7 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": [
-                "at_height"
-              ],
+              "required": ["at_height"],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -1147,9 +1016,7 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": [
-                "at_time"
-              ],
+              "required": ["at_time"],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -1160,9 +1027,7 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": [
-                "never"
-              ],
+              "required": ["never"],
               "properties": {
                 "never": {
                   "type": "object",

@@ -1,22 +1,15 @@
 {
   "contract_name": "cw20-stake-external-rewards",
-  "contract_version": "2.4.0",
+  "contract_version": "2.4.1",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
-    "required": [
-      "reward_duration",
-      "reward_token",
-      "staking_contract"
-    ],
+    "required": ["reward_duration", "reward_token", "staking_contract"],
     "properties": {
       "owner": {
-        "type": [
-          "string",
-          "null"
-        ]
+        "type": ["string", "null"]
       },
       "reward_duration": {
         "type": "integer",
@@ -40,9 +33,7 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "native"
-            ],
+            "required": ["native"],
             "properties": {
               "native": {
                 "type": "string"
@@ -52,9 +43,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "cw20"
-            ],
+            "required": ["cw20"],
             "properties": {
               "cw20": {
                 "$ref": "#/definitions/Addr"
@@ -72,9 +61,7 @@
     "oneOf": [
       {
         "type": "object",
-        "required": [
-          "stake_change_hook"
-        ],
+        "required": ["stake_change_hook"],
         "properties": {
           "stake_change_hook": {
             "$ref": "#/definitions/StakeChangedHookMsg"
@@ -84,9 +71,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "claim"
-        ],
+        "required": ["claim"],
         "properties": {
           "claim": {
             "type": "object",
@@ -97,9 +82,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "receive"
-        ],
+        "required": ["receive"],
         "properties": {
           "receive": {
             "$ref": "#/definitions/Cw20ReceiveMsg"
@@ -109,9 +92,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "fund"
-        ],
+        "required": ["fund"],
         "properties": {
           "fund": {
             "type": "object",
@@ -122,15 +103,11 @@
       },
       {
         "type": "object",
-        "required": [
-          "update_reward_duration"
-        ],
+        "required": ["update_reward_duration"],
         "properties": {
           "update_reward_duration": {
             "type": "object",
-            "required": [
-              "new_duration"
-            ],
+            "required": ["new_duration"],
             "properties": {
               "new_duration": {
                 "type": "integer",
@@ -146,9 +123,7 @@
       {
         "description": "Update the contract's ownership. The `action` to be provided can be either to propose transferring ownership to an account, accept a pending ownership transfer, or renounce the ownership permanently.",
         "type": "object",
-        "required": [
-          "update_ownership"
-        ],
+        "required": ["update_ownership"],
         "properties": {
           "update_ownership": {
             "$ref": "#/definitions/Action"
@@ -164,15 +139,11 @@
           {
             "description": "Propose to transfer the contract's ownership to another account, optionally with an expiry time.\n\nCan only be called by the contract's current owner.\n\nAny existing pending ownership transfer is overwritten.",
             "type": "object",
-            "required": [
-              "transfer_ownership"
-            ],
+            "required": ["transfer_ownership"],
             "properties": {
               "transfer_ownership": {
                 "type": "object",
-                "required": [
-                  "new_owner"
-                ],
+                "required": ["new_owner"],
                 "properties": {
                   "expiry": {
                     "anyOf": [
@@ -196,16 +167,12 @@
           {
             "description": "Accept the pending ownership transfer.\n\nCan only be called by the pending owner.",
             "type": "string",
-            "enum": [
-              "accept_ownership"
-            ]
+            "enum": ["accept_ownership"]
           },
           {
             "description": "Give up the contract's ownership and the possibility of appointing a new owner.\n\nCan only be invoked by the contract's current owner.\n\nAny existing pending ownership transfer is canceled.",
             "type": "string",
-            "enum": [
-              "renounce_ownership"
-            ]
+            "enum": ["renounce_ownership"]
           }
         ]
       },
@@ -220,11 +187,7 @@
       "Cw20ReceiveMsg": {
         "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
         "type": "object",
-        "required": [
-          "amount",
-          "msg",
-          "sender"
-        ],
+        "required": ["amount", "msg", "sender"],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -244,9 +207,7 @@
           {
             "description": "AtHeight will expire when `env.block.height` >= height",
             "type": "object",
-            "required": [
-              "at_height"
-            ],
+            "required": ["at_height"],
             "properties": {
               "at_height": {
                 "type": "integer",
@@ -259,9 +220,7 @@
           {
             "description": "AtTime will expire when `env.block.time` >= time",
             "type": "object",
-            "required": [
-              "at_time"
-            ],
+            "required": ["at_time"],
             "properties": {
               "at_time": {
                 "$ref": "#/definitions/Timestamp"
@@ -272,9 +231,7 @@
           {
             "description": "Never will never expire. Used to express the empty variant",
             "type": "object",
-            "required": [
-              "never"
-            ],
+            "required": ["never"],
             "properties": {
               "never": {
                 "type": "object",
@@ -290,16 +247,11 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "stake"
-            ],
+            "required": ["stake"],
             "properties": {
               "stake": {
                 "type": "object",
-                "required": [
-                  "addr",
-                  "amount"
-                ],
+                "required": ["addr", "amount"],
                 "properties": {
                   "addr": {
                     "$ref": "#/definitions/Addr"
@@ -315,16 +267,11 @@
           },
           {
             "type": "object",
-            "required": [
-              "unstake"
-            ],
+            "required": ["unstake"],
             "properties": {
               "unstake": {
                 "type": "object",
-                "required": [
-                  "addr",
-                  "amount"
-                ],
+                "required": ["addr", "amount"],
                 "properties": {
                   "addr": {
                     "$ref": "#/definitions/Addr"
@@ -364,9 +311,7 @@
     "oneOf": [
       {
         "type": "object",
-        "required": [
-          "info"
-        ],
+        "required": ["info"],
         "properties": {
           "info": {
             "type": "object",
@@ -377,15 +322,11 @@
       },
       {
         "type": "object",
-        "required": [
-          "get_pending_rewards"
-        ],
+        "required": ["get_pending_rewards"],
         "properties": {
           "get_pending_rewards": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
@@ -398,9 +339,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "ownership"
-        ],
+        "required": ["ownership"],
         "properties": {
           "ownership": {
             "type": "object",
@@ -418,9 +357,7 @@
       {
         "description": "Migrates from version 0.2.6 to 2.0.0. The significant changes being the addition of a two-step ownership transfer using `cw_ownable` and the removal of the manager. Migrating will automatically remove the current manager.",
         "type": "object",
-        "required": [
-          "from_v1"
-        ],
+        "required": ["from_v1"],
         "properties": {
           "from_v1": {
             "type": "object",
@@ -437,12 +374,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "PendingRewardsResponse",
       "type": "object",
-      "required": [
-        "address",
-        "denom",
-        "last_update_block",
-        "pending_rewards"
-      ],
+      "required": ["address", "denom", "last_update_block", "pending_rewards"],
       "properties": {
         "address": {
           "type": "string"
@@ -469,9 +401,7 @@
           "oneOf": [
             {
               "type": "object",
-              "required": [
-                "native"
-              ],
+              "required": ["native"],
               "properties": {
                 "native": {
                   "type": "string"
@@ -481,9 +411,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "cw20"
-              ],
+              "required": ["cw20"],
               "properties": {
                 "cw20": {
                   "$ref": "#/definitions/Addr"
@@ -503,10 +431,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "InfoResponse",
       "type": "object",
-      "required": [
-        "config",
-        "reward"
-      ],
+      "required": ["config", "reward"],
       "properties": {
         "config": {
           "$ref": "#/definitions/Config"
@@ -523,10 +448,7 @@
         },
         "Config": {
           "type": "object",
-          "required": [
-            "reward_token",
-            "staking_contract"
-          ],
+          "required": ["reward_token", "staking_contract"],
           "properties": {
             "reward_token": {
               "$ref": "#/definitions/Denom"
@@ -541,9 +463,7 @@
           "oneOf": [
             {
               "type": "object",
-              "required": [
-                "native"
-              ],
+              "required": ["native"],
               "properties": {
                 "native": {
                   "type": "string"
@@ -553,9 +473,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "cw20"
-              ],
+              "required": ["cw20"],
               "properties": {
                 "cw20": {
                   "$ref": "#/definitions/Addr"
@@ -567,11 +485,7 @@
         },
         "RewardConfig": {
           "type": "object",
-          "required": [
-            "period_finish",
-            "reward_duration",
-            "reward_rate"
-          ],
+          "required": ["period_finish", "reward_duration", "reward_rate"],
           "properties": {
             "period_finish": {
               "type": "integer",
@@ -647,9 +561,7 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": [
-                "at_height"
-              ],
+              "required": ["at_height"],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -662,9 +574,7 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": [
-                "at_time"
-              ],
+              "required": ["at_time"],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -675,9 +585,7 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": [
-                "never"
-              ],
+              "required": ["never"],
               "properties": {
                 "never": {
                   "type": "object",

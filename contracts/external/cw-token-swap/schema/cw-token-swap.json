@@ -1,15 +1,12 @@
 {
   "contract_name": "cw-token-swap",
-  "contract_version": "2.4.0",
+  "contract_version": "2.4.1",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
-    "required": [
-      "counterparty_one",
-      "counterparty_two"
-    ],
+    "required": ["counterparty_one", "counterparty_two"],
     "properties": {
       "counterparty_one": {
         "$ref": "#/definitions/Counterparty"
@@ -23,10 +20,7 @@
       "Counterparty": {
         "description": "Information about a counterparty in this escrow transaction and their promised funds.",
         "type": "object",
-        "required": [
-          "address",
-          "promise"
-        ],
+        "required": ["address", "promise"],
         "properties": {
           "address": {
             "description": "The address of the counterparty.",
@@ -49,16 +43,11 @@
           {
             "description": "A native token.",
             "type": "object",
-            "required": [
-              "native"
-            ],
+            "required": ["native"],
             "properties": {
               "native": {
                 "type": "object",
-                "required": [
-                  "amount",
-                  "denom"
-                ],
+                "required": ["amount", "denom"],
                 "properties": {
                   "amount": {
                     "$ref": "#/definitions/Uint128"
@@ -75,16 +64,11 @@
           {
             "description": "A cw20 token.",
             "type": "object",
-            "required": [
-              "cw20"
-            ],
+            "required": ["cw20"],
             "properties": {
               "cw20": {
                 "type": "object",
-                "required": [
-                  "amount",
-                  "contract_addr"
-                ],
+                "required": ["amount", "contract_addr"],
                 "properties": {
                   "amount": {
                     "$ref": "#/definitions/Uint128"
@@ -113,9 +97,7 @@
       {
         "description": "Used to provide cw20 tokens to satisfy a funds promise.",
         "type": "object",
-        "required": [
-          "receive"
-        ],
+        "required": ["receive"],
         "properties": {
           "receive": {
             "$ref": "#/definitions/Cw20ReceiveMsg"
@@ -126,9 +108,7 @@
       {
         "description": "Provides native tokens to satisfy a funds promise.",
         "type": "object",
-        "required": [
-          "fund"
-        ],
+        "required": ["fund"],
         "properties": {
           "fund": {
             "type": "object",
@@ -140,9 +120,7 @@
       {
         "description": "Withdraws provided funds. Only allowed if the other counterparty has yet to provide their promised funds.",
         "type": "object",
-        "required": [
-          "withdraw"
-        ],
+        "required": ["withdraw"],
         "properties": {
           "withdraw": {
             "type": "object",
@@ -160,11 +138,7 @@
       "Cw20ReceiveMsg": {
         "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
         "type": "object",
-        "required": [
-          "amount",
-          "msg",
-          "sender"
-        ],
+        "required": ["amount", "msg", "sender"],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -190,9 +164,7 @@
     "oneOf": [
       {
         "type": "object",
-        "required": [
-          "status"
-        ],
+        "required": ["status"],
         "properties": {
           "status": {
             "type": "object",
@@ -215,10 +187,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "StatusResponse",
       "type": "object",
-      "required": [
-        "counterparty_one",
-        "counterparty_two"
-      ],
+      "required": ["counterparty_one", "counterparty_two"],
       "properties": {
         "counterparty_one": {
           "$ref": "#/definitions/CheckedCounterparty"
@@ -235,11 +204,7 @@
         },
         "CheckedCounterparty": {
           "type": "object",
-          "required": [
-            "address",
-            "promise",
-            "provided"
-          ],
+          "required": ["address", "promise", "provided"],
           "properties": {
             "address": {
               "$ref": "#/definitions/Addr"
@@ -257,16 +222,11 @@
           "oneOf": [
             {
               "type": "object",
-              "required": [
-                "native"
-              ],
+              "required": ["native"],
               "properties": {
                 "native": {
                   "type": "object",
-                  "required": [
-                    "amount",
-                    "denom"
-                  ],
+                  "required": ["amount", "denom"],
                   "properties": {
                     "amount": {
                       "$ref": "#/definitions/Uint128"
@@ -282,16 +242,11 @@
             },
             {
               "type": "object",
-              "required": [
-                "cw20"
-              ],
+              "required": ["cw20"],
               "properties": {
                 "cw20": {
                   "type": "object",
-                  "required": [
-                    "amount",
-                    "contract_addr"
-                  ],
+                  "required": ["amount", "contract_addr"],
                   "properties": {
                     "amount": {
                       "$ref": "#/definitions/Uint128"

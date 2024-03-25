@@ -1,20 +1,15 @@
 {
   "contract_name": "cw20-stake",
-  "contract_version": "2.4.0",
+  "contract_version": "2.4.1",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
-    "required": [
-      "token_address"
-    ],
+    "required": ["token_address"],
     "properties": {
       "owner": {
-        "type": [
-          "string",
-          "null"
-        ]
+        "type": ["string", "null"]
       },
       "token_address": {
         "type": "string"
@@ -37,9 +32,7 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "height"
-            ],
+            "required": ["height"],
             "properties": {
               "height": {
                 "type": "integer",
@@ -52,9 +45,7 @@
           {
             "description": "Time in seconds",
             "type": "object",
-            "required": [
-              "time"
-            ],
+            "required": ["time"],
             "properties": {
               "time": {
                 "type": "integer",
@@ -74,9 +65,7 @@
     "oneOf": [
       {
         "type": "object",
-        "required": [
-          "receive"
-        ],
+        "required": ["receive"],
         "properties": {
           "receive": {
             "$ref": "#/definitions/Cw20ReceiveMsg"
@@ -86,15 +75,11 @@
       },
       {
         "type": "object",
-        "required": [
-          "unstake"
-        ],
+        "required": ["unstake"],
         "properties": {
           "unstake": {
             "type": "object",
-            "required": [
-              "amount"
-            ],
+            "required": ["amount"],
             "properties": {
               "amount": {
                 "$ref": "#/definitions/Uint128"
@@ -107,9 +92,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "claim"
-        ],
+        "required": ["claim"],
         "properties": {
           "claim": {
             "type": "object",
@@ -120,9 +103,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "update_config"
-        ],
+        "required": ["update_config"],
         "properties": {
           "update_config": {
             "type": "object",
@@ -145,15 +126,11 @@
       },
       {
         "type": "object",
-        "required": [
-          "add_hook"
-        ],
+        "required": ["add_hook"],
         "properties": {
           "add_hook": {
             "type": "object",
-            "required": [
-              "addr"
-            ],
+            "required": ["addr"],
             "properties": {
               "addr": {
                 "type": "string"
@@ -166,15 +143,11 @@
       },
       {
         "type": "object",
-        "required": [
-          "remove_hook"
-        ],
+        "required": ["remove_hook"],
         "properties": {
           "remove_hook": {
             "type": "object",
-            "required": [
-              "addr"
-            ],
+            "required": ["addr"],
             "properties": {
               "addr": {
                 "type": "string"
@@ -188,9 +161,7 @@
       {
         "description": "Update the contract's ownership. The `action` to be provided can be either to propose transferring ownership to an account, accept a pending ownership transfer, or renounce the ownership permanently.",
         "type": "object",
-        "required": [
-          "update_ownership"
-        ],
+        "required": ["update_ownership"],
         "properties": {
           "update_ownership": {
             "$ref": "#/definitions/Action"
@@ -206,15 +177,11 @@
           {
             "description": "Propose to transfer the contract's ownership to another account, optionally with an expiry time.\n\nCan only be called by the contract's current owner.\n\nAny existing pending ownership transfer is overwritten.",
             "type": "object",
-            "required": [
-              "transfer_ownership"
-            ],
+            "required": ["transfer_ownership"],
             "properties": {
               "transfer_ownership": {
                 "type": "object",
-                "required": [
-                  "new_owner"
-                ],
+                "required": ["new_owner"],
                 "properties": {
                   "expiry": {
                     "anyOf": [
@@ -238,16 +205,12 @@
           {
             "description": "Accept the pending ownership transfer.\n\nCan only be called by the pending owner.",
             "type": "string",
-            "enum": [
-              "accept_ownership"
-            ]
+            "enum": ["accept_ownership"]
           },
           {
             "description": "Give up the contract's ownership and the possibility of appointing a new owner.\n\nCan only be invoked by the contract's current owner.\n\nAny existing pending ownership transfer is canceled.",
             "type": "string",
-            "enum": [
-              "renounce_ownership"
-            ]
+            "enum": ["renounce_ownership"]
           }
         ]
       },
@@ -258,11 +221,7 @@
       "Cw20ReceiveMsg": {
         "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
         "type": "object",
-        "required": [
-          "amount",
-          "msg",
-          "sender"
-        ],
+        "required": ["amount", "msg", "sender"],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -281,9 +240,7 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "height"
-            ],
+            "required": ["height"],
             "properties": {
               "height": {
                 "type": "integer",
@@ -296,9 +253,7 @@
           {
             "description": "Time in seconds",
             "type": "object",
-            "required": [
-              "time"
-            ],
+            "required": ["time"],
             "properties": {
               "time": {
                 "type": "integer",
@@ -316,9 +271,7 @@
           {
             "description": "AtHeight will expire when `env.block.height` >= height",
             "type": "object",
-            "required": [
-              "at_height"
-            ],
+            "required": ["at_height"],
             "properties": {
               "at_height": {
                 "type": "integer",
@@ -331,9 +284,7 @@
           {
             "description": "AtTime will expire when `env.block.time` >= time",
             "type": "object",
-            "required": [
-              "at_time"
-            ],
+            "required": ["at_time"],
             "properties": {
               "at_time": {
                 "$ref": "#/definitions/Timestamp"
@@ -344,9 +295,7 @@
           {
             "description": "Never will never expire. Used to express the empty variant",
             "type": "object",
-            "required": [
-              "never"
-            ],
+            "required": ["never"],
             "properties": {
               "never": {
                 "type": "object",
@@ -381,24 +330,17 @@
     "oneOf": [
       {
         "type": "object",
-        "required": [
-          "staked_balance_at_height"
-        ],
+        "required": ["staked_balance_at_height"],
         "properties": {
           "staked_balance_at_height": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
               },
               "height": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint64",
                 "minimum": 0.0
               }
@@ -410,18 +352,13 @@
       },
       {
         "type": "object",
-        "required": [
-          "total_staked_at_height"
-        ],
+        "required": ["total_staked_at_height"],
         "properties": {
           "total_staked_at_height": {
             "type": "object",
             "properties": {
               "height": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint64",
                 "minimum": 0.0
               }
@@ -433,15 +370,11 @@
       },
       {
         "type": "object",
-        "required": [
-          "staked_value"
-        ],
+        "required": ["staked_value"],
         "properties": {
           "staked_value": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
@@ -454,9 +387,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "total_value"
-        ],
+        "required": ["total_value"],
         "properties": {
           "total_value": {
             "type": "object",
@@ -467,9 +398,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "get_config"
-        ],
+        "required": ["get_config"],
         "properties": {
           "get_config": {
             "type": "object",
@@ -480,15 +409,11 @@
       },
       {
         "type": "object",
-        "required": [
-          "claims"
-        ],
+        "required": ["claims"],
         "properties": {
           "claims": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
@@ -501,9 +426,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "get_hooks"
-        ],
+        "required": ["get_hooks"],
         "properties": {
           "get_hooks": {
             "type": "object",
@@ -514,26 +437,18 @@
       },
       {
         "type": "object",
-        "required": [
-          "list_stakers"
-        ],
+        "required": ["list_stakers"],
         "properties": {
           "list_stakers": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -543,9 +458,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "ownership"
-        ],
+        "required": ["ownership"],
         "properties": {
           "ownership": {
             "type": "object",
@@ -563,9 +476,7 @@
       {
         "description": "Migrates the contract from version one to version two. This will remove the contract's current manager, and require a nomination -> acceptance flow for future ownership transfers.",
         "type": "object",
-        "required": [
-          "from_v1"
-        ],
+        "required": ["from_v1"],
         "properties": {
           "from_v1": {
             "type": "object",
@@ -582,9 +493,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ClaimsResponse",
       "type": "object",
-      "required": [
-        "claims"
-      ],
+      "required": ["claims"],
       "properties": {
         "claims": {
           "type": "array",
@@ -597,10 +506,7 @@
       "definitions": {
         "Claim": {
           "type": "object",
-          "required": [
-            "amount",
-            "release_at"
-          ],
+          "required": ["amount", "release_at"],
           "properties": {
             "amount": {
               "$ref": "#/definitions/Uint128"
@@ -617,9 +523,7 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": [
-                "at_height"
-              ],
+              "required": ["at_height"],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -632,9 +536,7 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": [
-                "at_time"
-              ],
+              "required": ["at_time"],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -645,9 +547,7 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": [
-                "never"
-              ],
+              "required": ["never"],
               "properties": {
                 "never": {
                   "type": "object",
@@ -680,9 +580,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Config",
       "type": "object",
-      "required": [
-        "token_address"
-      ],
+      "required": ["token_address"],
       "properties": {
         "token_address": {
           "$ref": "#/definitions/Addr"
@@ -709,9 +607,7 @@
           "oneOf": [
             {
               "type": "object",
-              "required": [
-                "height"
-              ],
+              "required": ["height"],
               "properties": {
                 "height": {
                   "type": "integer",
@@ -724,9 +620,7 @@
             {
               "description": "Time in seconds",
               "type": "object",
-              "required": [
-                "time"
-              ],
+              "required": ["time"],
               "properties": {
                 "time": {
                   "type": "integer",
@@ -744,9 +638,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "GetHooksResponse",
       "type": "object",
-      "required": [
-        "hooks"
-      ],
+      "required": ["hooks"],
       "properties": {
         "hooks": {
           "type": "array",
@@ -761,9 +653,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ListStakersResponse",
       "type": "object",
-      "required": [
-        "stakers"
-      ],
+      "required": ["stakers"],
       "properties": {
         "stakers": {
           "type": "array",
@@ -776,10 +666,7 @@
       "definitions": {
         "StakerBalanceResponse": {
           "type": "object",
-          "required": [
-            "address",
-            "balance"
-          ],
+          "required": ["address", "balance"],
           "properties": {
             "address": {
               "type": "string"
@@ -848,9 +735,7 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": [
-                "at_height"
-              ],
+              "required": ["at_height"],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -863,9 +748,7 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": [
-                "at_time"
-              ],
+              "required": ["at_time"],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -876,9 +759,7 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": [
-                "never"
-              ],
+              "required": ["never"],
               "properties": {
                 "never": {
                   "type": "object",
@@ -907,10 +788,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "StakedBalanceAtHeightResponse",
       "type": "object",
-      "required": [
-        "balance",
-        "height"
-      ],
+      "required": ["balance", "height"],
       "properties": {
         "balance": {
           "$ref": "#/definitions/Uint128"
@@ -933,9 +811,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "StakedValueResponse",
       "type": "object",
-      "required": [
-        "value"
-      ],
+      "required": ["value"],
       "properties": {
         "value": {
           "$ref": "#/definitions/Uint128"
@@ -953,10 +829,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "TotalStakedAtHeightResponse",
       "type": "object",
-      "required": [
-        "height",
-        "total"
-      ],
+      "required": ["height", "total"],
       "properties": {
         "height": {
           "type": "integer",
@@ -979,9 +852,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "TotalValueResponse",
       "type": "object",
-      "required": [
-        "total"
-      ],
+      "required": ["total"],
       "properties": {
         "total": {
           "$ref": "#/definitions/Uint128"

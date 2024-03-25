@@ -1,14 +1,12 @@
 {
   "contract_name": "dao-voting-cw721-roles",
-  "contract_version": "2.4.0",
+  "contract_version": "2.4.1",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
-    "required": [
-      "nft_contract"
-    ],
+    "required": ["nft_contract"],
     "properties": {
       "nft_contract": {
         "description": "Info about the associated NFT contract",
@@ -23,16 +21,11 @@
     "definitions": {
       "MetadataExt": {
         "type": "object",
-        "required": [
-          "weight"
-        ],
+        "required": ["weight"],
         "properties": {
           "role": {
             "description": "Optional on-chain role for this member, can be used by other contracts to enforce permissions",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "weight": {
             "description": "The voting weight of this role",
@@ -47,15 +40,11 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "existing"
-            ],
+            "required": ["existing"],
             "properties": {
               "existing": {
                 "type": "object",
-                "required": [
-                  "address"
-                ],
+                "required": ["address"],
                 "properties": {
                   "address": {
                     "description": "Address of an already instantiated cw721-weighted-roles token contract.",
@@ -69,9 +58,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "new"
-            ],
+            "required": ["new"],
             "properties": {
               "new": {
                 "type": "object",
@@ -118,11 +105,7 @@
       },
       "NftMintMsg": {
         "type": "object",
-        "required": [
-          "extension",
-          "owner",
-          "token_id"
-        ],
+        "required": ["extension", "owner", "token_id"],
         "properties": {
           "extension": {
             "description": "Any custom extension used by this contract",
@@ -142,10 +125,7 @@
           },
           "token_uri": {
             "description": "Universal resource identifier for this NFT Should point to a JSON file that conforms to the ERC721 Metadata JSON Schema",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           }
         },
         "additionalProperties": false
@@ -164,9 +144,7 @@
     "oneOf": [
       {
         "type": "object",
-        "required": [
-          "config"
-        ],
+        "required": ["config"],
         "properties": {
           "config": {
             "type": "object",
@@ -178,24 +156,17 @@
       {
         "description": "Returns the voting power for an address at a given height.",
         "type": "object",
-        "required": [
-          "voting_power_at_height"
-        ],
+        "required": ["voting_power_at_height"],
         "properties": {
           "voting_power_at_height": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
               },
               "height": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint64",
                 "minimum": 0.0
               }
@@ -208,18 +179,13 @@
       {
         "description": "Returns the total voting power at a given block heigh.",
         "type": "object",
-        "required": [
-          "total_power_at_height"
-        ],
+        "required": ["total_power_at_height"],
         "properties": {
           "total_power_at_height": {
             "type": "object",
             "properties": {
               "height": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint64",
                 "minimum": 0.0
               }
@@ -232,9 +198,7 @@
       {
         "description": "Returns the address of the DAO this module belongs to.",
         "type": "object",
-        "required": [
-          "dao"
-        ],
+        "required": ["dao"],
         "properties": {
           "dao": {
             "type": "object",
@@ -246,9 +210,7 @@
       {
         "description": "Returns contract version info.",
         "type": "object",
-        "required": [
-          "info"
-        ],
+        "required": ["info"],
         "properties": {
           "info": {
             "type": "object",
@@ -266,9 +228,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Config",
       "type": "object",
-      "required": [
-        "nft_address"
-      ],
+      "required": ["nft_address"],
       "properties": {
         "nft_address": {
           "$ref": "#/definitions/Addr"
@@ -292,9 +252,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "InfoResponse",
       "type": "object",
-      "required": [
-        "info"
-      ],
+      "required": ["info"],
       "properties": {
         "info": {
           "$ref": "#/definitions/ContractVersion"
@@ -304,10 +262,7 @@
       "definitions": {
         "ContractVersion": {
           "type": "object",
-          "required": [
-            "contract",
-            "version"
-          ],
+          "required": ["contract", "version"],
           "properties": {
             "contract": {
               "description": "contract is the crate name of the implementing contract, eg. `crate:cw20-base` we will use other prefixes for other languages, and their standard global namespacing",
@@ -326,10 +281,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "TotalPowerAtHeightResponse",
       "type": "object",
-      "required": [
-        "height",
-        "power"
-      ],
+      "required": ["height", "power"],
       "properties": {
         "height": {
           "type": "integer",
@@ -352,10 +304,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "VotingPowerAtHeightResponse",
       "type": "object",
-      "required": [
-        "height",
-        "power"
-      ],
+      "required": ["height", "power"],
       "properties": {
         "height": {
           "type": "integer",
