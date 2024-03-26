@@ -33,7 +33,7 @@ jobs:
         with:
           repository: CosmWasm/wasmvm
           path: ./wasmvm
-          ref: v1.4.1
+          ref: v1.5.2
 
       - name: Install libwasmv
         run: cd ./wasmvm && make build-rust && cd ../
@@ -49,17 +49,8 @@ jobs:
             artifacts/
           key: ${{ runner.os }}-cargo-with-artifacts-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Set latest just version
-        run: echo "JUST_VERSION=$(cargo search just -q | sed -n -e '/^just[[:space:]]/p' | cut -d '"' -f 2)" >> $GITHUB_ENV
-
-      - name: Get cached just
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/bin/just
-          key: ${{ runner.os }}-just-${{ env.JUST_VERSION }}
-
       - name: Install just
-        run: cargo install just || true
+        uses: extractions/setup-just@v1
 
       - name: Run download deps
         run: just download-deps

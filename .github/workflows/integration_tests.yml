@@ -25,17 +25,8 @@ jobs:
           target: wasm32-unknown-unknown
           override: true
 
-      - name: Set latest just version
-        run: echo "JUST_VERSION=$(cargo search just -q | sed -n -e '/^just[[:space:]]/p' | cut -d '"' -f 2)" >> $GITHUB_ENV
-
-      - name: Get cached just
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/bin/just
-          key: ${{ runner.os }}-just-${{ env.JUST_VERSION }}
-
       - name: Install just
-        run: cargo install just || true
+        uses: extractions/setup-just@v1
 
       - name: Rust Dependencies Cache
         uses: actions/cache@v3
@@ -47,18 +38,6 @@ jobs:
             target/
             artifacts/
           key: ${{ runner.os }}-cargo-with-artifacts-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Set latest just version
-        run: echo "JUST_VERSION=$(cargo search just -q | sed -n -e '/^just[[:space:]]/p' | cut -d '"' -f 2)" >> $GITHUB_ENV
-
-      - name: Get cached just
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/bin/just
-          key: ${{ runner.os }}-just-${{ env.JUST_VERSION }}
-
-      - name: Install just
-        run: cargo install just || true
 
       - name: Get mainnet GAS_LIMIT
         run: echo "MAINNET_GAS_LIMIT=$(curl -s https://juno-rpc.polkachu.com/consensus_params | jq -r '.result.consensus_params.block.max_gas')" >> $GITHUB_ENV
