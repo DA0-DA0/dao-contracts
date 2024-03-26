@@ -1673,7 +1673,7 @@ dependencies = [
 
 [[package]]
 name = "dao-abc-factory"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
@@ -1690,7 +1690,7 @@ dependencies = [
  "dao-proposal-hook-counter",
  "dao-proposal-single",
  "dao-testing",
- "dao-voting 2.4.0",
+ "dao-voting 2.4.1",
  "dao-voting-token-staked",
  "osmosis-std",
  "osmosis-test-tube",
