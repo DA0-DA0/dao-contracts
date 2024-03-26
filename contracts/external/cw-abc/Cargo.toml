@@ -1,0 +1,53 @@
+[package]
+name = "cw-abc"
+authors = [
+    "Ethan Frey <ethanfrey@users.noreply.github.com>",
+    "Jake Hartnell",
+    "Adair <adairrr@users.noreply.github.com>",
+]
+description = "Implements an Augmented Bonding Curve"
+# Inherits license from previous work
+license = "Apache-2.0"
+edition = { workspace = true }
+repository = { workspace = true }
+version = "0.0.1"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+# use test tube feature to enable test-tube integration tests, for example
+# cargo test --features "test-tube"
+test-tube = []
+# when writing tests you may wish to enable test-tube as a default feature
+# default = ["test-tube"]
+
+[dependencies]
+cw-utils = { workspace = true }
+cw2 = { workspace = true }
+cw-storage-plus = { workspace = true }
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-address-like = { workspace = true }
+cw-ownable = { workspace = true }
+cw-paginate-storage = { workspace = true }
+cw-tokenfactory-issuer = { workspace = true, features = ["library"] }
+dao-interface = { workspace = true }
+rust_decimal = { workspace = true }
+integer-sqrt = { workspace = true }
+integer-cbrt = { workspace = true }
+getrandom = { workspace = true, features = ["js"] }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+speculoos = { workspace = true }
+anyhow = { workspace = true }
+cw-multi-test = { workspace = true }
+dao-testing = { workspace = true, features = ["test-tube"] }
+osmosis-std = { workspace = true }
+osmosis-test-tube = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

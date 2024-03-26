@@ -34,6 +34,7 @@ rand = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
+cw-abc = { workspace = true }
 cw-core-v1 = { workspace = true, features = ["library"] }
 cw-hooks = { workspace = true }
 cw-proposal-single-v1 = { workspace = true }
@@ -42,6 +43,7 @@ cw20-stake = { workspace = true }
 cw721-base = { workspace = true }
 cw721-roles = { workspace = true }
 cw-tokenfactory-issuer = { workspace = true }
+dao-abc-factory = { workspace = true }
 dao-dao-core = { workspace = true, features = ["library"] }
 dao-interface = { workspace = true }
 dao-pre-propose-multiple = { workspace = true }

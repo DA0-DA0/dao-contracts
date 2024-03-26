@@ -40,6 +40,7 @@ cosm-tome = "0.2"
 cosmos-sdk-proto = "0.19"
 cosmwasm-schema = { version = "1.2" }
 cosmwasm-std = { version = "1.5.0", features = ["ibc3"] }
+cw-address-like = "1.0.4"
 cw-controllers = "1.1"
 cw-multi-test = "0.18"
 cw-storage-plus = { version = "1.1" }
@@ -53,13 +54,17 @@ cw4-group = "1.1"
 cw721 = "0.18"
 cw721-base = "0.18"
 env_logger = "0.10"
+getrandom = "0.2"
+integer-sqrt = "0.1.5"
+integer-cbrt = "0.1.2"
 once_cell = "1.18"
 osmosis-std = "0.20.1"
 osmosis-std-derive = "0.20.1"
-osmosis-test-tube = "20.1.1"
+osmosis-test-tube = "20.1.2"
 proc-macro2 = "1.0"
 prost = { version = "0.12.3", features = ["prost-derive"] }
 prost-types = { version = "0.12.3", default-features = false }
+rust_decimal = "1.14.3"
 quote = "1.0"
 rand = "0.8"
 schemars = "0.8"
@@ -71,7 +76,8 @@ sg-multi-test = "3.1.0"
 sg-std = "3.1.0"
 sg721 = "3.1.0"
 sg721-base = "3.1.0"
-syn = { version = "1.0", features = ["derive"] }
+speculoos = "0.11.0"
+syn = {version = "1.0", features = ["derive"]}
 test-context = "0.1"
 thiserror = { version = "1.0" }
 wynd-utils = "0.4"
@@ -80,6 +86,7 @@ wynd-utils = "0.4"
 # optional owner.
 cw-ownable = "0.5"
 
+cw-abc = { path = "./contracts/external/cw-abc", version = "*" }
 cw-admin-factory = { path = "./contracts/external/cw-admin-factory", version = "2.4.1" }
 cw-denom = { path = "./packages/cw-denom", version = "2.4.1" }
 cw-hooks = { path = "./packages/cw-hooks", version = "2.4.1" }
@@ -93,6 +100,7 @@ cw-wormhole = { path = "./packages/cw-wormhole", version = "2.4.1" }
 cw20-stake = { path = "./contracts/staking/cw20-stake", version = "2.4.1" }
 cw721-controllers = { path = "./packages/cw721-controllers", version = "2.4.1" }
 cw721-roles = { path = "./contracts/external/cw721-roles", version = "2.4.1" }
+dao-abc-factory = { path = "./contracts/external/dao-abc-factory", version = "*" }
 dao-cw721-extensions = { path = "./packages/dao-cw721-extensions", version = "2.4.1" }
 dao-dao-core = { path = "./contracts/dao-dao-core", version = "2.4.1" }
 dao-dao-macros = { path = "./packages/dao-dao-macros", version = "2.4.1" }

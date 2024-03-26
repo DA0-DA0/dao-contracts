@@ -1,8 +1,3 @@
-use crate::{
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenInfo},
-    tests::test_tube::test_env::TokenVotingContract,
-    ContractError,
-};
 use cosmwasm_std::{to_json_binary, Addr, Coin, Decimal, Uint128, WasmMsg};
 use cw_ownable::Ownership;
 use cw_tokenfactory_issuer::msg::{DenomUnit, QueryMsg as IssuerQueryMsg};
@@ -20,6 +15,12 @@ use dao_voting::{
 use osmosis_test_tube::{
     osmosis_std::types::cosmos::bank::v1beta1::QueryBalanceRequest, Account, OsmosisTestApp,
     RunnerError,
+};
+
+use crate::{
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenInfo},
+    tests::test_tube::test_env::TokenVotingContract,
+    ContractError,
 };
 
 use super::test_env::{TestEnv, TestEnvBuilder, DENOM};
