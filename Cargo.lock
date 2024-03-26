@@ -678,6 +678,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-bounties"
+version = "2.4.1"
+dependencies = [
+ "anyhow",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-denom",
+ "cw-multi-test",
+ "cw-ownable",
+ "cw-paginate-storage 2.4.1",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "thiserror",
+]
+
+[[package]]
 name = "cw-controllers"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
