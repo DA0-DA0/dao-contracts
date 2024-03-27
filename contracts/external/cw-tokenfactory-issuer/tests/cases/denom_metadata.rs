@@ -2,6 +2,7 @@ use cw_tokenfactory_issuer::{msg::InstantiateMsg, ContractError};
 
 use crate::test_env::{TestEnv, TokenfactoryIssuer};
 
+#[cfg(any(feature = "osmosis_tokenfactory", feature = "cosmwasm_tokenfactory"))]
 #[test]
 fn set_denom_metadata_by_contract_owner_should_work() {
     let subdenom = "usthb".to_string();
@@ -35,6 +36,7 @@ fn set_denom_metadata_by_contract_owner_should_work() {
         .unwrap();
 }
 
+#[cfg(any(feature = "osmosis_tokenfactory", feature = "cosmwasm_tokenfactory"))]
 #[test]
 fn set_denom_metadata_by_contract_non_owner_should_fail() {
     let subdenom = "usthb".to_string();
@@ -78,6 +80,7 @@ fn set_denom_metadata_by_contract_non_owner_should_fail() {
     )
 }
 
+#[cfg(any(feature = "osmosis_tokenfactory", feature = "cosmwasm_tokenfactory"))]
 #[test]
 fn set_denom_metadata_with_base_denom_unit_should_overides_default_base_denom_unit() {
     let subdenom = "usthb".to_string();
