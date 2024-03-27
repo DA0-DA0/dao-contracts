@@ -3,19 +3,13 @@ use std::convert::TryInto;
 
 use osmosis_std_derive::CosmwasmExt;
 
-use crate::cosmos::{Coin, Metadata};
+use crate::cosmos::Coin;
 
-// see https://github.com/notional-labs/wasmd/blob/v0.30.0-sdk469.4/proto/cosmwasm/tokenfactory/v1beta1/tx.proto
+// see https://github.com/Team-Kujira/core/blob/f1c18afd68578be9e9fd33de9adb9a32acc0df99/proto/kujira/denom/tx.proto
 
-/// MsgCreateDenom defines the message structure for the CreateDenom gRPC service
-/// method. It allows an account to create a new denom. It requires a sender
-/// address and a sub denomination. The (sender_address, sub_denomination) tuple
-/// must be unique and cannot be re-used.
-///
-/// The resulting denom created is defined as
-/// <factory/{creatorAddress}/{subdenom}>. The resulting denom's admin is
-/// originally set to be the creator, but this can be changed later. The token
-/// denom does not indicate the current admin.
+/// MsgCreateDenom is the sdk.Msg type for allowing an account to create
+/// a new denom.  It requires a sender address and a unique nonce
+/// (to allow accounts to create multiple denoms)
 #[derive(
     Clone,
     PartialEq,
@@ -26,13 +20,12 @@ use crate::cosmos::{Coin, Metadata};
     schemars::JsonSchema,
     CosmwasmExt,
 )]
-#[proto_message(type_url = "/cosmwasm.tokenfactory.v1beta1.MsgCreateDenom")]
+#[proto_message(type_url = "/kujira.denom.MsgCreateDenom")]
 pub struct MsgCreateDenom {
     #[prost(string, tag = "1")]
     pub sender: ::prost::alloc::string::String,
-    /// subdenom can be up to 44 "alphanumeric" characters long.
     #[prost(string, tag = "2")]
-    pub subdenom: ::prost::alloc::string::String,
+    pub nonce: ::prost::alloc::string::String,
 }
 
 /// MsgCreateDenomResponse is the return value of MsgCreateDenom
@@ -47,14 +40,14 @@ pub struct MsgCreateDenom {
     schemars::JsonSchema,
     CosmwasmExt,
 )]
-#[proto_message(type_url = "/cosmwasm.tokenfactory.v1beta1.MsgCreateDenomResponse")]
+#[proto_message(type_url = "/kujira.denom.MsgCreateDenomResponse")]
 pub struct MsgCreateDenomResponse {
     #[prost(string, tag = "1")]
     pub new_token_denom: ::prost::alloc::string::String,
 }
 
 /// MsgMint is the sdk.Msg type for allowing an admin account to mint
-/// more of a token.  For now, we only support minting to the sender account
+/// more of a token.
 #[derive(
     Clone,
     PartialEq,
@@ -65,12 +58,14 @@ pub struct MsgCreateDenomResponse {
     schemars::JsonSchema,
     CosmwasmExt,
 )]
-#[proto_message(type_url = "/cosmwasm.tokenfactory.v1beta1.MsgMint")]
+#[proto_message(type_url = "/kujira.denom.MsgMint")]
 pub struct MsgMint {
     #[prost(string, tag = "1")]
     pub sender: ::prost::alloc::string::String,
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, tag = "2")]
     pub amount: ::core::option::Option<Coin>,
+    #[prost(string, tag = "3")]
+    pub recipient: ::prost::alloc::string::String,
 }
 
 #[derive(
@@ -83,7 +78,7 @@ pub struct MsgMint {
     schemars::JsonSchema,
     CosmwasmExt,
 )]
-#[proto_message(type_url = "/cosmwasm.tokenfactory.v1beta1.MsgMintResponse")]
+#[proto_message(type_url = "/kujira.denom.MsgMintResponse")]
 pub struct MsgMintResponse {}
 
 /// MsgBurn is the sdk.Msg type for allowing an admin account to burn
@@ -98,11 +93,11 @@ pub struct MsgMintResponse {}
     schemars::JsonSchema,
     CosmwasmExt,
 )]
-#[proto_message(type_url = "/cosmwasm.tokenfactory.v1beta1.MsgBurn")]
+#[proto_message(type_url = "/kujira.denom.MsgBurn")]
 pub struct MsgBurn {
     #[prost(string, tag = "1")]
     pub sender: ::prost::alloc::string::String,
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, tag = "2")]
     pub amount: ::core::option::Option<Coin>,
 }
 
@@ -116,11 +111,11 @@ pub struct MsgBurn {
     schemars::JsonSchema,
     CosmwasmExt,
 )]
-#[proto_message(type_url = "/cosmwasm.tokenfactory.v1beta1.MsgBurnResponse")]
+#[proto_message(type_url = "/kujira.denom.MsgBurnResponse")]
 pub struct MsgBurnResponse {}
 
-/// MsgSetDenomMetadata is the sdk.Msg type for allowing an admin account to set
-/// the denom's bank metadata
+/// MsgChangeAdmin is the sdk.Msg type for allowing an admin account to reassign
+/// adminship of a denom to a new account
 #[derive(
     Clone,
     PartialEq,
@@ -131,41 +126,7 @@ pub struct MsgBurnResponse {}
     ::schemars::JsonSchema,
     CosmwasmExt,
 )]
-#[proto_message(type_url = "/cosmwasm.tokenfactory.v1beta1.MsgSetDenomMetadata")]
-pub struct MsgSetDenomMetadata {
-    #[prost(string, tag = "1")]
-    pub sender: ::prost::alloc::string::String,
-    #[prost(message, optional, tag = "2")]
-    pub metadata: ::core::option::Option<Metadata>,
-}
-/// MsgSetDenomMetadataResponse defines the response structure for an executed
-/// MsgSetDenomMetadata message.
-#[derive(
-    Clone,
-    PartialEq,
-    Eq,
-    ::prost::Message,
-    ::serde::Serialize,
-    ::serde::Deserialize,
-    ::schemars::JsonSchema,
-    CosmwasmExt,
-)]
-#[proto_message(type_url = "/cosmwasm.tokenfactory.v1beta1.MsgSetDenomMetadataResponse")]
-pub struct MsgSetDenomMetadataResponse {}
-
-// MsgChangeAdmin is the sdk.Msg type for allowing an admin account to reassign
-// adminship of a denom to a new account
-#[derive(
-    Clone,
-    PartialEq,
-    Eq,
-    ::prost::Message,
-    ::serde::Serialize,
-    ::serde::Deserialize,
-    ::schemars::JsonSchema,
-    CosmwasmExt,
-)]
-#[proto_message(type_url = "/cosmwasm.tokenfactory.v1beta1.MsgChangeAdmin")]
+#[proto_message(type_url = "/kujira.denom.MsgChangeAdmin")]
 pub struct MsgChangeAdmin {
     #[prost(string, tag = "1")]
     pub sender: ::prost::alloc::string::String,
@@ -186,5 +147,5 @@ pub struct MsgChangeAdmin {
     ::schemars::JsonSchema,
     CosmwasmExt,
 )]
-#[proto_message(type_url = "/cosmwasm.tokenfactory.v1beta1.MsgChangeAdminResponse")]
+#[proto_message(type_url = "/kujira.denom.MsgChangeAdminResponse")]
 pub struct MsgChangeAdminResponse {}

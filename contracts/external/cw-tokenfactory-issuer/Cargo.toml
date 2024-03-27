@@ -39,6 +39,7 @@ test-tube = ["osmosis_tokenfactory"]
 # standard in types library
 osmosis_tokenfactory = ["cw-tokenfactory-types/osmosis_tokenfactory"]
 cosmwasm_tokenfactory = ["cw-tokenfactory-types/cosmwasm_tokenfactory"]
+kujira_tokenfactory = ["cw-tokenfactory-types/kujira_tokenfactory"]
 
 [dependencies]
 cosmwasm-schema = { workspace = true }

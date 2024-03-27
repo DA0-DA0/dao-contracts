@@ -6,7 +6,10 @@
 use cosmwasm_std::Uint128;
 use cosmwasm_std::{Addr, Coin};
 
-use cw_tokenfactory_issuer::msg::{AllowlistResponse, DenylistResponse, Metadata, MigrateMsg};
+#[cfg(any(feature = "osmosis_tokenfactory", feature = "cosmwasm_tokenfactory"))]
+use cw_tokenfactory_issuer::msg::Metadata;
+
+use cw_tokenfactory_issuer::msg::{AllowlistResponse, DenylistResponse, MigrateMsg};
 use cw_tokenfactory_issuer::{
     msg::{
         AllowanceResponse, AllowancesResponse, DenomResponse, ExecuteMsg, InstantiateMsg,
@@ -204,6 +207,7 @@ impl TokenfactoryIssuer {
         )
     }
 
+    #[cfg(any(feature = "osmosis_tokenfactory", feature = "cosmwasm_tokenfactory"))]
     pub fn set_denom_metadata(
         &self,
         metadata: Metadata,

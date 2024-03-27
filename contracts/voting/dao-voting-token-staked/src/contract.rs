@@ -9,8 +9,12 @@ use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_controllers::ClaimsResponse;
 use cw_storage_plus::Bound;
 use cw_tokenfactory_issuer::msg::{
-    DenomUnit, ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg, Metadata,
+    ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg,
 };
+
+#[cfg(any(feature = "osmosis_tokenfactory", feature = "cosmwasm_tokenfactory"))]
+use cw_tokenfactory_issuer::msg::{DenomUnit, Metadata};
+
 use cw_utils::{
     maybe_addr, must_pay, parse_reply_execute_data, parse_reply_instantiate_data, Duration,
 };
@@ -627,6 +631,10 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     });
 
                     // If metadata, set it by calling the contract
+                    #[cfg(any(
+                        feature = "osmosis_tokenfactory",
+                        feature = "cosmwasm_tokenfactory"
+                    ))]
                     if let Some(metadata) = token.metadata {
                         // The first denom_unit must be the same as the tf and base denom.
                         // It must have an exponent of 0. This the smallest unit of the token.
