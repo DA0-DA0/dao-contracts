@@ -1,6 +1,10 @@
 [package]
 name = "dao-voting-token-staked"
-authors = ["Callum Anderson <callumanderson745@gmail.com>", "Noah Saso <no-reply@no-reply.com>", "Jake Hartnell <no-reply@no-reply.com>"]
+authors = [
+  "Callum Anderson <callumanderson745@gmail.com>",
+  "Noah Saso <no-reply@no-reply.com>",
+  "Jake Hartnell <no-reply@no-reply.com>",
+]
 description = "A DAO DAO voting module based on staked token factory or native tokens. Only works with chains that support Token Factory."
 edition = { workspace = true }
 license = { workspace = true }
@@ -11,6 +15,7 @@ version = { workspace = true }
 crate-type = ["cdylib", "rlib"]
 
 [features]
+default = ["osmosis_tokenfactory"]
 # for more explicit tests, cargo test --features=backtraces
 backtraces = ["cosmwasm-std/backtraces"]
 # use library feature to disable all instantiate/execute/query exports
@@ -20,9 +25,14 @@ library = []
 test-tube = []
 # when writing tests you may wish to enable test-tube as a default feature
 # default = ["test-tube"]
+# different tokenfactory cosmos sdk module standards. enable corresponding
+# standard in types library
+osmosis_tokenfactory = ["cw-tokenfactory-issuer/osmosis_tokenfactory"]
+cosmwasm_tokenfactory = ["cw-tokenfactory-issuer/cosmwasm_tokenfactory"]
+kujira_tokenfactory = ["cw-tokenfactory-issuer/kujira_tokenfactory"]
 
 [dependencies]
-cosmwasm-std    = { workspace = true, features = ["cosmwasm_1_1"] }
+cosmwasm-std = { workspace = true, features = ["cosmwasm_1_1"] }
 cosmwasm-schema = { workspace = true }
 cw-ownable = { workspace = true }
 cw-storage-plus = { workspace = true }
@@ -35,12 +45,13 @@ dao-dao-macros = { workspace = true }
 dao-hooks = { workspace = true }
 dao-interface = { workspace = true }
 dao-voting = { workspace = true }
-cw-tokenfactory-issuer = { workspace = true, features = ["library"] }
+cw-tokenfactory-issuer = { workspace = true, default-features = false, features = [
+  "library",
+] }
 
 [dev-dependencies]
 anyhow = { workspace = true }
 cw-multi-test = { workspace = true }
-cw-tokenfactory-issuer = { workspace = true }
 dao-proposal-single = { workspace = true }
 dao-proposal-hook-counter = { workspace = true }
 dao-test-custom-factory = { workspace = true }

@@ -112,6 +112,7 @@ pub fn execute(
         ExecuteMsg::SetBeforeSendHook { cosmwasm_address } => {
             execute::set_before_send_hook(deps, env, info, cosmwasm_address)
         }
+        #[cfg(any(feature = "osmosis_tokenfactory", feature = "cosmwasm_tokenfactory"))]
         ExecuteMsg::SetDenomMetadata { metadata } => {
             execute::set_denom_metadata(deps, env, info, metadata)
         }

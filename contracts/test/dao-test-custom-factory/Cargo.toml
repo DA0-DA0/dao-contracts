@@ -29,7 +29,10 @@ thiserror = { workspace = true }
 dao-dao-macros = { workspace = true }
 dao-interface = { workspace = true }
 dao-voting = { workspace = true }
-cw-tokenfactory-issuer = { workspace = true, features = ["library"] }
+cw-tokenfactory-issuer = { workspace = true, features = [
+  "library",
+  "osmosis_tokenfactory",
+] }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }

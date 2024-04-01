@@ -86,7 +86,7 @@ cw-hooks = { path = "./packages/cw-hooks", version = "2.4.1" }
 cw-paginate-storage = { path = "./packages/cw-paginate-storage", version = "2.4.1" }
 cw-payroll-factory = { path = "./contracts/external/cw-payroll-factory", version = "2.4.1" }
 cw-stake-tracker = { path = "./packages/cw-stake-tracker", version = "2.4.1" }
-cw-tokenfactory-issuer = { path = "./contracts/external/cw-tokenfactory-issuer", version = "2.4.1" }
+cw-tokenfactory-issuer = { path = "./contracts/external/cw-tokenfactory-issuer", version = "2.4.1", default-features = false }
 cw-tokenfactory-types = { path = "./packages/cw-tokenfactory-types", version = "2.4.1", default-features = false }
 cw-vesting = { path = "./contracts/external/cw-vesting", version = "2.4.1" }
 cw-wormhole = { path = "./packages/cw-wormhole", version = "2.4.1" }

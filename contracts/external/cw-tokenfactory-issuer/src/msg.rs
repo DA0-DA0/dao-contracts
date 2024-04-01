@@ -2,6 +2,7 @@ use crate::state::BeforeSendHookInfo;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Uint128};
 
+#[cfg(any(feature = "osmosis_tokenfactory", feature = "cosmwasm_tokenfactory"))]
 pub use dao_interface::token::{DenomUnit, Metadata};
 
 /// The message used to create a new instance of this smart contract.
@@ -78,6 +79,7 @@ pub enum ExecuteMsg {
     SetBurnerAllowance { address: String, allowance: Uint128 },
 
     /// Set denom metadata. see: https://docs.cosmos.network/main/modules/bank#denom-metadata.
+    #[cfg(any(feature = "osmosis_tokenfactory", feature = "cosmwasm_tokenfactory"))]
     SetDenomMetadata { metadata: Metadata },
 
     /// Grant/revoke mint allowance.
