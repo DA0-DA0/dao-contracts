@@ -110,7 +110,7 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Returns the Fee Recipient for the contract. This is the address that
-    /// recieves any fees collected from bonding curve operation
+    /// receives any fees collected from bonding curve operation
     #[returns(::cosmwasm_std::Addr)]
     FeesRecipient {},
     /// List the hatchers and their contributions
@@ -120,7 +120,7 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    /// Returns the Maxiumum Supply of the supply token
+    /// Returns the Maximum Supply of the supply token
     #[returns(Uint128)]
     MaxSupply {},
     /// Returns the current phase

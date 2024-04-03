@@ -1,15 +1,14 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
-    Uint128, WasmMsg,
+    to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response, StdResult,
+    SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_tokenfactory_issuer::msg::{
     DenomUnit, ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg, Metadata,
 };
 use cw_utils::parse_reply_instantiate_data;
-use std::collections::HashSet;
 
 use crate::abc::{CommonsPhase, CurveFn};
 use crate::curves::DecimalPlaces;
@@ -71,11 +70,13 @@ pub fn instantiate(
     CURVE_TYPE.save(deps.storage, &curve_type)?;
 
     if let Some(allowlist) = hatcher_allowlist {
-        let allowlist = allowlist
-            .into_iter()
-            .map(|addr| deps.api.addr_validate(addr.as_str()))
-            .collect::<StdResult<HashSet<_>>>()?;
-        HATCHER_ALLOWLIST.save(deps.storage, &allowlist)?;
+        for hatcher in allowlist {
+            let hatcher = deps.api.addr_validate(&hatcher)?;
+
+            if !HATCHER_ALLOWLIST.has(deps.storage, &hatcher) {
+                HATCHER_ALLOWLIST.save(deps.storage, &hatcher, &Empty {})?;
+            }
+        }
     }
 
     PHASE_CONFIG.save(deps.storage, &phase_config)?;
@@ -86,7 +87,7 @@ pub fn instantiate(
     // Initialize owner to sender
     cw_ownable::initialize_owner(deps.storage, deps.api, Some(info.sender.as_str()))?;
 
-    // Tnstantiate cw-token-factory-issuer contract
+    // Instantiate cw-token-factory-issuer contract
     // Contract is immutable, no admin
     let issuer_instantiate_msg = SubMsg::reply_always(
         WasmMsg::Instantiate {

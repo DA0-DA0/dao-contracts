@@ -1,8 +1,7 @@
 use cosmwasm_schema::cw_serde;
-use std::collections::HashSet;
 
 use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType, SupplyToken};
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::{Addr, Empty, Uint128};
 use cw_storage_plus::{Item, Map};
 
 use crate::curves::DecimalPlaces;
@@ -50,8 +49,7 @@ pub const SUPPLY_DENOM: Item<String> = Item::new("denom");
 pub const MAX_SUPPLY: Item<Uint128> = Item::new("max_supply");
 
 /// Hatcher phase allowlist
-/// TODO: we could use the keys for the [`HATCHERS`] map instead setting them to 0 at the beginning, though existing hatchers would not be able to be removed
-pub static HATCHER_ALLOWLIST: Item<HashSet<Addr>> = Item::new("hatch_allowlist");
+pub static HATCHER_ALLOWLIST: Map<&Addr, Empty> = Map::new("hatcher_allowlist");
 
 /// Keep track of who has contributed to the hatch phase
 /// TODO: cw-set? This should be a map because in the open-phase we need to be able
