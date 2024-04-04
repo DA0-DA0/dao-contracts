@@ -1,28 +1,9 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Binary, Uint128};
+use cosmwasm_std::Uint128;
 use cw_utils::Duration;
 use dao_dao_macros::{active_query, native_token_query, voting_module_query};
-use dao_interface::token::NewTokenInfo;
+use dao_interface::token::TokenInfo;
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
-
-#[cw_serde]
-pub enum TokenInfo {
-    /// Uses an existing Token Factory token and creates a new issuer contract.
-    /// Full setup, such as transferring ownership or setting up MsgSetBeforeSendHook,
-    /// must be done manually.
-    Existing {
-        /// Token factory denom
-        denom: String,
-    },
-    /// Creates a new Token Factory token via the issue contract with the DAO automatically
-    /// setup as admin and owner.
-    New(NewTokenInfo),
-    /// Uses a factory contract that must return the denom, optionally a Token Contract address.
-    /// The binary must serialize to a `WasmMsg::Execute` message.
-    /// Validation happens in the factory contract itself, so be sure to use a
-    /// trusted factory contract.
-    Factory(Binary),
-}
 
 #[cw_serde]
 pub struct InstantiateMsg {

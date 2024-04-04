@@ -9,14 +9,15 @@ use cw_tokenfactory_issuer::msg::{
     DenomUnit, ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg, Metadata,
 };
 use cw_utils::parse_reply_instantiate_data;
+use dao_interface::token::{InitialBalance, TokenInfo};
 
 use crate::abc::{CommonsPhase, CurveFn};
 use crate::curves::DecimalPlaces;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{
-    CurveState, CURVE_STATE, CURVE_TYPE, FEES_RECIPIENT, HATCHER_ALLOWLIST, MAX_SUPPLY, PHASE,
-    PHASE_CONFIG, SUPPLY_DENOM, TOKEN_INSTANTIATION_INFO, TOKEN_ISSUER_CONTRACT,
+    CurveState, CURVE_STATE, CURVE_TYPE, FEES_RECIPIENT, HATCHER_ALLOWLIST, MAX_SUPPLY,
+    NEW_TOKEN_INFO, PHASE, PHASE_CONFIG, SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
 };
 use crate::{commands, queries};
 
@@ -42,31 +43,29 @@ pub fn instantiate(
         curve_type,
         phase_config,
         hatcher_allowlist,
-        token_issuer_code_id,
     } = msg;
-
-    if supply.subdenom.is_empty() {
-        return Err(ContractError::SupplyTokenError(
-            "Token subdenom must not be empty.".to_string(),
-        ));
-    }
 
     phase_config.validate()?;
 
     // Validate and store the fees recipient
     FEES_RECIPIENT.save(deps.storage, &deps.api.addr_validate(&fees_recipient)?)?;
 
-    // Save new token info for use in reply
-    TOKEN_INSTANTIATION_INFO.save(deps.storage, &supply)?;
+    if let TokenInfo::New(new_token_info) = &supply.token_info {
+        if new_token_info.subdenom.is_empty() {
+            return Err(ContractError::SupplyTokenError(
+                "Token subdenom must not be empty.".to_string(),
+            ));
+        }
+
+        // Save new token info for use in reply
+        NEW_TOKEN_INFO.save(deps.storage, new_token_info)?;
+    }
 
     if let Some(max_supply) = supply.max_supply {
         MAX_SUPPLY.save(deps.storage, &max_supply)?;
     }
 
-    // Save the curve type and state
-    let normalization_places = DecimalPlaces::new(supply.decimals, reserve.decimals);
-    let curve_state = CurveState::new(reserve.denom, normalization_places);
-    CURVE_STATE.save(deps.storage, &curve_state)?;
+    // Save the curve type
     CURVE_TYPE.save(deps.storage, &curve_type)?;
 
     if let Some(allowlist) = hatcher_allowlist {
@@ -87,22 +86,69 @@ pub fn instantiate(
     // Initialize owner to sender
     cw_ownable::initialize_owner(deps.storage, deps.api, Some(info.sender.as_str()))?;
 
-    // Instantiate cw-token-factory-issuer contract
-    // Contract is immutable, no admin
-    let issuer_instantiate_msg = SubMsg::reply_always(
-        WasmMsg::Instantiate {
-            admin: None,
-            code_id: token_issuer_code_id,
-            msg: to_json_binary(&IssuerInstantiateMsg::NewToken {
-                subdenom: supply.subdenom.clone(),
-            })?,
-            funds: info.funds,
-            label: "cw-tokenfactory-issuer".to_string(),
-        },
-        INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID,
-    );
+    // Setup the curve state
+    let normalization_places = DecimalPlaces::new(supply.decimals, reserve.decimals);
+    let mut curve_state = CurveState::new(reserve.denom, normalization_places);
 
-    Ok(Response::default().add_submessage(issuer_instantiate_msg))
+    let msgs = match supply.token_info {
+        // Instantiate cw-token-factory-issuer contract if new
+        TokenInfo::New(new_token_info) => vec![SubMsg::reply_always(
+            WasmMsg::Instantiate {
+                // Contract is immutable, no admin
+                admin: None,
+                code_id: new_token_info.token_issuer_code_id,
+                msg: to_json_binary(&IssuerInstantiateMsg::NewToken {
+                    subdenom: new_token_info.subdenom,
+                })?,
+                funds: info.funds,
+                label: "cw-tokenfactory-issuer".to_string(),
+            },
+            INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID,
+        )],
+        TokenInfo::Existing { denom } => {
+            if !denom.starts_with("factory/") {
+                return Err(ContractError::SupplyTokenError(
+                    "Token must be issued by the tokenfactory".to_string(),
+                ));
+            }
+
+            // 'factory/' length is 8, so we trim that off
+            let issuer_subdenom = &denom[8..];
+
+            // Get a validated issuer from the expected [issuer]/[subdenom] string
+            let issuer = match issuer_subdenom.find('/') {
+                Some(end_index) => {
+                    let issuer = deps.api.addr_validate(&issuer_subdenom[..end_index])?;
+
+                    // Set the existing supply on the curve state
+                    let existing_supply = deps.querier.query_supply(&denom)?;
+
+                    if let Some(max_supply) = supply.max_supply {
+                        if existing_supply.amount > max_supply {
+                            return Err(ContractError::CannotExceedMaxSupply { max: max_supply });
+                        }
+                    }
+
+                    curve_state.supply = existing_supply.amount;
+
+                    Ok(issuer)
+                }
+                None => Err(ContractError::SupplyTokenError(
+                    "Tokenfactory denom did not contain a subdenom".to_string(),
+                )),
+            }?;
+
+            TOKEN_ISSUER_CONTRACT.save(deps.storage, &issuer)?;
+
+            vec![]
+        }
+        TokenInfo::Factory(_) => unimplemented!(),
+    };
+
+    // Save the curve state
+    CURVE_STATE.save(deps.storage, &curve_state)?;
+
+    Ok(Response::default().add_submessages(msgs))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -158,6 +204,9 @@ pub fn do_query(deps: Deps, _env: Env, msg: QueryMsg, curve_fn: CurveFn) -> StdR
         QueryMsg::Hatchers { start_after, limit } => {
             to_json_binary(&queries::query_hatchers(deps, start_after, limit)?)
         }
+        QueryMsg::HatcherAllowlist { start_after, limit } => {
+            to_json_binary(&queries::query_hatcher_allowlist(deps, start_after, limit)?)
+        }
         QueryMsg::MaxSupply {} => to_json_binary(&queries::query_max_supply(deps)?),
         QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
         QueryMsg::PhaseConfig {} => to_json_binary(&queries::query_phase_config(deps)?),
@@ -182,12 +231,12 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             TOKEN_ISSUER_CONTRACT.save(deps.storage, &deps.api.addr_validate(&issuer_addr)?)?;
 
             // Load info for new token and remove temporary data
-            let token_info = TOKEN_INSTANTIATION_INFO.load(deps.storage)?;
-            TOKEN_INSTANTIATION_INFO.remove(deps.storage);
+            let new_token_info = NEW_TOKEN_INFO.load(deps.storage)?;
+            NEW_TOKEN_INFO.remove(deps.storage);
 
             // Format the denom and save it
             // By default, the prefix for token factory tokens is "factory"
-            let denom = format!("factory/{}/{}", &issuer_addr, token_info.subdenom);
+            let denom = format!("factory/{}/{}", &issuer_addr, new_token_info.subdenom);
 
             SUPPLY_DENOM.save(deps.storage, &denom)?;
 
@@ -217,14 +266,14 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             ];
 
             // If metadata, set it by calling the contract
-            if let Some(metadata) = token_info.metadata {
+            if let Some(metadata) = new_token_info.metadata {
                 // The first denom_unit must be the same as the tf and base denom.
                 // It must have an exponent of 0. This the smallest unit of the token.
                 // For more info: // https://docs.cosmos.network/main/architecture/adr-024-coin-metadata
                 let mut denom_units = vec![DenomUnit {
                     denom: denom.clone(),
                     exponent: 0,
-                    aliases: vec![token_info.subdenom],
+                    aliases: vec![new_token_info.subdenom],
                 }];
 
                 // Caller can optionally define additional units
@@ -249,6 +298,70 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     })?,
                     funds: vec![],
                 });
+            }
+
+            // Check supply is greater than zero, iterate through initial
+            // balances and sum them, add DAO balance as well.
+            let initial_supply = new_token_info.initial_balances.iter().fold(
+                new_token_info.initial_dao_balance.unwrap_or_default(),
+                |previous, new_balance| previous + new_balance.amount,
+            );
+
+            if !initial_supply.is_zero() {
+                if let Some(max_supply) = MAX_SUPPLY.may_load(deps.storage)? {
+                    if initial_supply > max_supply {
+                        return Err(ContractError::CannotExceedMaxSupply { max: max_supply });
+                    }
+                }
+
+                // Grant an allowance to mint the initial supply
+                msgs.push(WasmMsg::Execute {
+                    contract_addr: issuer_addr.clone(),
+                    msg: to_json_binary(&IssuerExecuteMsg::SetMinterAllowance {
+                        address: env.contract.address.to_string(),
+                        allowance: initial_supply,
+                    })?,
+                    funds: vec![],
+                });
+
+                // Call issuer contract to mint tokens for initial balances
+                new_token_info
+                    .initial_balances
+                    .iter()
+                    .for_each(|b: &InitialBalance| {
+                        msgs.push(WasmMsg::Execute {
+                            contract_addr: issuer_addr.clone(),
+                            msg: to_json_binary(&IssuerExecuteMsg::Mint {
+                                to_address: b.address.clone(),
+                                amount: b.amount,
+                            })
+                            .unwrap_or_default(),
+                            funds: vec![],
+                        });
+                    });
+
+                // Add initial DAO balance to initial_balances if nonzero.
+                if let Some(initial_dao_balance) = new_token_info.initial_dao_balance {
+                    if !initial_dao_balance.is_zero() {
+                        // In this case, it would be considered the fees recipient
+                        let fees_recipient = FEES_RECIPIENT.load(deps.storage)?;
+
+                        msgs.push(WasmMsg::Execute {
+                            contract_addr: issuer_addr.clone(),
+                            msg: to_json_binary(&IssuerExecuteMsg::Mint {
+                                to_address: fees_recipient.to_string(),
+                                amount: initial_dao_balance,
+                            })?,
+                            funds: vec![],
+                        });
+                    }
+                }
+
+                CURVE_STATE.update(deps.storage, |mut x| -> StdResult<_> {
+                    x.supply = initial_supply;
+
+                    Ok(x)
+                })?;
             }
 
             Ok(Response::new()

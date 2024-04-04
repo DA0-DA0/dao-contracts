@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Decimal, Decimal as StdDecimal, Uint128};
+use cosmwasm_std::{Addr, Decimal as StdDecimal, Empty, Uint128};
 
 use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType, MinMax, ReserveToken, SupplyToken};
 
@@ -7,9 +7,6 @@ use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType, MinMax, ReserveTok
 pub struct InstantiateMsg {
     /// The recipient for any fees collected from bonding curve operation
     pub fees_recipient: String,
-
-    /// The code id of the cw-tokenfactory-issuer contract
-    pub token_issuer_code_id: u64,
 
     /// Supply token information
     pub supply: SupplyToken,
@@ -120,6 +117,13 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    /// Lists the hatcher allowlist
+    /// Returns [`HatcherAllowlistResponse`]
+    #[returns(HatcherAllowlistResponse)]
+    HatcherAllowlist {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
     /// Returns the Maximum Supply of the supply token
     #[returns(Uint128)]
     MaxSupply {},
@@ -144,7 +148,7 @@ pub struct CurveInfoResponse {
     /// The amount of tokens in the funding pool
     pub funding: Uint128,
     /// Current spot price of the token
-    pub spot_price: Decimal,
+    pub spot_price: StdDecimal,
     /// Current reserve denom
     pub reserve_denom: String,
 }
@@ -157,7 +161,7 @@ pub struct DenomResponse {
 #[cw_serde]
 pub struct HatcherAllowlistResponse {
     /// Hatcher allowlist
-    pub allowlist: Option<Vec<Addr>>,
+    pub allowlist: Option<Vec<(Addr, Empty)>>,
 }
 
 #[cw_serde]

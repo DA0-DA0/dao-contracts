@@ -11,11 +11,11 @@ pub enum InstantiateMsg {
     /// Newly created token will have full denom as `factory/<contract_address>/<subdenom>`.
     /// It will be attached to the contract setup the beforesend listener automatically.
     NewToken {
-        /// component of fulldenom (`factory/<contract_address>/<subdenom>`).
+        /// component of full denom (`factory/<contract_address>/<subdenom>`).
         subdenom: String,
     },
     /// `ExistingToken` will use already created token. So to set this up,
-    /// Token Factory admin for the existing token needs trasfer admin over
+    /// Token Factory admin for the existing token needs transfer admin over
     /// to this contract, and optionally set the `BeforeSendHook` manually.
     ExistingToken { denom: String },
 }
@@ -23,25 +23,25 @@ pub enum InstantiateMsg {
 /// State changing methods available to this smart contract.
 #[cw_serde]
 pub enum ExecuteMsg {
-    /// Allow adds the target address to the allowlist to be able to send or recieve tokens even if the token
+    /// Allow adds the target address to the allowlist to be able to send or receive tokens even if the token
     /// is frozen. Token Factory's BeforeSendHook listener must be set to this contract in order for this feature
     /// to work.
     ///
-    /// This functionality is intedended for DAOs who do not wish to have a their tokens liquid while bootstrapping
+    /// This functionality is intended for DAOs who do not wish to have a their tokens liquid while bootstrapping
     /// their DAO. For example, a DAO may wish to white list a Token Staking contract (to allow users to stake their
     /// tokens in the DAO) or a Merkle Drop contract (to allow users to claim their tokens).
     Allow { address: String, status: bool },
 
-    /// Burn token to address. Burn allowance is required and wiil be deducted after successful burn.
+    /// Burn token to address. Burn allowance is required and will be deducted after successful burn.
     Burn {
         from_address: String,
         amount: Uint128,
     },
 
-    /// Mint token to address. Mint allowance is required and wiil be deducted after successful mint.
+    /// Mint token to address. Mint allowance is required and will be deducted after successful mint.
     Mint { to_address: String, amount: Uint128 },
 
-    /// Deny adds the target address to the denylist, whis prevents them from sending/receiving the token attached
+    /// Deny adds the target address to the denylist, which prevents them from sending/receiving the token attached
     /// to this contract tokenfactory's BeforeSendHook listener must be set to this contract in order for this
     /// feature to work as intended.
     Deny { address: String, status: bool },
@@ -123,7 +123,7 @@ pub enum QueryMsg {
     #[returns(AllowanceResponse)]
     BurnAllowance { address: String },
 
-    /// Enumerates over all burn allownances. Response: AllowancesResponse
+    /// Enumerates over all burn allowances. Response: AllowancesResponse
     #[returns(AllowancesResponse)]
     BurnAllowances {
         start_after: Option<String>,
@@ -134,7 +134,7 @@ pub enum QueryMsg {
     #[returns(AllowanceResponse)]
     MintAllowance { address: String },
 
-    /// Enumerates over all mint allownances. Response: AllowancesResponse
+    /// Enumerates over all mint allowances. Response: AllowancesResponse
     #[returns(AllowancesResponse)]
     MintAllowances {
         start_after: Option<String>,
@@ -202,7 +202,7 @@ pub struct DenomResponse {
 }
 
 /// Returns the current owner of this issuer contract who is allowed to
-/// call priviledged methods.
+/// call privileged methods.
 #[cw_serde]
 pub struct OwnerResponse {
     pub address: String,

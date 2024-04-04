@@ -35,16 +35,10 @@ pub fn execute_buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Respon
             // Update hatcher contribution
             let contribution = update_hatcher_contributions(deps.storage, &info.sender, payment)?;
 
-            // Check contribution is above minimum
-            if contribution < hatch_config.contribution_limits.min {
-                return Err(ContractError::ContributionLimit {
-                    min: hatch_config.contribution_limits.min,
-                    max: hatch_config.contribution_limits.max,
-                });
-            }
-
-            // Check contribution is below maximum
-            if contribution > hatch_config.contribution_limits.max {
+            // Check contribution is within limits
+            if contribution < hatch_config.contribution_limits.min
+                || contribution > hatch_config.contribution_limits.max
+            {
                 return Err(ContractError::ContributionLimit {
                     min: hatch_config.contribution_limits.min,
                     max: hatch_config.contribution_limits.max,
@@ -267,7 +261,7 @@ fn calculate_exit_fee(
 
     // Ensure the exit fee is not greater than 100%
     ensure!(
-        exit_fee <= StdDecimal::percent(100),
+        exit_fee <= StdDecimal::one(),
         ContractError::InvalidExitFee {}
     );
 

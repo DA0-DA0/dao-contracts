@@ -79,7 +79,7 @@ pub fn query_allowances(
         .collect()
 }
 
-/// Enumerates over all allownances. Response: AllowancesResponse
+/// Enumerates over all allowances. Response: AllowancesResponse
 pub fn query_mint_allowances(
     deps: Deps,
     start_after: Option<String>,
@@ -90,7 +90,7 @@ pub fn query_mint_allowances(
     })
 }
 
-/// Enumerates over all burn allownances. Response: AllowancesResponse
+/// Enumerates over all burn allowances. Response: AllowancesResponse
 pub fn query_burn_allowances(
     deps: Deps,
     start_after: Option<String>,

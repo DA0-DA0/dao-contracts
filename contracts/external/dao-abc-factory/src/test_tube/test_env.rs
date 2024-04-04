@@ -16,11 +16,12 @@ use cw_utils::Duration;
 use dao_interface::{
     msg::QueryMsg as DaoQueryMsg,
     state::{Admin, ModuleInstantiateInfo, ProposalModule},
+    token::{NewTokenInfo, TokenInfo},
 };
 use dao_voting::{
     pre_propose::PreProposeInfo, threshold::PercentageThreshold, threshold::Threshold,
 };
-use dao_voting_token_staked::msg::{QueryMsg as TokenVotingQueryMsg, TokenInfo};
+use dao_voting_token_staked::msg::QueryMsg as TokenVotingQueryMsg;
 
 use dao_testing::test_tube::{
     cw_abc::CwAbc, cw_tokenfactory_issuer::TokenfactoryIssuer, dao_dao_core::DaoCore,
@@ -136,10 +137,16 @@ impl TestEnvBuilder {
                         msg: to_json_binary(&ExecuteMsg::AbcFactory {
                             instantiate_msg: cw_abc::msg::InstantiateMsg {
                                 fees_recipient: accounts[0].address(),
-                                token_issuer_code_id: issuer_id,
+
                                 supply: SupplyToken {
-                                    subdenom: DENOM.to_string(),
-                                    metadata: None,
+                                    token_info: TokenInfo::New(NewTokenInfo {
+                                        token_issuer_code_id: issuer_id,
+                                        subdenom: DENOM.to_string(),
+                                        metadata: None,
+                                        initial_balances: vec![],
+                                        initial_dao_balance: None,
+                                    }),
+
                                     decimals: 6,
                                     max_supply: Some(Uint128::from(1000000000u128)),
                                 },
@@ -248,10 +255,14 @@ impl TestEnvBuilder {
                             msg: to_json_binary(&ExecuteMsg::AbcFactory {
                                 instantiate_msg: cw_abc::msg::InstantiateMsg {
                                     fees_recipient: accounts[0].address(),
-                                    token_issuer_code_id: issuer_id,
                                     supply: SupplyToken {
-                                        subdenom: DENOM.to_string(),
-                                        metadata: None,
+                                        token_info: TokenInfo::New(NewTokenInfo {
+                                            token_issuer_code_id: issuer_id,
+                                            subdenom: DENOM.to_string(),
+                                            metadata: None,
+                                            initial_balances: vec![],
+                                            initial_dao_balance: None,
+                                        }),
                                         decimals: 6,
                                         max_supply: Some(Uint128::from(1000000000u128)),
                                     },

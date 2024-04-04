@@ -1,10 +1,11 @@
 use crate::abc::CurveFn;
 use crate::msg::{
     CommonsPhaseConfigResponse, CurveInfoResponse, DenomResponse, DonationsResponse,
-    HatchersResponse,
+    HatcherAllowlistResponse, HatchersResponse,
 };
 use crate::state::{
-    CurveState, CURVE_STATE, DONATIONS, HATCHERS, MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
+    CurveState, CURVE_STATE, DONATIONS, HATCHERS, HATCHER_ALLOWLIST, MAX_SUPPLY, PHASE,
+    PHASE_CONFIG, SUPPLY_DENOM,
 };
 use cosmwasm_std::{Deps, Order, QuerierWrapper, StdResult, Uint128};
 use std::ops::Deref;
@@ -83,6 +84,36 @@ pub fn query_hatchers(
     )?;
 
     Ok(HatchersResponse { hatchers })
+}
+
+/// Query hatcher allowlist
+pub fn query_hatcher_allowlist(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<HatcherAllowlistResponse> {
+    if HATCHER_ALLOWLIST.is_empty(deps.storage) {
+        return Ok(HatcherAllowlistResponse { allowlist: None });
+    }
+
+    let allowlist = cw_paginate_storage::paginate_map(
+        Deps {
+            storage: deps.storage,
+            api: deps.api,
+            querier: QuerierWrapper::new(deps.querier.deref()),
+        },
+        &HATCHER_ALLOWLIST,
+        start_after
+            .map(|addr| deps.api.addr_validate(&addr))
+            .transpose()?
+            .as_ref(),
+        limit,
+        Order::Descending,
+    )?;
+
+    Ok(HatcherAllowlistResponse {
+        allowlist: Some(allowlist),
+    })
 }
 
 /// Query the max supply of the supply token

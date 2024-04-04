@@ -1,16 +1,15 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, Decimal as StdDecimal, Uint128};
-use dao_interface::token::NewDenomMetadata;
+use dao_interface::token::TokenInfo;
 
 use crate::curves::{decimal, Constant, Curve, DecimalPlaces, Linear, SquareRoot};
 use crate::ContractError;
 
 #[cw_serde]
 pub struct SupplyToken {
-    /// The denom to create for the supply token
-    pub subdenom: String,
-    /// Metadata for the supply token to create
-    pub metadata: Option<NewDenomMetadata>,
+    /// New or existing native token
+    /// NOTE: If using an existing token, then the ABC must be given mint and burn permissions after creation
+    pub token_info: TokenInfo,
     /// Number of decimal places for the supply token, needed for proper curve math.
     /// Default for token factory is 6
     pub decimals: u8,
@@ -27,7 +26,7 @@ pub struct ReserveToken {
     pub decimals: u8,
 }
 
-/// Struct for minimium and maximum values
+/// Struct for minimum and maximum values
 #[cw_serde]
 pub struct MinMax {
     pub min: Uint128,

@@ -12,6 +12,7 @@ use crate::{
 };
 
 use cosmwasm_std::{Coin, Decimal, Uint128};
+use dao_interface::token::{NewTokenInfo, TokenInfo};
 use dao_testing::test_tube::cw_tokenfactory_issuer::TokenfactoryIssuer;
 use osmosis_test_tube::{
     osmosis_std::types::cosmos::bank::v1beta1::QueryAllBalancesRequest,
@@ -106,10 +107,14 @@ impl TestEnvBuilder {
             app,
             &InstantiateMsg {
                 fees_recipient: accounts[0].address(),
-                token_issuer_code_id: issuer_id,
                 supply: SupplyToken {
-                    subdenom: DENOM.to_string(),
-                    metadata: None,
+                    token_info: TokenInfo::New(NewTokenInfo {
+                        token_issuer_code_id: issuer_id,
+                        subdenom: DENOM.to_string(),
+                        metadata: None,
+                        initial_balances: vec![],
+                        initial_dao_balance: None,
+                    }),
                     decimals: 6,
                     max_supply: Some(Uint128::from(1000000000u128)),
                 },
@@ -170,7 +175,10 @@ impl TestEnvBuilder {
         let issuer_id = TokenfactoryIssuer::upload(app, &accounts[0])?;
 
         // Override issuer_id and fees_recipient
-        msg.token_issuer_code_id = issuer_id;
+        if let TokenInfo::New(ref mut new_token_info) = msg.supply.token_info {
+            new_token_info.token_issuer_code_id = issuer_id;
+        }
+
         msg.fees_recipient = accounts[0].address();
 
         let abc = CwAbc::deploy(app, &msg, &accounts[0])?;
@@ -178,6 +186,57 @@ impl TestEnvBuilder {
         let issuer_addr = CwAbc::query(&abc, &QueryMsg::TokenContract {})?;
 
         let tf_issuer = TokenfactoryIssuer::new_with_values(app, issuer_id, issuer_addr)?;
+
+        Ok(TestEnv {
+            app,
+            abc,
+            tf_issuer,
+            accounts,
+        })
+    }
+
+    pub fn setup_with_token(
+        self,
+        app: &'_ OsmosisTestApp,
+        mut msg: InstantiateMsg,
+    ) -> Result<TestEnv<'_>, RunnerError> {
+        let accounts = app
+            .init_accounts(&[Coin::new(1000000000000000u128, RESERVE)], 10)
+            .unwrap();
+
+        let tf_issuer: TokenfactoryIssuer = TokenfactoryIssuer::new(
+            app,
+            &cw_tokenfactory_issuer::msg::InstantiateMsg::NewToken {
+                subdenom: "subdenom".to_string(),
+            },
+            &accounts[0],
+        )?;
+
+        msg.fees_recipient = accounts[0].address();
+
+        msg.supply.token_info = TokenInfo::Existing {
+            denom: format!("factory/{}/{}", tf_issuer.contract_addr, "subdenom"),
+        };
+
+        // Accounts[0] has minted some tokens to themselves
+        tf_issuer.execute(
+            &cw_tokenfactory_issuer::msg::ExecuteMsg::SetMinterAllowance {
+                address: accounts[0].address().to_string(),
+                allowance: Uint128::MAX,
+            },
+            &[],
+            &accounts[0],
+        )?;
+        tf_issuer.execute(
+            &cw_tokenfactory_issuer::msg::ExecuteMsg::Mint {
+                to_address: accounts[0].address().to_string(),
+                amount: Uint128::new(1_000_000u128),
+            },
+            &[],
+            &accounts[0],
+        )?;
+
+        let abc = CwAbc::deploy(app, &msg, &accounts[0])?;
 
         Ok(TestEnv {
             app,

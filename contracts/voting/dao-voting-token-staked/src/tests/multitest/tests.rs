@@ -1,7 +1,7 @@
 use crate::contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::{
     ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg,
-    StakerBalanceResponse, TokenInfo,
+    StakerBalanceResponse,
 };
 use crate::state::Config;
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
@@ -11,6 +11,7 @@ use cw_multi_test::{
     next_block, App, AppResponse, BankSudo, Contract, ContractWrapper, Executor, SudoMsg,
 };
 use cw_utils::Duration;
+use dao_interface::token::TokenInfo;
 use dao_interface::voting::{
     DenomResponse, InfoResponse, IsActiveResponse, TotalPowerAtHeightResponse,
     VotingPowerAtHeightResponse,

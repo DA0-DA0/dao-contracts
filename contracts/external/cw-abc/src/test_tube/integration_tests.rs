@@ -14,6 +14,7 @@ use super::test_env::{TestEnv, TestEnvBuilder, DENOM, RESERVE};
 
 use cosmwasm_std::{coins, Decimal, Uint128};
 use cw_tokenfactory_issuer::msg::QueryMsg as IssuerQueryMsg;
+use dao_interface::token::{NewTokenInfo, TokenInfo};
 use osmosis_std::types::cosmos::bank::v1beta1::QueryBalanceRequest;
 use osmosis_test_tube::{osmosis_std::types::cosmos::base::v1beta1::Coin, Account, OsmosisTestApp};
 
@@ -281,10 +282,14 @@ fn test_allowlist() {
     let builder = TestEnvBuilder::new();
     let instantiate_msg = InstantiateMsg {
         fees_recipient: "replaced to accounts[0]".to_string(),
-        token_issuer_code_id: 0,
         supply: SupplyToken {
-            subdenom: DENOM.to_string(),
-            metadata: None,
+            token_info: TokenInfo::New(NewTokenInfo {
+                token_issuer_code_id: 0,
+                subdenom: DENOM.to_string(),
+                metadata: None,
+                initial_balances: vec![],
+                initial_dao_balance: None,
+            }),
             decimals: 6,
             max_supply: Some(Uint128::from(1000000000u128)),
         },
@@ -513,4 +518,152 @@ fn test_update_curve() {
             amount: "0".to_string(),
         })
     );
+}
+
+#[test]
+fn test_existing_token_failures() {
+    let app = OsmosisTestApp::new();
+    let builder = TestEnvBuilder::new();
+
+    // The tokenfactory token does not exist - fails in supply query
+    let mut instantiate_msg = InstantiateMsg {
+        fees_recipient: "replaced to accounts[0]".to_string(),
+        supply: SupplyToken {
+            token_info: TokenInfo::Existing {
+                denom: "factory/address/nonexistent".to_string(),
+            },
+            decimals: 6,
+            max_supply: Some(Uint128::from(1000000000u128)),
+        },
+        reserve: ReserveToken {
+            denom: RESERVE.to_string(),
+            decimals: 6,
+        },
+        phase_config: CommonsPhaseConfig {
+            hatch: HatchConfig {
+                contribution_limits: MinMax {
+                    min: Uint128::from(10u128),
+                    max: Uint128::from(1000000u128),
+                },
+                initial_raise: MinMax {
+                    min: Uint128::from(10u128),
+                    max: Uint128::from(1000000u128),
+                },
+                entry_fee: Decimal::percent(10u64),
+                exit_fee: Decimal::percent(10u64),
+            },
+            open: OpenConfig {
+                entry_fee: Decimal::percent(10u64),
+                exit_fee: Decimal::percent(10u64),
+            },
+            closed: ClosedConfig {},
+        },
+        hatcher_allowlist: None,
+        curve_type: CurveType::Constant {
+            value: Uint128::one(),
+            scale: 1,
+        },
+    };
+    let result = builder.setup(&app, instantiate_msg.clone());
+    assert!(result.is_err());
+
+    // A subdenom is required
+    let builder = TestEnvBuilder::new();
+    instantiate_msg.supply.token_info = TokenInfo::Existing {
+        denom: "factory/malformed".to_string(),
+    };
+    let result = builder.setup(&app, instantiate_msg.clone());
+    assert!(result.is_err());
+
+    // Only tokenfactory tokens are supported
+    let builder = TestEnvBuilder::new();
+    instantiate_msg.supply.token_info = TokenInfo::Existing {
+        denom: "junox".to_string(),
+    };
+    let result = builder.setup(&app, instantiate_msg.clone());
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_existing_token() {
+    let app = OsmosisTestApp::new();
+    let builder = TestEnvBuilder::new();
+
+    let result = builder.setup_with_token(
+        &app,
+        InstantiateMsg {
+            fees_recipient: "replaced to accounts[0]".to_string(),
+            supply: SupplyToken {
+                token_info: TokenInfo::Existing {
+                    denom: "replaced".to_string(),
+                },
+                decimals: 6,
+                max_supply: None,
+            },
+            reserve: ReserveToken {
+                denom: RESERVE.to_string(),
+                decimals: 6,
+            },
+            phase_config: CommonsPhaseConfig {
+                hatch: HatchConfig {
+                    contribution_limits: MinMax {
+                        min: Uint128::from(10u128),
+                        max: Uint128::from(1000000u128),
+                    },
+                    initial_raise: MinMax {
+                        min: Uint128::from(10u128),
+                        max: Uint128::from(1000000u128),
+                    },
+                    entry_fee: Decimal::percent(10u64),
+                    exit_fee: Decimal::percent(10u64),
+                },
+                open: OpenConfig {
+                    entry_fee: Decimal::percent(10u64),
+                    exit_fee: Decimal::percent(10u64),
+                },
+                closed: ClosedConfig {},
+            },
+            hatcher_allowlist: None,
+            curve_type: CurveType::Constant {
+                value: Uint128::one(),
+                scale: 1,
+            },
+        },
+    );
+    assert!(result.is_ok());
+    let TestEnv {
+        ref abc,
+        ref accounts,
+        ref tf_issuer,
+        ..
+    } = result.unwrap();
+
+    let denom_response: DenomResponse = tf_issuer
+        .query(&cw_tokenfactory_issuer::msg::QueryMsg::Denom {})
+        .unwrap();
+    let _denom = format!(
+        "factory/{}/{}",
+        tf_issuer.contract_addr, denom_response.denom
+    );
+
+    // Allow the ABC to modify the supply
+    let result = tf_issuer.execute(
+        &cw_tokenfactory_issuer::msg::ExecuteMsg::SetMinterAllowance {
+            address: abc.contract_addr.clone(),
+            allowance: Uint128::MAX,
+        },
+        &[],
+        &accounts[0],
+    );
+    assert!(result.is_ok());
+
+    let result = tf_issuer.execute(
+        &cw_tokenfactory_issuer::msg::ExecuteMsg::SetBurnerAllowance {
+            address: abc.contract_addr.clone(),
+            allowance: Uint128::MAX,
+        },
+        &[],
+        &accounts[0],
+    );
+    assert!(result.is_ok());
 }

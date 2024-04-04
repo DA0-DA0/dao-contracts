@@ -87,17 +87,17 @@ Example Instantiation message:
         "decimals": 6,
         "max_supply": "100000000000000"
     },
-    reserve: {
+    "reserve": {
         "denom": "ujuno",
         "decimals": 6,
     },
-    curve_type: {
+    "curve_type": {
         "linear": {
             "slope": "2",
             "scale": 1
         }
     },
-    phase_config: {
+    "phase_config": {
         "hatch": {
             "contribution_limits": {
                 "min": "10000000",
@@ -116,7 +116,7 @@ Example Instantiation message:
         },
         "closed": {}
     },
-    hatcher_allowlist: ["allowlist addresses, leave blank for no allowlist"],
+    "hatcher_allowlist": ["allowlist addresses, leave blank for no allowlist"],
 }
 ```
 
