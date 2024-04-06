@@ -1,16 +1,24 @@
+use std::ops::{Div, Mul};
+
+use cosmwasm_std::{
+    Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
+    to_json_binary, Uint128, Uint256, WasmMsg,
+};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
-    Uint128, WasmMsg,
-};
-use cw2::{get_contract_version, set_contract_version, ContractVersion};
+use cw2::{ContractVersion, get_contract_version, set_contract_version};
 use cw4::{MemberListResponse, MemberResponse, TotalWeightResponse};
 use cw_utils::parse_reply_instantiate_data;
 
+use dao_interface::voting::IsActiveResponse;
+use dao_voting::threshold::{
+    ActiveThreshold, assert_valid_percentage_threshold
+    ,
+};
+
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, GroupContract, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state::{DAO, GROUP_CONTRACT};
+use crate::state::{ACTIVE_THRESHOLD, Config, CONFIG, DAO, GROUP_CONTRACT};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw4";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -25,6 +33,20 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    let config: Config = if let Some(active_threshold) = msg.active_threshold {
+        Config {
+            active_threshold_enabled: true,
+            active_threshold: Some(active_threshold),
+        }
+    } else {
+        Config {
+            active_threshold_enabled: false,
+            active_threshold: None,
+        }
+    };
+
+    CONFIG.save(deps.storage, &config)?;
 
     DAO.save(deps.storage, &info.sender)?;
 
@@ -108,12 +130,70 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    _deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
-    _msg: ExecuteMsg,
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    Err(ContractError::NoExecute {})
+    match msg {
+        ExecuteMsg::UpdateActiveThreshold { new_threshold } => {
+            execute_update_active_threshold(deps, env, info, new_threshold)
+        }
+    }
+}
+
+pub fn execute_update_active_threshold(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    new_active_threshold: Option<ActiveThreshold>,
+) -> Result<Response, ContractError> {
+    let dao = DAO.load(deps.storage)?;
+    if info.sender != dao {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    if let Some(active_threshold) = &new_active_threshold {
+        // Pre-validation before state changes
+        match active_threshold {
+            ActiveThreshold::Percentage { percent } => {
+                assert_valid_percentage_threshold(*percent)?;
+            }
+            ActiveThreshold::AbsoluteCount { count } => {
+                if *count.is_zero() {
+                    return Err(ContractError::InvalidThreshold {});
+                }
+            }
+        }
+    }
+
+    // Safe to modify state after validation
+    match new_active_threshold {
+        Some(threshold) => ACTIVE_THRESHOLD.save(deps.storage, &threshold)?,
+        None => ACTIVE_THRESHOLD.remove(deps.storage),
+    }
+
+    // As opposed to doing it this way:
+    // if let Some(active_threshold) = new_active_threshold {
+    //     // Pre-validation before state changes.
+    //     match active_threshold {
+    //         ActiveThreshold::Percentage { percent } => {
+    //             assert_valid_percentage_threshold(percent)?;
+    //         }
+    //         ActiveThreshold::AbsoluteCount { count } => {
+    //             if count.is_zero() {
+    //                 return Err(ContractError::InvalidThreshold {});
+    //             }
+    //         }
+    //     }
+    //     ACTIVE_THRESHOLD.save(deps.storage, &active_threshold)?;
+    // } else {
+    //     ACTIVE_THRESHOLD.remove(deps.storage);
+    // }
+
+    Ok(Response::new()
+        .add_attribute("method", "update_active_threshold")
+        .add_attribute("status", "success"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -126,6 +206,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Info {} => query_info(deps),
         QueryMsg::GroupContract {} => to_json_binary(&GROUP_CONTRACT.load(deps.storage)?),
         QueryMsg::Dao {} => to_json_binary(&DAO.load(deps.storage)?),
+        QueryMsg::IsActive {} => query_is_active(deps),
     }
 }
 
@@ -164,12 +245,48 @@ pub fn query_total_power_at_height(deps: Deps, env: Env, height: Option<u64>) ->
 }
 
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
-    let info = cw2::get_contract_version(deps.storage)?;
+    let info = get_contract_version(deps.storage)?;
     to_json_binary(&dao_interface::voting::InfoResponse { info })
+}
+
+pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
+    let active_threshold = ACTIVE_THRESHOLD.may_load(deps.storage)?;
+
+    match active_threshold {
+        Some(ActiveThreshold::AbsoluteCount { count }) => {
+            let group_contract = GROUP_CONTRACT.load(deps.storage)?;
+            let total_weight: TotalWeightResponse = deps.querier.query_wasm_smart(
+                &group_contract,
+                &cw4_group::msg::QueryMsg::TotalWeight { at_height: None },
+            )?;
+            to_json_binary(&IsActiveResponse {
+                active: total_weight.weight >= count.into(),
+            })
+        }
+        Some(ActiveThreshold::Percentage { percent, .. }) => {
+            let group_contract = GROUP_CONTRACT.load(deps.storage)?;
+            let total_weight: TotalWeightResponse = deps.querier.query_wasm_smart(
+                &group_contract,
+                &cw4_group::msg::QueryMsg::TotalWeight { at_height: None },
+            )?;
+            let required_weight: Uint256 = Uint256::from(total_weight.weight).mul(Uint256::from(percent)).div(Uint256::from(100));
+
+            to_json_binary(&IsActiveResponse {
+                active: total_weight.weight >= required_weight.into(),
+            })
+        }
+        None => {
+            to_json_binary(&IsActiveResponse { active: true })
+        }
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let config: Config = CONFIG.load(deps.storage)?;
+    // Update config as necessary
+    CONFIG.save(deps.storage, &config)?;
+
     let storage_version: ContractVersion = get_contract_version(deps.storage)?;
 
     // Only migrate if newer

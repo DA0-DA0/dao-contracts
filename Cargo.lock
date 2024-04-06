@@ -2072,6 +2072,7 @@ dependencies = [
  "cw4-group 1.1.2",
  "dao-dao-macros",
  "dao-interface",
+ "dao-voting 2.4.2",
  "thiserror",
 ]
 
