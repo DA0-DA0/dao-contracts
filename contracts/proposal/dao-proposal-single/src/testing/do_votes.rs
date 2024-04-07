@@ -98,7 +98,6 @@ where
         &mut App,
         InstantiateMsg,
         Option<Vec<Cw20Coin>>,
-        Option<dao_voting::threshold::ActiveThreshold>,
     ) -> Addr,
 {
     let mut app = App::default();
@@ -149,7 +148,7 @@ where
         pre_propose_info,
     };
 
-    let core_addr = setup_governance(&mut app, instantiate, Some(initial_balances), None);
+    let core_addr = setup_governance(&mut app, instantiate, Some(initial_balances));
 
     let governance_modules: Vec<ProposalModule> = app
         .wrap()

@@ -82,7 +82,7 @@ struct CommonTest {
 fn setup_test(messages: Vec<CosmosMsg>) -> CommonTest {
     let mut app = App::default();
     let instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
-    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None, None);
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
 
@@ -155,7 +155,7 @@ fn test_simple_propose_staked_balances() {
 fn test_simple_proposal_cw4_voting() {
     let mut app = App::default();
     let instantiate = get_default_non_token_dao_proposal_module_instantiate(&mut app);
-    let core_addr = instantiate_with_cw4_groups_governance(&mut app, instantiate, None, None);
+    let core_addr = instantiate_with_cw4_groups_governance(&mut app, instantiate, None);
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, vec![], None);
 
@@ -198,7 +198,7 @@ fn test_simple_proposal_cw4_voting() {
 fn test_simple_proposal_auto_vote_yes() {
     let mut app = App::default();
     let instantiate = get_default_non_token_dao_proposal_module_instantiate(&mut app);
-    let core_addr = instantiate_with_cw4_groups_governance(&mut app, instantiate, None, None);
+    let core_addr = instantiate_with_cw4_groups_governance(&mut app, instantiate, None);
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let id = make_proposal(
         &mut app,
@@ -247,7 +247,7 @@ fn test_simple_proposal_auto_vote_yes() {
 fn test_simple_proposal_auto_vote_no() {
     let mut app = App::default();
     let instantiate = get_default_non_token_dao_proposal_module_instantiate(&mut app);
-    let core_addr = instantiate_with_cw4_groups_governance(&mut app, instantiate, None, None);
+    let core_addr = instantiate_with_cw4_groups_governance(&mut app, instantiate, None);
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let id = make_proposal(
         &mut app,
@@ -336,7 +336,7 @@ fn test_voting_module_token_instantiate() {
 fn test_deposit_token_voting_module_token_fails_if_no_voting_module_token() {
     let mut app = App::default();
     let instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
-    instantiate_with_cw4_groups_governance(&mut app, instantiate, None, None);
+    instantiate_with_cw4_groups_governance(&mut app, instantiate, None);
 }
 
 #[test]
@@ -358,7 +358,7 @@ fn test_instantiate_with_non_voting_module_cw20_deposit() {
         false,
     );
 
-    let core_addr = instantiate_with_cw4_groups_governance(&mut app, instantiate, None, None);
+    let core_addr = instantiate_with_cw4_groups_governance(&mut app, instantiate, None);
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, vec![], None);
 
@@ -409,7 +409,7 @@ fn test_proposal_message_execution() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.close_proposal_on_execution_failure = false;
-    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None, None);
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
 
@@ -505,7 +505,6 @@ fn test_proposal_message_timelock_execution() -> anyhow::Result<()> {
                 amount: Uint128::new(85),
             },
         ]),
-        None,
     );
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
@@ -622,7 +621,6 @@ fn test_open_proposal_veto_unauthorized() {
             address: CREATOR_ADDR.to_string(),
             amount: Uint128::new(85),
         }]),
-        None,
     );
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
@@ -686,7 +684,6 @@ fn test_open_proposal_veto_with_early_veto_flag_disabled() {
             address: CREATOR_ADDR.to_string(),
             amount: Uint128::new(85),
         }]),
-        None,
     );
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
@@ -745,7 +742,6 @@ fn test_open_proposal_veto_with_no_timelock() {
             address: CREATOR_ADDR.to_string(),
             amount: Uint128::new(85),
         }]),
-        None,
     );
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
@@ -812,7 +808,6 @@ fn test_vetoed_proposal_veto() {
             address: CREATOR_ADDR.to_string(),
             amount: Uint128::new(85),
         }]),
-        None,
     );
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
@@ -891,7 +886,6 @@ fn test_open_proposal_veto_early() {
             address: CREATOR_ADDR.to_string(),
             amount: Uint128::new(85),
         }]),
-        None,
     );
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
@@ -959,7 +953,6 @@ fn test_timelocked_proposal_veto_unauthorized() -> anyhow::Result<()> {
                 amount: Uint128::new(85),
             },
         ]),
-        None,
     );
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
@@ -1061,7 +1054,6 @@ fn test_timelocked_proposal_veto_expired_timelock() -> anyhow::Result<()> {
                 amount: Uint128::new(85),
             },
         ]),
-        None,
     );
 
     let proposal_module = query_single_proposal_module(&app, &core_addr);
@@ -1149,7 +1141,6 @@ fn test_timelocked_proposal_execute_no_early_exec() -> anyhow::Result<()> {
             address: CREATOR_ADDR.to_string(),
             amount: Uint128::new(85),
         }]),
-        None,
     );
 
     let proposal_module = query_single_proposal_module(&app, &core_addr);
@@ -1235,7 +1226,6 @@ fn test_timelocked_proposal_execute_early() -> anyhow::Result<()> {
             address: CREATOR_ADDR.to_string(),
             amount: Uint128::new(85),
         }]),
-        None,
     );
 
     let proposal_module = query_single_proposal_module(&app, &core_addr);
@@ -1327,7 +1317,6 @@ fn test_timelocked_proposal_execute_active_timelock_unauthorized() -> anyhow::Re
             address: CREATOR_ADDR.to_string(),
             amount: Uint128::new(85),
         }]),
-        None,
     );
 
     let proposal_module = query_single_proposal_module(&app, &core_addr);
@@ -1420,7 +1409,6 @@ fn test_timelocked_proposal_execute_expired_timelock_not_vetoer() -> anyhow::Res
             address: CREATOR_ADDR.to_string(),
             amount: Uint128::new(85),
         }]),
-        None,
     );
 
     let proposal_module = query_single_proposal_module(&app, &core_addr);
@@ -1508,7 +1496,6 @@ fn test_proposal_message_timelock_veto() -> anyhow::Result<()> {
             address: CREATOR_ADDR.to_string(),
             amount: Uint128::new(85),
         }]),
-        None,
     );
 
     let proposal_module = query_single_proposal_module(&app, &core_addr);
@@ -1635,7 +1622,6 @@ fn test_proposal_message_timelock_early_execution() -> anyhow::Result<()> {
                 amount: Uint128::new(85),
             },
         ]),
-        None,
     );
 
     let proposal_module = query_single_proposal_module(&app, &core_addr);
@@ -1724,7 +1710,6 @@ fn test_proposal_message_timelock_veto_before_passed() {
                 amount: Uint128::new(85),
             },
         ]),
-        None,
     );
 
     let proposal_module = query_single_proposal_module(&app, &core_addr);
@@ -1799,7 +1784,6 @@ fn test_veto_only_members_execute_proposal() -> anyhow::Result<()> {
             address: CREATOR_ADDR.to_string(),
             amount: Uint128::new(85),
         }]),
-        None,
     );
 
     let proposal_module = query_single_proposal_module(&app, &core_addr);
@@ -1926,7 +1910,6 @@ fn test_proposal_cant_close_after_expiry_is_passed() {
                 amount: Uint128::new(85),
             },
         ]),
-        None,
     );
 
     let proposal_module = query_single_proposal_module(&app, &core_addr);
@@ -2200,7 +2183,7 @@ fn test_anyone_may_propose_and_proposal_listing() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.pre_propose_info = PreProposeInfo::AnyoneMayPropose {};
-    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None, None);
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
     let proposal_module = query_single_proposal_module(&app, &core_addr);
 
     for addr in 'm'..'z' {
@@ -2283,7 +2266,7 @@ fn test_propose_non_member_auto_vote_fails() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.pre_propose_info = PreProposeInfo::AnyoneMayPropose {};
-    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None, None);
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
     let proposal_module = query_single_proposal_module(&app, &core_addr);
 
     // Should fail if non-member tries to vote on proposal creation.
@@ -2595,7 +2578,7 @@ fn test_min_duration_unit_missmatch() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.min_voting_period = Some(Duration::Height(10));
-    instantiate_with_staked_balances_governance(&mut app, instantiate, None, None);
+    instantiate_with_staked_balances_governance(&mut app, instantiate, None);
 }
 
 #[test]
@@ -2604,7 +2587,7 @@ fn test_min_duration_larger_than_proposal_duration() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.min_voting_period = Some(Duration::Time(604801));
-    instantiate_with_staked_balances_governance(&mut app, instantiate, None, None);
+    instantiate_with_staked_balances_governance(&mut app, instantiate, None);
 }
 
 #[test]
@@ -2613,7 +2596,7 @@ fn test_min_voting_period_no_early_pass() {
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.min_voting_period = Some(Duration::Height(10));
     instantiate.max_voting_period = Duration::Height(100);
-    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None, None);
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
     let gov_token = query_dao_token(&app, &core_addr);
     let proposal_module = query_single_proposal_module(&app, &core_addr);
 
@@ -2655,7 +2638,6 @@ fn test_min_duration_same_as_proposal_duration() {
                 amount: Uint128::new(90),
             },
         ]),
-        None,
     );
 
     let gov_token = query_dao_token(&app, &core_addr);
@@ -2679,7 +2661,7 @@ fn test_revoting_playthrough() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.allow_revoting = true;
-    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None, None);
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
     let gov_token = query_dao_token(&app, &core_addr);
     let proposal_module = query_single_proposal_module(&app, &core_addr);
 
@@ -2752,7 +2734,7 @@ fn test_allow_revoting_config_changes() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.allow_revoting = true;
-    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None, None);
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
     let gov_token = query_dao_token(&app, &core_addr);
     let proposal_module = query_single_proposal_module(&app, &core_addr);
 
@@ -2857,7 +2839,6 @@ fn test_three_of_five_multisig() {
                 amount: Uint128::new(1),
             },
         ]),
-        None,
     );
 
     let core_state: dao_interface::query::DumpStateResponse = app
@@ -2940,7 +2921,6 @@ fn test_three_of_five_multisig_revoting() {
                 amount: Uint128::new(1),
             },
         ]),
-        None,
     );
 
     let core_state: dao_interface::query::DumpStateResponse = app
@@ -3095,7 +3075,6 @@ fn test_proposal_count_initialized_to_zero() {
                 amount: Uint128::new(90),
             },
         ]),
-        None,
     );
 
     let core_state: dao_interface::query::DumpStateResponse = app
@@ -3586,7 +3565,7 @@ fn test_proposal_too_large() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.pre_propose_info = PreProposeInfo::AnyoneMayPropose {};
-    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None, None);
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
     let proposal_module = query_single_proposal_module(&app, &core_addr);
 
     let err = app
@@ -3871,7 +3850,6 @@ fn test_query_list_votes() {
                 amount: Uint128::new(1),
             },
         ]),
-        None,
     );
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let proposal_id = make_proposal(&mut app, &proposal_module, "one", vec![], None);
@@ -4174,7 +4152,7 @@ fn test_rational_clobbered_on_revote() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     instantiate.allow_revoting = true;
-    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None, None);
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
     let gov_token = query_dao_token(&app, &core_addr);
     let proposal_module = query_single_proposal_module(&app, &core_addr);
 

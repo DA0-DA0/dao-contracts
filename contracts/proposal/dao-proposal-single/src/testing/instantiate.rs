@@ -96,7 +96,6 @@ pub(crate) fn instantiate_with_staked_cw721_governance(
     app: &mut App,
     proposal_module_instantiate: InstantiateMsg,
     initial_balances: Option<Vec<Cw20Coin>>,
-    active_threshold: Option<ActiveThreshold>,
 ) -> Addr {
     let proposal_module_code_id = app.store_code(proposal_single_contract());
 
@@ -231,7 +230,6 @@ pub(crate) fn instantiate_with_native_staked_balances_governance(
     app: &mut App,
     proposal_module_instantiate: InstantiateMsg,
     initial_balances: Option<Vec<Cw20Coin>>,
-    active_threshold: Option<dao_voting::threshold::ActiveThreshold>,
 ) -> Addr {
     let proposal_module_code_id = app.store_code(proposal_single_contract());
 
@@ -343,7 +341,6 @@ pub(crate) fn instantiate_with_staked_balances_governance(
     app: &mut App,
     proposal_module_instantiate: InstantiateMsg,
     initial_balances: Option<Vec<Cw20Coin>>,
-    active_threshold: Option<dao_voting::threshold::ActiveThreshold>,
 ) -> Addr {
     let proposal_module_code_id = app.store_code(proposal_single_contract());
 
@@ -545,7 +542,6 @@ pub(crate) fn instantiate_with_cw4_groups_governance(
     app: &mut App,
     proposal_module_instantiate: InstantiateMsg,
     initial_weights: Option<Vec<Cw20Coin>>,
-    active_threshold: Option<ActiveThreshold>,
 ) -> Addr {
     let proposal_module_code_id = app.store_code(proposal_single_contract());
     let cw4_id = app.store_code(cw4_group_contract());
@@ -594,7 +590,7 @@ pub(crate) fn instantiate_with_cw4_groups_governance(
                     cw4_group_code_id: cw4_id,
                     initial_members: initial_weights,
                 },
-                active_threshold,
+                active_threshold: None,
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),

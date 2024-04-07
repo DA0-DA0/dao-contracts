@@ -804,7 +804,7 @@ fn test_initialization_with_active_threshold() {
     // Making sure the response matches the expected active status based on the active threshold set.
     let expected_active_status = active_response.active;
     // Now assuming that the total weight is greater than or equal to the threshold count for the DAO to be active.
-    assert_eq!(expected_active_status, true);
+    assert!(expected_active_status);
 }
 
 /// Second test checks if the contract rejects updates to the active
@@ -934,7 +934,9 @@ fn test_accept_active_threshold_update_authorized() {
         .wrap()
         .query_wasm_smart(voting_addr, &QueryMsg::IsActive {})
         .unwrap();
-    assert_eq!(is_active.active, false);
+
+    // The DAO should not be active as the total weight does not meet the new threshold.
+    assert!(!is_active.active, "DAO should be inactive as the threshold is not met by the members' total weight.");
 }
 
 /// Fourth test checks if the IsActive query responds correctly based on the
