@@ -201,6 +201,7 @@ fn setup_default_test(
                 amount: Uint128::new(8),
             },
         ]),
+        None,
     );
     let proposal_modules: Vec<ProposalModule> = app
         .wrap()
@@ -255,6 +256,7 @@ fn setup_default_test(
                 amount: Uint128::new(8),
             },
         ]),
+        None,
     );
     let proposal_modules: Vec<ProposalModule> = app
         .wrap()

@@ -99,6 +99,7 @@ pub fn instantiate_with_staked_balances_governance(
     governance_code_id: u64,
     governance_instantiate: Binary,
     initial_balances: Option<Vec<Cw20Coin>>,
+    active_threshold: Option<dao_voting::threshold::ActiveThreshold>,
 ) -> Addr {
     let initial_balances = initial_balances.unwrap_or_else(|| {
         vec![Cw20Coin {
@@ -305,6 +306,7 @@ pub fn instantiate_with_cw4_groups_governance(
     core_code_id: u64,
     proposal_module_instantiate: Binary,
     initial_weights: Option<Vec<Cw20Coin>>,
+    active_threshold: Option<ActiveThreshold>,
 ) -> Addr {
     let cw4_id = app.store_code(cw4_group_contract());
     let core_id = app.store_code(dao_dao_contract());
@@ -347,6 +349,7 @@ pub fn instantiate_with_cw4_groups_governance(
                     cw4_group_code_id: cw4_id,
                     initial_members: initial_weights,
                 },
+                active_threshold,
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),

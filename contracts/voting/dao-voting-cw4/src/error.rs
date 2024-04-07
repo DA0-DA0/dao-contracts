@@ -32,5 +32,4 @@ pub enum ContractError {
 
     #[error("The provided threshold is invalid: thresholds must be positive and within designated limits (e.g., percentages between 0 and 100)")]
     InvalidThreshold {},
-
 }

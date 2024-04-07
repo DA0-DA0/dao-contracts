@@ -94,7 +94,12 @@ fn do_test_votes<F>(
     setup_governance: F,
 ) -> (App, Addr)
 where
-    F: Fn(&mut App, InstantiateMsg, Option<Vec<Cw20Coin>>) -> Addr,
+    F: Fn(
+        &mut App,
+        InstantiateMsg,
+        Option<Vec<Cw20Coin>>,
+        Option<dao_voting::threshold::ActiveThreshold>,
+    ) -> Addr,
 {
     let mut app = App::default();
 
@@ -144,7 +149,7 @@ where
         pre_propose_info,
     };
 
-    let core_addr = setup_governance(&mut app, instantiate, Some(initial_balances));
+    let core_addr = setup_governance(&mut app, instantiate, Some(initial_balances), None);
 
     let governance_modules: Vec<ProposalModule> = app
         .wrap()

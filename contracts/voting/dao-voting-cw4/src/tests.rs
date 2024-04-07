@@ -1,13 +1,15 @@
 use cosmwasm_std::{
     testing::{mock_dependencies, mock_env},
-    to_json_binary, Addr, CosmosMsg, Empty, Uint128, WasmMsg,
+    to_json_binary, Addr, CosmosMsg, Decimal, Empty, Uint128, WasmMsg,
 };
 use cw2::ContractVersion;
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 use dao_interface::voting::{
-    InfoResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
+    InfoResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
+use dao_voting::threshold::ActiveThreshold;
 
+use crate::msg::ExecuteMsg::UpdateActiveThreshold;
 use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
     msg::{GroupContract, InstantiateMsg, MigrateMsg, QueryMsg},
@@ -82,6 +84,7 @@ fn setup_test_case(app: &mut App) -> Addr {
                 cw4_group_code_id: cw4_id,
                 initial_members: members,
             },
+            active_threshold: None,
         },
     )
 }
@@ -100,6 +103,7 @@ fn test_instantiate() {
             cw4_group_code_id: cw4_id,
             initial_members: [].into(),
         },
+        active_threshold: None,
     };
     let _err = app
         .instantiate_contract(
@@ -131,6 +135,7 @@ fn test_instantiate() {
                 },
             ],
         },
+        active_threshold: None,
     };
     let _err = app
         .instantiate_contract(
@@ -174,6 +179,7 @@ pub fn test_instantiate_existing_contract() {
                 group_contract: GroupContract::Existing {
                     address: cw4_addr.to_string(),
                 },
+                active_threshold: None,
             },
             &[],
             "voting module",
@@ -206,6 +212,7 @@ pub fn test_instantiate_existing_contract() {
         group_contract: GroupContract::Existing {
             address: cw4_addr.to_string(),
         },
+        active_threshold: None,
     };
     let _err = app
         .instantiate_contract(
@@ -580,6 +587,7 @@ fn test_migrate() {
             cw4_group_code_id: cw4_id,
             initial_members,
         },
+        active_threshold: None,
     };
     let voting_addr = app
         .instantiate_contract(
@@ -657,6 +665,7 @@ fn test_duplicate_member() {
                 },
             ],
         },
+        active_threshold: None,
     };
     // Previous versions voting power was 100, due to no dedup.
     // Now we error
@@ -740,4 +749,361 @@ pub fn test_migrate_update_version() {
     let version = cw2::get_contract_version(&deps.storage).unwrap();
     assert_eq!(version.version, CONTRACT_VERSION);
     assert_eq!(version.contract, CONTRACT_NAME);
+}
+
+/// First test checks if the contract correctly initializes with the specified
+/// active threshold.
+#[test]
+fn test_initialization_with_active_threshold() {
+    let mut app = App::default();
+    let voting_id = app.store_code(voting_contract());
+
+    // Define an active threshold for initialization.
+    let active_threshold = Some(dao_voting::threshold::ActiveThreshold::AbsoluteCount {
+        count: Uint128::new(5),
+    });
+
+    // Instantiate the contract with the defined active threshold.
+    let instantiate_msg = InstantiateMsg {
+        group_contract: GroupContract::New {
+            cw4_group_code_id: app.store_code(cw4_contract()),
+            initial_members: vec![
+                cw4::Member {
+                    addr: ADDR1.to_string(),
+                    weight: 1,
+                },
+                cw4::Member {
+                    addr: ADDR2.to_string(),
+                    weight: 2,
+                },
+                cw4::Member {
+                    addr: ADDR3.to_string(),
+                    weight: 3,
+                },
+            ],
+        },
+        active_threshold: active_threshold.clone(),
+    };
+    let voting_addr = app
+        .instantiate_contract(
+            voting_id,
+            Addr::unchecked(DAO_ADDR),
+            &instantiate_msg,
+            &[],
+            "voting",
+            None,
+        )
+        .unwrap();
+
+    // Query the contract to see if the active threshold was set correctly.
+    let active_response: dao_interface::voting::IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(voting_addr, &QueryMsg::IsActive {})
+        .unwrap();
+
+    // Making sure the response matches the expected active status based on the active threshold set.
+    let expected_active_status = active_response.active;
+    // Now assuming that the total weight is greater than or equal to the threshold count for the DAO to be active.
+    assert_eq!(expected_active_status, true);
+}
+
+/// Second test checks if the contract rejects updates to the active
+/// threshold from unauthorized accounts.
+#[test]
+fn test_reject_active_threshold_update_unauthorized() {
+    let mut app = App::default();
+    let voting_id = app.store_code(voting_contract());
+    let cw4_id = app.store_code(cw4_contract());
+
+    // Instantiate the contract.
+    let instantiate_msg = InstantiateMsg {
+        group_contract: GroupContract::New {
+            cw4_group_code_id: cw4_id,
+            initial_members: vec![
+                cw4::Member {
+                    addr: ADDR1.to_string(),
+                    weight: 1,
+                },
+                cw4::Member {
+                    addr: ADDR2.to_string(),
+                    weight: 1,
+                },
+            ],
+        },
+        active_threshold: None,
+    };
+    let voting_addr = app
+        .instantiate_contract(
+            voting_id,
+            Addr::unchecked(DAO_ADDR),
+            &instantiate_msg,
+            &[],
+            "voting",
+            None,
+        )
+        .unwrap();
+
+    // Attempt to update the active threshold from a non-DAO account.
+    let unauthorized_addr = "unauthorized";
+    let update_msg = UpdateActiveThreshold {
+        new_threshold: Some(dao_voting::threshold::ActiveThreshold::AbsoluteCount {
+            count: Uint128::new(10),
+        }),
+    };
+    let err = app
+        .execute_contract(
+            Addr::unchecked(unauthorized_addr),
+            voting_addr,
+            &update_msg,
+            &[],
+        )
+        .unwrap_err();
+
+    // Check that the error returned matches the expected unauthorized error.
+    assert_eq!(
+        err.root_cause().to_string(),
+        ContractError::Unauthorized {}.to_string()
+    );
+}
+
+/// Third test verifies if the contract accepts updates to the active
+/// threshold from the DAO account. This is important to ensure only
+/// the authorized DAO address can update the active threshold.
+#[test]
+fn test_accept_active_threshold_update_authorized() {
+    let mut app = App::default();
+    let voting_id = app.store_code(voting_contract());
+    let cw4_id = app.store_code(cw4_contract());
+
+    // Instantiate the contract.
+    let instantiate_msg = InstantiateMsg {
+        group_contract: GroupContract::New {
+            cw4_group_code_id: cw4_id,
+            initial_members: vec![
+                cw4::Member {
+                    addr: ADDR1.to_string(),
+                    weight: 1,
+                },
+                cw4::Member {
+                    addr: ADDR2.to_string(),
+                    weight: 1,
+                },
+            ],
+        },
+        active_threshold: None,
+    };
+    let voting_addr = app
+        .instantiate_contract(
+            voting_id,
+            Addr::unchecked(DAO_ADDR),
+            &instantiate_msg,
+            &[],
+            "voting",
+            None,
+        )
+        .unwrap();
+
+    // Update the active threshold from the DAO account.
+    let update_msg = UpdateActiveThreshold {
+        new_threshold: Some(dao_voting::threshold::ActiveThreshold::AbsoluteCount {
+            count: Uint128::new(10),
+        }),
+    };
+    let response = app
+        .execute_contract(
+            Addr::unchecked(DAO_ADDR),
+            voting_addr.clone(),
+            &update_msg,
+            &[],
+        )
+        .unwrap();
+
+    // Check the response for a successful update using events.
+    assert!(response.events.iter().any(|event| event.ty == "wasm"
+        && event
+            .attributes
+            .iter()
+            .any(|attr| attr.key == "method" && attr.value == "update_active_threshold")
+        && event
+            .attributes
+            .iter()
+            .any(|attr| attr.key == "status" && attr.value == "success")));
+
+    // Query if IsActive is true when it should not be (since the count is set to 10, but we don't have that many members).
+    let is_active: IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(voting_addr, &QueryMsg::IsActive {})
+        .unwrap();
+    assert_eq!(is_active.active, false);
+}
+
+/// Fourth test checks if the IsActive query responds correctly based on the
+/// set active threshold.
+#[test]
+fn test_is_active_query_response() {
+    let mut app = App::default();
+    let voting_id = app.store_code(voting_contract());
+    let cw4_id = app.store_code(cw4_contract());
+
+    // Define members and set a specific active threshold.
+    let members = vec![
+        cw4::Member {
+            addr: ADDR1.to_string(),
+            weight: 3,
+        },
+        cw4::Member {
+            addr: ADDR2.to_string(),
+            weight: 2,
+        },
+        cw4::Member {
+            addr: ADDR3.to_string(),
+            weight: 1,
+        },
+    ];
+    let active_threshold = dao_voting::threshold::ActiveThreshold::AbsoluteCount {
+        count: Uint128::new(5), // Threshold set such that it's just met by the sum of members' weights
+    };
+
+    // Instantiate the contract with these settings.
+    let instantiate_msg = InstantiateMsg {
+        group_contract: GroupContract::New {
+            cw4_group_code_id: cw4_id,
+            initial_members: members,
+        },
+        active_threshold: Some(active_threshold),
+    };
+    let voting_addr = app
+        .instantiate_contract(
+            voting_id,
+            Addr::unchecked(DAO_ADDR),
+            &instantiate_msg,
+            &[],
+            "voting",
+            None,
+        )
+        .unwrap();
+
+    // Query the IsActive endpoint to check the active status.
+    let is_active_response: IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(voting_addr.clone(), &QueryMsg::IsActive {})
+        .unwrap();
+
+    // Check if IsActive correctly reflects the status based on the active threshold.
+    // Since the total weight (6) meets the active threshold (5), the DAO should be active.
+    assert!(
+        is_active_response.active,
+        "DAO should be active as the threshold is met by the members' total weight."
+    );
+
+    // Change the threshold to a value higher than the total weight to test the negative case.
+    let update_threshold_msg = UpdateActiveThreshold {
+        new_threshold: Some(dao_voting::threshold::ActiveThreshold::AbsoluteCount {
+            count: Uint128::new(10), // This threshold is not met.
+        }),
+    };
+    app.execute_contract(
+        Addr::unchecked(DAO_ADDR),
+        voting_addr.clone(),
+        &update_threshold_msg,
+        &[],
+    )
+    .unwrap();
+
+    // Query again after updating the threshold.
+    let is_active_response_after_update: IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(voting_addr, &QueryMsg::IsActive {})
+        .unwrap();
+
+    // Now, the DAO should not be active as the total weight does not meet the new threshold.
+    assert!(
+        !is_active_response_after_update.active,
+        "DAO should not be active as the new threshold is not met."
+    );
+}
+
+/// Fifth test checks if the contract rejects  active threshold updates.
+/// I included a trial to update the threshold to a percentage, which should fail
+/// because the contract only supports absolute count.
+#[test]
+fn test_reject_invalid_active_threshold_updates() {
+    let mut app = App::default();
+    let voting_id = app.store_code(voting_contract());
+    let cw4_id = app.store_code(cw4_contract());
+
+    // Instantiate the contract with a valid initial threshold.
+    let members = vec![
+        cw4::Member {
+            addr: ADDR1.to_string(),
+            weight: 1,
+        },
+        cw4::Member {
+            addr: ADDR2.to_string(),
+            weight: 2,
+        },
+    ];
+    let instantiate_msg = InstantiateMsg {
+        group_contract: GroupContract::New {
+            cw4_group_code_id: cw4_id,
+            initial_members: members,
+        },
+        active_threshold: Some(ActiveThreshold::AbsoluteCount {
+            count: Uint128::new(3),
+        }),
+    };
+    let voting_addr = app
+        .instantiate_contract(
+            voting_id,
+            Addr::unchecked(DAO_ADDR),
+            &instantiate_msg,
+            &[],
+            "voting",
+            None,
+        )
+        .unwrap();
+
+    // Attempt to set an invalid percentage threshold.
+    let update_msg_percentage = UpdateActiveThreshold {
+        new_threshold: Some(ActiveThreshold::Percentage {
+            percent: Decimal::percent(50),
+        }),
+    };
+    let err_percentage = app
+        .execute_contract(
+            Addr::unchecked(DAO_ADDR),
+            voting_addr.clone(),
+            &update_msg_percentage,
+            &[],
+        )
+        .unwrap_err();
+
+    // Expect the error to be about invalid threshold type.
+    assert_eq!(
+        err_percentage.root_cause().to_string(),
+        ContractError::InvalidThreshold {}.to_string(),
+        "Expected to fail with InvalidThreshold error for percentage update"
+    );
+
+    // Attempt to set an absolute count to zero.
+    let update_msg_zero = UpdateActiveThreshold {
+        new_threshold: Some(ActiveThreshold::AbsoluteCount {
+            count: Uint128::zero(),
+        }),
+    };
+    let err_zero = app
+        .execute_contract(
+            Addr::unchecked(DAO_ADDR),
+            voting_addr,
+            &update_msg_zero,
+            &[],
+        )
+        .unwrap_err();
+
+    // Expect the error to be about invalid zero threshold.
+    assert_eq!(
+        err_zero.root_cause().to_string(),
+        ContractError::InvalidThreshold {}.to_string(),
+        "Expected to fail with InvalidThreshold error for zero absolute count"
+    );
 }

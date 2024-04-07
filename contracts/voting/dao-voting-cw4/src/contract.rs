@@ -1,24 +1,19 @@
-use std::ops::{Div, Mul};
-
-use cosmwasm_std::{
-    Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
-    to_json_binary, Uint128, Uint256, WasmMsg,
-};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cw2::{ContractVersion, get_contract_version, set_contract_version};
+use cosmwasm_std::{
+    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
+    Uint128, Uint256, WasmMsg,
+};
+use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw4::{MemberListResponse, MemberResponse, TotalWeightResponse};
 use cw_utils::parse_reply_instantiate_data;
 
 use dao_interface::voting::IsActiveResponse;
-use dao_voting::threshold::{
-    ActiveThreshold, assert_valid_percentage_threshold
-    ,
-};
+use dao_voting::threshold::ActiveThreshold;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, GroupContract, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state::{ACTIVE_THRESHOLD, Config, CONFIG, DAO, GROUP_CONTRACT};
+use crate::state::{Config, ACTIVE_THRESHOLD, CONFIG, DAO, GROUP_CONTRACT};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw4";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -36,12 +31,10 @@ pub fn instantiate(
 
     let config: Config = if let Some(active_threshold) = msg.active_threshold {
         Config {
-            active_threshold_enabled: true,
             active_threshold: Some(active_threshold),
         }
     } else {
         Config {
-            active_threshold_enabled: false,
             active_threshold: None,
         }
     };
@@ -153,43 +146,22 @@ pub fn execute_update_active_threshold(
         return Err(ContractError::Unauthorized {});
     }
 
-    if let Some(active_threshold) = &new_active_threshold {
-        // Pre-validation before state changes
+    if let Some(active_threshold) = new_active_threshold {
         match active_threshold {
-            ActiveThreshold::Percentage { percent } => {
-                assert_valid_percentage_threshold(*percent)?;
-            }
             ActiveThreshold::AbsoluteCount { count } => {
-                if *count.is_zero() {
+                if count.is_zero() {
                     return Err(ContractError::InvalidThreshold {});
                 }
+                ACTIVE_THRESHOLD.save(deps.storage, &active_threshold)?;
+            }
+            // Reject percentage-based thresholds
+            ActiveThreshold::Percentage { .. } => {
+                return Err(ContractError::InvalidThreshold {});
             }
         }
+    } else {
+        ACTIVE_THRESHOLD.remove(deps.storage);
     }
-
-    // Safe to modify state after validation
-    match new_active_threshold {
-        Some(threshold) => ACTIVE_THRESHOLD.save(deps.storage, &threshold)?,
-        None => ACTIVE_THRESHOLD.remove(deps.storage),
-    }
-
-    // As opposed to doing it this way:
-    // if let Some(active_threshold) = new_active_threshold {
-    //     // Pre-validation before state changes.
-    //     match active_threshold {
-    //         ActiveThreshold::Percentage { percent } => {
-    //             assert_valid_percentage_threshold(percent)?;
-    //         }
-    //         ActiveThreshold::AbsoluteCount { count } => {
-    //             if count.is_zero() {
-    //                 return Err(ContractError::InvalidThreshold {});
-    //             }
-    //         }
-    //     }
-    //     ACTIVE_THRESHOLD.save(deps.storage, &active_threshold)?;
-    // } else {
-    //     ACTIVE_THRESHOLD.remove(deps.storage);
-    // }
 
     Ok(Response::new()
         .add_attribute("method", "update_active_threshold")
@@ -260,24 +232,24 @@ pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
                 &cw4_group::msg::QueryMsg::TotalWeight { at_height: None },
             )?;
             to_json_binary(&IsActiveResponse {
-                active: total_weight.weight >= count.into(),
+                active: total_weight.weight >= count.u128() as u64,
             })
         }
-        Some(ActiveThreshold::Percentage { percent, .. }) => {
+        Some(ActiveThreshold::Percentage { percent }) => {
             let group_contract = GROUP_CONTRACT.load(deps.storage)?;
             let total_weight: TotalWeightResponse = deps.querier.query_wasm_smart(
                 &group_contract,
                 &cw4_group::msg::QueryMsg::TotalWeight { at_height: None },
             )?;
-            let required_weight: Uint256 = Uint256::from(total_weight.weight).mul(Uint256::from(percent)).div(Uint256::from(100));
+            let percentage_base = Uint256::from(10u64).pow(percent.decimal_places()); // Ensure correct power base for scaling
+            let required_weight = Uint256::from(total_weight.weight)
+                .multiply_ratio(percent.atomics(), percentage_base); // Correct ratio calculation
 
             to_json_binary(&IsActiveResponse {
-                active: total_weight.weight >= required_weight.into(),
+                active: Uint256::from(total_weight.weight) >= required_weight,
             })
         }
-        None => {
-            to_json_binary(&IsActiveResponse { active: true })
-        }
+        None => to_json_binary(&IsActiveResponse { active: true }),
     }
 }
 

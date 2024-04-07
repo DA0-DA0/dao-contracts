@@ -33,7 +33,7 @@ struct CommonTest {
 fn setup_test(messages: Vec<CosmosMsg>) -> CommonTest {
     let mut app = App::default();
     let instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
-    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None, None);
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
 
@@ -199,6 +199,7 @@ pub fn test_executed_prop_state_remains_after_vote_swing() {
                 amount: Uint128::new(30),
             },
         ]),
+        None,
     );
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
@@ -298,6 +299,7 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
                 amount: Uint128::new(30),
             },
         ]),
+        None,
     );
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
