@@ -94,11 +94,7 @@ fn do_test_votes<F>(
     setup_governance: F,
 ) -> (App, Addr)
 where
-    F: Fn(
-        &mut App,
-        InstantiateMsg,
-        Option<Vec<Cw20Coin>>,
-    ) -> Addr,
+    F: Fn(&mut App, InstantiateMsg, Option<Vec<Cw20Coin>>) -> Addr,
 {
     let mut app = App::default();
 

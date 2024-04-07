@@ -936,7 +936,10 @@ fn test_accept_active_threshold_update_authorized() {
         .unwrap();
 
     // The DAO should not be active as the total weight does not meet the new threshold.
-    assert!(!is_active.active, "DAO should be inactive as the threshold is not met by the members' total weight.");
+    assert!(
+        !is_active.active,
+        "DAO should be inactive as the threshold is not met by the members' total weight."
+    );
 }
 
 /// Fourth test checks if the IsActive query responds correctly based on the
