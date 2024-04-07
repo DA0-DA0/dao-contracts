@@ -801,7 +801,7 @@ dependencies = [
 
 [[package]]
 name = "cw-fund-distributor"
-version = "0.1.0"
+version = "2.4.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
