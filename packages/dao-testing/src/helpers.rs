@@ -99,7 +99,6 @@ pub fn instantiate_with_staked_balances_governance(
     governance_code_id: u64,
     governance_instantiate: Binary,
     initial_balances: Option<Vec<Cw20Coin>>,
-    active_threshold: Option<dao_voting::threshold::ActiveThreshold>,
 ) -> Addr {
     let initial_balances = initial_balances.unwrap_or_else(|| {
         vec![Cw20Coin {
