@@ -281,7 +281,7 @@ fn test_allowlist() {
     let app = OsmosisTestApp::new();
     let builder = TestEnvBuilder::new();
     let instantiate_msg = InstantiateMsg {
-        fees_recipient: "replaced to accounts[0]".to_string(),
+        funding_pool_forwarding: Some("replaced to accounts[0]".to_string()),
         supply: SupplyToken {
             token_info: TokenInfo::New(NewTokenInfo {
                 token_issuer_code_id: 0,
@@ -527,7 +527,7 @@ fn test_existing_token_failures() {
 
     // The tokenfactory token does not exist - fails in supply query
     let mut instantiate_msg = InstantiateMsg {
-        fees_recipient: "replaced to accounts[0]".to_string(),
+        funding_pool_forwarding: Some("replaced to accounts[0]".to_string()),
         supply: SupplyToken {
             token_info: TokenInfo::Existing {
                 denom: "factory/address/nonexistent".to_string(),
@@ -592,7 +592,7 @@ fn test_existing_token() {
     let result = builder.setup_with_token(
         &app,
         InstantiateMsg {
-            fees_recipient: "replaced to accounts[0]".to_string(),
+            funding_pool_forwarding: Some("replaced to accounts[0]".to_string()),
             supply: SupplyToken {
                 token_info: TokenInfo::Existing {
                     denom: "replaced".to_string(),

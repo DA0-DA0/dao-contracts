@@ -8,7 +8,6 @@
     "type": "object",
     "required": [
       "curve_type",
-      "fees_recipient",
       "phase_config",
       "reserve",
       "supply"
@@ -22,9 +21,12 @@
           }
         ]
       },
-      "fees_recipient": {
-        "description": "The recipient for any fees collected from bonding curve operation",
-        "type": "string"
+      "funding_pool_forwarding": {
+        "description": "An optional address for automatically forwarding funding pool gains",
+        "type": [
+          "string",
+          "null"
+        ]
       },
       "hatcher_allowlist": {
         "description": "TODO different ways of doing this, for example DAO members? Using a whitelist contract? Merkle tree? Hatcher allowlist",
@@ -563,7 +565,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Donate will add reserve tokens to the funding pool",
+        "description": "Donate will donate tokens to the funding pool. You must send only reserve tokens.",
         "type": "object",
         "required": [
           "donate"
@@ -571,6 +573,33 @@
         "properties": {
           "donate": {
             "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Withdraw will withdraw tokens from the funding pool.",
+        "type": "object",
+        "required": [
+          "withdraw"
+        ],
+        "properties": {
+          "withdraw": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "description": "The amount to withdraw (defaults to full amount).",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Uint128"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
             "additionalProperties": false
           }
         },
@@ -626,7 +655,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Update the hatch phase allowlist. This can only be called by the owner.",
+        "description": "Update the hatch phase allowlist. Only callable by owner.",
         "type": "object",
         "required": [
           "update_hatch_allowlist"
@@ -652,6 +681,29 @@
                 "items": {
                   "type": "string"
                 }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Update the funding pool forwarding. Only callable by owner.",
+        "type": "object",
+        "required": [
+          "update_funding_pool_forwarding"
+        ],
+        "properties": {
+          "update_funding_pool_forwarding": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "The address to receive the funding pool forwarding. Set to None to stop forwarding.",
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -1114,13 +1166,13 @@
         "additionalProperties": false
       },
       {
-        "description": "Returns the Fee Recipient for the contract. This is the address that receives any fees collected from bonding curve operation",
+        "description": "Returns the funding pool forwarding config for the contract. This is the address that receives any fees collected from bonding curve operation and donations",
         "type": "object",
         "required": [
-          "fees_recipient"
+          "funding_pool_forwarding"
         ],
         "properties": {
-          "fees_recipient": {
+          "funding_pool_forwarding": {
             "type": "object",
             "additionalProperties": false
           }
@@ -1471,11 +1523,23 @@
         }
       }
     },
-    "fees_recipient": {
+    "funding_pool_forwarding": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Addr",
-      "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
-      "type": "string"
+      "title": "Nullable_Addr",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Addr"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        }
+      }
     },
     "hatcher_allowlist": {
       "$schema": "http://json-schema.org/draft-07/schema#",

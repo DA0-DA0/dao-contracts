@@ -16,7 +16,7 @@ use crate::curves::DecimalPlaces;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{
-    CurveState, CURVE_STATE, CURVE_TYPE, FEES_RECIPIENT, HATCHER_ALLOWLIST, MAX_SUPPLY,
+    CurveState, CURVE_STATE, CURVE_TYPE, FUNDING_POOL_FORWARDING, HATCHER_ALLOWLIST, MAX_SUPPLY,
     NEW_TOKEN_INFO, PHASE, PHASE_CONFIG, SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
 };
 use crate::{commands, queries};
@@ -37,7 +37,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let InstantiateMsg {
-        fees_recipient,
+        funding_pool_forwarding,
         supply,
         reserve,
         curve_type,
@@ -47,8 +47,13 @@ pub fn instantiate(
 
     phase_config.validate()?;
 
-    // Validate and store the fees recipient
-    FEES_RECIPIENT.save(deps.storage, &deps.api.addr_validate(&fees_recipient)?)?;
+    // Validate and store the funding pool forwarding
+    if let Some(funding_pool_forwarding) = funding_pool_forwarding {
+        FUNDING_POOL_FORWARDING.save(
+            deps.storage,
+            &deps.api.addr_validate(&funding_pool_forwarding)?,
+        )?;
+    }
 
     if let TokenInfo::New(new_token_info) = &supply.token_info {
         if new_token_info.subdenom.is_empty() {
@@ -163,6 +168,10 @@ pub fn execute(
         ExecuteMsg::Sell {} => commands::execute_sell(deps, env, info),
         ExecuteMsg::Close {} => commands::execute_close(deps, info),
         ExecuteMsg::Donate {} => commands::execute_donate(deps, env, info),
+        ExecuteMsg::Withdraw { amount } => commands::execute_withdraw(deps, env, info, amount),
+        ExecuteMsg::UpdateFundingPoolForwarding { address } => {
+            commands::execute_update_funding_pool_forwarding(deps, env, info, address)
+        }
         ExecuteMsg::UpdateMaxSupply { max_supply } => {
             commands::update_max_supply(deps, info, max_supply)
         }
@@ -200,7 +209,9 @@ pub fn do_query(deps: Deps, _env: Env, msg: QueryMsg, curve_fn: CurveFn) -> StdR
         QueryMsg::Donations { start_after, limit } => {
             to_json_binary(&queries::query_donations(deps, start_after, limit)?)
         }
-        QueryMsg::FeesRecipient {} => to_json_binary(&FEES_RECIPIENT.load(deps.storage)?),
+        QueryMsg::FundingPoolForwarding {} => {
+            to_json_binary(&FUNDING_POOL_FORWARDING.may_load(deps.storage)?)
+        }
         QueryMsg::Hatchers { start_after, limit } => {
             to_json_binary(&queries::query_hatchers(deps, start_after, limit)?)
         }
@@ -343,17 +354,36 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 // Add initial DAO balance to initial_balances if nonzero.
                 if let Some(initial_dao_balance) = new_token_info.initial_dao_balance {
                     if !initial_dao_balance.is_zero() {
-                        // In this case, it would be considered the fees recipient
-                        let fees_recipient = FEES_RECIPIENT.load(deps.storage)?;
+                        // In this case, it would be considered the funding pool
+                        if let Some(funding_pool_forwarding) =
+                            FUNDING_POOL_FORWARDING.may_load(deps.storage)?
+                        {
+                            msgs.push(WasmMsg::Execute {
+                                contract_addr: issuer_addr.clone(),
+                                msg: to_json_binary(&IssuerExecuteMsg::Mint {
+                                    to_address: funding_pool_forwarding.to_string(),
+                                    amount: initial_dao_balance,
+                                })?,
+                                funds: vec![],
+                            });
+                        } else {
+                            CURVE_STATE.update(
+                                deps.storage,
+                                |mut curve_state| -> StdResult<_> {
+                                    curve_state.funding = initial_dao_balance;
 
-                        msgs.push(WasmMsg::Execute {
-                            contract_addr: issuer_addr.clone(),
-                            msg: to_json_binary(&IssuerExecuteMsg::Mint {
-                                to_address: fees_recipient.to_string(),
-                                amount: initial_dao_balance,
-                            })?,
-                            funds: vec![],
-                        });
+                                    Ok(curve_state)
+                                },
+                            )?;
+                            msgs.push(WasmMsg::Execute {
+                                contract_addr: issuer_addr.clone(),
+                                msg: to_json_binary(&IssuerExecuteMsg::Mint {
+                                    to_address: env.contract.address.to_string(),
+                                    amount: initial_dao_balance,
+                                })?,
+                                funds: vec![],
+                            });
+                        }
                     }
                 }
 

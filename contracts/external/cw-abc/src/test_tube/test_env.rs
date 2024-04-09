@@ -106,7 +106,7 @@ impl TestEnvBuilder {
         let abc = CwAbc::deploy(
             app,
             &InstantiateMsg {
-                fees_recipient: accounts[0].address(),
+                funding_pool_forwarding: Some(accounts[0].address()),
                 supply: SupplyToken {
                     token_info: TokenInfo::New(NewTokenInfo {
                         token_issuer_code_id: issuer_id,
@@ -179,7 +179,7 @@ impl TestEnvBuilder {
             new_token_info.token_issuer_code_id = issuer_id;
         }
 
-        msg.fees_recipient = accounts[0].address();
+        msg.funding_pool_forwarding = Some(accounts[0].address());
 
         let abc = CwAbc::deploy(app, &msg, &accounts[0])?;
 
@@ -212,7 +212,7 @@ impl TestEnvBuilder {
             &accounts[0],
         )?;
 
-        msg.fees_recipient = accounts[0].address();
+        msg.funding_pool_forwarding = Some(accounts[0].address());
 
         msg.supply.token_info = TokenInfo::Existing {
             denom: format!("factory/{}/{}", tf_issuer.contract_addr, "subdenom"),

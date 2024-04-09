@@ -40,8 +40,8 @@ pub const CURVE_STATE: Item<CurveState> = Item::new("curve_state");
 
 pub const CURVE_TYPE: Item<CurveType> = Item::new("curve_type");
 
-/// The recipient for fees generated from bonding curve operation
-pub const FEES_RECIPIENT: Item<Addr> = Item::new("fees_recipient");
+/// The address for automatically forwarding funding pool gains
+pub const FUNDING_POOL_FORWARDING: Item<Addr> = Item::new("funding_pool_forwarding");
 
 /// The denom used for the supply token
 pub const SUPPLY_DENOM: Item<String> = Item::new("denom");

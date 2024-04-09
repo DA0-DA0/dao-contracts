@@ -5,8 +5,8 @@ use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType, MinMax, ReserveTok
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    /// The recipient for any fees collected from bonding curve operation
-    pub fees_recipient: String,
+    /// An optional address for automatically forwarding funding pool gains
+    pub funding_pool_forwarding: Option<String>,
 
     /// Supply token information
     pub supply: SupplyToken,
@@ -57,8 +57,14 @@ pub enum ExecuteMsg {
     /// Sell burns supply tokens in return for the reserve token.
     /// You must send only supply tokens.
     Sell {},
-    /// Donate will add reserve tokens to the funding pool
+    /// Donate will donate tokens to the funding pool.
+    /// You must send only reserve tokens.
     Donate {},
+    /// Withdraw will withdraw tokens from the funding pool.
+    Withdraw {
+        /// The amount to withdraw (defaults to full amount).
+        amount: Option<Uint128>,
+    },
     /// Sets (or unsets if set to None) the maximum supply
     UpdateMaxSupply {
         /// The maximum supply able to be minted.
@@ -69,12 +75,19 @@ pub enum ExecuteMsg {
     /// TODO think about other potential limitations on this.
     UpdateCurve { curve_type: CurveType },
     /// Update the hatch phase allowlist.
-    /// This can only be called by the owner.
+    /// Only callable by owner.
     UpdateHatchAllowlist {
         /// Addresses to be added.
         to_add: Vec<String>,
         /// Addresses to be removed.
         to_remove: Vec<String>,
+    },
+    /// Update the funding pool forwarding.
+    /// Only callable by owner.
+    UpdateFundingPoolForwarding {
+        /// The address to receive the funding pool forwarding.
+        /// Set to None to stop forwarding.
+        address: Option<String>,
     },
     /// Update the configuration of a certain phase.
     /// This can only be called by the owner.
@@ -106,10 +119,10 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    /// Returns the Fee Recipient for the contract. This is the address that
-    /// receives any fees collected from bonding curve operation
-    #[returns(::cosmwasm_std::Addr)]
-    FeesRecipient {},
+    /// Returns the funding pool forwarding config for the contract. This is the address that
+    /// receives any fees collected from bonding curve operation and donations
+    #[returns(Option<::cosmwasm_std::Addr>)]
+    FundingPoolForwarding {},
     /// List the hatchers and their contributions
     /// Returns [`HatchersResponse`]
     #[returns(HatchersResponse)]

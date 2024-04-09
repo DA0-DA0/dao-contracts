@@ -42,7 +42,7 @@ pub fn default_instantiate_msg(
     curve_type: CurveType,
 ) -> InstantiateMsg {
     InstantiateMsg {
-        fees_recipient: TEST_CREATOR.to_string(),
+        funding_pool_forwarding: None,
         supply: SupplyToken {
             token_info: TokenInfo::New(NewTokenInfo {
                 token_issuer_code_id: 1,

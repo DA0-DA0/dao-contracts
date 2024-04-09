@@ -136,7 +136,7 @@ impl TestEnvBuilder {
                         contract_addr: dao_abc_factory.contract_addr.clone(),
                         msg: to_json_binary(&ExecuteMsg::AbcFactory {
                             instantiate_msg: cw_abc::msg::InstantiateMsg {
-                                fees_recipient: accounts[0].address(),
+                                funding_pool_forwarding: Some(accounts[0].address()),
 
                                 supply: SupplyToken {
                                     token_info: TokenInfo::New(NewTokenInfo {
@@ -254,7 +254,7 @@ impl TestEnvBuilder {
                             contract_addr: dao_abc_factory.contract_addr.clone(),
                             msg: to_json_binary(&ExecuteMsg::AbcFactory {
                                 instantiate_msg: cw_abc::msg::InstantiateMsg {
-                                    fees_recipient: accounts[0].address(),
+                                    funding_pool_forwarding: Some(accounts[0].address()),
                                     supply: SupplyToken {
                                         token_info: TokenInfo::New(NewTokenInfo {
                                             token_issuer_code_id: issuer_id,

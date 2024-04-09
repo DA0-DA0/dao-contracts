@@ -9,8 +9,8 @@ use std::ops::Deref;
 use crate::abc::{CommonsPhase, CurveType};
 use crate::msg::UpdatePhaseConfigMsg;
 use crate::state::{
-    CURVE_STATE, CURVE_TYPE, DONATIONS, FEES_RECIPIENT, HATCHERS, HATCHER_ALLOWLIST, MAX_SUPPLY,
-    PHASE, PHASE_CONFIG, SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
+    CURVE_STATE, CURVE_TYPE, DONATIONS, FUNDING_POOL_FORWARDING, HATCHERS, HATCHER_ALLOWLIST,
+    MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
 };
 use crate::ContractError;
 
@@ -67,7 +67,6 @@ pub fn execute_buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Respon
     // Calculate how many tokens can be purchased with this and mint them
     let curve = curve_fn(curve_state.clone().decimals);
     curve_state.reserve += reserved;
-    curve_state.funding += funded;
 
     // Calculate the supply based on the reserve
     let new_supply = curve.supply(curve_state.reserve);
@@ -82,10 +81,6 @@ pub fn execute_buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Respon
         }
     }
 
-    // Save the new curve state
-    curve_state.supply = new_supply;
-    CURVE_STATE.save(deps.storage, &curve_state)?;
-
     // Mint tokens for sender by calling mint on the cw-tokenfactory-issuer contract
     let issuer_addr = TOKEN_ISSUER_CONTRACT.load(deps.storage)?;
     let mut msgs: Vec<CosmosMsg> = vec![CosmosMsg::Wasm(WasmMsg::Execute {
@@ -99,15 +94,22 @@ pub fn execute_buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Respon
 
     // Send funding to fee recipient
     if funded > Uint128::zero() {
-        let fees_recipient = FEES_RECIPIENT.load(deps.storage)?;
-        msgs.push(CosmosMsg::Bank(BankMsg::Send {
-            to_address: fees_recipient.to_string(),
-            amount: vec![Coin {
-                amount: funded,
-                denom: curve_state.reserve_denom,
-            }],
-        }))
+        if let Some(funding_pool_forwarding) = FUNDING_POOL_FORWARDING.may_load(deps.storage)? {
+            msgs.push(CosmosMsg::Bank(BankMsg::Send {
+                to_address: funding_pool_forwarding.to_string(),
+                amount: vec![Coin {
+                    amount: funded,
+                    denom: curve_state.reserve_denom.clone(),
+                }],
+            }))
+        } else {
+            curve_state.funding += funded;
+        }
     };
+
+    // Save the new curve state
+    curve_state.supply = new_supply;
+    CURVE_STATE.save(deps.storage, &curve_state)?;
 
     Ok(Response::new()
         .add_messages(msgs)
@@ -203,8 +205,6 @@ pub fn execute_sell(
 
     // Update the curve state
     curve_state.reserve = new_reserve;
-    curve_state.funding += taxed_amount;
-    CURVE_STATE.save(deps.storage, &curve_state)?;
 
     // Calculate the amount of tokens to send to the sender
     // Subtract the taxed amount from the released amount
@@ -223,15 +223,21 @@ pub fn execute_sell(
 
     // Send exit fees to the to the fee recipient
     if taxed_amount > Uint128::zero() {
-        let fees_recipient = FEES_RECIPIENT.load(deps.storage)?;
-        send_msgs.push(CosmosMsg::Bank(BankMsg::Send {
-            to_address: fees_recipient.to_string(),
-            amount: vec![Coin {
-                amount: taxed_amount,
-                denom: curve_state.reserve_denom,
-            }],
-        }))
+        if let Some(funding_pool_forwarding) = FUNDING_POOL_FORWARDING.may_load(deps.storage)? {
+            send_msgs.push(CosmosMsg::Bank(BankMsg::Send {
+                to_address: funding_pool_forwarding.to_string(),
+                amount: vec![Coin {
+                    amount: taxed_amount,
+                    denom: curve_state.reserve_denom.clone(),
+                }],
+            }))
+        } else {
+            curve_state.funding += taxed_amount;
+        }
     }
+
+    // Save the curve state
+    CURVE_STATE.save(deps.storage, &curve_state)?;
 
     Ok(Response::new()
         .add_messages(burn_msgs)
@@ -288,8 +294,18 @@ pub fn execute_donate(
     let mut curve_state = CURVE_STATE.load(deps.storage)?;
 
     let payment = must_pay(&info, &curve_state.reserve_denom)?;
-    curve_state.funding += payment;
-    CURVE_STATE.save(deps.storage, &curve_state)?;
+
+    let mut msgs = vec![];
+    if let Some(funding_pool_forwarding) = FUNDING_POOL_FORWARDING.may_load(deps.storage)? {
+        msgs.push(CosmosMsg::Bank(BankMsg::Send {
+            to_address: funding_pool_forwarding.to_string(),
+            amount: info.funds,
+        }));
+    } else {
+        curve_state.funding += payment;
+
+        CURVE_STATE.save(deps.storage, &curve_state)?;
+    }
 
     // No minting of tokens is necessary, the supply stays the same
     DONATIONS.save(deps.storage, &info.sender, &payment)?;
@@ -297,7 +313,69 @@ pub fn execute_donate(
     Ok(Response::new()
         .add_attribute("action", "donate")
         .add_attribute("donor", info.sender)
-        .add_attribute("amount", payment))
+        .add_attribute("amount", payment)
+        .add_messages(msgs))
+}
+
+/// Withdraw funds from the funding pool (only callable by owner)
+pub fn execute_withdraw(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    amount: Option<Uint128>,
+) -> Result<Response, ContractError> {
+    // Validate ownership
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    let mut curve_state = CURVE_STATE.load(deps.storage)?;
+
+    // Get amount to withdraw
+    let amount = amount.unwrap_or(curve_state.funding);
+
+    // Construct the withdraw message
+    let msg = CosmosMsg::Bank(BankMsg::Send {
+        to_address: info.sender.to_string(),
+        amount: vec![Coin {
+            denom: curve_state.reserve_denom.clone(),
+            amount,
+        }],
+    });
+
+    // Update the curve state
+    curve_state.funding = curve_state
+        .funding
+        .checked_sub(amount)
+        .map_err(StdError::overflow)?;
+    CURVE_STATE.save(deps.storage, &curve_state)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "withdraw")
+        .add_attribute("withdrawer", info.sender)
+        .add_attribute("amount", amount)
+        .add_message(msg))
+}
+
+/// Updates the funding pool forwarding (only callable by owner)
+pub fn execute_update_funding_pool_forwarding(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    address: Option<String>,
+) -> Result<Response, ContractError> {
+    // Validate ownership
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    // Update the funding pool forwarding
+    match &address {
+        Some(address) => {
+            FUNDING_POOL_FORWARDING.save(deps.storage, &deps.api.addr_validate(address)?)?;
+        }
+        None => FUNDING_POOL_FORWARDING.remove(deps.storage),
+    };
+
+    Ok(Response::new()
+        .add_attribute("action", "update_funding_pool_forwarding")
+        .add_attribute("address", address.unwrap_or_default()))
 }
 
 /// Check if the sender is allowlisted for the hatch phase
@@ -478,7 +556,7 @@ mod tests {
     mod donate {
         use super::*;
         use crate::abc::CurveType;
-        use crate::testing::mock_init;
+        use crate::testing::{mock_init, TEST_CREATOR};
         use cosmwasm_std::coin;
         use cw_utils::PaymentError;
 
@@ -535,7 +613,7 @@ mod tests {
         }
 
         #[test]
-        fn should_add_to_funding_pool() -> Result<(), ContractError> {
+        fn should_add_to_funding_pool_and_withdraw() -> Result<(), ContractError> {
             let mut deps = mock_dependencies();
             // this matches `linear_curve` test case from curves.rs
             let curve_type = CurveType::SquareRoot {
@@ -551,6 +629,45 @@ mod tests {
             // check that the curve's funding has been increased while supply and reserve have not
             let curve_state = CURVE_STATE.load(&deps.storage)?;
             assert_that!(curve_state.funding).is_equal_to(Uint128::new(donation_amount));
+
+            // check that the donor is in the donations map
+            let donation = DONATIONS.load(&deps.storage, &Addr::unchecked(TEST_DONOR))?;
+            assert_that!(donation).is_equal_to(Uint128::new(donation_amount));
+
+            // check that the owner can withdraw
+            execute_withdraw(
+                deps.as_mut(),
+                mock_env(),
+                mock_info(TEST_CREATOR, &[]),
+                None,
+            )?;
+
+            // check that a random can't withdraw
+            let res = execute_withdraw(deps.as_mut(), mock_env(), mock_info("random", &[]), None);
+            assert!(res.is_err());
+
+            Ok(())
+        }
+
+        #[test]
+        fn should_send_to_funding_pool_forwarding() -> Result<(), ContractError> {
+            let mut deps = mock_dependencies();
+            // this matches `linear_curve` test case from curves.rs
+            let curve_type = CurveType::SquareRoot {
+                slope: Uint128::new(1),
+                scale: 1,
+            };
+            let mut init_msg = default_instantiate_msg(2, 8, curve_type);
+            init_msg.funding_pool_forwarding = Some(TEST_CREATOR.to_string());
+            mock_init(deps.as_mut(), init_msg)?;
+
+            let donation_amount = 5;
+            let _res = exec_donate(deps.as_mut(), donation_amount)?;
+
+            // Check that the funding pool did not increase, because it was sent to the funding pool forwarding
+            // NOTE: the balance cannot be checked with mock_dependencies
+            let curve_state = CURVE_STATE.load(&deps.storage)?;
+            assert_that!(curve_state.funding).is_equal_to(Uint128::zero());
 
             // check that the donor is in the donations map
             let donation = DONATIONS.load(&deps.storage, &Addr::unchecked(TEST_DONOR))?;
