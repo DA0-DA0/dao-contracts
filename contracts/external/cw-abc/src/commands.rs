@@ -7,7 +7,7 @@ use cw_utils::must_pay;
 use std::ops::Deref;
 
 use crate::abc::{CommonsPhase, CurveType};
-use crate::msg::UpdatePhaseConfigMsg;
+use crate::msg::{DonationPool, UpdatePhaseConfigMsg};
 use crate::state::{
     CURVE_STATE, CURVE_TYPE, DONATIONS, FUNDING_POOL_FORWARDING, HATCHERS, HATCHER_ALLOWLIST,
     IS_PAUSED, MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
@@ -282,30 +282,53 @@ pub fn close(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError
 }
 
 /// Send a donation to the funding pool
-pub fn donate(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn donate(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    pool: DonationPool,
+) -> Result<Response, ContractError> {
     let mut curve_state = CURVE_STATE.load(deps.storage)?;
 
     let payment = must_pay(&info, &curve_state.reserve_denom)?;
 
     let mut msgs = vec![];
-    if let Some(funding_pool_forwarding) = FUNDING_POOL_FORWARDING.may_load(deps.storage)? {
-        msgs.push(CosmosMsg::Bank(BankMsg::Send {
-            to_address: funding_pool_forwarding.to_string(),
-            amount: info.funds,
-        }));
-    } else {
-        curve_state.funding += payment;
+    match pool {
+        DonationPool::Funding {} => {
+            if let Some(funding_pool_forwarding) = FUNDING_POOL_FORWARDING.may_load(deps.storage)? {
+                msgs.push(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: funding_pool_forwarding.to_string(),
+                    amount: info.funds,
+                }));
+            } else {
+                curve_state.funding += payment;
 
-        CURVE_STATE.save(deps.storage, &curve_state)?;
-    }
+                CURVE_STATE.save(deps.storage, &curve_state)?;
+            }
+        }
+        DonationPool::Reserve {} => {
+            curve_state.reserve += payment;
+
+            CURVE_STATE.save(deps.storage, &curve_state)?;
+        }
+    };
 
     // No minting of tokens is necessary, the supply stays the same
-    DONATIONS.save(deps.storage, &info.sender, &payment)?;
+    let total_donation =
+        DONATIONS.update(deps.storage, &info.sender, |maybe_amount| -> StdResult<_> {
+            if let Some(amount) = maybe_amount {
+                Ok(amount.checked_add(payment)?)
+            } else {
+                Ok(payment)
+            }
+        })?;
 
     Ok(Response::new()
         .add_attribute("action", "donate")
         .add_attribute("donor", info.sender)
         .add_attribute("amount", payment)
+        .add_attribute("pool", pool.to_string())
+        .add_attribute("total_donation", total_donation)
         .add_messages(msgs))
 }
 
@@ -571,6 +594,7 @@ mod tests {
                 deps,
                 mock_env(),
                 mock_info(TEST_DONOR, &[coin(donation_amount, TEST_RESERVE_DENOM)]),
+                DonationPool::Funding {},
             )
         }
 
@@ -606,6 +630,7 @@ mod tests {
                 deps.as_mut(),
                 mock_env(),
                 mock_info(TEST_DONOR, &[coin(1, "fake")]),
+                DonationPool::Funding {},
             );
             assert_that!(res)
                 .is_err()
@@ -617,7 +642,7 @@ mod tests {
         }
 
         #[test]
-        fn should_add_to_funding_pool_and_withdraw() -> Result<(), ContractError> {
+        fn test_donation() -> Result<(), ContractError> {
             let mut deps = mock_dependencies();
             // this matches `linear_curve` test case from curves.rs
             let curve_type = CurveType::SquareRoot {
@@ -653,6 +678,22 @@ mod tests {
                 .is_equal_to(ContractError::Ownership(
                     cw_ownable::OwnershipError::NotOwner,
                 ));
+
+            // execute donation to the reserve pool
+            donate(
+                deps.as_mut(),
+                mock_env(),
+                mock_info(TEST_DONOR, &[coin(donation_amount, TEST_RESERVE_DENOM)]),
+                DonationPool::Reserve {},
+            )?;
+
+            // check that the curve's reserve has been increased while supply and reserve have not
+            let curve_state = CURVE_STATE.load(&deps.storage)?;
+            assert_that!(curve_state.reserve).is_equal_to(Uint128::new(donation_amount));
+
+            // check that the donor is in the donations map
+            let donation = DONATIONS.load(&deps.storage, &Addr::unchecked(TEST_DONOR))?;
+            assert_that!(donation).is_equal_to(Uint128::new(donation_amount * 2));
 
             Ok(())
         }
