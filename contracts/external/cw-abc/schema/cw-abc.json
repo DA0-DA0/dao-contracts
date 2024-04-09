@@ -689,6 +689,20 @@
         "additionalProperties": false
       },
       {
+        "description": "Toggles the paused state (circuit breaker)",
+        "type": "object",
+        "required": [
+          "toggle_pause"
+        ],
+        "properties": {
+          "toggle_pause": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "description": "Update the funding pool forwarding. Only callable by owner.",
         "type": "object",
         "required": [
@@ -1166,6 +1180,19 @@
         "additionalProperties": false
       },
       {
+        "type": "object",
+        "required": [
+          "is_paused"
+        ],
+        "properties": {
+          "is_paused": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "description": "Returns the funding pool forwarding config for the contract. This is the address that receives any fees collected from bonding curve operation and donations",
         "type": "object",
         "required": [
@@ -1616,6 +1643,11 @@
           "type": "string"
         }
       }
+    },
+    "is_paused": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Boolean",
+      "type": "boolean"
     },
     "max_supply": {
       "$schema": "http://json-schema.org/draft-07/schema#",

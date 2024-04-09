@@ -82,6 +82,8 @@ pub enum ExecuteMsg {
         /// Addresses to be removed.
         to_remove: Vec<String>,
     },
+    /// Toggles the paused state (circuit breaker)
+    TogglePause {},
     /// Update the funding pool forwarding.
     /// Only callable by owner.
     UpdateFundingPoolForwarding {
@@ -119,6 +121,8 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    #[returns(bool)]
+    IsPaused {},
     /// Returns the funding pool forwarding config for the contract. This is the address that
     /// receives any fees collected from bonding curve operation and donations
     #[returns(Option<::cosmwasm_std::Addr>)]

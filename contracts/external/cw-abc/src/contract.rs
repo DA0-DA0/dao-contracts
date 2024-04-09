@@ -16,8 +16,8 @@ use crate::curves::DecimalPlaces;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{
-    CurveState, CURVE_STATE, CURVE_TYPE, FUNDING_POOL_FORWARDING, HATCHER_ALLOWLIST, MAX_SUPPLY,
-    NEW_TOKEN_INFO, PHASE, PHASE_CONFIG, SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
+    CurveState, CURVE_STATE, CURVE_TYPE, FUNDING_POOL_FORWARDING, HATCHER_ALLOWLIST, IS_PAUSED,
+    MAX_SUPPLY, NEW_TOKEN_INFO, PHASE, PHASE_CONFIG, SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
 };
 use crate::{commands, queries};
 
@@ -153,6 +153,9 @@ pub fn instantiate(
     // Save the curve state
     CURVE_STATE.save(deps.storage, &curve_state)?;
 
+    // Set the paused state
+    IS_PAUSED.save(deps.storage, &false)?;
+
     Ok(Response::default().add_submessages(msgs))
 }
 
@@ -163,14 +166,20 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    // If paused, then only the owner can perform actions
+    if IS_PAUSED.load(deps.storage)? {
+        cw_ownable::assert_owner(deps.storage, &info.sender)
+            .map_err(|_| ContractError::Paused {})?;
+    }
+
     match msg {
-        ExecuteMsg::Buy {} => commands::execute_buy(deps, env, info),
-        ExecuteMsg::Sell {} => commands::execute_sell(deps, env, info),
-        ExecuteMsg::Close {} => commands::execute_close(deps, info),
-        ExecuteMsg::Donate {} => commands::execute_donate(deps, env, info),
-        ExecuteMsg::Withdraw { amount } => commands::execute_withdraw(deps, env, info, amount),
+        ExecuteMsg::Buy {} => commands::buy(deps, env, info),
+        ExecuteMsg::Sell {} => commands::sell(deps, env, info),
+        ExecuteMsg::Close {} => commands::close(deps, info),
+        ExecuteMsg::Donate {} => commands::donate(deps, env, info),
+        ExecuteMsg::Withdraw { amount } => commands::withdraw(deps, env, info, amount),
         ExecuteMsg::UpdateFundingPoolForwarding { address } => {
-            commands::execute_update_funding_pool_forwarding(deps, env, info, address)
+            commands::update_funding_pool_forwarding(deps, env, info, address)
         }
         ExecuteMsg::UpdateMaxSupply { max_supply } => {
             commands::update_max_supply(deps, info, max_supply)
@@ -179,6 +188,7 @@ pub fn execute(
         ExecuteMsg::UpdateHatchAllowlist { to_add, to_remove } => {
             commands::update_hatch_allowlist(deps, info, to_add, to_remove)
         }
+        ExecuteMsg::TogglePause {} => commands::toggle_pause(deps, info),
         ExecuteMsg::UpdatePhaseConfig(update_msg) => {
             commands::update_phase_config(deps, env, info, update_msg)
         }
@@ -218,6 +228,7 @@ pub fn do_query(deps: Deps, _env: Env, msg: QueryMsg, curve_fn: CurveFn) -> StdR
         QueryMsg::HatcherAllowlist { start_after, limit } => {
             to_json_binary(&queries::query_hatcher_allowlist(deps, start_after, limit)?)
         }
+        QueryMsg::IsPaused {} => to_json_binary(&IS_PAUSED.load(deps.storage)?),
         QueryMsg::MaxSupply {} => to_json_binary(&queries::query_max_supply(deps)?),
         QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
         QueryMsg::PhaseConfig {} => to_json_binary(&queries::query_phase_config(deps)?),

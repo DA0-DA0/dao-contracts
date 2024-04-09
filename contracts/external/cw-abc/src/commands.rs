@@ -10,11 +10,11 @@ use crate::abc::{CommonsPhase, CurveType};
 use crate::msg::UpdatePhaseConfigMsg;
 use crate::state::{
     CURVE_STATE, CURVE_TYPE, DONATIONS, FUNDING_POOL_FORWARDING, HATCHERS, HATCHER_ALLOWLIST,
-    MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
+    IS_PAUSED, MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
 };
 use crate::ContractError;
 
-pub fn execute_buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     let curve_type = CURVE_TYPE.load(deps.storage)?;
     let curve_fn = curve_type.to_curve_fn();
 
@@ -148,11 +148,7 @@ fn update_hatcher_contributions(
 }
 
 /// Sell tokens on the bonding curve
-pub fn execute_sell(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-) -> Result<Response, ContractError> {
+pub fn sell(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     let curve_type = CURVE_TYPE.load(deps.storage)?;
     let curve_fn = curve_type.to_curve_fn();
 
@@ -277,7 +273,7 @@ fn calculate_exit_fee(
 }
 
 /// Transitions the bonding curve to a closed phase where only sells are allowed
-pub fn execute_close(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn close(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     PHASE.save(deps.storage, &CommonsPhase::Closed)?;
@@ -286,11 +282,7 @@ pub fn execute_close(deps: DepsMut, info: MessageInfo) -> Result<Response, Contr
 }
 
 /// Send a donation to the funding pool
-pub fn execute_donate(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-) -> Result<Response, ContractError> {
+pub fn donate(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     let mut curve_state = CURVE_STATE.load(deps.storage)?;
 
     let payment = must_pay(&info, &curve_state.reserve_denom)?;
@@ -318,7 +310,7 @@ pub fn execute_donate(
 }
 
 /// Withdraw funds from the funding pool (only callable by owner)
-pub fn execute_withdraw(
+pub fn withdraw(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
@@ -356,7 +348,7 @@ pub fn execute_withdraw(
 }
 
 /// Updates the funding pool forwarding (only callable by owner)
-pub fn execute_update_funding_pool_forwarding(
+pub fn update_funding_pool_forwarding(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
@@ -411,7 +403,19 @@ pub fn update_max_supply(
         .add_attribute("value", max_supply.unwrap_or(Uint128::MAX).to_string()))
 }
 
-/// Add and remove addresses from the hatcher allowlist
+/// Toggles the paused state (only callable by owner)
+pub fn toggle_pause(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    let is_paused =
+        IS_PAUSED.update(deps.storage, |is_paused| -> StdResult<_> { Ok(!is_paused) })?;
+
+    Ok(Response::new()
+        .add_attribute("action", "toggle_pause")
+        .add_attribute("is_paused", is_paused.to_string()))
+}
+
+/// Add and remove addresses from the hatcher allowlist (only callable by owner)
 pub fn update_hatch_allowlist(
     deps: DepsMut,
     info: MessageInfo,
@@ -439,7 +443,7 @@ pub fn update_hatch_allowlist(
     Ok(Response::new().add_attributes(vec![("action", "update_hatch_allowlist")]))
 }
 
-/// Update the configuration of a particular phase
+/// Update the configuration of a particular phase (only callable by owner)
 pub fn update_phase_config(
     deps: DepsMut,
     _env: Env,
@@ -511,7 +515,7 @@ pub fn update_phase_config(
     }
 }
 
-/// Update the bonding curve. Only callable by the owner.
+/// Update the bonding curve. (only callable by owner)
 /// NOTE: this changes the pricing. Use with caution.
 /// TODO: what other limitations do we want to put on this?
 pub fn update_curve(
@@ -563,7 +567,7 @@ mod tests {
         const TEST_DONOR: &str = "donor";
 
         fn exec_donate(deps: DepsMut, donation_amount: u128) -> Result<Response, ContractError> {
-            execute_donate(
+            donate(
                 deps,
                 mock_env(),
                 mock_info(TEST_DONOR, &[coin(donation_amount, TEST_RESERVE_DENOM)]),
@@ -598,7 +602,7 @@ mod tests {
             let init_msg = default_instantiate_msg(2, 8, curve_type);
             mock_init(deps.as_mut(), init_msg)?;
 
-            let res = execute_donate(
+            let res = donate(
                 deps.as_mut(),
                 mock_env(),
                 mock_info(TEST_DONOR, &[coin(1, "fake")]),
@@ -635,7 +639,7 @@ mod tests {
             assert_that!(donation).is_equal_to(Uint128::new(donation_amount));
 
             // check that the owner can withdraw
-            execute_withdraw(
+            withdraw(
                 deps.as_mut(),
                 mock_env(),
                 mock_info(TEST_CREATOR, &[]),
@@ -643,8 +647,12 @@ mod tests {
             )?;
 
             // check that a random can't withdraw
-            let res = execute_withdraw(deps.as_mut(), mock_env(), mock_info("random", &[]), None);
-            assert!(res.is_err());
+            let res = withdraw(deps.as_mut(), mock_env(), mock_info("random", &[]), None);
+            assert_that!(res)
+                .is_err()
+                .is_equal_to(ContractError::Ownership(
+                    cw_ownable::OwnershipError::NotOwner,
+                ));
 
             Ok(())
         }
@@ -672,6 +680,50 @@ mod tests {
             // check that the donor is in the donations map
             let donation = DONATIONS.load(&deps.storage, &Addr::unchecked(TEST_DONOR))?;
             assert_that!(donation).is_equal_to(Uint128::new(donation_amount));
+
+            Ok(())
+        }
+
+        #[test]
+        fn test_pause() -> Result<(), ContractError> {
+            let mut deps = mock_dependencies();
+            // this matches `linear_curve` test case from curves.rs
+            let curve_type = CurveType::SquareRoot {
+                slope: Uint128::new(1),
+                scale: 1,
+            };
+            let init_msg = default_instantiate_msg(2, 8, curve_type);
+            mock_init(deps.as_mut(), init_msg)?;
+
+            // Ensure not paused on instantiate
+            assert!(!IS_PAUSED.load(&deps.storage)?);
+
+            // Ensure random cannot pause
+            let res = toggle_pause(deps.as_mut(), mock_info("random", &[]));
+            assert_that!(res)
+                .is_err()
+                .is_equal_to(ContractError::Ownership(
+                    cw_ownable::OwnershipError::NotOwner,
+                ));
+
+            // Ensure paused after toggling
+            toggle_pause(deps.as_mut(), mock_info(TEST_CREATOR, &[]))?;
+            assert!(IS_PAUSED.load(&deps.storage)?);
+
+            // Ensure random cannot do anything
+            let res = crate::contract::execute(
+                deps.as_mut(),
+                mock_env(),
+                mock_info("random", &[]),
+                crate::msg::ExecuteMsg::TogglePause {},
+            );
+            assert_that!(res)
+                .is_err()
+                .is_equal_to(ContractError::Paused {});
+
+            // Ensure unpaused after toggling
+            toggle_pause(deps.as_mut(), mock_info(TEST_CREATOR, &[]))?;
+            assert!(!IS_PAUSED.load(&deps.storage)?);
 
             Ok(())
         }

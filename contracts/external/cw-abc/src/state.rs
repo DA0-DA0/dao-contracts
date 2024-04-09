@@ -36,6 +36,9 @@ impl CurveState {
     }
 }
 
+/// The paused state for implementing a circuit breaker
+pub const IS_PAUSED: Item<bool> = Item::new("is_paused");
+
 pub const CURVE_STATE: Item<CurveState> = Item::new("curve_state");
 
 pub const CURVE_TYPE: Item<CurveType> = Item::new("curve_type");
