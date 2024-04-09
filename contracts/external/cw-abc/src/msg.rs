@@ -141,6 +141,9 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    /// Returns the Initial Supply of the supply token when the ABC was created
+    #[returns(Uint128)]
+    InitialSupply {},
     /// Returns the Maximum Supply of the supply token
     #[returns(Uint128)]
     MaxSupply {},

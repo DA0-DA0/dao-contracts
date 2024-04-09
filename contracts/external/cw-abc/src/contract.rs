@@ -16,8 +16,9 @@ use crate::curves::DecimalPlaces;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{
-    CurveState, CURVE_STATE, CURVE_TYPE, FUNDING_POOL_FORWARDING, HATCHER_ALLOWLIST, IS_PAUSED,
-    MAX_SUPPLY, NEW_TOKEN_INFO, PHASE, PHASE_CONFIG, SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
+    CurveState, CURVE_STATE, CURVE_TYPE, FUNDING_POOL_FORWARDING, HATCHER_ALLOWLIST,
+    INITIAL_SUPPLY, IS_PAUSED, MAX_SUPPLY, NEW_TOKEN_INFO, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
+    TOKEN_ISSUER_CONTRACT,
 };
 use crate::{commands, queries};
 
@@ -125,16 +126,21 @@ pub fn instantiate(
                 Some(end_index) => {
                     let issuer = deps.api.addr_validate(&issuer_subdenom[..end_index])?;
 
-                    // Set the existing supply on the curve state
+                    // Query for the existing supply
                     let existing_supply = deps.querier.query_supply(&denom)?;
 
+                    // Validate the existing supply is not more than the ABC max supply
                     if let Some(max_supply) = supply.max_supply {
                         if existing_supply.amount > max_supply {
                             return Err(ContractError::CannotExceedMaxSupply { max: max_supply });
                         }
                     }
 
+                    // Set the curve state
                     curve_state.supply = existing_supply.amount;
+
+                    // Set the initial supply
+                    INITIAL_SUPPLY.save(deps.storage, &existing_supply.amount)?;
 
                     Ok(issuer)
                 }
@@ -229,6 +235,7 @@ pub fn do_query(deps: Deps, _env: Env, msg: QueryMsg, curve_fn: CurveFn) -> StdR
             to_json_binary(&queries::query_hatcher_allowlist(deps, start_after, limit)?)
         }
         QueryMsg::IsPaused {} => to_json_binary(&IS_PAUSED.load(deps.storage)?),
+        QueryMsg::InitialSupply {} => to_json_binary(&queries::query_initial_supply(deps)?),
         QueryMsg::MaxSupply {} => to_json_binary(&queries::query_max_supply(deps)?),
         QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
         QueryMsg::PhaseConfig {} => to_json_binary(&queries::query_phase_config(deps)?),
@@ -335,6 +342,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         return Err(ContractError::CannotExceedMaxSupply { max: max_supply });
                     }
                 }
+
+                // Set the initial supply
+                INITIAL_SUPPLY.save(deps.storage, &initial_supply)?;
 
                 // Grant an allowance to mint the initial supply
                 msgs.push(WasmMsg::Execute {

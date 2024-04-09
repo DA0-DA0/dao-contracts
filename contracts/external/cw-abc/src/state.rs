@@ -49,6 +49,9 @@ pub const FUNDING_POOL_FORWARDING: Item<Addr> = Item::new("funding_pool_forwardi
 /// The denom used for the supply token
 pub const SUPPLY_DENOM: Item<String> = Item::new("denom");
 
+/// The initial supply of the supply token when the ABC was created
+pub const INITIAL_SUPPLY: Item<Uint128> = Item::new("initial_supply");
+
 /// The maximum supply of the supply token, new tokens cannot be minted beyond this cap
 pub const MAX_SUPPLY: Item<Uint128> = Item::new("max_supply");
 
