@@ -730,6 +730,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-address-like",
+ "cw-curves",
  "cw-multi-test",
  "cw-ownable",
  "cw-paginate-storage 2.4.1",
@@ -884,6 +885,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "cw-curves"
+version = "2.4.1"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "integer-cbrt",
+ "integer-sqrt",
+ "rust_decimal",
 ]
 
 [[package]]

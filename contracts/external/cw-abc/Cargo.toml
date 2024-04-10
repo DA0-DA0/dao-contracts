@@ -4,6 +4,7 @@ authors = [
     "Ethan Frey <ethanfrey@users.noreply.github.com>",
     "Jake Hartnell",
     "Adair <adairrr@users.noreply.github.com>",
+    "Gabe Lopez <ismellike@users.noreply.github.com>",
 ]
 description = "Implements an Augmented Bonding Curve"
 # Inherits license from previous work
@@ -41,6 +42,7 @@ integer-sqrt = { workspace = true }
 integer-cbrt = { workspace = true }
 getrandom = { workspace = true, features = ["js"] }
 thiserror = { workspace = true }
+cw-curves = { workspace = true }
 
 [dev-dependencies]
 speculoos = { workspace = true }

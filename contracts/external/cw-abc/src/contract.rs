@@ -5,6 +5,7 @@ use cosmwasm_std::{
     SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
+use cw_curves::DecimalPlaces;
 use cw_tokenfactory_issuer::msg::{
     DenomUnit, ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg, Metadata,
 };
@@ -12,7 +13,6 @@ use cw_utils::parse_reply_instantiate_data;
 use dao_interface::token::{InitialBalance, TokenInfo};
 
 use crate::abc::{CommonsPhase, CurveFn};
-use crate::curves::DecimalPlaces;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{

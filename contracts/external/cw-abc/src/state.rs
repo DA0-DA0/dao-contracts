@@ -3,9 +3,8 @@ use dao_interface::token::NewTokenInfo;
 
 use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType};
 use cosmwasm_std::{Addr, Empty, Uint128};
+use cw_curves::DecimalPlaces;
 use cw_storage_plus::{Item, Map};
-
-use crate::curves::DecimalPlaces;
 
 /// Supply is dynamic and tracks the current supply of staked and ERC20 tokens.
 #[cw_serde]

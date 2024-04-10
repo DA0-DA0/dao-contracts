@@ -1,8 +1,12 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, Decimal as StdDecimal, Uint128};
+use cw_curves::{
+    curves::{Constant, Linear, SquareRoot},
+    utils::decimal,
+    Curve, DecimalPlaces,
+};
 use dao_interface::token::TokenInfo;
 
-use crate::curves::{decimal, Constant, Curve, DecimalPlaces, Linear, SquareRoot};
 use crate::ContractError;
 
 #[cw_serde]
