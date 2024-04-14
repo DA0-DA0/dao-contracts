@@ -3,6 +3,7 @@ use cosmwasm_std::Uint128;
 use cw20::{Cw20ReceiveMsg, Denom};
 use cw4::MemberChangedHookMsg;
 use cw_ownable::cw_ownable_execute;
+use cw_utils::Duration;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 
 use crate::state::{Config, RewardConfig};
@@ -27,7 +28,7 @@ pub struct InstantiateMsg {
     /// The denom in which rewards are paid out.
     pub reward_denom: Denom,
     /// The duration of the reward period in blocks.
-    pub reward_duration: u64,
+    pub reward_duration: Duration,
 }
 
 #[cw_ownable_execute]
@@ -47,7 +48,7 @@ pub enum ExecuteMsg {
     /// Used to fund this contract with native tokens.
     Fund {},
     /// Updates the reward duration which controls the rate that rewards are issued.
-    UpdateRewardDuration { new_duration: u64 },
+    UpdateRewardDuration { new_duration: Duration },
 }
 
 #[cw_serde]
