@@ -35,7 +35,7 @@
           "null"
         ],
         "items": {
-          "type": "string"
+          "$ref": "#/definitions/HatcherAllowlistEntry_for_String"
         }
       },
       "phase_config": {
@@ -268,6 +268,70 @@
                 "$ref": "#/definitions/MinMax"
               }
             ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "HatcherAllowlistConfig": {
+        "description": "The configuration for a member of the hatcher allowlist",
+        "type": "object",
+        "required": [
+          "config_type"
+        ],
+        "properties": {
+          "config_type": {
+            "description": "The type of the configuration",
+            "allOf": [
+              {
+                "$ref": "#/definitions/HatcherAllowlistConfigType"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "HatcherAllowlistConfigType": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "d_a_o"
+            ],
+            "properties": {
+              "d_a_o": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "HatcherAllowlistEntry_for_String": {
+        "type": "object",
+        "required": [
+          "addr",
+          "config"
+        ],
+        "properties": {
+          "addr": {
+            "type": "string"
+          },
+          "config": {
+            "$ref": "#/definitions/HatcherAllowlistConfig"
           }
         },
         "additionalProperties": false
@@ -685,7 +749,7 @@
                 "description": "Addresses to be added.",
                 "type": "array",
                 "items": {
-                  "type": "string"
+                  "$ref": "#/definitions/HatcherAllowlistEntry_for_String"
                 }
               },
               "to_remove": {
@@ -1000,6 +1064,70 @@
           }
         ]
       },
+      "HatcherAllowlistConfig": {
+        "description": "The configuration for a member of the hatcher allowlist",
+        "type": "object",
+        "required": [
+          "config_type"
+        ],
+        "properties": {
+          "config_type": {
+            "description": "The type of the configuration",
+            "allOf": [
+              {
+                "$ref": "#/definitions/HatcherAllowlistConfigType"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "HatcherAllowlistConfigType": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "d_a_o"
+            ],
+            "properties": {
+              "d_a_o": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "HatcherAllowlistEntry_for_String": {
+        "type": "object",
+        "required": [
+          "addr",
+          "config"
+        ],
+        "properties": {
+          "addr": {
+            "type": "string"
+          },
+          "config": {
+            "$ref": "#/definitions/HatcherAllowlistConfig"
+          }
+        },
+        "additionalProperties": false
+      },
       "MinMax": {
         "description": "Struct for minimum and maximum values",
         "type": "object",
@@ -1289,6 +1417,16 @@
           "hatcher_allowlist": {
             "type": "object",
             "properties": {
+              "config_type": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/HatcherAllowlistConfigType"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "limit": {
                 "type": [
                   "integer",
@@ -1393,7 +1531,39 @@
         },
         "additionalProperties": false
       }
-    ]
+    ],
+    "definitions": {
+      "HatcherAllowlistConfigType": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "d_a_o"
+            ],
+            "properties": {
+              "d_a_o": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
   },
   "migrate": null,
   "sudo": null,
@@ -1637,17 +1807,7 @@
             "null"
           ],
           "items": {
-            "type": "array",
-            "items": [
-              {
-                "$ref": "#/definitions/Addr"
-              },
-              {
-                "$ref": "#/definitions/Empty"
-              }
-            ],
-            "maxItems": 2,
-            "minItems": 2
+            "$ref": "#/definitions/HatcherAllowlistEntry_for_Addr"
           }
         }
       },
@@ -1657,9 +1817,69 @@
           "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
           "type": "string"
         },
-        "Empty": {
-          "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
-          "type": "object"
+        "HatcherAllowlistConfig": {
+          "description": "The configuration for a member of the hatcher allowlist",
+          "type": "object",
+          "required": [
+            "config_type"
+          ],
+          "properties": {
+            "config_type": {
+              "description": "The type of the configuration",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/HatcherAllowlistConfigType"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "HatcherAllowlistConfigType": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "d_a_o"
+              ],
+              "properties": {
+                "d_a_o": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "address"
+              ],
+              "properties": {
+                "address": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "HatcherAllowlistEntry_for_Addr": {
+          "type": "object",
+          "required": [
+            "addr",
+            "config"
+          ],
+          "properties": {
+            "addr": {
+              "$ref": "#/definitions/Addr"
+            },
+            "config": {
+              "$ref": "#/definitions/HatcherAllowlistConfig"
+            }
+          },
+          "additionalProperties": false
         }
       }
     },

@@ -1,13 +1,14 @@
 use crate::abc::CurveFn;
 use crate::msg::{
     CommonsPhaseConfigResponse, CurveInfoResponse, DenomResponse, DonationsResponse,
-    HatcherAllowlistResponse, HatchersResponse,
+    HatcherAllowlistEntry, HatcherAllowlistResponse, HatchersResponse,
 };
 use crate::state::{
-    CurveState, CURVE_STATE, DONATIONS, HATCHERS, HATCHER_ALLOWLIST, INITIAL_SUPPLY, MAX_SUPPLY,
-    PHASE, PHASE_CONFIG, SUPPLY_DENOM,
+    hatcher_allowlist, CurveState, HatcherAllowlistConfigType, CURVE_STATE, DONATIONS, HATCHERS,
+    INITIAL_SUPPLY, MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
 };
-use cosmwasm_std::{Deps, Order, QuerierWrapper, StdResult, Uint128};
+use cosmwasm_std::{Addr, Deps, Order, QuerierWrapper, StdResult, Uint128};
+use cw_storage_plus::Bound;
 use std::ops::Deref;
 
 /// Get the current state of the curve
@@ -91,25 +92,33 @@ pub fn query_hatcher_allowlist(
     deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
+    config_type: Option<HatcherAllowlistConfigType>,
 ) -> StdResult<HatcherAllowlistResponse> {
-    if HATCHER_ALLOWLIST.is_empty(deps.storage) {
+    if hatcher_allowlist().is_empty(deps.storage) {
         return Ok(HatcherAllowlistResponse { allowlist: None });
     }
 
-    let allowlist = cw_paginate_storage::paginate_map(
-        Deps {
-            storage: deps.storage,
-            api: deps.api,
-            querier: QuerierWrapper::new(deps.querier.deref()),
-        },
-        &HATCHER_ALLOWLIST,
-        start_after
-            .map(|addr| deps.api.addr_validate(&addr))
-            .transpose()?
-            .as_ref(),
-        limit,
-        Order::Descending,
-    )?;
+    let binding = start_after
+        .map(|x| deps.api.addr_validate(&x))
+        .transpose()?;
+    let start_after_bound = binding.as_ref().map(Bound::exclusive);
+
+    let iter = match config_type {
+        Some(config_type) => hatcher_allowlist()
+            .idx
+            .config_type
+            .prefix(config_type.to_string())
+            .range(deps.storage, start_after_bound, None, Order::Ascending),
+        None => hatcher_allowlist().range(deps.storage, start_after_bound, None, Order::Ascending),
+    }
+    .map(|result| result.map(|(addr, config)| HatcherAllowlistEntry::<Addr> { addr, config }));
+
+    let allowlist = match limit {
+        Some(limit) => iter
+            .take(limit.try_into().unwrap())
+            .collect::<StdResult<_>>(),
+        None => iter.collect::<StdResult<_>>(),
+    }?;
 
     Ok(HatcherAllowlistResponse {
         allowlist: Some(allowlist),

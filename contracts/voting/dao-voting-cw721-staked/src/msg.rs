@@ -3,6 +3,7 @@ use cosmwasm_std::Binary;
 use cw721::Cw721ReceiveMsg;
 use cw_utils::Duration;
 use dao_dao_macros::{active_query, voting_module_query};
+#[allow(unused_imports)]
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
 #[cw_serde]

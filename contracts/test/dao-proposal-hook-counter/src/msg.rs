@@ -1,4 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
+#[allow(unused_imports)]
 use cosmwasm_std::Uint128;
 use dao_hooks::{proposal::ProposalHookMsg, stake::StakeChangedHookMsg, vote::VoteHookMsg};
 

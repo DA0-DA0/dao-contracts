@@ -1,8 +1,12 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Decimal as StdDecimal, Empty, Uint128};
+use cosmwasm_std::{Addr, Decimal as StdDecimal, Uint128};
+use cw_address_like::AddressLike;
 use std::fmt::{self, Display};
 
-use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType, MinMax, ReserveToken, SupplyToken};
+use crate::{
+    abc::{CommonsPhase, CommonsPhaseConfig, CurveType, MinMax, ReserveToken, SupplyToken},
+    state::{HatcherAllowlistConfig, HatcherAllowlistConfigType},
+};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -24,7 +28,7 @@ pub struct InstantiateMsg {
     /// TODO different ways of doing this, for example DAO members?
     /// Using a whitelist contract? Merkle tree?
     /// Hatcher allowlist
-    pub hatcher_allowlist: Option<Vec<String>>,
+    pub hatcher_allowlist: Option<Vec<HatcherAllowlistEntry<String>>>,
 }
 
 /// Update the phase configurations.
@@ -82,7 +86,7 @@ pub enum ExecuteMsg {
     /// Only callable by owner.
     UpdateHatchAllowlist {
         /// Addresses to be added.
-        to_add: Vec<String>,
+        to_add: Vec<HatcherAllowlistEntry<String>>,
         /// Addresses to be removed.
         to_remove: Vec<String>,
     },
@@ -144,6 +148,7 @@ pub enum QueryMsg {
     HatcherAllowlist {
         start_after: Option<String>,
         limit: Option<u32>,
+        config_type: Option<HatcherAllowlistConfigType>,
     },
     /// Returns the Initial Supply of the supply token when the ABC was created
     #[returns(Uint128)]
@@ -161,6 +166,12 @@ pub enum QueryMsg {
     /// Returns the address of the cw-tokenfactory-issuer contract
     #[returns(::cosmwasm_std::Addr)]
     TokenContract {},
+}
+
+#[cw_serde]
+pub struct HatcherAllowlistEntry<T: AddressLike> {
+    pub addr: T,
+    pub config: HatcherAllowlistConfig,
 }
 
 #[cw_serde]
@@ -206,7 +217,7 @@ pub struct DenomResponse {
 #[cw_serde]
 pub struct HatcherAllowlistResponse {
     /// Hatcher allowlist
-    pub allowlist: Option<Vec<(Addr, Empty)>>,
+    pub allowlist: Option<Vec<HatcherAllowlistEntry<Addr>>>,
 }
 
 #[cw_serde]

@@ -1,10 +1,12 @@
+use std::fmt::{self, Display};
+
 use cosmwasm_schema::cw_serde;
 use dao_interface::token::NewTokenInfo;
 
 use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType};
-use cosmwasm_std::{Addr, Empty, Uint128};
+use cosmwasm_std::{Addr, Uint128};
 use cw_curves::DecimalPlaces;
-use cw_storage_plus::{Item, Map};
+use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 
 /// Supply is dynamic and tracks the current supply of staked and ERC20 tokens.
 #[cw_serde]
@@ -35,6 +37,54 @@ impl CurveState {
     }
 }
 
+/// The configuration for a member of the hatcher allowlist
+#[cw_serde]
+pub struct HatcherAllowlistConfig {
+    /// The type of the configuration
+    pub config_type: HatcherAllowlistConfigType,
+}
+
+#[cw_serde]
+pub enum HatcherAllowlistConfigType {
+    DAO {},
+    Address {},
+}
+
+impl Display for HatcherAllowlistConfigType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            HatcherAllowlistConfigType::DAO {} => write!(f, "DAO"),
+            HatcherAllowlistConfigType::Address {} => write!(f, "Address"),
+        }
+    }
+}
+
+pub struct HatcherAllowlistIndexes<'a> {
+    pub config_type: MultiIndex<'a, String, HatcherAllowlistConfig, &'a Addr>,
+}
+
+impl<'a> IndexList<HatcherAllowlistConfig> for HatcherAllowlistIndexes<'a> {
+    fn get_indexes(
+        &'_ self,
+    ) -> Box<dyn Iterator<Item = &'_ dyn cw_storage_plus::Index<HatcherAllowlistConfig>> + '_> {
+        let v: Vec<&dyn Index<HatcherAllowlistConfig>> = vec![&self.config_type];
+        Box::new(v.into_iter())
+    }
+}
+
+pub fn hatcher_allowlist<'a>(
+) -> IndexedMap<'a, &'a Addr, HatcherAllowlistConfig, HatcherAllowlistIndexes<'a>> {
+    let indexes = HatcherAllowlistIndexes {
+        config_type: MultiIndex::new(
+            |_, x: &HatcherAllowlistConfig| x.config_type.to_string(),
+            "hatcher_allowlist",
+            "hatcher_allowlist__config_type",
+        ),
+    };
+
+    IndexedMap::new("hatcher_allowlist", indexes)
+}
+
 /// The paused state for implementing a circuit breaker
 pub const IS_PAUSED: Item<bool> = Item::new("is_paused");
 
@@ -53,9 +103,6 @@ pub const INITIAL_SUPPLY: Item<Uint128> = Item::new("initial_supply");
 
 /// The maximum supply of the supply token, new tokens cannot be minted beyond this cap
 pub const MAX_SUPPLY: Item<Uint128> = Item::new("max_supply");
-
-/// Hatcher phase allowlist
-pub static HATCHER_ALLOWLIST: Map<&Addr, Empty> = Map::new("hatcher_allowlist");
 
 /// Keep track of who has contributed to the hatch phase
 /// TODO: cw-set? This should be a map because in the open-phase we need to be able

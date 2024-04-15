@@ -4,9 +4,10 @@ use crate::{
         ReserveToken, SupplyToken,
     },
     msg::{
-        CommonsPhaseConfigResponse, CurveInfoResponse, DenomResponse, ExecuteMsg, InstantiateMsg,
-        QueryMsg,
+        CommonsPhaseConfigResponse, CurveInfoResponse, DenomResponse, ExecuteMsg,
+        HatcherAllowlistEntry, InstantiateMsg, QueryMsg,
     },
+    state::{HatcherAllowlistConfig, HatcherAllowlistConfigType},
     ContractError,
 };
 
@@ -79,7 +80,7 @@ fn test_happy_path() {
         CurveInfoResponse {
             reserve: Uint128::new(900),
             supply: Uint128::new(9000),
-            funding: Uint128::new(100),
+            funding: Uint128::new(0),
             spot_price: Decimal::percent(10u64),
             reserve_denom: RESERVE.to_string(),
         }
@@ -126,7 +127,7 @@ fn test_happy_path() {
         CurveInfoResponse {
             reserve: Uint128::new(890),
             supply: Uint128::new(8900),
-            funding: Uint128::new(101),
+            funding: Uint128::new(0),
             spot_price: Decimal::percent(10u64),
             reserve_denom: RESERVE.to_string(),
         }
@@ -333,7 +334,20 @@ fn test_allowlist() {
     let err = abc
         .execute(
             &ExecuteMsg::UpdateHatchAllowlist {
-                to_add: vec![accounts[0].address(), accounts[1].address()],
+                to_add: vec![
+                    HatcherAllowlistEntry {
+                        addr: accounts[0].address(),
+                        config: HatcherAllowlistConfig {
+                            config_type: HatcherAllowlistConfigType::Address {},
+                        },
+                    },
+                    HatcherAllowlistEntry {
+                        addr: accounts[1].address(),
+                        config: HatcherAllowlistConfig {
+                            config_type: HatcherAllowlistConfigType::Address {},
+                        },
+                    },
+                ],
                 to_remove: vec![],
             },
             &[],
@@ -351,7 +365,20 @@ fn test_allowlist() {
     // instantiation.
     abc.execute(
         &ExecuteMsg::UpdateHatchAllowlist {
-            to_add: vec![accounts[0].address(), accounts[1].address()],
+            to_add: vec![
+                HatcherAllowlistEntry {
+                    addr: accounts[0].address(),
+                    config: HatcherAllowlistConfig {
+                        config_type: HatcherAllowlistConfigType::Address {},
+                    },
+                },
+                HatcherAllowlistEntry {
+                    addr: accounts[1].address(),
+                    config: HatcherAllowlistConfig {
+                        config_type: HatcherAllowlistConfigType::Address {},
+                    },
+                },
+            ],
             to_remove: vec![],
         },
         &[],

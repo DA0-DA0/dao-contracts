@@ -1,16 +1,17 @@
 use cosmwasm_std::{
-    ensure, to_json_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal as StdDecimal, DepsMut, Empty,
-    Env, MessageInfo, QuerierWrapper, Response, StdError, StdResult, Storage, Uint128, WasmMsg,
+    ensure, to_json_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal as StdDecimal, DepsMut, Env,
+    MessageInfo, QuerierWrapper, Response, StdError, StdResult, Storage, Uint128, WasmMsg,
 };
 use cw_tokenfactory_issuer::msg::ExecuteMsg as IssuerExecuteMsg;
 use cw_utils::must_pay;
 use std::ops::Deref;
 
 use crate::abc::{CommonsPhase, CurveType};
-use crate::msg::{DonationPool, UpdatePhaseConfigMsg};
+use crate::msg::{DonationPool, HatcherAllowlistEntry, UpdatePhaseConfigMsg};
 use crate::state::{
-    CURVE_STATE, CURVE_TYPE, DONATIONS, FUNDING_POOL_FORWARDING, HATCHERS, HATCHER_ALLOWLIST,
-    IS_PAUSED, MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
+    hatcher_allowlist, HatcherAllowlistConfigType, CURVE_STATE, CURVE_TYPE, DONATIONS,
+    FUNDING_POOL_FORWARDING, HATCHERS, IS_PAUSED, MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
+    TOKEN_ISSUER_CONTRACT,
 };
 use crate::ContractError;
 
@@ -30,7 +31,7 @@ pub fn buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Cont
         CommonsPhase::Hatch => {
             let hatch_config = phase_config.hatch;
             // Check that the potential hatcher is allowlisted
-            assert_allowlisted(deps.storage, &info.sender)?;
+            assert_allowlisted(deps.querier, deps.storage, &info.sender)?;
 
             // Update hatcher contribution
             let contribution = update_hatcher_contributions(deps.storage, &info.sender, payment)?;
@@ -51,7 +52,7 @@ pub fn buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Cont
                 phase = CommonsPhase::Open;
 
                 // Can clean up state here
-                HATCHER_ALLOWLIST.clear(deps.storage);
+                hatcher_allowlist().clear(deps.storage);
 
                 PHASE.save(deps.storage, &phase)?;
             }
@@ -394,10 +395,15 @@ pub fn update_funding_pool_forwarding(
 }
 
 /// Check if the sender is allowlisted for the hatch phase
-fn assert_allowlisted(storage: &dyn Storage, hatcher: &Addr) -> Result<(), ContractError> {
-    if !HATCHER_ALLOWLIST.is_empty(storage) {
+fn assert_allowlisted(
+    querier: QuerierWrapper,
+    storage: &dyn Storage,
+    hatcher: &Addr,
+) -> Result<(), ContractError> {
+    if !hatcher_allowlist().is_empty(storage) {
         ensure!(
-            HATCHER_ALLOWLIST.has(storage, hatcher),
+            hatcher_allowlist().has(storage, hatcher)
+                || is_allowlisted_through_daos(querier, storage, hatcher),
             ContractError::SenderNotAllowlisted {
                 sender: hatcher.to_string(),
             }
@@ -405,6 +411,39 @@ fn assert_allowlisted(storage: &dyn Storage, hatcher: &Addr) -> Result<(), Contr
     }
 
     Ok(())
+}
+
+fn is_allowlisted_through_daos(
+    querier: QuerierWrapper,
+    storage: &dyn Storage,
+    hatcher: &Addr,
+) -> bool {
+    for result in hatcher_allowlist()
+        .idx
+        .config_type
+        .prefix(HatcherAllowlistConfigType::DAO {}.to_string())
+        .range(storage, None, None, cosmwasm_std::Order::Ascending)
+    {
+        if let Ok((dao, _)) = result {
+            let voting_power_response_result: StdResult<
+                dao_interface::voting::VotingPowerAtHeightResponse,
+            > = querier.query_wasm_smart(
+                dao,
+                &dao_interface::msg::QueryMsg::VotingPowerAtHeight {
+                    address: hatcher.to_string(),
+                    height: None,
+                },
+            );
+
+            if let Ok(voting_power_response) = voting_power_response_result {
+                if voting_power_response.power > Uint128::zero() {
+                    return true;
+                }
+            }
+        }
+    }
+
+    false
 }
 
 /// Set the maximum supply (only callable by owner)
@@ -442,17 +481,19 @@ pub fn toggle_pause(deps: DepsMut, info: MessageInfo) -> Result<Response, Contra
 pub fn update_hatch_allowlist(
     deps: DepsMut,
     info: MessageInfo,
-    to_add: Vec<String>,
+    to_add: Vec<HatcherAllowlistEntry<String>>,
     to_remove: Vec<String>,
 ) -> Result<Response, ContractError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
+    let list = hatcher_allowlist();
+
     // Add addresses to the allowlist
     for allow in to_add {
-        let addr = deps.api.addr_validate(allow.as_str())?;
+        let addr = deps.api.addr_validate(allow.addr.as_str())?;
 
-        if !HATCHER_ALLOWLIST.has(deps.storage, &addr) {
-            HATCHER_ALLOWLIST.save(deps.storage, &addr, &Empty {})?;
+        if !list.has(deps.storage, &addr) {
+            list.save(deps.storage, &addr, &allow.config)?;
         }
     }
 
@@ -460,7 +501,7 @@ pub fn update_hatch_allowlist(
     for deny in to_remove {
         let addr = deps.api.addr_validate(deny.as_str())?;
 
-        HATCHER_ALLOWLIST.remove(deps.storage, &addr);
+        list.remove(deps.storage, &addr)?;
     }
 
     Ok(Response::new().add_attributes(vec![("action", "update_hatch_allowlist")]))

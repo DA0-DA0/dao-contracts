@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response, StdError,
-    StdResult, SubMsg, Uint128, WasmMsg,
+    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, StdResult,
+    SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_curves::DecimalPlaces;
@@ -16,9 +16,8 @@ use crate::abc::{CommonsPhase, CurveFn};
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{
-    CurveState, CURVE_STATE, CURVE_TYPE, FUNDING_POOL_FORWARDING, HATCHER_ALLOWLIST,
-    INITIAL_SUPPLY, IS_PAUSED, MAX_SUPPLY, NEW_TOKEN_INFO, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
-    TOKEN_ISSUER_CONTRACT,
+    CurveState, CURVE_STATE, CURVE_TYPE, FUNDING_POOL_FORWARDING, INITIAL_SUPPLY, IS_PAUSED,
+    MAX_SUPPLY, NEW_TOKEN_INFO, PHASE, PHASE_CONFIG, SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
 };
 use crate::{commands, queries};
 
@@ -76,10 +75,11 @@ pub fn instantiate(
 
     if let Some(allowlist) = hatcher_allowlist {
         for hatcher in allowlist {
-            let hatcher = deps.api.addr_validate(&hatcher)?;
+            let addr = deps.api.addr_validate(hatcher.addr.as_str())?;
+            let list = crate::state::hatcher_allowlist();
 
-            if !HATCHER_ALLOWLIST.has(deps.storage, &hatcher) {
-                HATCHER_ALLOWLIST.save(deps.storage, &hatcher, &Empty {})?;
+            if !list.has(deps.storage, &addr) {
+                list.save(deps.storage, &addr, &hatcher.config)?;
             }
         }
     }
@@ -240,9 +240,16 @@ pub fn do_query(deps: Deps, _env: Env, msg: QueryMsg, curve_fn: CurveFn) -> StdR
         QueryMsg::Hatchers { start_after, limit } => {
             to_json_binary(&queries::query_hatchers(deps, start_after, limit)?)
         }
-        QueryMsg::HatcherAllowlist { start_after, limit } => {
-            to_json_binary(&queries::query_hatcher_allowlist(deps, start_after, limit)?)
-        }
+        QueryMsg::HatcherAllowlist {
+            start_after,
+            limit,
+            config_type,
+        } => to_json_binary(&queries::query_hatcher_allowlist(
+            deps,
+            start_after,
+            limit,
+            config_type,
+        )?),
         QueryMsg::IsPaused {} => to_json_binary(&IS_PAUSED.load(deps.storage)?),
         QueryMsg::InitialSupply {} => to_json_binary(&queries::query_initial_supply(deps)?),
         QueryMsg::MaxSupply {} => to_json_binary(&queries::query_max_supply(deps)?),

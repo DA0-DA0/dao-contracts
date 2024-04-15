@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use crate::state::BeforeSendHookInfo;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Uint128};
