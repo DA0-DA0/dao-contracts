@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response, StdResult,
-    SubMsg, Uint128, WasmMsg,
+    to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response, StdError,
+    StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_curves::DecimalPlaces;
@@ -129,15 +129,24 @@ pub fn instantiate(
                     // Query for the existing supply
                     let existing_supply = deps.querier.query_supply(&denom)?;
 
-                    // Validate the existing supply is not more than the ABC max supply
+                    // Set the curve state
+                    curve_state.supply = existing_supply.amount;
+
+                    // Validate max supply
                     if let Some(max_supply) = supply.max_supply {
-                        if existing_supply.amount > max_supply {
+                        let max_mint_supply =
+                            curve_type.to_curve_fn()(curve_state.clone().decimals)
+                                .supply(phase_config.hatch.initial_raise.max);
+
+                        if existing_supply
+                            .amount
+                            .checked_add(max_mint_supply)
+                            .map_err(StdError::overflow)?
+                            > max_supply
+                        {
                             return Err(ContractError::CannotExceedMaxSupply { max: max_supply });
                         }
                     }
-
-                    // Set the curve state
-                    curve_state.supply = existing_supply.amount;
 
                     // Set the initial supply
                     INITIAL_SUPPLY.save(deps.storage, &existing_supply.amount)?;
@@ -336,25 +345,29 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 |previous, new_balance| previous + new_balance.amount,
             );
 
-            if !initial_supply.is_zero() {
-                if let Some(max_supply) = MAX_SUPPLY.may_load(deps.storage)? {
-                    if initial_supply > max_supply {
-                        return Err(ContractError::CannotExceedMaxSupply { max: max_supply });
-                    }
-                }
+            // Validate max supply
+            if let Some(max_supply) = MAX_SUPPLY.may_load(deps.storage)? {
+                // Load relevant data
+                let curve_type = CURVE_TYPE.load(deps.storage)?;
+                let curve_state = CURVE_STATE.load(deps.storage)?;
+                let phase_config = PHASE_CONFIG.load(deps.storage)?;
 
+                // Validate that the max supply isn't exceeded after max mintage
+                let max_mint_supply = curve_type.to_curve_fn()(curve_state.clone().decimals)
+                    .supply(phase_config.hatch.initial_raise.max);
+
+                if initial_supply
+                    .checked_add(max_mint_supply)
+                    .map_err(StdError::overflow)?
+                    > max_supply
+                {
+                    return Err(ContractError::CannotExceedMaxSupply { max: max_supply });
+                }
+            }
+
+            if !initial_supply.is_zero() {
                 // Set the initial supply
                 INITIAL_SUPPLY.save(deps.storage, &initial_supply)?;
-
-                // Grant an allowance to mint the initial supply
-                msgs.push(WasmMsg::Execute {
-                    contract_addr: issuer_addr.clone(),
-                    msg: to_json_binary(&IssuerExecuteMsg::SetMinterAllowance {
-                        address: env.contract.address.to_string(),
-                        allowance: initial_supply,
-                    })?,
-                    funds: vec![],
-                });
 
                 // Call issuer contract to mint tokens for initial balances
                 new_token_info
