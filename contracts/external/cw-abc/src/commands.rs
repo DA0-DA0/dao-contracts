@@ -418,27 +418,26 @@ fn is_allowlisted_through_daos(
     storage: &dyn Storage,
     hatcher: &Addr,
 ) -> bool {
-    for result in hatcher_allowlist()
+    for (dao, _) in hatcher_allowlist()
         .idx
         .config_type
         .prefix(HatcherAllowlistConfigType::DAO {}.to_string())
         .range(storage, None, None, cosmwasm_std::Order::Ascending)
+        .flatten()
     {
-        if let Ok((dao, _)) = result {
-            let voting_power_response_result: StdResult<
-                dao_interface::voting::VotingPowerAtHeightResponse,
-            > = querier.query_wasm_smart(
-                dao,
-                &dao_interface::msg::QueryMsg::VotingPowerAtHeight {
-                    address: hatcher.to_string(),
-                    height: None,
-                },
-            );
+        let voting_power_response_result: StdResult<
+            dao_interface::voting::VotingPowerAtHeightResponse,
+        > = querier.query_wasm_smart(
+            dao,
+            &dao_interface::msg::QueryMsg::VotingPowerAtHeight {
+                address: hatcher.to_string(),
+                height: None,
+            },
+        );
 
-            if let Ok(voting_power_response) = voting_power_response_result {
-                if voting_power_response.power > Uint128::zero() {
-                    return true;
-                }
+        if let Ok(voting_power_response) = voting_power_response_result {
+            if voting_power_response.power > Uint128::zero() {
+                return true;
             }
         }
     }
