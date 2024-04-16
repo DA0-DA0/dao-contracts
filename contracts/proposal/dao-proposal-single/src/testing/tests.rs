@@ -3152,7 +3152,7 @@ pub fn test_migrate_updates_version() {
 //         address: CREATOR_ADDR.to_string(),
 //     }];
 
-//     let cw20_id = app.store_code(cw20_base_contract());
+//     let cw20_id = app.store_code(cw20_hooks_contract());
 //     let cw20_stake_id = app.store_code(cw20_stake_contract());
 //     let staked_balances_voting_id = app.store_code(cw20_staked_balances_voting_contract());
 //     let core_contract_id = app.store_code(cw_core_contract());

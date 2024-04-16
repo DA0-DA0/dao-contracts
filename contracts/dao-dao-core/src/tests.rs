@@ -17,6 +17,7 @@ use dao_interface::{
     state::{Admin, Config, ModuleInstantiateInfo, ProposalModule, ProposalModuleStatus},
     voting::{InfoResponse, VotingPowerAtHeightResponse},
 };
+use dao_testing::contracts::cw20_hooks_contract;
 
 use crate::{
     contract::{derive_proposal_module_prefix, migrate, CONTRACT_NAME, CONTRACT_VERSION},
@@ -25,15 +26,6 @@ use crate::{
 };
 
 const CREATOR_ADDR: &str = "creator";
-
-fn cw20_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        cw20_base::contract::execute,
-        cw20_base::contract::instantiate,
-        cw20_base::contract::query,
-    );
-    Box::new(contract)
-}
 
 fn cw721_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -96,16 +88,17 @@ fn instantiate_gov(app: &mut App, code_id: u64, msg: InstantiateMsg) -> Addr {
 
 fn test_instantiate_with_n_gov_modules(n: usize) {
     let mut app = App::default();
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_hooks_contract());
     let gov_id = app.store_code(cw_core_contract());
 
-    let cw20_instantiate = cw20_base::msg::InstantiateMsg {
+    let cw20_instantiate = cw20_hooks::msg::InstantiateMsg {
         name: "DAO".to_string(),
         symbol: "DAO".to_string(),
         decimals: 6,
         initial_balances: vec![],
         mint: None,
         marketing: None,
+        owner: None,
     };
     let instantiate = InstantiateMsg {
         dao_uri: None,
@@ -173,19 +166,20 @@ fn test_valid_instantiate() {
 }
 
 #[test]
-#[should_panic(expected = "Error parsing into type cw20_base::msg::InstantiateMsg: Invalid type")]
+#[should_panic(expected = "Error parsing into type cw20_hooks::msg::InstantiateMsg: Invalid type")]
 fn test_instantiate_with_submessage_failure() {
     let mut app = App::default();
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_hooks_contract());
     let gov_id = app.store_code(cw_core_contract());
 
-    let cw20_instantiate = cw20_base::msg::InstantiateMsg {
+    let cw20_instantiate = cw20_hooks::msg::InstantiateMsg {
         name: "DAO".to_string(),
         symbol: "DAO".to_string(),
         decimals: 6,
         initial_balances: vec![],
         mint: None,
         marketing: None,
+        owner: None,
     };
 
     let mut governance_modules = (0..3)
@@ -975,7 +969,7 @@ fn do_standard_instantiate(auto_add: bool, admin: Option<String>) -> (Addr, App)
     let govmod_id = app.store_code(sudo_proposal_contract());
     let voting_id = app.store_code(cw20_balances_voting());
     let gov_id = app.store_code(cw_core_contract());
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_hooks_contract());
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -1692,7 +1686,7 @@ fn test_list_items() {
     let govmod_id = app.store_code(sudo_proposal_contract());
     let voting_id = app.store_code(cw20_balances_voting());
     let gov_id = app.store_code(cw_core_contract());
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_hooks_contract());
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -1811,7 +1805,7 @@ fn test_instantiate_with_items() {
     let govmod_id = app.store_code(sudo_proposal_contract());
     let voting_id = app.store_code(cw20_balances_voting());
     let gov_id = app.store_code(cw_core_contract());
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_hooks_contract());
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -1927,18 +1921,19 @@ fn test_instantiate_with_items() {
 fn test_cw20_receive_auto_add() {
     let (gov_addr, mut app) = do_standard_instantiate(true, None);
 
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_hooks_contract());
     let another_cw20 = app
         .instantiate_contract(
             cw20_id,
             Addr::unchecked(CREATOR_ADDR),
-            &cw20_base::msg::InstantiateMsg {
+            &cw20_hooks::msg::InstantiateMsg {
                 name: "DAO".to_string(),
                 symbol: "DAO".to_string(),
                 decimals: 6,
                 initial_balances: vec![],
                 mint: None,
                 marketing: None,
+                owner: None,
             },
             &[],
             "another-token",
@@ -2074,18 +2069,19 @@ fn test_cw20_receive_auto_add() {
 fn test_cw20_receive_no_auto_add() {
     let (gov_addr, mut app) = do_standard_instantiate(false, None);
 
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_hooks_contract());
     let another_cw20 = app
         .instantiate_contract(
             cw20_id,
             Addr::unchecked(CREATOR_ADDR),
-            &cw20_base::msg::InstantiateMsg {
+            &cw20_hooks::msg::InstantiateMsg {
                 name: "DAO".to_string(),
                 symbol: "DAO".to_string(),
                 decimals: 6,
                 initial_balances: vec![],
                 mint: None,
                 marketing: None,
+                owner: None,
             },
             &[],
             "another-token",
@@ -2654,7 +2650,7 @@ fn test_migrate_from_compatible() {
     let govmod_id = app.store_code(sudo_proposal_contract());
     let voting_id = app.store_code(cw20_balances_voting());
     let gov_id = app.store_code(cw_core_contract());
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_hooks_contract());
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -2743,7 +2739,7 @@ fn test_migrate_from_beta() {
     let voting_id = app.store_code(cw20_balances_voting());
     let core_id = app.store_code(cw_core_contract());
     let v1_core_id = app.store_code(v1_cw_core_contract());
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_hooks_contract());
 
     let proposal_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),

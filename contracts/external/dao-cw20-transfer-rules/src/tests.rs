@@ -1,0 +1,826 @@
+use cosmwasm_std::{to_json_binary, Addr, Decimal, Empty, Uint128};
+use cw20::Cw20Coin;
+use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
+use cw_ownable::{Ownership, OwnershipError};
+use dao_interface::{
+    msg::QueryMsg as DaoQueryMsg,
+    state::{Admin, ModuleInstantiateInfo},
+    voting::Query as VotingQueryMsg,
+};
+use dao_testing::contracts::{
+    cw20_stake_contract, cw20_staked_balances_voting_contract, dao_dao_contract,
+    pre_propose_single_contract, proposal_single_contract,
+};
+use dao_voting::{
+    deposit::{DepositRefundPolicy, DepositToken, UncheckedDepositInfo, VotingModuleTokenType},
+    pre_propose::PreProposeInfo,
+    threshold::PercentageThreshold,
+    threshold::Threshold,
+};
+
+use cw20_hooks::ContractError as Cw20HooksContractError;
+
+use crate::{
+    msg::{
+        AllowanceEntry, AllowanceResponse, AllowanceUpdate, ConfigResponse, ExecuteMsg,
+        InstantiateMsg, ListAllowancesResponse, QueryMsg,
+    },
+    state::{Allowance, Config},
+    ContractError,
+};
+
+fn dao_cw20_transfer_rules_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        crate::contract::execute,
+        crate::contract::instantiate,
+        crate::contract::query,
+    );
+    Box::new(contract)
+}
+
+fn cw20_hooks_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw20_hooks::contract::execute,
+        cw20_hooks::contract::instantiate,
+        cw20_hooks::contract::query,
+    )
+    .with_reply(cw20_hooks::contract::reply)
+    .with_migrate(cw20_hooks::contract::migrate);
+    Box::new(contract)
+}
+
+const ADDR1: &str = "addr1";
+const ADDR2: &str = "addr2";
+const ADDR3: &str = "addr3";
+const ALLOWED: &str = "allowed";
+const RANDOM: &str = "random";
+
+fn setup_cw20_dao(app: &mut App) -> (Addr, Addr, Addr, Addr) {
+    let cw20_hooks_code_id = app.store_code(cw20_hooks_contract());
+    let dao_dao_core_id = app.store_code(dao_dao_contract());
+    let prop_single_id = app.store_code(proposal_single_contract());
+    let pre_propose_single_id = app.store_code(pre_propose_single_contract());
+    let cw20_stake_id = app.store_code(cw20_stake_contract());
+    let cw20_voting_code_id = app.store_code(cw20_staked_balances_voting_contract());
+    let dao_cw20_transfer_rules_code_id = app.store_code(dao_cw20_transfer_rules_contract());
+
+    let initial_balances = vec![
+        Cw20Coin {
+            address: ADDR1.to_string(),
+            amount: Uint128::new(100_000_000),
+        },
+        Cw20Coin {
+            address: ADDR2.to_string(),
+            amount: Uint128::new(100_000_000),
+        },
+        Cw20Coin {
+            address: ADDR3.to_string(),
+            amount: Uint128::new(100_000_000),
+        },
+    ];
+
+    let msg = dao_interface::msg::InstantiateMsg {
+        admin: None,
+        name: "DAO DAO".to_string(),
+        description: "A DAO that makes DAO tooling".to_string(),
+        image_url: Some("https://zmedley.com/raw_logo.png".to_string()),
+        dao_uri: None,
+        automatically_add_cw20s: false,
+        automatically_add_cw721s: false,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: cw20_voting_code_id,
+            msg: to_json_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
+                token_info: dao_voting_cw20_staked::msg::TokenInfo::New {
+                    code_id: cw20_hooks_code_id,
+                    label: "DAO DAO Gov token".to_string(),
+                    name: "DAO".to_string(),
+                    symbol: "DAO".to_string(),
+                    decimals: 6,
+                    initial_balances: initial_balances.clone(),
+                    marketing: None,
+                    staking_code_id: cw20_stake_id,
+                    unstaking_duration: Some(cw_utils::Duration::Time(1209600)),
+                    initial_dao_balance: Some(Uint128::new(1000000000)),
+                },
+                active_threshold: None,
+            })
+            .unwrap(),
+            funds: vec![],
+            admin: Some(Admin::CoreModule {}),
+            label: "DAO DAO Voting Module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
+            code_id: prop_single_id,
+            msg: to_json_binary(&dao_proposal_single::msg::InstantiateMsg {
+                min_voting_period: None,
+                threshold: Threshold::ThresholdQuorum {
+                    threshold: PercentageThreshold::Majority {},
+                    quorum: PercentageThreshold::Percent(Decimal::percent(10)),
+                },
+                max_voting_period: cw_utils::Duration::Time(432000),
+                allow_revoting: false,
+                only_members_execute: true,
+                pre_propose_info: PreProposeInfo::ModuleMayPropose {
+                    info: ModuleInstantiateInfo {
+                        code_id: pre_propose_single_id,
+                        msg: to_json_binary(&dao_pre_propose_single::InstantiateMsg {
+                            deposit_info: Some(UncheckedDepositInfo {
+                                denom: DepositToken::VotingModuleToken {
+                                    token_type: VotingModuleTokenType::Cw20,
+                                },
+                                amount: Uint128::new(1000000000),
+                                refund_policy: DepositRefundPolicy::OnlyPassed,
+                            }),
+                            open_proposal_submission: false,
+                            extension: Empty::default(),
+                        })
+                        .unwrap(),
+                        admin: Some(Admin::CoreModule {}),
+                        funds: vec![],
+                        label: "DAO DAO Pre-Propose Module".to_string(),
+                    },
+                },
+                close_proposal_on_execution_failure: false,
+                veto: None,
+            })
+            .unwrap(),
+            admin: Some(Admin::CoreModule {}),
+            funds: vec![],
+            label: "DAO DAO Proposal Module".to_string(),
+        }],
+        initial_items: None,
+    };
+
+    // Instantiate DAO
+    let dao_addr = app
+        .instantiate_contract(
+            dao_dao_core_id,
+            Addr::unchecked(RANDOM),
+            &msg,
+            &[],
+            "Test DAO".to_string(),
+            None,
+        )
+        .unwrap();
+
+    // Get DAO voting module addr
+    let voting_module_addr: Addr = app
+        .wrap()
+        .query_wasm_smart(dao_addr.clone(), &DaoQueryMsg::VotingModule {})
+        .unwrap();
+
+    // Get staking contract addr
+    let staking_addr: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module_addr.clone(),
+            &dao_voting_cw20_staked::msg::QueryMsg::StakingContract {},
+        )
+        .unwrap();
+
+    // Get DAO cw20 token addr
+    let cw20_addr: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module_addr.clone(),
+            &VotingQueryMsg::TokenContract {},
+        )
+        .unwrap();
+
+    // Stake tokens in the DAO
+    for balance in initial_balances {
+        app.execute_contract(
+            Addr::unchecked(balance.address),
+            cw20_addr.clone(),
+            &cw20_hooks::msg::ExecuteMsg::Send {
+                contract: staking_addr.to_string(),
+                amount: Uint128::new(50_000),
+                msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+            },
+            &[],
+        )
+        .unwrap();
+    }
+
+    let transfer_rules_addr = app
+        .instantiate_contract(
+            dao_cw20_transfer_rules_code_id,
+            dao_addr.clone(),
+            &InstantiateMsg {
+                owner: Some(dao_addr.to_string()),
+                allowances: Some(vec![AllowanceUpdate {
+                    address: dao_addr.to_string(),
+                    allowance: Allowance::SendAndReceiveAnywhere,
+                }]),
+                dao: dao_addr.to_string(),
+                member_allowance: Some(Allowance::SendAndReceive),
+            },
+            &[],
+            "dao-cw20-transfer-rules",
+            None,
+        )
+        .unwrap();
+
+    // Update the block so staked balances take effect
+    app.update_block(next_block);
+
+    (dao_addr, transfer_rules_addr, cw20_addr, staking_addr)
+}
+
+#[test]
+pub fn test_transfer_send_rules() {
+    let mut app = App::default();
+    let (dao_addr, transfer_rules_addr, cw20_addr, staking_addr) = setup_cw20_dao(&mut app);
+
+    // Can't add hook if not owner (DAO).
+    app.execute_contract(
+        Addr::unchecked(RANDOM),
+        cw20_addr.clone(),
+        &cw20_hooks::msg::ExecuteMsg::AddHook {
+            addr: transfer_rules_addr.to_string(),
+        },
+        &[],
+    )
+    .unwrap_err();
+
+    // Add hook.
+    app.execute_contract(
+        dao_addr.clone(),
+        cw20_addr.clone(),
+        &cw20_hooks::msg::ExecuteMsg::AddHook {
+            addr: transfer_rules_addr.to_string(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Now that hook is added, members can't transfer to non-members.
+    let err: Cw20HooksContractError = app
+        .execute_contract(
+            Addr::unchecked(ADDR1),
+            cw20_addr.clone(),
+            &cw20_hooks::msg::ExecuteMsg::Transfer {
+                recipient: Addr::unchecked(RANDOM).to_string(),
+                amount: Uint128::new(100),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, Cw20HooksContractError::HookErrored { .. }));
+
+    // Now that hook is added, members also can't send to the staking contract.
+    let err: Cw20HooksContractError = app
+        .execute_contract(
+            Addr::unchecked(ADDR1.to_string()),
+            cw20_addr.clone(),
+            &cw20_hooks::msg::ExecuteMsg::Send {
+                contract: staking_addr.to_string(),
+                amount: Uint128::new(50_000),
+                msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, Cw20HooksContractError::HookErrored { .. }));
+
+    // Members can transfer to members.
+    app.execute_contract(
+        Addr::unchecked(ADDR1),
+        cw20_addr.clone(),
+        &cw20_hooks::msg::ExecuteMsg::Transfer {
+            recipient: Addr::unchecked(ADDR2).to_string(),
+            amount: Uint128::new(100),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Non-owner can't update allowances.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(ADDR1),
+            transfer_rules_addr.clone(),
+            &ExecuteMsg::UpdateAllowances {
+                set: vec![AllowanceUpdate {
+                    address: ALLOWED.to_string(),
+                    allowance: Allowance::SendAndReceive,
+                }],
+                remove: vec![],
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::Ownable(cw_ownable::OwnershipError::NotOwner)
+    );
+
+    // Add a new address to the allowances
+    app.execute_contract(
+        dao_addr.clone(),
+        transfer_rules_addr.clone(),
+        &ExecuteMsg::UpdateAllowances {
+            set: vec![AllowanceUpdate {
+                address: ALLOWED.to_string(),
+                allowance: Allowance::Receive,
+            }],
+            remove: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Member can now transfer to newly allowed address
+    app.execute_contract(
+        Addr::unchecked(ADDR1),
+        cw20_addr.clone(),
+        &cw20_hooks::msg::ExecuteMsg::Transfer {
+            recipient: Addr::unchecked(ALLOWED).to_string(),
+            amount: Uint128::new(100),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // DAO can transfer to non-members
+    app.execute_contract(
+        dao_addr.clone(),
+        cw20_addr.clone(),
+        &cw20_hooks::msg::ExecuteMsg::Transfer {
+            recipient: Addr::unchecked(RANDOM).to_string(),
+            amount: Uint128::new(100),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Add staking contract allowance.
+    app.execute_contract(
+        dao_addr.clone(),
+        transfer_rules_addr.clone(),
+        &ExecuteMsg::UpdateAllowances {
+            set: vec![AllowanceUpdate {
+                address: staking_addr.to_string(),
+                allowance: Allowance::SendAndReceiveAnywhere,
+            }],
+            remove: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Stake with DAO.
+    app.execute_contract(
+        Addr::unchecked(RANDOM.to_string()),
+        cw20_addr.clone(),
+        &cw20_hooks::msg::ExecuteMsg::Send {
+            contract: staking_addr.to_string(),
+            amount: Uint128::new(50),
+            msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Update the block so staked balances take effect
+    app.update_block(next_block);
+
+    // Once added to the DAO, new members can transfer to DAO members
+    app.execute_contract(
+        Addr::unchecked(ADDR1),
+        cw20_addr.clone(),
+        &cw20_hooks::msg::ExecuteMsg::Transfer {
+            recipient: Addr::unchecked(RANDOM).to_string(),
+            amount: Uint128::new(10),
+        },
+        &[],
+    )
+    .unwrap();
+    app.execute_contract(
+        Addr::unchecked(RANDOM),
+        cw20_addr.clone(),
+        &cw20_hooks::msg::ExecuteMsg::Transfer {
+            recipient: Addr::unchecked(ADDR2).to_string(),
+            amount: Uint128::new(10),
+        },
+        &[],
+    )
+    .unwrap();
+}
+
+#[test]
+pub fn test_instantiate_invalid_dao_fails() {
+    let mut app = App::default();
+    let dao_cw20_transfer_rules_code_id = app.store_code(dao_cw20_transfer_rules_contract());
+
+    app.instantiate_contract(
+        dao_cw20_transfer_rules_code_id,
+        Addr::unchecked(ADDR1),
+        &InstantiateMsg {
+            owner: None,
+            allowances: None,
+            dao: ADDR2.to_string(),
+            member_allowance: None,
+        },
+        &[],
+        "dao-cw20-transfer-rules",
+        None,
+    )
+    .unwrap_err();
+}
+
+#[test]
+pub fn test_add_remove_allowances() {
+    let mut app = App::default();
+    let (dao_addr, transfer_rules_addr, _, _) = setup_cw20_dao(&mut app);
+
+    // Ensure DAO allowance exists.
+    let allowances: ListAllowancesResponse = app
+        .wrap()
+        .query_wasm_smart(
+            transfer_rules_addr.clone(),
+            &QueryMsg::ListAllowances {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        allowances,
+        ListAllowancesResponse {
+            allowances: vec![AllowanceEntry {
+                address: dao_addr.clone(),
+                allowance: Allowance::SendAndReceiveAnywhere
+            }]
+        }
+    );
+
+    // Fail to add if not owner.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(ADDR1),
+            transfer_rules_addr.clone(),
+            &ExecuteMsg::UpdateAllowances {
+                set: vec![AllowanceUpdate {
+                    address: ADDR1.to_string(),
+                    allowance: Allowance::Send,
+                }],
+                remove: vec![],
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Ownable(OwnershipError::NotOwner));
+
+    // Add successfully if owner.
+    app.execute_contract(
+        dao_addr.clone(),
+        transfer_rules_addr.clone(),
+        &ExecuteMsg::UpdateAllowances {
+            set: vec![AllowanceUpdate {
+                address: ADDR1.to_string(),
+                allowance: Allowance::Send,
+            }],
+            remove: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Ensure new allowance added.
+    let allowances: ListAllowancesResponse = app
+        .wrap()
+        .query_wasm_smart(
+            transfer_rules_addr.clone(),
+            &QueryMsg::ListAllowances {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        allowances,
+        ListAllowancesResponse {
+            allowances: vec![
+                AllowanceEntry {
+                    address: Addr::unchecked(ADDR1),
+                    allowance: Allowance::Send,
+                },
+                AllowanceEntry {
+                    address: dao_addr.clone(),
+                    allowance: Allowance::SendAndReceiveAnywhere,
+                },
+            ]
+        }
+    );
+
+    // Fail to remove if not owner.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(RANDOM),
+            transfer_rules_addr.clone(),
+            &ExecuteMsg::UpdateAllowances {
+                set: vec![],
+                remove: vec![ADDR1.to_string()],
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Ownable(OwnershipError::NotOwner {}));
+
+    // Remove successfully if owner.
+    app.execute_contract(
+        dao_addr.clone(),
+        transfer_rules_addr.clone(),
+        &ExecuteMsg::UpdateAllowances {
+            set: vec![],
+            remove: vec![ADDR1.to_string()],
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Ensure allowance removed.
+    let allowances: ListAllowancesResponse = app
+        .wrap()
+        .query_wasm_smart(
+            transfer_rules_addr.clone(),
+            &QueryMsg::ListAllowances {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        allowances,
+        ListAllowancesResponse {
+            allowances: vec![AllowanceEntry {
+                address: dao_addr.clone(),
+                allowance: Allowance::SendAndReceiveAnywhere
+            }]
+        }
+    );
+
+    // Remove owner.
+    app.execute_contract(
+        dao_addr.clone(),
+        transfer_rules_addr.clone(),
+        &ExecuteMsg::UpdateOwnership(cw_ownable::Action::RenounceOwnership {}),
+        &[],
+    )
+    .unwrap();
+
+    // Owner can no longer add nor remove allowances.
+    let err: ContractError = app
+        .execute_contract(
+            dao_addr.clone(),
+            transfer_rules_addr.clone(),
+            &ExecuteMsg::UpdateAllowances {
+                set: vec![AllowanceUpdate {
+                    address: ADDR1.to_string(),
+                    allowance: Allowance::Send,
+                }],
+                remove: vec![dao_addr.to_string()],
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Ownable(OwnershipError::NoOwner {}));
+}
+
+#[test]
+pub fn test_update_config() {
+    let mut app = App::default();
+    let (dao_addr, transfer_rules_addr, _, _) = setup_cw20_dao(&mut app);
+
+    // Ensure config is set.
+    let config: ConfigResponse = app
+        .wrap()
+        .query_wasm_smart(transfer_rules_addr.clone(), &QueryMsg::Config {})
+        .unwrap();
+    assert_eq!(
+        config,
+        ConfigResponse {
+            config: Config {
+                dao: dao_addr.clone(),
+                member_allowance: Allowance::SendAndReceive,
+            }
+        }
+    );
+
+    // Fail to update config if not owner.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(RANDOM),
+            transfer_rules_addr.clone(),
+            &ExecuteMsg::UpdateConfig {
+                dao: None,
+                member_allowance: Some(Allowance::SendAndReceiveAnywhere),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Ownable(OwnershipError::NotOwner));
+
+    // Successfully update config if owner.
+    app.execute_contract(
+        dao_addr.clone(),
+        transfer_rules_addr.clone(),
+        &ExecuteMsg::UpdateConfig {
+            dao: Some("other_dao".to_string()),
+            member_allowance: Some(Allowance::SendAndReceiveAnywhere),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Ensure config is updated.
+    let config: ConfigResponse = app
+        .wrap()
+        .query_wasm_smart(transfer_rules_addr.clone(), &QueryMsg::Config {})
+        .unwrap();
+    assert_eq!(
+        config,
+        ConfigResponse {
+            config: Config {
+                dao: Addr::unchecked("other_dao"),
+                member_allowance: Allowance::SendAndReceiveAnywhere,
+            }
+        }
+    );
+}
+
+#[test]
+pub fn test_ownership_transfer() {
+    let mut app = App::default();
+    let (dao_addr, transfer_rules_addr, _, _) = setup_cw20_dao(&mut app);
+
+    // Ensure owner is set.
+    let ownership: Ownership<Addr> = app
+        .wrap()
+        .query_wasm_smart(transfer_rules_addr.clone(), &QueryMsg::Ownership {})
+        .unwrap();
+    assert_eq!(
+        ownership,
+        Ownership {
+            owner: Some(dao_addr.clone()),
+            pending_owner: None,
+            pending_expiry: None,
+        }
+    );
+
+    // Fail to transfer owner if not owner.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(RANDOM),
+            transfer_rules_addr.clone(),
+            &ExecuteMsg::UpdateOwnership(cw_ownable::Action::TransferOwnership {
+                new_owner: RANDOM.to_string(),
+                expiry: None,
+            }),
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::Ownable(cw_ownable::OwnershipError::NotOwner)
+    );
+
+    // Initiate transfer if owner.
+    app.execute_contract(
+        dao_addr.clone(),
+        transfer_rules_addr.clone(),
+        &ExecuteMsg::UpdateOwnership(cw_ownable::Action::TransferOwnership {
+            new_owner: ADDR3.to_string(),
+            expiry: None,
+        }),
+        &[],
+    )
+    .unwrap();
+
+    // Accept transfer from new owner.
+    app.execute_contract(
+        Addr::unchecked(ADDR3),
+        transfer_rules_addr.clone(),
+        &ExecuteMsg::UpdateOwnership(cw_ownable::Action::AcceptOwnership {}),
+        &[],
+    )
+    .unwrap();
+
+    // Ensure owner was transferred.
+    let ownership: Ownership<Addr> = app
+        .wrap()
+        .query_wasm_smart(transfer_rules_addr.clone(), &QueryMsg::Ownership {})
+        .unwrap();
+    assert_eq!(
+        ownership,
+        Ownership {
+            owner: Some(Addr::unchecked(ADDR3)),
+            pending_owner: None,
+            pending_expiry: None,
+        }
+    );
+}
+
+#[test]
+pub fn test_allowance_member_fallback() {
+    let mut app = App::default();
+    let (dao_addr, transfer_rules_addr, _, _) = setup_cw20_dao(&mut app);
+
+    // Ensure allowance for DAO member matches the configured allowance.
+    let allowance: AllowanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            transfer_rules_addr.clone(),
+            &QueryMsg::Allowance {
+                address: ADDR1.to_string(),
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        allowance,
+        AllowanceResponse {
+            allowance: Allowance::SendAndReceive,
+            is_member_allowance: true,
+        }
+    );
+
+    // Add allowance override for DAO member.
+    app.execute_contract(
+        dao_addr.clone(),
+        transfer_rules_addr.clone(),
+        &ExecuteMsg::UpdateAllowances {
+            set: vec![AllowanceUpdate {
+                address: ADDR1.to_string(),
+                allowance: Allowance::Send,
+            }],
+            remove: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Ensure allowance for DAO member uses override instead of member fallback.
+    let allowance: AllowanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            transfer_rules_addr.clone(),
+            &QueryMsg::Allowance {
+                address: ADDR1.to_string(),
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        allowance,
+        AllowanceResponse {
+            allowance: Allowance::Send,
+            is_member_allowance: false,
+        }
+    );
+
+    // Remove allowance override for DAO member.
+    app.execute_contract(
+        dao_addr.clone(),
+        transfer_rules_addr.clone(),
+        &ExecuteMsg::UpdateAllowances {
+            set: vec![],
+            remove: vec![ADDR1.to_string()],
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Ensure allowance for DAO member matches the configured allowance again.
+    let allowance: AllowanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            transfer_rules_addr.clone(),
+            &QueryMsg::Allowance {
+                address: ADDR1.to_string(),
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        allowance,
+        AllowanceResponse {
+            allowance: Allowance::SendAndReceive,
+            is_member_allowance: true,
+        }
+    );
+}

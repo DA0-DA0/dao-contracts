@@ -53,7 +53,7 @@ use crate::{
 use dao_pre_propose_multiple as cppm;
 
 use dao_testing::{
-    contracts::{cw20_balances_voting_contract, cw20_base_contract},
+    contracts::{cw20_balances_voting_contract, cw20_hooks_contract},
     ShouldExecute,
 };
 
@@ -1019,18 +1019,19 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
 fn test_different_token_proposal_deposit() {
     let mut app = App::default();
     let _govmod_id = app.store_code(proposal_multiple_contract());
-    let cw20_id = app.store_code(cw20_base_contract());
+    let cw20_id = app.store_code(cw20_hooks_contract());
     let cw20_addr = app
         .instantiate_contract(
             cw20_id,
             Addr::unchecked(CREATOR_ADDR),
-            &cw20_base::msg::InstantiateMsg {
+            &cw20_hooks::msg::InstantiateMsg {
                 name: "OAD OAD".to_string(),
                 symbol: "OAD".to_string(),
                 decimals: 6,
                 initial_balances: vec![],
                 mint: None,
                 marketing: None,
+                owner: None,
             },
             &[],
             "random-cw20",
@@ -1073,7 +1074,7 @@ fn test_different_token_proposal_deposit() {
 fn test_bad_token_proposal_deposit() {
     let mut app = App::default();
     let _govmod_id = app.store_code(proposal_multiple_contract());
-    let cw20_id = app.store_code(cw20_base_contract());
+    let cw20_id = app.store_code(cw20_hooks_contract());
     let votemod_id = app.store_code(cw20_balances_voting_contract());
 
     let votemod_addr = app
@@ -1216,7 +1217,7 @@ fn test_take_proposal_deposit() {
         app.execute_contract(
             Addr::unchecked("blue"),
             Addr::unchecked(token),
-            &cw20_base::msg::ExecuteMsg::IncreaseAllowance {
+            &cw20_hooks::msg::ExecuteMsg::IncreaseAllowance {
                 spender: govmod.to_string(),
                 amount: Uint128::new(1),
                 expires: None,
@@ -1840,7 +1841,7 @@ fn test_cant_propose_zero_power() {
         app.execute_contract(
             Addr::unchecked("blue"),
             token.clone(),
-            &cw20_base::msg::ExecuteMsg::IncreaseAllowance {
+            &cw20_hooks::msg::ExecuteMsg::IncreaseAllowance {
                 spender: pre_propose_module.to_string(),
                 amount,
                 expires: None,
@@ -4318,7 +4319,7 @@ fn test_no_double_refund_on_execute_fail_and_close() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         token_contract.clone(),
-        &cw20_base::msg::ExecuteMsg::IncreaseAllowance {
+        &cw20_hooks::msg::ExecuteMsg::IncreaseAllowance {
             spender: govmod.to_string(),
             amount: Uint128::new(1),
             expires: None,

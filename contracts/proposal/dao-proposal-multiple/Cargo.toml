@@ -50,8 +50,8 @@ dao-voting-token-staked = { workspace = true }
 dao-voting-cw721-staked = { workspace = true }
 cw-denom = { workspace = true }
 dao-testing = { workspace = true }
+cw20-hooks = { workspace = true }
 cw20-stake = { workspace = true }
-cw20-base = { workspace = true }
 cw721-base = { workspace = true }
 cw4 = { workspace = true }
 cw4-group = { workspace = true }

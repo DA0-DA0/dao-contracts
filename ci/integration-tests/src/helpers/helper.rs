@@ -41,7 +41,7 @@ pub fn create_dao(
             code_id: chain.orc.contract_map.code_id("dao_voting_cw20_staked")?,
             msg: to_json_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
                 token_info: dao_voting_cw20_staked::msg::TokenInfo::New {
-                    code_id: chain.orc.contract_map.code_id("cw20_base")?,
+                    code_id: chain.orc.contract_map.code_id("cw20_hooks")?,
                     label: "DAO DAO Gov token".to_string(),
                     name: "DAO".to_string(),
                     symbol: "DAO".to_string(),
@@ -106,7 +106,7 @@ pub fn create_dao(
         .orc
         .instantiate("dao_dao_core", op_name, &msg, key, None, vec![])?;
 
-    // add proposal, pre-propose, voting, cw20_stake, and cw20_base
+    // add proposal, pre-propose, voting, cw20_stake, and cw20_hooks
     // contracts to the orc contract map.
 
     let state: DumpStateResponse = chain
@@ -160,7 +160,7 @@ pub fn create_dao(
         .contract_map
         .add_address("cw20_stake", cw20_stake)
         .unwrap();
-    let cw20_base: String = chain
+    let cw20_hooks: String = chain
         .orc
         .query(
             "dao_voting_cw20_staked",
@@ -172,7 +172,7 @@ pub fn create_dao(
     chain
         .orc
         .contract_map
-        .add_address("cw20_base", cw20_base)
+        .add_address("cw20_hooks", cw20_hooks)
         .unwrap();
 
     Ok(DaoState {
@@ -185,7 +185,7 @@ pub fn stake_tokens(chain: &mut Chain, how_many: u128, key: &SigningKey) {
     chain
         .orc
         .execute(
-            "cw20_base",
+            "cw20_hooks",
             "send_and_stake_cw20",
             &cw20::Cw20ExecuteMsg::Send {
                 contract: chain.orc.contract_map.address("cw20_stake").unwrap(),
@@ -221,8 +221,8 @@ pub fn create_proposal(
     chain
         .orc
         .execute(
-            "cw20_base",
-            "cw20_base_increase_allowance",
+            "cw20_hooks",
+            "cw20_hooks_increase_allowance",
             &cw20::Cw20ExecuteMsg::IncreaseAllowance {
                 spender: chain
                     .orc

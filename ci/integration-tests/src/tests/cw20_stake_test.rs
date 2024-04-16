@@ -69,14 +69,14 @@ fn execute_stake_tokens(chain: &mut Chain) {
     chain
         .orc
         .contract_map
-        .add_address("cw20_base", config.token_address.as_str())
+        .add_address("cw20_hooks", config.token_address.as_str())
         .unwrap();
     chain
         .orc
         .execute(
-            "cw20_base",
+            "cw20_hooks",
             "exc_stake_stake_tokens",
-            &cw20_base::msg::ExecuteMsg::Send {
+            &cw20_hooks::msg::ExecuteMsg::Send {
                 contract: staking_addr,
                 amount: Uint128::new(100),
                 msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),

@@ -141,7 +141,8 @@ pub fn instantiate(
             let msg = WasmMsg::Instantiate {
                 admin: Some(info.sender.to_string()),
                 code_id,
-                msg: to_json_binary(&cw20_base::msg::InstantiateMsg {
+                msg: to_json_binary(&cw20_hooks::msg::InstantiateMsg {
+                    owner: Some(info.sender.to_string()),
                     name,
                     symbol,
                     decimals,
@@ -175,7 +176,7 @@ pub fn assert_valid_absolute_count_threshold(
     }
     let token_info: cw20::TokenInfoResponse = deps
         .querier
-        .query_wasm_smart(token_addr, &cw20_base::msg::QueryMsg::TokenInfo {})?;
+        .query_wasm_smart(token_addr, &cw20_hooks::msg::QueryMsg::TokenInfo {})?;
     if count > token_info.total_supply {
         return Err(ContractError::InvalidAbsoluteCount {});
     }
@@ -339,7 +340,7 @@ pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
                 // for coming to my ted talk.
                 let total_potential_power: TokenInfoResponse = deps
                     .querier
-                    .query_wasm_smart(token_contract, &cw20_base::msg::QueryMsg::TokenInfo {})?;
+                    .query_wasm_smart(token_contract, &cw20_hooks::msg::QueryMsg::TokenInfo {})?;
                 let total_power = total_potential_power
                     .total_supply
                     .full_mul(PRECISION_FACTOR);

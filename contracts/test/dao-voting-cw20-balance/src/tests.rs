@@ -11,9 +11,9 @@ const CREATOR_ADDR: &str = "creator";
 
 fn cw20_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        cw20_base::contract::execute,
-        cw20_base::contract::instantiate,
-        cw20_base::contract::query,
+        cw20_hooks::contract::execute,
+        cw20_hooks::contract::instantiate,
+        cw20_hooks::contract::query,
     );
     Box::new(contract)
 }
@@ -264,7 +264,7 @@ fn test_existing_cw20() {
         .instantiate_contract(
             cw20_id,
             Addr::unchecked(CREATOR_ADDR),
-            &cw20_base::msg::InstantiateMsg {
+            &cw20_hooks::msg::InstantiateMsg {
                 name: "DAO DAO".to_string(),
                 symbol: "DAO".to_string(),
                 decimals: 3,
@@ -274,6 +274,7 @@ fn test_existing_cw20() {
                 }],
                 mint: None,
                 marketing: None,
+                owner: None,
             },
             &[],
             "voting token",

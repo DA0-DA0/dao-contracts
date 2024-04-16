@@ -63,6 +63,7 @@ prost-types = { version = "0.12.3", default-features = false }
 quote = "1.0"
 rand = "0.8"
 schemars = "0.8"
+semver = "1.0"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde-cw-value = "0.7"
 serde_json = "1.0"
@@ -90,6 +91,7 @@ cw-tokenfactory-issuer = { path = "./contracts/external/cw-tokenfactory-issuer",
 cw-tokenfactory-types = { path = "./packages/cw-tokenfactory-types", version = "2.4.2", default-features = false }
 cw-vesting = { path = "./contracts/external/cw-vesting", version = "2.4.2" }
 cw-wormhole = { path = "./packages/cw-wormhole", version = "2.4.2" }
+cw20-hooks = { path = "./contracts/external/cw20-hooks", version = "2.4.2" }
 cw20-stake = { path = "./contracts/staking/cw20-stake", version = "2.4.2" }
 cw721-controllers = { path = "./packages/cw721-controllers", version = "2.4.2" }
 cw721-roles = { path = "./contracts/external/cw721-roles", version = "2.4.2" }

@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw20::Cw20Coin;
-use cw20_base::msg::InstantiateMarketingInfo;
+use cw20_hooks::msg::InstantiateMarketingInfo;
 use cw_utils::Duration;
 
 use dao_dao_macros::{active_query, cw20_token_query, voting_module_query};
@@ -35,7 +35,7 @@ pub enum TokenInfo {
         staking_contract: StakingInfo,
     },
     New {
-        /// Code ID for cw20 token contract.
+        /// Code ID for cw20-hooks token contract.
         code_id: u64,
         /// Label to use for instantiated cw20 contract.
         label: String,

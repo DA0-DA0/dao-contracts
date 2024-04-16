@@ -7,7 +7,7 @@ use dao_voting::threshold::ActiveThreshold;
 use dao_voting_cw4::msg::GroupContract;
 
 use crate::contracts::{
-    cw20_balances_voting_contract, cw20_base_contract, cw20_stake_contract,
+    cw20_balances_voting_contract, cw20_hooks_contract, cw20_stake_contract,
     cw20_staked_balances_voting_contract, cw4_group_contract, dao_dao_contract,
     dao_voting_cw4_contract,
 };
@@ -20,7 +20,7 @@ pub fn instantiate_with_cw20_balances_governance(
     governance_instantiate: Binary,
     initial_balances: Option<Vec<Cw20Coin>>,
 ) -> Addr {
-    let cw20_id = app.store_code(cw20_base_contract());
+    let cw20_id = app.store_code(cw20_hooks_contract());
     let core_id = app.store_code(dao_dao_contract());
     let votemod_id = app.store_code(cw20_balances_voting_contract());
 
@@ -123,7 +123,7 @@ pub fn instantiate_with_staked_balances_governance(
             .collect()
     };
 
-    let cw20_id = app.store_code(cw20_base_contract());
+    let cw20_id = app.store_code(cw20_hooks_contract());
     let cw20_stake_id = app.store_code(cw20_stake_contract());
     let staked_balances_voting_id = app.store_code(cw20_staked_balances_voting_contract());
     let core_contract_id = app.store_code(dao_dao_contract());
@@ -231,7 +231,7 @@ pub fn instantiate_with_staking_active_threshold(
     initial_balances: Option<Vec<Cw20Coin>>,
     active_threshold: Option<ActiveThreshold>,
 ) -> Addr {
-    let cw20_id = app.store_code(cw20_base_contract());
+    let cw20_id = app.store_code(cw20_hooks_contract());
     let cw20_staking_id = app.store_code(cw20_stake_contract());
     let governance_id = app.store_code(dao_dao_contract());
     let votemod_id = app.store_code(cw20_staked_balances_voting_contract());

@@ -57,7 +57,7 @@ fn main() -> Result<()> {
             code_id: orc.contract_map.code_id("dao_voting_cw20_staked")?,
             msg: to_json_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
                 token_info: dao_voting_cw20_staked::msg::TokenInfo::New {
-                    code_id: orc.contract_map.code_id("cw20_base")?,
+                    code_id: orc.contract_map.code_id("cw20_hooks")?,
                     label: "DAO DAO Gov token".to_string(),
                     name: "DAO".to_string(),
                     symbol: "DAO".to_string(),
@@ -147,7 +147,7 @@ fn main() -> Result<()> {
 
     println!(
         "NEXT_PUBLIC_CW20_CODE_ID={}",
-        orc.contract_map.code_id("cw20_base")?
+        orc.contract_map.code_id("cw20_hooks")?
     );
     println!(
         "NEXT_PUBLIC_CW4GROUP_CODE_ID={}",

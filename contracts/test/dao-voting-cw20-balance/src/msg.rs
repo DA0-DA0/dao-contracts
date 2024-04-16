@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 use cw20::Cw20Coin;
-use cw20_base::msg::InstantiateMarketingInfo;
+use cw20_hooks::msg::InstantiateMarketingInfo;
 
 use dao_dao_macros::{cw20_token_query, voting_module_query};
 

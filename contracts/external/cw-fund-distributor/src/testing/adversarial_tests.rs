@@ -4,6 +4,7 @@ use cosmwasm_std::{to_json_binary, Addr, Binary, Coin, Empty, Uint128};
 use cw20::{BalanceResponse, Cw20Coin};
 use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 use cw_utils::Duration;
+use dao_testing::contracts::cw20_hooks_contract;
 
 const CREATOR_ADDR: &str = "creator";
 const FEE_DENOM: &str = "ujuno";
@@ -20,15 +21,6 @@ fn distributor_contract() -> Box<dyn Contract<Empty>> {
         crate::contract::query,
     )
     .with_migrate(crate::contract::migrate);
-    Box::new(contract)
-}
-
-fn cw20_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        cw20_base::contract::execute,
-        cw20_base::contract::instantiate,
-        cw20_base::contract::query,
-    );
     Box::new(contract)
 }
 
@@ -58,14 +50,15 @@ fn instantiate_cw20(
     name: String,
     symbol: String,
 ) -> Addr {
-    let cw20_id = app.store_code(cw20_contract());
-    let msg = cw20_base::msg::InstantiateMsg {
+    let cw20_id = app.store_code(cw20_hooks_contract());
+    let msg = cw20_hooks::msg::InstantiateMsg {
         name,
         symbol,
         decimals: 6,
         initial_balances,
         mint: None,
         marketing: None,
+        owner: None,
     };
 
     app.instantiate_contract(cw20_id, sender, &msg, &[], "cw20", None)
@@ -75,7 +68,7 @@ fn instantiate_cw20(
 fn setup_test(initial_balances: Vec<Cw20Coin>) -> BaseTest {
     let mut app = App::default();
     let distributor_id = app.store_code(distributor_contract());
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_hooks_contract());
     let voting_id = app.store_code(staked_balances_voting_contract());
     let stake_cw20_id = app.store_code(cw20_staking_contract());
 
@@ -124,7 +117,7 @@ fn setup_test(initial_balances: Vec<Cw20Coin>) -> BaseTest {
         app.execute_contract(
             Addr::unchecked(address),
             token_contract.clone(),
-            &cw20_base::msg::ExecuteMsg::Send {
+            &cw20_hooks::msg::ExecuteMsg::Send {
                 contract: staking_contract.to_string(),
                 amount,
                 msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
