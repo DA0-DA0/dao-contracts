@@ -248,5 +248,7 @@ pub enum MigrateMsg {
 // msg.rs
 #[cw_serde]
 pub enum SudoMsg {    
-    ClockEndBlock { },
+    ClockEndBlock {
+        start_after: Option<String>,
+     },
 }

@@ -11,7 +11,7 @@ use cw_paginate_storage::{paginate_map, paginate_map_keys, paginate_map_values};
 use cw_storage_plus::Map;
 use cw_utils::{parse_reply_instantiate_data, Duration};
 use dao_interface::{
-    msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg},
+    msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg, SudoMsg},
     query::{
         AdminNominationResponse, Cw20BalanceResponse, DaoURIResponse, DumpStateResponse,
         GetItemResponse, PauseInfoResponse, ProposalModuleCountResponse, SubDao,
@@ -412,17 +412,45 @@ fn do_update_addr_list(
     map: Map<Addr, Empty>,
     to_add: Vec<String>,
     to_remove: Vec<String>,
-    verify: impl Fn(&String, Deps) -> StdResult<()>,
+    verify: impl Fn(&Addr, Deps) -> StdResult<()>,
 ) -> Result<(), ContractError> {
     let to_add = to_add
         .into_iter()
-        .map(|a| &a)
+        .map(|a| deps.api.addr_validate(&a))
         .collect::<Result<Vec<_>, _>>()?;
 
     let to_remove = to_remove
         .into_iter()
-        .map(|a| &a)
+        .map(|a| deps.api.addr_validate(&a))
         .collect::<Result<Vec<_>, _>>()?;
+
+    for addr in to_add {
+        verify(&addr, deps.as_ref())?;
+        map.save(deps.storage, addr, &Empty {})?;
+    }
+    for addr in to_remove {
+        map.remove(deps.storage, addr);
+    }
+
+    Ok(())
+}
+
+fn do_update_token_list(
+    deps: DepsMut,
+    map: Map<String, Empty>,
+    to_add: Vec<String>,
+    to_remove: Vec<String>,
+    verify: impl Fn(&String, Deps) -> StdResult<()>,
+) -> Result<(), ContractError> {
+    let to_add = to_add
+        .into_iter()
+        .map(|a| a)
+        .collect::<Vec<String>>();
+
+    let to_remove = to_remove
+        .into_iter()
+        .map(|a| a)
+        .collect::<Vec<String>>();
 
     for addr in to_add {
         verify(&addr, deps.as_ref())?;
@@ -477,6 +505,7 @@ pub fn execute_update_cw721_list(
     })?;
     Ok(Response::default().add_attribute("action", "update_cw721_list"))
 }
+
 pub fn execute_update_token_list(
     deps: DepsMut,
     env: Env,
@@ -487,12 +516,18 @@ pub fn execute_update_token_list(
     if env.contract.address != sender {
         return Err(ContractError::Unauthorized {});
     }
-    do_update_token_list(deps, ACCEPTED_NATIVE_TOKENS, to_add, to_remove, |addr, deps| {
-        let _info: cw721::ContractInfoResponse = deps
-            .querier
-            .query_wasm_smart(addr, &cw721::Cw721QueryMsg::ContractInfo {})?;
-        Ok(())
-    })?;
+    do_update_token_list(
+        deps,
+        ACCEPTED_NATIVE_TOKENS,
+        to_add,
+        to_remove,
+        |addr, deps| {
+            let _info: cw721::ContractInfoResponse = deps
+                .querier
+                .query_wasm_smart(addr, &cw721::Cw721QueryMsg::ContractInfo {})?;
+            Ok(())
+        },
+    )?;
     Ok(Response::default().add_attribute("action", "update_cw721_list"))
 }
 
@@ -564,21 +599,14 @@ pub fn execute_receive_cw20(deps: DepsMut, sender: Addr) -> Result<Response, Con
     let config = CONFIG.load(deps.storage)?;
     if !config.automatically_add_cw20s {
         // check if token is in whitelisted tokens
-        let accepted_cw20s = paginate_map_keys(
-            deps,
-            &CW20_LIST,
-            start_after
-                .map(|a| deps.api.addr_validate(&a))
-                .transpose()?,
-            None,
-            cosmwasm_std::Order::Descending,
-        )?;
+        let accepted_cw20s = query_cw20_list(deps.as_ref(), None, None)?;
 
         // Check if any cw20 is not included in accepted cw20s
-        let unwanted_cw20_tokens = accepted_cw20s
-            .into_iter()
-            .filter(|coin| !is_cw20_accepted(&coin, &accepted_cw20s))
-            .collect();
+
+        // let unwanted_cw20_tokens = accepted_cw20s
+        //     .into_iter()
+        //     .filter(|coin| !is_cw20_accepted(&coin, &accepted_cw20s))
+        //     .collect();
 
         // do something with unwanted_cw20_tokens
         let res = Response::new();
@@ -598,20 +626,12 @@ pub fn execute_receive_cw721(deps: DepsMut, sender: Addr) -> Result<Response, Co
     let config = CONFIG.load(deps.storage)?;
     if !config.automatically_add_cw721s {
         // check if token is in whitelisted tokens
-        let accepted_cw721 = paginate_map_keys(
-            deps,
-            &CW721_LIST,
-            start_after
-                .map(|a| deps.api.addr_validate(&a))
-                .transpose()?,
-            None,
-            cosmwasm_std::Order::Descending,
-        )?;
+        let accepted_cw721 = query_cw721_list(deps.as_ref(), None, None);
 
-        let unwanted_cw721_tokens = accepted_cw721
-            .into_iter()
-            .filter(|addr| !is_cw721_accepted(&addr, &accepted_cw721))
-            .collect();
+        // let unwanted_cw721_tokens = accepted_cw721
+        //     .into_iter()
+        //     .filter(|addr| !is_cw721_accepted(&addr, &accepted_cw721))
+        //     .collect();
 
         // do something with unwanted_cw721_tokens
         let res = Response::new();
@@ -934,6 +954,42 @@ pub fn query_proposal_module_count(deps: Deps) -> StdResult<Binary> {
     })
 }
 
+pub fn remove_unwanted_balance(
+    deps: DepsMut,
+    env: Env,
+    start_after: Option<String>,
+) -> Result<Response, ContractError> {
+    let contract = env.contract.address;
+    // Query bank for contract balance of native denoms
+    let native_balance: cosmwasm_std::AllBalanceResponse =
+        deps.querier
+            .query(&cosmwasm_std::QueryRequest::Bank(BankQuery::AllBalances {
+                address: contract.to_string(),
+            }))?;
+    // Query contract for accepted native denoms
+    let accepted_native_tokens = paginate_map_keys(
+        deps.as_ref(),
+        &ACCEPTED_NATIVE_TOKENS,
+        start_after.map(|a| a),
+        None,
+        cosmwasm_std::Order::Descending,
+    )?;
+    // Check if any native_balance denom is not included in accepted_addrs
+    let unwanted_native_tokens = native_balance
+        .amount
+        .into_iter()
+        .filter(|coin: &Coin| !is_denom_accepted(&coin.denom, &accepted_native_tokens))
+        .collect();
+
+    // send all unwanted_native_tokens to the treasury
+    let send_to_community_pool = DistributionMsg::FundCommunityPool {
+        amount: unwanted_native_tokens,
+    };
+
+    let res = Response::new();
+    Ok(res.add_message(send_to_community_pool))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     let ContractVersion { version, .. } = get_contract_version(deps.storage)?;
@@ -1106,46 +1162,20 @@ pub(crate) fn derive_proposal_module_prefix(mut dividend: usize) -> StdResult<St
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
     match msg {
-        SudoMsg::ClockEndBlock {} => {
-            // Query bank for contract balance of native denoms
-            let native_balance = BankQuery::AllBalances {
-                address: env.contract.address,
-            }?;
-            // Query contract for accepted native denoms
-            let accepted_native_tokens = paginate_map_keys(
-                deps,
-                &ACCEPTED_NATIVE_TOKENS,
-                start_after
-                    .map(|a| deps.api.addr_validate(&a))
-                    .transpose()?,
-                None,
-                cosmwasm_std::Order::Descending,
-            )?;
-            // Check if any native_balance denom is not included in accepted_addrs
-            let unwanted_native_tokens = native_balance
-                .into_iter()
-                .filter(|coin| !is_denom_accepted(&coin.denom, &accepted_native_tokens))
-                .collect();
-
-            // send all unwanted_native_tokens to the treasury
-            let send_to_community_pool = DistributionMsg::FundCommunityPool {
-                amount: unwanted_native_tokens,
-            };
-
-            let res = Response::new();
-            Ok(res.add_message(send_to_community_pool))
-        }
+        SudoMsg::ClockEndBlock { start_after } => remove_unwanted_balance(deps, env, start_after),
     }
 }
 
 fn is_denom_accepted(denom: &str, accepted_native_tokens: &[String]) -> bool {
-    accepted_addrs.iter().any(|addr| addr.as_str() == denom)
+    accepted_native_tokens
+        .iter()
+        .any(|addr| addr.as_str() == denom)
 }
 fn is_cw20_accepted(cw20addr: &Addr, accepted_cw20s: &[String]) -> bool {
-    accepted_addrs.iter().any(|addr| addr.as_str() == cw20addr)
+    accepted_cw20s.iter().any(|addr| addr == cw20addr)
 }
 fn is_cw721_accepted(cw721addr: &Addr, accepted_cw721s: &[String]) -> bool {
-    accepted_addrs.iter().any(|addr| addr.as_str() == cw721addr)
+    accepted_cw721s.iter().any(|addr| addr == cw721addr)
 }
 
 #[cfg(test)]
