@@ -240,3 +240,9 @@ pub enum MigrateMsg {
     },
     FromCompatible {},
 }
+
+// msg.rs
+#[cw_serde]
+pub enum SudoMsg {    
+    ClockEndBlock { },
+}

@@ -1,10 +1,12 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_json, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    Order, Reply, Response, StdError, StdResult, SubMsg, WasmMsg,
+    from_json, to_json_binary, Addr, BankQuery, Binary, Coin, CosmosMsg, Deps, DepsMut,
+    DistributionMsg, Empty, Env, MessageInfo, Order, Reply, Response, StdError, StdResult, SubMsg,
+    WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
+use cw20::Cw20ExecuteMsg;
 use cw_paginate_storage::{paginate_map, paginate_map_keys, paginate_map_values};
 use cw_storage_plus::Map;
 use cw_utils::{parse_reply_instantiate_data, Duration};
@@ -21,11 +23,11 @@ use dao_interface::{
     voting,
 };
 
-use crate::error::ContractError;
 use crate::state::{
     ACTIVE_PROPOSAL_MODULE_COUNT, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN,
     PAUSED, PROPOSAL_MODULES, SUBDAO_LIST, TOTAL_PROPOSAL_MODULE_COUNT, VOTING_MODULE,
 };
+use crate::{error::ContractError, state::ACCEPTED_NATIVE_TOKENS};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-dao-core";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -540,7 +542,29 @@ pub fn execute_update_sub_daos_list(
 pub fn execute_receive_cw20(deps: DepsMut, sender: Addr) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     if !config.automatically_add_cw20s {
-        Ok(Response::new())
+        // check if token is in whitelisted tokens
+        let accepted_cw20s = paginate_map_keys(
+            deps,
+            &CW20_LIST,
+            start_after
+                .map(|a| deps.api.addr_validate(&a))
+                .transpose()?,
+            None,
+            cosmwasm_std::Order::Descending,
+        )?;
+
+        // Check if any cw20 is not included in accepted cw20s
+        let unwanted_cw20_tokens = accepted_cw20s
+            .into_iter()
+            .filter(|coin| !is_cw20_accepted(&coin, &accepted_cw20s))
+            .collect();
+
+        // do something with unwanted_cw20_tokens
+        let res = Response::new();
+
+        // TODO
+
+        Ok(res)
     } else {
         CW20_LIST.save(deps.storage, sender.clone(), &Empty {})?;
         Ok(Response::new()
@@ -552,7 +576,28 @@ pub fn execute_receive_cw20(deps: DepsMut, sender: Addr) -> Result<Response, Con
 pub fn execute_receive_cw721(deps: DepsMut, sender: Addr) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     if !config.automatically_add_cw721s {
-        Ok(Response::new())
+        // check if token is in whitelisted tokens
+        let accepted_cw721 = paginate_map_keys(
+            deps,
+            &CW721_LIST,
+            start_after
+                .map(|a| deps.api.addr_validate(&a))
+                .transpose()?,
+            None,
+            cosmwasm_std::Order::Descending,
+        )?;
+
+        let unwanted_cw721_tokens = accepted_cw721
+            .into_iter()
+            .filter(|addr| !is_cw721_accepted(&addr, &accepted_cw721))
+            .collect();
+
+        // do something with unwanted_cw721_tokens
+        let res = Response::new();
+
+        //TODO
+
+        Ok(res)
     } else {
         CW721_LIST.save(deps.storage, sender.clone(), &Empty {})?;
         Ok(Response::new()
@@ -1037,10 +1082,58 @@ pub(crate) fn derive_proposal_module_prefix(mut dividend: usize) -> StdResult<St
     Ok(prefix.chars().rev().collect())
 }
 
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
+    match msg {
+        SudoMsg::ClockEndBlock {} => {
+            // Query bank for contract balance of native denoms
+            let native_balance = BankQuery::AllBalances {
+                address: env.contract.address,
+            }?;
+            // Query contract for accepted native denoms
+            let accepted_native_tokens = paginate_map_keys(
+                deps,
+                &ACCEPTED_NATIVE_TOKENS,
+                start_after
+                    .map(|a| deps.api.addr_validate(&a))
+                    .transpose()?,
+                None,
+                cosmwasm_std::Order::Descending,
+            )?;
+            // Check if any native_balance denom is not included in accepted_addrs
+            let unwanted_native_tokens = native_balance
+                .into_iter()
+                .filter(|coin| !is_denom_accepted(&coin.denom, &accepted_native_tokens))
+                .collect();
+
+            // send all unwanted_native_tokens to the treasury
+            let send_to_community_pool = DistributionMsg::FundCommunityPool {
+                amount: unwanted_native_tokens,
+            };
+
+            let res = Response::new();
+            Ok(res.add_message(send_to_community_pool))
+        }
+    }
+}
+
+fn is_denom_accepted(denom: &str, accepted_native_tokens: &[String]) -> bool {
+    accepted_addrs.iter().any(|addr| addr.as_str() == denom)
+}
+fn is_cw20_accepted(cw20addr: &Addr, accepted_cw20s: &[String]) -> bool {
+    accepted_addrs.iter().any(|addr| addr.as_str() == cw20addr)
+}
+fn is_cw721_accepted(cw721addr: &Addr, accepted_cw721s: &[String]) -> bool {
+    accepted_addrs.iter().any(|addr| addr.as_str() == cw721addr)
+}
+
 #[cfg(test)]
 mod test {
     use crate::contract::derive_proposal_module_prefix;
     use std::collections::HashSet;
+
+    #[test]
+    fn test_serialize_bank_res() {}
 
     #[test]
     fn test_prefix_generation() {

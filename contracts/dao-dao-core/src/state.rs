@@ -50,6 +50,9 @@ pub const CW20_LIST: Map<Addr, Empty> = Map::new("cw20s");
 /// Set of cw721 tokens that have been registered with this contract's
 /// treasury.
 pub const CW721_LIST: Map<Addr, Empty> = Map::new("cw721s");
+/// Set of native tokens that have been registered with this contract's
+/// treasury
+pub const ACCEPTED_NATIVE_TOKENS: Map<String, Empty> = Map::new("accepted_native_tokens");
 
 /// List of SubDAOs associated to this DAO. Each SubDAO has an optional charter.
 pub const SUBDAO_LIST: Map<&Addr, Option<String>> = Map::new("sub_daos");
