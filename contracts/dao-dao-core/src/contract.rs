@@ -142,6 +142,9 @@ pub fn execute(
         ExecuteMsg::UpdateCw721List { to_add, to_remove } => {
             execute_update_cw721_list(deps, env, info.sender, to_add, to_remove)
         }
+        ExecuteMsg::UpdateTokenList { to_add, to_remove } => {
+            execute_update_token_list(deps, env, info.sender, to_add, to_remove)
+        }
         ExecuteMsg::UpdateVotingModule { module } => {
             execute_update_voting_module(env, info.sender, module)
         }
@@ -409,16 +412,16 @@ fn do_update_addr_list(
     map: Map<Addr, Empty>,
     to_add: Vec<String>,
     to_remove: Vec<String>,
-    verify: impl Fn(&Addr, Deps) -> StdResult<()>,
+    verify: impl Fn(&String, Deps) -> StdResult<()>,
 ) -> Result<(), ContractError> {
     let to_add = to_add
         .into_iter()
-        .map(|a| deps.api.addr_validate(&a))
+        .map(|a| &a)
         .collect::<Result<Vec<_>, _>>()?;
 
     let to_remove = to_remove
         .into_iter()
-        .map(|a| deps.api.addr_validate(&a))
+        .map(|a| &a)
         .collect::<Result<Vec<_>, _>>()?;
 
     for addr in to_add {
@@ -467,6 +470,24 @@ pub fn execute_update_cw721_list(
         return Err(ContractError::Unauthorized {});
     }
     do_update_addr_list(deps, CW721_LIST, to_add, to_remove, |addr, deps| {
+        let _info: cw721::ContractInfoResponse = deps
+            .querier
+            .query_wasm_smart(addr, &cw721::Cw721QueryMsg::ContractInfo {})?;
+        Ok(())
+    })?;
+    Ok(Response::default().add_attribute("action", "update_cw721_list"))
+}
+pub fn execute_update_token_list(
+    deps: DepsMut,
+    env: Env,
+    sender: Addr,
+    to_add: Vec<String>,
+    to_remove: Vec<String>,
+) -> Result<Response, ContractError> {
+    if env.contract.address != sender {
+        return Err(ContractError::Unauthorized {});
+    }
+    do_update_token_list(deps, ACCEPTED_NATIVE_TOKENS, to_add, to_remove, |addr, deps| {
         let _info: cw721::ContractInfoResponse = deps
             .querier
             .query_wasm_smart(addr, &cw721::Cw721QueryMsg::ContractInfo {})?;

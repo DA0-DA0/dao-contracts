@@ -113,6 +113,10 @@ pub enum ExecuteMsg {
         to_add: Vec<String>,
         to_remove: Vec<String>,
     },
+    UpdateTokenList {
+        to_add: Vec<String>,
+        to_remove: Vec<String>,
+    },
     /// Updates the governance contract's governance modules. Module
     /// instantiate info in `to_add` is used to create new modules and
     /// install them.
