@@ -1,4 +1,4 @@
-use cosmwasm_std::{coin, coins, to_json_binary, Addr, Binary, Empty, Uint128};
+use cosmwasm_std::{coin, coins, to_json_binary, Addr, Binary, Empty, Timestamp, Uint128};
 use cw20::{Cw20Coin, Cw20ExecuteMsg, Denom};
 use cw4::Member;
 use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
@@ -12,6 +12,7 @@ use dao_testing::contracts::{
 use dao_voting_cw721_staked::state::Config;
 use std::borrow::BorrowMut;
 
+use crate::contract::query_pending_rewards;
 use crate::msg::{ExecuteMsg, InfoResponse, PendingRewardsResponse, QueryMsg, ReceiveMsg};
 use crate::ContractError;
 
@@ -256,6 +257,7 @@ fn setup_reward_contract(
     hook_caller: Option<String>,
     reward_denom: Denom,
     owner: Addr,
+    reward_duration: Duration,
 ) -> Addr {
     let reward_code_id = app.store_code(contract_rewards());
     let msg = crate::msg::InstantiateMsg {
@@ -263,7 +265,7 @@ fn setup_reward_contract(
         vp_contract: vp_contract.clone().into_string(),
         hook_caller: hook_caller.clone(),
         reward_denom,
-        reward_duration: Duration::Height(100000),
+        reward_duration,
     };
     let reward_addr = app
         .instantiate_contract(reward_code_id, owner, &msg, &[], "reward", None)
@@ -464,7 +466,7 @@ fn test_zero_rewards_duration() {
 }
 
 #[test]
-fn test_native_rewards() {
+fn test_native_rewards_block_height_based() {
     let mut app = mock_app();
     let admin = Addr::unchecked(OWNER);
     app.borrow_mut().update_block(|b| b.height = 0);
@@ -498,6 +500,7 @@ fn test_native_rewards() {
         Some(staking_addr.clone().to_string()),
         Denom::Native(denom.clone()),
         admin.clone(),
+        Duration::Height(100000),
     );
 
     app.borrow_mut().update_block(|b| b.height = 1000);
@@ -704,6 +707,190 @@ fn test_native_rewards() {
 }
 
 #[test]
+fn test_native_rewards_time_based() {
+    let mut app = mock_app();
+    let admin = Addr::unchecked(OWNER);
+    app.borrow_mut()
+        .update_block(|b| b.time = Timestamp::from_seconds(0));
+    let initial_balances = vec![
+        Cw20Coin {
+            address: ADDR1.to_string(),
+            amount: Uint128::new(100),
+        },
+        Cw20Coin {
+            address: ADDR2.to_string(),
+            amount: Uint128::new(50),
+        },
+        Cw20Coin {
+            address: ADDR3.to_string(),
+            amount: Uint128::new(50),
+        },
+    ];
+    let denom = DENOM.to_string();
+    let (staking_addr, cw20_addr, vp_addr) = setup_cw20_test(&mut app, initial_balances);
+    let reward_funding = vec![coin(100000000, denom.clone())];
+    app.sudo(SudoMsg::Bank({
+        BankSudo::Mint {
+            to_address: admin.to_string(),
+            amount: reward_funding.clone(),
+        }
+    }))
+    .unwrap();
+
+    // we are distributing 100_000_000 tokens over 10000 seconds
+    let funding_duration = Duration::Time(10000);
+    let reward_addr = setup_reward_contract(
+        &mut app,
+        vp_addr.clone(),
+        Some(staking_addr.clone().to_string()),
+        Denom::Native(denom.clone()),
+        admin.clone(),
+        funding_duration,
+    );
+
+    app.borrow_mut()
+        .update_block(|b| b.time = b.time.plus_seconds(1000));
+
+    let fund_msg = ExecuteMsg::Fund {};
+    let pre_fund_block = app.block_info().clone();
+    let _res = app
+        .borrow_mut()
+        .execute_contract(
+            admin.clone(),
+            reward_addr.clone(),
+            &fund_msg,
+            &reward_funding,
+        )
+        .unwrap();
+
+    let res: InfoResponse = app
+        .borrow_mut()
+        .wrap()
+        .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
+        .unwrap();
+
+    assert_eq!(res.reward.reward_rate, Uint128::new(10000));
+    // period finish expiration should be 10000 seconds from now
+    assert_eq!(
+        res.reward.period_finish_expiration,
+        Expiration::AtTime(pre_fund_block.time.plus_seconds(10000))
+    );
+    assert_eq!(res.reward.reward_duration, Duration::Time(10000));
+
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, 0);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, 0);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, 0);
+
+    // we pass 1000 seconds, 1/10th of the rewards duration
+    app.borrow_mut().update_block(|b| {
+        b.time = b.time.plus_seconds(1000);
+        b.height += 1;
+    });
+    // total rewards amount is 100_000_000, and we passed 10% so
+    // we should have 100_000_000 / 10 = 100_000_00 rewards pending
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, 100_000_00 / 2);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, 100_000_00 / 4);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, 100_000_00 / 4);
+
+    // everyone claims, and we should have 0 pending rewards
+    claim_rewards(&mut app, reward_addr.clone(), ADDR1);
+    claim_rewards(&mut app, reward_addr.clone(), ADDR2);
+    claim_rewards(&mut app, reward_addr.clone(), ADDR3);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, 0);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, 0);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, 0);
+
+    // pass 4000 seconds, 40% of the rewards duration
+    app.borrow_mut().update_block(|b| {
+        b.time = b.time.plus_seconds(4000);
+        b.height += 1;
+    });
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, 400_000_00 / 2);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, 400_000_00 / 4);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, 400_000_00 / 4);
+
+    // addr2 claims
+    claim_rewards(&mut app, reward_addr.clone(), ADDR2);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, 0);
+
+    // we pass 1000 seconds, 1/10th of the rewards duration
+    app.borrow_mut().update_block(|b| {
+        b.time = b.time.plus_seconds(1000);
+        b.height += 1;
+    });
+
+    // total rewards amount is 100_000_000, and we passed 10% so
+    // we should have 100_000_000 / 10 = 100_000_00 rewards pending
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, 500_000_00 / 2);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, 100_000_00 / 4);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, 500_000_00 / 4);
+
+    // addr3 claims
+    claim_rewards(&mut app, reward_addr.clone(), ADDR3);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, 0);
+
+    // we pass 3000 more seconds, 3/10th of the rewards duration.
+    app.borrow_mut().update_block(|b| {
+        b.time = b.time.plus_seconds(3000);
+        b.height += 1;
+    });
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, 800_000_00 / 2);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, 400_000_00 / 4);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, 300_000_00 / 4);
+
+    // there is now 1000 seconds left.
+    // everyone claims, and we should have 0 pending rewards
+    claim_rewards(&mut app, reward_addr.clone(), ADDR1);
+    claim_rewards(&mut app, reward_addr.clone(), ADDR2);
+    claim_rewards(&mut app, reward_addr.clone(), ADDR3);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, 0);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, 0);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, 0);
+    // addr3 unstakes
+    unstake_cw20_tokens(&mut app, &staking_addr, ADDR3, 50);
+
+    // we pass exactly 1000 seconds to expire the rewards config
+    app.borrow_mut().update_block(|b| {
+        b.time = b.time.plus_seconds(1000);
+        b.height += 1;
+    });
+
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, 100_000_00 * 2 / 3);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, 100_000_00 * 1 / 3);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, 0);
+
+    let addr1_native_bal = get_balance_native(&app, ADDR1, &denom);
+    let addr2_native_bal = get_balance_native(&app, ADDR2, &denom);
+
+    // addr 1 claims, we assert expected amounts
+    claim_rewards(&mut app, reward_addr.clone(), ADDR1);
+    assert_eq!(
+        get_balance_native(&app, ADDR1, &denom),
+        addr1_native_bal + Uint128::new(100_000_00 * 2 / 3)
+    );
+
+    // we pass 1000 more seconds which shouldn't change anything
+    app.borrow_mut().update_block(|b| {
+        b.time = b.time.plus_seconds(1000);
+        b.height += 1;
+    });
+
+    // addr 1 and 2 already claimed so nothing should be pending.
+    // addr 3 unstaked so nothing hsould be there either.
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, 0);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, 100_000_00 * 1 / 3);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, 0);
+
+    // addr 2 claims
+    claim_rewards(&mut app, reward_addr.clone(), ADDR2);
+    assert_eq!(
+        get_balance_native(&app, ADDR2, &denom),
+        addr2_native_bal + Uint128::new(100_000_00 * 1 / 3)
+    );
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, 0);
+}
+
+#[test]
 fn test_cw20_rewards() {
     let mut app = mock_app();
     let admin = Addr::unchecked(OWNER);
@@ -737,6 +924,7 @@ fn test_cw20_rewards() {
         Some(staking_addr.clone().to_string()),
         Denom::Cw20(reward_denom.clone()),
         admin.clone(),
+        Duration::Height(100000),
     );
 
     app.borrow_mut().update_block(|b| b.height = 1000);
@@ -980,6 +1168,7 @@ fn update_rewards() {
         Some(staking_addr.clone().to_string()),
         Denom::Native(denom.clone()),
         admin.clone(),
+        Duration::Height(100000),
     );
 
     app.borrow_mut().update_block(|b| b.height = 1000);
@@ -1122,6 +1311,7 @@ fn update_reward_duration() {
         Some(staking_addr.clone().to_string()),
         Denom::Native(denom.clone()),
         admin.clone(),
+        Duration::Height(100000),
     );
 
     let res: InfoResponse = app
@@ -1285,6 +1475,7 @@ fn test_update_owner() {
         Some(staking_addr.clone().to_string()),
         Denom::Native(denom),
         addr_owner.clone(),
+        Duration::Height(100000),
     );
 
     let owner = get_ownership(&app, &reward_addr).owner;
@@ -1385,6 +1576,7 @@ fn test_cannot_fund_with_wrong_coin_native() {
         Some(staking_addr.clone().to_string()),
         Denom::Native(denom.clone()),
         owner.clone(),
+        Duration::Height(100000),
     );
 
     app.borrow_mut().update_block(|b| b.height = 1000);
@@ -1507,6 +1699,7 @@ fn test_cannot_fund_with_wrong_coin_cw20() {
         Some(staking_addr.clone().to_string()),
         Denom::Cw20(Addr::unchecked("dummy_cw20")),
         admin.clone(),
+        Duration::Height(100000),
     );
 
     app.borrow_mut().update_block(|b| b.height = 1000);
@@ -1590,6 +1783,7 @@ fn test_rewards_with_zero_staked() {
         Some(staking_addr.clone().to_string()),
         Denom::Native(denom),
         admin.clone(),
+        Duration::Height(100000),
     );
 
     app.borrow_mut().update_block(|b| b.height = 1000);
@@ -1677,6 +1871,7 @@ fn test_small_rewards() {
         Some(staking_addr.clone().to_string()),
         Denom::Native(denom),
         admin.clone(),
+        Duration::Height(100000),
     );
 
     app.borrow_mut().update_block(|b| b.height = 1000);
@@ -1744,6 +1939,7 @@ fn test_zero_reward_rate_failed() {
         Some(staking_addr.clone().to_string()),
         Denom::Native(denom),
         admin.clone(),
+        Duration::Height(100000),
     );
 
     app.borrow_mut().update_block(|b| b.height = 1000);
@@ -1808,6 +2004,7 @@ fn test_native_token_dao_rewards() {
         None,
         Denom::Native(denom.clone()),
         admin.clone(),
+        Duration::Height(100000),
     );
 
     app.borrow_mut().update_block(|b| b.height = 1000);
@@ -1952,6 +2149,7 @@ fn test_cw721_dao_rewards() {
         None,
         Denom::Native(denom.clone()),
         admin.clone(),
+        Duration::Height(100000),
     );
 
     app.borrow_mut().update_block(|b| b.height = 1000);
@@ -2093,6 +2291,7 @@ fn test_cw4_dao_rewards() {
         Some(cw4_addr.clone().to_string()),
         Denom::Native(denom.clone()),
         admin.clone(),
+        Duration::Height(100000),
     );
 
     app.borrow_mut().update_block(|b| b.height = 1000);
