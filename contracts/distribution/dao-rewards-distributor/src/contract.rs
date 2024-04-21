@@ -326,7 +326,7 @@ pub fn check_hook_caller(deps: Deps, info: MessageInfo) -> Result<(), ContractEr
     Ok(())
 }
 
-/// Returns the appropriate CosmosMsg for transferring the reward token.
+/// Returns the approqqate CosmosMsg for transferring the reward token.
 pub fn get_transfer_msg(recipient: Addr, amount: Uint128, denom: Denom) -> StdResult<CosmosMsg> {
     match denom {
         Denom::Native(denom) => Ok(BankMsg::Send {
