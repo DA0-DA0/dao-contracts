@@ -3,7 +3,7 @@ use cw20::{Cw20Coin, Cw20ExecuteMsg, Denom};
 use cw4::Member;
 use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 use cw_ownable::{Action, Ownership, OwnershipError};
-use cw_utils::Duration;
+use cw_utils::{Duration, Expiration};
 use dao_testing::contracts::{
     cw20_base_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
     cw4_group_contract, cw721_base_contract, dao_voting_cw4_contract,
@@ -263,7 +263,7 @@ fn setup_reward_contract(
         vp_contract: vp_contract.clone().into_string(),
         hook_caller: hook_caller.clone(),
         reward_denom,
-        reward_duration: 100000,
+        reward_duration: Duration::Height(100000),
     };
     let reward_addr = app
         .instantiate_contract(reward_code_id, owner, &msg, &[], "reward", None)
@@ -453,7 +453,7 @@ fn test_zero_rewards_duration() {
         vp_contract: vp_addr.to_string(),
         hook_caller: Some(staking_addr.to_string()),
         reward_denom,
-        reward_duration: 0,
+        reward_duration: Duration::Height(0),
     };
     let err: ContractError = app
         .instantiate_contract(reward_code_id, owner, &msg, &[], "reward", None)
@@ -521,8 +521,11 @@ fn test_native_rewards() {
         .unwrap();
 
     assert_eq!(res.reward.reward_rate, Uint128::new(1000));
-    assert_eq!(res.reward.period_finish, 101000);
-    assert_eq!(res.reward.reward_duration, 100000);
+    assert_eq!(
+        res.reward.period_finish_expiration,
+        Expiration::AtHeight(101000)
+    );
+    assert_eq!(res.reward.reward_duration, Duration::Height(100000));
 
     app.borrow_mut().update_block(next_block);
     assert_pending_rewards(&mut app, &reward_addr, ADDR1, 500);
@@ -753,8 +756,11 @@ fn test_cw20_rewards() {
         .unwrap();
 
     assert_eq!(res.reward.reward_rate, Uint128::new(1000));
-    assert_eq!(res.reward.period_finish, 101000);
-    assert_eq!(res.reward.reward_duration, 100000);
+    assert_eq!(
+        res.reward.period_finish_expiration,
+        Expiration::AtHeight(101000)
+    );
+    assert_eq!(res.reward.reward_duration, Duration::Height(100000));
 
     app.borrow_mut().update_block(next_block);
     assert_pending_rewards(&mut app, &reward_addr, ADDR1, 500);
@@ -992,6 +998,7 @@ fn update_rewards() {
         .unwrap_err()
         .downcast()
         .unwrap();
+    println!("okok");
 
     assert_eq!(err, ContractError::Ownable(OwnershipError::NotOwner));
 
@@ -1004,6 +1011,7 @@ fn update_rewards() {
             &reward_funding,
         )
         .unwrap();
+    println!("okok");
 
     let res: InfoResponse = app
         .borrow_mut()
@@ -1012,8 +1020,11 @@ fn update_rewards() {
         .unwrap();
 
     assert_eq!(res.reward.reward_rate, Uint128::new(2000));
-    assert_eq!(res.reward.period_finish, 101000);
-    assert_eq!(res.reward.reward_duration, 100000);
+    assert_eq!(
+        res.reward.period_finish_expiration,
+        Expiration::AtHeight(101000)
+    );
+    assert_eq!(res.reward.reward_duration, Duration::Height(100000));
 
     // Create new period after old period
     app.borrow_mut().update_block(|b| b.height = 101000);
@@ -1043,8 +1054,11 @@ fn update_rewards() {
         .unwrap();
 
     assert_eq!(res.reward.reward_rate, Uint128::new(1000));
-    assert_eq!(res.reward.period_finish, 201000);
-    assert_eq!(res.reward.reward_duration, 100000);
+    assert_eq!(
+        res.reward.period_finish_expiration,
+        Expiration::AtHeight(201000)
+    );
+    assert_eq!(res.reward.reward_duration, Duration::Height(100000));
 
     // Add funds in middle of period returns an error
     app.borrow_mut().update_block(|b| b.height = 151000);
@@ -1073,8 +1087,11 @@ fn update_rewards() {
         .unwrap();
 
     assert_eq!(res.reward.reward_rate, Uint128::new(1000));
-    assert_eq!(res.reward.period_finish, 201000);
-    assert_eq!(res.reward.reward_duration, 100000);
+    assert_eq!(
+        res.reward.period_finish_expiration,
+        Expiration::AtHeight(201000)
+    );
+    assert_eq!(res.reward.reward_duration, Duration::Height(100000));
 }
 
 #[test]
@@ -1114,11 +1131,13 @@ fn update_reward_duration() {
         .unwrap();
 
     assert_eq!(res.reward.reward_rate, Uint128::new(0));
-    assert_eq!(res.reward.period_finish, 0);
-    assert_eq!(res.reward.reward_duration, 100000);
+    assert_eq!(res.reward.period_finish_expiration, Expiration::Never {});
+    assert_eq!(res.reward.reward_duration, Duration::Height(100000));
 
     // Zero rewards durations are not allowed.
-    let msg = ExecuteMsg::UpdateRewardDuration { new_duration: 0 };
+    let msg = ExecuteMsg::UpdateRewardDuration {
+        new_duration: Duration::Height(0),
+    };
     let err: ContractError = app
         .borrow_mut()
         .execute_contract(admin.clone(), reward_addr.clone(), &msg, &[])
@@ -1127,7 +1146,9 @@ fn update_reward_duration() {
         .unwrap();
     assert_eq!(err, ContractError::ZeroRewardDuration {});
 
-    let msg = ExecuteMsg::UpdateRewardDuration { new_duration: 10 };
+    let msg = ExecuteMsg::UpdateRewardDuration {
+        new_duration: Duration::Height(10),
+    };
     let _resp = app
         .borrow_mut()
         .execute_contract(admin.clone(), reward_addr.clone(), &msg, &[])
@@ -1140,11 +1161,13 @@ fn update_reward_duration() {
         .unwrap();
 
     assert_eq!(res.reward.reward_rate, Uint128::new(0));
-    assert_eq!(res.reward.period_finish, 0);
-    assert_eq!(res.reward.reward_duration, 10);
+    assert_eq!(res.reward.period_finish_expiration, Expiration::Never {});
+    assert_eq!(res.reward.reward_duration, Duration::Height(10));
 
     // Non-admin cannot update rewards
-    let msg = ExecuteMsg::UpdateRewardDuration { new_duration: 100 };
+    let msg = ExecuteMsg::UpdateRewardDuration {
+        new_duration: Duration::Height(100),
+    };
     let err: ContractError = app
         .borrow_mut()
         .execute_contract(Addr::unchecked("non-admin"), reward_addr.clone(), &msg, &[])
@@ -1191,11 +1214,16 @@ fn update_reward_duration() {
         .unwrap();
 
     assert_eq!(res.reward.reward_rate, Uint128::new(100));
-    assert_eq!(res.reward.period_finish, 1010);
-    assert_eq!(res.reward.reward_duration, 10);
+    assert_eq!(
+        res.reward.period_finish_expiration,
+        Expiration::AtHeight(1010)
+    );
+    assert_eq!(res.reward.reward_duration, Duration::Height(10));
 
     // Cannot update reward period before it finishes
-    let msg = ExecuteMsg::UpdateRewardDuration { new_duration: 10 };
+    let msg = ExecuteMsg::UpdateRewardDuration {
+        new_duration: Duration::Height(10),
+    };
     let err: ContractError = app
         .borrow_mut()
         .execute_contract(admin.clone(), reward_addr.clone(), &msg, &[])
@@ -1207,7 +1235,9 @@ fn update_reward_duration() {
     // Update reward period once rewards are finished
     app.borrow_mut().update_block(|b| b.height = 1010);
 
-    let msg = ExecuteMsg::UpdateRewardDuration { new_duration: 100 };
+    let msg = ExecuteMsg::UpdateRewardDuration {
+        new_duration: Duration::Height(100),
+    };
     let _resp = app
         .borrow_mut()
         .execute_contract(admin, reward_addr.clone(), &msg, &[])
@@ -1220,8 +1250,11 @@ fn update_reward_duration() {
         .unwrap();
 
     assert_eq!(res.reward.reward_rate, Uint128::new(100));
-    assert_eq!(res.reward.period_finish, 1010);
-    assert_eq!(res.reward.reward_duration, 100);
+    assert_eq!(
+        res.reward.period_finish_expiration,
+        Expiration::AtHeight(1010)
+    );
+    assert_eq!(res.reward.reward_duration, Duration::Height(100));
 }
 
 #[test]
@@ -1575,8 +1608,11 @@ fn test_rewards_with_zero_staked() {
         .unwrap();
 
     assert_eq!(res.reward.reward_rate, Uint128::new(1000));
-    assert_eq!(res.reward.period_finish, 101000);
-    assert_eq!(res.reward.reward_duration, 100000);
+    assert_eq!(
+        res.reward.period_finish_expiration,
+        Expiration::AtHeight(101000)
+    );
+    assert_eq!(res.reward.reward_duration, Duration::Height(100000));
 
     app.borrow_mut().update_block(next_block);
     assert_pending_rewards(&mut app, &reward_addr, ADDR1, 0);
@@ -1659,8 +1695,11 @@ fn test_small_rewards() {
         .unwrap();
 
     assert_eq!(res.reward.reward_rate, Uint128::new(10));
-    assert_eq!(res.reward.period_finish, 101000);
-    assert_eq!(res.reward.reward_duration, 100000);
+    assert_eq!(
+        res.reward.period_finish_expiration,
+        Expiration::AtHeight(101000)
+    );
+    assert_eq!(res.reward.reward_duration, Duration::Height(100000));
 
     app.borrow_mut().update_block(next_block);
     assert_pending_rewards(&mut app, &reward_addr, ADDR1, 5);
@@ -1792,8 +1831,11 @@ fn test_native_token_dao_rewards() {
         .unwrap();
 
     assert_eq!(res.reward.reward_rate, Uint128::new(1000));
-    assert_eq!(res.reward.period_finish, 101000);
-    assert_eq!(res.reward.reward_duration, 100000);
+    assert_eq!(
+        res.reward.period_finish_expiration,
+        Expiration::AtHeight(101000)
+    );
+    assert_eq!(res.reward.reward_duration, Duration::Height(100000));
 
     app.borrow_mut().update_block(next_block);
     assert_pending_rewards(&mut app, &reward_addr, ADDR1, 500);
@@ -1933,8 +1975,11 @@ fn test_cw721_dao_rewards() {
         .unwrap();
 
     assert_eq!(res.reward.reward_rate, Uint128::new(1000));
-    assert_eq!(res.reward.period_finish, 101000);
-    assert_eq!(res.reward.reward_duration, 100000);
+    assert_eq!(
+        res.reward.period_finish_expiration,
+        Expiration::AtHeight(101000)
+    );
+    assert_eq!(res.reward.reward_duration, Duration::Height(100000));
 
     app.borrow_mut().update_block(next_block);
     assert_pending_rewards(&mut app, &reward_addr, ADDR1, 500);
@@ -2071,8 +2116,11 @@ fn test_cw4_dao_rewards() {
         .unwrap();
 
     assert_eq!(res.reward.reward_rate, Uint128::new(1000));
-    assert_eq!(res.reward.period_finish, 101000);
-    assert_eq!(res.reward.reward_duration, 100000);
+    assert_eq!(
+        res.reward.period_finish_expiration,
+        Expiration::AtHeight(101000)
+    );
+    assert_eq!(res.reward.reward_duration, Duration::Height(100000));
 
     app.borrow_mut().update_block(next_block);
     assert_pending_rewards(&mut app, &reward_addr, ADDR1, 500);

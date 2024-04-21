@@ -3,7 +3,7 @@ use cosmwasm_std::Uint128;
 use cw20::{Cw20ReceiveMsg, Denom};
 use cw4::MemberChangedHookMsg;
 use cw_ownable::cw_ownable_execute;
-use cw_utils::Duration;
+use cw_utils::{Duration, Expiration};
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 
 use crate::state::{Config, RewardConfig};
@@ -85,5 +85,5 @@ pub struct PendingRewardsResponse {
     pub address: String,
     pub pending_rewards: Uint128,
     pub denom: Denom,
-    pub last_update_block: u64,
+    pub last_update_expiration: Expiration,
 }

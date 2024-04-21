@@ -8,24 +8,22 @@ use cw2::set_contract_version;
 use cw20::Denom::Cw20;
 use cw20::{Cw20ReceiveMsg, Denom};
 use cw4::MemberChangedHookMsg;
+use cw_utils::{Duration, Expiration};
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 use dao_interface::voting::{
     Query as VotingQueryMsg, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
-use std::cmp::min;
 use std::convert::TryInto;
 
 use crate::msg::{
     ExecuteMsg, InfoResponse, InstantiateMsg, PendingRewardsResponse, QueryMsg, ReceiveMsg,
 };
 use crate::state::{
-    Config, RewardConfig, CONFIG, LAST_UPDATE_BLOCK, PENDING_REWARDS, REWARD_CONFIG,
+    Config, RewardConfig, CONFIG, LAST_UPDATE_EXPIRATION, PENDING_REWARDS, REWARD_CONFIG,
     REWARD_PER_TOKEN, USER_REWARD_PER_TOKEN,
 };
 use crate::ContractError;
-use crate::ContractError::{
-    InvalidCw20, InvalidFunds, NoRewardsClaimable, RewardPeriodNotFinished,
-};
+use crate::ContractError::{InvalidCw20, InvalidFunds, NoRewardsClaimable};
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -69,13 +67,13 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
 
     // Reward duration must be greater than 0
-    if msg.reward_duration == 0 {
+    if let Duration::Height(0) | Duration::Time(0) = msg.reward_duration {
         return Err(ContractError::ZeroRewardDuration {});
     }
 
     // Initialize the reward config
     let reward_config = RewardConfig {
-        period_finish: 0,
+        period_finish_expiration: Expiration::Never {},
         reward_rate: Uint128::zero(),
         reward_duration: msg.reward_duration,
     };
@@ -92,7 +90,10 @@ pub fn instantiate(
             },
         )
         .add_attribute("reward_rate", reward_config.reward_rate)
-        .add_attribute("period_finish", reward_config.period_finish.to_string())
+        .add_attribute(
+            "period_finish",
+            reward_config.period_finish_expiration.to_string(),
+        )
         .add_attribute("reward_duration", reward_config.reward_duration.to_string()))
 }
 
@@ -162,20 +163,19 @@ pub fn execute_fund(
 ) -> Result<Response, ContractError> {
     // Ensure that the sender is the owner
     cw_ownable::assert_owner(deps.storage, &sender)?;
-
     update_rewards(&mut deps, &env, &sender)?;
 
     let reward_config = REWARD_CONFIG.load(deps.storage)?;
 
-    // Ensure that the current reward period has ended
-    if reward_config.period_finish > env.block.height {
-        return Err(RewardPeriodNotFinished {});
-    }
+    // Ensure that the current reward period has ended and that period expiration is known.
+    reward_config.validate_period_finish_expiration_if_set(&env.block)?;
+
+    let reward_duration_value = reward_config.get_reward_duration_value();
 
     let new_reward_config = RewardConfig {
-        period_finish: env.block.height + reward_config.reward_duration,
+        period_finish_expiration: reward_config.reward_duration.after(&env.block),
         reward_rate: amount
-            .checked_div(Uint128::from(reward_config.reward_duration))
+            .checked_div(Uint128::from(reward_duration_value))
             .map_err(StdError::divide_by_zero)?,
         // As we're not changing the value and changing the value
         // validates that the duration is non-zero we don't need to
@@ -188,7 +188,13 @@ pub fn execute_fund(
     };
 
     REWARD_CONFIG.save(deps.storage, &new_reward_config)?;
-    LAST_UPDATE_BLOCK.save(deps.storage, &env.block.height)?;
+    LAST_UPDATE_EXPIRATION.save(
+        deps.storage,
+        &match reward_config.reward_duration {
+            Duration::Height(_) => Expiration::AtHeight(env.block.height),
+            Duration::Time(_) => Expiration::AtTime(env.block.time),
+        },
+    )?;
 
     Ok(Response::new()
         .add_attribute("action", "fund")
@@ -368,22 +374,36 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr) -> StdResult<(
     USER_REWARD_PER_TOKEN.save(deps.storage, addr.clone(), &reward_per_token)?;
 
     // Update the last time rewards were updated.
-    let last_time_reward_applicable = get_last_time_reward_applicable(deps.as_ref(), env)?;
-    LAST_UPDATE_BLOCK.save(deps.storage, &last_time_reward_applicable)?;
+    let reward_config = REWARD_CONFIG.load(deps.storage)?;
+    let last_time_reward_applicable =
+        reward_config.get_latest_reward_distribution_expiration_date(&env.block);
+    LAST_UPDATE_EXPIRATION.save(deps.storage, &last_time_reward_applicable)?;
 
     Ok(())
 }
 
+fn get_expiration_diff(a: Expiration, b: Expiration) -> StdResult<u64> {
+    match (a, b) {
+        (Expiration::AtHeight(a), Expiration::AtHeight(b)) => Ok(a - b),
+        (Expiration::AtTime(a), Expiration::AtTime(b)) => Ok(a.seconds() - b.seconds()),
+        (Expiration::Never {}, Expiration::Never {}) => Ok(0),
+        _ => Err(StdError::generic_err(format!(
+            "incompatible expirations: got a {:?}, b {:?}",
+            a, b
+        ))),
+    }
+}
 pub fn get_reward_per_token(deps: Deps, env: &Env, vp_contract: &Addr) -> StdResult<Uint256> {
     let reward_config = REWARD_CONFIG.load(deps.storage)?;
-
     // Get the total voting power at this block height.
     let total_power = get_total_voting_power(deps, env, vp_contract)?;
 
     // Get information on the last time rewards were updated.
-    let last_time_reward_applicable = get_last_time_reward_applicable(deps, env)?;
-    let last_update_block = LAST_UPDATE_BLOCK.load(deps.storage).unwrap_or_default();
-
+    let last_time_reward_applicable =
+        reward_config.get_latest_reward_distribution_expiration_date(&env.block);
+    let last_update_expiration = LAST_UPDATE_EXPIRATION
+        .load(deps.storage)
+        .unwrap_or_default();
     // Get the amount of rewards per unit of voting power.
     let prev_reward_per_token = REWARD_PER_TOKEN.load(deps.storage).unwrap_or_default();
 
@@ -394,9 +414,10 @@ pub fn get_reward_per_token(deps: Deps, env: &Env, vp_contract: &Addr) -> StdRes
         // Uint128 as total tokens in existence cannot exceed Uint128
         let numerator = reward_config
             .reward_rate
-            .full_mul(Uint128::from(
-                last_time_reward_applicable - last_update_block,
-            ))
+            .full_mul(Uint128::from(get_expiration_diff(
+                last_time_reward_applicable,
+                last_update_expiration,
+            )?))
             .checked_mul(scale_factor())?;
         let denominator = Uint256::from(total_power);
         numerator.checked_div(denominator)?
@@ -430,13 +451,6 @@ pub fn get_rewards_earned(
         .try_into()?)
 }
 
-fn get_last_time_reward_applicable(deps: Deps, env: &Env) -> StdResult<u64> {
-    let reward_config = REWARD_CONFIG.load(deps.storage)?;
-
-    // Take the minimum of the current block height and the period finish height.
-    Ok(min(env.block.height, reward_config.period_finish))
-}
-
 fn get_total_voting_power(deps: Deps, env: &Env, contract_addr: &Addr) -> StdResult<Uint128> {
     let msg = VotingQueryMsg::TotalPowerAtHeight {
         height: Some(env.block.height),
@@ -463,17 +477,16 @@ pub fn execute_update_reward_duration(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    new_duration: u64,
+    new_duration: Duration,
 ) -> Result<Response, ContractError> {
     // Ensure the sender is the owner.
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     let mut reward_config = REWARD_CONFIG.load(deps.storage)?;
-    if reward_config.period_finish > env.block.height {
-        return Err(ContractError::RewardPeriodNotFinished {});
-    };
+    // Ensure that the current reward period has ended
+    reward_config.validate_period_finish_expiration_if_set(&env.block)?;
 
-    if new_duration == 0 {
+    if let Duration::Height(0) | Duration::Time(0) = new_duration {
         return Err(ContractError::ZeroRewardDuration {});
     }
 
@@ -526,6 +539,6 @@ pub fn query_pending_rewards(
         address: addr.to_string(),
         pending_rewards,
         denom: config.reward_denom,
-        last_update_block: LAST_UPDATE_BLOCK.load(deps.storage).unwrap_or_default(),
+        last_update_expiration: LAST_UPDATE_EXPIRATION.load(deps.storage)?,
     })
 }
