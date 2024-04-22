@@ -66,7 +66,7 @@ pub fn buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Cont
     };
 
     // Calculate how many tokens can be purchased with this and mint them
-    let curve = curve_fn(curve_state.clone().decimals);
+    let curve = curve_fn(curve_state.decimals.clone());
     curve_state.reserve += reserved;
 
     // Calculate the supply based on the reserve
@@ -121,33 +121,6 @@ pub fn buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Cont
         .add_attribute("supply", minted))
 }
 
-/// Return the reserved and funded amounts based on the payment and the allocation ratio
-fn calculate_reserved_and_funded(
-    payment: Uint128,
-    allocation_ratio: StdDecimal,
-) -> (Uint128, Uint128) {
-    let funded = payment * allocation_ratio;
-    let reserved = payment.checked_sub(funded).unwrap(); // Since allocation_ratio is < 1, this subtraction is safe
-    (reserved, funded)
-}
-
-/// Add the hatcher's contribution to the total contributions
-fn update_hatcher_contributions(
-    storage: &mut dyn Storage,
-    hatcher: &Addr,
-    contribution: Uint128,
-) -> StdResult<Uint128> {
-    HATCHERS.update(storage, hatcher, |amount| -> StdResult<_> {
-        match amount {
-            Some(mut amount) => {
-                amount += contribution;
-                Ok(amount)
-            }
-            None => Ok(contribution),
-        }
-    })
-}
-
 /// Sell tokens on the bonding curve
 pub fn sell(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     let curve_type = CURVE_TYPE.load(deps.storage)?;
@@ -180,7 +153,7 @@ pub fn sell(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Con
     ];
 
     let mut curve_state = CURVE_STATE.load(deps.storage)?;
-    let curve = curve_fn(curve_state.clone().decimals);
+    let curve = curve_fn(curve_state.decimals.clone());
 
     // Reduce the supply by the amount burned
     curve_state.supply = curve_state
@@ -244,6 +217,33 @@ pub fn sell(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Con
         .add_attribute("amount", burn_amount)
         .add_attribute("burned", released_reserve)
         .add_attribute("funded", taxed_amount))
+}
+
+/// Return the reserved and funded amounts based on the payment and the allocation ratio
+fn calculate_reserved_and_funded(
+    payment: Uint128,
+    allocation_ratio: StdDecimal,
+) -> (Uint128, Uint128) {
+    let funded = payment * allocation_ratio;
+    let reserved = payment.checked_sub(funded).unwrap(); // Since allocation_ratio is < 1, this subtraction is safe
+    (reserved, funded)
+}
+
+/// Add the hatcher's contribution to the total contributions
+fn update_hatcher_contributions(
+    storage: &mut dyn Storage,
+    hatcher: &Addr,
+    contribution: Uint128,
+) -> StdResult<Uint128> {
+    HATCHERS.update(storage, hatcher, |amount| -> StdResult<_> {
+        match amount {
+            Some(mut amount) => {
+                amount += contribution;
+                Ok(amount)
+            }
+            None => Ok(contribution),
+        }
+    })
 }
 
 /// Calculate the exit taxation for the sell amount based on the phase
