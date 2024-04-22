@@ -34,6 +34,7 @@ pub trait Curve {
 
 /// DecimalPlaces should be passed into curve constructors
 #[cw_serde]
+#[derive(Copy)]
 pub struct DecimalPlaces {
     /// Number of decimal places for the supply token (this is what was passed in cw20-base instantiate
     pub supply: u32,

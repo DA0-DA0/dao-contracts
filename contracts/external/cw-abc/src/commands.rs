@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     ensure, to_json_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal as StdDecimal, DepsMut, Env,
-    MessageInfo, QuerierWrapper, Response, StdError, StdResult, Storage, Uint128, WasmMsg,
+    MessageInfo, QuerierWrapper, Response, StdResult, Storage, Uint128, WasmMsg,
 };
 use cw_tokenfactory_issuer::msg::ExecuteMsg as IssuerExecuteMsg;
 use cw_utils::must_pay;
@@ -66,14 +66,12 @@ pub fn buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Cont
     };
 
     // Calculate how many tokens can be purchased with this and mint them
-    let curve = curve_fn(curve_state.decimals.clone());
+    let curve = curve_fn(curve_state.decimals);
     curve_state.reserve += reserved;
 
     // Calculate the supply based on the reserve
     let new_supply = curve.supply(curve_state.reserve);
-    let minted = new_supply
-        .checked_sub(curve_state.supply)
-        .map_err(StdError::overflow)?;
+    let minted = new_supply.checked_sub(curve_state.supply)?;
 
     // Check that the minted amount has not exceeded the max supply (if configured)
     if let Some(max_supply) = MAX_SUPPLY.may_load(deps.storage)? {
@@ -153,22 +151,16 @@ pub fn sell(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Con
     ];
 
     let mut curve_state = CURVE_STATE.load(deps.storage)?;
-    let curve = curve_fn(curve_state.decimals.clone());
+    let curve = curve_fn(curve_state.decimals);
 
     // Reduce the supply by the amount burned
-    curve_state.supply = curve_state
-        .supply
-        .checked_sub(burn_amount)
-        .map_err(StdError::overflow)?;
+    curve_state.supply = curve_state.supply.checked_sub(burn_amount)?;
 
     // Calculate the new reserve based on the new supply
     let new_reserve = curve.reserve(curve_state.supply);
 
     // Calculate how many reserve tokens to release based on the sell amount
-    let released_reserve = curve_state
-        .reserve
-        .checked_sub(new_reserve)
-        .map_err(StdError::overflow)?;
+    let released_reserve = curve_state.reserve.checked_sub(new_reserve)?;
 
     // Calculate the exit tax
     let taxed_amount = calculate_exit_fee(deps.storage, released_reserve)?;
@@ -178,9 +170,7 @@ pub fn sell(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Con
 
     // Calculate the amount of tokens to send to the sender
     // Subtract the taxed amount from the released amount
-    let released = released_reserve
-        .checked_sub(taxed_amount)
-        .map_err(StdError::overflow)?;
+    let released = released_reserve.checked_sub(taxed_amount)?;
 
     // Now send the tokens to the sender and any fees to the DAO
     let mut send_msgs: Vec<CosmosMsg> = vec![CosmosMsg::Bank(BankMsg::Send {
@@ -358,10 +348,7 @@ pub fn withdraw(
     });
 
     // Update the curve state
-    curve_state.funding = curve_state
-        .funding
-        .checked_sub(amount)
-        .map_err(StdError::overflow)?;
+    curve_state.funding = curve_state.funding.checked_sub(amount)?;
     CURVE_STATE.save(deps.storage, &curve_state)?;
 
     Ok(Response::new()

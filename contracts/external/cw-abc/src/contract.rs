@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, StdResult,
-    SubMsg, Uint128, WasmMsg,
+    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
+    Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_curves::DecimalPlaces;
@@ -94,7 +94,7 @@ pub fn instantiate(
 
     // Setup the curve state
     let normalization_places = DecimalPlaces::new(supply.decimals, reserve.decimals);
-    let mut curve_state = CurveState::new(reserve.denom, normalization_places);
+    let curve_state = CurveState::new(reserve.denom, normalization_places);
 
     let msgs = match supply.token_info {
         // Instantiate cw-token-factory-issuer contract if new
@@ -129,21 +129,13 @@ pub fn instantiate(
                     // Query for the existing supply
                     let existing_supply = deps.querier.query_supply(&denom)?;
 
-                    // Set the curve state
-                    curve_state.supply = existing_supply.amount;
-
                     // Validate max supply
                     if let Some(max_supply) = supply.max_supply {
                         let max_mint_supply =
                             curve_type.to_curve_fn()(curve_state.clone().decimals)
                                 .supply(phase_config.hatch.initial_raise.max);
 
-                        if existing_supply
-                            .amount
-                            .checked_add(max_mint_supply)
-                            .map_err(StdError::overflow)?
-                            > max_supply
-                        {
+                        if existing_supply.amount.checked_add(max_mint_supply)? > max_supply {
                             return Err(ContractError::CannotExceedMaxSupply { max: max_supply });
                         }
                     }
@@ -363,11 +355,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 let max_mint_supply = curve_type.to_curve_fn()(curve_state.clone().decimals)
                     .supply(phase_config.hatch.initial_raise.max);
 
-                if initial_supply
-                    .checked_add(max_mint_supply)
-                    .map_err(StdError::overflow)?
-                    > max_supply
-                {
+                if initial_supply.checked_add(max_mint_supply)? > max_supply {
                     return Err(ContractError::CannotExceedMaxSupply { max: max_supply });
                 }
             }
@@ -427,12 +415,6 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         }
                     }
                 }
-
-                CURVE_STATE.update(deps.storage, |mut x| -> StdResult<_> {
-                    x.supply = initial_supply;
-
-                    Ok(x)
-                })?;
             }
 
             Ok(Response::new()
