@@ -2,8 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_json, to_json_binary, Addr, BankMsg, BankQuery, Binary, Coin, CosmosMsg, Deps, DepsMut,
-     Empty, Env, MessageInfo, Order, Reply, Response, StdError, StdResult, SubMsg,
-    WasmMsg,
+    Empty, Env, MessageInfo, Order, Reply, Response, StdError, StdResult, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_paginate_storage::{paginate_map, paginate_map_keys, paginate_map_values};
@@ -956,6 +955,10 @@ pub fn remove_unwanted_balance(
     env: Env,
     start_after: Option<String>,
 ) -> Result<Response, ContractError> {
+    // runs every 4 hours
+    if env.block.height % 4800 != 0 {
+        return Ok(Response::new());
+    };
     let contract = env.contract.address;
     // Query bank for contract balance of native denoms
     let native_balance: cosmwasm_std::AllBalanceResponse =

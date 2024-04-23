@@ -2,7 +2,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     coin, from_json,
     testing::{mock_dependencies, mock_env},
-    to_json_binary, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
+    to_json_binary, Addr, BlockInfo, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
 };
 use cw2::{set_contract_version, ContractVersion};
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg, WasmSudo};
@@ -2451,10 +2451,30 @@ fn test_native_token_list() {
     }))
     .unwrap();
 
+    let dao_balance = app.wrap().query_all_balances(gov_addr.clone()).unwrap();
+    assert_eq!(
+        dao_balance,
+        vec![
+            coin(10u128, "hops"),
+            coin(10u128, "pepper"),
+            coin(10u128, "rosemary")
+        ]
+    );
+    app.update_block(|block| block.height += 6855);
+    println!("{}",app.block_info().height);
+
+    app.sudo(SudoMsg::Wasm({
+        WasmSudo {
+            contract_addr: gov_addr.clone(),
+            msg: to_json_binary(&DaoSudoMsg::ClockEndBlock { start_after: None }).unwrap(),
+        }
+    }))
+    .unwrap();
+
     let dao_balance = app.wrap().query_all_balances(gov_addr).unwrap();
     assert_eq!(
         dao_balance,
-        vec![coin(10u128, "hops"), coin(10u128, "rosemary")]
+        vec![coin(10u128, "hops"), coin(10u128, "rosemary"),]
     );
 }
 
