@@ -1,15 +1,15 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    from_json,
+    coin, from_json,
     testing::{mock_dependencies, mock_env},
     to_json_binary, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
 };
 use cw2::{set_contract_version, ContractVersion};
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg, WasmSudo};
 use cw_storage_plus::{Item, Map};
 use cw_utils::{Duration, Expiration};
 use dao_interface::{
-    msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg},
+    msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg, SudoMsg as DaoSudoMsg},
     query::{
         AdminNominationResponse, Cw20BalanceResponse, DaoURIResponse, DumpStateResponse,
         GetItemResponse, PauseInfoResponse, ProposalModuleCountResponse, SubDao,
@@ -69,6 +69,7 @@ fn cw_core_contract() -> Box<dyn Contract<Empty>> {
         crate::contract::instantiate,
         crate::contract::query,
     )
+    .with_sudo(crate::contract::sudo)
     .with_reply(crate::contract::reply)
     .with_migrate(crate::contract::migrate);
     Box::new(contract)
@@ -2385,6 +2386,76 @@ fn test_cw721_receive_no_auto_add() {
         )
         .unwrap();
     assert_eq!(cw20_list, vec![another_cw721, cw721_addr]);
+}
+
+#[test]
+fn test_native_token_list() {
+    let (gov_addr, mut app) = do_standard_instantiate(false, None);
+
+    app.execute_contract(
+        Addr::unchecked(gov_addr.clone()),
+        gov_addr.clone(),
+        &ExecuteMsg::UpdateTokenList {
+            to_add: vec!["hops".to_string(), "rosemary".to_string()],
+            to_remove: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    let native_list: Vec<String> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr.clone(),
+            &QueryMsg::NativeTokenList {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(
+        native_list,
+        vec!["rosemary".to_string(), "hops".to_string()]
+    );
+
+    let depositor = Addr::unchecked("depositor");
+    app.sudo(SudoMsg::Bank({
+        BankSudo::Mint {
+            to_address: depositor.to_string(),
+            amount: vec![
+                coin(100u128, "hops".to_string()),
+                coin(100u128, "rosemary".to_string()),
+                coin(100u128, "pepper".to_string()),
+            ],
+        }
+    }))
+    .ok();
+
+    app.send_tokens(
+        depositor.clone(),
+        gov_addr.clone(),
+        &vec![
+            coin(10u128, "hops"),
+            coin(10u128, "rosemary"),
+            coin(10u128, "pepper"),
+        ],
+    )
+    .unwrap();
+
+    app.sudo(SudoMsg::Wasm({
+        WasmSudo {
+            contract_addr: gov_addr.clone(),
+            msg: to_json_binary(&DaoSudoMsg::ClockEndBlock { start_after: None }).unwrap(),
+        }
+    }))
+    .unwrap();
+
+    let dao_balance = app.wrap().query_all_balances(gov_addr).unwrap();
+    assert_eq!(
+        dao_balance,
+        vec![coin(10u128, "hops"), coin(10u128, "rosemary")]
+    );
 }
 
 #[test]

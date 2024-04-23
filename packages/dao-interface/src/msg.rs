@@ -190,6 +190,12 @@ pub enum QueryMsg {
     /// Returns contract version info
     #[returns(crate::voting::InfoResponse)]
     Info {},
+    // Returns acceped native tokens list
+    #[returns(Vec<String>)]
+    NativeTokenList {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
     /// Gets all proposal modules associated with the
     /// contract.
     #[returns(Vec<crate::state::ProposalModule>)]
