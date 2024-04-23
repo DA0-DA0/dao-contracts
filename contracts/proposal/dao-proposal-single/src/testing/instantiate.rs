@@ -270,7 +270,7 @@ pub(crate) fn instantiate_with_native_staked_balances_governance(
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: native_stake_id,
             msg: to_json_binary(&dao_voting_token_staked::msg::InstantiateMsg {
-                token_info: dao_interface::token::TokenInfo::Existing {
+                token_info: dao_voting_token_staked::msg::TokenInfo::Existing {
                     denom: "ujuno".to_string(),
                 },
                 unstaking_duration: None,

@@ -2,7 +2,7 @@ use cosmwasm_std::{
     testing::{mock_env, mock_info},
     Decimal, DepsMut, Response, Uint128,
 };
-use dao_interface::token::{NewDenomMetadata, NewTokenInfo, TokenInfo};
+use dao_interface::token::NewDenomMetadata;
 
 use crate::contract;
 use crate::msg::InstantiateMsg;
@@ -42,15 +42,11 @@ pub fn default_instantiate_msg(
     curve_type: CurveType,
 ) -> InstantiateMsg {
     InstantiateMsg {
+        token_issuer_code_id: 1,
         funding_pool_forwarding: None,
         supply: SupplyToken {
-            token_info: TokenInfo::New(NewTokenInfo {
-                token_issuer_code_id: 1,
-                subdenom: TEST_SUPPLY_DENOM.to_string(),
-                metadata: Some(default_supply_metadata()),
-                initial_balances: vec![],
-                initial_dao_balance: None,
-            }),
+            subdenom: TEST_SUPPLY_DENOM.to_string(),
+            metadata: Some(default_supply_metadata()),
             decimals,
             max_supply: None,
         },

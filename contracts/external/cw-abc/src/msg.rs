@@ -10,6 +10,9 @@ use crate::{
 
 #[cw_serde]
 pub struct InstantiateMsg {
+    /// The code id of the cw-tokenfactory-issuer contract
+    pub token_issuer_code_id: u64,
+
     /// An optional address for automatically forwarding funding pool gains
     pub funding_pool_forwarding: Option<String>,
 
@@ -150,9 +153,6 @@ pub enum QueryMsg {
         limit: Option<u32>,
         config_type: Option<HatcherAllowlistConfigType>,
     },
-    /// Returns the Initial Supply of the supply token when the ABC was created
-    #[returns(Uint128)]
-    InitialSupply {},
     /// Returns the Maximum Supply of the supply token
     #[returns(Uint128)]
     MaxSupply {},

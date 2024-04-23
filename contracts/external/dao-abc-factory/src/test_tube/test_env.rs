@@ -16,12 +16,11 @@ use cw_utils::Duration;
 use dao_interface::{
     msg::QueryMsg as DaoQueryMsg,
     state::{Admin, ModuleInstantiateInfo, ProposalModule},
-    token::{NewTokenInfo, TokenInfo},
 };
 use dao_voting::{
     pre_propose::PreProposeInfo, threshold::PercentageThreshold, threshold::Threshold,
 };
-use dao_voting_token_staked::msg::QueryMsg as TokenVotingQueryMsg;
+use dao_voting_token_staked::msg::{QueryMsg as TokenVotingQueryMsg, TokenInfo};
 
 use dao_testing::test_tube::{
     cw_abc::CwAbc, cw_tokenfactory_issuer::TokenfactoryIssuer, dao_dao_core::DaoCore,
@@ -136,17 +135,11 @@ impl TestEnvBuilder {
                         contract_addr: dao_abc_factory.contract_addr.clone(),
                         msg: to_json_binary(&ExecuteMsg::AbcFactory {
                             instantiate_msg: cw_abc::msg::InstantiateMsg {
+                                token_issuer_code_id: issuer_id,
                                 funding_pool_forwarding: Some(accounts[0].address()),
-
                                 supply: SupplyToken {
-                                    token_info: TokenInfo::New(NewTokenInfo {
-                                        token_issuer_code_id: issuer_id,
-                                        subdenom: DENOM.to_string(),
-                                        metadata: None,
-                                        initial_balances: vec![],
-                                        initial_dao_balance: None,
-                                    }),
-
+                                    subdenom: DENOM.to_string(),
+                                    metadata: None,
                                     decimals: 6,
                                     max_supply: Some(Uint128::from(1000000000u128)),
                                 },
@@ -254,15 +247,11 @@ impl TestEnvBuilder {
                             contract_addr: dao_abc_factory.contract_addr.clone(),
                             msg: to_json_binary(&ExecuteMsg::AbcFactory {
                                 instantiate_msg: cw_abc::msg::InstantiateMsg {
+                                    token_issuer_code_id: issuer_id,
                                     funding_pool_forwarding: Some(accounts[0].address()),
                                     supply: SupplyToken {
-                                        token_info: TokenInfo::New(NewTokenInfo {
-                                            token_issuer_code_id: issuer_id,
-                                            subdenom: DENOM.to_string(),
-                                            metadata: None,
-                                            initial_balances: vec![],
-                                            initial_dao_balance: None,
-                                        }),
+                                        subdenom: DENOM.to_string(),
+                                        metadata: None,
                                         decimals: 6,
                                         max_supply: Some(Uint128::from(1000000000u128)),
                                     },

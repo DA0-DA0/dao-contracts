@@ -17,7 +17,7 @@ use cw_utils::{
 use dao_hooks::stake::{stake_hook_msgs, unstake_hook_msgs};
 use dao_interface::{
     state::ModuleInstantiateCallback,
-    token::{InitialBalance, NewTokenInfo, TokenFactoryCallback, TokenInfo},
+    token::{InitialBalance, NewTokenInfo, TokenFactoryCallback},
     voting::{
         DenomResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
     },
@@ -30,7 +30,6 @@ use dao_voting::{
     },
 };
 
-use crate::error::ContractError;
 use crate::msg::{
     ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg,
     StakerBalanceResponse,
@@ -39,6 +38,7 @@ use crate::state::{
     Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, DENOM, HOOKS, MAX_CLAIMS, STAKED_BALANCES,
     STAKED_TOTAL, TOKEN_INSTANTIATION_INFO, TOKEN_ISSUER_CONTRACT,
 };
+use crate::{error::ContractError, msg::TokenInfo};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-token-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");

@@ -5,15 +5,16 @@ use cw_curves::{
     utils::decimal,
     Curve, DecimalPlaces,
 };
-use dao_interface::token::TokenInfo;
+use dao_interface::token::NewDenomMetadata;
 
 use crate::ContractError;
 
 #[cw_serde]
 pub struct SupplyToken {
-    /// New or existing native token
-    /// NOTE: If using an existing token, then the ABC must be given mint and burn permissions after creation
-    pub token_info: TokenInfo,
+    /// The denom to create for the supply token
+    pub subdenom: String,
+    /// Metadata for the supply token to create
+    pub metadata: Option<NewDenomMetadata>,
     /// Number of decimal places for the supply token, needed for proper curve math.
     /// Default for token factory is 6
     pub decimals: u8,

@@ -1,9 +1,7 @@
 use std::fmt::{self, Display};
 
+use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType, SupplyToken};
 use cosmwasm_schema::cw_serde;
-use dao_interface::token::NewTokenInfo;
-
-use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType};
 use cosmwasm_std::{Addr, Uint128};
 use cw_curves::DecimalPlaces;
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
@@ -98,9 +96,6 @@ pub const FUNDING_POOL_FORWARDING: Item<Addr> = Item::new("funding_pool_forwardi
 /// The denom used for the supply token
 pub const SUPPLY_DENOM: Item<String> = Item::new("denom");
 
-/// The initial supply of the supply token when the ABC was created
-pub const INITIAL_SUPPLY: Item<Uint128> = Item::new("initial_supply");
-
 /// The maximum supply of the supply token, new tokens cannot be minted beyond this cap
 pub const MAX_SUPPLY: Item<Uint128> = Item::new("max_supply");
 
@@ -118,8 +113,8 @@ pub static PHASE_CONFIG: Item<CommonsPhaseConfig> = Item::new("phase_config");
 /// The phase state of the Augmented Bonding Curve
 pub static PHASE: Item<CommonsPhase> = Item::new("phase");
 
-/// Temporarily holds NewTokenInfo when creating a new Token Factory denom
-pub const NEW_TOKEN_INFO: Item<NewTokenInfo> = Item::new("new_token_info");
+/// Temporarily holds the supply config when creating a new Token Factory denom
+pub const TEMP_SUPPLY: Item<SupplyToken> = Item::new("temp_supply");
 
 /// The address of the cw-tokenfactory-issuer contract
 pub const TOKEN_ISSUER_CONTRACT: Item<Addr> = Item::new("token_issuer_contract");

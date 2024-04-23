@@ -5,7 +5,7 @@ use crate::msg::{
 };
 use crate::state::{
     hatcher_allowlist, CurveState, HatcherAllowlistConfigType, CURVE_STATE, DONATIONS, HATCHERS,
-    INITIAL_SUPPLY, MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
+    MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
 };
 use cosmwasm_std::{Addr, Deps, Order, QuerierWrapper, StdResult, Uint128};
 use cw_storage_plus::Bound;
@@ -123,12 +123,6 @@ pub fn query_hatcher_allowlist(
     Ok(HatcherAllowlistResponse {
         allowlist: Some(allowlist),
     })
-}
-
-/// Query the initial supply of the supply token when the ABC was created
-pub fn query_initial_supply(deps: Deps) -> StdResult<Uint128> {
-    let initial_supply = INITIAL_SUPPLY.may_load(deps.storage)?;
-    Ok(initial_supply.unwrap_or_default())
 }
 
 /// Query the max supply of the supply token

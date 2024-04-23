@@ -4,8 +4,9 @@ use cw_controllers::Claims;
 use cw_hooks::Hooks;
 use cw_storage_plus::{Item, SnapshotItem, SnapshotMap, Strategy};
 use cw_utils::Duration;
-use dao_interface::token::TokenInfo;
 use dao_voting::threshold::ActiveThreshold;
+
+use crate::msg::TokenInfo;
 
 #[cw_serde]
 pub struct Config {

@@ -5,7 +5,7 @@ use cw_utils::Duration;
 use dao_interface::{
     msg::QueryMsg as DaoQueryMsg,
     state::{Admin, ModuleInstantiateInfo},
-    token::{InitialBalance, NewDenomMetadata, NewTokenInfo, TokenInfo},
+    token::{InitialBalance, NewDenomMetadata, NewTokenInfo},
 };
 use dao_testing::test_tube::{cw_tokenfactory_issuer::TokenfactoryIssuer, dao_dao_core::DaoCore};
 use dao_voting::{
@@ -18,7 +18,7 @@ use osmosis_test_tube::{
 };
 
 use crate::{
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenInfo},
     tests::test_tube::test_env::TokenVotingContract,
     ContractError,
 };

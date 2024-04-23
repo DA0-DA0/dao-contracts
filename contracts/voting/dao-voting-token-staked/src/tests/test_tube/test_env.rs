@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 use crate::{
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenInfo},
     ContractError,
 };
 
@@ -13,7 +13,7 @@ use cw_utils::Duration;
 use dao_interface::{
     msg::QueryMsg as DaoQueryMsg,
     state::{Admin, ModuleInstantiateInfo, ProposalModule},
-    token::{InitialBalance, NewDenomMetadata, NewTokenInfo, TokenInfo},
+    token::{InitialBalance, NewDenomMetadata, NewTokenInfo},
     voting::{IsActiveResponse, VotingPowerAtHeightResponse},
 };
 use dao_voting::{
