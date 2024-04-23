@@ -1,12 +1,10 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_json, to_json_binary, Addr, BankQuery, Binary, Coin, CosmosMsg, Deps, DepsMut,
-    DistributionMsg, Empty, Env, MessageInfo, Order, Reply, Response, StdError, StdResult, SubMsg,
-    WasmMsg,
+    from_json, to_json_binary, Addr, BankMsg, BankQuery, Binary, Coin, CosmosMsg, Deps, DepsMut,
+    Empty, Env, MessageInfo, Order, Reply, Response, StdError, StdResult, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
-use cw20::Cw20ExecuteMsg;
 use cw_paginate_storage::{paginate_map, paginate_map_keys, paginate_map_values};
 use cw_storage_plus::Map;
 use cw_utils::{parse_reply_instantiate_data, Duration};
@@ -24,8 +22,9 @@ use dao_interface::{
 };
 
 use crate::state::{
-    ACTIVE_PROPOSAL_MODULE_COUNT, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN,
-    PAUSED, PROPOSAL_MODULES, SUBDAO_LIST, TOTAL_PROPOSAL_MODULE_COUNT, VOTING_MODULE,
+    ACTIVE_PROPOSAL_MODULE_COUNT, ADMIN, CONFIG, CUSTOM_TREASURY_BOOL, CW20_LIST, CW721_LIST,
+    ITEMS, NOMINATED_ADMIN, PAUSED, PROPOSAL_MODULES, SUBDAO_LIST, TOTAL_PROPOSAL_MODULE_COUNT,
+    VOTING_MODULE,
 };
 use crate::{error::ContractError, state::ACCEPTED_NATIVE_TOKENS};
 
@@ -93,6 +92,7 @@ pub fn instantiate(
 
     TOTAL_PROPOSAL_MODULE_COUNT.save(deps.storage, &0)?;
     ACTIVE_PROPOSAL_MODULE_COUNT.save(deps.storage, &0)?;
+    CUSTOM_TREASURY_BOOL.save(deps.storage, &false)?;
 
     Ok(Response::new()
         .add_attribute("action", "instantiate")
@@ -142,9 +142,11 @@ pub fn execute(
         ExecuteMsg::UpdateCw721List { to_add, to_remove } => {
             execute_update_cw721_list(deps, env, info.sender, to_add, to_remove)
         }
-        ExecuteMsg::UpdateTokenList { to_add, to_remove } => {
-            execute_update_token_list(deps, env, info.sender, to_add, to_remove)
-        }
+        ExecuteMsg::UpdateTokenList {
+            bool,
+            to_add,
+            to_remove,
+        } => execute_update_token_list(deps, env, info.sender, bool, to_add, to_remove),
         ExecuteMsg::UpdateVotingModule { module } => {
             execute_update_voting_module(env, info.sender, module)
         }
@@ -438,26 +440,30 @@ fn do_update_addr_list(
 fn do_update_token_list(
     deps: DepsMut,
     map: Map<String, Empty>,
+    bool: Option<bool>,
     to_add: Vec<String>,
     to_remove: Vec<String>,
-    verify: impl Fn(&String, Deps) -> StdResult<()>,
 ) -> Result<(), ContractError> {
-    let to_add = to_add
-        .into_iter()
-        .map(|a| a)
-        .collect::<Vec<String>>();
+    let enabled = CUSTOM_TREASURY_BOOL.load(deps.storage)?;
 
-    let to_remove = to_remove
-        .into_iter()
-        .map(|a| a)
-        .collect::<Vec<String>>();
-
-    for addr in to_add {
-        verify(&addr, deps.as_ref())?;
-        map.save(deps.storage, addr, &Empty {})?;
+    if !enabled && Some(bool).is_some() {
+        if bool == Some(true) {
+            CUSTOM_TREASURY_BOOL.update(deps.storage, |_| Ok::<bool, StdError>(true))?;
+        }
+    } else if enabled && bool == Some(false) {
+        CUSTOM_TREASURY_BOOL.update(deps.storage, |_| Ok::<bool, StdError>(false))?;
+        // TODO: should this be cleaned to fresh state?
+        return Ok(());
     }
-    for addr in to_remove {
-        map.remove(deps.storage, addr);
+
+    let to_add = to_add.into_iter().map(|a| a).collect::<Vec<String>>();
+    let to_remove = to_remove.into_iter().map(|a| a).collect::<Vec<String>>();
+
+    for token in to_add {
+        map.save(deps.storage, token, &Empty {})?;
+    }
+    for token in to_remove {
+        map.remove(deps.storage, token);
     }
 
     Ok(())
@@ -510,24 +516,14 @@ pub fn execute_update_token_list(
     deps: DepsMut,
     env: Env,
     sender: Addr,
+    bool: Option<bool>,
     to_add: Vec<String>,
     to_remove: Vec<String>,
 ) -> Result<Response, ContractError> {
     if env.contract.address != sender {
         return Err(ContractError::Unauthorized {});
     }
-    do_update_token_list(
-        deps,
-        ACCEPTED_NATIVE_TOKENS,
-        to_add,
-        to_remove,
-        |addr, deps| {
-            let _info: cw721::ContractInfoResponse = deps
-                .querier
-                .query_wasm_smart(addr, &cw721::Cw721QueryMsg::ContractInfo {})?;
-            Ok(())
-        },
-    )?;
+    do_update_token_list(deps, ACCEPTED_NATIVE_TOKENS, bool, to_add, to_remove)?;
     Ok(Response::default().add_attribute("action", "update_cw721_list"))
 }
 
@@ -664,6 +660,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetItem { key } => query_get_item(deps, key),
         QueryMsg::Info {} => query_info(deps),
         QueryMsg::ListItems { start_after, limit } => query_list_items(deps, start_after, limit),
+        QueryMsg::NativeTokenList { start_after, limit } => {
+            query_native_token_list(deps, start_after, limit)
+        }
         QueryMsg::PauseInfo {} => query_paused(deps, env),
         QueryMsg::ProposalModules { start_after, limit } => {
             query_proposal_modules(deps, start_after, limit)
@@ -847,6 +846,20 @@ pub fn query_list_items(
     )?)
 }
 
+pub fn query_native_token_list(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<Binary> {
+    to_json_binary(&paginate_map_keys(
+        deps,
+        &ACCEPTED_NATIVE_TOKENS,
+        start_after.clone(),
+        limit,
+        cosmwasm_std::Order::Descending,
+    )?)
+}
+
 pub fn query_cw20_list(
     deps: Deps,
     start_after: Option<String>,
@@ -959,6 +972,16 @@ pub fn remove_unwanted_balance(
     env: Env,
     start_after: Option<String>,
 ) -> Result<Response, ContractError> {
+    // runs every 4 hours
+    if env.block.height % 4800 != 0 {
+        return Ok(Response::new());
+    };
+    // verify custom treasury is enabled
+    let enabled = CUSTOM_TREASURY_BOOL.load(deps.storage)?;
+    if !enabled {
+        return Ok(Response::new());
+    };
+
     let contract = env.contract.address;
     // Query bank for contract balance of native denoms
     let native_balance: cosmwasm_std::AllBalanceResponse =
@@ -981,8 +1004,8 @@ pub fn remove_unwanted_balance(
         .filter(|coin: &Coin| !is_denom_accepted(&coin.denom, &accepted_native_tokens))
         .collect();
 
-    // send all unwanted_native_tokens to the treasury
-    let send_to_community_pool = DistributionMsg::FundCommunityPool {
+    // burn all unwanted tokens from treasury
+    let send_to_community_pool = BankMsg::Burn {
         amount: unwanted_native_tokens,
     };
 
