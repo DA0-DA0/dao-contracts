@@ -135,7 +135,7 @@ pub fn execute(
         ExecuteMsg::Buy {} => commands::buy(deps, env, info),
         ExecuteMsg::Sell {} => commands::sell(deps, env, info),
         ExecuteMsg::Close {} => commands::close(deps, info),
-        ExecuteMsg::Donate { pool } => commands::donate(deps, env, info, pool.unwrap_or_default()),
+        ExecuteMsg::Donate {} => commands::donate(deps, env, info),
         ExecuteMsg::Withdraw { amount } => commands::withdraw(deps, env, info, amount),
         ExecuteMsg::UpdateFundingPoolForwarding { address } => {
             commands::update_funding_pool_forwarding(deps, env, info, address)

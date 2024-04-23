@@ -1,7 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Decimal as StdDecimal, Uint128};
 use cw_address_like::AddressLike;
-use std::fmt::{self, Display};
 
 use crate::{
     abc::{CommonsPhase, CommonsPhaseConfig, CurveType, MinMax, ReserveToken, SupplyToken},
@@ -65,12 +64,9 @@ pub enum ExecuteMsg {
     /// Sell burns supply tokens in return for the reserve token.
     /// You must send only supply tokens.
     Sell {},
-    /// Donate will donate tokens to a pool.
+    /// Donate will donate tokens to the funding pool.
     /// You must send only reserve tokens.
-    Donate {
-        /// The pool to donate tokens into (defaults to funding pool)
-        pool: Option<DonationPool>,
-    },
+    Donate {},
     /// Withdraw will withdraw tokens from the funding pool.
     Withdraw {
         /// The amount to withdraw (defaults to full amount).
@@ -172,27 +168,6 @@ pub enum QueryMsg {
 pub struct HatcherAllowlistEntry<T: AddressLike> {
     pub addr: T,
     pub config: HatcherAllowlistConfig,
-}
-
-#[cw_serde]
-pub enum DonationPool {
-    Funding {},
-    Reserve {},
-}
-
-impl Default for DonationPool {
-    fn default() -> Self {
-        DonationPool::Funding {}
-    }
-}
-
-impl Display for DonationPool {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            DonationPool::Funding {} => write!(f, "Funding"),
-            DonationPool::Reserve {} => write!(f, "Reserve"),
-        }
-    }
 }
 
 #[cw_serde]

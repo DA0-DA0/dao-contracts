@@ -520,7 +520,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Donate will donate tokens to a pool. You must send only reserve tokens.",
+        "description": "Donate will donate tokens to the funding pool. You must send only reserve tokens.",
         "type": "object",
         "required": [
           "donate"
@@ -528,19 +528,6 @@
         "properties": {
           "donate": {
             "type": "object",
-            "properties": {
-              "pool": {
-                "description": "The pool to donate tokens into (defaults to funding pool)",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/DonationPool"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            },
             "additionalProperties": false
           }
         },
@@ -877,36 +864,6 @@
       "Decimal": {
         "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
         "type": "string"
-      },
-      "DonationPool": {
-        "oneOf": [
-          {
-            "type": "object",
-            "required": [
-              "funding"
-            ],
-            "properties": {
-              "funding": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "reserve"
-            ],
-            "properties": {
-              "reserve": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          }
-        ]
       },
       "Expiration": {
         "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
