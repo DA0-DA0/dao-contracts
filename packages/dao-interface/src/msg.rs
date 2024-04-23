@@ -114,6 +114,7 @@ pub enum ExecuteMsg {
         to_remove: Vec<String>,
     },
     UpdateTokenList {
+        bool: Option<bool>,
         to_add: Vec<String>,
         to_remove: Vec<String>,
     },

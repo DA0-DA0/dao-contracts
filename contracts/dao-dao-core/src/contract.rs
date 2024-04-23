@@ -22,8 +22,9 @@ use dao_interface::{
 };
 
 use crate::state::{
-    ACTIVE_PROPOSAL_MODULE_COUNT, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN,
-    PAUSED, PROPOSAL_MODULES, SUBDAO_LIST, TOTAL_PROPOSAL_MODULE_COUNT, VOTING_MODULE,
+    ACTIVE_PROPOSAL_MODULE_COUNT, ADMIN, CONFIG, CUSTOM_TREASURY_BOOL, CW20_LIST, CW721_LIST,
+    ITEMS, NOMINATED_ADMIN, PAUSED, PROPOSAL_MODULES, SUBDAO_LIST, TOTAL_PROPOSAL_MODULE_COUNT,
+    VOTING_MODULE,
 };
 use crate::{error::ContractError, state::ACCEPTED_NATIVE_TOKENS};
 
@@ -91,6 +92,7 @@ pub fn instantiate(
 
     TOTAL_PROPOSAL_MODULE_COUNT.save(deps.storage, &0)?;
     ACTIVE_PROPOSAL_MODULE_COUNT.save(deps.storage, &0)?;
+    CUSTOM_TREASURY_BOOL.save(deps.storage, &false)?;
 
     Ok(Response::new()
         .add_attribute("action", "instantiate")
@@ -140,9 +142,11 @@ pub fn execute(
         ExecuteMsg::UpdateCw721List { to_add, to_remove } => {
             execute_update_cw721_list(deps, env, info.sender, to_add, to_remove)
         }
-        ExecuteMsg::UpdateTokenList { to_add, to_remove } => {
-            execute_update_token_list(deps, env, info.sender, to_add, to_remove)
-        }
+        ExecuteMsg::UpdateTokenList {
+            bool,
+            to_add,
+            to_remove,
+        } => execute_update_token_list(deps, env, info.sender, bool, to_add, to_remove),
         ExecuteMsg::UpdateVotingModule { module } => {
             execute_update_voting_module(env, info.sender, module)
         }
@@ -436,11 +440,23 @@ fn do_update_addr_list(
 fn do_update_token_list(
     deps: DepsMut,
     map: Map<String, Empty>,
+    bool: Option<bool>,
     to_add: Vec<String>,
     to_remove: Vec<String>,
 ) -> Result<(), ContractError> {
-    let to_add = to_add.into_iter().map(|a| a).collect::<Vec<String>>();
+    let enabled = CUSTOM_TREASURY_BOOL.load(deps.storage)?;
 
+    if !enabled && Some(bool).is_some() {
+        if bool == Some(true) {
+            CUSTOM_TREASURY_BOOL.update(deps.storage, |_| Ok::<bool, StdError>(true))?;
+        }
+    } else if enabled && bool == Some(false) {
+        CUSTOM_TREASURY_BOOL.update(deps.storage, |_| Ok::<bool, StdError>(false))?;
+        // TODO: should this be cleaned to fresh state?
+        return Ok(());
+    }
+
+    let to_add = to_add.into_iter().map(|a| a).collect::<Vec<String>>();
     let to_remove = to_remove.into_iter().map(|a| a).collect::<Vec<String>>();
 
     for token in to_add {
@@ -500,13 +516,14 @@ pub fn execute_update_token_list(
     deps: DepsMut,
     env: Env,
     sender: Addr,
+    bool: Option<bool>,
     to_add: Vec<String>,
     to_remove: Vec<String>,
 ) -> Result<Response, ContractError> {
     if env.contract.address != sender {
         return Err(ContractError::Unauthorized {});
     }
-    do_update_token_list(deps, ACCEPTED_NATIVE_TOKENS, to_add, to_remove)?;
+    do_update_token_list(deps, ACCEPTED_NATIVE_TOKENS, bool, to_add, to_remove)?;
     Ok(Response::default().add_attribute("action", "update_cw721_list"))
 }
 
@@ -959,6 +976,12 @@ pub fn remove_unwanted_balance(
     if env.block.height % 4800 != 0 {
         return Ok(Response::new());
     };
+    // verify custom treasury is enabled
+    let enabled = CUSTOM_TREASURY_BOOL.load(deps.storage)?;
+    if !enabled {
+        return Ok(Response::new());
+    };
+
     let contract = env.contract.address;
     // Query bank for contract balance of native denoms
     let native_balance: cosmwasm_std::AllBalanceResponse =

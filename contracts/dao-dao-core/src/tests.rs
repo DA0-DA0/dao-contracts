@@ -2389,6 +2389,67 @@ fn test_cw721_receive_no_auto_add() {
 }
 
 #[test]
+fn test_disabled_native_token_list() {
+    let (gov_addr, mut app) = do_standard_instantiate(false, None);
+
+    let depositor = Addr::unchecked("depositor");
+    app.sudo(SudoMsg::Bank({
+        BankSudo::Mint {
+            to_address: depositor.to_string(),
+            amount: vec![
+                coin(100u128, "hops".to_string()),
+                coin(100u128, "rosemary".to_string()),
+                coin(100u128, "pepper".to_string()),
+            ],
+        }
+    }))
+    .ok();
+
+    app.send_tokens(
+        depositor.clone(),
+        gov_addr.clone(),
+        &vec![
+            coin(10u128, "hops"),
+            coin(10u128, "rosemary"),
+            coin(10u128, "pepper"),
+        ],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked(gov_addr.clone()),
+        gov_addr.clone(),
+        &ExecuteMsg::UpdateTokenList {
+            bool: Some(false),
+            to_add: vec!["hops".to_string(), "rosemary".to_string()],
+            to_remove: vec!["pepper".to_string()],
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.update_block(|block| block.height += 2055);
+
+    app.sudo(SudoMsg::Wasm({
+        WasmSudo {
+            contract_addr: gov_addr.clone(),
+            msg: to_json_binary(&DaoSudoMsg::ClockEndBlock { start_after: None }).unwrap(),
+        }
+    }))
+    .unwrap();
+
+    let dao_balance = app.wrap().query_all_balances(gov_addr.clone()).unwrap();
+    assert_eq!(
+        dao_balance,
+        vec![
+            coin(10u128, "hops"),
+            coin(10u128, "pepper"),
+            coin(10u128, "rosemary")
+        ]
+    );
+}
+
+#[test]
 fn test_native_token_list() {
     let (gov_addr, mut app) = do_standard_instantiate(false, None);
 
@@ -2396,6 +2457,7 @@ fn test_native_token_list() {
         Addr::unchecked(gov_addr.clone()),
         gov_addr.clone(),
         &ExecuteMsg::UpdateTokenList {
+            bool: Some(true),
             to_add: vec!["hops".to_string(), "rosemary".to_string()],
             to_remove: vec![],
         },
@@ -2461,7 +2523,6 @@ fn test_native_token_list() {
         ]
     );
     app.update_block(|block| block.height += 6855);
-    println!("{}",app.block_info().height);
 
     app.sudo(SudoMsg::Wasm({
         WasmSudo {
