@@ -31,7 +31,7 @@ impl Curve for SquareRoot {
         let normalized = self.normalize.from_supply(supply);
         let root = square_root(normalized);
         let reserve = self.slope * normalized * root / Decimal::new(15, 1);
-        self.normalize.clone().to_reserve(reserve)
+        self.normalize.to_reserve(reserve)
     }
 
     fn supply(&self, reserve: Uint128) -> Uint128 {
@@ -39,6 +39,6 @@ impl Curve for SquareRoot {
         let base = self.normalize.from_reserve(reserve) * Decimal::new(15, 1) / self.slope;
         let squared = base * base;
         let supply = cube_root(squared);
-        self.normalize.clone().to_supply(supply)
+        self.normalize.to_supply(supply)
     }
 }

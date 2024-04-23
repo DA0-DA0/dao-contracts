@@ -28,12 +28,12 @@ impl Curve for Constant {
     fn reserve(&self, supply: Uint128) -> Uint128 {
         // f(x) = supply * self.value
         let reserve = self.normalize.from_supply(supply) * self.value;
-        self.normalize.clone().to_reserve(reserve)
+        self.normalize.to_reserve(reserve)
     }
 
     fn supply(&self, reserve: Uint128) -> Uint128 {
         // f(x) = reserve / self.value
         let supply = self.normalize.from_reserve(reserve) / self.value;
-        self.normalize.clone().to_supply(supply)
+        self.normalize.to_supply(supply)
     }
 }

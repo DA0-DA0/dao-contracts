@@ -31,7 +31,7 @@ impl Curve for Linear {
         let square = normalized * normalized;
         // Note: multiplying by 0.5 is much faster than dividing by 2
         let reserve = square * self.slope * Decimal::new(5, 1);
-        self.normalize.clone().to_reserve(reserve)
+        self.normalize.to_reserve(reserve)
     }
 
     fn supply(&self, reserve: Uint128) -> Uint128 {
@@ -39,6 +39,6 @@ impl Curve for Linear {
         // note: use addition here to optimize 2* operation
         let square = self.normalize.from_reserve(reserve + reserve) / self.slope;
         let supply = square_root(square);
-        self.normalize.clone().to_supply(supply)
+        self.normalize.to_supply(supply)
     }
 }
