@@ -594,22 +594,7 @@ pub fn execute_update_sub_daos_list(
 pub fn execute_receive_cw20(deps: DepsMut, sender: Addr) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     if !config.automatically_add_cw20s {
-        // check if token is in whitelisted tokens
-        let accepted_cw20s = query_cw20_list(deps.as_ref(), None, None)?;
-
-        // Check if any cw20 is not included in accepted cw20s
-
-        // let unwanted_cw20_tokens = accepted_cw20s
-        //     .into_iter()
-        //     .filter(|coin| !is_cw20_accepted(&coin, &accepted_cw20s))
-        //     .collect();
-
-        // do something with unwanted_cw20_tokens
-        let res = Response::new();
-
-        // TODO
-
-        Ok(res)
+        Ok(Response::new())
     } else {
         CW20_LIST.save(deps.storage, sender.clone(), &Empty {})?;
         Ok(Response::new()
@@ -621,20 +606,7 @@ pub fn execute_receive_cw20(deps: DepsMut, sender: Addr) -> Result<Response, Con
 pub fn execute_receive_cw721(deps: DepsMut, sender: Addr) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     if !config.automatically_add_cw721s {
-        // check if token is in whitelisted tokens
-        let accepted_cw721 = query_cw721_list(deps.as_ref(), None, None);
-
-        // let unwanted_cw721_tokens = accepted_cw721
-        //     .into_iter()
-        //     .filter(|addr| !is_cw721_accepted(&addr, &accepted_cw721))
-        //     .collect();
-
-        // do something with unwanted_cw721_tokens
-        let res = Response::new();
-
-        //TODO
-
-        Ok(res)
+        Ok(Response::new())
     } else {
         CW721_LIST.save(deps.storage, sender.clone(), &Empty {})?;
         Ok(Response::new()
