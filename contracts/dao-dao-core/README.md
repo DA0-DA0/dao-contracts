@@ -3,11 +3,6 @@
 [![dao-dao-core on crates.io](https://img.shields.io/crates/v/dao-dao-core.svg?logo=rust)](https://crates.io/crates/dao-dao-core)
 [![docs.rs](https://img.shields.io/docsrs/dao-dao-core?logo=docsdotrs)](https://docs.rs/dao-dao-core/latest/dao_dao_core/index.html)
 
-## Custom Treasury Notes 
-- do we need to figure out a way to make use of `limit` in balance queries?
-- do we burn cw20 & cw721 tokens? or do we send them back to contract? can we send them to community pool?
-- do we wait 1 block 
-
 This contract is the core module for all DAO DAO DAOs. It handles
 management of voting power and proposal modules, executes messages,
 and holds the DAO's treasury.
