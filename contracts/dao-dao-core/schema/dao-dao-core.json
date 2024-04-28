@@ -1723,7 +1723,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Lists all of the items associted with the contract. For example, given the items `{ \"group\": \"foo\", \"subdao\": \"bar\"}` this query would return `[(\"group\", \"foo\"), (\"subdao\", \"bar\")]`.",
+        "description": "Lists all of the items associated with the contract. For example, given the items `{ \"group\": \"foo\", \"subdao\": \"bar\"}` this query would return `[(\"group\", \"foo\"), (\"subdao\", \"bar\")]`.",
         "type": "object",
         "required": [
           "list_items"

@@ -541,3 +541,52 @@ fn test_update_curve() {
         })
     );
 }
+
+#[test]
+fn test_dao_hatcher() {
+    let app = OsmosisTestApp::new();
+    let builder = TestEnvBuilder::new();
+    let env = builder.default_setup(&app);
+    let TestEnv {
+        ref abc,
+        ref accounts,
+        ..
+    } = env;
+
+    // Setup a dao with the 1st half of accounts
+    let dao = env.setup_dao();
+    app.increase_time(1u64);
+
+    // Update hatcher allowlist for DAO membership
+    let result = abc.execute(
+        &ExecuteMsg::UpdateHatchAllowlist {
+            to_add: vec![HatcherAllowlistEntry::<String> {
+                addr: dao.contract_addr.to_string(),
+                config: HatcherAllowlistConfig {
+                    config_type: HatcherAllowlistConfigType::DAO {},
+                },
+            }],
+            to_remove: vec![],
+        },
+        &[],
+        &accounts[0],
+    );
+    assert!(result.is_ok());
+
+    // Only DAO members (1st half of accounts) can hatch
+    let result = abc.execute(&ExecuteMsg::Buy {}, &coins(1000, RESERVE), &accounts[0]);
+    assert!(result.is_ok());
+
+    // Check not member
+    let result = abc.execute(
+        &ExecuteMsg::Buy {},
+        &coins(1000, RESERVE),
+        &accounts[accounts.len() - 1],
+    );
+    assert_eq!(
+        result.unwrap_err(),
+        abc.execute_error(ContractError::SenderNotAllowlisted {
+            sender: accounts[accounts.len() - 1].address().to_string()
+        })
+    );
+}

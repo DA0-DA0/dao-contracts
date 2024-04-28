@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Decimal as StdDecimal, Uint128};
+use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw_address_like::AddressLike;
 
 use crate::{
@@ -42,13 +42,13 @@ pub enum UpdatePhaseConfigMsg {
         contribution_limits: Option<MinMax>,
         // TODO what is the minimum used for?
         initial_raise: Option<MinMax>,
-        entry_fee: Option<StdDecimal>,
-        exit_fee: Option<StdDecimal>,
+        entry_fee: Option<Decimal>,
+        exit_fee: Option<Decimal>,
     },
     /// Update the open phase configuration.
     Open {
-        exit_fee: Option<StdDecimal>,
-        entry_fee: Option<StdDecimal>,
+        exit_fee: Option<Decimal>,
+        entry_fee: Option<Decimal>,
     },
     /// Update the closed phase configuration.
     /// TODO Set the curve type to be used on close?
@@ -179,7 +179,7 @@ pub struct CurveInfoResponse {
     /// The amount of tokens in the funding pool
     pub funding: Uint128,
     /// Current spot price of the token
-    pub spot_price: StdDecimal,
+    pub spot_price: Decimal,
     /// Current reserve denom
     pub reserve_denom: String,
 }

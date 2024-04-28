@@ -21,7 +21,7 @@
             ],
             "properties": {
               "subdenom": {
-                "description": "component of fulldenom (`factory/<contract_address>/<subdenom>`).",
+                "description": "component of full denom (`factory/<contract_address>/<subdenom>`).",
                 "type": "string"
               }
             },
@@ -31,7 +31,7 @@
         "additionalProperties": false
       },
       {
-        "description": "`ExistingToken` will use already created token. So to set this up, Token Factory admin for the existing token needs trasfer admin over to this contract, and optionally set the `BeforeSendHook` manually.",
+        "description": "`ExistingToken` will use already created token. So to set this up, Token Factory admin for the existing token needs transfer admin over to this contract, and optionally set the `BeforeSendHook` manually.",
         "type": "object",
         "required": [
           "existing_token"
@@ -60,7 +60,7 @@
     "description": "State changing methods available to this smart contract.",
     "oneOf": [
       {
-        "description": "Allow adds the target address to the allowlist to be able to send or recieve tokens even if the token is frozen. Token Factory's BeforeSendHook listener must be set to this contract in order for this feature to work.\n\nThis functionality is intedended for DAOs who do not wish to have a their tokens liquid while bootstrapping their DAO. For example, a DAO may wish to white list a Token Staking contract (to allow users to stake their tokens in the DAO) or a Merkle Drop contract (to allow users to claim their tokens).",
+        "description": "Allow adds the target address to the allowlist to be able to send or receive tokens even if the token is frozen. Token Factory's BeforeSendHook listener must be set to this contract in order for this feature to work.\n\nThis functionality is intended for DAOs who do not wish to have a their tokens liquid while bootstrapping their DAO. For example, a DAO may wish to white list a Token Staking contract (to allow users to stake their tokens in the DAO) or a Merkle Drop contract (to allow users to claim their tokens).",
         "type": "object",
         "required": [
           "allow"
@@ -86,7 +86,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Burn token to address. Burn allowance is required and wiil be deducted after successful burn.",
+        "description": "Burn token to address. Burn allowance is required and will be deducted after successful burn.",
         "type": "object",
         "required": [
           "burn"
@@ -112,7 +112,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Mint token to address. Mint allowance is required and wiil be deducted after successful mint.",
+        "description": "Mint token to address. Mint allowance is required and will be deducted after successful mint.",
         "type": "object",
         "required": [
           "mint"
@@ -138,7 +138,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Deny adds the target address to the denylist, whis prevents them from sending/receiving the token attached to this contract tokenfactory's BeforeSendHook listener must be set to this contract in order for this feature to work as intended.",
+        "description": "Deny adds the target address to the denylist, which prevents them from sending/receiving the token attached to this contract tokenfactory's BeforeSendHook listener must be set to this contract in order for this feature to work as intended.",
         "type": "object",
         "required": [
           "deny"
@@ -601,7 +601,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Enumerates over all burn allownances. Response: AllowancesResponse",
+        "description": "Enumerates over all burn allowances. Response: AllowancesResponse",
         "type": "object",
         "required": [
           "burn_allowances"
@@ -653,7 +653,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Enumerates over all mint allownances. Response: AllowancesResponse",
+        "description": "Enumerates over all mint allowances. Response: AllowancesResponse",
         "type": "object",
         "required": [
           "mint_allowances"

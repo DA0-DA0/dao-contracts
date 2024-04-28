@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    ensure, to_json_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal as StdDecimal, DepsMut, Env,
-    MessageInfo, QuerierWrapper, Response, StdResult, Storage, Uint128, WasmMsg,
+    ensure, to_json_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env, MessageInfo,
+    QuerierWrapper, Response, StdResult, Storage, Uint128, WasmMsg,
 };
 use cw_tokenfactory_issuer::msg::ExecuteMsg as IssuerExecuteMsg;
 use cw_utils::must_pay;
@@ -212,7 +212,7 @@ pub fn sell(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Con
 /// Return the reserved and funded amounts based on the payment and the allocation ratio
 fn calculate_reserved_and_funded(
     payment: Uint128,
-    allocation_ratio: StdDecimal,
+    allocation_ratio: Decimal,
 ) -> (Uint128, Uint128) {
     let funded = payment * allocation_ratio;
     let reserved = payment.checked_sub(funded).unwrap(); // Since allocation_ratio is < 1, this subtraction is safe
@@ -253,10 +253,7 @@ fn calculate_exit_fee(
     };
 
     // Ensure the exit fee is not greater than 100%
-    ensure!(
-        exit_fee <= StdDecimal::one(),
-        ContractError::InvalidExitFee {}
-    );
+    ensure!(exit_fee <= Decimal::one(), ContractError::InvalidExitFee {});
 
     // This won't ever overflow because it's checked
     let taxed_amount = sell_amount * exit_fee;
@@ -465,9 +462,7 @@ pub fn update_hatch_allowlist(
     for allow in to_add {
         let addr = deps.api.addr_validate(allow.addr.as_str())?;
 
-        if !list.has(deps.storage, &addr) {
-            list.save(deps.storage, &addr, &allow.config)?;
-        }
+        list.save(deps.storage, &addr, &allow.config)?;
     }
 
     // Remove addresses from the allowlist

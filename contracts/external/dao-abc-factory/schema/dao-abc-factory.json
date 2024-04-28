@@ -244,11 +244,74 @@
         },
         "additionalProperties": false
       },
+      "HatcherAllowlistConfig": {
+        "description": "The configuration for a member of the hatcher allowlist",
+        "type": "object",
+        "required": [
+          "config_type"
+        ],
+        "properties": {
+          "config_type": {
+            "description": "The type of the configuration",
+            "allOf": [
+              {
+                "$ref": "#/definitions/HatcherAllowlistConfigType"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "HatcherAllowlistConfigType": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "d_a_o"
+            ],
+            "properties": {
+              "d_a_o": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "HatcherAllowlistEntry_for_String": {
+        "type": "object",
+        "required": [
+          "addr",
+          "config"
+        ],
+        "properties": {
+          "addr": {
+            "type": "string"
+          },
+          "config": {
+            "$ref": "#/definitions/HatcherAllowlistConfig"
+          }
+        },
+        "additionalProperties": false
+      },
       "InstantiateMsg": {
         "type": "object",
         "required": [
           "curve_type",
-          "fees_recipient",
           "phase_config",
           "reserve",
           "supply",
@@ -263,9 +326,12 @@
               }
             ]
           },
-          "fees_recipient": {
-            "description": "The recipient for any fees collected from bonding curve operation",
-            "type": "string"
+          "funding_pool_forwarding": {
+            "description": "An optional address for automatically forwarding funding pool gains",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "hatcher_allowlist": {
             "description": "TODO different ways of doing this, for example DAO members? Using a whitelist contract? Merkle tree? Hatcher allowlist",
@@ -274,7 +340,7 @@
               "null"
             ],
             "items": {
-              "type": "string"
+              "$ref": "#/definitions/HatcherAllowlistEntry_for_String"
             }
           },
           "phase_config": {
@@ -311,7 +377,7 @@
         "additionalProperties": false
       },
       "MinMax": {
-        "description": "Struct for minimium and maximum values",
+        "description": "Struct for minimum and maximum values",
         "type": "object",
         "required": [
           "max",

@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, Decimal as StdDecimal, Uint128};
+use cosmwasm_std::{ensure, Decimal, Uint128};
 use cw_curves::{
     curves::{Constant, Linear, SquareRoot},
     utils::decimal,
@@ -45,9 +45,9 @@ pub struct HatchConfig {
     /// The initial raise range (min, max) in the reserve token
     pub initial_raise: MinMax,
     /// The initial allocation (θ), percentage of the initial raise allocated to the Funding Pool
-    pub entry_fee: StdDecimal,
+    pub entry_fee: Decimal,
     /// Exit tax for the hatch phase
-    pub exit_fee: StdDecimal,
+    pub exit_fee: Decimal,
 }
 
 impl HatchConfig {
@@ -69,14 +69,14 @@ impl HatchConfig {
         );
 
         ensure!(
-            self.entry_fee <= StdDecimal::percent(100u64),
+            self.entry_fee <= Decimal::percent(100u64),
             ContractError::HatchPhaseConfigError(
                 "Initial allocation percentage must be between 0 and 100.".to_string()
             )
         );
 
         ensure!(
-            self.exit_fee <= StdDecimal::percent(100u64),
+            self.exit_fee <= Decimal::percent(100u64),
             ContractError::HatchPhaseConfigError(
                 "Exit taxation percentage must be less than or equal to 100.".to_string()
             )
@@ -90,23 +90,23 @@ impl HatchConfig {
 pub struct OpenConfig {
     /// Percentage of capital put into the Reserve Pool during the Open phase
     /// when buying from the curve.
-    pub entry_fee: StdDecimal,
+    pub entry_fee: Decimal,
     /// Exit taxation ratio
-    pub exit_fee: StdDecimal,
+    pub exit_fee: Decimal,
 }
 
 impl OpenConfig {
     /// Validate the open config
     pub fn validate(&self) -> Result<(), ContractError> {
         ensure!(
-            self.entry_fee <= StdDecimal::percent(100u64),
+            self.entry_fee <= Decimal::percent(100u64),
             ContractError::OpenPhaseConfigError(
                 "Reserve percentage must be between 0 and 100.".to_string()
             )
         );
 
         ensure!(
-            self.exit_fee <= StdDecimal::percent(100u64),
+            self.exit_fee <= Decimal::percent(100u64),
             ContractError::OpenPhaseConfigError(
                 "Exit taxation percentage must be between 0 and 100.".to_string()
             )
@@ -247,12 +247,12 @@ mod unit_tests {
                     min: Uint128::one(),
                     max: Uint128::from(1000000u128),
                 },
-                entry_fee: StdDecimal::percent(10u64),
-                exit_fee: StdDecimal::percent(10u64),
+                entry_fee: Decimal::percent(10u64),
+                exit_fee: Decimal::percent(10u64),
             },
             open: OpenConfig {
-                entry_fee: StdDecimal::percent(10u64),
-                exit_fee: StdDecimal::percent(10u64),
+                entry_fee: Decimal::percent(10u64),
+                exit_fee: Decimal::percent(10u64),
             },
             closed: ClosedConfig {},
         };
