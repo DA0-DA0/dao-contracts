@@ -1,9 +1,9 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, Addr, BlockInfo, Uint128, Uint256};
-use cw20::{Denom, Expiration};
+use cw20::{Denom, Expiration, UncheckedDenom};
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
-use std::cmp::min;
+use std::{cmp::min, collections::{BTreeMap, HashMap}};
 
 use crate::ContractError;
 
@@ -14,15 +14,19 @@ pub struct Config {
     /// An optional contract that is allowed to call the StakeChangedHook in
     /// place of the voting power contract.
     pub hook_caller: Option<Addr>,
-    /// The Denom in which rewards are paid out.
-    pub reward_denom: Denom,
+    /// The denoms which we expect to pay out the rewards in.
+    pub reward_denoms: Vec<Denom>,
 }
 pub const CONFIG: Item<Config> = Item::new("config");
 
+/// a config that holds info needed to distribute rewards
 #[cw_serde]
 pub struct RewardConfig {
+    /// expiration snapshot for the current period
     pub period_finish_expiration: Expiration,
-    pub reward_rate: Uint128,
+    /// a mapping of native/cw20 denom to its reward rate
+    pub denom_to_reward_rate: HashMap<String, Uint128>,
+    /// time or block based duration to be used for reward distribution
     pub reward_duration: Duration,
 }
 
@@ -84,13 +88,15 @@ impl RewardConfig {
 
 pub const REWARD_CONFIG: Item<RewardConfig> = Item::new("reward_config");
 
-pub const REWARD_PER_TOKEN: Item<Uint256> = Item::new("reward_per_token");
+pub const REWARDS_PER_TOKEN: Item<HashMap<String, Uint256>> = Item::new("rewards_per_token");
 
 pub const LAST_UPDATE_EXPIRATION: Item<Expiration> = Item::new("last_update_snapshot");
 
 /// A map of user addresses to their pending rewards.
-pub const PENDING_REWARDS: Map<Addr, Uint128> = Map::new("pending_rewards");
+pub const PENDING_REWARDS: Map<Addr, HashMap<String, Uint128>> = Map::new("pending_rewards");
 
 /// A map of user addresses to their rewards per token. In other words, it is the
 /// reward per share of voting power that the user has.
-pub const USER_REWARD_PER_TOKEN: Map<Addr, Uint256> = Map::new("user_reward_per_token");
+pub const USER_REWARD_PER_TOKEN: Map<Addr, HashMap<String, Uint256>> = Map::new("user_reward_per_token");
+
+pub const STRING_DENOM_TO_CHECKED_DENOM: Map<String, Denom> = Map::new("string_denom_to_checked_denom");

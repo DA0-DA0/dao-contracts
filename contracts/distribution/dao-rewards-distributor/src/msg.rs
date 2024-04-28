@@ -1,6 +1,8 @@
+use std::collections::{BTreeSet, HashMap, HashSet};
+
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
-use cw20::{Cw20ReceiveMsg, Denom};
+use cw20::{Cw20Coin, Cw20ReceiveMsg, Denom, UncheckedDenom};
 use cw4::MemberChangedHookMsg;
 use cw_ownable::cw_ownable_execute;
 use cw_utils::{Duration, Expiration};
@@ -25,8 +27,8 @@ pub struct InstantiateMsg {
     /// they are separate. For example, the cw20-stake contract is separate from
     /// the dao-voting-cw20-staked contract.
     pub hook_caller: Option<String>,
-    /// The denom in which rewards are paid out.
-    pub reward_denom: Denom,
+    /// The denoms which we expect to pay out the rewards in.
+    pub reward_denoms_whitelist: Vec<UncheckedDenom>,
     /// The duration of the reward period in blocks.
     pub reward_duration: Duration,
 }
@@ -83,7 +85,6 @@ pub struct InfoResponse {
 #[cw_serde]
 pub struct PendingRewardsResponse {
     pub address: String,
-    pub pending_rewards: Uint128,
-    pub denom: Denom,
+    pub pending_rewards: HashMap<String, Uint128>,
     pub last_update_expiration: Expiration,
 }
