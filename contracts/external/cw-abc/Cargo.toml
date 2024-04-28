@@ -30,7 +30,7 @@ test-tube = []
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
 cw-storage-plus = { workspace = true }
-cosmwasm-std = { workspace = true, features = ["cosmwasm_1_1"] }
+cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-address-like = { workspace = true }
 cw-ownable = { workspace = true }
