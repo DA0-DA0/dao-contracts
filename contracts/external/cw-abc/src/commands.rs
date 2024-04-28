@@ -654,7 +654,7 @@ mod tests {
         }
 
         #[test]
-        fn should_donation_with_forwarding() -> Result<(), ContractError> {
+        fn should_donate_to_forwarding() -> Result<(), ContractError> {
             let mut deps = mock_dependencies();
             // this matches `linear_curve` test case from curves.rs
             let curve_type = CurveType::SquareRoot {
@@ -676,6 +676,46 @@ mod tests {
             // check that the donor is in the donations map
             let donation = DONATIONS.load(&deps.storage, &Addr::unchecked(TEST_DONOR))?;
             assert_that!(donation).is_equal_to(Uint128::new(donation_amount));
+
+            Ok(())
+        }
+
+        #[test]
+        fn test_donate_and_withdraw() -> Result<(), ContractError> {
+            // Init
+            let mut deps = mock_dependencies();
+
+            let curve_type = CurveType::SquareRoot {
+                slope: Uint128::new(1),
+                scale: 1,
+            };
+            let init_msg = default_instantiate_msg(2, 8, curve_type);
+            mock_init(deps.as_mut(), init_msg)?;
+
+            // Donate
+            let donation_amount = 5;
+            let _res = exec_donate(deps.as_mut(), donation_amount)?;
+
+            // Check funding pool
+            let curve_state = CURVE_STATE.load(&deps.storage)?;
+            assert_that!(curve_state.funding).is_equal_to(Uint128::from(donation_amount));
+
+            // Check random can't withdraw from the funding pool
+            let result = withdraw(deps.as_mut(), mock_env(), mock_info("random", &[]), None);
+            assert_that!(result)
+                .is_err()
+                .is_equal_to(ContractError::Ownership(
+                    cw_ownable::OwnershipError::NotOwner,
+                ));
+
+            // Check owner can withdraw
+            let result = withdraw(
+                deps.as_mut(),
+                mock_env(),
+                mock_info(crate::testing::TEST_CREATOR, &[]),
+                None,
+            );
+            assert!(result.is_ok());
 
             Ok(())
         }

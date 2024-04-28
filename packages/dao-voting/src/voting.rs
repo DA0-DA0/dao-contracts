@@ -179,10 +179,10 @@ impl Votes {
 
     /// Computes the total number of votes cast.
     ///
-    /// NOTE: The total number of votes avaliable from a voting module
+    /// NOTE: The total number of votes available from a voting module
     /// is a `Uint128`. As it is not possible to vote twice we know
     /// that the sum of votes must be <= 2^128 and can safely return a
-    /// `Uint128` from this function. A missbehaving voting power
+    /// `Uint128` from this function. A misbehaving voting power
     /// module may break this invariant.
     pub fn total(&self) -> Uint128 {
         self.yes + self.no + self.abstain

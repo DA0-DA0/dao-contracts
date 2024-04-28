@@ -184,7 +184,7 @@ impl SingleChoiceProposal {
                         // and there are possible votes, then this is
                         // rejected if there is a single no vote.
                         //
-                        // We need this check becuase otherwise when
+                        // We need this check because otherwise when
                         // we invert the threshold (`Decimal::one() -
                         // threshold`) we get a 0% requirement for no
                         // votes. Zero no votes do indeed meet a 0%
@@ -217,7 +217,7 @@ impl SingleChoiceProposal {
                                 // and there are possible votes, then this is
                                 // rejected if there is a single no vote.
                                 //
-                                // We need this check becuase
+                                // We need this check because
                                 // otherwise when we invert the
                                 // threshold (`Decimal::one() -
                                 // threshold`) we get a 0% requirement
@@ -954,7 +954,7 @@ mod test {
         ));
         // Total power of 33. 13 total votes. 8 no votes, 3 yes, 2
         // abstain. 39.3% turnout. Expired. As it is expired we see if
-        // the 8 no votes excede the 50% failing threshold, which they
+        // the 8 no votes exceed the 50% failing threshold, which they
         // do.
         assert!(check_is_rejected(
             quorum.clone(),
@@ -980,7 +980,7 @@ mod test {
         // Over quorum, but under threshold fails if the proposal is
         // not expired. If the proposal is expired though it passes as
         // the total vote count used is the number of votes, and not
-        // the total number of votes avaliable.
+        // the total number of votes available.
         assert!(check_is_rejected(
             quorum.clone(),
             failing.clone(),
