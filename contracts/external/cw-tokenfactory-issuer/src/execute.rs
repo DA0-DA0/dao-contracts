@@ -1,10 +1,10 @@
 use cosmwasm_std::{coins, BankMsg, CosmosMsg, DepsMut, Env, MessageInfo, Response, Uint128};
 
-use cw_tokenfactory_types::msg::{msg_burn, msg_change_admin, msg_mint, msg_set_denom_metadata};
+use cw_tokenfactory_types::msg::{msg_burn, msg_change_admin, msg_mint};
 #[cfg(feature = "osmosis_tokenfactory")]
 use cw_tokenfactory_types::msg::{msg_force_transfer, msg_set_before_send_hook};
-
-use dao_interface::token::Metadata;
+#[cfg(any(feature = "osmosis_tokenfactory", feature = "cosmwasm_tokenfactory"))]
+use {cw_tokenfactory_types::msg::msg_set_denom_metadata, dao_interface::token::Metadata};
 
 use crate::error::ContractError;
 use crate::helpers::{check_before_send_hook_features_enabled, check_is_not_frozen};
@@ -177,6 +177,7 @@ pub fn update_tokenfactory_admin(
 /// Sets metadata related to the Token Factory denom.
 ///
 /// Must be the contract owner to call this method.
+#[cfg(any(feature = "osmosis_tokenfactory", feature = "cosmwasm_tokenfactory"))]
 pub fn set_denom_metadata(
     deps: DepsMut,
     env: Env,

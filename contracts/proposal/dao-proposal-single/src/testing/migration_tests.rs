@@ -443,6 +443,7 @@ fn test_v1_v2_full_migration() {
             funds: vec![],
         }
         .into()],
+        None,
     );
     vote_on_proposal(
         &mut app,

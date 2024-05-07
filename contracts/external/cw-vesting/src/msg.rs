@@ -100,6 +100,7 @@ pub enum ExecuteMsg {
     /// contract's address.  Note: this only works with the native
     /// staking denom of a Cosmos chain.  Only callable by Vesting
     /// Payment Recipient.
+    #[cfg(feature = "staking")]
     Delegate {
         /// The validator to delegate to.
         validator: String,
@@ -111,6 +112,7 @@ pub enum ExecuteMsg {
     /// `delegator_address` is automatically filled with the current
     /// contract's address.  Only callable by Vesting Payment
     /// Recipient.
+    #[cfg(feature = "staking")]
     Redelegate {
         src_validator: String,
         dst_validator: String,
@@ -121,6 +123,7 @@ pub enum ExecuteMsg {
     /// `delegator_address` is automatically filled with the current
     /// contract's address.  Only callable by Vesting Payment
     /// Recipient.
+    #[cfg(feature = "staking")]
     Undelegate {
         /// The validator to undelegate from
         validator: String,
@@ -132,11 +135,13 @@ pub enum ExecuteMsg {
     /// `delegator_address` is automatically filled with the current
     /// contract's address.  Only callable by Vesting Payment
     /// Recipient.
+    #[cfg(feature = "staking")]
     SetWithdrawAddress { address: String },
     /// This is translated to a
     /// [MsgWithdrawDelegatorReward](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L42-L50).
     /// `delegator_address` is automatically filled with the current
     /// contract's address.
+    #[cfg(feature = "staking")]
     WithdrawDelegatorReward {
         /// The validator to claim rewards for.
         validator: String,
@@ -157,6 +162,7 @@ pub enum ExecuteMsg {
     /// A future version of this contract may be able to
     /// permissionlessly take slashing evidence:
     /// <https://github.com/CosmWasm/mesh-security/issues/35>
+    #[cfg(feature = "staking")]
     RegisterSlash {
         /// The validator the slash occured for.
         validator: String,

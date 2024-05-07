@@ -9,7 +9,10 @@ use dao_pre_propose_base::{
     msg::{ExecuteMsg as ExecuteBase, InstantiateMsg as InstantiateBase, QueryMsg as QueryBase},
     state::PreProposeContract,
 };
-use dao_voting::multiple_choice::MultipleChoiceOptions;
+use dao_voting::{
+    multiple_choice::{MultipleChoiceAutoVote, MultipleChoiceOptions},
+    proposal::MultipleChoiceProposeMsg as ProposeMsg,
+};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-pre-propose-multiple";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -20,6 +23,7 @@ pub enum ProposeMessage {
         title: String,
         description: String,
         choices: MultipleChoiceOptions,
+        vote: Option<MultipleChoiceAutoVote>,
     },
 }
 
@@ -32,12 +36,7 @@ pub type QueryMsg = QueryBase<Empty>;
 /// of the external message.
 #[cw_serde]
 enum ProposeMessageInternal {
-    Propose {
-        title: String,
-        description: String,
-        choices: MultipleChoiceOptions,
-        proposer: Option<String>,
-    },
+    Propose(ProposeMsg),
 }
 
 type PrePropose = PreProposeContract<Empty, Empty, Empty, ProposeMessageInternal>;
@@ -73,14 +72,16 @@ pub fn execute(
                     title,
                     description,
                     choices,
+                    vote,
                 },
         } => ExecuteInternal::Propose {
-            msg: ProposeMessageInternal::Propose {
+            msg: ProposeMessageInternal::Propose(ProposeMsg {
                 proposer: Some(info.sender.to_string()),
                 title,
                 description,
                 choices,
-            },
+                vote,
+            }),
         },
         ExecuteMsg::Extension { msg } => ExecuteInternal::Extension { msg },
         ExecuteMsg::Withdraw { denom } => ExecuteInternal::Withdraw { denom },

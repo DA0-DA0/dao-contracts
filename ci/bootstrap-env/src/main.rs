@@ -134,7 +134,7 @@ fn main() -> Result<()> {
     orc.instantiate(
         "cw_admin_factory",
         "admin_factory_init",
-        &cw_admin_factory::msg::InstantiateMsg {},
+        &cw_admin_factory::msg::InstantiateMsg { admin: None },
         &key,
         None,
         vec![],

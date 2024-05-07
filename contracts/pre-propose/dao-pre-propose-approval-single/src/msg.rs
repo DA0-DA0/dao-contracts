@@ -3,7 +3,7 @@ use cosmwasm_std::{CosmosMsg, Empty};
 use dao_pre_propose_base::msg::{
     ExecuteMsg as ExecuteBase, InstantiateMsg as InstantiateBase, QueryMsg as QueryBase,
 };
-use dao_voting::proposal::SingleChoiceProposeMsg as ProposeMsg;
+use dao_voting::{proposal::SingleChoiceProposeMsg as ProposeMsg, voting::SingleChoiceAutoVote};
 
 #[cw_serde]
 pub enum ApproverProposeMessage {
@@ -20,6 +20,7 @@ pub enum ProposeMessage {
         title: String,
         description: String,
         msgs: Vec<CosmosMsg<Empty>>,
+        vote: Option<SingleChoiceAutoVote>,
     },
 }
 

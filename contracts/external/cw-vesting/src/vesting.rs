@@ -1,9 +1,9 @@
 use std::cmp::min;
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{
-    Addr, Binary, CosmosMsg, DistributionMsg, StdResult, Storage, Timestamp, Uint128, Uint64,
-};
+#[cfg(feature = "staking")]
+use cosmwasm_std::DistributionMsg;
+use cosmwasm_std::{Addr, Binary, CosmosMsg, StdResult, Storage, Timestamp, Uint128, Uint64};
 use cw_denom::CheckedDenom;
 use cw_storage_plus::Item;
 use wynd_utils::{Curve, PiecewiseLinear, SaturatingLinear};
@@ -245,10 +245,13 @@ impl<'a> Payment<'a> {
             // entitled to staking rewards that may accure before the
             // owner has a chance to undelegate from validators. Set
             // the owner to the reward receiver.
-            let mut msgs = vec![DistributionMsg::SetWithdrawAddress {
-                address: owner.to_string(),
-            }
-            .into()];
+            let mut msgs = vec![
+                #[cfg(feature = "staking")]
+                DistributionMsg::SetWithdrawAddress {
+                    address: owner.to_string(),
+                }
+                .into(),
+            ];
 
             if !to_owner.is_zero() {
                 msgs.push(vesting.denom.get_transfer_to_message(owner, to_owner)?);
