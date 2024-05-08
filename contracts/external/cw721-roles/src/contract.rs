@@ -326,7 +326,7 @@ pub fn execute_update_token_role(
         .add_attribute("action", "update_token_role")
         .add_attribute("sender", info.sender)
         .add_attribute("token_id", token_id)
-        .add_attribute("role", role.unwrap_or_default()))
+        .add_attribute("role", role.unwrap_or("None".to_string())))
 }
 
 pub fn execute_update_token_uri(
@@ -348,7 +348,7 @@ pub fn execute_update_token_uri(
         .add_attribute("action", "update_token_uri")
         .add_attribute("sender", info.sender)
         .add_attribute("token_id", token_id)
-        .add_attribute("token_uri", token_uri.unwrap_or_default()))
+        .add_attribute("token_uri", token_uri.unwrap_or("None".to_string())))
 }
 
 pub fn execute_update_token_weight(
