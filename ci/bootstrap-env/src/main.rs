@@ -183,7 +183,8 @@ fn main() -> Result<()> {
     );
 
     // Persist contract code_ids in local.yaml so we can use SKIP_CONTRACT_STORE locally to avoid having to re-store them again
-    cfg.contract_deploy_info = orc.contract_map.deploy_info().clone();
+    cfg.contract_deploy_info
+        .clone_from(orc.contract_map.deploy_info());
     fs::write(
         "ci/configs/cosm-orc/local.yaml",
         serde_yaml::to_string(&cfg)?,
