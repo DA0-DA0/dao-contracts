@@ -357,6 +357,7 @@ pub fn test_hook() {
                 funds: vec![],
             })],
             proposer: None,
+            vote: None,
         }),
         &[],
     );
@@ -390,6 +391,7 @@ pub fn test_hook() {
                 description: "Testing".to_string(),
                 msgs: vec![],
                 proposer: None,
+                vote: None,
             }),
             &[],
         )
@@ -418,6 +420,7 @@ pub fn test_hook() {
                 description: "Testing".to_string(),
                 msgs: vec![],
                 proposer: None,
+                vote: None,
             }),
             &[],
         )

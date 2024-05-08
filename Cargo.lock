@@ -1844,7 +1844,7 @@ dependencies = [
 
 [[package]]
 name = "dao-proposal-incentives"
-version = "2.4.0"
+version = "2.4.2"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1862,7 +1862,7 @@ dependencies = [
  "dao-interface",
  "dao-proposal-single",
  "dao-testing",
- "dao-voting 2.4.0",
+ "dao-voting 2.4.2",
  "thiserror",
 ]
 
@@ -2157,7 +2157,7 @@ dependencies = [
 
 [[package]]
 name = "dao-voting-incentives"
-version = "2.4.0"
+version = "2.4.2"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -2175,7 +2175,7 @@ dependencies = [
  "dao-interface",
  "dao-proposal-single",
  "dao-testing",
- "dao-voting 2.4.0",
+ "dao-voting 2.4.2",
  "thiserror",
 ]
 
