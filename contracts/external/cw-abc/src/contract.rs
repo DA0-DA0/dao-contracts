@@ -200,6 +200,10 @@ pub fn do_query(deps: Deps, _env: Env, msg: QueryMsg, curve_fn: CurveFn) -> StdR
         QueryMsg::PhaseConfig {} => to_json_binary(&queries::query_phase_config(deps)?),
         QueryMsg::Phase {} => to_json_binary(&PHASE.load(deps.storage)?),
         QueryMsg::TokenContract {} => to_json_binary(&TOKEN_ISSUER_CONTRACT.load(deps.storage)?),
+        QueryMsg::BuyQuote { payment } => to_json_binary(&queries::query_buy_quote(deps, payment)?),
+        QueryMsg::SellQuote { payment } => {
+            to_json_binary(&queries::query_sell_quote(deps, payment)?)
+        }
     }
 }
 

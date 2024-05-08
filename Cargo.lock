@@ -724,7 +724,7 @@ dependencies = [
 
 [[package]]
 name = "cw-abc"
-version = "0.0.1"
+version = "2.4.1"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",

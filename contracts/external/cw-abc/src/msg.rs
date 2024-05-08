@@ -152,6 +152,12 @@ pub enum QueryMsg {
     /// Returns the Maximum Supply of the supply token
     #[returns(Uint128)]
     MaxSupply {},
+    /// Returns the amount of tokens to receive from buying
+    #[returns(QuoteResponse)]
+    BuyQuote { payment: Uint128 },
+    /// Returns the amount of tokens to receive from selling
+    #[returns(QuoteResponse)]
+    SellQuote { payment: Uint128 },
     /// Returns the current phase
     #[returns(CommonsPhase)]
     Phase {},
@@ -214,6 +220,14 @@ pub struct DonationsResponse {
 pub struct HatchersResponse {
     /// The hatchers mapped to their contribution in the reserve token
     pub hatchers: Vec<(Addr, Uint128)>,
+}
+
+#[cw_serde]
+pub struct QuoteResponse {
+    pub new_reserve: Uint128,
+    pub funded: Uint128,
+    pub amount: Uint128,
+    pub new_supply: Uint128,
 }
 
 #[cw_serde]

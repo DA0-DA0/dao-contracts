@@ -1,13 +1,14 @@
 use crate::abc::CurveFn;
+use crate::helpers::{calculate_buy_quote, calculate_sell_quote};
 use crate::msg::{
     CommonsPhaseConfigResponse, CurveInfoResponse, DenomResponse, DonationsResponse,
-    HatcherAllowlistEntry, HatcherAllowlistResponse, HatchersResponse,
+    HatcherAllowlistEntry, HatcherAllowlistResponse, HatchersResponse, QuoteResponse,
 };
 use crate::state::{
-    hatcher_allowlist, CurveState, HatcherAllowlistConfigType, CURVE_STATE, DONATIONS, HATCHERS,
-    MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
+    hatcher_allowlist, CurveState, HatcherAllowlistConfigType, CURVE_STATE, CURVE_TYPE, DONATIONS,
+    HATCHERS, MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
 };
-use cosmwasm_std::{Addr, Deps, Order, QuerierWrapper, StdResult, Uint128};
+use cosmwasm_std::{Addr, Deps, Order, QuerierWrapper, StdError, StdResult, Uint128};
 use cw_storage_plus::Bound;
 use std::ops::Deref;
 
@@ -139,4 +140,26 @@ pub fn query_phase_config(deps: Deps) -> StdResult<CommonsPhaseConfigResponse> {
         phase_config,
         phase,
     })
+}
+
+/// Get a buy quote
+pub fn query_buy_quote(deps: Deps, payment: Uint128) -> StdResult<QuoteResponse> {
+    let curve_type = CURVE_TYPE.load(deps.storage)?;
+    let curve_state = CURVE_STATE.load(deps.storage)?;
+    let phase_config = PHASE_CONFIG.load(deps.storage)?;
+    let phase = PHASE.load(deps.storage)?;
+
+    calculate_buy_quote(payment, &curve_type, &curve_state, &phase, &phase_config)
+        .map_err(|e| StdError::generic_err(e.to_string()))
+}
+
+/// Get a sell quote
+pub fn query_sell_quote(deps: Deps, payment: Uint128) -> StdResult<QuoteResponse> {
+    let curve_type = CURVE_TYPE.load(deps.storage)?;
+    let curve_state = CURVE_STATE.load(deps.storage)?;
+    let phase_config = PHASE_CONFIG.load(deps.storage)?;
+    let phase = PHASE.load(deps.storage)?;
+
+    calculate_sell_quote(payment, &curve_type, &curve_state, &phase, &phase_config)
+        .map_err(|e| StdError::generic_err(e.to_string()))
 }

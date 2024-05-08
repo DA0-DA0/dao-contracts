@@ -2,6 +2,7 @@ pub mod abc;
 pub(crate) mod commands;
 pub mod contract;
 mod error;
+pub(crate) mod helpers;
 pub mod msg;
 mod queries;
 pub mod state;

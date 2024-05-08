@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    ensure, to_json_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env, MessageInfo,
+    ensure, to_json_binary, Addr, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo,
     QuerierWrapper, Response, StdResult, Storage, Uint128, WasmMsg,
 };
 use cw_tokenfactory_issuer::msg::ExecuteMsg as IssuerExecuteMsg;
@@ -7,6 +7,7 @@ use cw_utils::must_pay;
 use std::ops::Deref;
 
 use crate::abc::{CommonsPhase, CurveType};
+use crate::helpers::{calculate_buy_quote, calculate_sell_quote};
 use crate::msg::{HatcherAllowlistEntry, UpdatePhaseConfigMsg};
 use crate::state::{
     hatcher_allowlist, HatcherAllowlistConfigType, CURVE_STATE, CURVE_TYPE, DONATIONS,
@@ -17,8 +18,6 @@ use crate::ContractError;
 
 pub fn buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     let curve_type = CURVE_TYPE.load(deps.storage)?;
-    let curve_fn = curve_type.to_curve_fn();
-
     let mut curve_state = CURVE_STATE.load(deps.storage)?;
 
     let payment = must_pay(&info, &curve_state.reserve_denom)?;
@@ -27,9 +26,13 @@ pub fn buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Cont
     let phase_config = PHASE_CONFIG.load(deps.storage)?;
     let mut phase = PHASE.load(deps.storage)?;
 
-    let (reserved, funded) = match &phase {
+    // Calculate the curve state from the buy
+    let buy_quote = calculate_buy_quote(payment, &curve_type, &curve_state, &phase, &phase_config)?;
+
+    // Validate phase
+    match &phase {
         CommonsPhase::Hatch => {
-            let hatch_config = phase_config.hatch;
+            let hatch_config = &phase_config.hatch;
             // Check that the potential hatcher is allowlisted
             assert_allowlisted(deps.querier, deps.storage, &info.sender)?;
 
@@ -47,7 +50,7 @@ pub fn buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Cont
             }
 
             // Check if the initial_raise max has been met
-            if curve_state.reserve + payment >= hatch_config.initial_raise.max {
+            if buy_quote.new_reserve >= hatch_config.initial_raise.max {
                 // Transition to the Open phase
                 phase = CommonsPhase::Open;
 
@@ -56,26 +59,16 @@ pub fn buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Cont
 
                 PHASE.save(deps.storage, &phase)?;
             }
-
-            calculate_reserved_and_funded(payment, hatch_config.entry_fee)
         }
-        CommonsPhase::Open => calculate_reserved_and_funded(payment, phase_config.open.entry_fee),
+        CommonsPhase::Open => {}
         CommonsPhase::Closed => {
             return Err(ContractError::CommonsClosed {});
         }
     };
 
-    // Calculate how many tokens can be purchased with this and mint them
-    let curve = curve_fn(curve_state.decimals);
-    curve_state.reserve += reserved;
-
-    // Calculate the supply based on the reserve
-    let new_supply = curve.supply(curve_state.reserve);
-    let minted = new_supply.checked_sub(curve_state.supply)?;
-
     // Check that the minted amount has not exceeded the max supply (if configured)
     if let Some(max_supply) = MAX_SUPPLY.may_load(deps.storage)? {
-        if new_supply > max_supply {
+        if buy_quote.new_supply > max_supply {
             return Err(ContractError::CannotExceedMaxSupply { max: max_supply });
         }
     }
@@ -86,46 +79,71 @@ pub fn buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Cont
         contract_addr: issuer_addr.to_string(),
         msg: to_json_binary(&IssuerExecuteMsg::Mint {
             to_address: info.sender.to_string(),
-            amount: minted,
+            amount: buy_quote.amount,
         })?,
         funds: vec![],
     })];
 
     // Send funding to fee recipient
-    if funded > Uint128::zero() {
+    if buy_quote.funded > Uint128::zero() {
         if let Some(funding_pool_forwarding) = FUNDING_POOL_FORWARDING.may_load(deps.storage)? {
             msgs.push(CosmosMsg::Bank(BankMsg::Send {
                 to_address: funding_pool_forwarding.to_string(),
                 amount: vec![Coin {
-                    amount: funded,
+                    amount: buy_quote.funded,
                     denom: curve_state.reserve_denom.clone(),
                 }],
             }))
         } else {
-            curve_state.funding += funded;
+            curve_state.funding += buy_quote.funded;
         }
     };
 
     // Save the new curve state
-    curve_state.supply = new_supply;
+    curve_state.supply = buy_quote.new_supply;
+    curve_state.reserve = buy_quote.new_reserve;
+
     CURVE_STATE.save(deps.storage, &curve_state)?;
 
     Ok(Response::new()
         .add_messages(msgs)
         .add_attribute("action", "buy")
         .add_attribute("from", info.sender)
-        .add_attribute("reserved", reserved)
-        .add_attribute("funded", funded)
-        .add_attribute("supply", minted))
+        .add_attribute("amount", payment)
+        .add_attribute("reserved", buy_quote.new_reserve)
+        .add_attribute("minted", buy_quote.amount)
+        .add_attribute("funded", buy_quote.funded)
+        .add_attribute("supply", buy_quote.new_supply))
 }
 
 /// Sell tokens on the bonding curve
 pub fn sell(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     let curve_type = CURVE_TYPE.load(deps.storage)?;
-    let curve_fn = curve_type.to_curve_fn();
-
     let supply_denom = SUPPLY_DENOM.load(deps.storage)?;
     let burn_amount = must_pay(&info, &supply_denom)?;
+
+    let mut curve_state = CURVE_STATE.load(deps.storage)?;
+
+    // Load the phase configuration and the current phase
+    let phase_config = PHASE_CONFIG.load(deps.storage)?;
+    let phase = PHASE.load(deps.storage)?;
+
+    // Calculate the sell quote
+    let sell_quote = calculate_sell_quote(
+        burn_amount,
+        &curve_type,
+        &curve_state,
+        &phase,
+        &phase_config,
+    )?;
+
+    let mut send_msgs: Vec<CosmosMsg> = vec![CosmosMsg::Bank(BankMsg::Send {
+        to_address: info.sender.to_string(),
+        amount: vec![Coin {
+            amount: sell_quote.amount,
+            denom: curve_state.reserve_denom.clone(),
+        }],
+    })];
 
     let issuer_addr = TOKEN_ISSUER_CONTRACT.load(deps.storage)?;
 
@@ -150,73 +168,36 @@ pub fn sell(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Con
         }),
     ];
 
-    let mut curve_state = CURVE_STATE.load(deps.storage)?;
-    let curve = curve_fn(curve_state.decimals);
-
-    // Reduce the supply by the amount burned
-    curve_state.supply = curve_state.supply.checked_sub(burn_amount)?;
-
-    // Calculate the new reserve based on the new supply
-    let new_reserve = curve.reserve(curve_state.supply);
-
-    // Calculate how many reserve tokens to release based on the sell amount
-    let released_reserve = curve_state.reserve.checked_sub(new_reserve)?;
-
-    // Calculate the exit tax
-    let taxed_amount = calculate_exit_fee(deps.storage, released_reserve)?;
-
-    // Update the curve state
-    curve_state.reserve = new_reserve;
-
-    // Calculate the amount of tokens to send to the sender
-    // Subtract the taxed amount from the released amount
-    let released = released_reserve.checked_sub(taxed_amount)?;
-
-    // Now send the tokens to the sender and any fees to the DAO
-    let mut send_msgs: Vec<CosmosMsg> = vec![CosmosMsg::Bank(BankMsg::Send {
-        to_address: info.sender.to_string(),
-        amount: vec![Coin {
-            amount: released,
-            denom: curve_state.reserve_denom.clone(),
-        }],
-    })];
-
-    // Send exit fees to the to the fee recipient
-    if taxed_amount > Uint128::zero() {
+    // Send exit fee to the funding pool
+    if sell_quote.funded > Uint128::zero() {
         if let Some(funding_pool_forwarding) = FUNDING_POOL_FORWARDING.may_load(deps.storage)? {
             send_msgs.push(CosmosMsg::Bank(BankMsg::Send {
                 to_address: funding_pool_forwarding.to_string(),
                 amount: vec![Coin {
-                    amount: taxed_amount,
+                    amount: sell_quote.funded,
                     denom: curve_state.reserve_denom.clone(),
                 }],
             }))
         } else {
-            curve_state.funding += taxed_amount;
+            curve_state.funding += sell_quote.funded;
         }
     }
 
-    // Save the curve state
+    // Update the curve state
+    curve_state.reserve = sell_quote.new_reserve;
+    curve_state.supply = sell_quote.new_supply;
     CURVE_STATE.save(deps.storage, &curve_state)?;
 
     Ok(Response::new()
         .add_messages(burn_msgs)
         .add_messages(send_msgs)
-        .add_attribute("action", "burn")
+        .add_attribute("action", "sell")
         .add_attribute("from", info.sender)
         .add_attribute("amount", burn_amount)
-        .add_attribute("burned", released_reserve)
-        .add_attribute("funded", taxed_amount))
-}
-
-/// Return the reserved and funded amounts based on the payment and the allocation ratio
-fn calculate_reserved_and_funded(
-    payment: Uint128,
-    allocation_ratio: Decimal,
-) -> (Uint128, Uint128) {
-    let funded = payment * allocation_ratio;
-    let reserved = payment.checked_sub(funded).unwrap(); // Since allocation_ratio is < 1, this subtraction is safe
-    (reserved, funded)
+        .add_attribute("reserved", sell_quote.new_reserve)
+        .add_attribute("supply", sell_quote.new_supply)
+        .add_attribute("burned", sell_quote.amount)
+        .add_attribute("funded", sell_quote.funded))
 }
 
 /// Add the hatcher's contribution to the total contributions
@@ -234,30 +215,6 @@ fn update_hatcher_contributions(
             None => Ok(contribution),
         }
     })
-}
-
-/// Calculate the exit taxation for the sell amount based on the phase
-fn calculate_exit_fee(
-    storage: &dyn Storage,
-    sell_amount: Uint128,
-) -> Result<Uint128, ContractError> {
-    // Load the phase config and phase
-    let phase = PHASE.load(storage)?;
-    let phase_config = PHASE_CONFIG.load(storage)?;
-
-    // Calculate the exit tax based on the phase
-    let exit_fee = match &phase {
-        CommonsPhase::Hatch => phase_config.hatch.exit_fee,
-        CommonsPhase::Open => phase_config.open.exit_fee,
-        CommonsPhase::Closed => return Ok(Uint128::zero()),
-    };
-
-    // Ensure the exit fee is not greater than 100%
-    ensure!(exit_fee <= Decimal::one(), ContractError::InvalidExitFee {});
-
-    // This won't ever overflow because it's checked
-    let taxed_amount = sell_amount * exit_fee;
-    Ok(taxed_amount)
 }
 
 /// Transitions the bonding curve to a closed phase where only sells are allowed

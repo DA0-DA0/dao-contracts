@@ -5,7 +5,7 @@ use crate::{
     },
     msg::{
         CommonsPhaseConfigResponse, CurveInfoResponse, DenomResponse, ExecuteMsg,
-        HatcherAllowlistEntry, InstantiateMsg, QueryMsg,
+        HatcherAllowlistEntry, InstantiateMsg, QueryMsg, QuoteResponse,
     },
     state::{HatcherAllowlistConfig, HatcherAllowlistConfigType},
     ContractError,
@@ -29,6 +29,22 @@ fn test_happy_path() {
         ref tf_issuer,
         ..
     } = env;
+
+    // Query buy quote
+    let quote = abc
+        .query::<QuoteResponse>(&QueryMsg::BuyQuote {
+            payment: Uint128::new(1000u128),
+        })
+        .unwrap();
+    assert_eq!(
+        quote,
+        QuoteResponse {
+            new_reserve: Uint128::new(900u128),
+            funded: Uint128::new(100u128),
+            amount: Uint128::new(9000u128),
+            new_supply: Uint128::new(9000u128),
+        }
+    );
 
     // Buy tokens
     abc.execute(&ExecuteMsg::Buy {}, &coins(1000, RESERVE), &accounts[0])
@@ -108,6 +124,22 @@ fn test_happy_path() {
                 exit_fee: Decimal::percent(10u64),
             },
             closed: ClosedConfig {},
+        }
+    );
+
+    // Query sell quote
+    let quote = abc
+        .query::<QuoteResponse>(&QueryMsg::SellQuote {
+            payment: Uint128::new(100u128),
+        })
+        .unwrap();
+    assert_eq!(
+        quote,
+        QuoteResponse {
+            new_reserve: Uint128::new(890u128),
+            funded: Uint128::new(1u128),
+            amount: Uint128::new(9u128),
+            new_supply: Uint128::new(8900u128),
         }
     );
 

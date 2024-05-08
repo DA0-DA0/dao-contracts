@@ -1,4 +1,4 @@
-use cosmwasm_std::{OverflowError, StdError, Uint128};
+use cosmwasm_std::{CheckedMultiplyFractionError, OverflowError, StdError, Uint128};
 use cw_utils::{ParseReplyError, PaymentError};
 use thiserror::Error;
 
@@ -18,6 +18,9 @@ pub enum ContractError {
 
     #[error("{0}")]
     Ownership(#[from] cw_ownable::OwnershipError),
+
+    #[error("{0}")]
+    CheckedMultiplyFraction(#[from] CheckedMultiplyFractionError),
 
     #[error("Cannot mint more tokens than the maximum supply of {max}")]
     CannotExceedMaxSupply { max: Uint128 },

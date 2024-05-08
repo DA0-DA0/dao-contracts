@@ -11,7 +11,7 @@ description = "Implements an Augmented Bonding Curve"
 license = "Apache-2.0"
 edition = { workspace = true }
 repository = { workspace = true }
-version = "0.0.1"
+version = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
