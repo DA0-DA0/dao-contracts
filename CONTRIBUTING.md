@@ -50,7 +50,7 @@ Our development workflow is just like a regular Rust project:
 To build WASM files for deploying on a blockchain, run:
 
 ```sh
-just workspace-optimize
+just optimize
 ```
 
 from the repository root.

@@ -16,19 +16,19 @@ gen: build gen-schema
 gen-schema:
 	./scripts/schema.sh
 
-integration-test: deploy-local workspace-optimize
+integration-test: deploy-local optimize
 	RUST_LOG=info CONFIG={{orc_config}} cargo integration-test
 
 test-tube:
     cargo test --features "test-tube"
 
-test-tube-dev: workspace-optimize
+test-tube-dev: optimize
     cargo test --features "test-tube"
 
 integration-test-dev test_name="":
 	SKIP_CONTRACT_STORE=true RUST_LOG=info CONFIG='{{`pwd`}}/ci/configs/cosm-orc/local.yaml' cargo integration-test {{test_name}}
 
-bootstrap-dev: deploy-local workspace-optimize
+bootstrap-dev: deploy-local optimize
 	RUST_LOG=info CONFIG={{orc_config}} cargo run bootstrap-env
 
 deploy-local: download-deps
@@ -53,20 +53,20 @@ download-deps:
 	wget https://github.com/CosmWasm/cw-plus/releases/latest/download/cw4_group.wasm -O artifacts/cw4_group.wasm
 	wget https://github.com/CosmWasm/cw-nfts/releases/latest/download/cw721_base.wasm -O artifacts/cw721_base.wasm
 
-workspace-optimize:
+optimize:
     #!/bin/bash
     if [[ $(uname -m) == 'arm64' ]]; then docker run --rm -v "$(pwd)":/code \
             --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
             --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
             --platform linux/arm64 \
-            cosmwasm/workspace-optimizer-arm64:0.14.0; \
+            cosmwasm/optimizer-arm64:0.15.1; \
     elif [[ $(uname -m) == 'aarch64' ]]; then docker run --rm -v "$(pwd)":/code \
             --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
             --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
             --platform linux/arm64 \
-            cosmwasm/workspace-optimizer-arm64:0.14.0; \
+            cosmwasm/optimizer-arm64:0.15.1; \
     elif [[ $(uname -m) == 'x86_64' ]]; then docker run --rm -v "$(pwd)":/code \
             --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
             --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
             --platform linux/amd64 \
-            cosmwasm/workspace-optimizer:0.14.0; fi
+            cosmwasm/optimizer:0.15.1; fi
