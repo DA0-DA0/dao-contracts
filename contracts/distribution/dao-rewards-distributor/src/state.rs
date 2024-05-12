@@ -1,9 +1,9 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, Addr, BlockInfo, Uint128, Uint256};
-use cw20::{Denom, Expiration, UncheckedDenom};
+use cw20::{Denom, Expiration};
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
-use std::{cmp::min, collections::{BTreeMap, HashMap}};
+use std::{cmp::min, collections::HashMap};
 
 use crate::ContractError;
 
@@ -39,6 +39,28 @@ impl RewardConfig {
             Duration::Height(h) => h,
             Duration::Time(t) => t,
         }
+    }
+
+    /// Returns the period finish expiration value as a u64.
+    /// If the period finish expiration is `Never`, the value is 0.
+    /// If the period finish expiration is `AtHeight(h)`, the value is `h`.
+    /// If the period finish expiration is `AtTime(t)`, the value is `t`, where t is seconds.
+    pub fn get_period_finish_units(&self) -> u64 {
+        match self.period_finish_expiration {
+            Expiration::Never {} => 0,
+            Expiration::AtHeight(h) => h,
+            Expiration::AtTime(t) => t.seconds(),
+        }
+    }
+
+    /// Returns the period start date value as a u64.
+    /// The period start date is calculated by subtracting the reward duration
+    /// value from the period finish expiration value.
+    // TODO: ensure this cannot go wrong
+    pub fn get_period_start_units(&self) -> u64 {
+        let period_finish_units = self.get_period_finish_units();
+        let reward_duration_value = self.get_reward_duration_value();
+        period_finish_units - reward_duration_value
     }
 
     /// Returns the latest date where rewards were still being distributed.
@@ -97,6 +119,9 @@ pub const PENDING_REWARDS: Map<Addr, HashMap<String, Uint128>> = Map::new("pendi
 
 /// A map of user addresses to their rewards per token. In other words, it is the
 /// reward per share of voting power that the user has.
-pub const USER_REWARD_PER_TOKEN: Map<Addr, HashMap<String, Uint256>> = Map::new("user_reward_per_token");
+pub const USER_REWARD_PER_TOKEN: Map<Addr, HashMap<String, Uint256>> =
+    Map::new("user_reward_per_token");
 
-pub const STRING_DENOM_TO_CHECKED_DENOM: Map<String, Denom> = Map::new("string_denom_to_checked_denom");
+pub const STRING_DENOM_TO_CHECKED_DENOM: Map<String, Denom> =
+    Map::new("string_denom_to_checked_denom");
+pub const FUNDED_DENOM_AMOUNTS: Map<String, Uint128> = Map::new("funded_denom_amounts");
