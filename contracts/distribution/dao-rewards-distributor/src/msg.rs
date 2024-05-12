@@ -1,8 +1,8 @@
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::HashMap;
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
-use cw20::{Cw20Coin, Cw20ReceiveMsg, Denom, UncheckedDenom};
+use cw20::{Cw20ReceiveMsg, UncheckedDenom};
 use cw4::MemberChangedHookMsg;
 use cw_ownable::cw_ownable_execute;
 use cw_utils::{Duration, Expiration};
@@ -51,6 +51,9 @@ pub enum ExecuteMsg {
     Fund {},
     /// Updates the reward duration which controls the rate that rewards are issued.
     UpdateRewardDuration { new_duration: Duration },
+    /// shuts down the rewards distributor. withdraws all future staking rewards
+    /// back to the treasury. members can claim whatever they earned until this point.
+    Shutdown {},
 }
 
 #[cw_serde]

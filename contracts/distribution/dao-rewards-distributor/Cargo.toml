@@ -1,6 +1,6 @@
 [package]
 name = "dao-rewards-distributor"
-authors = ["Ben2x4 <Ben2x4@tutanota.com>", "ekez <ekez@withoutdoing.com>", "Jake Hartnell <no-reply@no-reply.com>"]
+authors = ["Ben2x4 <Ben2x4@tutanota.com>", "ekez <ekez@withoutdoing.com>", "Jake Hartnell <no-reply@no-reply.com>", "bekauz <bekauz@protonmail.com>"]
 description = "Distributes rewards based on DAO membership."
 edition = { workspace = true }
 license = { workspace = true }

@@ -1,7 +1,6 @@
 use cosmwasm_std::{coin, coins, to_json_binary, Addr, Binary, Empty, Timestamp, Uint128};
-use cw20::{Cw20Coin, Cw20ExecuteMsg, Denom, UncheckedDenom};
+use cw20::{Cw20Coin, Cw20ExecuteMsg, UncheckedDenom};
 use cw4::Member;
-use cw4_group::state::ADMIN;
 use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 use cw_ownable::{Action, Ownership, OwnershipError};
 use cw_utils::{Duration, Expiration};
@@ -323,7 +322,13 @@ fn get_ownership<T: Into<String>>(app: &App, address: T) -> Ownership<Addr> {
         .unwrap()
 }
 
-fn assert_pending_rewards(app: &mut App, reward_addr: &Addr, address: &str, expected_denom: &str, expected_amount: u128) {
+fn assert_pending_rewards(
+    app: &mut App,
+    reward_addr: &Addr,
+    address: &str,
+    expected_denom: &str,
+    expected_amount: u128,
+) {
     let res: PendingRewardsResponse = app
         .borrow_mut()
         .wrap()
@@ -525,7 +530,10 @@ fn test_native_rewards_block_height_based() {
         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
         .unwrap();
 
-    assert_eq!(res.reward.denom_to_reward_rate.get(DENOM).unwrap(), Uint128::new(1000));
+    assert_eq!(
+        res.reward.denom_to_reward_rate.get(DENOM).unwrap(),
+        Uint128::new(1000)
+    );
     assert_eq!(
         res.reward.period_finish_expiration,
         Expiration::AtHeight(101000)
@@ -729,7 +737,7 @@ fn test_native_rewards_time_based() {
         },
     ];
     let denom = DENOM.to_string();
-    let (staking_addr, cw20_addr, vp_addr) = setup_cw20_test(&mut app, initial_balances);
+    let (staking_addr, _cw20_addr, vp_addr) = setup_cw20_test(&mut app, initial_balances);
     let reward_funding = vec![coin(100000000, denom.clone())];
     app.sudo(SudoMsg::Bank({
         BankSudo::Mint {
@@ -771,7 +779,10 @@ fn test_native_rewards_time_based() {
         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
         .unwrap();
 
-    assert_eq!(res.reward.denom_to_reward_rate.get(DENOM).unwrap(), Uint128::new(10000));
+    assert_eq!(
+        res.reward.denom_to_reward_rate.get(DENOM).unwrap(),
+        Uint128::new(10000)
+    );
     // period finish expiration should be 10000 seconds from now
     assert_eq!(
         res.reward.period_finish_expiration,
@@ -790,9 +801,9 @@ fn test_native_rewards_time_based() {
     });
     // total rewards amount is 100_000_000, and we passed 10% so
     // we should have 100_000_000 / 10 = 100_000_00 rewards pending
-    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 100_000_00 / 2);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 100_000_00 / 4);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 100_000_00 / 4);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 10_000_000 / 2);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 10_000_000 / 4);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 10_000_000 / 4);
 
     // everyone claims, and we should have 0 pending rewards
     claim_rewards(&mut app, reward_addr.clone(), ADDR1);
@@ -807,9 +818,9 @@ fn test_native_rewards_time_based() {
         b.time = b.time.plus_seconds(4000);
         b.height += 1;
     });
-    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 400_000_00 / 2);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 400_000_00 / 4);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 400_000_00 / 4);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 40_000_000 / 2);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 40_000_000 / 4);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 40_000_000 / 4);
 
     // addr2 claims
     claim_rewards(&mut app, reward_addr.clone(), ADDR2);
@@ -823,9 +834,9 @@ fn test_native_rewards_time_based() {
 
     // total rewards amount is 100_000_000, and we passed 10% so
     // we should have 100_000_000 / 10 = 100_000_00 rewards pending
-    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 500_000_00 / 2);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 100_000_00 / 4);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 500_000_00 / 4);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 50_000_000 / 2);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 10_000_000 / 4);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 50_000_000 / 4);
 
     // addr3 claims
     claim_rewards(&mut app, reward_addr.clone(), ADDR3);
@@ -836,9 +847,9 @@ fn test_native_rewards_time_based() {
         b.time = b.time.plus_seconds(3000);
         b.height += 1;
     });
-    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 800_000_00 / 2);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 400_000_00 / 4);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 300_000_00 / 4);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 80_000_000 / 2);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 40_000_000 / 4);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 30_000_000 / 4);
 
     // there is now 1000 seconds left.
     // everyone claims, and we should have 0 pending rewards
@@ -857,8 +868,8 @@ fn test_native_rewards_time_based() {
         b.height += 1;
     });
 
-    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 100_000_00 * 2 / 3);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 100_000_00 * 1 / 3);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 10_000_000 * 2 / 3);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 10_000_000 / 3);
     assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 0);
 
     let addr1_native_bal = get_balance_native(&app, ADDR1, &denom);
@@ -868,7 +879,7 @@ fn test_native_rewards_time_based() {
     claim_rewards(&mut app, reward_addr.clone(), ADDR1);
     assert_eq!(
         get_balance_native(&app, ADDR1, &denom),
-        addr1_native_bal + Uint128::new(100_000_00 * 2 / 3)
+        addr1_native_bal + Uint128::new(10_000_000 * 2 / 3)
     );
 
     // we pass 1000 more seconds which shouldn't change anything
@@ -880,14 +891,14 @@ fn test_native_rewards_time_based() {
     // addr 1 and 2 already claimed so nothing should be pending.
     // addr 3 unstaked so nothing hsould be there either.
     assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 0);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 100_000_00 * 1 / 3);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 10_000_000 / 3);
     assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 0);
 
     // addr 2 claims
     claim_rewards(&mut app, reward_addr.clone(), ADDR2);
     assert_eq!(
         get_balance_native(&app, ADDR2, &denom),
-        addr2_native_bal + Uint128::new(100_000_00 * 1 / 3)
+        addr2_native_bal + Uint128::new(10_000_000 / 3)
     );
     assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 0);
 }
@@ -945,7 +956,13 @@ fn test_cw20_rewards() {
         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
         .unwrap();
 
-    assert_eq!(res.reward.denom_to_reward_rate.get(reward_denom.as_str()).unwrap(), Uint128::new(1000));
+    assert_eq!(
+        res.reward
+            .denom_to_reward_rate
+            .get(reward_denom.as_str())
+            .unwrap(),
+        Uint128::new(1000)
+    );
     assert_eq!(
         res.reward.period_finish_expiration,
         Expiration::AtHeight(101000)
@@ -958,19 +975,19 @@ fn test_cw20_rewards() {
     assert_pending_rewards(&mut app, &reward_addr, ADDR3, reward_denom.as_str(), 250);
 
     app.borrow_mut().update_block(next_block);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR1, reward_denom.as_str(),1000);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2, reward_denom.as_str(),500);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR3, reward_denom.as_str(),500);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, reward_denom.as_str(), 1000);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, reward_denom.as_str(), 500);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, reward_denom.as_str(), 500);
 
     app.borrow_mut().update_block(next_block);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR1, reward_denom.as_str(),1500);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2, reward_denom.as_str(),750);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR3, reward_denom.as_str(),750);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, reward_denom.as_str(), 1500);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, reward_denom.as_str(), 750);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, reward_denom.as_str(), 750);
 
     app.borrow_mut().update_block(next_block);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR1, reward_denom.as_str(),2000);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2, reward_denom.as_str(),1000);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR3, reward_denom.as_str(),1000);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, reward_denom.as_str(), 2000);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, reward_denom.as_str(), 1000);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, reward_denom.as_str(), 1000);
 
     assert_eq!(
         get_balance_cw20(&app, &reward_denom, ADDR1),
@@ -981,20 +998,20 @@ fn test_cw20_rewards() {
         get_balance_cw20(&app, &reward_denom, ADDR1),
         Uint128::new(2000)
     );
-    assert_pending_rewards(&mut app, &reward_addr, ADDR1, reward_denom.as_str(),0);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, reward_denom.as_str(), 0);
 
     app.borrow_mut().update_block(|b| b.height += 10);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR1, reward_denom.as_str(),5000);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2, reward_denom.as_str(),3500);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR3, reward_denom.as_str(),3500);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, reward_denom.as_str(), 5000);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, reward_denom.as_str(), 3500);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, reward_denom.as_str(), 3500);
 
     unstake_cw20_tokens(&mut app, &staking_addr, ADDR2, 50);
     unstake_cw20_tokens(&mut app, &staking_addr, ADDR3, 50);
 
     app.borrow_mut().update_block(|b| b.height += 10);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR1, reward_denom.as_str(),15000);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2, reward_denom.as_str(),3500);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR3, reward_denom.as_str(),3500);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, reward_denom.as_str(), 15000);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, reward_denom.as_str(), 3500);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, reward_denom.as_str(), 3500);
 
     claim_rewards(&mut app, reward_addr.clone(), ADDR1);
     assert_eq!(
@@ -1012,14 +1029,32 @@ fn test_cw20_rewards() {
     stake_cw20_tokens(&mut app, &staking_addr, &cw20_addr, ADDR3, 50);
 
     app.borrow_mut().update_block(|b| b.height += 10);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR1, reward_denom.as_str(),5000);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2, reward_denom.as_str(),2500);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR3, reward_denom.as_str(),6000);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, reward_denom.as_str(), 5000);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, reward_denom.as_str(), 2500);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, reward_denom.as_str(), 6000);
 
     app.borrow_mut().update_block(|b| b.height = 101000);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR1, reward_denom.as_str(),49988000);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2, reward_denom.as_str(),24994000);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR3, reward_denom.as_str(),24997500);
+    assert_pending_rewards(
+        &mut app,
+        &reward_addr,
+        ADDR1,
+        reward_denom.as_str(),
+        49988000,
+    );
+    assert_pending_rewards(
+        &mut app,
+        &reward_addr,
+        ADDR2,
+        reward_denom.as_str(),
+        24994000,
+    );
+    assert_pending_rewards(
+        &mut app,
+        &reward_addr,
+        ADDR3,
+        reward_denom.as_str(),
+        24997500,
+    );
 
     claim_rewards(&mut app, reward_addr.clone(), ADDR1);
     claim_rewards(&mut app, reward_addr.clone(), ADDR2);
@@ -1060,9 +1095,27 @@ fn test_cw20_rewards() {
     );
 
     app.borrow_mut().update_block(|b| b.height = 300000);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR1, reward_denom.as_str(),100000000);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2, reward_denom.as_str(),50000000);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR3, reward_denom.as_str(),74997500);
+    assert_pending_rewards(
+        &mut app,
+        &reward_addr,
+        ADDR1,
+        reward_denom.as_str(),
+        100000000,
+    );
+    assert_pending_rewards(
+        &mut app,
+        &reward_addr,
+        ADDR2,
+        reward_denom.as_str(),
+        50000000,
+    );
+    assert_pending_rewards(
+        &mut app,
+        &reward_addr,
+        ADDR3,
+        reward_denom.as_str(),
+        74997500,
+    );
 
     claim_rewards(&mut app, reward_addr.clone(), ADDR1);
     claim_rewards(&mut app, reward_addr.clone(), ADDR2);
@@ -1093,9 +1146,27 @@ fn test_cw20_rewards() {
     );
 
     app.borrow_mut().update_block(|b| b.height = 400000);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR1, reward_denom.as_str(),100000000);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2, reward_denom.as_str(),50000000);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR3, reward_denom.as_str(),124997500);
+    assert_pending_rewards(
+        &mut app,
+        &reward_addr,
+        ADDR1,
+        reward_denom.as_str(),
+        100000000,
+    );
+    assert_pending_rewards(
+        &mut app,
+        &reward_addr,
+        ADDR2,
+        reward_denom.as_str(),
+        50000000,
+    );
+    assert_pending_rewards(
+        &mut app,
+        &reward_addr,
+        ADDR3,
+        reward_denom.as_str(),
+        124997500,
+    );
 
     claim_rewards(&mut app, reward_addr.clone(), ADDR1);
     claim_rewards(&mut app, reward_addr.clone(), ADDR2);
@@ -1118,9 +1189,9 @@ fn test_cw20_rewards() {
     );
 
     app.borrow_mut().update_block(|b| b.height = 500000);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR1, reward_denom.as_str(),0);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2, reward_denom.as_str(),0);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR3, reward_denom.as_str(),0);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, reward_denom.as_str(), 0);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, reward_denom.as_str(), 0);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, reward_denom.as_str(), 0);
 
     app.borrow_mut().update_block(|b| b.height = 1000000);
     unstake_cw20_tokens(&mut app, &staking_addr, ADDR3, 1);
@@ -1208,7 +1279,10 @@ fn update_rewards() {
         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
         .unwrap();
 
-    assert_eq!(res.reward.denom_to_reward_rate.get(DENOM).unwrap(), Uint128::new(2000));
+    assert_eq!(
+        res.reward.denom_to_reward_rate.get(DENOM).unwrap(),
+        Uint128::new(2000)
+    );
     assert_eq!(
         res.reward.period_finish_expiration,
         Expiration::AtHeight(101000)
@@ -1242,7 +1316,10 @@ fn update_rewards() {
         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
         .unwrap();
 
-    assert_eq!(res.reward.denom_to_reward_rate.get(DENOM).unwrap(), Uint128::new(1000));
+    assert_eq!(
+        res.reward.denom_to_reward_rate.get(DENOM).unwrap(),
+        Uint128::new(1000)
+    );
     assert_eq!(
         res.reward.period_finish_expiration,
         Expiration::AtHeight(201000)
@@ -1275,7 +1352,10 @@ fn update_rewards() {
         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
         .unwrap();
 
-    assert_eq!(res.reward.denom_to_reward_rate.get(DENOM).unwrap(), Uint128::new(1000));
+    assert_eq!(
+        res.reward.denom_to_reward_rate.get(DENOM).unwrap(),
+        Uint128::new(1000)
+    );
     assert_eq!(
         res.reward.period_finish_expiration,
         Expiration::AtHeight(201000)
@@ -1320,7 +1400,10 @@ fn update_reward_duration() {
         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
         .unwrap();
 
-    assert_eq!(res.reward.denom_to_reward_rate.get(DENOM).unwrap(), Uint128::new(0));
+    assert_eq!(
+        res.reward.denom_to_reward_rate.get(DENOM).unwrap(),
+        Uint128::new(0)
+    );
     assert_eq!(res.reward.period_finish_expiration, Expiration::Never {});
     assert_eq!(res.reward.reward_duration, Duration::Height(100000));
 
@@ -1350,7 +1433,10 @@ fn update_reward_duration() {
         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
         .unwrap();
 
-    assert_eq!(res.reward.denom_to_reward_rate.get(DENOM).unwrap(), Uint128::new(0));
+    assert_eq!(
+        res.reward.denom_to_reward_rate.get(DENOM).unwrap(),
+        Uint128::new(0)
+    );
     assert_eq!(res.reward.period_finish_expiration, Expiration::Never {});
     assert_eq!(res.reward.reward_duration, Duration::Height(10));
 
@@ -1403,7 +1489,10 @@ fn update_reward_duration() {
         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
         .unwrap();
 
-    assert_eq!(res.reward.denom_to_reward_rate.get(DENOM).unwrap(), Uint128::new(100));
+    assert_eq!(
+        res.reward.denom_to_reward_rate.get(DENOM).unwrap(),
+        Uint128::new(100)
+    );
     assert_eq!(
         res.reward.period_finish_expiration,
         Expiration::AtHeight(1010)
@@ -1439,7 +1528,10 @@ fn update_reward_duration() {
         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
         .unwrap();
 
-    assert_eq!(res.reward.denom_to_reward_rate.get(DENOM).unwrap(), Uint128::new(100));
+    assert_eq!(
+        res.reward.denom_to_reward_rate.get(DENOM).unwrap(),
+        Uint128::new(100)
+    );
     assert_eq!(
         res.reward.period_finish_expiration,
         Expiration::AtHeight(1010)
@@ -1686,7 +1778,7 @@ fn test_cannot_fund_with_wrong_coin_cw20() {
         Cw20Coin {
             address: admin.to_string(),
             amount: Uint128::new(100),
-        }
+        },
     ];
     let _denom = DENOM.to_string();
     let (staking_addr, _cw20_addr, vp_addr) = setup_cw20_test(&mut app, initial_balances.clone());
@@ -1808,7 +1900,10 @@ fn test_rewards_with_zero_staked() {
         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
         .unwrap();
 
-    assert_eq!(res.reward.denom_to_reward_rate.get(DENOM).unwrap(), Uint128::new(1000));
+    assert_eq!(
+        res.reward.denom_to_reward_rate.get(DENOM).unwrap(),
+        Uint128::new(1000)
+    );
     assert_eq!(
         res.reward.period_finish_expiration,
         Expiration::AtHeight(101000)
@@ -1817,8 +1912,8 @@ fn test_rewards_with_zero_staked() {
 
     app.borrow_mut().update_block(next_block);
     assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 0);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2,  DENOM, 0);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR3,  DENOM, 0);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 0);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 0);
 
     for coin in initial_balances {
         stake_cw20_tokens(
@@ -1831,14 +1926,14 @@ fn test_rewards_with_zero_staked() {
     }
 
     app.borrow_mut().update_block(next_block);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR1,  DENOM, 500);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2,  DENOM, 250);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR3,  DENOM, 250);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 500);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 250);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 250);
 
     app.borrow_mut().update_block(next_block);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR1,  DENOM, 1000);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2,  DENOM, 500);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR3,  DENOM, 500);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 1000);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 500);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 500);
 }
 
 #[test]
@@ -1896,7 +1991,10 @@ fn test_small_rewards() {
         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
         .unwrap();
 
-    assert_eq!(res.reward.denom_to_reward_rate.get(DENOM).unwrap(), Uint128::new(10));
+    assert_eq!(
+        res.reward.denom_to_reward_rate.get(DENOM).unwrap(),
+        Uint128::new(10)
+    );
     assert_eq!(
         res.reward.period_finish_expiration,
         Expiration::AtHeight(101000)
@@ -1904,9 +2002,9 @@ fn test_small_rewards() {
     assert_eq!(res.reward.reward_duration, Duration::Height(100000));
 
     app.borrow_mut().update_block(next_block);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR1,  DENOM, 5);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2,  DENOM, 2);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM,  2);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 5);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 2);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 2);
 }
 
 #[test]
@@ -2036,7 +2134,10 @@ fn test_native_token_dao_rewards() {
 
     println!("info response: {:?}", res);
 
-    assert_eq!(res.reward.denom_to_reward_rate.get(DENOM).unwrap(), Uint128::new(1000));
+    assert_eq!(
+        res.reward.denom_to_reward_rate.get(DENOM).unwrap(),
+        Uint128::new(1000)
+    );
     assert_eq!(
         res.reward.period_finish_expiration,
         Expiration::AtHeight(101000)
@@ -2046,7 +2147,7 @@ fn test_native_token_dao_rewards() {
     app.borrow_mut().update_block(next_block);
     assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 500);
     assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 250);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR3,DENOM, 250);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 250);
 
     app.borrow_mut().update_block(next_block);
     assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 1000);
@@ -2181,7 +2282,10 @@ fn test_cw721_dao_rewards() {
         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
         .unwrap();
 
-    assert_eq!(res.reward.denom_to_reward_rate.get(DENOM).unwrap(), Uint128::new(1000));
+    assert_eq!(
+        res.reward.denom_to_reward_rate.get(DENOM).unwrap(),
+        Uint128::new(1000)
+    );
     assert_eq!(
         res.reward.period_finish_expiration,
         Expiration::AtHeight(101000)
@@ -2323,7 +2427,10 @@ fn test_cw4_dao_rewards() {
         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
         .unwrap();
 
-    assert_eq!(res.reward.denom_to_reward_rate.get(DENOM).unwrap(), Uint128::new(1000));
+    assert_eq!(
+        res.reward.denom_to_reward_rate.get(DENOM).unwrap(),
+        Uint128::new(1000)
+    );
     assert_eq!(
         res.reward.period_finish_expiration,
         Expiration::AtHeight(101000)
@@ -2409,8 +2516,8 @@ fn test_cw4_dao_rewards() {
     // ADDR2: 2500 + 99966 * 250 = 24,994,000
     // ADDR3: 6000 + 99966 * 250 = 24,997,500
     app.borrow_mut().update_block(|b| b.height = 101000);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR1,DENOM,  49988000);
-    assert_pending_rewards(&mut app, &reward_addr, ADDR2,DENOM,  24994000);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 49988000);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 24994000);
     assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 24997500);
 
     claim_rewards(&mut app, reward_addr.clone(), ADDR1);
@@ -2427,5 +2534,316 @@ fn test_cw4_dao_rewards() {
     assert_eq!(
         get_balance_native(&app, &reward_addr, &denom),
         Uint128::new(24997500)
+    );
+}
+
+#[test]
+#[should_panic(expected = "Caller is not the contract's current owner")]
+fn test_distribution_shutdown_validates_owner() {
+    let mut app = mock_app();
+    let admin = Addr::unchecked(OWNER);
+
+    app.borrow_mut().update_block(|b| b.height = 0);
+
+    // Mint tokens for initial balances
+    app.sudo(SudoMsg::Bank({
+        BankSudo::Mint {
+            to_address: ADDR1.to_string(),
+            amount: coins(100, DENOM),
+        }
+    }))
+    .unwrap();
+
+    let denom = DENOM.to_string();
+
+    // Create native token staking contract and stake tokens
+    let vp_addr = setup_native_token_test(&mut app);
+    stake_native_tokens(&mut app, &vp_addr, ADDR1, 100);
+
+    let reward_funding = vec![coin(100000000, denom.clone())];
+    app.sudo(SudoMsg::Bank({
+        BankSudo::Mint {
+            to_address: admin.to_string(),
+            amount: reward_funding.clone(),
+        }
+    }))
+    .unwrap();
+    let reward_addr = setup_reward_contract(
+        &mut app,
+        vp_addr.clone(),
+        None,
+        vec![UncheckedDenom::Native(denom.clone())],
+        admin.clone(),
+        Duration::Height(1000),
+    );
+
+    app.borrow_mut().update_block(|b| b.height = 400);
+
+    let shutdown_msg = ExecuteMsg::Shutdown {};
+
+    app.borrow_mut()
+        .execute_contract(
+            Addr::unchecked(ADDR1),
+            reward_addr.clone(),
+            &shutdown_msg,
+            &[],
+        )
+        .unwrap();
+}
+
+#[test]
+#[should_panic(expected = "Rewards distributor shutdown error: Reward period not finished")]
+fn test_distribution_shutdown_validates_active_period() {
+    let mut app = mock_app();
+    let admin = Addr::unchecked(OWNER);
+
+    app.borrow_mut().update_block(|b| b.height = 0);
+
+    // Mint tokens for initial balances
+    app.sudo(SudoMsg::Bank({
+        BankSudo::Mint {
+            to_address: ADDR1.to_string(),
+            amount: coins(100, DENOM),
+        }
+    }))
+    .unwrap();
+
+    let denom = DENOM.to_string();
+
+    // Create native token staking contract and stake tokens
+    let vp_addr = setup_native_token_test(&mut app);
+    stake_native_tokens(&mut app, &vp_addr, ADDR1, 100);
+
+    let reward_funding = vec![coin(100000000, denom.clone())];
+    app.sudo(SudoMsg::Bank({
+        BankSudo::Mint {
+            to_address: admin.to_string(),
+            amount: reward_funding.clone(),
+        }
+    }))
+    .unwrap();
+    let reward_addr = setup_reward_contract(
+        &mut app,
+        vp_addr.clone(),
+        None,
+        vec![UncheckedDenom::Native(denom.clone())],
+        admin.clone(),
+        Duration::Height(1000),
+    );
+
+    let fund_msg = ExecuteMsg::Fund {};
+
+    let _res = app
+        .borrow_mut()
+        .execute_contract(
+            admin.clone(),
+            reward_addr.clone(),
+            &fund_msg,
+            &reward_funding,
+        )
+        .unwrap();
+
+    app.borrow_mut().update_block(|b| b.height = 1001);
+
+    let shutdown_msg = ExecuteMsg::Shutdown {};
+
+    app.borrow_mut()
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            reward_addr.clone(),
+            &shutdown_msg,
+            &[],
+        )
+        .unwrap();
+}
+
+#[test]
+fn test_distribution_shutdown() {
+    let mut app = mock_app();
+    let admin = Addr::unchecked(OWNER);
+
+    app.borrow_mut().update_block(|b| b.height = 0);
+
+    // Mint tokens for initial balances
+    app.sudo(SudoMsg::Bank({
+        BankSudo::Mint {
+            to_address: ADDR1.to_string(),
+            amount: coins(100, DENOM),
+        }
+    }))
+    .unwrap();
+    app.sudo(SudoMsg::Bank({
+        BankSudo::Mint {
+            to_address: ADDR2.to_string(),
+            amount: coins(50, DENOM),
+        }
+    }))
+    .unwrap();
+    app.sudo(SudoMsg::Bank({
+        BankSudo::Mint {
+            to_address: ADDR3.to_string(),
+            amount: coins(50, DENOM),
+        }
+    }))
+    .unwrap();
+
+    let denom = DENOM.to_string();
+
+    // Create native token staking contract and stake tokens
+    let vp_addr = setup_native_token_test(&mut app);
+    stake_native_tokens(&mut app, &vp_addr, ADDR1, 100);
+    stake_native_tokens(&mut app, &vp_addr, ADDR2, 50);
+    stake_native_tokens(&mut app, &vp_addr, ADDR3, 50);
+
+    let reward_funding = vec![coin(100000000, denom.clone())];
+    app.sudo(SudoMsg::Bank({
+        BankSudo::Mint {
+            to_address: admin.to_string(),
+            amount: reward_funding.clone(),
+        }
+    }))
+    .unwrap();
+    let reward_addr = setup_reward_contract(
+        &mut app,
+        vp_addr.clone(),
+        None,
+        vec![UncheckedDenom::Native(denom.clone())],
+        admin.clone(),
+        Duration::Height(100000),
+    );
+
+    app.borrow_mut().update_block(|b| b.height = 1000);
+
+    let fund_msg = ExecuteMsg::Fund {};
+
+    let _res = app
+        .borrow_mut()
+        .execute_contract(
+            admin.clone(),
+            reward_addr.clone(),
+            &fund_msg,
+            &reward_funding,
+        )
+        .unwrap();
+
+    let res: InfoResponse = app
+        .borrow_mut()
+        .wrap()
+        .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
+        .unwrap();
+
+    println!("info response: {:?}", res);
+
+    assert_eq!(
+        res.reward.denom_to_reward_rate.get(DENOM).unwrap(),
+        Uint128::new(1000)
+    );
+    assert_eq!(
+        res.reward.period_finish_expiration,
+        Expiration::AtHeight(101000)
+    );
+    assert_eq!(res.reward.reward_duration, Duration::Height(100000));
+
+    app.borrow_mut().update_block(next_block);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 500);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 250);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 250);
+
+    app.borrow_mut().update_block(next_block);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 1000);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 500);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 500);
+
+    app.borrow_mut().update_block(next_block);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 1500);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 750);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 750);
+
+    app.borrow_mut().update_block(next_block);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 2000);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 1000);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 1000);
+
+    assert_eq!(get_balance_native(&app, ADDR1, &denom), Uint128::zero());
+    claim_rewards(&mut app, reward_addr.clone(), ADDR1);
+    assert_eq!(get_balance_native(&app, ADDR1, &denom), Uint128::new(2000));
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 0);
+
+    app.borrow_mut().update_block(|b| b.height += 10);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 5000);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 3500);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 3500);
+
+    // pass to 50% of the reward duration
+    app.borrow_mut().update_block(|b| b.height += 49986);
+
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 24998000);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 12500000);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 12500000);
+
+    let pre_shutdown_owner_token_balance = get_balance_native(&app, Addr::unchecked(OWNER), &denom);
+    let pre_shutdown_distributor_contract_token_balance =
+        get_balance_native(&app, &reward_addr, &denom);
+
+    assert_eq!(pre_shutdown_owner_token_balance, Uint128::new(0));
+    assert_eq!(
+        pre_shutdown_distributor_contract_token_balance,
+        Uint128::new(99998000)
+    );
+
+    // perform emergency shutdown
+    let emergency_shutdown_response = app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            reward_addr.clone(),
+            &ExecuteMsg::Shutdown {},
+            &[],
+        )
+        .unwrap();
+
+    let owner_token_balance = get_balance_native(&app, Addr::unchecked(OWNER), &denom);
+    let distributor_contract_token_balance = get_balance_native(&app, &reward_addr, &denom);
+
+    assert_eq!(owner_token_balance, Uint128::new(50000000));
+    assert_eq!(
+        distributor_contract_token_balance,
+        Uint128::new(99998000 - 50000000)
+    );
+
+    // assert that pending rewards are still valid
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 24998000);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 12500000);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 12500000);
+
+    // addr2 wakes up, claims everything
+    claim_rewards(&mut app, reward_addr.clone(), ADDR2);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 0);
+    assert_eq!(
+        get_balance_native(&app, &reward_addr, &denom).u128(),
+        distributor_contract_token_balance.u128() - 12500000,
+    );
+
+    // pass some time
+    app.borrow_mut().update_block(|b| b.height += 10000);
+
+    // assert that pending rewards are still valid
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 24998000);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 0);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 12500000);
+
+    claim_rewards(&mut app, reward_addr.clone(), ADDR1);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 0);
+
+    claim_rewards(&mut app, reward_addr.clone(), ADDR3);
+    assert_pending_rewards(&mut app, &reward_addr, ADDR3, DENOM, 0);
+
+    assert_eq!(
+        get_balance_native(&app, &reward_addr, &denom),
+        Uint128::new(0),
+    );
+
+    println!(
+        "emergency shutdown response: {:?}",
+        emergency_shutdown_response
     );
 }

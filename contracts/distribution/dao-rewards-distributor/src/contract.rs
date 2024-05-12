@@ -1,10 +1,10 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_json, to_json_binary, to_json_string, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128, Uint256, WasmMsg
+    ensure, from_json, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps,
+    DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128, Uint256, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw20::Denom::Cw20;
 use cw20::{Cw20ReceiveMsg, Denom, UncheckedDenom};
 use cw4::MemberChangedHookMsg;
 use cw_utils::{Duration, Expiration};
@@ -19,7 +19,8 @@ use crate::msg::{
     ExecuteMsg, InfoResponse, InstantiateMsg, PendingRewardsResponse, QueryMsg, ReceiveMsg,
 };
 use crate::state::{
-    Config, RewardConfig, CONFIG, LAST_UPDATE_EXPIRATION, PENDING_REWARDS, REWARDS_PER_TOKEN, REWARD_CONFIG, STRING_DENOM_TO_CHECKED_DENOM, USER_REWARD_PER_TOKEN
+    Config, RewardConfig, CONFIG, FUNDED_DENOM_AMOUNTS, LAST_UPDATE_EXPIRATION, PENDING_REWARDS,
+    REWARDS_PER_TOKEN, REWARD_CONFIG, STRING_DENOM_TO_CHECKED_DENOM, USER_REWARD_PER_TOKEN,
 };
 use crate::ContractError;
 use crate::ContractError::{InvalidCw20, InvalidFunds, NoRewardsClaimable};
@@ -38,7 +39,7 @@ pub fn instantiate(
 
     // Intialize the contract owner
     cw_ownable::initialize_owner(deps.storage, deps.api, msg.owner.as_deref())?;
-    
+
     let mut reward_denoms: Vec<Denom> = Vec::with_capacity(msg.reward_denoms_whitelist.len());
     let mut denom_reward_rate_map: HashMap<String, Uint128> = HashMap::new();
     for unchecked_denom in msg.reward_denoms_whitelist {
@@ -46,14 +47,10 @@ pub fn instantiate(
             UncheckedDenom::Native(denom) => denom.to_string(),
             UncheckedDenom::Cw20(addr) => addr.to_string(),
         };
-        let checked_denom = unchecked_denom.into_checked(deps.as_ref())?; 
+        let checked_denom = unchecked_denom.into_checked(deps.as_ref())?;
         reward_denoms.push(checked_denom.clone());
-        STRING_DENOM_TO_CHECKED_DENOM.save(
-            deps.storage,
-            denom_str.to_string(),
-            &checked_denom,
-        )?;
-        denom_reward_rate_map.insert( denom_str, Uint128::zero());
+        STRING_DENOM_TO_CHECKED_DENOM.save(deps.storage, denom_str.to_string(), &checked_denom)?;
+        denom_reward_rate_map.insert(denom_str, Uint128::zero());
     }
 
     // Verify contract provided is a voting module contract
@@ -93,7 +90,10 @@ pub fn instantiate(
     Ok(Response::new()
         .add_attribute("owner", msg.owner.unwrap_or_else(|| "None".to_string()))
         .add_attribute("vp_contract", config.vp_contract)
-        .add_attribute("reward_rate", format!("{:?}", reward_config.denom_to_reward_rate))
+        .add_attribute(
+            "reward_rate",
+            format!("{:?}", reward_config.denom_to_reward_rate),
+        )
         .add_attribute(
             "period_finish",
             reward_config.period_finish_expiration.to_string(),
@@ -119,7 +119,72 @@ pub fn execute(
             execute_update_reward_duration(deps, env, info, new_duration)
         }
         ExecuteMsg::UpdateOwnership(action) => execute_update_owner(deps, info, env, action),
+        ExecuteMsg::Shutdown {} => execute_shutdown(deps, info, env),
     }
+}
+
+/// shutdown the rewards distributor contract.
+/// can only be called by the admin and only during the distribution period.
+/// this will clawback all (undistributed) future rewards to the admin.
+/// updates the period finish expiration to the current block.
+pub fn execute_shutdown(
+    deps: DepsMut,
+    info: MessageInfo,
+    env: Env,
+) -> Result<Response, ContractError> {
+    let reward_config: RewardConfig = REWARD_CONFIG.load(deps.storage)?;
+
+    // only the owner can initiate a shutdown
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    // shutdown is only possible during the distribution period
+    ensure!(
+        !reward_config
+            .period_finish_expiration
+            .is_expired(&env.block),
+        ContractError::ShutdownError("Reward period not finished".to_string())
+    );
+    // TODO: time units here need to be checked for correctness
+    let period_start_units = reward_config.get_period_start_units();
+    let reward_duration_units = reward_config.get_reward_duration_value();
+
+    // find the % of reward_duration that remains from current block
+    let passed_units_since_start = Uint128::from(match reward_config.reward_duration {
+        Duration::Height(_) => env.block.height - period_start_units,
+        Duration::Time(_) => env.block.time.seconds() - period_start_units,
+    });
+
+    // get the fraction of what part of rewards duration is in the past
+    let reward_duration_passed_fraction =
+        Decimal::from_ratio(passed_units_since_start, reward_duration_units);
+
+    // sub from 1 to get the remaining rewards duration
+    let remaining_reward_duration_fraction = Decimal::one() - reward_duration_passed_fraction;
+
+    let mut clawback_msgs: Vec<CosmosMsg> = vec![];
+    // for every denom that we are distributing we construct the clawback msg
+    for (denom, _) in reward_config.denom_to_reward_rate.clone() {
+        let initial_funding_amount = FUNDED_DENOM_AMOUNTS.load(deps.storage, denom.to_string())?;
+        let checked_denom = STRING_DENOM_TO_CHECKED_DENOM.load(deps.storage, denom.to_string())?;
+
+        // multiply initial funding amount by the remaining reward duration fraction
+        // to get the clawback amount
+        let clawback_amount = initial_funding_amount * remaining_reward_duration_fraction;
+        let clawback_msg = get_transfer_msg(info.sender.clone(), clawback_amount, checked_denom)?;
+        clawback_msgs.push(clawback_msg);
+    }
+
+    REWARD_CONFIG.update(deps.storage, |mut rc| -> StdResult<_> {
+        rc.period_finish_expiration = match reward_config.reward_duration {
+            Duration::Height(_) => Expiration::AtHeight(env.block.height),
+            Duration::Time(_) => Expiration::AtTime(env.block.time),
+        };
+        Ok(rc)
+    })?;
+
+    Ok(Response::new()
+        .add_attribute("action", "shutdown")
+        .add_messages(clawback_msgs))
 }
 
 pub fn execute_receive(
@@ -134,17 +199,20 @@ pub fn execute_receive(
 
     // we try to find the sent denom in our rewards config
     let cw20_denom = Denom::Cw20(info.sender.clone());
-    let reward_denom = config.reward_denoms
-        .iter()
-        .find(|d| cw20_denom == **d);
+    let reward_denom = config.reward_denoms.iter().find(|d| cw20_denom == **d);
 
     match reward_denom {
         // if we found the denom, we execute the funding
         Some(reward_denom) => match msg {
-            ReceiveMsg::Fund {} => execute_fund(deps, env, sender, vec![(reward_denom.clone(), wrapper.amount)]),
+            ReceiveMsg::Fund {} => execute_fund(
+                deps,
+                env,
+                sender,
+                vec![(reward_denom.clone(), wrapper.amount)],
+            ),
         },
         // otherwise we error
-        None => Err(InvalidCw20 {  }),
+        None => Err(InvalidCw20 {}),
     }
 }
 
@@ -156,20 +224,19 @@ pub fn execute_fund_native(
     let config = CONFIG.load(deps.storage)?;
 
     // we iterate over the expected reward denoms and check if they were provided
-    let mut provided_denoms: Vec<(Denom, Uint128)> = Vec::with_capacity(info.funds.len()); 
+    let mut provided_denoms: Vec<(Denom, Uint128)> = Vec::with_capacity(info.funds.len());
     for reward_denom in config.reward_denoms {
         // we only care about native denoms here
         if let Denom::Native(denom) = reward_denom.clone() {
-            match cw_utils::must_pay(&info, denom.as_str()) {
-                Ok(paid_amount) => provided_denoms.push((reward_denom, paid_amount)),
-                Err(_) => (),
+            if let Ok(paid_amount) = cw_utils::must_pay(&info, denom.as_str()) {
+                provided_denoms.push((reward_denom, paid_amount))
             }
         }
-    };
+    }
 
     // if we didn't find any native denoms, we error
-    if provided_denoms.len() == 0 {
-        return Err(InvalidFunds {})
+    if provided_denoms.is_empty() {
+        return Err(InvalidFunds {});
     }
 
     execute_fund(deps, env, info.sender, provided_denoms)
@@ -201,13 +268,15 @@ pub fn execute_fund(
         if new_rate == Uint128::zero() {
             return Err(ContractError::RewardRateLessThenOnePerBlock {});
         } else {
-            reward_config.denom_to_reward_rate.insert(
-                match denom_to_fund {
-                    Denom::Native(denom) => denom.to_string(),
-                    Denom::Cw20(addr) => addr.to_string(),
-                },
-                new_rate,
-            );
+            let denom_string = match denom_to_fund {
+                Denom::Native(denom) => denom.to_string(),
+                Denom::Cw20(addr) => addr.to_string(),
+            };
+            // store the funded amount for each denom
+            FUNDED_DENOM_AMOUNTS.save(deps.storage, denom_string.to_string(), amount)?;
+            reward_config
+                .denom_to_reward_rate
+                .insert(denom_string, new_rate);
         }
     }
 
@@ -232,7 +301,10 @@ pub fn execute_fund(
     Ok(Response::new()
         .add_attribute("action", "fund")
         .add_attribute("new_amounts", format!("{:?}", denoms_to_fund))
-        .add_attribute("new_reward_rates", format!("{:?}", new_reward_config.denom_to_reward_rate)))
+        .add_attribute(
+            "new_reward_rates",
+            format!("{:?}", new_reward_config.denom_to_reward_rate),
+        ))
 }
 
 pub fn execute_stake_changed(
@@ -309,17 +381,22 @@ pub fn execute_claim(
     let mut transfer_msgs: Vec<CosmosMsg> = Vec::new();
     let mut nullified_rewards: HashMap<String, Uint128> = HashMap::new();
     for (denom, amount) in current_rewards {
-        if !amount.is_zero() {            
+        if !amount.is_zero() {
             // Get the checked denom for the string based denom
-            let checked_denom = STRING_DENOM_TO_CHECKED_DENOM.load(deps.storage, denom.to_string())?;
+            let checked_denom =
+                STRING_DENOM_TO_CHECKED_DENOM.load(deps.storage, denom.to_string())?;
             // generate a transfer message for the reward
-            transfer_msgs.push(get_transfer_msg(info.sender.clone(), amount, checked_denom)?);
+            transfer_msgs.push(get_transfer_msg(
+                info.sender.clone(),
+                amount,
+                checked_denom,
+            )?);
         }
         nullified_rewards.insert(denom, Uint128::zero());
     }
 
     // If no claim transfers can be done, error
-    if transfer_msgs.len() == 0 {
+    if transfer_msgs.is_empty() {
         return Err(ContractError::NoRewardsClaimable {});
     }
 
@@ -448,7 +525,11 @@ fn get_expiration_diff(a: Expiration, b: Expiration) -> StdResult<u64> {
         ))),
     }
 }
-pub fn get_rewards_per_token(deps: Deps, env: &Env, vp_contract: &Addr) -> StdResult<HashMap<String, Uint256>> {
+pub fn get_rewards_per_token(
+    deps: Deps,
+    env: &Env,
+    vp_contract: &Addr,
+) -> StdResult<HashMap<String, Uint256>> {
     let reward_config = REWARD_CONFIG.load(deps.storage)?;
     // Get the total voting power at this block height.
     let total_power = get_total_voting_power(deps, env, vp_contract)?;
@@ -464,19 +545,28 @@ pub fn get_rewards_per_token(deps: Deps, env: &Env, vp_contract: &Addr) -> StdRe
     let current_reward_per_token = REWARDS_PER_TOKEN.load(deps.storage).unwrap_or_default();
 
     let mut rewards_per_token_map: HashMap<String, Uint256> = HashMap::new();
-    let reward_str_denoms: Box<dyn Iterator<Item = Result<String, StdError>>> = STRING_DENOM_TO_CHECKED_DENOM.keys(deps.storage, None, None, cosmwasm_std::Order::Ascending);
+    let reward_str_denoms: Box<dyn Iterator<Item = Result<String, StdError>>> =
+        STRING_DENOM_TO_CHECKED_DENOM.keys(
+            deps.storage,
+            None,
+            None,
+            cosmwasm_std::Order::Ascending,
+        );
     for whitelisted_reward_denom in reward_str_denoms {
         let token = whitelisted_reward_denom?;
         let default_amount = Uint256::zero();
-        let amount = current_reward_per_token.get(&token).unwrap_or(&default_amount);
+        let amount = current_reward_per_token
+            .get(&token)
+            .unwrap_or(&default_amount);
         let additional_reward_for_token = if total_power == Uint128::zero() {
             Uint256::zero()
         } else {
-            let reward_config_rate_for_token = match reward_config.denom_to_reward_rate.get(&token) {
+            let reward_config_rate_for_token = match reward_config.denom_to_reward_rate.get(&token)
+            {
                 Some(val) => *val,
                 None => Uint128::zero(),
             };
-            
+
             let expiration_diff = Uint128::from(get_expiration_diff(
                 last_time_reward_applicable,
                 last_update_expiration,
@@ -513,7 +603,6 @@ pub fn get_rewards_earned(
     let mut entitled_rewards: HashMap<String, Uint128> = HashMap::new();
     // we iterate over passed in `reward_per_token` values and subtract previous entitlements
     for (denom, amount) in reward_per_token.iter() {
-
         // Calculate the difference between the current reward per token value and the users latest
         let to_sub = match user_reward_per_token.get(denom) {
             Some(val) => *val,
@@ -610,7 +699,7 @@ pub fn query_pending_rewards(
 ) -> StdResult<PendingRewardsResponse> {
     let addr = deps.api.addr_validate(&addr)?;
     let config = CONFIG.load(deps.storage)?;
-    
+
     let reward_per_token = get_rewards_per_token(deps, &env, &config.vp_contract)?;
 
     let earned_rewards =
@@ -621,7 +710,7 @@ pub fn query_pending_rewards(
         .unwrap_or_default();
 
     let mut pending_rewards: HashMap<String, Uint128> = HashMap::new();
-    
+
     for whitelisted_rewards_denom in config.reward_denoms {
         let denom = match whitelisted_rewards_denom {
             Denom::Native(denom) => denom.to_string(),
