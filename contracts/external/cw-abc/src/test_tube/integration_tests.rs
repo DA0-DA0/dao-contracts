@@ -660,8 +660,31 @@ fn test_dao_hatcher() {
     );
     assert!(result.is_ok());
 
-    // Only DAO members (1st half of accounts) can hatch
-    // but the contribution limit override is set, so it will error
+    // Also add a DAO tied for the highest priority
+    // This should not update contribution limit, because the 1st DAO was added first and user is a member of it
+    let dao = env.setup_default_dao(dao_ids);
+    let result = abc.execute(
+        &ExecuteMsg::UpdateHatchAllowlist {
+            to_add: vec![HatcherAllowlistEntryMsg {
+                addr: dao.contract_addr.to_string(),
+                config: HatcherAllowlistConfigMsg {
+                    config_type: HatcherAllowlistConfigType::DAO {
+                        priority: Some(Uint64::MAX - Uint64::from(4u64)),
+                    },
+                    contribution_limits_override: Some(MinMax {
+                        min: Uint128::one(),
+                        max: Uint128::from(1000u128),
+                    }),
+                },
+            }],
+            to_remove: vec![],
+        },
+        &[],
+        &accounts[0],
+    );
+    assert!(result.is_ok());
+
+    // Check contribution limit at this point
     let err = abc
         .execute(&ExecuteMsg::Buy {}, &coins(1000, RESERVE), &accounts[0])
         .unwrap_err();
@@ -684,15 +707,15 @@ fn test_dao_hatcher() {
     );
     assert!(result.is_ok());
 
-    // The error should say 40 is the max contribution now
+    // The error should say 1k is the max contribution now
     let err = abc
-        .execute(&ExecuteMsg::Buy {}, &coins(1000, RESERVE), &accounts[0])
+        .execute(&ExecuteMsg::Buy {}, &coins(2000, RESERVE), &accounts[0])
         .unwrap_err();
     assert_eq!(
         err,
         abc.execute_error(ContractError::ContributionLimit {
             min: Uint128::one(),
-            max: Uint128::from(40u128)
+            max: Uint128::from(1000u128)
         })
     );
 
@@ -722,7 +745,7 @@ fn test_dao_hatcher() {
                     config_type: HatcherAllowlistConfigType::Address {},
                     contribution_limits_override: Some(MinMax {
                         min: Uint128::one(),
-                        max: Uint128::from(1000u128),
+                        max: Uint128::from(2000u128),
                     }),
                 },
             }],
@@ -735,17 +758,17 @@ fn test_dao_hatcher() {
 
     // The user has already funded 40, so providing their limit should error
     let err = abc
-        .execute(&ExecuteMsg::Buy {}, &coins(1000, RESERVE), &accounts[0])
+        .execute(&ExecuteMsg::Buy {}, &coins(2000, RESERVE), &accounts[0])
         .unwrap_err();
     assert_eq!(
         err,
         abc.execute_error(ContractError::ContributionLimit {
             min: Uint128::one(),
-            max: Uint128::from(1000u128)
+            max: Uint128::from(2000u128)
         })
     );
 
     // Funding the remainder is ok
-    let result = abc.execute(&ExecuteMsg::Buy {}, &coins(960, RESERVE), &accounts[0]);
+    let result = abc.execute(&ExecuteMsg::Buy {}, &coins(1960, RESERVE), &accounts[0]);
     assert!(result.is_ok());
 }

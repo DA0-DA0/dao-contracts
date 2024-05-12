@@ -465,7 +465,7 @@ pub fn update_hatch_allowlist(
                                                     priority: Some(entry_priority),
                                                 } => entry_priority
                                                     .cmp(&priority_value)
-                                                    .then(std::cmp::Ordering::Greater),
+                                                    .then(std::cmp::Ordering::Less),
                                                 _ => std::cmp::Ordering::Less, // Treat non-DAO or DAO without priority as lower priority
                                             }
                                         })
