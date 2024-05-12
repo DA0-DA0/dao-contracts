@@ -158,7 +158,6 @@ impl TestEnvBuilder {
                                             max: Uint128::from(1000000u128),
                                         },
                                         entry_fee: Decimal::percent(10u64),
-                                        exit_fee: Decimal::percent(10u64),
                                     },
                                     open: OpenConfig {
                                         entry_fee: Decimal::percent(10u64),
@@ -270,7 +269,6 @@ impl TestEnvBuilder {
                                                 max: Uint128::from(1000000u128),
                                             },
                                             entry_fee: Decimal::percent(10u64),
-                                            exit_fee: Decimal::percent(10u64),
                                         },
                                         open: OpenConfig {
                                             entry_fee: Decimal::percent(10u64),

@@ -68,7 +68,14 @@ impl<'a> TestEnv<'a> {
         Bank::new(self.app)
     }
 
-    pub fn setup_dao(&self) -> DaoCore<'a> {
+    pub fn init_dao_ids(&self) -> (u64, u64) {
+        (
+            TokenVotingContract::upload(self.app, &self.accounts[0]).unwrap(),
+            DaoProposalSingle::upload(self.app, &self.accounts[0]).unwrap(),
+        )
+    }
+
+    pub fn setup_default_dao(&self, dao_ids: (u64, u64)) -> DaoCore<'a> {
         // Only the 1st half of self.accounts are part of the DAO
         let initial_balances: Vec<InitialBalance> = self
             .accounts
@@ -80,9 +87,6 @@ impl<'a> TestEnv<'a> {
             })
             .collect();
 
-        let vp_contract_id = TokenVotingContract::upload(self.app, &self.accounts[0]).unwrap();
-        let proposal_single_id = DaoProposalSingle::upload(self.app, &self.accounts[0]).unwrap();
-
         let msg = dao_interface::msg::InstantiateMsg {
             dao_uri: None,
             admin: None,
@@ -92,7 +96,7 @@ impl<'a> TestEnv<'a> {
             automatically_add_cw20s: false,
             automatically_add_cw721s: false,
             voting_module_instantiate_info: ModuleInstantiateInfo {
-                code_id: vp_contract_id,
+                code_id: dao_ids.0,
                 msg: to_json_binary(&dao_voting_token_staked::msg::InstantiateMsg {
                     token_info: TokenInfo::New(NewTokenInfo {
                         token_issuer_code_id: self.tf_issuer.code_id,
@@ -122,7 +126,7 @@ impl<'a> TestEnv<'a> {
                 label: "DAO DAO Voting Module".to_string(),
             },
             proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
-                code_id: proposal_single_id,
+                code_id: dao_ids.1,
                 msg: to_json_binary(&dao_proposal_single::msg::InstantiateMsg {
                     min_voting_period: None,
                     threshold: Threshold::ThresholdQuorum {
@@ -151,8 +155,7 @@ impl<'a> TestEnv<'a> {
             .query(&dao_interface::msg::QueryMsg::VotingModule {})
             .unwrap();
         let vp_contract =
-            TokenVotingContract::new_with_values(self.app, vp_contract_id, vp_addr.to_string())
-                .unwrap();
+            TokenVotingContract::new_with_values(self.app, dao_ids.0, vp_addr.to_string()).unwrap();
 
         // Get the denom
         let result: RunnerResult<DenomResponse> =
@@ -233,7 +236,7 @@ impl TestEnvBuilder {
                     subdenom: DENOM.to_string(),
                     metadata: None,
                     decimals: 6,
-                    max_supply: Some(Uint128::from(1000000000u128)),
+                    max_supply: Some(Uint128::from(1_000_000_000u128)),
                 },
                 reserve: ReserveToken {
                     denom: RESERVE.to_string(),
@@ -243,14 +246,13 @@ impl TestEnvBuilder {
                     hatch: HatchConfig {
                         contribution_limits: MinMax {
                             min: Uint128::from(10u128),
-                            max: Uint128::from(1000000u128),
+                            max: Uint128::from(1_000_000u128),
                         },
                         initial_raise: MinMax {
                             min: Uint128::from(10u128),
-                            max: Uint128::from(1000000u128),
+                            max: Uint128::from(900_000u128), // 1m - 10%
                         },
                         entry_fee: Decimal::percent(10u64),
-                        exit_fee: Decimal::percent(10u64),
                     },
                     open: OpenConfig {
                         entry_fee: Decimal::percent(10u64),

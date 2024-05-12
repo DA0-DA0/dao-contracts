@@ -2,13 +2,13 @@ use crate::abc::CurveFn;
 use crate::helpers::{calculate_buy_quote, calculate_sell_quote};
 use crate::msg::{
     CommonsPhaseConfigResponse, CurveInfoResponse, DenomResponse, DonationsResponse,
-    HatcherAllowlistEntry, HatcherAllowlistResponse, HatchersResponse, QuoteResponse,
+    HatcherAllowlistResponse, HatchersResponse, QuoteResponse,
 };
 use crate::state::{
-    hatcher_allowlist, CurveState, HatcherAllowlistConfigType, CURVE_STATE, CURVE_TYPE, DONATIONS,
-    HATCHERS, MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
+    hatcher_allowlist, CurveState, HatcherAllowlistConfigType, HatcherAllowlistEntry, CURVE_STATE,
+    CURVE_TYPE, DONATIONS, HATCHERS, MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
 };
-use cosmwasm_std::{Addr, Deps, Order, QuerierWrapper, StdError, StdResult, Uint128};
+use cosmwasm_std::{Deps, Order, QuerierWrapper, StdError, StdResult, Uint128};
 use cw_storage_plus::Bound;
 use std::ops::Deref;
 
@@ -88,6 +88,13 @@ pub fn query_hatchers(
     Ok(HatchersResponse { hatchers })
 }
 
+/// Query the contribution of a hatcher
+pub fn query_hatcher(deps: Deps, addr: String) -> StdResult<Uint128> {
+    let addr = deps.api.addr_validate(&addr)?;
+
+    HATCHERS.load(deps.storage, &addr)
+}
+
 /// Query hatcher allowlist
 pub fn query_hatcher_allowlist(
     deps: Deps,
@@ -112,7 +119,7 @@ pub fn query_hatcher_allowlist(
             .range(deps.storage, start_after_bound, None, Order::Ascending),
         None => hatcher_allowlist().range(deps.storage, start_after_bound, None, Order::Ascending),
     }
-    .map(|result| result.map(|(addr, config)| HatcherAllowlistEntry::<Addr> { addr, config }));
+    .map(|result| result.map(|(addr, config)| HatcherAllowlistEntry { addr, config }));
 
     let allowlist = match limit {
         Some(limit) => iter

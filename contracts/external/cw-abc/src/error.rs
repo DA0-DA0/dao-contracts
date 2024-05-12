@@ -28,6 +28,9 @@ pub enum ContractError {
     #[error("The commons is closed to new contributions")]
     CommonsClosed {},
 
+    #[error("The commons is locked against liquidations")]
+    CommonsHatch {},
+
     #[error("Contribution must be less than or equal to {max} and greater than or equal to {min}")]
     ContributionLimit { min: Uint128, max: Uint128 },
 

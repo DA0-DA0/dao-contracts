@@ -65,7 +65,6 @@ pub fn default_instantiate_msg(
                     max: Uint128::from(1000000u128),
                 },
                 entry_fee: Decimal::percent(10u64),
-                exit_fee: Decimal::zero(),
             },
             open: OpenConfig {
                 entry_fee: Decimal::percent(10u64),

@@ -1,10 +1,9 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Decimal, Uint128};
-use cw_address_like::AddressLike;
 
 use crate::{
     abc::{CommonsPhase, CommonsPhaseConfig, CurveType, MinMax, ReserveToken, SupplyToken},
-    state::{HatcherAllowlistConfig, HatcherAllowlistConfigType},
+    state::{HatcherAllowlistConfigType, HatcherAllowlistEntry},
 };
 
 #[cw_serde]
@@ -30,7 +29,7 @@ pub struct InstantiateMsg {
     /// TODO different ways of doing this, for example DAO members?
     /// Using a whitelist contract? Merkle tree?
     /// Hatcher allowlist
-    pub hatcher_allowlist: Option<Vec<HatcherAllowlistEntry<String>>>,
+    pub hatcher_allowlist: Option<Vec<HatcherAllowlistEntryMsg>>,
 }
 
 /// Update the phase configurations.
@@ -43,7 +42,6 @@ pub enum UpdatePhaseConfigMsg {
         // TODO what is the minimum used for?
         initial_raise: Option<MinMax>,
         entry_fee: Option<Decimal>,
-        exit_fee: Option<Decimal>,
     },
     /// Update the open phase configuration.
     Open {
@@ -85,7 +83,7 @@ pub enum ExecuteMsg {
     /// Only callable by owner.
     UpdateHatchAllowlist {
         /// Addresses to be added.
-        to_add: Vec<HatcherAllowlistEntry<String>>,
+        to_add: Vec<HatcherAllowlistEntryMsg>,
         /// Addresses to be removed.
         to_remove: Vec<String>,
     },
@@ -141,6 +139,9 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    /// Returns the contribution of a hatcher
+    #[returns(Uint128)]
+    Hatcher { addr: String },
     /// Lists the hatcher allowlist
     /// Returns [`HatcherAllowlistResponse`]
     #[returns(HatcherAllowlistResponse)]
@@ -171,9 +172,17 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
-pub struct HatcherAllowlistEntry<T: AddressLike> {
-    pub addr: T,
-    pub config: HatcherAllowlistConfig,
+pub struct HatcherAllowlistEntryMsg {
+    pub addr: String,
+    pub config: HatcherAllowlistConfigMsg,
+}
+
+#[cw_serde]
+pub struct HatcherAllowlistConfigMsg {
+    /// The type of the configuration
+    pub config_type: HatcherAllowlistConfigType,
+    /// An optional override of the hatch_config's contribution limit
+    pub contribution_limits_override: Option<MinMax>,
 }
 
 #[cw_serde]
@@ -198,7 +207,7 @@ pub struct DenomResponse {
 #[cw_serde]
 pub struct HatcherAllowlistResponse {
     /// Hatcher allowlist
-    pub allowlist: Option<Vec<HatcherAllowlistEntry<Addr>>>,
+    pub allowlist: Option<Vec<HatcherAllowlistEntry>>,
 }
 
 #[cw_serde]

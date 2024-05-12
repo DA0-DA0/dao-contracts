@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
-    Uint128, WasmMsg,
+    to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
+    SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_curves::DecimalPlaces;
@@ -29,7 +29,7 @@ const INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID: u64 = 0;
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -68,17 +68,6 @@ pub fn instantiate(
     // Save the curve type
     CURVE_TYPE.save(deps.storage, &curve_type)?;
 
-    if let Some(allowlist) = hatcher_allowlist {
-        for hatcher in allowlist {
-            let addr = deps.api.addr_validate(hatcher.addr.as_str())?;
-            let list = crate::state::hatcher_allowlist();
-
-            if !list.has(deps.storage, &addr) {
-                list.save(deps.storage, &addr, &hatcher.config)?;
-            }
-        }
-    }
-
     PHASE_CONFIG.save(deps.storage, &phase_config)?;
 
     // TODO don't hardcode this? Make it configurable? Hatch config can be optional
@@ -115,7 +104,21 @@ pub fn instantiate(
     // Set the paused state
     IS_PAUSED.save(deps.storage, &false)?;
 
-    Ok(Response::default().add_submessage(msg))
+    // Set hatcher allowlist through internal method
+    let msgs = if let Some(hatcher_allowlist) = hatcher_allowlist {
+        vec![CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: env.contract.address.to_string(),
+            msg: to_json_binary(&ExecuteMsg::UpdateHatchAllowlist {
+                to_add: hatcher_allowlist,
+                to_remove: vec![],
+            })?,
+            funds: vec![],
+        })]
+    } else {
+        vec![]
+    };
+
+    Ok(Response::default().add_messages(msgs).add_submessage(msg))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -145,7 +148,7 @@ pub fn execute(
         }
         ExecuteMsg::UpdateCurve { curve_type } => commands::update_curve(deps, info, curve_type),
         ExecuteMsg::UpdateHatchAllowlist { to_add, to_remove } => {
-            commands::update_hatch_allowlist(deps, info, to_add, to_remove)
+            commands::update_hatch_allowlist(deps, env, info, to_add, to_remove)
         }
         ExecuteMsg::TogglePause {} => commands::toggle_pause(deps, info),
         ExecuteMsg::UpdatePhaseConfig(update_msg) => {
@@ -184,6 +187,7 @@ pub fn do_query(deps: Deps, _env: Env, msg: QueryMsg, curve_fn: CurveFn) -> StdR
         QueryMsg::Hatchers { start_after, limit } => {
             to_json_binary(&queries::query_hatchers(deps, start_after, limit)?)
         }
+        QueryMsg::Hatcher { addr } => to_json_binary(&queries::query_hatcher(deps, addr)?),
         QueryMsg::HatcherAllowlist {
             start_after,
             limit,

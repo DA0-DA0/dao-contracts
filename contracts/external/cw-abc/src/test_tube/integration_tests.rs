@@ -5,15 +5,16 @@ use crate::{
     },
     msg::{
         CommonsPhaseConfigResponse, CurveInfoResponse, DenomResponse, ExecuteMsg,
-        HatcherAllowlistEntry, InstantiateMsg, QueryMsg, QuoteResponse,
+        HatcherAllowlistConfigMsg, HatcherAllowlistEntryMsg, InstantiateMsg, QueryMsg,
+        QuoteResponse,
     },
-    state::{HatcherAllowlistConfig, HatcherAllowlistConfigType},
+    state::HatcherAllowlistConfigType,
     ContractError,
 };
 
 use super::test_env::{TestEnv, TestEnvBuilder, DENOM, RESERVE};
 
-use cosmwasm_std::{coins, Decimal, Uint128};
+use cosmwasm_std::{coins, Decimal, Uint128, Uint64};
 use cw_tokenfactory_issuer::msg::QueryMsg as IssuerQueryMsg;
 use osmosis_std::types::cosmos::bank::v1beta1::QueryBalanceRequest;
 use osmosis_test_tube::{osmosis_std::types::cosmos::base::v1beta1::Coin, Account, OsmosisTestApp};
@@ -103,7 +104,7 @@ fn test_happy_path() {
 
     // Query phase
     let phase: CommonsPhaseConfigResponse = abc.query(&QueryMsg::PhaseConfig {}).unwrap();
-    assert_eq!(phase.phase, CommonsPhase::Hatch);
+    assert!(matches!(phase.phase, CommonsPhase::Hatch));
     assert_eq!(
         phase.phase_config,
         CommonsPhaseConfig {
@@ -114,10 +115,9 @@ fn test_happy_path() {
                 },
                 initial_raise: MinMax {
                     min: Uint128::from(10u128),
-                    max: Uint128::from(1000000u128),
+                    max: Uint128::from(900_000u128),
                 },
                 entry_fee: Decimal::percent(10u64),
-                exit_fee: Decimal::percent(10u64),
             },
             open: OpenConfig {
                 entry_fee: Decimal::percent(10u64),
@@ -127,26 +127,44 @@ fn test_happy_path() {
         }
     );
 
+    // Trying to sell is an error
+    let err = abc
+        .execute(
+            &ExecuteMsg::Sell {},
+            &coins(1000, denom.clone()),
+            &accounts[0],
+        )
+        .unwrap_err();
+    assert_eq!(err, abc.execute_error(ContractError::CommonsHatch {}));
+
+    // Buy enough tokens to end the hatch phase
+    abc.execute(&ExecuteMsg::Buy {}, &coins(999999, RESERVE), &accounts[1])
+        .unwrap();
+
+    // Contract is now in open phase
+    let phase: CommonsPhaseConfigResponse = abc.query(&QueryMsg::PhaseConfig {}).unwrap();
+    assert_eq!(phase.phase, CommonsPhase::Open);
+
     // Query sell quote
     let quote = abc
         .query::<QuoteResponse>(&QueryMsg::SellQuote {
-            payment: Uint128::new(100u128),
+            payment: Uint128::new(1000u128),
         })
         .unwrap();
     assert_eq!(
         quote,
         QuoteResponse {
-            new_reserve: Uint128::new(890u128),
-            funded: Uint128::new(1u128),
-            amount: Uint128::new(9u128),
-            new_supply: Uint128::new(8900u128),
+            new_reserve: Uint128::new(900800u128),
+            funded: Uint128::new(10u128),
+            amount: Uint128::new(90u128),
+            new_supply: Uint128::new(9008000u128),
         }
     );
 
     // Sell
     abc.execute(
         &ExecuteMsg::Sell {},
-        &coins(100, denom.clone()),
+        &coins(1000, denom.clone()),
         &accounts[0],
     )
     .unwrap();
@@ -156,8 +174,8 @@ fn test_happy_path() {
     assert_eq!(
         curve_info,
         CurveInfoResponse {
-            reserve: Uint128::new(890),
-            supply: Uint128::new(8900),
+            reserve: Uint128::new(900800u128),
+            supply: Uint128::new(9008000u128),
             funding: Uint128::new(0),
             spot_price: Decimal::percent(10u64),
             reserve_denom: RESERVE.to_string(),
@@ -185,24 +203,16 @@ fn test_happy_path() {
         user_balance.balance,
         Some(Coin {
             denom: denom.clone(),
-            amount: "8900".to_string(),
+            amount: "8000".to_string(),
         })
     );
     assert_eq!(
         contract_balance.balance,
         Some(Coin {
             denom: RESERVE.to_string(),
-            amount: "890".to_string(),
+            amount: "900800".to_string(),
         })
     );
-
-    // Buy enough tokens to end the hatch phase
-    abc.execute(&ExecuteMsg::Buy {}, &coins(999999, RESERVE), &accounts[1])
-        .unwrap();
-
-    // Contract is now in open phase
-    let phase: CommonsPhaseConfigResponse = abc.query(&QueryMsg::PhaseConfig {}).unwrap();
-    assert_eq!(phase.phase, CommonsPhase::Open);
 }
 
 #[test]
@@ -220,7 +230,7 @@ fn test_contribution_limits_enforced() {
     let err = abc
         .execute(
             &ExecuteMsg::Buy {},
-            &coins(1000000000, RESERVE),
+            &coins(1_000_000_000, RESERVE),
             &accounts[0],
         )
         .unwrap_err();
@@ -258,8 +268,12 @@ fn test_max_supply() {
     } = env;
 
     // Buy enough tokens to end the hatch phase
-    abc.execute(&ExecuteMsg::Buy {}, &coins(1000000, RESERVE), &accounts[0])
-        .unwrap();
+    abc.execute(
+        &ExecuteMsg::Buy {},
+        &coins(1_000_000, RESERVE),
+        &accounts[0],
+    )
+    .unwrap();
 
     // Buy enough tokens to trigger a max supply error
     let err = abc
@@ -336,7 +350,6 @@ fn test_allowlist() {
                     max: Uint128::from(1000000u128),
                 },
                 entry_fee: Decimal::percent(10u64),
-                exit_fee: Decimal::percent(10u64),
             },
             open: OpenConfig {
                 entry_fee: Decimal::percent(10u64),
@@ -362,16 +375,18 @@ fn test_allowlist() {
         .execute(
             &ExecuteMsg::UpdateHatchAllowlist {
                 to_add: vec![
-                    HatcherAllowlistEntry {
+                    HatcherAllowlistEntryMsg {
                         addr: accounts[0].address(),
-                        config: HatcherAllowlistConfig {
+                        config: HatcherAllowlistConfigMsg {
                             config_type: HatcherAllowlistConfigType::Address {},
+                            contribution_limits_override: None,
                         },
                     },
-                    HatcherAllowlistEntry {
+                    HatcherAllowlistEntryMsg {
                         addr: accounts[1].address(),
-                        config: HatcherAllowlistConfig {
+                        config: HatcherAllowlistConfigMsg {
                             config_type: HatcherAllowlistConfigType::Address {},
+                            contribution_limits_override: None,
                         },
                     },
                 ],
@@ -393,16 +408,18 @@ fn test_allowlist() {
     abc.execute(
         &ExecuteMsg::UpdateHatchAllowlist {
             to_add: vec![
-                HatcherAllowlistEntry {
+                HatcherAllowlistEntryMsg {
                     addr: accounts[0].address(),
-                    config: HatcherAllowlistConfig {
+                    config: HatcherAllowlistConfigMsg {
                         config_type: HatcherAllowlistConfigType::Address {},
+                        contribution_limits_override: None,
                     },
                 },
-                HatcherAllowlistEntry {
+                HatcherAllowlistEntryMsg {
                     addr: accounts[1].address(),
-                    config: HatcherAllowlistConfig {
+                    config: HatcherAllowlistConfigMsg {
                         config_type: HatcherAllowlistConfigType::Address {},
+                        contribution_limits_override: None,
                     },
                 },
             ],
@@ -498,8 +515,12 @@ fn test_update_curve() {
         .denom;
 
     // Buy enough tokens to end the hatch phase
-    abc.execute(&ExecuteMsg::Buy {}, &coins(1000000, RESERVE), &accounts[0])
-        .unwrap();
+    abc.execute(
+        &ExecuteMsg::Buy {},
+        &coins(1_000_000, RESERVE),
+        &accounts[0],
+    )
+    .unwrap();
 
     // Only owner can update the curve
     let err = abc
@@ -586,16 +607,50 @@ fn test_dao_hatcher() {
     } = env;
 
     // Setup a dao with the 1st half of accounts
-    let dao = env.setup_dao();
+    let dao_ids = env.init_dao_ids();
+    let daos: Vec<_> = (0..5)
+        .into_iter()
+        .map(|_| env.setup_default_dao(dao_ids))
+        .collect();
     app.increase_time(1u64);
 
     // Update hatcher allowlist for DAO membership
+    // The max contribution of 50 should have the highest priority
+    for (i, dao) in daos.iter().enumerate() {
+        let result = abc.execute(
+            &ExecuteMsg::UpdateHatchAllowlist {
+                to_add: vec![HatcherAllowlistEntryMsg {
+                    addr: dao.contract_addr.to_string(),
+                    config: HatcherAllowlistConfigMsg {
+                        config_type: HatcherAllowlistConfigType::DAO {
+                            priority: Some(Uint64::MAX - Uint64::new(i as u64)), // Insert in reverse priority to ensure insertion ordering is valid
+                        },
+                        contribution_limits_override: Some(MinMax {
+                            min: Uint128::one(),
+                            max: Uint128::from(10u128) * Uint128::from(i as u128 + 1u128),
+                        }),
+                    },
+                }],
+                to_remove: vec![],
+            },
+            &[],
+            &accounts[0],
+        );
+        assert!(result.is_ok());
+    }
+
+    // Let's also insert a dao with no priority to make sure it's added to the end
+    let dao = env.setup_default_dao(dao_ids);
     let result = abc.execute(
         &ExecuteMsg::UpdateHatchAllowlist {
-            to_add: vec![HatcherAllowlistEntry::<String> {
+            to_add: vec![HatcherAllowlistEntryMsg {
                 addr: dao.contract_addr.to_string(),
-                config: HatcherAllowlistConfig {
-                    config_type: HatcherAllowlistConfigType::DAO {},
+                config: HatcherAllowlistConfigMsg {
+                    config_type: HatcherAllowlistConfigType::DAO { priority: None },
+                    contribution_limits_override: Some(MinMax {
+                        min: Uint128::one(),
+                        max: Uint128::from(100u128),
+                    }),
                 },
             }],
             to_remove: vec![],
@@ -606,10 +661,46 @@ fn test_dao_hatcher() {
     assert!(result.is_ok());
 
     // Only DAO members (1st half of accounts) can hatch
-    let result = abc.execute(&ExecuteMsg::Buy {}, &coins(1000, RESERVE), &accounts[0]);
+    // but the contribution limit override is set, so it will error
+    let err = abc
+        .execute(&ExecuteMsg::Buy {}, &coins(1000, RESERVE), &accounts[0])
+        .unwrap_err();
+    assert_eq!(
+        err,
+        abc.execute_error(ContractError::ContributionLimit {
+            min: Uint128::one(),
+            max: Uint128::from(50u128)
+        })
+    );
+
+    // Check removing a dao config updates the contribution limit
+    let result = abc.execute(
+        &ExecuteMsg::UpdateHatchAllowlist {
+            to_add: vec![],
+            to_remove: vec![daos.last().unwrap().contract_addr.to_string()],
+        },
+        &[],
+        &accounts[0],
+    );
     assert!(result.is_ok());
 
-    // Check not member
+    // The error should say 40 is the max contribution now
+    let err = abc
+        .execute(&ExecuteMsg::Buy {}, &coins(1000, RESERVE), &accounts[0])
+        .unwrap_err();
+    assert_eq!(
+        err,
+        abc.execute_error(ContractError::ContributionLimit {
+            min: Uint128::one(),
+            max: Uint128::from(40u128)
+        })
+    );
+
+    // Adhering to the limit makes this ok now
+    let result = abc.execute(&ExecuteMsg::Buy {}, &coins(40, RESERVE), &accounts[0]);
+    assert!(result.is_ok());
+
+    // Check not allowlisted
     let result = abc.execute(
         &ExecuteMsg::Buy {},
         &coins(1000, RESERVE),
@@ -621,4 +712,40 @@ fn test_dao_hatcher() {
             sender: accounts[accounts.len() - 1].address().to_string()
         })
     );
+
+    // Check an address config takes complete priority
+    let result = abc.execute(
+        &ExecuteMsg::UpdateHatchAllowlist {
+            to_add: vec![HatcherAllowlistEntryMsg {
+                addr: accounts[0].address(),
+                config: HatcherAllowlistConfigMsg {
+                    config_type: HatcherAllowlistConfigType::Address {},
+                    contribution_limits_override: Some(MinMax {
+                        min: Uint128::one(),
+                        max: Uint128::from(1000u128),
+                    }),
+                },
+            }],
+            to_remove: vec![],
+        },
+        &[],
+        &accounts[0],
+    );
+    assert!(result.is_ok());
+
+    // The user has already funded 40, so providing their limit should error
+    let err = abc
+        .execute(&ExecuteMsg::Buy {}, &coins(1000, RESERVE), &accounts[0])
+        .unwrap_err();
+    assert_eq!(
+        err,
+        abc.execute_error(ContractError::ContributionLimit {
+            min: Uint128::one(),
+            max: Uint128::from(1000u128)
+        })
+    );
+
+    // Funding the remainder is ok
+    let result = abc.execute(&ExecuteMsg::Buy {}, &coins(960, RESERVE), &accounts[0]);
+    assert!(result.is_ok());
 }

@@ -1,8 +1,8 @@
 use std::fmt::{self, Display};
 
-use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType, SupplyToken};
+use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType, MinMax, SupplyToken};
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::{Addr, Uint128, Uint64};
 use cw_curves::DecimalPlaces;
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 
@@ -16,10 +16,10 @@ pub struct CurveState {
     /// supply is how many tokens this contract has issued
     pub supply: Uint128,
 
-    // the denom of the reserve token
+    /// the denom of the reserve token
     pub reserve_denom: String,
 
-    // how to normalize reserve and supply
+    /// how to normalize reserve and supply
     pub decimals: DecimalPlaces,
 }
 
@@ -40,18 +40,35 @@ impl CurveState {
 pub struct HatcherAllowlistConfig {
     /// The type of the configuration
     pub config_type: HatcherAllowlistConfigType,
+    /// An optional override of the hatch_config's contribution limit
+    pub contribution_limits_override: Option<MinMax>,
+    /// The height of the config insertion
+    /// For use when checking allowlist of DAO configs
+    pub config_height: u64,
+}
+
+#[cw_serde]
+pub struct HatcherAllowlistEntry {
+    pub addr: Addr,
+    pub config: HatcherAllowlistConfig,
 }
 
 #[cw_serde]
 pub enum HatcherAllowlistConfigType {
-    DAO {},
+    DAO {
+        /// The optional priority for checking a DAO config
+        /// None will append the item to the end of the priority queue (least priority)
+        priority: Option<Uint64>,
+    },
     Address {},
 }
+
+impl Copy for HatcherAllowlistConfigType {}
 
 impl Display for HatcherAllowlistConfigType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            HatcherAllowlistConfigType::DAO {} => write!(f, "DAO"),
+            HatcherAllowlistConfigType::DAO { priority: _ } => write!(f, "DAO"),
             HatcherAllowlistConfigType::Address {} => write!(f, "Address"),
         }
     }
@@ -82,6 +99,14 @@ pub fn hatcher_allowlist<'a>(
 
     IndexedMap::new("hatcher_allowlist", indexes)
 }
+
+/// The hatcher allowlist with configurations
+pub const HATCHER_ALLOWLIST: Map<&Addr, HatcherAllowlistConfig> = Map::new("hatcher_allowlist");
+
+/// The DAO portion of the hatcher allowlist implemented as a priority queue
+/// If someone is a member of multiple allowlisted DAO's, we want to be able to control the checking order
+pub const HATCHER_DAO_PRIORITY_QUEUE: Item<Vec<HatcherAllowlistEntry>> =
+    Item::new("HATCHER_DAO_PRIORITY_QUEUE");
 
 /// The paused state for implementing a circuit breaker
 pub const IS_PAUSED: Item<bool> = Item::new("is_paused");

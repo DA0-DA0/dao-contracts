@@ -1,9 +1,9 @@
-use cosmwasm_std::{Decimal, Uint128};
+use cosmwasm_std::{Decimal, Deps, StdResult, Uint128};
 
 use crate::{
     abc::{CommonsPhase, CommonsPhaseConfig, CurveType},
-    msg::QuoteResponse,
-    state::CurveState,
+    msg::{HatcherAllowlistEntryMsg, QuoteResponse},
+    state::{CurveState, HatcherAllowlistConfig, HatcherAllowlistEntry},
     ContractError,
 };
 
@@ -58,10 +58,10 @@ pub fn calculate_sell_quote(
 
     // Determine the exit fee based on the current Commons phase
     let exit_fee = match &phase {
-        CommonsPhase::Hatch => phase_config.hatch.exit_fee,
-        CommonsPhase::Open => phase_config.open.exit_fee,
-        CommonsPhase::Closed => Decimal::zero(),
-    };
+        CommonsPhase::Hatch => Err(ContractError::CommonsHatch {}),
+        CommonsPhase::Open => Ok(phase_config.open.exit_fee),
+        CommonsPhase::Closed => Ok(Decimal::zero()),
+    }?;
 
     // Calculate the new reserve based on the new supply
     let new_reserve = curve.reserve(new_supply);
@@ -81,7 +81,7 @@ pub fn calculate_sell_quote(
 }
 
 /// Return the reserved and funded amounts based on the payment and the allocation ratio
-fn calculate_reserved_and_funded(
+pub(crate) fn calculate_reserved_and_funded(
     payment: Uint128,
     allocation_ratio: Decimal,
 ) -> Result<(Uint128, Uint128), ContractError> {
@@ -93,4 +93,17 @@ fn calculate_reserved_and_funded(
     let reserved = payment - funded; // Since allocation_ratio is < 1, this subtraction is safe
 
     Ok((reserved, funded))
+}
+
+impl HatcherAllowlistEntryMsg {
+    pub fn into_entry(&self, deps: Deps, height: u64) -> StdResult<HatcherAllowlistEntry> {
+        Ok(HatcherAllowlistEntry {
+            addr: deps.api.addr_validate(&self.addr)?,
+            config: HatcherAllowlistConfig {
+                config_type: self.config.config_type,
+                contribution_limits_override: self.config.contribution_limits_override,
+                config_height: height,
+            },
+        })
+    }
 }

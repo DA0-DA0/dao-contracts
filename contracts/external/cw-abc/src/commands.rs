@@ -1,18 +1,18 @@
 use cosmwasm_std::{
-    ensure, to_json_binary, Addr, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo,
-    QuerierWrapper, Response, StdResult, Storage, Uint128, WasmMsg,
+    to_json_binary, Addr, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, QuerierWrapper,
+    Response, StdResult, Storage, Uint128, WasmMsg,
 };
 use cw_tokenfactory_issuer::msg::ExecuteMsg as IssuerExecuteMsg;
 use cw_utils::must_pay;
 use std::ops::Deref;
 
-use crate::abc::{CommonsPhase, CurveType};
+use crate::abc::{CommonsPhase, CurveType, HatchConfig, MinMax};
 use crate::helpers::{calculate_buy_quote, calculate_sell_quote};
-use crate::msg::{HatcherAllowlistEntry, UpdatePhaseConfigMsg};
+use crate::msg::{HatcherAllowlistEntryMsg, UpdatePhaseConfigMsg};
 use crate::state::{
-    hatcher_allowlist, HatcherAllowlistConfigType, CURVE_STATE, CURVE_TYPE, DONATIONS,
-    FUNDING_POOL_FORWARDING, HATCHERS, IS_PAUSED, MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
-    TOKEN_ISSUER_CONTRACT,
+    hatcher_allowlist, HatcherAllowlistConfig, HatcherAllowlistConfigType, CURVE_STATE, CURVE_TYPE,
+    DONATIONS, FUNDING_POOL_FORWARDING, HATCHERS, HATCHER_DAO_PRIORITY_QUEUE, IS_PAUSED,
+    MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
 };
 use crate::ContractError;
 
@@ -32,12 +32,19 @@ pub fn buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Cont
     // Validate phase
     match &phase {
         CommonsPhase::Hatch => {
-            let hatch_config = &phase_config.hatch;
             // Check that the potential hatcher is allowlisted
-            assert_allowlisted(deps.querier, deps.storage, &info.sender)?;
+            let hatch_config = assert_allowlisted(
+                deps.querier,
+                deps.storage,
+                &info.sender,
+                &phase_config.hatch,
+            )?;
 
             // Update hatcher contribution
-            let contribution = update_hatcher_contributions(deps.storage, &info.sender, payment)?;
+            let contribution =
+                HATCHERS.update(deps.storage, &info.sender, |amount| -> StdResult<_> {
+                    Ok(amount.unwrap_or_default() + payment)
+                })?;
 
             // Check contribution is within limits
             if contribution < hatch_config.contribution_limits.min
@@ -200,23 +207,6 @@ pub fn sell(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Con
         .add_attribute("funded", sell_quote.funded))
 }
 
-/// Add the hatcher's contribution to the total contributions
-fn update_hatcher_contributions(
-    storage: &mut dyn Storage,
-    hatcher: &Addr,
-    contribution: Uint128,
-) -> StdResult<Uint128> {
-    HATCHERS.update(storage, hatcher, |amount| -> StdResult<_> {
-        match amount {
-            Some(mut amount) => {
-                amount += contribution;
-                Ok(amount)
-            }
-            None => Ok(contribution),
-        }
-    })
-}
-
 /// Transitions the bonding curve to a closed phase where only sells are allowed
 pub fn close(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
@@ -302,7 +292,7 @@ pub fn withdraw(
 /// Updates the funding pool forwarding (only callable by owner)
 pub fn update_funding_pool_forwarding(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     address: Option<String>,
 ) -> Result<Response, ContractError> {
@@ -319,7 +309,10 @@ pub fn update_funding_pool_forwarding(
 
     Ok(Response::new()
         .add_attribute("action", "update_funding_pool_forwarding")
-        .add_attribute("address", address.unwrap_or_default()))
+        .add_attribute(
+            "address",
+            address.unwrap_or(env.contract.address.to_string()),
+        ))
 }
 
 /// Check if the sender is allowlisted for the hatch phase
@@ -327,50 +320,70 @@ fn assert_allowlisted(
     querier: QuerierWrapper,
     storage: &dyn Storage,
     hatcher: &Addr,
-) -> Result<(), ContractError> {
+    hatch_config: &HatchConfig,
+) -> Result<HatchConfig, ContractError> {
     if !hatcher_allowlist().is_empty(storage) {
-        ensure!(
-            hatcher_allowlist().has(storage, hatcher)
-                || is_allowlisted_through_daos(querier, storage, hatcher),
-            ContractError::SenderNotAllowlisted {
-                sender: hatcher.to_string(),
+        // Specific configs should trump everything
+        if hatcher_allowlist().has(storage, hatcher) {
+            let config = hatcher_allowlist().load(storage, hatcher)?;
+
+            // Do not allow DAO's to purchase themselves when allowlisted as a DAO
+            if matches!(
+                config.config_type,
+                HatcherAllowlistConfigType::DAO { priority: _ }
+            ) {
+                return Err(ContractError::SenderNotAllowlisted {
+                    sender: hatcher.to_string(),
+                });
             }
-        );
+
+            return Ok(HatchConfig {
+                contribution_limits: config
+                    .contribution_limits_override
+                    .unwrap_or(hatch_config.contribution_limits),
+                ..*hatch_config
+            });
+        }
+
+        // If not allowlisted as individual, then check any DAO allowlists
+        return Ok(HatchConfig {
+            contribution_limits: assert_allowlisted_through_daos(querier, storage, hatcher)?
+                .unwrap_or(hatch_config.contribution_limits),
+            ..*hatch_config
+        });
     }
 
-    Ok(())
+    Ok(*hatch_config)
 }
 
-fn is_allowlisted_through_daos(
+fn assert_allowlisted_through_daos(
     querier: QuerierWrapper,
     storage: &dyn Storage,
     hatcher: &Addr,
-) -> bool {
-    for (dao, _) in hatcher_allowlist()
-        .idx
-        .config_type
-        .prefix(HatcherAllowlistConfigType::DAO {}.to_string())
-        .range(storage, None, None, cosmwasm_std::Order::Ascending)
-        .flatten()
-    {
-        let voting_power_response_result: StdResult<
-            dao_interface::voting::VotingPowerAtHeightResponse,
-        > = querier.query_wasm_smart(
-            dao,
-            &dao_interface::msg::QueryMsg::VotingPowerAtHeight {
-                address: hatcher.to_string(),
-                height: None,
-            },
-        );
+) -> Result<Option<MinMax>, ContractError> {
+    if let Some(hatcher_dao_priority_queue) = HATCHER_DAO_PRIORITY_QUEUE.may_load(storage)? {
+        for entry in hatcher_dao_priority_queue {
+            let voting_power_response_result: StdResult<
+                dao_interface::voting::VotingPowerAtHeightResponse,
+            > = querier.query_wasm_smart(
+                entry.addr,
+                &dao_interface::msg::QueryMsg::VotingPowerAtHeight {
+                    address: hatcher.to_string(),
+                    height: Some(entry.config.config_height),
+                },
+            );
 
-        if let Ok(voting_power_response) = voting_power_response_result {
-            if voting_power_response.power > Uint128::zero() {
-                return true;
+            if let Ok(voting_power_response) = voting_power_response_result {
+                if voting_power_response.power > Uint128::zero() {
+                    return Ok(entry.config.contribution_limits_override);
+                }
             }
         }
     }
 
-    false
+    Err(ContractError::SenderNotAllowlisted {
+        sender: hatcher.to_string(),
+    })
 }
 
 /// Set the maximum supply (only callable by owner)
@@ -407,8 +420,9 @@ pub fn toggle_pause(deps: DepsMut, info: MessageInfo) -> Result<Response, Contra
 /// Add and remove addresses from the hatcher allowlist (only callable by owner)
 pub fn update_hatch_allowlist(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
-    to_add: Vec<HatcherAllowlistEntry<String>>,
+    to_add: Vec<HatcherAllowlistEntryMsg>,
     to_remove: Vec<String>,
 ) -> Result<Response, ContractError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
@@ -417,19 +431,98 @@ pub fn update_hatch_allowlist(
 
     // Add addresses to the allowlist
     for allow in to_add {
-        let addr = deps.api.addr_validate(allow.addr.as_str())?;
+        let entry = allow.into_entry(deps.as_ref(), env.block.height)?;
 
-        list.save(deps.storage, &addr, &allow.config)?;
+        let old_data = list.may_load(deps.storage, &entry.addr)?;
+
+        list.replace(
+            deps.storage,
+            &entry.addr,
+            Some(&entry.config),
+            old_data.as_ref(),
+        )?;
+
+        // If the old data was previously a DAO config, then it should be removed
+        if let Some(old_data) = old_data {
+            try_remove_from_priority_queue(deps.storage, &entry.addr, &old_data)?;
+        }
+
+        match allow.config.config_type {
+            HatcherAllowlistConfigType::DAO { priority } => {
+                if !HATCHER_DAO_PRIORITY_QUEUE.exists(deps.storage) {
+                    HATCHER_DAO_PRIORITY_QUEUE.save(deps.storage, &vec![entry])?;
+                } else {
+                    HATCHER_DAO_PRIORITY_QUEUE.update(
+                        deps.storage,
+                        |mut queue| -> StdResult<_> {
+                            match priority {
+                                Some(priority_value) => {
+                                    // Insert based on priority
+                                    let pos = queue
+                                        .binary_search_by(|entry| {
+                                            match &entry.config.config_type {
+                                                HatcherAllowlistConfigType::DAO {
+                                                    priority: Some(entry_priority),
+                                                } => entry_priority
+                                                    .cmp(&priority_value)
+                                                    .then(std::cmp::Ordering::Greater),
+                                                _ => std::cmp::Ordering::Less, // Treat non-DAO or DAO without priority as lower priority
+                                            }
+                                        })
+                                        .unwrap_or_else(|e| e);
+                                    queue.insert(pos, entry);
+                                }
+                                None => {
+                                    // Append to the end if no priority
+                                    queue.push(entry);
+                                }
+                            }
+
+                            Ok(queue)
+                        },
+                    )?;
+                }
+            }
+            HatcherAllowlistConfigType::Address {} => {}
+        }
     }
 
     // Remove addresses from the allowlist
     for deny in to_remove {
         let addr = deps.api.addr_validate(deny.as_str())?;
 
-        list.remove(deps.storage, &addr)?;
+        let old_data = list.may_load(deps.storage, &addr)?;
+
+        if let Some(old_data) = old_data {
+            list.replace(deps.storage, &addr, None, Some(&old_data))?;
+
+            try_remove_from_priority_queue(deps.storage, &addr, &old_data)?;
+        }
     }
 
     Ok(Response::new().add_attributes(vec![("action", "update_hatch_allowlist")]))
+}
+
+fn try_remove_from_priority_queue(
+    storage: &mut dyn Storage,
+    addr: &Addr,
+    config: &HatcherAllowlistConfig,
+) -> Result<(), ContractError> {
+    if matches!(
+        config.config_type,
+        HatcherAllowlistConfigType::DAO { priority: _ }
+    ) && HATCHER_DAO_PRIORITY_QUEUE.exists(storage)
+    {
+        HATCHER_DAO_PRIORITY_QUEUE.update(storage, |mut x| -> StdResult<_> {
+            if let Some(i) = x.iter().position(|y| y.addr == addr) {
+                x.remove(i);
+            }
+
+            Ok(x)
+        })?;
+    }
+
+    Ok(())
 }
 
 /// Update the configuration of a particular phase (only callable by owner)
@@ -450,7 +543,6 @@ pub fn update_phase_config(
 
     match update_phase_config_msg {
         UpdatePhaseConfigMsg::Hatch {
-            exit_fee,
             initial_raise,
             entry_fee,
             contribution_limits,
@@ -461,9 +553,6 @@ pub fn update_phase_config(
             // Update the hatch config if new values are provided
             if let Some(contribution_limits) = contribution_limits {
                 phase_config.hatch.contribution_limits = contribution_limits;
-            }
-            if let Some(exit_fee) = exit_fee {
-                phase_config.hatch.exit_fee = exit_fee;
             }
             if let Some(initial_raise) = initial_raise {
                 phase_config.hatch.initial_raise = initial_raise;
@@ -490,7 +579,7 @@ pub fn update_phase_config(
                 phase_config.open.entry_fee = entry_fee;
             }
             if let Some(exit_fee) = exit_fee {
-                phase_config.hatch.exit_fee = exit_fee;
+                phase_config.open.exit_fee = exit_fee;
             }
 
             // Validate config

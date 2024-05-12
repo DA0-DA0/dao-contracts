@@ -1,6 +1,6 @@
 # cw-abc
 
-Implments an [Augmented Bonding Curve](https://medium.com/commonsstack/deep-dive-augmented-bonding-curves-b5ca4fad4436).
+Implements an [Augmented Bonding Curve](https://medium.com/commonsstack/deep-dive-augmented-bonding-curves-b5ca4fad4436).
 
 Forked from and heavily inspired by the work on [cw20-bonding](https://github.com/cosmwasm/cw-tokens/tree/main/contracts/cw20-bonding). This contract uses native and token factory tokens instead.
 
@@ -107,8 +107,7 @@ Example Instantiation message:
                 "min": "10000000",
                 "max": "100000000000"
             },
-            "entry_fee": "0.25",
-            "exit_fee": "0.10"
+            "entry_fee": "0.25"
         },
         "open": {
             "exit_fee": "0.01",
@@ -116,7 +115,24 @@ Example Instantiation message:
         },
         "closed": {}
     },
-    "hatcher_allowlist": ["allowlist addresses, leave blank for no allowlist"],
+    "hatcher_allowlist": [
+        {
+            "addr": "dao_address",
+            "config": {
+                "config_type": { "dao": { "priority": 1 } },
+                "contribution_limits_override": {
+                    "min": "100000000",
+                    "max": "99999999999999"
+                }
+            }
+        },
+        {
+            "addr": "address",
+            "config": {
+                "config_type": { "address": {} }
+            }
+        }
+    ],
 }
 ```
 
