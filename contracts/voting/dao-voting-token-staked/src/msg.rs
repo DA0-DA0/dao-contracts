@@ -3,6 +3,7 @@ use cosmwasm_std::{Binary, Uint128};
 use cw_utils::Duration;
 use dao_dao_macros::{active_query, native_token_query, voting_module_query};
 use dao_interface::token::NewTokenInfo;
+#[allow(unused_imports)]
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
 #[cw_serde]

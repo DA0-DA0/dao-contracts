@@ -16,7 +16,7 @@ pub struct InstantiateMsg {
     /// The minimum amount of time a proposal must be open before
     /// passing. A proposal may fail before this amount of time has
     /// elapsed, but it will not pass. This can be useful for
-    /// preventing governance attacks wherein an attacker aquires a
+    /// preventing governance attacks wherein an attacker acquires a
     /// large number of tokens and forces a proposal through.
     pub min_voting_period: Option<Duration>,
     /// If set to true only members may execute passed

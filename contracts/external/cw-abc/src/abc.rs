@@ -1,8 +1,12 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, Decimal as StdDecimal, Uint128};
+use cosmwasm_std::{ensure, Decimal, Uint128};
+use cw_curves::{
+    curves::{Constant, Linear, SquareRoot},
+    utils::decimal,
+    Curve, DecimalPlaces,
+};
 use dao_interface::token::NewDenomMetadata;
 
-use crate::curves::{decimal, Constant, Curve, DecimalPlaces, Linear, SquareRoot};
 use crate::ContractError;
 
 #[cw_serde]
@@ -27,12 +31,14 @@ pub struct ReserveToken {
     pub decimals: u8,
 }
 
-/// Struct for minimium and maximum values
+/// Struct for minimum and maximum values
 #[cw_serde]
 pub struct MinMax {
     pub min: Uint128,
     pub max: Uint128,
 }
+
+impl Copy for MinMax {}
 
 #[cw_serde]
 pub struct HatchConfig {
@@ -41,10 +47,10 @@ pub struct HatchConfig {
     /// The initial raise range (min, max) in the reserve token
     pub initial_raise: MinMax,
     /// The initial allocation (θ), percentage of the initial raise allocated to the Funding Pool
-    pub entry_fee: StdDecimal,
-    /// Exit tax for the hatch phase
-    pub exit_fee: StdDecimal,
+    pub entry_fee: Decimal,
 }
+
+impl Copy for HatchConfig {}
 
 impl HatchConfig {
     /// Validate the hatch config
@@ -57,24 +63,9 @@ impl HatchConfig {
         );
 
         ensure!(
-            self.contribution_limits.max <= self.initial_raise.max,
-            ContractError::HatchPhaseConfigError(
-                "Max contribution limit cannot be greater than the maximum initial raise."
-                    .to_string()
-            )
-        );
-
-        ensure!(
-            self.entry_fee <= StdDecimal::percent(100u64),
+            self.entry_fee <= Decimal::percent(100u64),
             ContractError::HatchPhaseConfigError(
                 "Initial allocation percentage must be between 0 and 100.".to_string()
-            )
-        );
-
-        ensure!(
-            self.exit_fee <= StdDecimal::percent(100u64),
-            ContractError::HatchPhaseConfigError(
-                "Exit taxation percentage must be less than or equal to 100.".to_string()
             )
         );
 
@@ -86,23 +77,23 @@ impl HatchConfig {
 pub struct OpenConfig {
     /// Percentage of capital put into the Reserve Pool during the Open phase
     /// when buying from the curve.
-    pub entry_fee: StdDecimal,
+    pub entry_fee: Decimal,
     /// Exit taxation ratio
-    pub exit_fee: StdDecimal,
+    pub exit_fee: Decimal,
 }
 
 impl OpenConfig {
     /// Validate the open config
     pub fn validate(&self) -> Result<(), ContractError> {
         ensure!(
-            self.entry_fee <= StdDecimal::percent(100u64),
+            self.entry_fee <= Decimal::percent(100u64),
             ContractError::OpenPhaseConfigError(
                 "Reserve percentage must be between 0 and 100.".to_string()
             )
         );
 
         ensure!(
-            self.exit_fee <= StdDecimal::percent(100u64),
+            self.exit_fee <= Decimal::percent(100u64),
             ContractError::OpenPhaseConfigError(
                 "Exit taxation percentage must be between 0 and 100.".to_string()
             )
@@ -224,41 +215,5 @@ impl CurveType {
                 Box::new(calc)
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod unit_tests {
-    use super::*;
-
-    #[test]
-    fn validate_contribution_limit_not_gt_initial_raise() {
-        let phase_config = CommonsPhaseConfig {
-            hatch: HatchConfig {
-                contribution_limits: MinMax {
-                    min: Uint128::one(),
-                    max: Uint128::MAX,
-                },
-                initial_raise: MinMax {
-                    min: Uint128::one(),
-                    max: Uint128::from(1000000u128),
-                },
-                entry_fee: StdDecimal::percent(10u64),
-                exit_fee: StdDecimal::percent(10u64),
-            },
-            open: OpenConfig {
-                entry_fee: StdDecimal::percent(10u64),
-                exit_fee: StdDecimal::percent(10u64),
-            },
-            closed: ClosedConfig {},
-        };
-        let err = phase_config.validate().unwrap_err();
-        assert_eq!(
-            err,
-            ContractError::HatchPhaseConfigError(
-                "Max contribution limit cannot be greater than the maximum initial raise."
-                    .to_string()
-            )
-        )
     }
 }

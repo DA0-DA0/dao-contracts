@@ -1,6 +1,6 @@
 # cw-abc
 
-Implments an [Augmented Bonding Curve](https://medium.com/commonsstack/deep-dive-augmented-bonding-curves-b5ca4fad4436).
+Implements an [Augmented Bonding Curve](https://medium.com/commonsstack/deep-dive-augmented-bonding-curves-b5ca4fad4436).
 
 Forked from and heavily inspired by the work on [cw20-bonding](https://github.com/cosmwasm/cw-tokens/tree/main/contracts/cw20-bonding). This contract uses native and token factory tokens instead.
 
@@ -18,8 +18,8 @@ Each bonding curve has a pricing function, also known as the price curve (or `cu
 With bonding curves, we will always know what the price of an asset will be based on supply! More on benefits later.
 
 This contract implements two methods:
-- `Buy {}` is called with sending along some reserve curency (such as $USDC, or whatever the bonding curve is backed by). The reserve currency is stored by the bonding curve contract, and new tokens are minted and sent to the user.
-- `Sell {}` is called along with sending some supply currency (the token minted by the bonding curve). The supply tokens are burned, and reserve curency is returned.
+- `Buy {}` is called with sending along some reserve currency (such as $USDC, or whatever the bonding curve is backed by). The reserve currency is stored by the bonding curve contract, and new tokens are minted and sent to the user.
+- `Sell {}` is called along with sending some supply currency (the token minted by the bonding curve). The supply tokens are burned, and reserve currency is returned.
 
 It is possible to use this contact as a basic bonding curve, without any of the augmented features.
 
@@ -64,7 +64,7 @@ Augmented Bonding Curves are nothing new, some articles that inspired this imple
 - https://medium.com/commonsstack/deep-dive-augmented-bonding-curves-b5ca4fad4436
 - https://tokeneconomy.co/token-bonding-curves-in-practice-3eb904720cb8
 
-At a high level, augmented bonding curves extend bonding curves with new funcationality:
+At a high level, augmented bonding curves extend bonding curves with new functionality:
 - Entry and exit fees
 - Different phases representing the life cycles of projects
 
@@ -74,7 +74,7 @@ Example Instantiation message:
 
 ``` json
 {
-    "fees_recipient": "address that recieves fees",
+    "fees_recipient": "address that receives fees",
     "token_issuer_code_id": 0,
     "supply": {
         "subdenom": "utokenname",
@@ -87,17 +87,17 @@ Example Instantiation message:
         "decimals": 6,
         "max_supply": "100000000000000"
     },
-    reserve: {
+    "reserve": {
         "denom": "ujuno",
         "decimals": 6,
     },
-    curve_type: {
+    "curve_type": {
         "linear": {
             "slope": "2",
             "scale": 1
         }
     },
-    phase_config: {
+    "phase_config": {
         "hatch": {
             "contribution_limits": {
                 "min": "10000000",
@@ -107,8 +107,7 @@ Example Instantiation message:
                 "min": "10000000",
                 "max": "100000000000"
             },
-            "entry_fee": "0.25",
-            "exit_fee": "0.10"
+            "entry_fee": "0.25"
         },
         "open": {
             "exit_fee": "0.01",
@@ -116,13 +115,30 @@ Example Instantiation message:
         },
         "closed": {}
     },
-    hatcher_allowlist: ["allowlist addresses, leave blank for no allowlist"],
+    "hatcher_allowlist": [
+        {
+            "addr": "dao_address",
+            "config": {
+                "config_type": { "dao": { "priority": 1 } },
+                "contribution_limits_override": {
+                    "min": "100000000",
+                    "max": "99999999999999"
+                }
+            }
+        },
+        {
+            "addr": "address",
+            "config": {
+                "config_type": { "address": {} }
+            }
+        }
+    ],
 }
 ```
 
-- `fees_recipient`: the address that will recieve fees (usually a DAO).
+- `fees_recipient`: the address that will receive fees (usually a DAO).
 - `token_issuer_code_id`: the CosmWasm code ID for a `cw-tokenfactory_issuer` contract.
-- `supply`: infor about the token that will be minted by the curve. This is the token that is created by the bonding curve.
+- `supply`: info about the token that will be minted by the curve. This is the token that is created by the bonding curve.
 - `reserve`: this is the token that is used to mint the supply token.
 - `curve_type`: information about the pricing curve.
 - `phase_config`: configuration for the different phase of the augmented bonding curve.

@@ -30,15 +30,15 @@ use dao_voting::{
     },
 };
 
-use crate::error::ContractError;
 use crate::msg::{
     ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg,
-    StakerBalanceResponse, TokenInfo,
+    StakerBalanceResponse,
 };
 use crate::state::{
     Config, ACTIVE_THRESHOLD, CLAIMS, CONFIG, DAO, DENOM, HOOKS, MAX_CLAIMS, STAKED_BALANCES,
     STAKED_TOTAL, TOKEN_INSTANTIATION_INFO, TOKEN_ISSUER_CONTRACT,
 };
+use crate::{error::ContractError, msg::TokenInfo};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-token-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -135,10 +135,10 @@ pub fn instantiate(
                 funds,
             } => {
                 // Call factory contract. Use only a trusted factory contract,
-                // as this is a critical security component and valdiation of
+                // as this is a critical security component and validation of
                 // setup will happen in the factory.
                 Ok(Response::new()
-                    .add_attribute("action", "intantiate")
+                    .add_attribute("action", "instantiate")
                     .add_attribute("token", "custom_factory")
                     .add_submessage(SubMsg::reply_on_success(
                         WasmMsg::Execute {

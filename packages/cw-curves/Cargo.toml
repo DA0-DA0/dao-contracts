@@ -1,0 +1,20 @@
+[package]
+name = "cw-curves"
+authors = [
+    "Ethan Frey <ethanfrey@users.noreply.github.com>",
+    "Jake Hartnell",
+    "Adair <adairrr@users.noreply.github.com>",
+    "Gabe Lopez <ismellike@users.noreply.github.com>",
+]
+description = "A package for defining curves to be used in augmented bonding curves."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+rust_decimal = { workspace = true }
+integer-sqrt = { workspace = true }
+integer-cbrt = { workspace = true }

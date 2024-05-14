@@ -1,4 +1,4 @@
-use cosmwasm_std::{StdError, Uint128};
+use cosmwasm_std::{CheckedMultiplyFractionError, OverflowError, StdError, Uint128};
 use cw_utils::{ParseReplyError, PaymentError};
 use thiserror::Error;
 
@@ -6,6 +6,9 @@ use thiserror::Error;
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
+
+    #[error("{0}")]
+    Overflow(#[from] OverflowError),
 
     #[error(transparent)]
     Payment(#[from] PaymentError),
@@ -16,11 +19,17 @@ pub enum ContractError {
     #[error("{0}")]
     Ownership(#[from] cw_ownable::OwnershipError),
 
+    #[error("{0}")]
+    CheckedMultiplyFraction(#[from] CheckedMultiplyFractionError),
+
     #[error("Cannot mint more tokens than the maximum supply of {max}")]
     CannotExceedMaxSupply { max: Uint128 },
 
     #[error("The commons is closed to new contributions")]
     CommonsClosed {},
+
+    #[error("The commons is locked against liquidations")]
+    CommonsHatch {},
 
     #[error("Contribution must be less than or equal to {max} and greater than or equal to {min}")]
     ContributionLimit { min: Uint128, max: Uint128 },
@@ -54,4 +63,7 @@ pub enum ContractError {
 
     #[error("Got a submessage reply with unknown id: {id}")]
     UnknownReplyId { id: u64 },
+
+    #[error("Contract is paused")]
+    Paused {},
 }

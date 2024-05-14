@@ -11,12 +11,29 @@ use crate::{
     ContractError,
 };
 
-use cosmwasm_std::{Coin, Decimal, Uint128};
-use dao_testing::test_tube::cw_tokenfactory_issuer::TokenfactoryIssuer;
+use cosmwasm_std::{to_json_binary, Addr, Coin, Decimal, Uint128};
+use cw_utils::Duration;
+use dao_interface::{
+    state::{Admin, ModuleInstantiateInfo},
+    token::{DenomUnit, InitialBalance, NewDenomMetadata, NewTokenInfo},
+    voting::DenomResponse,
+};
+use dao_testing::test_tube::{
+    cw_tokenfactory_issuer::TokenfactoryIssuer, dao_dao_core::DaoCore,
+    dao_proposal_single::DaoProposalSingle, dao_voting_token_staked::TokenVotingContract,
+};
+use dao_voting::{
+    pre_propose::PreProposeInfo,
+    threshold::{ActiveThreshold, PercentageThreshold, Threshold},
+};
+use dao_voting_token_staked::msg::TokenInfo;
 use osmosis_test_tube::{
-    osmosis_std::types::cosmos::bank::v1beta1::QueryAllBalancesRequest,
-    osmosis_std::types::cosmwasm::wasm::v1::MsgExecuteContractResponse, Account, Bank, Module,
-    OsmosisTestApp, RunnerError, RunnerExecuteResult, SigningAccount, Wasm,
+    osmosis_std::types::{
+        cosmos::bank::v1beta1::QueryAllBalancesRequest,
+        cosmwasm::wasm::v1::MsgExecuteContractResponse,
+    },
+    Account, Bank, Module, OsmosisTestApp, RunnerError, RunnerExecuteResult, RunnerResult,
+    SigningAccount, Wasm,
 };
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
@@ -49,6 +66,114 @@ impl<'a> TestEnv<'a> {
 
     pub fn bank(&self) -> Bank<'_, OsmosisTestApp> {
         Bank::new(self.app)
+    }
+
+    pub fn init_dao_ids(&self) -> (u64, u64) {
+        (
+            TokenVotingContract::upload(self.app, &self.accounts[0]).unwrap(),
+            DaoProposalSingle::upload(self.app, &self.accounts[0]).unwrap(),
+        )
+    }
+
+    pub fn setup_default_dao(&self, dao_ids: (u64, u64)) -> DaoCore<'a> {
+        // Only the 1st half of self.accounts are part of the DAO
+        let initial_balances: Vec<InitialBalance> = self
+            .accounts
+            .iter()
+            .take(self.accounts.len() / 2)
+            .map(|acc| InitialBalance {
+                address: acc.address(),
+                amount: Uint128::from(100u128),
+            })
+            .collect();
+
+        let msg = dao_interface::msg::InstantiateMsg {
+            dao_uri: None,
+            admin: None,
+            name: "DAO DAO".to_string(),
+            description: "A DAO that makes DAO tooling".to_string(),
+            image_url: None,
+            automatically_add_cw20s: false,
+            automatically_add_cw721s: false,
+            voting_module_instantiate_info: ModuleInstantiateInfo {
+                code_id: dao_ids.0,
+                msg: to_json_binary(&dao_voting_token_staked::msg::InstantiateMsg {
+                    token_info: TokenInfo::New(NewTokenInfo {
+                        token_issuer_code_id: self.tf_issuer.code_id,
+                        subdenom: DENOM.to_string(),
+                        metadata: Some(NewDenomMetadata {
+                            description: "Awesome token, get it meow!".to_string(),
+                            additional_denom_units: Some(vec![DenomUnit {
+                                denom: "cat".to_string(),
+                                exponent: 6,
+                                aliases: vec![],
+                            }]),
+                            display: "cat".to_string(),
+                            name: "Cat Token".to_string(),
+                            symbol: "CAT".to_string(),
+                        }),
+                        initial_balances,
+                        initial_dao_balance: Some(Uint128::new(900)),
+                    }),
+                    unstaking_duration: Some(Duration::Time(2)),
+                    active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                        count: Uint128::new(75),
+                    }),
+                })
+                .unwrap(),
+                admin: Some(Admin::CoreModule {}),
+                funds: vec![],
+                label: "DAO DAO Voting Module".to_string(),
+            },
+            proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
+                code_id: dao_ids.1,
+                msg: to_json_binary(&dao_proposal_single::msg::InstantiateMsg {
+                    min_voting_period: None,
+                    threshold: Threshold::ThresholdQuorum {
+                        threshold: PercentageThreshold::Majority {},
+                        quorum: PercentageThreshold::Percent(Decimal::percent(35)),
+                    },
+                    max_voting_period: Duration::Time(432000),
+                    allow_revoting: false,
+                    only_members_execute: true,
+                    close_proposal_on_execution_failure: false,
+                    pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+                    veto: None,
+                })
+                .unwrap(),
+                admin: Some(Admin::CoreModule {}),
+                funds: vec![],
+                label: "DAO DAO Proposal Module".to_string(),
+            }],
+            initial_items: None,
+        };
+
+        let dao = DaoCore::new(self.app, &msg, &self.accounts[0], &[]).unwrap();
+
+        // Get voting module address, setup vp_contract helper
+        let vp_addr: Addr = dao
+            .query(&dao_interface::msg::QueryMsg::VotingModule {})
+            .unwrap();
+        let vp_contract =
+            TokenVotingContract::new_with_values(self.app, dao_ids.0, vp_addr.to_string()).unwrap();
+
+        // Get the denom
+        let result: RunnerResult<DenomResponse> =
+            vp_contract.query(&dao_voting_token_staked::msg::QueryMsg::Denom {});
+        let denom = result.unwrap().denom;
+
+        // Stake all members
+        for acc in self.accounts.iter().take(self.accounts.len() / 2) {
+            vp_contract
+                .execute(
+                    &dao_voting_token_staked::msg::ExecuteMsg::Stake {},
+                    &[Coin::new(100, denom.clone())],
+                    acc,
+                )
+                .unwrap();
+        }
+
+        dao
     }
 
     pub fn assert_account_balances(
@@ -105,13 +230,13 @@ impl TestEnvBuilder {
         let abc = CwAbc::deploy(
             app,
             &InstantiateMsg {
-                fees_recipient: accounts[0].address(),
                 token_issuer_code_id: issuer_id,
+                funding_pool_forwarding: Some(accounts[0].address()),
                 supply: SupplyToken {
                     subdenom: DENOM.to_string(),
                     metadata: None,
                     decimals: 6,
-                    max_supply: Some(Uint128::from(1000000000u128)),
+                    max_supply: Some(Uint128::from(1_000_000_000u128)),
                 },
                 reserve: ReserveToken {
                     denom: RESERVE.to_string(),
@@ -121,14 +246,13 @@ impl TestEnvBuilder {
                     hatch: HatchConfig {
                         contribution_limits: MinMax {
                             min: Uint128::from(10u128),
-                            max: Uint128::from(1000000u128),
+                            max: Uint128::from(1_000_000u128),
                         },
                         initial_raise: MinMax {
                             min: Uint128::from(10u128),
-                            max: Uint128::from(1000000u128),
+                            max: Uint128::from(900_000u128), // 1m - 10%
                         },
                         entry_fee: Decimal::percent(10u64),
-                        exit_fee: Decimal::percent(10u64),
                     },
                     open: OpenConfig {
                         entry_fee: Decimal::percent(10u64),
@@ -169,9 +293,9 @@ impl TestEnvBuilder {
 
         let issuer_id = TokenfactoryIssuer::upload(app, &accounts[0])?;
 
-        // Override issuer_id and fees_recipient
         msg.token_issuer_code_id = issuer_id;
-        msg.fees_recipient = accounts[0].address();
+
+        msg.funding_pool_forwarding = Some(accounts[0].address());
 
         let abc = CwAbc::deploy(app, &msg, &accounts[0])?;
 

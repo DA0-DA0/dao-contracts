@@ -42,8 +42,8 @@ pub fn default_instantiate_msg(
     curve_type: CurveType,
 ) -> InstantiateMsg {
     InstantiateMsg {
-        fees_recipient: TEST_CREATOR.to_string(),
         token_issuer_code_id: 1,
+        funding_pool_forwarding: None,
         supply: SupplyToken {
             subdenom: TEST_SUPPLY_DENOM.to_string(),
             metadata: Some(default_supply_metadata()),
@@ -65,7 +65,6 @@ pub fn default_instantiate_msg(
                     max: Uint128::from(1000000u128),
                 },
                 entry_fee: Decimal::percent(10u64),
-                exit_fee: Decimal::zero(),
             },
             open: OpenConfig {
                 entry_fee: Decimal::percent(10u64),

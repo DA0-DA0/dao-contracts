@@ -114,7 +114,7 @@ where
 }
 
 /// Same as `paginate_map` but only returns the keys. For use with
-/// `SnaphotMap`.
+/// `SnapshotMap`.
 pub fn paginate_snapshot_map_keys<'a, 'b, K, V, R: 'static>(
     deps: Deps,
     map: &SnapshotMap<'a, K, V>,

@@ -724,12 +724,13 @@ dependencies = [
 
 [[package]]
 name = "cw-abc"
-version = "0.0.1"
+version = "2.4.1"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-address-like",
+ "cw-curves",
  "cw-multi-test",
  "cw-ownable",
  "cw-paginate-storage 2.4.1",
@@ -738,13 +739,13 @@ dependencies = [
  "cw-utils 1.0.3",
  "cw2 1.1.2",
  "dao-interface",
+ "dao-proposal-single",
  "dao-testing",
+ "dao-voting 2.4.1",
+ "dao-voting-token-staked",
  "getrandom",
- "integer-cbrt",
- "integer-sqrt",
  "osmosis-std",
  "osmosis-test-tube",
- "rust_decimal",
  "serde",
  "serde_json",
  "speculoos",
@@ -884,6 +885,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "cw-curves"
+version = "2.4.1"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "integer-cbrt",
+ "integer-sqrt",
+ "rust_decimal",
 ]
 
 [[package]]

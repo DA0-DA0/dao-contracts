@@ -1,23 +1,22 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
-    Uint128, WasmMsg,
+    to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
+    SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
+use cw_curves::DecimalPlaces;
 use cw_tokenfactory_issuer::msg::{
     DenomUnit, ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg, Metadata,
 };
 use cw_utils::parse_reply_instantiate_data;
-use std::collections::HashSet;
 
 use crate::abc::{CommonsPhase, CurveFn};
-use crate::curves::DecimalPlaces;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{
-    CurveState, CURVE_STATE, CURVE_TYPE, FEES_RECIPIENT, HATCHER_ALLOWLIST, MAX_SUPPLY, PHASE,
-    PHASE_CONFIG, SUPPLY_DENOM, TOKEN_INSTANTIATION_INFO, TOKEN_ISSUER_CONTRACT,
+    CurveState, CURVE_STATE, CURVE_TYPE, FUNDING_POOL_FORWARDING, IS_PAUSED, MAX_SUPPLY, PHASE,
+    PHASE_CONFIG, SUPPLY_DENOM, TEMP_SUPPLY, TOKEN_ISSUER_CONTRACT,
 };
 use crate::{commands, queries};
 
@@ -30,21 +29,31 @@ const INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID: u64 = 0;
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let InstantiateMsg {
-        fees_recipient,
+        token_issuer_code_id,
+        funding_pool_forwarding,
         supply,
         reserve,
         curve_type,
         phase_config,
         hatcher_allowlist,
-        token_issuer_code_id,
     } = msg;
+
+    phase_config.validate()?;
+
+    // Validate and store the funding pool forwarding
+    if let Some(funding_pool_forwarding) = funding_pool_forwarding {
+        FUNDING_POOL_FORWARDING.save(
+            deps.storage,
+            &deps.api.addr_validate(&funding_pool_forwarding)?,
+        )?;
+    }
 
     if supply.subdenom.is_empty() {
         return Err(ContractError::SupplyTokenError(
@@ -52,31 +61,12 @@ pub fn instantiate(
         ));
     }
 
-    phase_config.validate()?;
-
-    // Validate and store the fees recipient
-    FEES_RECIPIENT.save(deps.storage, &deps.api.addr_validate(&fees_recipient)?)?;
-
-    // Save new token info for use in reply
-    TOKEN_INSTANTIATION_INFO.save(deps.storage, &supply)?;
-
     if let Some(max_supply) = supply.max_supply {
         MAX_SUPPLY.save(deps.storage, &max_supply)?;
     }
 
-    // Save the curve type and state
-    let normalization_places = DecimalPlaces::new(supply.decimals, reserve.decimals);
-    let curve_state = CurveState::new(reserve.denom, normalization_places);
-    CURVE_STATE.save(deps.storage, &curve_state)?;
+    // Save the curve type
     CURVE_TYPE.save(deps.storage, &curve_type)?;
-
-    if let Some(allowlist) = hatcher_allowlist {
-        let allowlist = allowlist
-            .into_iter()
-            .map(|addr| deps.api.addr_validate(addr.as_str()))
-            .collect::<StdResult<HashSet<_>>>()?;
-        HATCHER_ALLOWLIST.save(deps.storage, &allowlist)?;
-    }
 
     PHASE_CONFIG.save(deps.storage, &phase_config)?;
 
@@ -86,14 +76,21 @@ pub fn instantiate(
     // Initialize owner to sender
     cw_ownable::initialize_owner(deps.storage, deps.api, Some(info.sender.as_str()))?;
 
-    // Tnstantiate cw-token-factory-issuer contract
-    // Contract is immutable, no admin
-    let issuer_instantiate_msg = SubMsg::reply_always(
+    // Setup the curve state
+    let normalization_places = DecimalPlaces::new(supply.decimals, reserve.decimals);
+    let curve_state = CurveState::new(reserve.denom, normalization_places);
+
+    // Save subdenom for handling in the reply
+    TEMP_SUPPLY.save(deps.storage, &supply)?;
+
+    // Instantiate cw-token-factory-issuer contract
+    let msg = SubMsg::reply_always(
         WasmMsg::Instantiate {
+            // Contract is immutable, no admin
             admin: None,
             code_id: token_issuer_code_id,
             msg: to_json_binary(&IssuerInstantiateMsg::NewToken {
-                subdenom: supply.subdenom.clone(),
+                subdenom: supply.subdenom,
             })?,
             funds: info.funds,
             label: "cw-tokenfactory-issuer".to_string(),
@@ -101,7 +98,27 @@ pub fn instantiate(
         INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID,
     );
 
-    Ok(Response::default().add_submessage(issuer_instantiate_msg))
+    // Save the curve state
+    CURVE_STATE.save(deps.storage, &curve_state)?;
+
+    // Set the paused state
+    IS_PAUSED.save(deps.storage, &false)?;
+
+    // Set hatcher allowlist through internal method
+    let msgs = if let Some(hatcher_allowlist) = hatcher_allowlist {
+        vec![CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: env.contract.address.to_string(),
+            msg: to_json_binary(&ExecuteMsg::UpdateHatchAllowlist {
+                to_add: hatcher_allowlist,
+                to_remove: vec![],
+            })?,
+            funds: vec![],
+        })]
+    } else {
+        vec![]
+    };
+
+    Ok(Response::default().add_messages(msgs).add_submessage(msg))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -111,18 +128,29 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    // If paused, then only the owner can perform actions
+    if IS_PAUSED.load(deps.storage)? {
+        cw_ownable::assert_owner(deps.storage, &info.sender)
+            .map_err(|_| ContractError::Paused {})?;
+    }
+
     match msg {
-        ExecuteMsg::Buy {} => commands::execute_buy(deps, env, info),
-        ExecuteMsg::Sell {} => commands::execute_sell(deps, env, info),
-        ExecuteMsg::Close {} => commands::execute_close(deps, info),
-        ExecuteMsg::Donate {} => commands::execute_donate(deps, env, info),
+        ExecuteMsg::Buy {} => commands::buy(deps, env, info),
+        ExecuteMsg::Sell {} => commands::sell(deps, env, info),
+        ExecuteMsg::Close {} => commands::close(deps, info),
+        ExecuteMsg::Donate {} => commands::donate(deps, env, info),
+        ExecuteMsg::Withdraw { amount } => commands::withdraw(deps, env, info, amount),
+        ExecuteMsg::UpdateFundingPoolForwarding { address } => {
+            commands::update_funding_pool_forwarding(deps, env, info, address)
+        }
         ExecuteMsg::UpdateMaxSupply { max_supply } => {
             commands::update_max_supply(deps, info, max_supply)
         }
         ExecuteMsg::UpdateCurve { curve_type } => commands::update_curve(deps, info, curve_type),
         ExecuteMsg::UpdateHatchAllowlist { to_add, to_remove } => {
-            commands::update_hatch_allowlist(deps, info, to_add, to_remove)
+            commands::update_hatch_allowlist(deps, env, info, to_add, to_remove)
         }
+        ExecuteMsg::TogglePause {} => commands::toggle_pause(deps, info),
         ExecuteMsg::UpdatePhaseConfig(update_msg) => {
             commands::update_phase_config(deps, env, info, update_msg)
         }
@@ -153,15 +181,33 @@ pub fn do_query(deps: Deps, _env: Env, msg: QueryMsg, curve_fn: CurveFn) -> StdR
         QueryMsg::Donations { start_after, limit } => {
             to_json_binary(&queries::query_donations(deps, start_after, limit)?)
         }
-        QueryMsg::FeesRecipient {} => to_json_binary(&FEES_RECIPIENT.load(deps.storage)?),
+        QueryMsg::FundingPoolForwarding {} => {
+            to_json_binary(&FUNDING_POOL_FORWARDING.may_load(deps.storage)?)
+        }
         QueryMsg::Hatchers { start_after, limit } => {
             to_json_binary(&queries::query_hatchers(deps, start_after, limit)?)
         }
+        QueryMsg::Hatcher { addr } => to_json_binary(&queries::query_hatcher(deps, addr)?),
+        QueryMsg::HatcherAllowlist {
+            start_after,
+            limit,
+            config_type,
+        } => to_json_binary(&queries::query_hatcher_allowlist(
+            deps,
+            start_after,
+            limit,
+            config_type,
+        )?),
+        QueryMsg::IsPaused {} => to_json_binary(&IS_PAUSED.load(deps.storage)?),
         QueryMsg::MaxSupply {} => to_json_binary(&queries::query_max_supply(deps)?),
         QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
         QueryMsg::PhaseConfig {} => to_json_binary(&queries::query_phase_config(deps)?),
         QueryMsg::Phase {} => to_json_binary(&PHASE.load(deps.storage)?),
         QueryMsg::TokenContract {} => to_json_binary(&TOKEN_ISSUER_CONTRACT.load(deps.storage)?),
+        QueryMsg::BuyQuote { payment } => to_json_binary(&queries::query_buy_quote(deps, payment)?),
+        QueryMsg::SellQuote { payment } => {
+            to_json_binary(&queries::query_sell_quote(deps, payment)?)
+        }
     }
 }
 
@@ -180,13 +226,15 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             let issuer_addr = parse_reply_instantiate_data(msg)?.contract_address;
             TOKEN_ISSUER_CONTRACT.save(deps.storage, &deps.api.addr_validate(&issuer_addr)?)?;
 
-            // Load info for new token and remove temporary data
-            let token_info = TOKEN_INSTANTIATION_INFO.load(deps.storage)?;
-            TOKEN_INSTANTIATION_INFO.remove(deps.storage);
+            // Load the temporary supply
+            let supply = TEMP_SUPPLY.load(deps.storage)?;
+
+            // Clear the temporary state
+            TEMP_SUPPLY.remove(deps.storage);
 
             // Format the denom and save it
             // By default, the prefix for token factory tokens is "factory"
-            let denom = format!("factory/{}/{}", &issuer_addr, token_info.subdenom);
+            let denom = format!("factory/{}/{}", &issuer_addr, supply.subdenom);
 
             SUPPLY_DENOM.save(deps.storage, &denom)?;
 
@@ -216,14 +264,14 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             ];
 
             // If metadata, set it by calling the contract
-            if let Some(metadata) = token_info.metadata {
+            if let Some(metadata) = supply.metadata {
                 // The first denom_unit must be the same as the tf and base denom.
                 // It must have an exponent of 0. This the smallest unit of the token.
-                // For more info: // https://docs.cosmos.network/main/architecture/adr-024-coin-metadata
+                // For more info: https://docs.cosmos.network/main/architecture/adr-024-coin-metadata
                 let mut denom_units = vec![DenomUnit {
                     denom: denom.clone(),
                     exponent: 0,
-                    aliases: vec![token_info.subdenom],
+                    aliases: vec![supply.subdenom],
                 }];
 
                 // Caller can optionally define additional units

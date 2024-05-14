@@ -174,7 +174,7 @@ pub enum QueryMsg {
     /// Gets the address associated with an item key.
     #[returns(crate::query::GetItemResponse)]
     GetItem { key: String },
-    /// Lists all of the items associted with the contract. For
+    /// Lists all of the items associated with the contract. For
     /// example, given the items `{ "group": "foo", "subdao": "bar"}`
     /// this query would return `[("group", "foo"), ("subdao",
     /// "bar")]`.

@@ -5,6 +5,7 @@ use cw20_base::msg::InstantiateMarketingInfo;
 use cw_utils::Duration;
 
 use dao_dao_macros::{active_query, cw20_token_query, voting_module_query};
+#[allow(unused_imports)]
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
 /// Information about the staking contract to be used with this voting

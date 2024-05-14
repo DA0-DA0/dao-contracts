@@ -34,13 +34,13 @@ It supports 2 types of [curves](https://docs.rs/wynd-utils/0.4.1/wynd_utils/enum
 
 ##### Piecewise Linear
 
-Piecsewise Curves can be used to create more complicated vesting
+Piecewise Curves can be used to create more complicated vesting
 schedules. For example, let's say we have a schedule that vests 50%
 over 1 month and the remaining 50% over 1 year. We can implement this
 complex schedule with a Piecewise Linear curve.
 
 Piecewise Linear curves take a `steps` parameter which is a list of
-tuples `(timestamp, vested)`. It will then linearally interpolate
+tuples `(timestamp, vested)`. It will then linearly interpolate
 between those points to create the vesting curve. For example, given
 the points `(0, 0), (2, 2), (4, 8)`, it would create a vesting curve
 that looks like this:

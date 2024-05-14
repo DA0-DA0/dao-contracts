@@ -1,15 +1,18 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Decimal, Decimal as StdDecimal, Uint128};
+use cosmwasm_std::{Addr, Decimal, Uint128};
 
-use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType, MinMax, ReserveToken, SupplyToken};
+use crate::{
+    abc::{CommonsPhase, CommonsPhaseConfig, CurveType, MinMax, ReserveToken, SupplyToken},
+    state::{HatcherAllowlistConfigType, HatcherAllowlistEntry},
+};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    /// The recipient for any fees collected from bonding curve operation
-    pub fees_recipient: String,
-
     /// The code id of the cw-tokenfactory-issuer contract
     pub token_issuer_code_id: u64,
+
+    /// An optional address for automatically forwarding funding pool gains
+    pub funding_pool_forwarding: Option<String>,
 
     /// Supply token information
     pub supply: SupplyToken,
@@ -26,7 +29,7 @@ pub struct InstantiateMsg {
     /// TODO different ways of doing this, for example DAO members?
     /// Using a whitelist contract? Merkle tree?
     /// Hatcher allowlist
-    pub hatcher_allowlist: Option<Vec<String>>,
+    pub hatcher_allowlist: Option<Vec<HatcherAllowlistEntryMsg>>,
 }
 
 /// Update the phase configurations.
@@ -38,13 +41,12 @@ pub enum UpdatePhaseConfigMsg {
         contribution_limits: Option<MinMax>,
         // TODO what is the minimum used for?
         initial_raise: Option<MinMax>,
-        entry_fee: Option<StdDecimal>,
-        exit_fee: Option<StdDecimal>,
+        entry_fee: Option<Decimal>,
     },
     /// Update the open phase configuration.
     Open {
-        exit_fee: Option<StdDecimal>,
-        entry_fee: Option<StdDecimal>,
+        exit_fee: Option<Decimal>,
+        entry_fee: Option<Decimal>,
     },
     /// Update the closed phase configuration.
     /// TODO Set the curve type to be used on close?
@@ -60,8 +62,14 @@ pub enum ExecuteMsg {
     /// Sell burns supply tokens in return for the reserve token.
     /// You must send only supply tokens.
     Sell {},
-    /// Donate will add reserve tokens to the funding pool
+    /// Donate will donate tokens to the funding pool.
+    /// You must send only reserve tokens.
     Donate {},
+    /// Withdraw will withdraw tokens from the funding pool.
+    Withdraw {
+        /// The amount to withdraw (defaults to full amount).
+        amount: Option<Uint128>,
+    },
     /// Sets (or unsets if set to None) the maximum supply
     UpdateMaxSupply {
         /// The maximum supply able to be minted.
@@ -72,12 +80,21 @@ pub enum ExecuteMsg {
     /// TODO think about other potential limitations on this.
     UpdateCurve { curve_type: CurveType },
     /// Update the hatch phase allowlist.
-    /// This can only be called by the owner.
+    /// Only callable by owner.
     UpdateHatchAllowlist {
         /// Addresses to be added.
-        to_add: Vec<String>,
+        to_add: Vec<HatcherAllowlistEntryMsg>,
         /// Addresses to be removed.
         to_remove: Vec<String>,
+    },
+    /// Toggles the paused state (circuit breaker)
+    TogglePause {},
+    /// Update the funding pool forwarding.
+    /// Only callable by owner.
+    UpdateFundingPoolForwarding {
+        /// The address to receive the funding pool forwarding.
+        /// Set to None to stop forwarding.
+        address: Option<String>,
     },
     /// Update the configuration of a certain phase.
     /// This can only be called by the owner.
@@ -109,10 +126,12 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    /// Returns the Fee Recipient for the contract. This is the address that
-    /// recieves any fees collected from bonding curve operation
-    #[returns(::cosmwasm_std::Addr)]
-    FeesRecipient {},
+    #[returns(bool)]
+    IsPaused {},
+    /// Returns the funding pool forwarding config for the contract. This is the address that
+    /// receives any fees collected from bonding curve operation and donations
+    #[returns(Option<::cosmwasm_std::Addr>)]
+    FundingPoolForwarding {},
     /// List the hatchers and their contributions
     /// Returns [`HatchersResponse`]
     #[returns(HatchersResponse)]
@@ -120,9 +139,26 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    /// Returns the Maxiumum Supply of the supply token
+    /// Returns the contribution of a hatcher
+    #[returns(Uint128)]
+    Hatcher { addr: String },
+    /// Lists the hatcher allowlist
+    /// Returns [`HatcherAllowlistResponse`]
+    #[returns(HatcherAllowlistResponse)]
+    HatcherAllowlist {
+        start_after: Option<String>,
+        limit: Option<u32>,
+        config_type: Option<HatcherAllowlistConfigType>,
+    },
+    /// Returns the Maximum Supply of the supply token
     #[returns(Uint128)]
     MaxSupply {},
+    /// Returns the amount of tokens to receive from buying
+    #[returns(QuoteResponse)]
+    BuyQuote { payment: Uint128 },
+    /// Returns the amount of tokens to receive from selling
+    #[returns(QuoteResponse)]
+    SellQuote { payment: Uint128 },
     /// Returns the current phase
     #[returns(CommonsPhase)]
     Phase {},
@@ -133,6 +169,20 @@ pub enum QueryMsg {
     /// Returns the address of the cw-tokenfactory-issuer contract
     #[returns(::cosmwasm_std::Addr)]
     TokenContract {},
+}
+
+#[cw_serde]
+pub struct HatcherAllowlistEntryMsg {
+    pub addr: String,
+    pub config: HatcherAllowlistConfigMsg,
+}
+
+#[cw_serde]
+pub struct HatcherAllowlistConfigMsg {
+    /// The type of the configuration
+    pub config_type: HatcherAllowlistConfigType,
+    /// An optional override of the hatch_config's contribution limit
+    pub contribution_limits_override: Option<MinMax>,
 }
 
 #[cw_serde]
@@ -157,7 +207,7 @@ pub struct DenomResponse {
 #[cw_serde]
 pub struct HatcherAllowlistResponse {
     /// Hatcher allowlist
-    pub allowlist: Option<Vec<Addr>>,
+    pub allowlist: Option<Vec<HatcherAllowlistEntry>>,
 }
 
 #[cw_serde]
@@ -179,6 +229,14 @@ pub struct DonationsResponse {
 pub struct HatchersResponse {
     /// The hatchers mapped to their contribution in the reserve token
     pub hatchers: Vec<(Addr, Uint128)>,
+}
+
+#[cw_serde]
+pub struct QuoteResponse {
+    pub new_reserve: Uint128,
+    pub funded: Uint128,
+    pub amount: Uint128,
+    pub new_supply: Uint128,
 }
 
 #[cw_serde]

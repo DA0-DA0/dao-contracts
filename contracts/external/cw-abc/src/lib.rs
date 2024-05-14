@@ -1,13 +1,13 @@
 pub mod abc;
 pub(crate) mod commands;
 pub mod contract;
-pub mod curves;
 mod error;
+pub(crate) mod helpers;
 pub mod msg;
 mod queries;
 pub mod state;
 
-// Integrationg tests using an actual chain binary, requires
+// Integration tests using an actual chain binary, requires
 // the "test-tube" feature to be enabled
 // cargo test --features test-tube
 #[cfg(test)]

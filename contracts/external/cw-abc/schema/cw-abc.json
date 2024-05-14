@@ -1,6 +1,6 @@
 {
   "contract_name": "cw-abc",
-  "contract_version": "0.0.1",
+  "contract_version": "2.4.1",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -8,7 +8,6 @@
     "type": "object",
     "required": [
       "curve_type",
-      "fees_recipient",
       "phase_config",
       "reserve",
       "supply",
@@ -23,9 +22,12 @@
           }
         ]
       },
-      "fees_recipient": {
-        "description": "The recipient for any fees collected from bonding curve operation",
-        "type": "string"
+      "funding_pool_forwarding": {
+        "description": "An optional address for automatically forwarding funding pool gains",
+        "type": [
+          "string",
+          "null"
+        ]
       },
       "hatcher_allowlist": {
         "description": "TODO different ways of doing this, for example DAO members? Using a whitelist contract? Merkle tree? Hatcher allowlist",
@@ -34,7 +36,7 @@
           "null"
         ],
         "items": {
-          "type": "string"
+          "$ref": "#/definitions/HatcherAllowlistEntryMsg"
         }
       },
       "phase_config": {
@@ -234,7 +236,6 @@
         "required": [
           "contribution_limits",
           "entry_fee",
-          "exit_fee",
           "initial_raise"
         ],
         "properties": {
@@ -254,14 +255,6 @@
               }
             ]
           },
-          "exit_fee": {
-            "description": "Exit tax for the hatch phase",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Decimal"
-              }
-            ]
-          },
           "initial_raise": {
             "description": "The initial raise range (min, max) in the reserve token",
             "allOf": [
@@ -273,8 +266,95 @@
         },
         "additionalProperties": false
       },
+      "HatcherAllowlistConfigMsg": {
+        "type": "object",
+        "required": [
+          "config_type"
+        ],
+        "properties": {
+          "config_type": {
+            "description": "The type of the configuration",
+            "allOf": [
+              {
+                "$ref": "#/definitions/HatcherAllowlistConfigType"
+              }
+            ]
+          },
+          "contribution_limits_override": {
+            "description": "An optional override of the hatch_config's contribution limit",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/MinMax"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "HatcherAllowlistConfigType": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "d_a_o"
+            ],
+            "properties": {
+              "d_a_o": {
+                "type": "object",
+                "properties": {
+                  "priority": {
+                    "description": "The optional priority for checking a DAO config None will append the item to the end of the priority queue (least priority)",
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Uint64"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "HatcherAllowlistEntryMsg": {
+        "type": "object",
+        "required": [
+          "addr",
+          "config"
+        ],
+        "properties": {
+          "addr": {
+            "type": "string"
+          },
+          "config": {
+            "$ref": "#/definitions/HatcherAllowlistConfigMsg"
+          }
+        },
+        "additionalProperties": false
+      },
       "MinMax": {
-        "description": "Struct for minimium and maximum values",
+        "description": "Struct for minimum and maximum values",
         "type": "object",
         "required": [
           "max",
@@ -418,6 +498,10 @@
       "Uint128": {
         "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
         "type": "string"
+      },
+      "Uint64": {
+        "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+        "type": "string"
       }
     }
   },
@@ -454,7 +538,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Donate will add reserve tokens to the funding pool",
+        "description": "Donate will donate tokens to the funding pool. You must send only reserve tokens.",
         "type": "object",
         "required": [
           "donate"
@@ -462,6 +546,33 @@
         "properties": {
           "donate": {
             "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Withdraw will withdraw tokens from the funding pool.",
+        "type": "object",
+        "required": [
+          "withdraw"
+        ],
+        "properties": {
+          "withdraw": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "description": "The amount to withdraw (defaults to full amount).",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Uint128"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
             "additionalProperties": false
           }
         },
@@ -517,7 +628,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Update the hatch phase allowlist. This can only be called by the owner.",
+        "description": "Update the hatch phase allowlist. Only callable by owner.",
         "type": "object",
         "required": [
           "update_hatch_allowlist"
@@ -534,7 +645,7 @@
                 "description": "Addresses to be added.",
                 "type": "array",
                 "items": {
-                  "type": "string"
+                  "$ref": "#/definitions/HatcherAllowlistEntryMsg"
                 }
               },
               "to_remove": {
@@ -543,6 +654,43 @@
                 "items": {
                   "type": "string"
                 }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Toggles the paused state (circuit breaker)",
+        "type": "object",
+        "required": [
+          "toggle_pause"
+        ],
+        "properties": {
+          "toggle_pause": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Update the funding pool forwarding. Only callable by owner.",
+        "type": "object",
+        "required": [
+          "update_funding_pool_forwarding"
+        ],
+        "properties": {
+          "update_funding_pool_forwarding": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "The address to receive the funding pool forwarding. Set to None to stop forwarding.",
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -782,8 +930,95 @@
           }
         ]
       },
+      "HatcherAllowlistConfigMsg": {
+        "type": "object",
+        "required": [
+          "config_type"
+        ],
+        "properties": {
+          "config_type": {
+            "description": "The type of the configuration",
+            "allOf": [
+              {
+                "$ref": "#/definitions/HatcherAllowlistConfigType"
+              }
+            ]
+          },
+          "contribution_limits_override": {
+            "description": "An optional override of the hatch_config's contribution limit",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/MinMax"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "HatcherAllowlistConfigType": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "d_a_o"
+            ],
+            "properties": {
+              "d_a_o": {
+                "type": "object",
+                "properties": {
+                  "priority": {
+                    "description": "The optional priority for checking a DAO config None will append the item to the end of the priority queue (least priority)",
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Uint64"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "HatcherAllowlistEntryMsg": {
+        "type": "object",
+        "required": [
+          "addr",
+          "config"
+        ],
+        "properties": {
+          "addr": {
+            "type": "string"
+          },
+          "config": {
+            "$ref": "#/definitions/HatcherAllowlistConfigMsg"
+          }
+        },
+        "additionalProperties": false
+      },
       "MinMax": {
-        "description": "Struct for minimium and maximum values",
+        "description": "Struct for minimum and maximum values",
         "type": "object",
         "required": [
           "max",
@@ -839,16 +1074,6 @@
                     ]
                   },
                   "entry_fee": {
-                    "anyOf": [
-                      {
-                        "$ref": "#/definitions/Decimal"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "exit_fee": {
                     "anyOf": [
                       {
                         "$ref": "#/definitions/Decimal"
@@ -1005,13 +1230,26 @@
         "additionalProperties": false
       },
       {
-        "description": "Returns the Fee Recipient for the contract. This is the address that recieves any fees collected from bonding curve operation",
         "type": "object",
         "required": [
-          "fees_recipient"
+          "is_paused"
         ],
         "properties": {
-          "fees_recipient": {
+          "is_paused": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Returns the funding pool forwarding config for the contract. This is the address that receives any fees collected from bonding curve operation and donations",
+        "type": "object",
+        "required": [
+          "funding_pool_forwarding"
+        ],
+        "properties": {
+          "funding_pool_forwarding": {
             "type": "object",
             "additionalProperties": false
           }
@@ -1049,7 +1287,69 @@
         "additionalProperties": false
       },
       {
-        "description": "Returns the Maxiumum Supply of the supply token",
+        "description": "Returns the contribution of a hatcher",
+        "type": "object",
+        "required": [
+          "hatcher"
+        ],
+        "properties": {
+          "hatcher": {
+            "type": "object",
+            "required": [
+              "addr"
+            ],
+            "properties": {
+              "addr": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Lists the hatcher allowlist Returns [`HatcherAllowlistResponse`]",
+        "type": "object",
+        "required": [
+          "hatcher_allowlist"
+        ],
+        "properties": {
+          "hatcher_allowlist": {
+            "type": "object",
+            "properties": {
+              "config_type": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/HatcherAllowlistConfigType"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Returns the Maximum Supply of the supply token",
         "type": "object",
         "required": [
           "max_supply"
@@ -1057,6 +1357,50 @@
         "properties": {
           "max_supply": {
             "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Returns the amount of tokens to receive from buying",
+        "type": "object",
+        "required": [
+          "buy_quote"
+        ],
+        "properties": {
+          "buy_quote": {
+            "type": "object",
+            "required": [
+              "payment"
+            ],
+            "properties": {
+              "payment": {
+                "$ref": "#/definitions/Uint128"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Returns the amount of tokens to receive from selling",
+        "type": "object",
+        "required": [
+          "sell_quote"
+        ],
+        "properties": {
+          "sell_quote": {
+            "type": "object",
+            "required": [
+              "payment"
+            ],
+            "properties": {
+              "payment": {
+                "$ref": "#/definitions/Uint128"
+              }
+            },
             "additionalProperties": false
           }
         },
@@ -1118,11 +1462,96 @@
         },
         "additionalProperties": false
       }
-    ]
+    ],
+    "definitions": {
+      "HatcherAllowlistConfigType": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "d_a_o"
+            ],
+            "properties": {
+              "d_a_o": {
+                "type": "object",
+                "properties": {
+                  "priority": {
+                    "description": "The optional priority for checking a DAO config None will append the item to the end of the priority queue (least priority)",
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Uint64"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "Uint128": {
+        "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+        "type": "string"
+      },
+      "Uint64": {
+        "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+        "type": "string"
+      }
+    }
   },
   "migrate": null,
   "sudo": null,
   "responses": {
+    "buy_quote": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "QuoteResponse",
+      "type": "object",
+      "required": [
+        "amount",
+        "funded",
+        "new_reserve",
+        "new_supply"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "funded": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "new_reserve": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "new_supply": {
+          "$ref": "#/definitions/Uint128"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
     "curve_info": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "CurveInfoResponse",
@@ -1332,11 +1761,173 @@
         }
       }
     },
-    "fees_recipient": {
+    "funding_pool_forwarding": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Addr",
-      "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+      "title": "Nullable_Addr",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Addr"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        }
+      }
+    },
+    "hatcher": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Uint128",
+      "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
       "type": "string"
+    },
+    "hatcher_allowlist": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "HatcherAllowlistResponse",
+      "type": "object",
+      "properties": {
+        "allowlist": {
+          "description": "Hatcher allowlist",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/HatcherAllowlistEntry"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "HatcherAllowlistConfig": {
+          "description": "The configuration for a member of the hatcher allowlist",
+          "type": "object",
+          "required": [
+            "config_height",
+            "config_type"
+          ],
+          "properties": {
+            "config_height": {
+              "description": "The height of the config insertion For use when checking allowlist of DAO configs",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "config_type": {
+              "description": "The type of the configuration",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/HatcherAllowlistConfigType"
+                }
+              ]
+            },
+            "contribution_limits_override": {
+              "description": "An optional override of the hatch_config's contribution limit",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/MinMax"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "HatcherAllowlistConfigType": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "d_a_o"
+              ],
+              "properties": {
+                "d_a_o": {
+                  "type": "object",
+                  "properties": {
+                    "priority": {
+                      "description": "The optional priority for checking a DAO config None will append the item to the end of the priority queue (least priority)",
+                      "anyOf": [
+                        {
+                          "$ref": "#/definitions/Uint64"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "address"
+              ],
+              "properties": {
+                "address": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "HatcherAllowlistEntry": {
+          "type": "object",
+          "required": [
+            "addr",
+            "config"
+          ],
+          "properties": {
+            "addr": {
+              "$ref": "#/definitions/Addr"
+            },
+            "config": {
+              "$ref": "#/definitions/HatcherAllowlistConfig"
+            }
+          },
+          "additionalProperties": false
+        },
+        "MinMax": {
+          "description": "Struct for minimum and maximum values",
+          "type": "object",
+          "required": [
+            "max",
+            "min"
+          ],
+          "properties": {
+            "max": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "min": {
+              "$ref": "#/definitions/Uint128"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
     },
     "hatchers": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1375,6 +1966,11 @@
           "type": "string"
         }
       }
+    },
+    "is_paused": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Boolean",
+      "type": "boolean"
     },
     "max_supply": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1571,7 +2167,6 @@
           "required": [
             "contribution_limits",
             "entry_fee",
-            "exit_fee",
             "initial_raise"
           ],
           "properties": {
@@ -1591,14 +2186,6 @@
                 }
               ]
             },
-            "exit_fee": {
-              "description": "Exit tax for the hatch phase",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Decimal"
-                }
-              ]
-            },
             "initial_raise": {
               "description": "The initial raise range (min, max) in the reserve token",
               "allOf": [
@@ -1611,7 +2198,7 @@
           "additionalProperties": false
         },
         "MinMax": {
-          "description": "Struct for minimium and maximum values",
+          "description": "Struct for minimum and maximum values",
           "type": "object",
           "required": [
             "max",
@@ -1653,6 +2240,38 @@
           },
           "additionalProperties": false
         },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "sell_quote": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "QuoteResponse",
+      "type": "object",
+      "required": [
+        "amount",
+        "funded",
+        "new_reserve",
+        "new_supply"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "funded": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "new_reserve": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "new_supply": {
+          "$ref": "#/definitions/Uint128"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
         "Uint128": {
           "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
           "type": "string"

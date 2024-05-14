@@ -4,13 +4,14 @@ authors = [
     "Ethan Frey <ethanfrey@users.noreply.github.com>",
     "Jake Hartnell",
     "Adair <adairrr@users.noreply.github.com>",
+    "Gabe Lopez <ismellike@users.noreply.github.com>",
 ]
 description = "Implements an Augmented Bonding Curve"
 # Inherits license from previous work
 license = "Apache-2.0"
 edition = { workspace = true }
 repository = { workspace = true }
-version = "0.0.1"
+version = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -36,11 +37,9 @@ cw-ownable = { workspace = true }
 cw-paginate-storage = { workspace = true }
 cw-tokenfactory-issuer = { workspace = true, features = ["library"] }
 dao-interface = { workspace = true }
-rust_decimal = { workspace = true }
-integer-sqrt = { workspace = true }
-integer-cbrt = { workspace = true }
 getrandom = { workspace = true, features = ["js"] }
 thiserror = { workspace = true }
+cw-curves = { workspace = true }
 
 [dev-dependencies]
 speculoos = { workspace = true }
@@ -51,3 +50,7 @@ osmosis-std = { workspace = true }
 osmosis-test-tube = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+cw-tokenfactory-issuer = { workspace = true }
+dao-voting-token-staked = { workspace = true }
+dao-proposal-single = { workspace = true }
+dao-voting = { workspace = true }

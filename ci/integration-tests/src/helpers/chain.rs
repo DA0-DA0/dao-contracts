@@ -99,7 +99,8 @@ fn global_setup() -> Cfg {
             .unwrap();
         save_gas_report(&orc, &gas_report_dir);
         // persist stored code_ids in CONFIG, so we can reuse for all tests
-        cfg.contract_deploy_info = orc.contract_map.deploy_info().clone();
+        cfg.contract_deploy_info
+            .clone_from(orc.contract_map.deploy_info());
     }
 
     Cfg {
