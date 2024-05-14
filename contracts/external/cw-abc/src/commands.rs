@@ -417,7 +417,7 @@ pub fn toggle_pause(deps: DepsMut, info: MessageInfo) -> Result<Response, Contra
         .add_attribute("is_paused", is_paused.to_string()))
 }
 
-/// Add and remove addresses from the hatcher allowlist (only callable by owner)
+/// Add and remove addresses from the hatcher allowlist (only callable by owner and self)
 pub fn update_hatch_allowlist(
     deps: DepsMut,
     env: Env,
@@ -425,7 +425,9 @@ pub fn update_hatch_allowlist(
     to_add: Vec<HatcherAllowlistEntryMsg>,
     to_remove: Vec<String>,
 ) -> Result<Response, ContractError> {
-    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+    if env.contract.address != info.sender {
+        cw_ownable::assert_owner(deps.storage, &info.sender)?;
+    }
 
     let list = hatcher_allowlist();
 

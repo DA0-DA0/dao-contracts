@@ -357,7 +357,13 @@ fn test_allowlist() {
             },
             closed: ClosedConfig {},
         },
-        hatcher_allowlist: None,
+        hatcher_allowlist: Some(vec![HatcherAllowlistEntryMsg {
+            addr: "replaced to accounts[9]".to_string(),
+            config: HatcherAllowlistConfigMsg {
+                config_type: HatcherAllowlistConfigType::Address {},
+                contribution_limits_override: None,
+            },
+        }]),
         curve_type: CurveType::Constant {
             value: Uint128::one(),
             scale: 1,
@@ -403,8 +409,7 @@ fn test_allowlist() {
         ))
     );
 
-    // Enable the allow list, normally this would be passed in through
-    // instantiation.
+    // Update the allowlist
     abc.execute(
         &ExecuteMsg::UpdateHatchAllowlist {
             to_add: vec![
