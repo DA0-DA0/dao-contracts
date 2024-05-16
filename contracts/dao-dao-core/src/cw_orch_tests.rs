@@ -15,7 +15,8 @@ use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_orch::prelude::*;
 use cw_storage_plus::{Item, Map};
 use cw_utils::{Duration, Expiration};
-use dao_cw_orch::{DaoDaoCore, DaoProposalSudo};
+use dao_cw_orch::{DaoDaoCore, DaoProposalSudo, DaoVotingCw20Balance};
+use dao_interface::CoreExecuteMsgFns;
 use dao_interface::CoreQueryMsgFns;
 use dao_interface::{
     msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg},
@@ -27,7 +28,6 @@ use dao_interface::{
     voting::{InfoResponse, VotingPowerAtHeightResponse},
 };
 use dao_proposal_sudo::msg::ExecuteMsgFns as _;
-
 const CREATOR_ADDR: &str = "creator";
 
 fn cw20_contract() -> Box<dyn Contract<Empty>> {
@@ -540,9 +540,12 @@ fn test_removed_modules_can_not_execute() {
         .into()])
         .unwrap_err();
 
-    println!("{}", err);
-    assert!(format!("{:?}", err)
-        .contains("Proposal module with address is disabled and cannot execute messages"));
+    assert!(format!("{:?}", err).contains(
+        &ContractError::ModuleDisabledCannotExecute {
+            address: Addr::unchecked("")
+        }
+        .to_string()
+    ));
 
     // Check that the enabled query works.
     let enabled_modules = gov.active_proposal_modules(None, None).unwrap();
@@ -563,9 +566,12 @@ fn test_removed_modules_can_not_execute() {
 
 #[test]
 fn test_module_already_disabled() {
-    let mut app = App::default();
-    let govmod_id = app.store_code(sudo_proposal_contract());
-    let gov_id = app.store_code(cw_core_contract());
+    let mock = MockBech32::new("mock");
+    let gov_mod = DaoProposalSudo::new("proposal", mock.clone());
+    let gov = DaoDaoCore::new("dao-core", mock.clone());
+    gov_mod.upload().unwrap();
+    let govmod_id = gov_mod.code_id().unwrap();
+    gov.upload().unwrap();
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -596,78 +602,53 @@ fn test_module_already_disabled() {
         initial_items: None,
     };
 
-    let gov_addr = app
-        .instantiate_contract(
-            gov_id,
-            Addr::unchecked(CREATOR_ADDR),
-            &gov_instantiate,
-            &[],
-            "cw-governance",
-            None,
-        )
-        .unwrap();
-
-    let modules: Vec<ProposalModule> = app
-        .wrap()
-        .query_wasm_smart(
-            gov_addr.clone(),
-            &QueryMsg::ProposalModules {
-                start_after: None,
-                limit: None,
-            },
-        )
-        .unwrap();
-
+    gov.instantiate(&gov_instantiate, None, None).unwrap();
+    let modules = gov.proposal_modules(None, None).unwrap();
     assert_eq!(modules.len(), 1);
 
     let start_module = modules.into_iter().next().unwrap();
+    gov_mod.set_address(&start_module.address);
 
     let to_disable = vec![
         start_module.address.to_string(),
         start_module.address.to_string(),
     ];
 
-    let err: ContractError = app
-        .execute_contract(
-            Addr::unchecked(CREATOR_ADDR),
-            start_module.address.clone(),
-            &dao_proposal_sudo::msg::ExecuteMsg::Execute {
-                msgs: vec![WasmMsg::Execute {
-                    contract_addr: gov_addr.to_string(),
+    let err = gov_mod
+        .proposal_execute(vec![WasmMsg::Execute {
+            contract_addr: gov.address().unwrap().to_string(),
+            funds: vec![],
+            msg: to_json_binary(&ExecuteMsg::UpdateProposalModules {
+                to_add: vec![ModuleInstantiateInfo {
+                    code_id: govmod_id,
+                    msg: to_json_binary(&govmod_instantiate).unwrap(),
+                    admin: Some(Admin::CoreModule {}),
                     funds: vec![],
-                    msg: to_json_binary(&ExecuteMsg::UpdateProposalModules {
-                        to_add: vec![ModuleInstantiateInfo {
-                            code_id: govmod_id,
-                            msg: to_json_binary(&govmod_instantiate).unwrap(),
-                            admin: Some(Admin::CoreModule {}),
-                            funds: vec![],
-                            label: "governance module".to_string(),
-                        }],
-                        to_disable,
-                    })
-                    .unwrap(),
-                }
-                .into()],
-            },
-            &[],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
+                    label: "governance module".to_string(),
+                }],
+                to_disable,
+            })
+            .unwrap(),
+        }
+        .into()])
+        .unwrap_err();
 
-    assert_eq!(
-        err,
-        ContractError::ModuleAlreadyDisabled {
+    assert!(format!("{:?}", err).contains(
+        &ContractError::ModuleAlreadyDisabled {
             address: start_module.address
         }
-    )
+        .to_string()
+    ));
 }
 
 #[test]
 fn test_swap_voting_module() {
-    let mut app = App::default();
-    let govmod_id = app.store_code(sudo_proposal_contract());
-    let gov_id = app.store_code(cw_core_contract());
+    let mock = MockBech32::new("mock");
+    let gov_mod = DaoProposalSudo::new("proposal", mock.clone());
+    let gov = DaoDaoCore::new("dao-core", mock.clone());
+    gov_mod.upload().unwrap();
+    let govmod_id = gov_mod.code_id().unwrap();
+    gov.upload().unwrap();
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -698,82 +679,48 @@ fn test_swap_voting_module() {
         initial_items: None,
     };
 
-    let gov_addr = app
-        .instantiate_contract(
-            gov_id,
-            Addr::unchecked(CREATOR_ADDR),
-            &gov_instantiate,
-            &[],
-            "cw-governance",
-            None,
-        )
-        .unwrap();
-
-    let voting_addr: Addr = app
-        .wrap()
-        .query_wasm_smart(gov_addr.clone(), &QueryMsg::VotingModule {})
-        .unwrap();
-
-    let modules: Vec<ProposalModule> = app
-        .wrap()
-        .query_wasm_smart(
-            gov_addr.clone(),
-            &QueryMsg::ProposalModules {
-                start_after: None,
-                limit: None,
-            },
-        )
-        .unwrap();
-
+    gov.instantiate(&gov_instantiate, None, None).unwrap();
+    let modules = gov.proposal_modules(None, None).unwrap();
     assert_eq!(modules.len(), 1);
+    gov_mod.set_address(&modules[0].address);
 
-    app.execute_contract(
-        Addr::unchecked(CREATOR_ADDR),
-        modules[0].address.clone(),
-        &dao_proposal_sudo::msg::ExecuteMsg::Execute {
-            msgs: vec![WasmMsg::Execute {
-                contract_addr: gov_addr.to_string(),
-                funds: vec![],
-                msg: to_json_binary(&ExecuteMsg::UpdateVotingModule {
-                    module: ModuleInstantiateInfo {
-                        code_id: govmod_id,
-                        msg: to_json_binary(&govmod_instantiate).unwrap(),
-                        admin: Some(Admin::CoreModule {}),
-                        funds: vec![],
-                        label: "voting module".to_string(),
-                    },
-                })
-                .unwrap(),
-            }
-            .into()],
-        },
-        &[],
-    )
-    .unwrap();
+    let voting_addr = gov.voting_module().unwrap();
 
-    let new_voting_addr: Addr = app
-        .wrap()
-        .query_wasm_smart(gov_addr, &QueryMsg::VotingModule {})
+    gov_mod
+        .proposal_execute(vec![WasmMsg::Execute {
+            contract_addr: gov.address().unwrap().to_string(),
+            funds: vec![],
+            msg: to_json_binary(&ExecuteMsg::UpdateVotingModule {
+                module: ModuleInstantiateInfo {
+                    code_id: govmod_id,
+                    msg: to_json_binary(&govmod_instantiate).unwrap(),
+                    admin: Some(Admin::CoreModule {}),
+                    funds: vec![],
+                    label: "voting module".to_string(),
+                },
+            })
+            .unwrap(),
+        }
+        .into()])
         .unwrap();
 
-    assert_ne!(new_voting_addr, voting_addr);
+    assert_ne!(gov.voting_module().unwrap(), voting_addr);
 }
 
-fn test_unauthorized(app: &mut App, gov_addr: Addr, msg: ExecuteMsg) {
-    let err: ContractError = app
-        .execute_contract(Addr::unchecked(CREATOR_ADDR), gov_addr, &msg, &[])
-        .unwrap_err()
-        .downcast()
-        .unwrap();
+fn test_unauthorized<Chain: CwEnv>(gov: &DaoDaoCore<Chain>, msg: ExecuteMsg) {
+    let err = gov.execute(&msg, None).unwrap_err();
 
-    assert_eq!(err, ContractError::Unauthorized {});
+    assert!(format!("{:?}", err).contains(&ContractError::Unauthorized {}.to_string()));
 }
 
 #[test]
 fn test_permissions() {
-    let mut app = App::default();
-    let govmod_id = app.store_code(sudo_proposal_contract());
-    let gov_id = app.store_code(cw_core_contract());
+    let mock = MockBech32::new("mock");
+    let gov_mod = DaoProposalSudo::new("proposal", mock.clone());
+    let gov = DaoDaoCore::new("dao-core", mock.clone());
+    gov_mod.upload().unwrap();
+    let govmod_id = gov_mod.code_id().unwrap();
+    gov.upload().unwrap();
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -804,20 +751,10 @@ fn test_permissions() {
         automatically_add_cw721s: true,
     };
 
-    let gov_addr = app
-        .instantiate_contract(
-            gov_id,
-            Addr::unchecked(CREATOR_ADDR),
-            &gov_instantiate,
-            &[],
-            "cw-governance",
-            None,
-        )
-        .unwrap();
+    gov.instantiate(&gov_instantiate, None, None).unwrap();
 
     test_unauthorized(
-        &mut app,
-        gov_addr.clone(),
+        &gov,
         ExecuteMsg::UpdateVotingModule {
             module: ModuleInstantiateInfo {
                 code_id: govmod_id,
@@ -830,8 +767,7 @@ fn test_permissions() {
     );
 
     test_unauthorized(
-        &mut app,
-        gov_addr.clone(),
+        &gov,
         ExecuteMsg::UpdateProposalModules {
             to_add: vec![],
             to_disable: vec![],
@@ -839,8 +775,7 @@ fn test_permissions() {
     );
 
     test_unauthorized(
-        &mut app,
-        gov_addr,
+        &gov,
         ExecuteMsg::UpdateConfig {
             config: Config {
                 dao_uri: None,
@@ -854,19 +789,26 @@ fn test_permissions() {
     );
 }
 
-fn do_standard_instantiate(auto_add: bool, admin: Option<String>) -> (Addr, App) {
-    let mut app = App::default();
-    let govmod_id = app.store_code(sudo_proposal_contract());
-    let voting_id = app.store_code(cw20_balances_voting());
-    let gov_id = app.store_code(cw_core_contract());
-    let cw20_id = app.store_code(cw20_contract());
+fn do_standard_instantiate(
+    auto_add: bool,
+    admin: Option<String>,
+) -> (
+    DaoDaoCore<MockBech32>,
+    DaoProposalSudo<MockBech32>,
+    MockBech32,
+) {
+    let mock = MockBech32::new("mock");
+    let gov_mod = DaoProposalSudo::new("proposal", mock.clone());
+    let voting = DaoVotingCw20Balance::new("dao-voting", mock.clone());
+    let gov = DaoDaoCore::new("dao-core", mock.clone());
+    let cw20 = Cw20Base::new("cw20", mock.clone());
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
-        root: CREATOR_ADDR.to_string(),
+        root: mock.sender().to_string(),
     };
     let voting_instantiate = dao_voting_cw20_balance::msg::InstantiateMsg {
         token_info: dao_voting_cw20_balance::msg::TokenInfo::New {
-            code_id: cw20_id,
+            code_id: cw20.code_id().unwrap(),
             label: "DAO DAO voting".to_string(),
             name: "DAO DAO".to_string(),
             symbol: "DAO".to_string(),
@@ -888,14 +830,14 @@ fn do_standard_instantiate(auto_add: bool, admin: Option<String>) -> (Addr, App)
         automatically_add_cw20s: auto_add,
         automatically_add_cw721s: auto_add,
         voting_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: voting_id,
+            code_id: voting.code_id().unwrap(),
             msg: to_json_binary(&voting_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
-            code_id: govmod_id,
+            code_id: gov_mod.code_id().unwrap(),
             msg: to_json_binary(&govmod_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
             funds: vec![],
@@ -904,212 +846,143 @@ fn do_standard_instantiate(auto_add: bool, admin: Option<String>) -> (Addr, App)
         initial_items: None,
     };
 
-    let gov_addr = app
-        .instantiate_contract(
-            gov_id,
-            Addr::unchecked(CREATOR_ADDR),
-            &gov_instantiate,
-            &[],
-            "cw-governance",
-            None,
-        )
-        .unwrap();
+    gov.instantiate(&gov_instantiate, None, None).unwrap();
 
-    (gov_addr, app)
+    let proposal_modules = gov.proposal_modules(None, None).unwrap();
+    assert_eq!(proposal_modules.len(), 1);
+    let proposal_module = proposal_modules.into_iter().next().unwrap();
+    gov_mod.set_address(&proposal_module.address);
+    (gov, gov_mod, mock)
 }
 
 #[test]
 fn test_admin_permissions() {
-    let (core_addr, mut app) = do_standard_instantiate(true, None);
+    let (core, proposal, mock) = do_standard_instantiate(true, None);
 
-    let start_height = app.block_info().height;
-    let proposal_modules: Vec<ProposalModule> = app
-        .wrap()
-        .query_wasm_smart(
-            core_addr.clone(),
-            &QueryMsg::ProposalModules {
-                start_after: None,
-                limit: None,
-            },
-        )
-        .unwrap();
-
-    assert_eq!(proposal_modules.len(), 1);
-    let proposal_module = proposal_modules.into_iter().next().unwrap();
+    let random = mock.addr_make("random");
+    let start_height = mock.block_info().unwrap().height;
 
     // Random address can't call ExecuteAdminMsgs
-    let res = app.execute_contract(
-        Addr::unchecked("random"),
-        core_addr.clone(),
-        &ExecuteMsg::ExecuteAdminMsgs {
-            msgs: vec![WasmMsg::Execute {
-                contract_addr: core_addr.to_string(),
-                msg: to_json_binary(&ExecuteMsg::Pause {
-                    duration: Duration::Height(10),
-                })
-                .unwrap(),
-                funds: vec![],
-            }
-            .into()],
-        },
-        &[],
-    );
-    res.unwrap_err();
+    core.call_as(&random)
+        .execute_admin_msgs(vec![WasmMsg::Execute {
+            contract_addr: core.address().unwrap().to_string(),
+            msg: to_json_binary(&ExecuteMsg::Pause {
+                duration: Duration::Height(10),
+            })
+            .unwrap(),
+            funds: vec![],
+        }
+        .into()])
+        .unwrap_err();
 
     // Proposal module can't call ExecuteAdminMsgs
-    let res = app.execute_contract(
-        proposal_module.address.clone(),
-        core_addr.clone(),
-        &ExecuteMsg::ExecuteAdminMsgs {
-            msgs: vec![WasmMsg::Execute {
-                contract_addr: core_addr.to_string(),
-                msg: to_json_binary(&ExecuteMsg::Pause {
-                    duration: Duration::Height(10),
-                })
-                .unwrap(),
-                funds: vec![],
-            }
-            .into()],
-        },
-        &[],
-    );
-    res.unwrap_err();
+    core.call_as(&proposal.address().unwrap())
+        .execute_admin_msgs(vec![WasmMsg::Execute {
+            contract_addr: core.address().unwrap().to_string(),
+            msg: to_json_binary(&ExecuteMsg::Pause {
+                duration: Duration::Height(10),
+            })
+            .unwrap(),
+            funds: vec![],
+        }
+        .into()])
+        .unwrap_err();
 
     // Update Admin can't be called by non-admins
-    let res = app.execute_contract(
-        Addr::unchecked("rando"),
-        core_addr.clone(),
-        &ExecuteMsg::NominateAdmin {
-            admin: Some("rando".to_string()),
-        },
-        &[],
-    );
-    res.unwrap_err();
+    core.call_as(&random)
+        .nominate_admin(Some(random.to_string()))
+        .unwrap();
 
     // Nominate admin can be called by core contract as no admin was
     // specified so the admin defaulted to the core contract.
-    let res = app.execute_contract(
-        proposal_module.address.clone(),
-        core_addr.clone(),
-        &ExecuteMsg::ExecuteProposalHook {
-            msgs: vec![WasmMsg::Execute {
-                contract_addr: core_addr.to_string(),
-                msg: to_json_binary(&ExecuteMsg::NominateAdmin {
-                    admin: Some("meow".to_string()),
-                })
-                .unwrap(),
-                funds: vec![],
-            }
-            .into()],
-        },
-        &[],
-    );
-    res.unwrap();
+
+    core.call_as(&proposal.address().unwrap())
+        .execute_proposal_hook(vec![WasmMsg::Execute {
+            contract_addr: core.address().unwrap().to_string(),
+            msg: to_json_binary(&ExecuteMsg::Pause {
+                duration: Duration::Height(10),
+            })
+            .unwrap(),
+            funds: vec![],
+        }
+        .into()])
+        .unwrap();
 
     // Instantiate new DAO with an admin
-    let (core_with_admin_addr, mut app) =
-        do_standard_instantiate(true, Some(Addr::unchecked("admin").to_string()));
+    let admin = mock.addr_make("admin");
+    let (core_with_admin, proposal_with_admin_address, mock) =
+        do_standard_instantiate(true, Some(admin.to_string()));
 
     // Non admins still can't call ExecuteAdminMsgs
-    let res = app.execute_contract(
-        proposal_module.address,
-        core_with_admin_addr.clone(),
-        &ExecuteMsg::ExecuteAdminMsgs {
-            msgs: vec![WasmMsg::Execute {
-                contract_addr: core_with_admin_addr.to_string(),
-                msg: to_json_binary(&ExecuteMsg::Pause {
-                    duration: Duration::Height(10),
-                })
-                .unwrap(),
-                funds: vec![],
-            }
-            .into()],
-        },
-        &[],
-    );
-    res.unwrap_err();
+    core_with_admin
+        .call_as(&proposal_with_admin_address.address().unwrap())
+        .execute_admin_msgs(vec![WasmMsg::Execute {
+            contract_addr: core_with_admin.address().unwrap().to_string(),
+            msg: to_json_binary(&ExecuteMsg::Pause {
+                duration: Duration::Height(10),
+            })
+            .unwrap(),
+            funds: vec![],
+        }
+        .into()])
+        .unwrap_err();
 
     // Admin cannot directly pause the DAO
-    let res = app.execute_contract(
-        Addr::unchecked("admin"),
-        core_with_admin_addr.clone(),
-        &ExecuteMsg::Pause {
-            duration: Duration::Height(10),
-        },
-        &[],
-    );
-    assert!(res.is_err());
+    core_with_admin
+        .call_as(&admin)
+        .pause(Duration::Height(10))
+        .unwrap_err();
 
     // Random person cannot pause the DAO
-    let res = app.execute_contract(
-        Addr::unchecked("random"),
-        core_with_admin_addr.clone(),
-        &ExecuteMsg::Pause {
-            duration: Duration::Height(10),
-        },
-        &[],
-    );
-    assert!(res.is_err());
+    core_with_admin
+        .call_as(&random)
+        .pause(Duration::Height(10))
+        .unwrap_err();
 
     // Admin can call ExecuteAdminMsgs, here an admin pauses the DAO
-    let res = app.execute_contract(
-        Addr::unchecked("admin"),
-        core_with_admin_addr.clone(),
-        &ExecuteMsg::ExecuteAdminMsgs {
-            msgs: vec![WasmMsg::Execute {
-                contract_addr: core_with_admin_addr.to_string(),
-                msg: to_json_binary(&ExecuteMsg::Pause {
-                    duration: Duration::Height(10),
-                })
-                .unwrap(),
-                funds: vec![],
-            }
-            .into()],
-        },
-        &[],
-    );
-    assert!(res.is_ok());
+    let res = core_with_admin
+        .call_as(&admin)
+        .execute_admin_msgs(vec![WasmMsg::Execute {
+            contract_addr: core_with_admin.address().unwrap().to_string(),
+            msg: to_json_binary(&ExecuteMsg::Pause {
+                duration: Duration::Height(10),
+            })
+            .unwrap(),
+            funds: vec![],
+        }
+        .into()])
+        .unwrap();
 
     // Ensure we are paused for 10 blocks
-    let paused: PauseInfoResponse = app
-        .wrap()
-        .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::PauseInfo {})
-        .unwrap();
     assert_eq!(
-        paused,
+        core_with_admin.pause_info().unwrap(),
         PauseInfoResponse::Paused {
             expiration: Expiration::AtHeight(start_height + 10)
         }
     );
 
     // DAO unpauses after 10 blocks
-    app.update_block(|block| block.height += 11);
+    mock.wait_blocks(11);
 
     // Check we are unpaused
-    let paused: PauseInfoResponse = app
-        .wrap()
-        .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::PauseInfo {})
-        .unwrap();
-    assert_eq!(paused, PauseInfoResponse::Unpaused {});
+    assert_eq!(
+        core_with_admin.pause_info().unwrap(),
+        PauseInfoResponse::Unpaused {}
+    );
 
     // Admin pauses DAO again
-    let res = app.execute_contract(
-        Addr::unchecked("admin"),
-        core_with_admin_addr.clone(),
-        &ExecuteMsg::ExecuteAdminMsgs {
-            msgs: vec![WasmMsg::Execute {
-                contract_addr: core_with_admin_addr.to_string(),
-                msg: to_json_binary(&ExecuteMsg::Pause {
-                    duration: Duration::Height(10),
-                })
-                .unwrap(),
-                funds: vec![],
-            }
-            .into()],
-        },
-        &[],
-    );
-    assert!(res.is_ok());
+    let res = core_with_admin
+        .call_as(&admin)
+        .execute_admin_msgs(vec![WasmMsg::Execute {
+            contract_addr: core_with_admin.address().unwrap().to_string(),
+            msg: to_json_binary(&ExecuteMsg::Pause {
+                duration: Duration::Height(10),
+            })
+            .unwrap(),
+            funds: vec![],
+        }
+        .into()])
+        .unwrap();
 
     // DAO with admin cannot unpause itself
     let res = app.execute_contract(
@@ -2836,9 +2709,12 @@ fn test_execute_stargate_msg() {
 
 #[test]
 fn test_module_prefixes() {
-    let mut app = App::default();
-    let govmod_id = app.store_code(sudo_proposal_contract());
-    let gov_id = app.store_code(cw_core_contract());
+    let mock = MockBech32::new("mock");
+    let gov_mod = DaoProposalSudo::new("proposal", mock.clone());
+    let gov = DaoDaoCore::new("dao-core", mock.clone());
+    gov_mod.upload().unwrap();
+    let govmod_id = gov_mod.code_id().unwrap();
+    gov.upload().unwrap();
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -2885,28 +2761,9 @@ fn test_module_prefixes() {
         initial_items: None,
     };
 
-    let gov_addr = app
-        .instantiate_contract(
-            gov_id,
-            Addr::unchecked(CREATOR_ADDR),
-            &gov_instantiate,
-            &[],
-            "cw-governance",
-            None,
-        )
-        .unwrap();
+    let gov_addr = gov.instantiate(&gov_instantiate, None, None).unwrap();
 
-    let modules: Vec<ProposalModule> = app
-        .wrap()
-        .query_wasm_smart(
-            gov_addr,
-            &QueryMsg::ProposalModules {
-                start_after: None,
-                limit: None,
-            },
-        )
-        .unwrap();
-
+    let modules = gov.proposal_modules(None, None).unwrap();
     assert_eq!(modules.len(), 3);
 
     let module_1 = &modules[0];
@@ -2939,8 +2796,7 @@ fn test_add_remove_subdaos() {
     let (core_addr, mut app) = do_standard_instantiate(false, None);
 
     test_unauthorized(
-        &mut app,
-        core_addr.clone(),
+        &gov,
         ExecuteMsg::UpdateSubDaos {
             to_add: vec![],
             to_remove: vec![],
