@@ -32,6 +32,7 @@ use dao_interface::{
     voting::{InfoResponse, VotingPowerAtHeightResponse},
 };
 use dao_proposal_sudo::msg::ExecuteMsgFns as _;
+use dao_voting_cw20_balance::msg::QueryMsgFns;
 
 pub fn assert_contains(e: impl std::fmt::Debug, el: impl ToString) {
     assert!(format!("{:?}", e).contains(&el.to_string()))
@@ -1448,11 +1449,8 @@ fn test_cw20_receive_auto_add() {
     voting.set_address(&gov.voting_module().unwrap());
 
     let gov_token = Cw20Base::new("cw20", mock.clone());
-    gov_token.set_address(
-        &voting
-            .query(&dao_voting_cw20_balance::msg::QueryMsg::TokenContract {})
-            .unwrap(),
-    );
+
+    gov_token.set_address(&voting.token_contract().unwrap());
     // Check that the balances query works with no tokens.
     let cw20_balances = gov.cw_20_balances(None, None).unwrap();
     assert_eq!(cw20_balances, vec![]);
@@ -1534,11 +1532,7 @@ fn test_cw20_receive_no_auto_add() {
     voting.set_address(&gov.voting_module().unwrap());
 
     let gov_token = Cw20Base::new("cw20", mock.clone());
-    gov_token.set_address(
-        &voting
-            .query(&dao_voting_cw20_balance::msg::QueryMsg::TokenContract {})
-            .unwrap(),
-    );
+    gov_token.set_address(&voting.token_contract().unwrap());
 
     // Send a gov token to the governance contract. Should not be
     // added becasue auto add is turned off.
