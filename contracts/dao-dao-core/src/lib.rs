@@ -5,8 +5,6 @@ mod error;
 pub mod state;
 
 #[cfg(test)]
-mod cw_orch_tests;
-#[cfg(test)]
 mod tests;
 
 pub use crate::error::ContractError;
