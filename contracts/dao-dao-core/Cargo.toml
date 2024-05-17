@@ -32,6 +32,8 @@ cw-core-v1 = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
 abstract-cw-plus-interface = "2.0.1"
+abstract-cw20 = "2.0.0"
+abstract-cw20-base = "2.0.0"
 cw-multi-test = { workspace = true }
 cw-orch = "0.22.2"
 cw20-base = { workspace = true }

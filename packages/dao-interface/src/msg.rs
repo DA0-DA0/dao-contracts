@@ -148,7 +148,7 @@ pub enum QueryMsg {
     Config {},
     /// Gets the token balance for each cw20 registered with the
     /// contract.
-    #[returns(crate::query::Cw20BalanceResponse)]
+    #[returns(Vec<crate::query::Cw20BalanceResponse>)]
     Cw20Balances {
         start_after: Option<String>,
         limit: Option<u32>,
@@ -179,7 +179,7 @@ pub enum QueryMsg {
     /// example, given the items `{ "group": "foo", "subdao": "bar"}`
     /// this query would return `[("group", "foo"), ("subdao",
     /// "bar")]`.
-    #[returns(Vec<String>)]
+    #[returns(Vec<(String, String)>)]
     ListItems {
         start_after: Option<String>,
         limit: Option<u32>,
