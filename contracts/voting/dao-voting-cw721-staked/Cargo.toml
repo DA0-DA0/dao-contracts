@@ -38,6 +38,7 @@ dao-hooks = { workspace = true }
 dao-interface = { workspace = true }
 dao-voting = { workspace = true }
 thiserror = { workspace = true }
+cw-orch.workspace = true
 
 [dev-dependencies]
 anyhow = { workspace = true }
