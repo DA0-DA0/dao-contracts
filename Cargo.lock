@@ -2055,6 +2055,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "dao-voting-cosmos-staked"
+version = "2.4.2"
+dependencies = [
+ "anyhow",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-tokenfactory-issuer",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "dao-dao-macros",
+ "dao-interface",
+ "dao-proposal-single",
+ "dao-test-custom-factory",
+ "dao-testing",
+ "dao-voting 2.4.2",
+ "osmosis-std",
+ "osmosis-test-tube",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "dao-voting-cw20-balance"
 version = "2.4.2"
 dependencies = [
