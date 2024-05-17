@@ -8,10 +8,12 @@ version.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+cosmwasm-std.workspace = true
 cw-orch = { version = "0.22.2" }
 cw20-stake = { version = "2.4.2", path = "../../contracts/staking/cw20-stake" }
 cw20-stake-external-rewards = { version = "2.4.2", path = "../../contracts/staking/cw20-stake-external-rewards" }
 cw20-stake-reward-distributor = { version = "2.4.2", path = "../../contracts/staking/cw20-stake-reward-distributor" }
+cw721-base.workspace = true
 dao-dao-core = { version = "2.4.2", path = "../../contracts/dao-dao-core" }
 dao-interface = { version = "2.4.2", path = "../dao-interface" }
 dao-pre-propose-approval-single = { version = "2.4.2", path = "../../contracts/pre-propose/dao-pre-propose-approval-single" }
@@ -30,3 +32,4 @@ dao-voting-cw4 = { version = "2.4.2", path = "../../contracts/voting/dao-voting-
 dao-voting-cw721-roles = { version = "2.4.2", path = "../../contracts/voting/dao-voting-cw721-roles" }
 dao-voting-cw721-staked = { version = "2.4.2", path = "../../contracts/voting/dao-voting-cw721-staked" }
 dao-voting-token-staked = { version = "2.4.2", path = "../../contracts/voting/dao-voting-token-staked" }
+serde.workspace = true

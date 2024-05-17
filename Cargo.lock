@@ -1977,10 +1977,12 @@ dependencies = [
 name = "dao-cw-orch"
 version = "2.4.2"
 dependencies = [
+ "cosmwasm-std",
  "cw-orch",
  "cw20-stake 2.4.2",
  "cw20-stake-external-rewards",
  "cw20-stake-reward-distributor",
+ "cw721-base 0.18.0",
  "dao-dao-core",
  "dao-interface",
  "dao-pre-propose-approval-single",
@@ -1999,6 +2001,7 @@ dependencies = [
  "dao-voting-cw721-roles",
  "dao-voting-cw721-staked",
  "dao-voting-token-staked",
+ "serde",
 ]
 
 [[package]]
@@ -2016,6 +2019,8 @@ name = "dao-dao-core"
 version = "2.4.2"
 dependencies = [
  "abstract-cw-plus-interface",
+ "abstract-cw20",
+ "abstract-cw20-base",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-core",
