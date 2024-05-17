@@ -1,19 +1,21 @@
 use crate::{
     contract::{derive_proposal_module_prefix, migrate, CONTRACT_NAME, CONTRACT_VERSION},
+    cw_orch_tests::v1::DaoDaoCoreV1,
     state::PROPOSAL_MODULES,
     ContractError,
 };
 use abstract_cw20::msg::Cw20ExecuteMsgFns;
 use abstract_cw_plus_interface::cw20_base::Cw20Base;
+
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     from_json,
     testing::{mock_dependencies, mock_env},
-    to_json_binary, Addr, CosmosMsg, Empty, StdError, Storage, Uint128, WasmMsg,
+    to_json_binary, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
 };
 use cw2::{set_contract_version, ContractVersion};
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_orch::prelude::*;
+
 use cw_storage_plus::{Item, Map};
 use cw_utils::{Duration, Expiration};
 use dao_cw_orch::Cw721Base;
@@ -21,7 +23,7 @@ use dao_cw_orch::{DaoDaoCore, DaoProposalSudo, DaoVotingCw20Balance};
 use dao_interface::CoreExecuteMsgFns;
 use dao_interface::CoreQueryMsgFns;
 use dao_interface::{
-    msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg},
+    msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg},
     query::{
         AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
         PauseInfoResponse, ProposalModuleCountResponse, SubDao,
@@ -35,60 +37,31 @@ pub fn assert_contains(e: impl std::fmt::Debug, el: impl ToString) {
     assert!(format!("{:?}", e).contains(&el.to_string()))
 }
 
-fn cw20_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        cw20_base::contract::execute,
-        cw20_base::contract::instantiate,
-        cw20_base::contract::query,
-    );
-    Box::new(contract)
-}
+pub mod v1 {
+    use cw_orch::{interface, prelude::*};
 
-fn cw721_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        cw721_base::entry::execute,
-        cw721_base::entry::instantiate,
-        cw721_base::entry::query,
-    );
-    Box::new(contract)
-}
+    use cw_core_v1::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
-fn sudo_proposal_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        dao_proposal_sudo::contract::execute,
-        dao_proposal_sudo::contract::instantiate,
-        dao_proposal_sudo::contract::query,
-    );
-    Box::new(contract)
-}
+    #[interface(InstantiateMsg, ExecuteMsg, QueryMsg, MigrateMsg)]
+    pub struct DaoDaoCoreV1;
 
-fn cw20_balances_voting() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        dao_voting_cw20_balance::contract::execute,
-        dao_voting_cw20_balance::contract::instantiate,
-        dao_voting_cw20_balance::contract::query,
-    )
-    .with_reply(dao_voting_cw20_balance::contract::reply);
-    Box::new(contract)
-}
-
-fn cw_core_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        crate::contract::execute,
-        crate::contract::instantiate,
-        crate::contract::query,
-    )
-    .with_reply(crate::contract::reply)
-    .with_migrate(crate::contract::migrate);
-    Box::new(contract)
-}
-
-fn v1_cw_core_contract() -> Box<dyn Contract<Empty>> {
-    use cw_core_v1::contract;
-    let contract = ContractWrapper::new(contract::execute, contract::instantiate, contract::query)
-        .with_reply(contract::reply)
-        .with_migrate(contract::migrate);
-    Box::new(contract)
+    impl<Chain> Uploadable for DaoDaoCoreV1<Chain> {
+        /// Return the path to the wasm file corresponding to the contract
+        fn wasm(_chain: &ChainInfoOwned) -> WasmPath {
+            artifacts_dir_from_workspace!()
+                .find_wasm_path("dao_dao_core")
+                .unwrap()
+        }
+        /// Returns a CosmWasm contract wrapper
+        fn wrapper() -> Box<dyn MockContract<Empty>> {
+            use cw_core_v1::contract;
+            Box::new(
+                ContractWrapper::new(contract::execute, contract::instantiate, contract::query)
+                    .with_reply(contract::reply)
+                    .with_migrate(contract::migrate),
+            )
+        }
+    }
 }
 
 fn test_instantiate_with_n_gov_modules(n: usize) {
@@ -959,7 +932,7 @@ fn test_admin_permissions() {
         .unwrap_err();
 
     // Admin can call ExecuteAdminMsgs, here an admin pauses the DAO
-    let res = core_with_admin
+    let _res = core_with_admin
         .call_as(&admin)
         .execute_admin_msgs(vec![WasmMsg::Execute {
             contract_addr: core_with_admin.address().unwrap().to_string(),
@@ -990,7 +963,7 @@ fn test_admin_permissions() {
     );
 
     // Admin pauses DAO again
-    let res = core_with_admin
+    let _res = core_with_admin
         .call_as(&admin)
         .execute_admin_msgs(vec![WasmMsg::Execute {
             contract_addr: core_with_admin.address().unwrap().to_string(),
@@ -1004,16 +977,16 @@ fn test_admin_permissions() {
         .unwrap();
 
     // DAO with admin cannot unpause itself
-    let res = core_with_admin
+    let _res = core_with_admin
         .call_as(&core_with_admin.address().unwrap())
         .unpause()
         .unwrap_err();
 
     // Random person cannot unpause the DAO
-    let res = core_with_admin.call_as(&random).unpause().unwrap_err();
+    let _res = core_with_admin.call_as(&random).unpause().unwrap_err();
 
     // Admin can unpause the DAO directly
-    let res = core_with_admin.call_as(&admin).unpause().unwrap();
+    let _res = core_with_admin.call_as(&admin).unpause().unwrap();
 
     // Check we are unpaused
 
@@ -1203,26 +1176,6 @@ fn test_passthrough_voting_queries() {
     );
 }
 
-fn set_item(app: &mut App, gov_addr: Addr, key: String, value: String) {
-    app.execute_contract(
-        gov_addr.clone(),
-        gov_addr,
-        &ExecuteMsg::SetItem { key, value },
-        &[],
-    )
-    .unwrap();
-}
-
-fn remove_item(app: &mut App, gov_addr: Addr, key: String) {
-    app.execute_contract(
-        gov_addr.clone(),
-        gov_addr,
-        &ExecuteMsg::RemoveItem { key },
-        &[],
-    )
-    .unwrap();
-}
-
 #[test]
 fn test_item_permissions() {
     let (gov, _, mock, _) = do_standard_instantiate(true, false);
@@ -1240,7 +1193,7 @@ fn test_item_permissions() {
 
 #[test]
 fn test_add_remove_get() {
-    let (gov, _, mock, _) = do_standard_instantiate(true, false);
+    let (gov, _, _mock, _) = do_standard_instantiate(true, false);
 
     let a = gov.get_item("aaaaa".to_string()).unwrap();
     assert_eq!(a, GetItemResponse { item: None });
@@ -1449,7 +1402,7 @@ fn test_instantiate_with_items() {
 
     initial_items.pop();
     gov_instantiate.initial_items = Some(initial_items);
-    let gov_addr = gov.instantiate(&gov_instantiate, None, None).unwrap();
+    let _gov_addr = gov.instantiate(&gov_instantiate, None, None).unwrap();
 
     // Ensure initial items were added.
     let items = gov.list_items(None, None).unwrap();
@@ -1473,7 +1426,7 @@ fn test_instantiate_with_items() {
 
 #[test]
 fn test_cw20_receive_auto_add() {
-    let (gov, proposal, mock, _) = do_standard_instantiate(true, false);
+    let (gov, _proposal, mock, _) = do_standard_instantiate(true, false);
     let another_cw20 = Cw20Base::new("another-cw20", mock.clone());
     another_cw20.upload().unwrap();
     another_cw20
@@ -1558,7 +1511,7 @@ fn test_cw20_receive_auto_add() {
 
 #[test]
 fn test_cw20_receive_no_auto_add() {
-    let (gov, proposal, mock, _) = do_standard_instantiate(false, false);
+    let (gov, _proposal, mock, _) = do_standard_instantiate(false, false);
 
     let another_cw20 = Cw20Base::new("another-cw20", mock.clone());
     another_cw20.upload().unwrap();
@@ -1622,7 +1575,7 @@ fn test_cw20_receive_no_auto_add() {
 
 #[test]
 fn test_cw721_receive() {
-    let (gov, proposal, mock, _) = do_standard_instantiate(true, false);
+    let (gov, _proposal, mock, _) = do_standard_instantiate(true, false);
 
     let cw721 = Cw721Base::new("cw721", mock.clone());
     cw721.upload().unwrap();
@@ -1691,7 +1644,9 @@ fn test_cw721_receive() {
         )
         .unwrap_err();
 
-    // TODO
+    println!("{:?}", err);
+    assert_contains(&err, "key:");
+    assert_contains(err, "not found");
     // assert!(matches!(err, ContractError::Std(_)));
 
     // Test that non-DAO can not update the list.
@@ -1718,343 +1673,210 @@ fn test_cw721_receive() {
     );
 }
 
-// #[test]
-// fn test_cw721_receive_no_auto_add() {
-//     let (gov, proposal, mock, _) = do_standard_instantiate(false, None);
+#[test]
+fn test_cw721_receive_no_auto_add() {
+    let (gov, _proposal, mock, _) = do_standard_instantiate(false, false);
 
-//     let cw721_id = app.store_code(cw721_contract());
+    let cw721 = Cw721Base::new("cw721", mock.clone());
+    cw721.upload().unwrap();
+    cw721
+        .instantiate(
+            &cw721_base::msg::InstantiateMsg {
+                name: "ekez".to_string(),
+                symbol: "ekez".to_string(),
+                minter: mock.sender().to_string(),
+            },
+            None,
+            None,
+        )
+        .unwrap();
 
-//     let cw721_addr = app
-//         .instantiate_contract(
-//             cw721_id,
-//             Addr::unchecked(mock.sender()),
-//             &cw721_base::msg::InstantiateMsg {
-//                 name: "ekez".to_string(),
-//                 symbol: "ekez".to_string(),
-//                 minter: mock.sender().to_string(),
-//             },
-//             &[],
-//             "cw721",
-//             None,
-//         )
-//         .unwrap();
+    let another_cw721 = Cw721Base::new("another_cw721", mock.clone());
+    another_cw721.set_code_id(cw721.code_id().unwrap());
+    another_cw721
+        .instantiate(
+            &cw721_base::msg::InstantiateMsg {
+                name: "ekez".to_string(),
+                symbol: "ekez".to_string(),
+                minter: mock.sender().to_string(),
+            },
+            None,
+            None,
+        )
+        .unwrap();
 
-//     let another_cw721 = app
-//         .instantiate_contract(
-//             cw721_id,
-//             Addr::unchecked(mock.sender()),
-//             &cw721_base::msg::InstantiateMsg {
-//                 name: "ekez".to_string(),
-//                 symbol: "ekez".to_string(),
-//                 minter: mock.sender().to_string(),
-//             },
-//             &[],
-//             "cw721",
-//             None,
-//         )
-//         .unwrap();
+    assert_eq!(
+        gov.cw_721_token_list(None, None).unwrap(),
+        Vec::<Addr>::new()
+    );
 
-//     app.execute_contract(
-//         Addr::unchecked(mock.sender()),
-//         cw721_addr.clone(),
-//         &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::Mint {
-//             token_id: "ekez".to_string(),
-//             owner: mock.sender().to_string(),
-//             token_uri: None,
-//             extension: None,
-//         },
-//         &[],
-//     )
-//     .unwrap();
+    // Duplicates OK. Just adds one.
+    gov.update_cw_721_list(
+        vec![
+            another_cw721.address().unwrap().to_string(),
+            cw721.address().unwrap().to_string(),
+            cw721.address().unwrap().to_string(),
+        ],
+        vec![],
+    )
+    .unwrap();
 
-//     app.execute_contract(
-//         Addr::unchecked(mock.sender()),
-//         cw721_addr.clone(),
-//         &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::SendNft {
-//             contract: gov_addr.to_string(),
-//             token_id: "ekez".to_string(),
-//             msg: to_json_binary("").unwrap(),
-//         },
-//         &[],
-//     )
-//     .unwrap();
+    assert_eq!(
+        gov.cw_721_token_list(None, None).unwrap(),
+        vec![another_cw721.address().unwrap(), cw721.address().unwrap()]
+    );
+}
 
-//     let cw721_list: Vec<Addr> = app
-//         .wrap()
-//         .query_wasm_smart(
-//             gov_addr.clone(),
-//             &QueryMsg::Cw721TokenList {
-//                 start_after: None,
-//                 limit: None,
-//             },
-//         )
-//         .unwrap();
-//     assert_eq!(cw721_list, Vec::<Addr>::new());
+#[test]
+fn test_pause() {
+    let (gov, _proposal, mock, _) = do_standard_instantiate(false, false);
 
-//     // Duplicates OK. Just adds one.
-//     app.execute_contract(
-//         Addr::unchecked(gov_addr.clone()),
-//         gov_addr.clone(),
-//         &ExecuteMsg::UpdateCw721List {
-//             to_add: vec![
-//                 another_cw721.to_string(),
-//                 cw721_addr.to_string(),
-//                 cw721_addr.to_string(),
-//             ],
-//             to_remove: vec![],
-//         },
-//         &[],
-//     )
-//     .unwrap();
+    let start_height = mock.block_info().unwrap().height;
 
-//     let cw20_list: Vec<Addr> = app
-//         .wrap()
-//         .query_wasm_smart(
-//             gov_addr,
-//             &QueryMsg::Cw721TokenList {
-//                 start_after: None,
-//                 limit: None,
-//             },
-//         )
-//         .unwrap();
-//     assert_eq!(cw20_list, vec![another_cw721, cw721_addr]);
-// }
+    let proposal_modules = gov.proposal_modules(None, None).unwrap();
+    assert_eq!(proposal_modules.len(), 1);
+    let proposal_module = proposal_modules.into_iter().next().unwrap();
 
-// #[test]
-// fn test_pause() {
-//     let (gov, proposal, mock, _) = do_standard_instantiate(false, None);
+    assert_eq!(gov.pause_info().unwrap(), PauseInfoResponse::Unpaused {});
 
-//     let start_height = app.block_info().height;
+    assert_eq!(
+        gov.dump_state().unwrap().pause_info,
+        PauseInfoResponse::Unpaused {}
+    );
 
-//     let proposal_modules: Vec<ProposalModule> = app
-//         .wrap()
-//         .query_wasm_smart(
-//             core_addr.clone(),
-//             &QueryMsg::ProposalModules {
-//                 start_after: None,
-//                 limit: None,
-//             },
-//         )
-//         .unwrap();
+    // DAO is not paused. Check that we can execute things.
+    //
+    // Tests intentionally use the core address to send these
+    // messsages to simulate a worst case scenerio where the core
+    // contract has a vulnerability.
+    gov.update_config(Config {
+        dao_uri: None,
+        name: "The Empire Strikes Back".to_string(),
+        description: "haha lol we have pwned your DAO".to_string(),
+        image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: true,
+    })
+    .unwrap();
 
-//     assert_eq!(proposal_modules.len(), 1);
-//     let proposal_module = proposal_modules.into_iter().next().unwrap();
+    // Oh no the DAO is under attack! Quick! Pause the DAO while we
+    // figure out what to do!
+    let err = gov
+        .call_as(&proposal_module.address)
+        .pause(Duration::Height(10))
+        .unwrap_err();
 
-//     let paused: PauseInfoResponse = app
-//         .wrap()
-//         .query_wasm_smart(core_addr.clone(), &QueryMsg::PauseInfo {})
-//         .unwrap();
-//     assert_eq!(paused, PauseInfoResponse::Unpaused {});
-//     let all_state: DumpStateResponse = app
-//         .wrap()
-//         .query_wasm_smart(core_addr.clone(), &QueryMsg::DumpState {})
-//         .unwrap();
-//     assert_eq!(all_state.pause_info, PauseInfoResponse::Unpaused {});
+    // Only the DAO may call this on itself. Proposal modules must use
+    // the execute hook.
+    assert_contains(err, ContractError::Unauthorized {});
+    gov.call_as(&proposal_module.address)
+        .execute_proposal_hook(vec![WasmMsg::Execute {
+            contract_addr: gov.address().unwrap().to_string(),
+            msg: to_json_binary(&ExecuteMsg::Pause {
+                duration: Duration::Height(10),
+            })
+            .unwrap(),
+            funds: vec![],
+        }
+        .into()])
+        .unwrap();
 
-//     // DAO is not paused. Check that we can execute things.
-//     //
-//     // Tests intentionally use the core address to send these
-//     // messsages to simulate a worst case scenerio where the core
-//     // contract has a vulnerability.
-//     app.execute_contract(
-//         core_addr.clone(),
-//         core_addr.clone(),
-//         &ExecuteMsg::UpdateConfig {
-//             config: Config {
-//                 dao_uri: None,
-//                 name: "The Empire Strikes Back".to_string(),
-//                 description: "haha lol we have pwned your DAO".to_string(),
-//                 image_url: None,
-//                 automatically_add_cw20s: true,
-//                 automatically_add_cw721s: true,
-//             },
-//         },
-//         &[],
-//     )
-//     .unwrap();
+    assert_eq!(
+        gov.pause_info().unwrap(),
+        PauseInfoResponse::Paused {
+            expiration: Expiration::AtHeight(start_height + 10)
+        }
+    );
+    assert_eq!(
+        gov.dump_state().unwrap().pause_info,
+        PauseInfoResponse::Paused {
+            expiration: Expiration::AtHeight(start_height + 10)
+        }
+    );
 
-//     // Oh no the DAO is under attack! Quick! Pause the DAO while we
-//     // figure out what to do!
-//     let err: ContractError = app
-//         .execute_contract(
-//             proposal_module.address.clone(),
-//             core_addr.clone(),
-//             &ExecuteMsg::Pause {
-//                 duration: Duration::Height(10),
-//             },
-//             &[],
-//         )
-//         .unwrap_err()
-//         .downcast()
-//         .unwrap();
+    // This should actually be allowed to enable the admin to execute
+    gov.update_config(Config {
+        dao_uri: None,
+        name: "The Empire Strikes Back Again".to_string(),
+        description: "haha lol we have pwned your DAO again".to_string(),
+        image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: true,
+    })
+    .unwrap();
 
-//     // Only the DAO may call this on itself. Proposal modules must use
-//     // the execute hook.
-//     assert_eq!(err, ContractError::Unauthorized {});
+    let err = gov
+        .call_as(&proposal_module.address)
+        .execute_proposal_hook(vec![WasmMsg::Execute {
+            contract_addr: gov.address().unwrap().to_string(),
+            msg: to_json_binary(&ExecuteMsg::Pause {
+                duration: Duration::Height(10),
+            })
+            .unwrap(),
+            funds: vec![],
+        }
+        .into()])
+        .unwrap_err();
 
-//     app.execute_contract(
-//         proposal_module.address.clone(),
-//         core_addr.clone(),
-//         &ExecuteMsg::ExecuteProposalHook {
-//             msgs: vec![WasmMsg::Execute {
-//                 contract_addr: core_addr.to_string(),
-//                 msg: to_json_binary(&ExecuteMsg::Pause {
-//                     duration: Duration::Height(10),
-//                 })
-//                 .unwrap(),
-//                 funds: vec![],
-//             }
-//             .into()],
-//         },
-//         &[],
-//     )
-//     .unwrap();
+    assert_contains(err, ContractError::Paused {});
 
-//     let paused: PauseInfoResponse = app
-//         .wrap()
-//         .query_wasm_smart(core_addr.clone(), &QueryMsg::PauseInfo {})
-//         .unwrap();
-//     assert_eq!(
-//         paused,
-//         PauseInfoResponse::Paused {
-//             expiration: Expiration::AtHeight(start_height + 10)
-//         }
-//     );
-//     let all_state: DumpStateResponse = app
-//         .wrap()
-//         .query_wasm_smart(core_addr.clone(), &QueryMsg::DumpState {})
-//         .unwrap();
-//     assert_eq!(
-//         all_state.pause_info,
-//         PauseInfoResponse::Paused {
-//             expiration: Expiration::AtHeight(start_height + 10)
-//         }
-//     );
+    mock.wait_blocks(9).unwrap();
 
-//     // This should actually be allowed to enable the admin to execute
-//     let result = app.execute_contract(
-//         core_addr.clone(),
-//         core_addr.clone(),
-//         &ExecuteMsg::UpdateConfig {
-//             config: Config {
-//                 dao_uri: None,
-//                 name: "The Empire Strikes Back Again".to_string(),
-//                 description: "haha lol we have pwned your DAO again".to_string(),
-//                 image_url: None,
-//                 automatically_add_cw20s: true,
-//                 automatically_add_cw721s: true,
-//             },
-//         },
-//         &[],
-//     );
-//     assert!(result.is_ok());
+    // Still not unpaused.
 
-//     let err: ContractError = app
-//         .execute_contract(
-//             proposal_module.address.clone(),
-//             core_addr.clone(),
-//             &ExecuteMsg::ExecuteProposalHook {
-//                 msgs: vec![WasmMsg::Execute {
-//                     contract_addr: core_addr.to_string(),
-//                     msg: to_json_binary(&ExecuteMsg::Pause {
-//                         duration: Duration::Height(10),
-//                     })
-//                     .unwrap(),
-//                     funds: vec![],
-//                 }
-//                 .into()],
-//             },
-//             &[],
-//         )
-//         .unwrap_err()
-//         .downcast()
-//         .unwrap();
+    let err = gov
+        .call_as(&proposal_module.address)
+        .execute_proposal_hook(vec![WasmMsg::Execute {
+            contract_addr: gov.address().unwrap().to_string(),
+            msg: to_json_binary(&ExecuteMsg::Pause {
+                duration: Duration::Height(10),
+            })
+            .unwrap(),
+            funds: vec![],
+        }
+        .into()])
+        .unwrap_err();
 
-//     assert!(matches!(err, ContractError::Paused { .. }));
+    assert_contains(err, ContractError::Paused {});
 
-//     app.update_block(|block| block.height += 9);
+    mock.wait_blocks(1).unwrap();
 
-//     // Still not unpaused.
-//     let err: ContractError = app
-//         .execute_contract(
-//             proposal_module.address.clone(),
-//             core_addr.clone(),
-//             &ExecuteMsg::ExecuteProposalHook {
-//                 msgs: vec![WasmMsg::Execute {
-//                     contract_addr: core_addr.to_string(),
-//                     msg: to_json_binary(&ExecuteMsg::Pause {
-//                         duration: Duration::Height(10),
-//                     })
-//                     .unwrap(),
-//                     funds: vec![],
-//                 }
-//                 .into()],
-//             },
-//             &[],
-//         )
-//         .unwrap_err()
-//         .downcast()
-//         .unwrap();
+    assert_eq!(gov.pause_info().unwrap(), PauseInfoResponse::Unpaused {});
+    assert_eq!(
+        gov.dump_state().unwrap().pause_info,
+        PauseInfoResponse::Unpaused {}
+    );
 
-//     assert!(matches!(err, ContractError::Paused { .. }));
+    // Now its unpaused so we should be able to pause again.
+    gov.call_as(&proposal_module.address)
+        .execute_proposal_hook(vec![WasmMsg::Execute {
+            contract_addr: gov.address().unwrap().to_string(),
+            msg: to_json_binary(&ExecuteMsg::Pause {
+                duration: Duration::Height(10),
+            })
+            .unwrap(),
+            funds: vec![],
+        }
+        .into()])
+        .unwrap();
 
-//     app.update_block(|block| block.height += 1);
-
-//     let paused: PauseInfoResponse = app
-//         .wrap()
-//         .query_wasm_smart(core_addr.clone(), &QueryMsg::PauseInfo {})
-//         .unwrap();
-//     assert_eq!(paused, PauseInfoResponse::Unpaused {});
-//     let all_state: DumpStateResponse = app
-//         .wrap()
-//         .query_wasm_smart(core_addr.clone(), &QueryMsg::DumpState {})
-//         .unwrap();
-//     assert_eq!(all_state.pause_info, PauseInfoResponse::Unpaused {});
-
-//     // Now its unpaused so we should be able to pause again.
-//     app.execute_contract(
-//         proposal_module.address,
-//         core_addr.clone(),
-//         &ExecuteMsg::ExecuteProposalHook {
-//             msgs: vec![WasmMsg::Execute {
-//                 contract_addr: core_addr.to_string(),
-//                 msg: to_json_binary(&ExecuteMsg::Pause {
-//                     duration: Duration::Height(10),
-//                 })
-//                 .unwrap(),
-//                 funds: vec![],
-//             }
-//             .into()],
-//         },
-//         &[],
-//     )
-//     .unwrap();
-
-//     let paused: PauseInfoResponse = app
-//         .wrap()
-//         .query_wasm_smart(core_addr.clone(), &QueryMsg::PauseInfo {})
-//         .unwrap();
-//     assert_eq!(
-//         paused,
-//         PauseInfoResponse::Paused {
-//             expiration: Expiration::AtHeight(start_height + 20)
-//         }
-//     );
-//     let all_state: DumpStateResponse = app
-//         .wrap()
-//         .query_wasm_smart(core_addr, &QueryMsg::DumpState {})
-//         .unwrap();
-//     assert_eq!(
-//         all_state.pause_info,
-//         PauseInfoResponse::Paused {
-//             expiration: Expiration::AtHeight(start_height + 20)
-//         }
-//     );
-// }
+    assert_eq!(
+        gov.pause_info().unwrap(),
+        PauseInfoResponse::Paused {
+            expiration: Expiration::AtHeight(start_height + 20)
+        }
+    );
+    assert_eq!(
+        gov.dump_state().unwrap().pause_info,
+        PauseInfoResponse::Paused {
+            expiration: Expiration::AtHeight(start_height + 20)
+        }
+    );
+}
 
 #[test]
 fn test_dump_state_proposal_modules() {
-    let (gov, proposal, mock, _) = do_standard_instantiate(false, false);
+    let (gov, _proposal, _mock, _) = do_standard_instantiate(false, false);
     let proposal_modules = gov.proposal_modules(None, None).unwrap();
 
     assert_eq!(proposal_modules.len(), 1);
@@ -2066,385 +1888,342 @@ fn test_dump_state_proposal_modules() {
     assert_eq!(all_state.proposal_modules[0], proposal_module);
 }
 
-// // Note that this isn't actually testing that we are migrating from the previous version since
-// // with multitest contract instantiation we can't manipulate storage to the previous version of state before invoking migrate. So if anything,
-// // this just tests the idempotency of migrate.
-// #[test]
-// fn test_migrate_from_compatible() {
-//     let mut app = App::default();
-//     let govmod_id = app.store_code(sudo_proposal_contract());
-//     let voting_id = app.store_code(cw20_balances_voting());
-//     let gov_id = app.store_code(cw_core_contract());
-//     let cw20_id = app.store_code(cw20_contract());
+// Note that this isn't actually testing that we are migrating from the previous version since
+// with multitest contract instantiation we can't manipulate storage to the previous version of state before invoking migrate. So if anything,
+// this just tests the idempotency of migrate.
+#[test]
+fn test_migrate_from_compatible() {
+    let mock = MockBech32::new("mock");
+    let govmod = DaoProposalSudo::new("proposal", mock.clone());
+    let voting = DaoVotingCw20Balance::new("dao-voting", mock.clone());
+    let gov = DaoDaoCore::new("dao-core", mock.clone());
+    let cw20 = Cw20Base::new("cw20", mock.clone());
 
-//     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
-//         root: mock.sender().to_string(),
-//     };
-//     let voting_instantiate = dao_voting_cw20_balance::msg::InstantiateMsg {
-//         token_info: dao_voting_cw20_balance::msg::TokenInfo::New {
-//             code_id: cw20_id,
-//             label: "DAO DAO voting".to_string(),
-//             name: "DAO DAO".to_string(),
-//             symbol: "DAO".to_string(),
-//             decimals: 6,
-//             initial_balances: vec![cw20::Cw20Coin {
-//                 address: mock.sender().to_string(),
-//                 amount: Uint128::from(2u64),
-//             }],
-//             marketing: None,
-//         },
-//     };
+    govmod.upload().unwrap();
+    voting.upload().unwrap();
+    gov.upload().unwrap();
+    cw20.upload().unwrap();
 
-//     // Instantiate the core module with an admin to do migrations.
-//     let gov_instantiate = InstantiateMsg {
-//         dao_uri: None,
-//         admin: None,
-//         name: "DAO DAO".to_string(),
-//         description: "A DAO that builds DAOs.".to_string(),
-//         image_url: None,
-//         automatically_add_cw20s: false,
-//         automatically_add_cw721s: false,
-//         voting_module_instantiate_info: ModuleInstantiateInfo {
-//             code_id: voting_id,
-//             msg: to_json_binary(&voting_instantiate).unwrap(),
-//             admin: Some(Admin::CoreModule {}),
-//             funds: vec![],
-//             label: "voting module".to_string(),
-//         },
-//         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
-//             code_id: govmod_id,
-//             msg: to_json_binary(&govmod_instantiate).unwrap(),
-//             admin: Some(Admin::CoreModule {}),
-//             funds: vec![],
-//             label: "governance module".to_string(),
-//         }],
-//         initial_items: None,
-//     };
+    let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
+        root: mock.sender().to_string(),
+    };
+    let voting_instantiate = dao_voting_cw20_balance::msg::InstantiateMsg {
+        token_info: dao_voting_cw20_balance::msg::TokenInfo::New {
+            code_id: cw20.code_id().unwrap(),
+            label: "DAO DAO voting".to_string(),
+            name: "DAO DAO".to_string(),
+            symbol: "DAO".to_string(),
+            decimals: 6,
+            initial_balances: vec![cw20::Cw20Coin {
+                address: mock.sender().to_string(),
+                amount: Uint128::from(2u64),
+            }],
+            marketing: None,
+        },
+    };
 
-//     let core_addr = app
-//         .instantiate_contract(
-//             gov_id,
-//             Addr::unchecked(mock.sender()),
-//             &gov_instantiate,
-//             &[],
-//             "cw-governance",
-//             Some(mock.sender().to_string()),
-//         )
-//         .unwrap();
+    // Instantiate the core module with an admin to do migrations.
+    let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
+        admin: None,
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs.".to_string(),
+        image_url: None,
+        automatically_add_cw20s: false,
+        automatically_add_cw721s: false,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: voting.code_id().unwrap(),
+            msg: to_json_binary(&voting_instantiate).unwrap(),
+            admin: Some(Admin::CoreModule {}),
+            funds: vec![],
+            label: "voting module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
+            code_id: govmod.code_id().unwrap(),
+            msg: to_json_binary(&govmod_instantiate).unwrap(),
+            admin: Some(Admin::CoreModule {}),
+            funds: vec![],
+            label: "governance module".to_string(),
+        }],
+        initial_items: None,
+    };
 
-//     let state: DumpStateResponse = app
-//         .wrap()
-//         .query_wasm_smart(core_addr.clone(), &QueryMsg::DumpState {})
-//         .unwrap();
+    gov.instantiate(&gov_instantiate, Some(&mock.sender()), None)
+        .unwrap();
 
-//     app.execute(
-//         Addr::unchecked(mock.sender()),
-//         CosmosMsg::Wasm(WasmMsg::Migrate {
-//             contract_addr: core_addr.to_string(),
-//             new_code_id: gov_id,
-//             msg: to_json_binary(&MigrateMsg::FromCompatible {}).unwrap(),
-//         }),
-//     )
-//     .unwrap();
+    let state = gov.dump_state().unwrap();
 
-//     let new_state: DumpStateResponse = app
-//         .wrap()
-//         .query_wasm_smart(core_addr, &QueryMsg::DumpState {})
-//         .unwrap();
+    gov.migrate(&MigrateMsg::FromCompatible {}, gov.code_id().unwrap())
+        .unwrap();
 
-//     assert_eq!(new_state, state);
-// }
+    let new_state = gov.dump_state().unwrap();
 
-// #[test]
-// fn test_migrate_from_beta() {
-//     use cw_core_v1 as v1;
+    assert_eq!(new_state, state);
+}
 
-//     let mut app = App::default();
-//     let govmod_id = app.store_code(sudo_proposal_contract());
-//     let voting_id = app.store_code(cw20_balances_voting());
-//     let core_id = app.store_code(cw_core_contract());
-//     let v1_core_id = app.store_code(v1_cw_core_contract());
-//     let cw20_id = app.store_code(cw20_contract());
+#[test]
+fn test_migrate_from_beta() {
+    use cw_core_v1 as v1;
 
-//     let proposal_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
-//         root: mock.sender().to_string(),
-//     };
-//     let voting_instantiate = dao_voting_cw20_balance::msg::InstantiateMsg {
-//         token_info: dao_voting_cw20_balance::msg::TokenInfo::New {
-//             code_id: cw20_id,
-//             label: "DAO DAO voting".to_string(),
-//             name: "DAO DAO".to_string(),
-//             symbol: "DAO".to_string(),
-//             decimals: 6,
-//             initial_balances: vec![cw20::Cw20Coin {
-//                 address: mock.sender().to_string(),
-//                 amount: Uint128::from(2u64),
-//             }],
-//             marketing: None,
-//         },
-//     };
+    let mock = MockBech32::new("mock");
+    let govmod = DaoProposalSudo::new("proposal", mock.clone());
+    let voting = DaoVotingCw20Balance::new("dao-voting", mock.clone());
+    let gov = DaoDaoCore::new("dao-core", mock.clone());
+    let v1_gov = DaoDaoCoreV1::new("dao-core-v1", mock.clone());
+    let cw20 = Cw20Base::new("cw20", mock.clone());
 
-//     // Instantiate the core module with an admin to do migrations.
-//     let v1_core_instantiate = v1::msg::InstantiateMsg {
-//         admin: None,
-//         name: "DAO DAO".to_string(),
-//         description: "A DAO that builds DAOs.".to_string(),
-//         image_url: None,
-//         automatically_add_cw20s: false,
-//         automatically_add_cw721s: false,
-//         voting_module_instantiate_info: v1::msg::ModuleInstantiateInfo {
-//             code_id: voting_id,
-//             msg: to_json_binary(&voting_instantiate).unwrap(),
-//             admin: v1::msg::Admin::CoreContract {},
-//             label: "voting module".to_string(),
-//         },
-//         proposal_modules_instantiate_info: vec![
-//             v1::msg::ModuleInstantiateInfo {
-//                 code_id: govmod_id,
-//                 msg: to_json_binary(&proposal_instantiate).unwrap(),
-//                 admin: v1::msg::Admin::CoreContract {},
-//                 label: "governance module 1".to_string(),
-//             },
-//             v1::msg::ModuleInstantiateInfo {
-//                 code_id: govmod_id,
-//                 msg: to_json_binary(&proposal_instantiate).unwrap(),
-//                 admin: v1::msg::Admin::CoreContract {},
-//                 label: "governance module 2".to_string(),
-//             },
-//         ],
-//         initial_items: None,
-//     };
+    govmod.upload().unwrap();
+    voting.upload().unwrap();
+    gov.upload().unwrap();
+    v1_gov.upload().unwrap();
+    cw20.upload().unwrap();
 
-//     let core_addr = app
-//         .instantiate_contract(
-//             v1_core_id,
-//             Addr::unchecked(mock.sender()),
-//             &v1_core_instantiate,
-//             &[],
-//             "cw-governance",
-//             Some(mock.sender().to_string()),
-//         )
-//         .unwrap();
+    let proposal_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
+        root: mock.sender().to_string(),
+    };
+    let voting_instantiate = dao_voting_cw20_balance::msg::InstantiateMsg {
+        token_info: dao_voting_cw20_balance::msg::TokenInfo::New {
+            code_id: cw20.code_id().unwrap(),
+            label: "DAO DAO voting".to_string(),
+            name: "DAO DAO".to_string(),
+            symbol: "DAO".to_string(),
+            decimals: 6,
+            initial_balances: vec![cw20::Cw20Coin {
+                address: mock.sender().to_string(),
+                amount: Uint128::from(2u64),
+            }],
+            marketing: None,
+        },
+    };
 
-//     app.execute(
-//         Addr::unchecked(mock.sender()),
-//         CosmosMsg::Wasm(WasmMsg::Migrate {
-//             contract_addr: core_addr.to_string(),
-//             new_code_id: core_id,
-//             msg: to_json_binary(&MigrateMsg::FromV1 {
-//                 dao_uri: None,
-//                 params: None,
-//             })
-//             .unwrap(),
-//         }),
-//     )
-//     .unwrap();
+    // Instantiate the core module with an admin to do migrations.
+    let v1_core_instantiate = v1::msg::InstantiateMsg {
+        admin: None,
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs.".to_string(),
+        image_url: None,
+        automatically_add_cw20s: false,
+        automatically_add_cw721s: false,
+        voting_module_instantiate_info: v1::msg::ModuleInstantiateInfo {
+            code_id: voting.code_id().unwrap(),
+            msg: to_json_binary(&voting_instantiate).unwrap(),
+            admin: v1::msg::Admin::CoreContract {},
+            label: "voting module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![
+            v1::msg::ModuleInstantiateInfo {
+                code_id: govmod.code_id().unwrap(),
+                msg: to_json_binary(&proposal_instantiate).unwrap(),
+                admin: v1::msg::Admin::CoreContract {},
+                label: "governance module 1".to_string(),
+            },
+            v1::msg::ModuleInstantiateInfo {
+                code_id: govmod.code_id().unwrap(),
+                msg: to_json_binary(&proposal_instantiate).unwrap(),
+                admin: v1::msg::Admin::CoreContract {},
+                label: "governance module 2".to_string(),
+            },
+        ],
+        initial_items: None,
+    };
 
-//     let new_state: DumpStateResponse = app
-//         .wrap()
-//         .query_wasm_smart(&core_addr, &QueryMsg::DumpState {})
-//         .unwrap();
+    v1_gov
+        .instantiate(&v1_core_instantiate, Some(&mock.sender()), None)
+        .unwrap();
 
-//     let proposal_modules = new_state.proposal_modules;
-//     assert_eq!(2, proposal_modules.len());
-//     for (idx, module) in proposal_modules.iter().enumerate() {
-//         let prefix = derive_proposal_module_prefix(idx).unwrap();
-//         assert_eq!(prefix, module.prefix);
-//         assert_eq!(ProposalModuleStatus::Enabled, module.status);
-//     }
+    gov.set_address(&v1_gov.address().unwrap());
+    gov.migrate(
+        &MigrateMsg::FromV1 {
+            dao_uri: None,
+            params: None,
+        },
+        gov.code_id().unwrap(),
+    )
+    .unwrap();
 
-//     // Check that we may not migrate more than once.
-//     let err: ContractError = app
-//         .execute(
-//             Addr::unchecked(mock.sender()),
-//             CosmosMsg::Wasm(WasmMsg::Migrate {
-//                 contract_addr: core_addr.to_string(),
-//                 new_code_id: core_id,
-//                 msg: to_json_binary(&MigrateMsg::FromV1 {
-//                     dao_uri: None,
-//                     params: None,
-//                 })
-//                 .unwrap(),
-//             }),
-//         )
-//         .unwrap_err()
-//         .downcast()
-//         .unwrap();
-//     assert_eq!(err, ContractError::AlreadyMigrated {})
-// }
+    let new_state = gov.dump_state().unwrap();
 
-// #[test]
-// fn test_migrate_mock() {
-//     let mut deps = mock_dependencies();
-//     let dao_uri: String = "/dao/uri".to_string();
-//     let msg = MigrateMsg::FromV1 {
-//         dao_uri: Some(dao_uri.clone()),
-//         params: None,
-//     };
-//     let env = mock_env();
+    let proposal_modules = new_state.proposal_modules;
+    assert_eq!(2, proposal_modules.len());
+    for (idx, module) in proposal_modules.iter().enumerate() {
+        let prefix = derive_proposal_module_prefix(idx).unwrap();
+        assert_eq!(prefix, module.prefix);
+        assert_eq!(ProposalModuleStatus::Enabled, module.status);
+    }
 
-//     // Set starting version to v1.
-//     set_contract_version(&mut deps.storage, CONTRACT_NAME, "0.1.0").unwrap();
+    // Check that we may not migrate more than once.
+    let err = gov
+        .migrate(
+            &MigrateMsg::FromV1 {
+                dao_uri: None,
+                params: None,
+            },
+            gov.code_id().unwrap(),
+        )
+        .unwrap_err();
 
-//     // Write to storage in old proposal module format
-//     let proposal_modules_key = Addr::unchecked("addr");
-//     let old_map: Map<Addr, Empty> = Map::new("proposal_modules");
-//     let path = old_map.key(proposal_modules_key.clone());
-//     deps.storage.set(&path, &to_json_binary(&Empty {}).unwrap());
+    assert_contains(err, ContractError::AlreadyMigrated {})
+}
 
-//     // Write to storage in old config format
-//     #[cw_serde]
-//     struct V1Config {
-//         pub name: String,
-//         pub description: String,
-//         pub image_url: Option<String>,
-//         pub automatically_add_cw20s: bool,
-//         pub automatically_add_cw721s: bool,
-//     }
+#[test]
+fn test_migrate_mock() {
+    let mut deps = mock_dependencies();
+    let dao_uri: String = "/dao/uri".to_string();
+    let msg = MigrateMsg::FromV1 {
+        dao_uri: Some(dao_uri.clone()),
+        params: None,
+    };
+    let env = mock_env();
 
-//     let v1_config = V1Config {
-//         name: "core dao".to_string(),
-//         description: "a dao".to_string(),
-//         image_url: None,
-//         automatically_add_cw20s: false,
-//         automatically_add_cw721s: false,
-//     };
+    // Set starting version to v1.
+    set_contract_version(&mut deps.storage, CONTRACT_NAME, "0.1.0").unwrap();
 
-//     let config_item: Item<V1Config> = Item::new("config");
-//     config_item.save(&mut deps.storage, &v1_config).unwrap();
+    // Write to storage in old proposal module format
+    let proposal_modules_key = Addr::unchecked("addr");
+    let old_map: Map<Addr, Empty> = Map::new("proposal_modules");
+    let path = old_map.key(proposal_modules_key.clone());
+    deps.storage.set(&path, &to_json_binary(&Empty {}).unwrap());
 
-//     // Migrate to v2
-//     migrate(deps.as_mut(), env, msg).unwrap();
+    // Write to storage in old config format
+    #[cw_serde]
+    struct V1Config {
+        pub name: String,
+        pub description: String,
+        pub image_url: Option<String>,
+        pub automatically_add_cw20s: bool,
+        pub automatically_add_cw721s: bool,
+    }
 
-//     let new_path = PROPOSAL_MODULES.key(proposal_modules_key);
-//     let prop_module_bytes = deps.storage.get(&new_path).unwrap();
-//     let module: ProposalModule = from_json(prop_module_bytes).unwrap();
-//     assert_eq!(module.address, Addr::unchecked("addr"));
-//     assert_eq!(module.prefix, derive_proposal_module_prefix(0).unwrap());
-//     assert_eq!(module.status, ProposalModuleStatus::Enabled {});
+    let v1_config = V1Config {
+        name: "core dao".to_string(),
+        description: "a dao".to_string(),
+        image_url: None,
+        automatically_add_cw20s: false,
+        automatically_add_cw721s: false,
+    };
 
-//     let v2_config_item: Item<Config> = Item::new("config_v2");
-//     let v2_config = v2_config_item.load(&deps.storage).unwrap();
-//     assert_eq!(v2_config.dao_uri, Some(dao_uri));
-//     assert_eq!(v2_config.name, v1_config.name);
-//     assert_eq!(v2_config.description, v1_config.description);
-//     assert_eq!(v2_config.image_url, v1_config.image_url);
-//     assert_eq!(
-//         v2_config.automatically_add_cw20s,
-//         v1_config.automatically_add_cw20s
-//     );
-//     assert_eq!(
-//         v2_config.automatically_add_cw721s,
-//         v1_config.automatically_add_cw721s
-//     )
-// }
+    let config_item: Item<V1Config> = Item::new("config");
+    config_item.save(&mut deps.storage, &v1_config).unwrap();
 
-// #[test]
-// fn test_execute_stargate_msg() {
-//     let (gov, proposal, mock, _) = do_standard_instantiate(true, None);
-//     let proposal_modules: Vec<ProposalModule> = app
-//         .wrap()
-//         .query_wasm_smart(
-//             core_addr.clone(),
-//             &QueryMsg::ProposalModules {
-//                 start_after: None,
-//                 limit: None,
-//             },
-//         )
-//         .unwrap();
+    // Migrate to v2
+    migrate(deps.as_mut(), env, msg).unwrap();
 
-//     assert_eq!(proposal_modules.len(), 1);
-//     let proposal_module = proposal_modules.into_iter().next().unwrap();
+    let new_path = PROPOSAL_MODULES.key(proposal_modules_key);
+    let prop_module_bytes = deps.storage.get(&new_path).unwrap();
+    let module: ProposalModule = from_json(prop_module_bytes).unwrap();
+    assert_eq!(module.address, Addr::unchecked("addr"));
+    assert_eq!(module.prefix, derive_proposal_module_prefix(0).unwrap());
+    assert_eq!(module.status, ProposalModuleStatus::Enabled {});
 
-//     let res = app.execute_contract(
-//         proposal_module.address,
-//         core_addr,
-//         &ExecuteMsg::ExecuteProposalHook {
-//             msgs: vec![CosmosMsg::Stargate {
-//                 type_url: "foo_type".to_string(),
-//                 value: to_json_binary("foo_bin").unwrap(),
-//             }],
-//         },
-//         &[],
-//     );
-//     // TODO: Once cw-multi-test supports executing stargate/ibc messages we can change this test assert
-//     assert!(res.is_err());
-// }
+    let v2_config_item: Item<Config> = Item::new("config_v2");
+    let v2_config = v2_config_item.load(&deps.storage).unwrap();
+    assert_eq!(v2_config.dao_uri, Some(dao_uri));
+    assert_eq!(v2_config.name, v1_config.name);
+    assert_eq!(v2_config.description, v1_config.description);
+    assert_eq!(v2_config.image_url, v1_config.image_url);
+    assert_eq!(
+        v2_config.automatically_add_cw20s,
+        v1_config.automatically_add_cw20s
+    );
+    assert_eq!(
+        v2_config.automatically_add_cw721s,
+        v1_config.automatically_add_cw721s
+    )
+}
 
-// #[test]
-// fn test_module_prefixes() {
-//     let mock = MockBech32::new("mock");
-//     let gov_mod = DaoProposalSudo::new("proposal", mock.clone());
-//     let gov = DaoDaoCore::new("dao-core", mock.clone());
-//     gov_mod.upload().unwrap();
-//     let govmod_id = gov_mod.code_id().unwrap();
-//     gov.upload().unwrap();
+#[test]
+fn test_execute_stargate_msg() {
+    let (gov, _proposal, _mock, _) = do_standard_instantiate(true, false);
+    let proposal_modules = gov.proposal_modules(None, None).unwrap();
 
-//     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
-//         root: mock.sender().to_string(),
-//     };
+    assert_eq!(proposal_modules.len(), 1);
+    let proposal_module = proposal_modules.into_iter().next().unwrap();
 
-//     let gov_instantiate = InstantiateMsg {
-//         dao_uri: None,
-//         admin: None,
-//         name: "DAO DAO".to_string(),
-//         description: "A DAO that builds DAOs.".to_string(),
-//         image_url: None,
-//         automatically_add_cw20s: true,
-//         automatically_add_cw721s: true,
-//         voting_module_instantiate_info: ModuleInstantiateInfo {
-//             code_id: govmod_id,
-//             msg: to_json_binary(&govmod_instantiate).unwrap(),
-//             admin: Some(Admin::CoreModule {}),
-//             funds: vec![],
-//             label: "voting module".to_string(),
-//         },
-//         proposal_modules_instantiate_info: vec![
-//             ModuleInstantiateInfo {
-//                 code_id: govmod_id,
-//                 msg: to_json_binary(&govmod_instantiate).unwrap(),
-//                 admin: Some(Admin::CoreModule {}),
-//                 funds: vec![],
-//                 label: "proposal module 1".to_string(),
-//             },
-//             ModuleInstantiateInfo {
-//                 code_id: govmod_id,
-//                 msg: to_json_binary(&govmod_instantiate).unwrap(),
-//                 admin: Some(Admin::CoreModule {}),
-//                 funds: vec![],
-//                 label: "proposal module 2".to_string(),
-//             },
-//             ModuleInstantiateInfo {
-//                 code_id: govmod_id,
-//                 msg: to_json_binary(&govmod_instantiate).unwrap(),
-//                 admin: Some(Admin::CoreModule {}),
-//                 funds: vec![],
-//                 label: "proposal module 2".to_string(),
-//             },
-//         ],
-//         initial_items: None,
-//     };
+    let res = gov
+        .call_as(&proposal_module.address)
+        .execute_proposal_hook(vec![CosmosMsg::Stargate {
+            type_url: "foo_type".to_string(),
+            value: to_json_binary("foo_bin").unwrap(),
+        }]);
 
-//     let gov_addr = gov.instantiate(&gov_instantiate, None, None).unwrap();
+    // TODO: Once cw-multi-test supports executing stargate/ibc messages we can change this test assert
+    assert!(res.is_err());
+}
 
-//     let modules = gov.proposal_modules(None, None).unwrap();
-//     assert_eq!(modules.len(), 3);
+#[test]
+fn test_module_prefixes() {
+    let mock = MockBech32::new("mock");
+    let gov_mod = DaoProposalSudo::new("proposal", mock.clone());
+    let gov = DaoDaoCore::new("dao-core", mock.clone());
+    gov_mod.upload().unwrap();
+    let govmod_id = gov_mod.code_id().unwrap();
+    gov.upload().unwrap();
 
-//     let module_1 = &modules[0];
-//     assert_eq!(module_1.status, ProposalModuleStatus::Enabled {});
-//     assert_eq!(module_1.prefix, "A");
-//     assert_eq!(&module_1.address, &modules[0].address);
+    let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
+        root: mock.sender().to_string(),
+    };
 
-//     let module_2 = &modules[1];
-//     assert_eq!(module_2.status, ProposalModuleStatus::Enabled {});
-//     assert_eq!(module_2.prefix, "B");
-//     assert_eq!(&module_2.address, &modules[1].address);
+    let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
+        admin: None,
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs.".to_string(),
+        image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: true,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: govmod_id,
+            msg: to_json_binary(&govmod_instantiate).unwrap(),
+            admin: Some(Admin::CoreModule {}),
+            funds: vec![],
+            label: "voting module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![
+            ModuleInstantiateInfo {
+                code_id: govmod_id,
+                msg: to_json_binary(&govmod_instantiate).unwrap(),
+                admin: Some(Admin::CoreModule {}),
+                funds: vec![],
+                label: "proposal module 1".to_string(),
+            },
+            ModuleInstantiateInfo {
+                code_id: govmod_id,
+                msg: to_json_binary(&govmod_instantiate).unwrap(),
+                admin: Some(Admin::CoreModule {}),
+                funds: vec![],
+                label: "proposal module 2".to_string(),
+            },
+            ModuleInstantiateInfo {
+                code_id: govmod_id,
+                msg: to_json_binary(&govmod_instantiate).unwrap(),
+                admin: Some(Admin::CoreModule {}),
+                funds: vec![],
+                label: "proposal module 2".to_string(),
+            },
+        ],
+        initial_items: None,
+    };
 
-//     let module_3 = &modules[2];
-//     assert_eq!(module_3.status, ProposalModuleStatus::Enabled {});
-//     assert_eq!(module_3.prefix, "C");
-//     assert_eq!(&module_3.address, &modules[2].address);
-// }
+    gov.instantiate(&gov_instantiate, None, None).unwrap();
+
+    let modules = gov.proposal_modules(None, None).unwrap();
+    assert_eq!(modules.len(), 3);
+
+    let module_1 = &modules[0];
+    assert_eq!(module_1.status, ProposalModuleStatus::Enabled {});
+    assert_eq!(module_1.prefix, "A");
+    assert_eq!(&module_1.address, &modules[0].address);
+
+    let module_2 = &modules[1];
+    assert_eq!(module_2.status, ProposalModuleStatus::Enabled {});
+    assert_eq!(module_2.prefix, "C");
+    assert_eq!(&module_2.address, &modules[1].address);
+
+    let module_3 = &modules[2];
+    assert_eq!(module_3.status, ProposalModuleStatus::Enabled {});
+    assert_eq!(module_3.prefix, "B");
+    assert_eq!(&module_3.address, &modules[2].address);
+}
 
 fn get_active_modules<Chain: CwEnv>(gov: &DaoDaoCore<Chain>) -> Vec<ProposalModule> {
     let modules = gov.proposal_modules(None, None).unwrap();
