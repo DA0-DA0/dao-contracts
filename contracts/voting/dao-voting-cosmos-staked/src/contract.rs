@@ -103,7 +103,7 @@ pub fn query_total_power_at_height(
         return Ok(TotalPowerAtHeightResponse { power, height });
     }
 
-    return Err(StdError::not_found("total staked balance"));
+    Err(StdError::not_found("total staked balance"))
 }
 
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
