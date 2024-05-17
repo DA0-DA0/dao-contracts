@@ -35,7 +35,7 @@ abstract-cw-plus-interface = "2.0.1"
 abstract-cw20 = "2.0.0"
 abstract-cw20-base = "2.0.0"
 cw-multi-test = { workspace = true, features = ["stargate"] }
-cw-orch = "0.22.2"
+cw-orch = {workspace = true}
 cw20-base = { workspace = true }
 cw721-base = { workspace = true }
 dao-cw-orch = { path = "../../packages/cw-orch" }

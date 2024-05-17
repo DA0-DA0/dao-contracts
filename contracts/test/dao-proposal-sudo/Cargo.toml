@@ -24,7 +24,7 @@ cw2 = { workspace = true }
 thiserror = { workspace = true }
 dao-dao-macros = { workspace = true }
 dao-interface = { workspace = true }
-cw-orch = "0.22.2"
+cw-orch = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
