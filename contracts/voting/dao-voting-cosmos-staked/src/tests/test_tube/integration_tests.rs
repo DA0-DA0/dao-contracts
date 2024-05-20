@@ -117,8 +117,6 @@ fn test_staked_voting_power_and_update() {
         )
         .unwrap();
 
-    app.increase_time(1);
-
     // Query voting power
     let voting_power = vp_contract.query_vp(&accounts[0].address(), None).unwrap();
     assert_eq!(voting_power.power, Uint128::new(100));
@@ -144,8 +142,6 @@ fn test_staked_voting_power_and_update() {
             bot,
         )
         .unwrap();
-
-    app.increase_time(1);
 
     // Query total power
     let total_power = vp_contract.query_tp(None).unwrap();
