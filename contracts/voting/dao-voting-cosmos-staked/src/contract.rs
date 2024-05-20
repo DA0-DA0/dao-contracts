@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128,
+    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use cw2::set_contract_version;
 use dao_interface::voting::{TotalPowerAtHeightResponse, VotingPowerAtHeightResponse};
@@ -95,15 +95,13 @@ pub fn query_total_power_at_height(
     height: Option<u64>,
 ) -> StdResult<TotalPowerAtHeightResponse> {
     let height = height.unwrap_or(env.block.height);
-    let power = STAKED_TOTAL.may_load_at_height(deps.storage, height)?;
+    // Total staked amount is initialized to a value during contract
+    // instantiation. Any block before that block returns 0.
+    let power = STAKED_TOTAL
+        .may_load_at_height(deps.storage, height)?
+        .unwrap_or_default();
 
-    // We should always have history since we initialize the contract with a
-    // total staked amount.
-    if let Some(power) = power {
-        return Ok(TotalPowerAtHeightResponse { power, height });
-    }
-
-    Err(StdError::not_found("total staked balance"))
+    Ok(TotalPowerAtHeightResponse { power, height })
 }
 
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
