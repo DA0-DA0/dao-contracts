@@ -4,17 +4,14 @@ use crate::{
 };
 use cosmwasm_std::{to_json_binary, Addr, Coin, CosmosMsg, Uint128};
 use dao_voting::voting::{SingleChoiceAutoVote, Vote};
-use osmosis_std::{
-    shim::Any,
-    types::{
-        cosmos::{
-            authz::v1beta1::{Grant, MsgExec, MsgGrant},
-            staking::v1beta1::{CommissionRates, Description, MsgCreateValidator, MsgDelegate},
-        },
-        cosmwasm::wasm::v1::{
-            AcceptedMessageKeysFilter, ContractExecutionAuthorization, ContractGrant,
-            MaxCallsLimit, MsgExecuteContract,
-        },
+use osmosis_std::types::{
+    cosmos::{
+        authz::v1beta1::{Grant, MsgExec, MsgGrant},
+        staking::v1beta1::MsgDelegate,
+    },
+    cosmwasm::wasm::v1::{
+        AcceptedMessageKeysFilter, ContractExecutionAuthorization, ContractGrant, MaxCallsLimit,
+        MsgExecuteContract,
     },
 };
 use osmosis_test_tube::{Account, Module, OsmosisTestApp};
@@ -51,59 +48,22 @@ fn test_staked_voting_power_and_update() {
     let dao = _dao.unwrap();
     let proposal_single = _proposal_single.unwrap();
 
-    let validator = &accounts[0];
-    let staker = &accounts[1];
-    let bot = &accounts[2];
-
-    let prefix = validator.prefix();
-    let valoper = validator
-        .public_key()
-        .account_id(format!("{prefix}valoper").as_str())
-        .unwrap();
+    let staker = &accounts[0];
+    let bot = &accounts[1];
 
     let authz = Authz::new(&app);
     let staking = Staking::new(&app);
 
     staking
-        .create_validator(
-            MsgCreateValidator {
-                description: Some(Description {
-                    moniker: "validator".to_string(),
-                    identity: "validator".to_string(),
-                    website: "validator".to_string(),
-                    security_contact: "validator".to_string(),
-                    details: "validator".to_string(),
-                }),
-                commission: Some(CommissionRates {
-                    rate: "1".to_string(),
-                    max_rate: "1".to_string(),
-                    max_change_rate: "1".to_string(),
-                }),
-                min_self_delegation: "1".to_string(),
-                delegator_address: validator.address(),
-                validator_address: valoper.to_string(),
-                pubkey: Some(Any {
-                    type_url: validator.public_key().type_url().to_string(),
-                    value: validator.public_key().to_any().unwrap().value,
-                }),
-                value: Some(Coin::new(1, DENOM).into()),
-            },
-            validator,
-        )
-        .unwrap();
-
-    staking
         .delegate(
             MsgDelegate {
                 delegator_address: staker.address(),
-                validator_address: valoper.to_string(),
+                validator_address: app.get_first_validator_address().unwrap(),
                 amount: Some(Coin::new(100, DENOM).into()),
             },
             staker,
         )
         .unwrap();
-
-    app.increase_time(1);
 
     // Authz grant bot to execute
     proposal_single
@@ -157,6 +117,8 @@ fn test_staked_voting_power_and_update() {
         )
         .unwrap();
 
+    app.increase_time(1);
+
     // Query voting power
     let voting_power = vp_contract.query_vp(&accounts[0].address(), None).unwrap();
     assert_eq!(voting_power.power, Uint128::new(100));
@@ -182,6 +144,8 @@ fn test_staked_voting_power_and_update() {
             bot,
         )
         .unwrap();
+
+    app.increase_time(1);
 
     // Query total power
     let total_power = vp_contract.query_tp(None).unwrap();
