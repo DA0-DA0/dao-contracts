@@ -6,7 +6,10 @@ use dao_interface::voting::{
     InfoResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
 
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::{
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    ContractError,
+};
 
 fn cosmos_staked_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -88,6 +91,22 @@ fn happy_path() {
         }),
     )
     .unwrap();
+
+    // Error if non-DAO attempts to update total staked.
+    let error: ContractError = app
+        .execute_contract(
+            Addr::unchecked(DELEGATOR),
+            vp_contract.clone(),
+            &ExecuteMsg::UpdateTotalStaked {
+                amount: Uint128::new(100000),
+                height: None,
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(error, ContractError::Unauthorized {});
 
     // Update total staked manually (responsibility of DAO).
     app.execute_contract(
