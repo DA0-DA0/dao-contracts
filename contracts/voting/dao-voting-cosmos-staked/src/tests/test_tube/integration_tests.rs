@@ -9,7 +9,7 @@ use osmosis_std::{
     types::{
         cosmos::{
             authz::v1beta1::{Grant, MsgExec, MsgGrant},
-            staking::v1beta1::{MsgCreateValidator, MsgDelegate},
+            staking::v1beta1::{CommissionRates, Description, MsgCreateValidator, MsgDelegate},
         },
         cosmwasm::wasm::v1::{
             AcceptedMessageKeysFilter, ContractExecutionAuthorization, ContractGrant,
@@ -67,8 +67,18 @@ fn test_staked_voting_power_and_update() {
     staking
         .create_validator(
             MsgCreateValidator {
-                description: None,
-                commission: None,
+                description: Some(Description {
+                    moniker: "validator".to_string(),
+                    identity: "validator".to_string(),
+                    website: "validator".to_string(),
+                    security_contact: "validator".to_string(),
+                    details: "validator".to_string(),
+                }),
+                commission: Some(CommissionRates {
+                    rate: "1".to_string(),
+                    max_rate: "1".to_string(),
+                    max_change_rate: "1".to_string(),
+                }),
                 min_self_delegation: "1".to_string(),
                 delegator_address: validator.address(),
                 validator_address: valoper.to_string(),
@@ -78,7 +88,7 @@ fn test_staked_voting_power_and_update() {
                 }),
                 value: Some(Coin::new(1, DENOM).into()),
             },
-            &validator,
+            validator,
         )
         .unwrap();
 
@@ -89,7 +99,7 @@ fn test_staked_voting_power_and_update() {
                 validator_address: valoper.to_string(),
                 amount: Some(Coin::new(100, DENOM).into()),
             },
-            &staker,
+            staker,
         )
         .unwrap();
 
