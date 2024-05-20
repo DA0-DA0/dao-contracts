@@ -163,8 +163,8 @@ impl TestEnvBuilder {
                 msg: to_json_binary(&dao_proposal_single::msg::InstantiateMsg {
                     min_voting_period: None,
                     threshold: Threshold::ThresholdQuorum {
-                        threshold: PercentageThreshold::Majority {},
-                        quorum: PercentageThreshold::Percent(Decimal::percent(35)),
+                        threshold: PercentageThreshold::Percent(Decimal::percent(1)),
+                        quorum: PercentageThreshold::Percent(Decimal::percent(1)),
                     },
                     max_voting_period: Duration::Time(432000),
                     allow_revoting: false,
