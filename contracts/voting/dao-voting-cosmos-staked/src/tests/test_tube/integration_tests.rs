@@ -98,7 +98,7 @@ fn test_staked_voting_power_and_update() {
                         }
                         .into(),
                     }],
-                    proposer: Some(staker.address()),
+                    proposer: None,
                     vote: Some(SingleChoiceAutoVote {
                         vote: Vote::Yes,
                         rationale: None,
