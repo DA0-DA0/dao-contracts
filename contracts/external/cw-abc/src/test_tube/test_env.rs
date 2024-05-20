@@ -234,7 +234,17 @@ impl TestEnvBuilder {
                 funding_pool_forwarding: Some(accounts[0].address()),
                 supply: SupplyToken {
                     subdenom: DENOM.to_string(),
-                    metadata: None,
+                    metadata: Some(NewDenomMetadata {
+                        description: "Awesome token, get it meow!".to_string(),
+                        additional_denom_units: Some(vec![DenomUnit {
+                            denom: "cat".to_string(),
+                            exponent: 6,
+                            aliases: vec![],
+                        }]),
+                        display: "cat".to_string(),
+                        name: "Cat Token".to_string(),
+                        symbol: "CAT".to_string(),
+                    }),
                     decimals: 6,
                     max_supply: Some(Uint128::from(1_000_000_000u128)),
                 },
@@ -296,6 +306,12 @@ impl TestEnvBuilder {
         msg.token_issuer_code_id = issuer_id;
 
         msg.funding_pool_forwarding = Some(accounts[0].address());
+
+        if let Some(allowlist) = msg.hatcher_allowlist.as_mut() {
+            for member in allowlist {
+                member.addr = accounts[9].address();
+            }
+        }
 
         let abc = CwAbc::deploy(app, &msg, &accounts[0])?;
 
