@@ -101,8 +101,8 @@ fn test_staked_voting_power_and_update() {
                                     .to_any(),
                                 ),
                                 expiration: Some(osmosis_std::shim::Timestamp {
-                                    seconds: expiration.seconds(),
-                                    nanos: expiration.subsec_nanos(),
+                                    seconds: expiration.seconds() as i64,
+                                    nanos: expiration.subsec_nanos() as i32,
                                 }),
                             }),
                         }
