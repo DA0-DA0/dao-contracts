@@ -69,7 +69,10 @@ fn test_staked_voting_power_and_update() {
     let voting_power = vp_contract.query_vp(&accounts[0].address(), None).unwrap();
     assert_eq!(voting_power.power, Uint128::new(100));
 
-    // Authz grant bot to execute
+    let expiration = app.get_block_timestamp().plus_days(1);
+
+    // Authz grant bot to execute by creating a proposal, voting on it, and
+    // executing it.
     proposal_single
         .execute(
             &dao_proposal_single::msg::ExecuteMsg::Propose(
@@ -97,7 +100,10 @@ fn test_staked_voting_power_and_update() {
                                     }
                                     .to_any(),
                                 ),
-                                expiration: Some(app.get_block_timestamp().plus_seconds(5)),
+                                expiration: Some(osmosis_std::shim::Timestamp {
+                                    seconds: expiration.seconds(),
+                                    nanos: expiration.subsec_nanos(),
+                                }),
                             }),
                         }
                         .into(),
