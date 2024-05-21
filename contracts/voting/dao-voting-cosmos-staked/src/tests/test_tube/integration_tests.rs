@@ -65,6 +65,10 @@ fn test_staked_voting_power_and_update() {
         )
         .unwrap();
 
+    // Query voting power
+    let voting_power = vp_contract.query_vp(&accounts[0].address(), None).unwrap();
+    assert_eq!(voting_power.power, Uint128::new(100));
+
     // Authz grant bot to execute
     proposal_single
         .execute(
@@ -93,7 +97,7 @@ fn test_staked_voting_power_and_update() {
                                     }
                                     .to_any(),
                                 ),
-                                expiration: None,
+                                expiration: Some(app.get_block_timestamp().plus_seconds(5)),
                             }),
                         }
                         .into(),
@@ -109,6 +113,9 @@ fn test_staked_voting_power_and_update() {
             staker,
         )
         .unwrap();
+
+    app.increase_time(10);
+
     proposal_single
         .execute(
             &dao_proposal_single::msg::ExecuteMsg::Execute { proposal_id: 1 },
@@ -116,10 +123,6 @@ fn test_staked_voting_power_and_update() {
             staker,
         )
         .unwrap();
-
-    // Query voting power
-    let voting_power = vp_contract.query_vp(&accounts[0].address(), None).unwrap();
-    assert_eq!(voting_power.power, Uint128::new(100));
 
     // Update total power from bot via authz exec on behalf of DAO
     authz
