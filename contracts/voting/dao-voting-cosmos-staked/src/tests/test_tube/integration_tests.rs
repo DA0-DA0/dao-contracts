@@ -73,7 +73,7 @@ fn test_staked_voting_power_and_update() {
                     title: "authz".to_string(),
                     description: "authz".to_string(),
                     msgs: vec![CosmosMsg::Stargate {
-                        type_url: "/cosmos.authz.v1beta1.MsgExec".to_string(),
+                        type_url: "/cosmos.authz.v1beta1.MsgGrant".to_string(),
                         value: MsgGrant {
                             granter: dao.contract_addr.to_string(),
                             grantee: bot.address().to_string(),
