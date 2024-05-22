@@ -108,6 +108,7 @@ pub struct RewardConfig {
     /// last update date
     pub last_update: Expiration,
     // pub hook_caller: String,
+    pub funded_amount: Uint128,
 }
 
 impl RewardConfig {

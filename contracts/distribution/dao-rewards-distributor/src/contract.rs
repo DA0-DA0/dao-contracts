@@ -21,7 +21,7 @@ use crate::msg::{
     RewardConfig, RewardDenomRegistrationMsg,
 };
 use crate::state::{
-    CUMULATIVE_REWARDS_PER_TOKEN, FUNDED_DENOM_AMOUNTS, MAIN_VP_CONTRACT, PENDING_REWARDS, REGISTERED_HOOKS, REWARD_DENOM_CONFIGS, USER_REWARD_PER_TOKEN
+    CUMULATIVE_REWARDS_PER_TOKEN, MAIN_VP_CONTRACT, PENDING_REWARDS, REGISTERED_HOOKS, REWARD_DENOM_CONFIGS, USER_REWARD_PER_TOKEN
 };
 use crate::ContractError;
 use crate::ContractError::{InvalidCw20, InvalidFunds, NoRewardsClaimable};
@@ -112,6 +112,7 @@ pub fn execute_register_reward_denom(
         denom: checked_denom,
         reward_rate: Uint128::zero(), // gets updated on funding
         last_update: Expiration::Never {},
+        funded_amount: Uint128::zero(),
     };
 
     let str_denom = reward_config.to_str_denom();
@@ -176,11 +177,8 @@ pub fn execute_shutdown(
 
     let mut clawback_msgs: Vec<CosmosMsg> = vec![];
 
-    let initial_funding_amount = FUNDED_DENOM_AMOUNTS.load(deps.storage, denom.to_string())?;
-
-    // multiply initial funding amount by the remaining reward duration fraction
     // to get the clawback amount
-    let clawback_amount = initial_funding_amount * remaining_reward_duration_fraction;
+    let clawback_amount = reward_config.funded_amount * remaining_reward_duration_fraction;
     let clawback_msg = get_transfer_msg(
         info.sender.clone(),
         clawback_amount,
@@ -276,8 +274,8 @@ pub fn execute_fund(
     if new_rate == Uint128::zero() {
         return Err(ContractError::RewardRateLessThenOnePerBlock {});
     } else {
-        // store the funded amount for each denom
-        FUNDED_DENOM_AMOUNTS.save(deps.storage, denom_string.to_string(), &amount)?;
+        // store the funded amount for each denom and update the reward rate
+        denom_reward_config.funded_amount = amount;
         denom_reward_config.reward_rate = new_rate;
     }
 

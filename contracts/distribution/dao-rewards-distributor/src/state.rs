@@ -15,8 +15,6 @@ pub const PENDING_REWARDS: Map<Addr, HashMap<String, Uint128>> = Map::new("pendi
 pub const USER_REWARD_PER_TOKEN: Map<Addr, HashMap<String, Uint256>> =
     Map::new("user_reward_per_token");
 
-pub const FUNDED_DENOM_AMOUNTS: Map<String, Uint128> = Map::new("funded_denom_amounts");
-
 // registered hooks mapping to denoms they are registered for
 pub const REGISTERED_HOOKS: Map<Addr, Vec<String>> = Map::new("registered_hook_callers");
 
