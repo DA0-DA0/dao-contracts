@@ -4,7 +4,8 @@ use std::collections::HashMap;
 
 use crate::msg::RewardConfig;
 
-pub const REWARDS_PER_TOKEN: Item<HashMap<String, Uint256>> = Item::new("rewards_per_token");
+/// a global map that stores total rewards accumulated per token 
+pub const CUMULATIVE_REWARDS_PER_TOKEN: Map<String, Uint256> = Map::new("c_r_p_t");
 
 /// A map of user addresses to their pending rewards.
 pub const PENDING_REWARDS: Map<Addr, HashMap<String, Uint128>> = Map::new("pending_rewards");

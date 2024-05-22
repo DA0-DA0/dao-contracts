@@ -21,8 +21,7 @@ use crate::msg::{
     RewardConfig, RewardDenomRegistrationMsg,
 };
 use crate::state::{
-    FUNDED_DENOM_AMOUNTS, MAIN_VP_CONTRACT, PENDING_REWARDS, REGISTERED_HOOKS, REWARDS_PER_TOKEN,
-    REWARD_DENOM_CONFIGS, USER_REWARD_PER_TOKEN,
+    CUMULATIVE_REWARDS_PER_TOKEN, FUNDED_DENOM_AMOUNTS, MAIN_VP_CONTRACT, PENDING_REWARDS, REGISTERED_HOOKS, REWARD_DENOM_CONFIGS, USER_REWARD_PER_TOKEN
 };
 use crate::ContractError;
 use crate::ContractError::{InvalidCw20, InvalidFunds, NoRewardsClaimable};
@@ -50,7 +49,6 @@ pub fn instantiate(
     )?;
     MAIN_VP_CONTRACT.save(deps.storage, &(vp_contract.clone(), Vec::new()))?;
 
-    REWARDS_PER_TOKEN.save(deps.storage, &HashMap::new())?;
     Ok(Response::new()
         .add_attribute("owner", msg.owner.unwrap_or_else(|| "None".to_string()))
         .add_attribute("vp_contract", vp_contract))
@@ -124,11 +122,8 @@ pub fn execute_register_reward_denom(
 
     REWARD_DENOM_CONFIGS.save(deps.storage, str_denom.to_string(), &reward_config)?;
 
-    // Initialize REWARDS_PER_TOKEN for the new denom
-    REWARDS_PER_TOKEN.update(deps.storage, |mut rpt| -> StdResult<_> {
-        rpt.insert(str_denom.clone(), Uint256::zero());
-        Ok(rpt)
-    })?;
+    // registered denom starts with no accumulated rewards
+    CUMULATIVE_REWARDS_PER_TOKEN.save(deps.storage, str_denom.to_string(), &Uint256::zero())?;
 
     // add the new denom to the list of denoms that a vp contract is being tracked by
     MAIN_VP_CONTRACT.update(deps.storage, |(addr, mut denoms)| -> StdResult<_> {
@@ -484,11 +479,9 @@ pub fn update_rewards(
         // First, we calculate the rewards per token and update them
         let rewards_per_token =
             get_rewards_per_token(&reward_config, env, &vp_contract.0, deps.as_ref())?;
-        println!("\nrewards_per_token: {:?}", rewards_per_token);
-        REWARDS_PER_TOKEN.update(deps.storage, |mut rpt| -> StdResult<_> {
-            rpt.insert(denom.clone(), rewards_per_token);
-            Ok(rpt)
-        })?;
+
+        // update the cumulative rewards per token with latest rewards per token
+        CUMULATIVE_REWARDS_PER_TOKEN.save(deps.storage, denom.clone(), &rewards_per_token)?;
 
         println!("calculating earned rewards...");
         // Then we calculate the earned rewards and update them
@@ -571,12 +564,8 @@ fn get_rewards_per_token(
         "last_time_reward_applicable: {:?}",
         last_time_reward_applicable
     );
-    let current_reward_per_token = REWARDS_PER_TOKEN
-        .may_load(deps.storage)?
-        .unwrap_or_default()
-        .get(&reward_config.to_str_denom())
-        .cloned()
-        .unwrap_or_default();
+
+    let current_reward_per_token = CUMULATIVE_REWARDS_PER_TOKEN.load(deps.storage, reward_config.to_str_denom())?;
     println!("current_reward_per_token: {:?}", current_reward_per_token);
 
     let expiration_diff = Uint128::from(get_expiration_diff(
