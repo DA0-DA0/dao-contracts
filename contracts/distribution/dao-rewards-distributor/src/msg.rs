@@ -35,7 +35,7 @@ pub enum ExecuteMsg {
     /// Called when tokens are staked or unstaked.
     StakeChangeHook(StakeChangedHookMsg),
     /// Claims rewards for the sender.
-    Claim {},
+    Claim { denom: String },
     /// Used to fund this contract with cw20 tokens.
     Receive(Cw20ReceiveMsg),
     /// Used to fund this contract with native tokens.
@@ -105,9 +105,19 @@ pub struct RewardConfig {
     pub reward_rate: Uint128,
     /// time or block based duration to be used for reward distribution
     pub reward_duration: Duration,
+    /// last update date
+    pub last_update: Expiration,
+    // pub hook_caller: String,
 }
 
 impl RewardConfig {
+    pub fn to_str_denom(&self) -> String {
+        match &self.denom {
+            Denom::Native(denom) => denom.to_string(),
+            Denom::Cw20(address) => address.to_string(),
+        }
+    }
+
     /// Returns the reward duration value as a u64.
     /// If the reward duration is in blocks, the value is the number of blocks.
     /// If the reward duration is in time, the value is the number of seconds.
