@@ -1,7 +1,7 @@
 use std::{cmp::min, collections::HashMap};
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, BlockInfo, Uint128};
+use cosmwasm_std::{ensure, Addr, BlockInfo, Uint128};
 use cw20::{Cw20ReceiveMsg, Denom, UncheckedDenom};
 use cw4::MemberChangedHookMsg;
 use cw_ownable::cw_ownable_execute;
@@ -20,8 +20,6 @@ pub struct InstantiateMsg {
     /// The owner of the contract. Is able to fund the contract and update
     /// the reward duration.
     pub owner: Option<String>,
-    /// A DAO DAO voting power module contract address.
-    pub vp_contract: String,
 }
 
 #[cw_ownable_execute]
@@ -57,7 +55,8 @@ pub struct RewardDenomRegistrationMsg {
     pub denom: UncheckedDenom,
     pub reward_rate: Uint128,
     pub reward_duration: Duration,
-    pub hook_caller: Option<String>,
+    pub vp_contract: String,
+    pub hook_caller: String,
 }
 
 #[cw_serde]
@@ -85,7 +84,6 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub struct InfoResponse {
-    pub vp_contract: String,
     pub reward_configs: Vec<RewardConfig>,
 }
 
@@ -107,7 +105,8 @@ pub struct RewardConfig {
     pub reward_duration: Duration,
     /// last update date
     pub last_update: Expiration,
-    // pub hook_caller: String,
+    pub hook_caller: Addr,
+    pub vp_contract: Addr,
     pub funded_amount: Uint128,
 }
 
