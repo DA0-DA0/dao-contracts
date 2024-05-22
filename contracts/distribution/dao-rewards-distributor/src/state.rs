@@ -1,5 +1,4 @@
 use cosmwasm_std::{Addr, Uint128, Uint256};
-use cw20::Expiration;
 use cw_storage_plus::{Item, Map};
 use std::collections::HashMap;
 
@@ -17,11 +16,11 @@ pub const USER_REWARD_PER_TOKEN: Map<Addr, HashMap<String, Uint256>> =
 
 pub const FUNDED_DENOM_AMOUNTS: Map<String, Uint128> = Map::new("funded_denom_amounts");
 
-// NEW CONFIG
-pub const REGISTERED_HOOKS: Map<Addr, Addr> = Map::new("registered_hook_callers");
-pub const MAIN_VP_CONTRACT: Item<Addr> = Item::new("main_vp_contract");
+// registered hooks mapping to denoms they are registered for
+pub const REGISTERED_HOOKS: Map<Addr, Vec<String>> = Map::new("registered_hook_callers");
+
+/// voting power contract address that is used to calculate base rewards
+pub const MAIN_VP_CONTRACT: Item<(Addr, Vec<String>)> = Item::new("main_vp_contract");
 
 /// maps denom str to its reward configuration
 pub const REWARD_DENOM_CONFIGS: Map<String, RewardConfig> = Map::new("rdc");
-/// maps denom str to its last update date
-pub const LAST_UPDATE_EXPIRATION: Map<String, Expiration> = Map::new("last_update_snapshot");

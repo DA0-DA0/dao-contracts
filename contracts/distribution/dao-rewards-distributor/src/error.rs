@@ -35,4 +35,7 @@ pub enum ContractError {
 
     #[error("Rewards distributor shutdown error: {0}")]
     ShutdownError(String),
+
+    #[error("Denom already registered")]
+    DenomAlreadyRegistered {},
 }
