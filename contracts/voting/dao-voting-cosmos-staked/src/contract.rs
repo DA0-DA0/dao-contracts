@@ -54,12 +54,13 @@ pub fn execute_update_total_staked(
     amount: Uint128,
     height: Option<u64>,
 ) -> Result<Response, ContractError> {
-    STAKED_TOTAL.save(deps.storage, &amount, env.block.height)?;
+    let height = height.unwrap_or(env.block.height);
+    STAKED_TOTAL.save(deps.storage, &amount, height)?;
 
     Ok(Response::new()
         .add_attribute("action", "update_total_staked")
         .add_attribute("amount", amount)
-        .add_attribute("height", height.unwrap_or(env.block.height).to_string()))
+        .add_attribute("height", height.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -82,8 +82,8 @@ fn test_staked_voting_power_and_update() {
                     msgs: vec![CosmosMsg::Stargate {
                         type_url: "/cosmos.authz.v1beta1.MsgGrant".to_string(),
                         value: MsgGrant {
-                            granter: dao.contract_addr.to_string(),
-                            grantee: bot.address().to_string(),
+                            granter: dao.contract_addr.clone(),
+                            grantee: bot.address(),
                             grant: Some(Grant {
                                 authorization: Some(
                                     ContractExecutionAuthorization {
@@ -119,9 +119,6 @@ fn test_staked_voting_power_and_update() {
             staker,
         )
         .unwrap();
-
-    app.increase_time(10);
-
     proposal_single
         .execute(
             &dao_proposal_single::msg::ExecuteMsg::Execute { proposal_id: 1 },
@@ -151,6 +148,9 @@ fn test_staked_voting_power_and_update() {
             bot,
         )
         .unwrap();
+
+    // Move chain forward so we can update total staked on a new block
+    app.increase_time(100);
 
     // Query total power
     let total_power = vp_contract.query_tp(None).unwrap();
