@@ -1,9 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_json, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal,
-    Deps, DepsMut, Env, MessageInfo, Order, Response, StdError, StdResult, Uint128, Uint256,
-    WasmMsg,
+    ensure, from_json, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps,
+    DepsMut, Env, MessageInfo, Order, Response, StdError, StdResult, Uint128, Uint256, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw20::{Cw20ReceiveMsg, Denom};
@@ -21,7 +20,8 @@ use crate::msg::{
     RewardConfig, RewardDenomRegistrationMsg,
 };
 use crate::state::{
-    CUMULATIVE_REWARDS_PER_TOKEN, MAIN_VP_CONTRACT, PENDING_REWARDS, REGISTERED_HOOKS, REWARD_DENOM_CONFIGS, USER_REWARD_PER_TOKEN
+    CUMULATIVE_REWARDS_PER_TOKEN, PENDING_REWARDS, REGISTERED_HOOKS, REWARD_DENOM_CONFIGS,
+    USER_REWARD_PER_TOKEN,
 };
 use crate::ContractError;
 use crate::ContractError::{InvalidCw20, InvalidFunds, NoRewardsClaimable};
@@ -41,17 +41,19 @@ pub fn instantiate(
     // Intialize the contract owner
     cw_ownable::initialize_owner(deps.storage, deps.api, msg.owner.as_deref())?;
 
-    // Verify contract provided is a voting module contract
-    let vp_contract = deps.api.addr_validate(&msg.vp_contract)?;
+    Ok(Response::new().add_attribute("owner", msg.owner.unwrap_or_else(|| "None".to_string())))
+}
+
+pub fn validate_voting_power_contract(
+    deps: &DepsMut,
+    vp_contract: String,
+) -> Result<Addr, ContractError> {
+    let vp_contract = deps.api.addr_validate(&vp_contract)?;
     let _: TotalPowerAtHeightResponse = deps.querier.query_wasm_smart(
         &vp_contract,
         &VotingQueryMsg::TotalPowerAtHeight { height: None },
     )?;
-    MAIN_VP_CONTRACT.save(deps.storage, &(vp_contract.clone(), Vec::new()))?;
-
-    Ok(Response::new()
-        .add_attribute("owner", msg.owner.unwrap_or_else(|| "None".to_string()))
-        .add_attribute("vp_contract", vp_contract))
+    Ok(vp_contract)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -92,18 +94,13 @@ pub fn execute_register_reward_denom(
         return Err(ContractError::ZeroRewardDuration {});
     }
 
+    let checked_denom = msg.denom.into_checked(deps.as_ref())?;
+
     // Optional hook caller is allowed to call voting power change hooks.
     // If not provided, only the voting power contract is used.
-    let hook_caller: Option<Addr> = match msg.hook_caller {
-        Some(addr) => {
-            let addr = deps.api.addr_validate(&addr)?;
-            REGISTERED_HOOKS.save(deps.storage, addr.clone(), &vec![addr.to_string()])?;
-            Some(addr)
-        }
-        None => None,
-    };
+    let hook_caller = deps.api.addr_validate(&msg.hook_caller)?;
 
-    let checked_denom = msg.denom.into_checked(deps.as_ref())?;
+    let vp_contract = validate_voting_power_contract(&deps, msg.vp_contract)?;
 
     // Initialize the reward config
     let reward_config = RewardConfig {
@@ -113,6 +110,8 @@ pub fn execute_register_reward_denom(
         reward_rate: Uint128::zero(), // gets updated on funding
         last_update: Expiration::Never {},
         funded_amount: Uint128::zero(),
+        hook_caller: hook_caller.clone(),
+        vp_contract,
     };
 
     let str_denom = reward_config.to_str_denom();
@@ -121,16 +120,20 @@ pub fn execute_register_reward_denom(
         ContractError::DenomAlreadyRegistered {}
     );
 
+    REGISTERED_HOOKS.update(
+        deps.storage,
+        hook_caller.clone(),
+        |denoms| -> StdResult<_> {
+            let mut denoms = denoms.unwrap_or_default();
+            denoms.push(reward_config.to_str_denom());
+            Ok(denoms)
+        },
+    )?;
+
     REWARD_DENOM_CONFIGS.save(deps.storage, str_denom.to_string(), &reward_config)?;
 
     // registered denom starts with no accumulated rewards
-    CUMULATIVE_REWARDS_PER_TOKEN.save(deps.storage, str_denom.to_string(), &Uint256::zero())?;
-
-    // add the new denom to the list of denoms that a vp contract is being tracked by
-    MAIN_VP_CONTRACT.update(deps.storage, |(addr, mut denoms)| -> StdResult<_> {
-        denoms.push(str_denom.clone());
-        Ok((addr, denoms))
-    })?;
+    CUMULATIVE_REWARDS_PER_TOKEN.save(deps.storage, str_denom, &Uint256::zero())?;
 
     Ok(Response::default())
 }
@@ -423,21 +426,17 @@ pub fn execute_update_owner(
     Ok(Response::default().add_attributes(ownership.into_attributes()))
 }
 
-/// Ensures hooks that update voting power are only called by the voting power contract
-/// or the designated hook_caller contract (if configured).
+/// Ensures hooks that update voting power are only called by a designated
+/// hook_caller contract.
 /// Returns a list of denoms that the hook caller is registered for.
 pub fn check_hook_caller(deps: Deps, info: MessageInfo) -> Result<Vec<String>, ContractError> {
-    let is_registered_hook = REGISTERED_HOOKS.has(deps.storage, info.sender.clone());
-    let vp_contract = MAIN_VP_CONTRACT.load(deps.storage)?;
-
-    // Only the main voting power contract or a designated hook_caller contract (if configured)
-    // can call this hook.
+    // only a designated hook_caller contract can call this hook
     ensure!(
-        is_registered_hook || vp_contract.0 == info.sender,
+        REGISTERED_HOOKS.has(deps.storage, info.sender.clone()),
         ContractError::InvalidHookSender {}
     );
 
-    Ok(vp_contract.1)
+    Ok(REGISTERED_HOOKS.load(deps.storage, info.sender)?)
 }
 
 /// Returns the approqqate CosmosMsg for transferring the reward token.
@@ -468,15 +467,17 @@ pub fn update_rewards(
     addr: &Addr,
     denoms: Vec<String>,
 ) -> StdResult<()> {
-    let vp_contract = MAIN_VP_CONTRACT.load(deps.storage)?;
-    println!("denoms: {:?}", denoms);
     for denom in denoms {
         let mut reward_config = REWARD_DENOM_CONFIGS.load(deps.storage, denom.clone())?;
         println!("reward_config: {:?}", reward_config);
 
         // First, we calculate the rewards per token and update them
-        let rewards_per_token =
-            get_rewards_per_token(&reward_config, env, &vp_contract.0, deps.as_ref())?;
+        let rewards_per_token = get_rewards_per_token(
+            &reward_config,
+            env,
+            &reward_config.vp_contract,
+            deps.as_ref(),
+        )?;
 
         // update the cumulative rewards per token with latest rewards per token
         CUMULATIVE_REWARDS_PER_TOKEN.save(deps.storage, denom.clone(), &rewards_per_token)?;
@@ -488,7 +489,7 @@ pub fn update_rewards(
             env,
             addr,
             rewards_per_token,
-            &vp_contract.0,
+            &reward_config.vp_contract,
             vec![denom.clone()],
         )?;
         println!("\nearned_rewards: {:?}", earned_rewards);
@@ -563,7 +564,8 @@ fn get_rewards_per_token(
         last_time_reward_applicable
     );
 
-    let current_reward_per_token = CUMULATIVE_REWARDS_PER_TOKEN.load(deps.storage, reward_config.to_str_denom())?;
+    let current_reward_per_token =
+        CUMULATIVE_REWARDS_PER_TOKEN.load(deps.storage, reward_config.to_str_denom())?;
     println!("current_reward_per_token: {:?}", current_reward_per_token);
 
     let expiration_diff = Uint128::from(get_expiration_diff(
@@ -707,18 +709,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 pub fn query_info(deps: Deps, _env: Env) -> StdResult<InfoResponse> {
-    // let config = CONFIG.load(deps.storage)?;
-    // let config = REWARD_DENOM_CONFIGS.first(deps.storage)?.unwrap().1;
-
-    let vp_contract = MAIN_VP_CONTRACT.load(deps.storage)?;
     let reward_configs = REWARD_DENOM_CONFIGS
         .range(deps.storage, None, None, Order::Ascending)
-        .map(|item| item.map(|(k, v)| v))
+        .map(|item| item.map(|(_, v)| v))
         .collect::<StdResult<Vec<_>>>()?;
-    Ok(InfoResponse {
-        vp_contract: vp_contract.0.to_string(),
-        reward_configs,
-    })
+    Ok(InfoResponse { reward_configs })
 }
 
 pub fn query_pending_rewards(
@@ -727,7 +722,6 @@ pub fn query_pending_rewards(
     addr: String,
 ) -> StdResult<PendingRewardsResponse> {
     let addr = deps.api.addr_validate(&addr)?;
-    let vp_contract = MAIN_VP_CONTRACT.load(deps.storage)?;
     let reward_configs = REWARD_DENOM_CONFIGS
         .range(deps.storage, None, None, Order::Ascending)
         .collect::<StdResult<Vec<_>>>()?;
@@ -735,14 +729,15 @@ pub fn query_pending_rewards(
     let mut pending_rewards: HashMap<String, Uint128> = HashMap::new();
 
     for (denom, reward_config) in reward_configs {
-        let reward_per_token = get_rewards_per_token(&reward_config, &env, &vp_contract.0, deps)?;
+        let reward_per_token =
+            get_rewards_per_token(&reward_config, &env, &reward_config.vp_contract, deps)?;
 
         let earned_rewards = get_rewards_earned(
             deps,
             &env,
             &addr,
             reward_per_token,
-            &vp_contract.0,
+            &reward_config.vp_contract,
             vec![denom.to_string()],
         )?;
 

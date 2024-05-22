@@ -256,7 +256,7 @@ fn setup_cw721_test(app: &mut App) -> (Addr, Addr) {
 fn setup_reward_contract(
     app: &mut App,
     vp_contract: Addr,
-    hook_caller: Option<String>,
+    hook_caller: String,
     reward_denoms_whitelist: Vec<UncheckedDenom>,
     owner: Addr,
     reward_duration: Duration,
@@ -264,7 +264,7 @@ fn setup_reward_contract(
     let reward_code_id = app.store_code(contract_rewards());
     let msg = crate::msg::InstantiateMsg {
         owner: Some(owner.clone().into_string()),
-        vp_contract: vp_contract.clone().into_string(),
+        // vp_contract: vp_contract.clone().into_string(),
         // hook_caller: hook_caller.clone(),
         // reward_denoms_whitelist,
         // reward_duration,
@@ -278,6 +278,7 @@ fn setup_reward_contract(
         reward_rate: Uint128::new(1000),
         reward_duration,
         hook_caller: hook_caller.clone(),
+        vp_contract: vp_contract.to_string(),
     };
     let register_denom_resp = app
         .execute_contract(
@@ -289,29 +290,18 @@ fn setup_reward_contract(
         .unwrap();
     println!("register denom response: {:?}", register_denom_resp);
 
-    match hook_caller {
-        Some(contract_addr) => {
-            let msg = cw4_group::msg::ExecuteMsg::AddHook {
-                addr: reward_addr.to_string(),
-            };
-            let _result = app
-                .execute_contract(
-                    Addr::unchecked(OWNER),
-                    Addr::unchecked(contract_addr),
-                    &msg,
-                    &[],
-                )
-                .unwrap();
-        }
-        None => {
-            let msg = cw4_group::msg::ExecuteMsg::AddHook {
-                addr: reward_addr.to_string(),
-            };
-            let _result = app
-                .execute_contract(Addr::unchecked(OWNER), vp_contract, &msg, &[])
-                .unwrap();
-        }
-    }
+    let msg = cw4_group::msg::ExecuteMsg::AddHook {
+        addr: reward_addr.to_string(),
+    };
+    let _result = app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            Addr::unchecked(hook_caller),
+            &msg,
+            &[],
+        )
+        .unwrap();
+
     reward_addr
 }
 
@@ -482,7 +472,7 @@ fn test_zero_rewards_duration() {
     let reward_code_id = app.store_code(contract_rewards());
     let msg = crate::msg::InstantiateMsg {
         owner: Some(owner.clone().into_string()),
-        vp_contract: vp_addr.to_string(),
+        // vp_contract: vp_addr.to_string(),
         // hook_caller: Some(staking_addr.to_string()),
     };
 
@@ -494,7 +484,8 @@ fn test_zero_rewards_duration() {
         denom: reward_denoms_whitelist[0].clone(),
         reward_rate: Uint128::new(1000),
         reward_duration: Duration::Height(0),
-        hook_caller: Some(staking_addr.to_string()),
+        vp_contract: vp_addr.to_string(),
+        hook_caller: staking_addr.to_string(),
     };
 
     let err: ContractError = app
@@ -542,7 +533,7 @@ fn test_native_rewards_block_height_based() {
     let reward_addr = setup_reward_contract(
         &mut app,
         vp_addr.clone(),
-        Some(staking_addr.clone().to_string()),
+        staking_addr.clone().to_string(),
         vec![UncheckedDenom::Native(denom.clone())],
         admin.clone(),
         Duration::Height(100000),
@@ -790,7 +781,7 @@ fn test_native_rewards_time_based() {
     let reward_addr = setup_reward_contract(
         &mut app,
         vp_addr.clone(),
-        Some(staking_addr.clone().to_string()),
+        staking_addr.clone().to_string(),
         vec![UncheckedDenom::Native(denom.clone())],
         admin.clone(),
         funding_duration,
@@ -970,7 +961,7 @@ fn test_cw20_rewards() {
     let reward_addr = setup_reward_contract(
         &mut app,
         vp_addr.clone(),
-        Some(staking_addr.clone().to_string()),
+        staking_addr.clone().to_string(),
         vec![UncheckedDenom::Cw20(reward_denom.to_string())],
         admin.clone(),
         Duration::Height(100000),
@@ -1271,7 +1262,7 @@ fn update_rewards() {
     let reward_addr = setup_reward_contract(
         &mut app,
         vp_addr,
-        Some(staking_addr.clone().to_string()),
+        staking_addr.clone().to_string(),
         vec![UncheckedDenom::Native(denom.clone())],
         admin.clone(),
         Duration::Height(100000),
@@ -1421,7 +1412,7 @@ fn update_reward_duration() {
     let reward_addr = setup_reward_contract(
         &mut app,
         vp_addr,
-        Some(staking_addr.clone().to_string()),
+        staking_addr.clone().to_string(),
         vec![UncheckedDenom::Native(denom.clone())],
         admin.clone(),
         Duration::Height(100000),
@@ -1602,7 +1593,7 @@ fn test_update_owner() {
     let reward_addr = setup_reward_contract(
         &mut app,
         vp_addr,
-        Some(staking_addr.clone().to_string()),
+        staking_addr.clone().to_string(),
         vec![UncheckedDenom::Native(denom)],
         addr_owner.clone(),
         Duration::Height(100000),
@@ -1703,7 +1694,7 @@ fn test_cannot_fund_with_wrong_coin_native() {
     let reward_addr = setup_reward_contract(
         &mut app,
         vp_addr,
-        Some(staking_addr.clone().to_string()),
+        staking_addr.clone().to_string(),
         vec![UncheckedDenom::Native(denom.clone())],
         owner.clone(),
         Duration::Height(100000),
@@ -1830,7 +1821,7 @@ fn test_cannot_fund_with_wrong_coin_cw20() {
     let reward_addr = setup_reward_contract(
         &mut app,
         vp_addr,
-        Some(staking_addr.clone().to_string()),
+        staking_addr.clone().to_string(),
         vec![UncheckedDenom::Cw20(reward_denom.to_string())],
         admin.clone(),
         Duration::Height(100000),
@@ -1917,7 +1908,7 @@ fn test_rewards_with_zero_staked() {
     let reward_addr = setup_reward_contract(
         &mut app,
         vp_addr.clone(),
-        Some(staking_addr.clone().to_string()),
+        staking_addr.clone().to_string(),
         vec![UncheckedDenom::Native(denom)],
         admin.clone(),
         Duration::Height(100000),
@@ -2008,7 +1999,7 @@ fn test_small_rewards() {
     let reward_addr = setup_reward_contract(
         &mut app,
         vp_addr,
-        Some(staking_addr.clone().to_string()),
+        staking_addr.clone().to_string(),
         vec![UncheckedDenom::Native(denom)],
         admin.clone(),
         Duration::Height(100000),
@@ -2079,7 +2070,7 @@ fn test_zero_reward_rate_failed() {
     let reward_addr = setup_reward_contract(
         &mut app,
         vp_addr,
-        Some(staking_addr.clone().to_string()),
+        staking_addr.clone().to_string(),
         vec![UncheckedDenom::Native(denom)],
         admin.clone(),
         Duration::Height(100000),
@@ -2144,7 +2135,7 @@ fn test_native_token_dao_rewards() {
     let reward_addr = setup_reward_contract(
         &mut app,
         vp_addr.clone(),
-        None,
+        vp_addr.clone().to_string(),
         vec![UncheckedDenom::Native(denom.clone())],
         admin.clone(),
         Duration::Height(100000),
@@ -2294,7 +2285,7 @@ fn test_cw721_dao_rewards() {
     let reward_addr = setup_reward_contract(
         &mut app,
         vp_addr.clone(),
-        None,
+        vp_addr.clone().to_string(),
         vec![UncheckedDenom::Native(denom.clone())],
         admin.clone(),
         Duration::Height(100000),
@@ -2439,7 +2430,7 @@ fn test_cw4_dao_rewards() {
     let reward_addr = setup_reward_contract(
         &mut app,
         vp_addr.clone(),
-        Some(cw4_addr.clone().to_string()),
+        cw4_addr.clone().to_string(),
         vec![UncheckedDenom::Native(denom.clone())],
         admin.clone(),
         Duration::Height(100000),
@@ -2609,7 +2600,7 @@ fn test_distribution_shutdown_validates_owner() {
     let reward_addr = setup_reward_contract(
         &mut app,
         vp_addr.clone(),
-        None,
+        vp_addr.to_string(),
         vec![UncheckedDenom::Native(denom.clone())],
         admin.clone(),
         Duration::Height(1000),
@@ -2665,7 +2656,7 @@ fn test_distribution_shutdown_validates_active_period() {
     let reward_addr = setup_reward_contract(
         &mut app,
         vp_addr.clone(),
-        None,
+        vp_addr.to_string(),
         vec![UncheckedDenom::Native(denom.clone())],
         admin.clone(),
         Duration::Height(1000),
@@ -2748,7 +2739,7 @@ fn test_distribution_shutdown() {
     let reward_addr = setup_reward_contract(
         &mut app,
         vp_addr.clone(),
-        None,
+        vp_addr.to_string(),
         vec![UncheckedDenom::Native(denom.clone())],
         admin.clone(),
         Duration::Height(100000),
