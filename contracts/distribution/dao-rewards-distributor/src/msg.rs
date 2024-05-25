@@ -1,14 +1,14 @@
-use std::{cmp::min, collections::HashMap};
+use std::collections::HashMap;
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Addr, BlockInfo, Uint128};
-use cw20::{Cw20ReceiveMsg, Denom, UncheckedDenom};
+use cosmwasm_std::{OverflowError, StdError, StdResult, Uint128, Uint256};
+use cw20::{Cw20ReceiveMsg, UncheckedDenom};
 use cw4::MemberChangedHookMsg;
 use cw_ownable::cw_ownable_execute;
-use cw_utils::{Duration, Expiration};
+use cw_utils::Duration;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 
-use crate::ContractError;
+use crate::{state::DenomRewardConfig, ContractError};
 
 // so that consumers don't need a cw_ownable or cw_controllers dependency
 // to consume this contract's queries.
@@ -53,10 +53,64 @@ pub enum ExecuteMsg {
 #[cw_serde]
 pub struct RewardDenomRegistrationMsg {
     pub denom: UncheckedDenom,
-    pub reward_rate: Uint128,
-    pub reward_duration: Duration,
+    pub reward_emission_config: RewardEmissionConfig,
     pub vp_contract: String,
     pub hook_caller: String,
+}
+
+/// defines how many rewards should be distributed per unit of time.
+/// e.g. 5udenom per hour.
+#[cw_serde]
+pub struct RewardEmissionConfig {
+    pub reward_rate_emission: Uint128,
+    pub reward_rate_time: Duration,
+}
+
+impl RewardEmissionConfig {
+    pub fn validate_emission_time_window(&self) -> Result<(), ContractError> {
+        // Reward duration must be greater than 0
+        if let Duration::Height(0) | Duration::Time(0) = self.reward_rate_time {
+            return Err(ContractError::ZeroRewardDuration {});
+        }
+        Ok(())
+    }
+
+    pub fn get_duration_amounts(&self) -> u64 {
+        match self.reward_rate_time {
+            Duration::Height(h) => h,
+            Duration::Time(t) => t,
+        }
+    }
+
+    // find the duration of the funded period given emission config and funded amount
+    pub fn get_funded_period_duration(&self, funded_amount: Uint128) -> StdResult<Duration> {
+        let funded_amount_u256 = Uint256::from(funded_amount);
+        let reward_rate_emission_u256 = Uint256::from(self.reward_rate_emission);
+
+        let amount_to_emission_rate_ratio = funded_amount_u256.checked_div(reward_rate_emission_u256)?;
+
+        let ratio_str = amount_to_emission_rate_ratio.to_string();
+        let ratio = ratio_str.parse::<u64>().map_err(|e| StdError::generic_err(e.to_string()))?;
+
+        let funded_period_duration = match self.reward_rate_time {
+            Duration::Height(h) => {
+                let duration_height = match ratio.checked_mul(h) {
+                    Some(duration) => duration,
+                    None => return Err(StdError::generic_err("overflow")),
+                };
+                Duration::Height(duration_height)
+            },
+            Duration::Time(t) => {
+                let duration_time = match ratio.checked_mul(t) {
+                    Some(duration) => duration,
+                    None => return Err(StdError::generic_err("overflow")),
+                };
+                Duration::Time(duration_time)
+            },
+        };
+
+        Ok(funded_period_duration)
+    }
 }
 
 #[cw_serde]
@@ -80,117 +134,17 @@ pub enum QueryMsg {
     /// Returns information about the ownership of this contract.
     #[returns(::cw_ownable::Ownership<::cosmwasm_std::Addr>)]
     Ownership {},
+    #[returns(DenomRewardConfig)]
+    DenomRewardConfig { denom: String },
 }
 
 #[cw_serde]
 pub struct InfoResponse {
-    pub reward_configs: Vec<RewardConfig>,
+    pub reward_configs: Vec<DenomRewardConfig>,
 }
 
 #[cw_serde]
 pub struct PendingRewardsResponse {
     pub address: String,
     pub pending_rewards: HashMap<String, Uint128>,
-}
-
-/// a config that holds info needed to distribute rewards
-#[cw_serde]
-pub struct RewardConfig {
-    /// expiration snapshot for the current period
-    pub period_finish_expiration: Expiration,
-    /// validated denom (native/cw20)
-    pub denom: Denom,
-    pub reward_rate: Uint128,
-    /// time or block based duration to be used for reward distribution
-    pub reward_duration: Duration,
-    /// last update date
-    pub last_update: Expiration,
-    pub hook_caller: Addr,
-    pub vp_contract: Addr,
-    pub funded_amount: Uint128,
-}
-
-impl RewardConfig {
-    pub fn to_str_denom(&self) -> String {
-        match &self.denom {
-            Denom::Native(denom) => denom.to_string(),
-            Denom::Cw20(address) => address.to_string(),
-        }
-    }
-
-    /// Returns the reward duration value as a u64.
-    /// If the reward duration is in blocks, the value is the number of blocks.
-    /// If the reward duration is in time, the value is the number of seconds.
-    pub fn get_reward_duration_value(&self) -> u64 {
-        match self.reward_duration {
-            Duration::Height(h) => h,
-            Duration::Time(t) => t,
-        }
-    }
-
-    /// Returns the period finish expiration value as a u64.
-    /// If the period finish expiration is `Never`, the value is 0.
-    /// If the period finish expiration is `AtHeight(h)`, the value is `h`.
-    /// If the period finish expiration is `AtTime(t)`, the value is `t`, where t is seconds.
-    pub fn get_period_finish_units(&self) -> u64 {
-        match self.period_finish_expiration {
-            Expiration::Never {} => 0,
-            Expiration::AtHeight(h) => h,
-            Expiration::AtTime(t) => t.seconds(),
-        }
-    }
-
-    /// Returns the period start date value as a u64.
-    /// The period start date is calculated by subtracting the reward duration
-    /// value from the period finish expiration value.
-    // TODO: ensure this cannot go wrong
-    pub fn get_period_start_units(&self) -> u64 {
-        let period_finish_units = self.get_period_finish_units();
-        let reward_duration_value = self.get_reward_duration_value();
-        period_finish_units - reward_duration_value
-    }
-
-    /// Returns the latest date where rewards were still being distributed.
-    /// Works by comparing `current_block` with the period finish expiration:
-    /// - If the period finish expiration is `Never`, then no rewards are being
-    /// distributed, thus we return `Never`.
-    /// - If the period finish expiration is `AtHeight(h)` or `AtTime(t)`,
-    /// we compare the current block height or time with `h` or `t` respectively.
-    /// If current block respective value is lesser than that of the
-    /// `period_finish_expiration`, means rewards are still being distributed.
-    /// We therefore return the current block `height` or `time`, as that was the
-    /// last date where rewards were distributed.
-    /// If current block respective value is greater than that of the
-    /// `period_finish_expiration`, means rewards are no longer being distributed.
-    /// We therefore return the `period_finish_expiration` value, as that was the
-    /// last date where rewards were distributed.
-    pub fn get_latest_reward_distribution_expiration_date(
-        &self,
-        current_block: &BlockInfo,
-    ) -> Expiration {
-        match self.period_finish_expiration {
-            Expiration::Never {} => Expiration::Never {},
-            Expiration::AtHeight(h) => Expiration::AtHeight(min(current_block.height, h)),
-            Expiration::AtTime(t) => Expiration::AtTime(min(current_block.time, t)),
-        }
-    }
-
-    /// Returns `ContractError::RewardPeriodNotFinished` if the period finish
-    /// expiration is of either `AtHeight` or `AtTime` variant and is earlier
-    /// than the current block height or time respectively.
-    pub fn validate_period_finish_expiration_if_set(
-        &self,
-        current_block: &BlockInfo,
-    ) -> Result<(), ContractError> {
-        match self.period_finish_expiration {
-            Expiration::AtHeight(_) | Expiration::AtTime(_) => {
-                ensure!(
-                    self.period_finish_expiration.is_expired(current_block),
-                    ContractError::RewardPeriodNotFinished {}
-                );
-                Ok(())
-            }
-            Expiration::Never {} => Ok(()),
-        }
-    }
 }
