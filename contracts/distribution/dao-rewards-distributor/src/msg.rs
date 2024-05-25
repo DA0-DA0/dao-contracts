@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{OverflowError, StdError, StdResult, Uint128, Uint256};
+use cosmwasm_std::{StdError, StdResult, Uint128, Uint256};
 use cw20::{Cw20ReceiveMsg, UncheckedDenom};
 use cw4::MemberChangedHookMsg;
 use cw_ownable::cw_ownable_execute;
@@ -87,10 +87,13 @@ impl RewardEmissionConfig {
         let funded_amount_u256 = Uint256::from(funded_amount);
         let reward_rate_emission_u256 = Uint256::from(self.reward_rate_emission);
 
-        let amount_to_emission_rate_ratio = funded_amount_u256.checked_div(reward_rate_emission_u256)?;
+        let amount_to_emission_rate_ratio =
+            funded_amount_u256.checked_div(reward_rate_emission_u256)?;
 
         let ratio_str = amount_to_emission_rate_ratio.to_string();
-        let ratio = ratio_str.parse::<u64>().map_err(|e| StdError::generic_err(e.to_string()))?;
+        let ratio = ratio_str
+            .parse::<u64>()
+            .map_err(|e| StdError::generic_err(e.to_string()))?;
 
         let funded_period_duration = match self.reward_rate_time {
             Duration::Height(h) => {
@@ -99,14 +102,14 @@ impl RewardEmissionConfig {
                     None => return Err(StdError::generic_err("overflow")),
                 };
                 Duration::Height(duration_height)
-            },
+            }
             Duration::Time(t) => {
                 let duration_time = match ratio.checked_mul(t) {
                     Some(duration) => duration,
                     None => return Err(StdError::generic_err("overflow")),
                 };
                 Duration::Time(duration_time)
-            },
+            }
         };
 
         Ok(funded_period_duration)
