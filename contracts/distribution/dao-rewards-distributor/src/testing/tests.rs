@@ -51,11 +51,8 @@ fn test_cw20_dao_native_rewards_block_height_based() {
     suite.claim_rewards(ADDR2, DENOM);
     suite.claim_rewards(ADDR3, DENOM);
 
-    let addr1_balance = suite.get_balance_native(ADDR1, DENOM);
-    let addr2_balance = suite.get_balance_native(ADDR2, DENOM);
-
-    suite.stake_cw20_tokens(addr1_balance, ADDR1);
-    suite.stake_cw20_tokens(addr2_balance, ADDR2);
+    suite.stake_cw20_tokens(50, ADDR2);
+    suite.stake_cw20_tokens(50, ADDR3);
 }
 
 #[test]
