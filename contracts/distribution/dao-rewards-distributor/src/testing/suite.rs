@@ -108,10 +108,15 @@ impl SuiteBuilder {
                 ];
 
                 let (staking_addr, cw20_addr, vp_addr) =
-                    setup_cw20_test(suite_built.app.borrow_mut(), initial_balances);
+                    setup_cw20_test(suite_built.app.borrow_mut(), initial_balances.clone());
+
                 suite_built.voting_power_addr = vp_addr.clone();
                 suite_built.cw20_addr = cw20_addr.clone();
                 suite_built.staking_addr = staking_addr.clone();
+
+                for coin in initial_balances.clone() {
+                    suite_built.stake_cw20_tokens(coin.amount.u128(), coin.address.as_str());
+                }
             }
             DaoType::CW721 => {
                 let initial_nfts = vec![
@@ -201,6 +206,9 @@ impl SuiteBuilder {
 
         suite_built.register_reward_denom(DENOM, 1000, 10);
 
+        suite_built.register_hook();
+
+        println!("funding distributor");
         suite_built.fund_distributor(coin(100_000_000, DENOM.to_string()));
 
         suite_built
@@ -351,6 +359,22 @@ impl Suite {
 
 // SUITE ACTIONS
 impl Suite {
+    pub fn register_hook(
+        &mut self,
+    ) {
+        let msg = cw4_group::msg::ExecuteMsg::AddHook {
+            addr: self.distribution_contract.to_string(),
+        };
+        self.app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.staking_addr.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+    }
+
     pub fn register_reward_denom(
         &mut self,
         denom: &str,
@@ -432,6 +456,7 @@ impl Suite {
             amount: Uint128::new(amount),
             msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
         };
+        println!("[STAKING EVENT] {} staked {}", sender, amount);
         self.app
             .execute_contract(Addr::unchecked(sender), self.cw20_addr.clone(), &msg, &[])
             .unwrap();
@@ -441,6 +466,7 @@ impl Suite {
         let msg = cw20_stake::msg::ExecuteMsg::Unstake {
             amount: Uint128::new(amount),
         };
+        println!("[STAKING EVENT] {} unstaked {}", sender, amount);
         self.app
             .execute_contract(
                 Addr::unchecked(sender),

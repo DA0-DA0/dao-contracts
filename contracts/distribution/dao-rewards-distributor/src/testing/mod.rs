@@ -196,15 +196,6 @@ mod cw20_setup {
         // Instantiate vp contract
         let vp_addr = instantiate_cw20_vp_contract(app, cw20_addr.clone(), staking_addr.clone());
 
-        for coin in initial_balances {
-            stake_cw20_tokens(
-                app,
-                &staking_addr,
-                &cw20_addr,
-                coin.address,
-                coin.amount.u128(),
-            );
-        }
         (staking_addr, cw20_addr, vp_addr)
     }
 
