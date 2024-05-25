@@ -1,7 +1,9 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_json, to_json_binary, Addr, BankMsg, Binary, BlockInfo, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError, StdResult, Uint128, Uint256, WasmMsg
+    ensure, from_json, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal,
+    Deps, DepsMut, Env, MessageInfo, Order, Response, StdError, StdResult, Uint128, Uint256,
+    WasmMsg,
 };
 use cw2::set_contract_version;
 use cw20::{Cw20ReceiveMsg, Denom};
@@ -184,10 +186,11 @@ pub fn execute_shutdown(
     )?;
     clawback_msgs.push(clawback_msg);
 
-    reward_config.distribution_expiration = match reward_config.reward_emission_config.reward_rate_time {
-        Duration::Height(_) => Expiration::AtHeight(env.block.height),
-        Duration::Time(_) => Expiration::AtTime(env.block.time),
-    };
+    reward_config.distribution_expiration =
+        match reward_config.reward_emission_config.reward_rate_time {
+            Duration::Height(_) => Expiration::AtHeight(env.block.height),
+            Duration::Time(_) => Expiration::AtTime(env.block.time),
+        };
 
     REWARD_DENOM_CONFIGS.save(deps.storage, denom.to_string(), &reward_config)?;
 
@@ -202,7 +205,7 @@ pub fn execute_receive(
     info: MessageInfo,
     wrapper: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    let msg: ReceiveMsg = from_json(&wrapper.msg)?;
+    let _msg: ReceiveMsg = from_json(&wrapper.msg)?;
 
     let sender = deps.api.addr_validate(&wrapper.sender)?;
 
@@ -256,14 +259,17 @@ pub fn execute_fund(
     update_rewards(&mut deps, &env, &sender, vec![denom_str.to_string()])?;
 
     // we derive the period for which the rewards are funded
-    // by looking at the existing reward emission config and the funded amount 
-    let funded_period_duration = denom_reward_config.reward_emission_config.get_funded_period_duration(amount)?;
+    // by looking at the existing reward emission config and the funded amount
+    let funded_period_duration = denom_reward_config
+        .reward_emission_config
+        .get_funded_period_duration(amount)?;
     let funded_period_units = match funded_period_duration {
         Duration::Height(h) => h,
         Duration::Time(t) => t,
     };
 
-    denom_reward_config.distribution_expiration = match denom_reward_config.distribution_expiration {
+    denom_reward_config.distribution_expiration = match denom_reward_config.distribution_expiration
+    {
         // if this is the first funding of the denom, the new expiration is the funded period duration
         // from the current block
         Expiration::Never {} => funded_period_duration.after(&env.block),
@@ -272,13 +278,18 @@ pub fn execute_fund(
         Expiration::AtTime(t) => Expiration::AtTime(t.plus_seconds(funded_period_units)),
     };
 
-    denom_reward_config.last_update = match denom_reward_config.reward_emission_config.reward_rate_time {
-        Duration::Height(_) => Expiration::AtHeight(env.block.height),
-        Duration::Time(_) => Expiration::AtTime(env.block.time),
-    };
+    denom_reward_config.last_update =
+        match denom_reward_config.reward_emission_config.reward_rate_time {
+            Duration::Height(_) => Expiration::AtHeight(env.block.height),
+            Duration::Time(_) => Expiration::AtTime(env.block.time),
+        };
     denom_reward_config.funded_amount += amount;
 
-    REWARD_DENOM_CONFIGS.save(deps.storage, denom_reward_config.to_str_denom(), &denom_reward_config)?;
+    REWARD_DENOM_CONFIGS.save(
+        deps.storage,
+        denom_reward_config.to_str_denom(),
+        &denom_reward_config,
+    )?;
 
     Ok(Response::default())
 }
@@ -368,14 +379,18 @@ pub fn execute_claim(
         .denom;
 
     let mut user_reward_config = USER_REWARD_CONFIGS.load(deps.storage, info.sender.clone())?;
- 
-    let amount = match user_reward_config.pending_denom_rewards.get(&denom).cloned() {
+
+    let amount = match user_reward_config
+        .pending_denom_rewards
+        .get(&denom)
+        .cloned()
+    {
         Some(val) => {
             if val.is_zero() {
                 return Err(ContractError::NoRewardsClaimable {});
             }
             val
-        },
+        }
         None => return Err(ContractError::NoRewardsClaimable {}),
     };
 
@@ -386,9 +401,12 @@ pub fn execute_claim(
     // save the nullified rewards
     USER_REWARD_CONFIGS.save(deps.storage, info.sender.clone(), &user_reward_config)?;
 
-    let contract_bal = deps.querier.query_balance(env.contract.address, "ujuno")?;
     Ok(Response::new()
-        .add_message(get_transfer_msg(info.sender.clone(), amount, checked_denom)?)
+        .add_message(get_transfer_msg(
+            info.sender.clone(),
+            amount,
+            checked_denom,
+        )?)
         .add_attribute("action", "claim"))
 }
 
@@ -496,8 +514,8 @@ pub fn update_rewards(
                         Duration::Time(_) => Expiration::AtTime(env.block.time),
                     };
                     Ok(rc)
-                },
-                None => return Err(StdError::generic_err("Denom config not found")),
+                }
+                None => Err(StdError::generic_err("Denom config not found")),
             }
         })?;
 
@@ -543,8 +561,8 @@ fn get_rewards_per_token(
     // query the current total voting power from the voting power contract
     let total_power = get_total_voting_power(deps, env, vp_contract)?;
 
-    let last_time_reward_applicable = reward_config
-        .get_latest_reward_distribution_expiration_date(&env.block);
+    let last_time_reward_applicable =
+        reward_config.get_latest_reward_distribution_expiration_date(&env.block);
 
     let current_reward_per_token =
         CUMULATIVE_REWARDS_PER_TOKEN.load(deps.storage, reward_config.to_str_denom())?;
@@ -558,7 +576,8 @@ fn get_rewards_per_token(
         Uint256::zero()
     } else {
         let numerator = reward_config
-            .reward_emission_config.reward_rate_emission
+            .reward_emission_config
+            .reward_rate_emission
             .full_mul(expiration_diff)
             .checked_mul(scale_factor())?;
         let denominator = Uint256::from(total_power);
@@ -578,7 +597,7 @@ pub fn get_rewards_earned(
 ) -> StdResult<HashMap<String, Uint128>> {
     // Get the user's voting power at the current height.
     let voting_power = Uint256::from(get_voting_power(deps, env, vp_contract, addr)?);
-   
+
     let mut entitled_rewards: HashMap<String, Uint128> = HashMap::new();
 
     let user_reward_config = USER_REWARD_CONFIGS
