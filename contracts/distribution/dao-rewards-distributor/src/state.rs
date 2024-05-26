@@ -44,6 +44,14 @@ pub struct DenomRewardConfig {
 }
 
 impl DenomRewardConfig {
+    pub fn bump_last_update(mut self, current_block: &BlockInfo) -> Self {
+        self.last_update = match self.reward_emission_config.reward_rate_time {
+            Duration::Height(_) => Expiration::AtHeight(current_block.height),
+            Duration::Time(_) => Expiration::AtTime(current_block.time),
+        };
+        self
+    }
+
     pub fn to_str_denom(&self) -> String {
         match &self.denom {
             Denom::Native(denom) => denom.to_string(),

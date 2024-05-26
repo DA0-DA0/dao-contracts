@@ -8,7 +8,7 @@ use cw_ownable::cw_ownable_execute;
 use cw_utils::Duration;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 
-use crate::{contract::scale_factor, state::DenomRewardConfig, ContractError};
+use crate::{state::DenomRewardConfig, ContractError};
 
 // so that consumers don't need a cw_ownable or cw_controllers dependency
 // to consume this contract's queries.
@@ -38,10 +38,11 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     /// Used to fund this contract with native tokens.
     Fund {},
-    /// Updates the reward duration which controls the rate that rewards are issued.
-    UpdateRewardDuration {
-        new_duration: Duration,
+    /// Updates the reward emission config which controls the rate at which rewards are issued.
+    UpdateRewardEmissionConfig {
         denom: String,
+        new_emission_rate: Uint128,
+        new_emission_time: Duration,
     },
     /// shuts down the rewards distributor. withdraws all future staking rewards
     /// back to the treasury. members can claim whatever they earned until this point.
@@ -86,7 +87,8 @@ impl RewardEmissionConfig {
     pub fn get_funded_period_duration(&self, funded_amount: Uint128) -> StdResult<Duration> {
         let funded_amount_u256 = Uint256::from(funded_amount);
         let reward_rate_emission_u256 = Uint256::from(self.reward_rate_emission);
-        let amount_to_emission_rate_ratio = funded_amount_u256.checked_div(reward_rate_emission_u256)?;
+        let amount_to_emission_rate_ratio =
+            funded_amount_u256.checked_div(reward_rate_emission_u256)?;
 
         let ratio_str = amount_to_emission_rate_ratio.to_string();
         let ratio = ratio_str

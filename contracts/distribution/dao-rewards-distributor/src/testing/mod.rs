@@ -108,18 +108,15 @@ mod native_setup {
             },
         };
 
-        
-
-        app
-            .instantiate_contract(
-                vp_code_id,
-                Addr::unchecked(OWNER),
-                &msg,
-                &[],
-                "native-vp",
-                None,
-            )
-            .unwrap()
+        app.instantiate_contract(
+            vp_code_id,
+            Addr::unchecked(OWNER),
+            &msg,
+            &[],
+            "native-vp",
+            None,
+        )
+        .unwrap()
     }
 }
 
