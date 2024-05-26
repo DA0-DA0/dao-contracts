@@ -3,6 +3,7 @@ use std::borrow::BorrowMut;
 use cosmwasm_std::{coin, Addr};
 use cw20::Expiration;
 use cw_multi_test::Executor;
+use cw_utils::Duration;
 
 use crate::{
     msg::ExecuteMsg,
@@ -214,20 +215,20 @@ fn test_cw4_dao_rewards() {
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
 
-    suite.assert_pending_rewards(ADDR1, DENOM, 50_000_000);
-    suite.assert_pending_rewards(ADDR2, DENOM, 25_000_000);
-    suite.assert_pending_rewards(ADDR3, DENOM, 25_000_000);
+    suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000);
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
 
-    suite.assert_pending_rewards(ADDR1, DENOM, 100_000_000);
-    suite.assert_pending_rewards(ADDR2, DENOM, 50_000_000);
-    suite.assert_pending_rewards(ADDR3, DENOM, 50_000_000);
+    suite.assert_pending_rewards(ADDR1, DENOM, 10_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 5_000_000);
 
     // ADDR1 claims rewards
     suite.claim_rewards(ADDR1, DENOM);
-    suite.assert_native_balance(ADDR1, DENOM, 100_000_000);
+    suite.assert_native_balance(ADDR1, DENOM, 10_000_000);
     suite.assert_pending_rewards(ADDR1, DENOM, 0);
 }
 
@@ -354,18 +355,80 @@ fn test_shutdown_unregistered_denom() {
 }
 
 #[test]
-fn test_update_reward_duration() {
-    unimplemented!()
+#[should_panic(expected = "Reward duration can not be zero")]
+fn test_update_reward_emission_config_validates_zero_duration() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    suite.update_reward_emission_config(DENOM, 2_000, Duration::Height(0));
 }
 
 #[test]
+fn test_update_reward_emission_config() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    let start_date = Expiration::AtHeight(0);
+    let funded_blocks = 1_000_000;
+    let expiration_date = Expiration::AtHeight(funded_blocks);
+    suite.assert_reward_rate_emission(1_000);
+    suite.assert_distribution_expiration(expiration_date);
+    suite.assert_period_start_date(start_date);
+    suite.assert_reward_rate_time(10);
+
+    // pass the current reward config
+    suite.skip_blocks(1_000_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 50_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 25_000_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 25_000_000);
+
+    suite.update_reward_emission_config(DENOM, 2_000, Duration::Height(1_000));
+
+    // TODO: should we make sure that stakers who didn't claim their rewards are not affected?
+    suite.assert_pending_rewards(ADDR1, DENOM, 50_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 25_000_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 25_000_000);
+}
+
+#[test]
+#[should_panic]
 fn test_fund_invalid_native_denom() {
-    unimplemented!()
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    suite.mint_native_coin(coin(100_000_000, ALT_DENOM), OWNER);
+    suite
+        .app
+        .borrow_mut()
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            suite.distribution_contract.clone(),
+            &ExecuteMsg::Fund {},
+            &[coin(100_000_000, ALT_DENOM)],
+        )
+        .unwrap();
 }
 
 #[test]
+#[should_panic(expected = "Caller is not the contract's current owner")]
 fn test_fund_unauthorized() {
-    unimplemented!()
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    suite.mint_native_coin(coin(100_000_000, DENOM), ADDR1);
+    suite
+        .app
+        .borrow_mut()
+        .execute_contract(
+            Addr::unchecked(ADDR1),
+            suite.distribution_contract.clone(),
+            &ExecuteMsg::Fund {},
+            &[coin(100_000_000, DENOM)],
+        )
+        .unwrap();
 }
 
 #[test]
