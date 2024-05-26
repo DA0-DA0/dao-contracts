@@ -4,16 +4,16 @@ use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 
 use crate::{contract::update_rewards, state::REGISTERED_HOOKS, ContractError};
 
-pub fn subscribe_denom_to_hook(deps: DepsMut, hook: Addr, denom: String) -> Result<(), ContractError> {
-    REGISTERED_HOOKS.update(
-        deps.storage,
-        hook,
-        |denoms| -> StdResult<_> {
-            let mut denoms = denoms.unwrap_or_default();
-            denoms.push(denom.to_string());
-            Ok(denoms)
-        },
-    )?;
+pub fn subscribe_denom_to_hook(
+    deps: DepsMut,
+    hook: Addr,
+    denom: String,
+) -> Result<(), ContractError> {
+    REGISTERED_HOOKS.update(deps.storage, hook, |denoms| -> StdResult<_> {
+        let mut denoms = denoms.unwrap_or_default();
+        denoms.push(denom.to_string());
+        Ok(denoms)
+    })?;
     Ok(())
 }
 

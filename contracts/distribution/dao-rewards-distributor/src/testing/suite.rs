@@ -14,7 +14,7 @@ use crate::msg::{
 
 use super::{
     contract_rewards,
-    cw20_setup::setup_cw20_test,
+    cw20_setup::{self, setup_cw20_test},
     cw4_setup::setup_cw4_test,
     cw721_setup::{setup_cw721_test, stake_cw721, unstake_cw721},
     native_setup::{
@@ -23,7 +23,7 @@ use super::{
     ADDR1, ADDR2, ADDR3, DENOM, OWNER,
 };
 
-pub(crate) enum DaoType {
+pub enum DaoType {
     CW20,
     CW721,
     NATIVE,
@@ -50,7 +50,6 @@ impl SuiteBuilder {
 
 impl SuiteBuilder {
     pub fn build(self) -> Suite {
-        // let mut app = App::default();
         let owner = Addr::unchecked(OWNER);
 
         let mut suite_built = Suite {
@@ -208,8 +207,7 @@ impl SuiteBuilder {
 
         suite_built.register_hook();
 
-        println!("funding distributor");
-        suite_built.fund_distributor(coin(100_000_000, DENOM.to_string()));
+        suite_built.fund_distributor_native(coin(100_000_000, DENOM.to_string()));
 
         suite_built
     }
@@ -220,7 +218,7 @@ impl SuiteBuilder {
     }
 }
 
-pub(crate) struct Suite {
+pub struct Suite {
     pub app: App,
     pub owner: Option<Addr>,
 
@@ -306,6 +304,11 @@ impl Suite {
         );
     }
 
+    pub fn assert_period_start_date(&mut self, expected: Expiration) {
+        let denom_configs = self.get_info_response();
+        assert_eq!(denom_configs.reward_configs[0].period_start_date, expected);
+    }
+
     pub fn assert_reward_rate_emission(&mut self, expected: u128) {
         let info_response = self.get_info_response();
         assert_eq!(
@@ -359,6 +362,20 @@ impl Suite {
 
 // SUITE ACTIONS
 impl Suite {
+    pub fn shutdown_denom_distribution(&mut self, denom: &str) {
+        let msg = ExecuteMsg::Shutdown {
+            denom: denom.to_string(),
+        };
+        self.app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+    }
+
     pub fn register_hook(&mut self) {
         let msg = cw4_group::msg::ExecuteMsg::AddHook {
             addr: self.distribution_contract.to_string(),
@@ -395,17 +412,29 @@ impl Suite {
             .unwrap();
     }
 
-    pub fn fund_distributor(&mut self, coin: Coin) {
+    pub fn mint_native_coin(&mut self, coin: Coin, dest: &str) {
         // mint the tokens to be funded
         self.app
             .borrow_mut()
             .sudo(SudoMsg::Bank({
                 BankSudo::Mint {
-                    to_address: OWNER.to_string(),
+                    to_address: dest.to_string(),
                     amount: vec![coin.clone()],
                 }
             }))
             .unwrap();
+    }
+
+    pub fn mint_cw20_coin(&mut self, coin: Cw20Coin, dest: &str) -> Addr {
+        let msg = cw20::Cw20ExecuteMsg::Mint {
+            recipient: dest.to_string(),
+            amount: coin.amount,
+        };
+        cw20_setup::instantiate_cw20(self.app.borrow_mut(), "newcoin", vec![coin])
+    }
+
+    pub fn fund_distributor_native(&mut self, coin: Coin) {
+        self.mint_native_coin(coin.clone(), OWNER);
 
         self.app
             .borrow_mut()
