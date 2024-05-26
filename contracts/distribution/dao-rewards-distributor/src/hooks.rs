@@ -54,8 +54,6 @@ pub fn execute_membership_changed(
     // Check that the sender is the vp_contract (or the hook_caller if configured).
     let hooks = check_hook_caller(deps.as_ref(), info)?;
 
-    println!("membership changed hooks: {:?}", hooks);
-
     // Get the addresses of members whose voting power has changed.
     for member in msg.diffs {
         let addr = deps.api.addr_validate(&member.key)?;

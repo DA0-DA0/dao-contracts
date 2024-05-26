@@ -6,7 +6,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw20::{Cw20ReceiveMsg, Denom};
-use cw_utils::{Duration, Expiration};
+use cw_utils::{one_coin, Duration, Expiration};
 use dao_interface::voting::{
     Query as VotingQueryMsg, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
@@ -25,7 +25,6 @@ use crate::state::{
     DenomRewardConfig, CUMULATIVE_REWARDS_PER_TOKEN, REWARD_DENOM_CONFIGS, USER_REWARD_CONFIGS,
 };
 use crate::ContractError;
-use crate::ContractError::{InvalidCw20, InvalidFunds};
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -215,12 +214,6 @@ pub fn execute_receive(
 
     let reward_denom_config = REWARD_DENOM_CONFIGS.load(deps.storage, info.sender.to_string())?;
 
-    // sanity check
-    ensure!(
-        reward_denom_config.denom == Denom::Cw20(info.sender.clone()),
-        InvalidCw20 {}
-    );
-
     execute_fund(deps, env, sender, reward_denom_config, wrapper.amount)
 }
 
@@ -229,26 +222,17 @@ pub fn execute_fund_native(
     env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
-    // todo: switch to single denom funding and validate with cw_utils::must_pay()
+    let fund_coin = one_coin(&info).map_err(|_| ContractError::InvalidFunds {})?;
 
-    let mut provided_denoms: Vec<(DenomRewardConfig, Uint128)> =
-        Vec::with_capacity(info.funds.len());
-    for coin in info.funds.iter() {
-        match REWARD_DENOM_CONFIGS.load(deps.storage, coin.denom.clone()) {
-            Ok(config) => provided_denoms.push((config, coin.amount)),
-            Err(_) => return Err(ContractError::InvalidFunds {}),
-        }
-    }
+    let reward_denom_config = REWARD_DENOM_CONFIGS.load(deps.storage, fund_coin.denom.clone())?;
 
-    // if we didn't find any native denoms, we error
-    let (provided_denom_config, amount) = if provided_denoms.is_empty() || provided_denoms.len() > 1
-    {
-        return Err(InvalidFunds {});
-    } else {
-        (provided_denoms[0].0.clone(), provided_denoms[0].1)
-    };
-
-    execute_fund(deps, env, info.sender, provided_denom_config, amount)
+    execute_fund(
+        deps,
+        env,
+        info.sender,
+        reward_denom_config,
+        fund_coin.amount,
+    )
 }
 
 pub fn execute_fund(

@@ -26,7 +26,7 @@ use super::{
 pub enum DaoType {
     CW20,
     CW721,
-    NATIVE,
+    Native,
     CW4,
 }
 
@@ -149,8 +149,7 @@ impl SuiteBuilder {
                     .unwrap(),
                 ];
 
-                let (vp_addr, cw721_addr) =
-                    setup_cw721_test(suite_built.app.borrow_mut(), initial_nfts);
+                let (vp_addr, _) = setup_cw721_test(suite_built.app.borrow_mut(), initial_nfts);
 
                 suite_built.voting_power_addr = vp_addr.clone();
                 suite_built.staking_addr = vp_addr.clone();
@@ -160,7 +159,7 @@ impl SuiteBuilder {
                 suite_built.stake_nft(ADDR2, 3);
                 suite_built.stake_nft(ADDR3, 4);
             }
-            DaoType::NATIVE => {
+            DaoType::Native => {
                 let initial_balances = vec![
                     (ADDR1, coins(100, DENOM)),
                     (ADDR2, coins(50, DENOM)),
@@ -181,7 +180,7 @@ impl SuiteBuilder {
                         .unwrap();
                 }
 
-                // Create native token staking contract
+                // Create Native token staking contract
                 let vp_addr = setup_native_token_test(suite_built.app.borrow_mut());
                 suite_built.voting_power_addr = vp_addr.clone();
                 suite_built.staking_addr = vp_addr.clone();
@@ -212,6 +211,7 @@ impl SuiteBuilder {
         suite_built
     }
 
+    #[allow(dead_code)]
     pub fn with_reward_funding(mut self, reward_funding: Coin) -> Self {
         self.reward_funding = reward_funding;
         self
@@ -263,6 +263,7 @@ impl Suite {
             .u128()
     }
 
+    #[allow(dead_code)]
     pub fn get_balance_cw20<T: Into<String>, U: Into<String>>(
         &self,
         contract_addr: T,
@@ -279,6 +280,7 @@ impl Suite {
         result.balance.u128()
     }
 
+    #[allow(dead_code)]
     pub fn get_ownership<T: Into<String>>(&mut self, address: T) -> Ownership<Addr> {
         self.app
             .wrap()
@@ -425,8 +427,9 @@ impl Suite {
             .unwrap();
     }
 
+    #[allow(dead_code)]
     pub fn mint_cw20_coin(&mut self, coin: Cw20Coin, dest: &str) -> Addr {
-        let msg = cw20::Cw20ExecuteMsg::Mint {
+        let _msg = cw20::Cw20ExecuteMsg::Mint {
             recipient: dest.to_string(),
             amount: coin.amount,
         };
@@ -451,6 +454,7 @@ impl Suite {
         self.app.borrow_mut().update_block(|b| b.height += blocks);
     }
 
+    #[allow(dead_code)]
     pub fn skip_seconds(&mut self, seconds: u64) {
         self.app
             .borrow_mut()
@@ -472,6 +476,7 @@ impl Suite {
             .unwrap();
     }
 
+    #[allow(dead_code)]
     pub fn stake_cw20_tokens(&mut self, amount: u128, sender: &str) {
         let msg = cw20::Cw20ExecuteMsg::Send {
             contract: self.staking_addr.to_string(),
