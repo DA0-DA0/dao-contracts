@@ -13,14 +13,16 @@ use dao_interface::voting::{
 use std::collections::HashMap;
 use std::convert::TryInto;
 
-use crate::hooks::{execute_membership_changed, execute_nft_stake_changed, execute_stake_changed, subscribe_denom_to_hook};
+use crate::hooks::{
+    execute_membership_changed, execute_nft_stake_changed, execute_stake_changed,
+    subscribe_denom_to_hook,
+};
 use crate::msg::{
     ExecuteMsg, InfoResponse, InstantiateMsg, PendingRewardsResponse, QueryMsg, ReceiveMsg,
     RewardDenomRegistrationMsg, RewardEmissionConfig,
 };
 use crate::state::{
-    DenomRewardConfig, CUMULATIVE_REWARDS_PER_TOKEN, REGISTERED_HOOKS, REWARD_DENOM_CONFIGS,
-    USER_REWARD_CONFIGS,
+    DenomRewardConfig, CUMULATIVE_REWARDS_PER_TOKEN, REWARD_DENOM_CONFIGS, USER_REWARD_CONFIGS,
 };
 use crate::ContractError;
 use crate::ContractError::{InvalidCw20, InvalidFunds};
@@ -114,6 +116,7 @@ pub fn execute_register_reward_denom(
         funded_amount: Uint128::zero(),
         hook_caller: hook_caller.clone(),
         vp_contract,
+        period_start_date: Expiration::Never {},
     };
     let str_denom = reward_config.to_str_denom();
 
@@ -146,10 +149,10 @@ pub fn execute_shutdown(
     env: Env,
     denom: String,
 ) -> Result<Response, ContractError> {
-    let mut reward_config = REWARD_DENOM_CONFIGS.load(deps.storage, denom.to_string())?;
-
     // only the owner can initiate a shutdown
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    let mut reward_config = REWARD_DENOM_CONFIGS.load(deps.storage, denom.to_string())?;
 
     // shutdown is only possible during the distribution period
     ensure!(
@@ -157,9 +160,12 @@ pub fn execute_shutdown(
         ContractError::ShutdownError("Reward period not finished".to_string())
     );
 
-    // TODO: time units here need to be checked for correctness
-    let period_start_units = reward_config.get_period_start_units();
-    let reward_duration_units = reward_config.get_reward_duration_value();
+    // we get the period start and finish units in u64 (seconds/blocks)
+    let period_start_units = reward_config.get_period_start_units()?;
+
+    let period_expiration_units = reward_config.get_period_finish_units()?;
+
+    let reward_duration_units = period_expiration_units - period_start_units;
 
     // find the % of reward_duration that remains from current block
     let passed_units_since_start = match reward_config.reward_emission_config.reward_rate_time {
@@ -276,11 +282,31 @@ pub fn execute_fund(
         // from the current block
         Expiration::Never {} => funded_period_duration.after(&env.block),
         // otherwise we add the duration units to the existing expiration
-        Expiration::AtHeight(h) => Expiration::AtHeight(h + funded_period_units),
-        Expiration::AtTime(t) => Expiration::AtTime(t.plus_seconds(funded_period_units)),
+        Expiration::AtHeight(h) => {
+            if h <= env.block.height {
+                // expiration is the funded duration after current block
+                Expiration::AtHeight(env.block.height + funded_period_units)
+            } else {
+                // if the previous expiration had not yet expired, we extend
+                // the current rewards period by the newly funded duration
+                Expiration::AtHeight(h + funded_period_units)
+            }
+        }
+        Expiration::AtTime(t) => {
+            if t.seconds() <= env.block.time.seconds() {
+                // expiration is the funded duration after current block time
+                Expiration::AtTime(t.plus_seconds(funded_period_units))
+            } else {
+                // if the previous expiration had not yet expired, we extend
+                // the current rewards period by the newly funded duration
+                Expiration::AtTime(env.block.time.plus_seconds(funded_period_units))
+            }
+        }
     };
 
-    denom_reward_config = denom_reward_config.bump_last_update(&env.block);
+    denom_reward_config = denom_reward_config
+        .bump_funding_date(&env.block)
+        .bump_last_update(&env.block);
     denom_reward_config.funded_amount += amount;
 
     REWARD_DENOM_CONFIGS.save(
@@ -481,16 +507,16 @@ fn get_rewards_per_token(
         reward_config.last_update,
     )?);
 
-
     if total_power.is_zero() {
         Ok(crpt)
     } else {
         let reward_rate_time_units = match reward_config.reward_emission_config.reward_rate_time {
             Duration::Height(h) => h,
             Duration::Time(t) => t,
-        };    
+        };
 
-        let complete_distribution_periods = expiration_diff.checked_div(Uint128::try_from(reward_rate_time_units).unwrap())?;
+        let complete_distribution_periods =
+            expiration_diff.checked_div(Uint128::try_from(reward_rate_time_units).unwrap())?;
 
         let numerator = reward_config
             .reward_emission_config

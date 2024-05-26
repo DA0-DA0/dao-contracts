@@ -131,11 +131,11 @@ mod cw20_setup {
 
     use super::{ADDR1, OWNER};
 
-    pub fn instantiate_cw20(app: &mut App, initial_balances: Vec<Cw20Coin>) -> Addr {
+    pub fn instantiate_cw20(app: &mut App, name: &str, initial_balances: Vec<Cw20Coin>) -> Addr {
         let cw20_id = app.store_code(cw20_base_contract());
         let msg = cw20_base::msg::InstantiateMsg {
-            name: String::from("Test"),
-            symbol: String::from("TEST"),
+            name: name.to_string(),
+            symbol: name.to_string(),
             decimals: 6,
             initial_balances,
             mint: None,
@@ -185,7 +185,7 @@ mod cw20_setup {
 
     pub fn setup_cw20_test(app: &mut App, initial_balances: Vec<Cw20Coin>) -> (Addr, Addr, Addr) {
         // Instantiate cw20 contract
-        let cw20_addr = instantiate_cw20(app, initial_balances.clone());
+        let cw20_addr = instantiate_cw20(app, "test", initial_balances.clone());
 
         // Instantiate staking contract
         let staking_addr = instantiate_cw20_staking(app, cw20_addr.clone(), None);

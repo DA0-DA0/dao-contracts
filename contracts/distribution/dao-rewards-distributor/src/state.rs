@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, Addr, BlockInfo, Uint128, Uint256};
+use cosmwasm_std::{ensure, Addr, BlockInfo, StdError, StdResult, Uint128, Uint256};
 use cw20::{Denom, Expiration};
 use cw_storage_plus::Map;
 use cw_utils::Duration;
@@ -38,9 +38,16 @@ pub struct DenomRewardConfig {
     pub reward_emission_config: RewardEmissionConfig,
     /// last update date
     pub last_update: Expiration,
+    /// address that will update the reward split when
+    /// some changes happen in the applicable address
+    /// distribution
     pub hook_caller: Addr,
+    /// address to query the voting power
     pub vp_contract: Addr,
     pub funded_amount: Uint128,
+    /// the date of when the current reward distribution period
+    /// started. period finishes iff it reaches its expiration.
+    pub period_start_date: Expiration,
 }
 
 impl DenomRewardConfig {
@@ -52,6 +59,32 @@ impl DenomRewardConfig {
         self
     }
 
+    /// tries to update the last funding date.
+    /// if distribution expiration is in the future, nothing changes.
+    /// if distribution expiration is in the past, or had never been set,
+    /// funding date becomes the current block.
+    pub fn bump_funding_date(mut self, current_block: &BlockInfo) -> Self {
+        // if its never been set before, we set it to current block and return
+        if let Expiration::Never {} = self.period_start_date {
+            self.period_start_date = match self.reward_emission_config.reward_rate_time {
+                Duration::Height(_) => Expiration::AtHeight(current_block.height),
+                Duration::Time(_) => Expiration::AtTime(current_block.time),
+            };
+            return self;
+        }
+
+        // if current distribution is expired, we set the funding date
+        // to the current date
+        if self.distribution_expiration.is_expired(current_block) {
+            self.period_start_date = match self.reward_emission_config.reward_rate_time {
+                Duration::Height(_) => Expiration::AtHeight(current_block.height),
+                Duration::Time(_) => Expiration::AtTime(current_block.time),
+            };
+        }
+
+        self
+    }
+
     pub fn to_str_denom(&self) -> String {
         match &self.denom {
             Denom::Native(denom) => denom.to_string(),
@@ -59,36 +92,25 @@ impl DenomRewardConfig {
         }
     }
 
-    /// Returns the reward duration value as a u64.
-    /// If the reward duration is in blocks, the value is the number of blocks.
-    /// If the reward duration is in time, the value is the number of seconds.
-    pub fn get_reward_duration_value(&self) -> u64 {
-        match self.reward_emission_config.reward_rate_time {
-            Duration::Height(h) => h,
-            Duration::Time(t) => t,
-        }
-    }
-
     /// Returns the period finish expiration value as a u64.
     /// If the period finish expiration is `Never`, the value is 0.
     /// If the period finish expiration is `AtHeight(h)`, the value is `h`.
     /// If the period finish expiration is `AtTime(t)`, the value is `t`, where t is seconds.
-    pub fn get_period_finish_units(&self) -> u64 {
+    pub fn get_period_finish_units(&self) -> StdResult<u64> {
         match self.distribution_expiration {
-            Expiration::Never {} => 0,
-            Expiration::AtHeight(h) => h,
-            Expiration::AtTime(t) => t.seconds(),
+            Expiration::Never {} => Err(StdError::generic_err("reward period is not active")),
+            Expiration::AtHeight(h) => Ok(h),
+            Expiration::AtTime(t) => Ok(t.seconds()),
         }
     }
 
     /// Returns the period start date value as a u64.
-    /// The period start date is calculated by subtracting the reward duration
-    /// value from the period finish expiration value.
-    // TODO: ensure this cannot go wrong
-    pub fn get_period_start_units(&self) -> u64 {
-        let period_finish_units = self.get_period_finish_units();
-        let reward_duration_value = self.get_reward_duration_value();
-        period_finish_units - reward_duration_value
+    pub fn get_period_start_units(&self) -> StdResult<u64> {
+        match self.period_start_date {
+            Expiration::AtHeight(h) => Ok(h),
+            Expiration::AtTime(t) => Ok(t.seconds()),
+            Expiration::Never {} => Err(StdError::generic_err("reward period is not active")),
+        }
     }
 
     /// Returns the latest date where rewards were still being distributed.
