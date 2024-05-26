@@ -5,6 +5,7 @@ pub mod suite;
 pub mod tests;
 
 pub const DENOM: &str = "ujuno";
+pub const ALT_DENOM: &str = "unotjuno";
 pub const OWNER: &str = "owner";
 pub const ADDR1: &str = "addr0001";
 pub const ADDR2: &str = "addr0002";
@@ -196,6 +197,7 @@ mod cw20_setup {
         (staking_addr, cw20_addr, vp_addr)
     }
 
+    #[allow(dead_code)]
     pub fn stake_cw20_tokens<T: Into<String>>(
         app: &mut App,
         staking_addr: &Addr,

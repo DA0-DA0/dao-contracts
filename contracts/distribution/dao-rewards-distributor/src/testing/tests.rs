@@ -9,7 +9,7 @@ use crate::{
     testing::{ADDR1, ADDR2, ADDR3, DENOM},
 };
 
-use super::suite::SuiteBuilder;
+use super::{suite::SuiteBuilder, ALT_DENOM, OWNER};
 
 // By default, the tests are set up to distribute rewards over 1_000_000 units of time.
 // Over that time, 100_000_000 token rewards will be distributed.
@@ -154,7 +154,7 @@ fn test_cw721_dao_rewards() {
 
 #[test]
 fn test_native_dao_rewards() {
-    let mut suite = SuiteBuilder::base(super::suite::DaoType::NATIVE).build();
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
     suite.assert_reward_rate_emission(1_000);
     suite.assert_distribution_expiration(Expiration::AtHeight(1_000_000));
@@ -232,13 +232,35 @@ fn test_cw4_dao_rewards() {
 }
 
 #[test]
+#[should_panic(expected = "Invalid funds")]
 fn test_fund_multiple_denoms() {
-    unimplemented!()
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    let alt_coin = coin(100_000_000, ALT_DENOM);
+    let coin = coin(100_000_000, DENOM);
+    suite.mint_native_coin(alt_coin.clone(), OWNER);
+    suite.mint_native_coin(coin.clone(), OWNER);
+
+    suite.register_reward_denom(ALT_DENOM, 100, 1000);
+
+    suite
+        .app
+        .borrow_mut()
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            suite.distribution_contract.clone(),
+            &ExecuteMsg::Fund {},
+            &[coin, alt_coin],
+        )
+        .unwrap();
 }
 
 #[test]
+fn test_fund_invalid_cw20_denom() {}
+
+#[test]
 fn test_shutdown_happy() {
-    let mut suite = SuiteBuilder::base(super::suite::DaoType::NATIVE).build();
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
@@ -302,7 +324,7 @@ fn test_shutdown_happy() {
 #[test]
 #[should_panic(expected = "Caller is not the contract's current owner")]
 fn test_shudown_unauthorized() {
-    let mut suite = SuiteBuilder::base(super::suite::DaoType::NATIVE).build();
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
@@ -324,7 +346,7 @@ fn test_shudown_unauthorized() {
 #[test]
 #[should_panic]
 fn test_shutdown_unregistered_denom() {
-    let mut suite = SuiteBuilder::base(super::suite::DaoType::NATIVE).build();
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
     suite.skip_blocks(100_000);
 
@@ -333,11 +355,6 @@ fn test_shutdown_unregistered_denom() {
 
 #[test]
 fn test_update_reward_duration() {
-    unimplemented!()
-}
-
-#[test]
-fn test_fund_invalid_cw20_denom() {
     unimplemented!()
 }
 
@@ -353,7 +370,7 @@ fn test_fund_unauthorized() {
 
 #[test]
 fn test_fund_post_expiration() {
-    let mut suite = SuiteBuilder::base(super::suite::DaoType::NATIVE).build();
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
     let start_date = Expiration::AtHeight(0);
     let funded_blocks = 1_000_000;
@@ -406,7 +423,7 @@ fn test_fund_post_expiration() {
 
 #[test]
 fn test_fund_pre_expiration() {
-    let mut suite = SuiteBuilder::base(super::suite::DaoType::NATIVE).build();
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
     let start_date = Expiration::AtHeight(0);
     let funded_blocks = 1_000_000;
