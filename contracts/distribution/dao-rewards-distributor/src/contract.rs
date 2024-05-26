@@ -598,6 +598,7 @@ pub fn execute_update_denom_emission_config(
         reward_rate_emission: new_emission_rate,
         reward_rate_time: new_emission_time,
     };
+
     REWARD_DENOM_CONFIGS.save(deps.storage, denom, &reward_config)?;
 
     Ok(Response::new()

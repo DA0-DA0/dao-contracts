@@ -149,10 +149,10 @@ impl SuiteBuilder {
                     .unwrap(),
                 ];
 
-                let (vp_addr, _) = setup_cw721_test(suite_built.app.borrow_mut(), initial_nfts);
+                let (vp_addr, cw721) = setup_cw721_test(suite_built.app.borrow_mut(), initial_nfts);
 
                 suite_built.voting_power_addr = vp_addr.clone();
-                suite_built.staking_addr = vp_addr.clone();
+                suite_built.staking_addr = cw721.clone();
 
                 suite_built.stake_nft(ADDR1, 1);
                 suite_built.stake_nft(ADDR1, 2);
@@ -382,8 +382,29 @@ impl Suite {
         let msg = cw4_group::msg::ExecuteMsg::AddHook {
             addr: self.distribution_contract.to_string(),
         };
+        // TODO: cw721 check here
         self.app
             .execute_contract(Addr::unchecked(OWNER), self.staking_addr.clone(), &msg, &[])
+            .unwrap();
+    }
+
+    pub fn update_reward_emission_config(
+        &mut self,
+        denom: &str,
+        reward_rate_emission: u128,
+        reward_rate_time: Duration,
+    ) {
+        self.app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &ExecuteMsg::UpdateRewardEmissionConfig {
+                    denom: denom.to_string(),
+                    new_emission_rate: reward_rate_emission.into(),
+                    new_emission_time: reward_rate_time,
+                },
+                &[],
+            )
             .unwrap();
     }
 
