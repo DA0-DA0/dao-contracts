@@ -242,11 +242,15 @@ mod cw721_setup {
     }
 
     pub fn unstake_cw721(app: &mut App, vp_addr: &Addr, address: &str, token_id: &str) {
-        let msg = dao_voting_cw721_staked::msg::ExecuteMsg::Unstake {
-            token_ids: vec![token_id.to_string()],
-        };
-        app.execute_contract(Addr::unchecked(address), vp_addr.clone(), &msg, &[])
-            .unwrap();
+        app.execute_contract(
+            Addr::unchecked(address),
+            vp_addr.clone(),
+            &dao_voting_cw721_staked::msg::ExecuteMsg::Unstake {
+                token_ids: vec![token_id.to_string()],
+            },
+            &[],
+        )
+        .unwrap();
     }
 
     pub fn setup_cw721_test(app: &mut App, initial_nfts: Vec<Binary>) -> (Addr, Addr) {

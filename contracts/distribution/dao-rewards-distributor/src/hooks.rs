@@ -1,4 +1,4 @@
-use cosmwasm_std::{ensure, Addr, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{ensure, Addr, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult};
 use cw4::MemberChangedHookMsg;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 
@@ -21,13 +21,11 @@ pub fn subscribe_denom_to_hook(
 /// hook_caller contract.
 /// Returns a list of denoms that the hook caller is registered for.
 pub fn check_hook_caller(deps: Deps, info: MessageInfo) -> Result<Vec<String>, ContractError> {
-    // only a designated hook_caller contract can call this hook
-    ensure!(
-        REGISTERED_HOOKS.has(deps.storage, info.sender.clone()),
-        ContractError::InvalidHookSender {}
-    );
-
-    Ok(REGISTERED_HOOKS.load(deps.storage, info.sender)?)
+    // only a designated hook_caller contract can call this hook.
+    // failing to load the registered denoms for a given hook returns an error.
+    REGISTERED_HOOKS
+        .load(deps.storage, info.sender.clone())
+        .map_err(|_| ContractError::InvalidHookSender {})
 }
 
 pub fn execute_stake_changed(

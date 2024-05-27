@@ -202,9 +202,26 @@ impl SuiteBuilder {
             .unwrap();
         suite_built.distribution_contract = reward_addr.clone();
 
-        suite_built.register_reward_denom(DENOM, 1000, 10);
+        if let DaoType::CW721 = self.dao_type {
+            suite_built.register_hook(suite_built.voting_power_addr.clone());
+            suite_built.register_reward_denom(
+                DENOM,
+                1000,
+                10,
+                &suite_built.voting_power_addr.to_string(),
+            );
+        } else {
+            suite_built.register_hook(suite_built.staking_addr.clone());
+            suite_built.register_reward_denom(
+                DENOM,
+                1000,
+                10,
+                &suite_built.staking_addr.to_string(),
+            );
+        }
 
-        suite_built.register_hook();
+        println!("voting power addr: {}", suite_built.voting_power_addr);
+        println!("staking addr: {}", suite_built.staking_addr);
 
         suite_built.fund_distributor_native(coin(100_000_000, DENOM.to_string()));
 
@@ -378,13 +395,13 @@ impl Suite {
             .unwrap();
     }
 
-    pub fn register_hook(&mut self) {
+    pub fn register_hook(&mut self, addr: Addr) {
         let msg = cw4_group::msg::ExecuteMsg::AddHook {
             addr: self.distribution_contract.to_string(),
         };
         // TODO: cw721 check here
         self.app
-            .execute_contract(Addr::unchecked(OWNER), self.staking_addr.clone(), &msg, &[])
+            .execute_contract(Addr::unchecked(OWNER), addr, &msg, &[])
             .unwrap();
     }
 
@@ -413,6 +430,7 @@ impl Suite {
         denom: &str,
         reward_rate_emission: u128,
         reward_rate_time: u64,
+        hook_caller: &str,
     ) {
         let register_reward_denom_msg = RewardDenomRegistrationMsg {
             denom: cw20::UncheckedDenom::Native(denom.to_string()),
@@ -420,7 +438,7 @@ impl Suite {
                 reward_rate_emission: Uint128::new(reward_rate_emission),
                 reward_rate_time: Duration::Height(reward_rate_time),
             },
-            hook_caller: self.staking_addr.to_string(),
+            hook_caller: hook_caller.to_string(),
             vp_contract: self.voting_power_addr.to_string(),
         };
 
