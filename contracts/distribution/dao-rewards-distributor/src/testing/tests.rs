@@ -78,7 +78,6 @@ fn test_cw20_dao_native_rewards_block_height_based() {
     suite.assert_pending_rewards(ADDR3, DENOM, 0);
 
     let remaining_time = suite.get_time_until_rewards_expiration();
-    println!("Remaining time: {:?}", remaining_time);
 
     suite.skip_blocks(remaining_time - 100_000);
 
@@ -116,20 +115,20 @@ fn test_cw721_dao_rewards() {
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
 
-    suite.assert_pending_rewards(ADDR1, DENOM, 50_000_000);
-    suite.assert_pending_rewards(ADDR2, DENOM, 25_000_000);
-    suite.assert_pending_rewards(ADDR3, DENOM, 25_000_000);
+    suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000);
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
 
-    suite.assert_pending_rewards(ADDR1, DENOM, 100_000_000);
-    suite.assert_pending_rewards(ADDR2, DENOM, 50_000_000);
-    suite.assert_pending_rewards(ADDR3, DENOM, 50_000_000);
+    suite.assert_pending_rewards(ADDR1, DENOM, 10_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 5_000_000);
 
     // ADDR1 claims rewards
     suite.claim_rewards(ADDR1, DENOM);
-    suite.assert_native_balance(ADDR1, DENOM, 100_000_000);
+    suite.assert_native_balance(ADDR1, DENOM, 10_000_000);
     suite.assert_pending_rewards(ADDR1, DENOM, 0);
 
     // ADDR2 and ADDR3 unstake their nfts
@@ -141,9 +140,9 @@ fn test_cw721_dao_rewards() {
 
     // because ADDR2 and ADDR3 are not staking, ADDR1 receives all the rewards.
     // ADDR2 and ADDR3 should have the same amount of pending rewards as before.
-    suite.assert_pending_rewards(ADDR1, DENOM, 100_000_000);
-    suite.assert_pending_rewards(ADDR2, DENOM, 50_000_000);
-    suite.assert_pending_rewards(ADDR3, DENOM, 50_000_000);
+    suite.assert_pending_rewards(ADDR1, DENOM, 10_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 5_000_000);
 
     // ADDR2 and ADDR3 wake up, claim and restake their nfts
     suite.claim_rewards(ADDR2, DENOM);
@@ -241,8 +240,8 @@ fn test_fund_multiple_denoms() {
     let coin = coin(100_000_000, DENOM);
     suite.mint_native_coin(alt_coin.clone(), OWNER);
     suite.mint_native_coin(coin.clone(), OWNER);
-
-    suite.register_reward_denom(ALT_DENOM, 100, 1000);
+    let hook_caller = suite.staking_addr.to_string();
+    suite.register_reward_denom(ALT_DENOM, 100, 1000, &hook_caller);
 
     suite
         .app
