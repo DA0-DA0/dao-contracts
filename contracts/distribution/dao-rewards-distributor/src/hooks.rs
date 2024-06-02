@@ -1,4 +1,4 @@
-use cosmwasm_std::{ensure, Addr, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult};
+use cosmwasm_std::{Addr, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw4::MemberChangedHookMsg;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 

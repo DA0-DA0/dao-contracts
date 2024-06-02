@@ -76,13 +76,6 @@ impl RewardEmissionConfig {
         Ok(())
     }
 
-    pub fn get_duration_amounts(&self) -> u64 {
-        match self.reward_rate_time {
-            Duration::Height(h) => h,
-            Duration::Time(t) => t,
-        }
-    }
-
     // find the duration of the funded period given emission config and funded amount
     pub fn get_funded_period_duration(&self, funded_amount: Uint128) -> StdResult<Duration> {
         let funded_amount_u256 = Uint256::from(funded_amount);

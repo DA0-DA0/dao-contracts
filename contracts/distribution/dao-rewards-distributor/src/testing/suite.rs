@@ -208,7 +208,7 @@ impl SuiteBuilder {
                 DENOM,
                 1000,
                 10,
-                &suite_built.voting_power_addr.to_string(),
+                suite_built.voting_power_addr.to_string().as_ref(),
             );
         } else {
             suite_built.register_hook(suite_built.staking_addr.clone());
@@ -216,7 +216,7 @@ impl SuiteBuilder {
                 DENOM,
                 1000,
                 10,
-                &suite_built.staking_addr.to_string(),
+                suite_built.staking_addr.to_string().as_ref(),
             );
         }
 

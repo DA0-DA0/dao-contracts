@@ -153,6 +153,28 @@ fn test_cw721_dao_rewards() {
 }
 
 #[test]
+#[should_panic(expected = "No rewards claimable")]
+fn test_claim_zero_rewards() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::CW20).build();
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000);
+
+    // ADDR1 claims rewards
+    suite.claim_rewards(ADDR1, DENOM);
+
+    // ADDR1 attempts to claim again
+    suite.claim_rewards(ADDR1, DENOM);
+}
+
+#[test]
+fn test_native_dao_rewards_time_based() {
+    unimplemented!();
+}
+
+#[test]
 fn test_native_dao_rewards() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
@@ -256,7 +278,20 @@ fn test_fund_multiple_denoms() {
 }
 
 #[test]
-fn test_fund_invalid_cw20_denom() {}
+fn test_fund_invalid_cw20_denom() {
+    unimplemented!();
+}
+
+#[test]
+#[should_panic(expected = "Reward period already finished")]
+fn test_shutdown_finished_rewards_period() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    // skip to expiration
+    suite.skip_blocks(2_000_000);
+
+    suite.shutdown_denom_distribution(DENOM);
+}
 
 #[test]
 fn test_shutdown_happy() {
@@ -383,9 +418,20 @@ fn test_update_reward_emission_config() {
     suite.update_reward_emission_config(DENOM, 2_000, Duration::Height(1_000));
 
     // TODO: should we make sure that stakers who didn't claim their rewards are not affected?
-    suite.assert_pending_rewards(ADDR1, DENOM, 50_000_000);
-    suite.assert_pending_rewards(ADDR2, DENOM, 25_000_000);
-    suite.assert_pending_rewards(ADDR3, DENOM, 25_000_000);
+    // this would likely be a paginated USER_REWARD_CONFIGS update for every member for a specific denom.
+    // suite.assert_pending_rewards(ADDR1, DENOM, 50_000_000);
+    // suite.assert_pending_rewards(ADDR2, DENOM, 25_000_000);
+    // suite.assert_pending_rewards(ADDR3, DENOM, 25_000_000);
+    panic!()
+}
+
+#[test]
+#[should_panic(expected = "Denom already registered")]
+fn test_register_duplicate_denom() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    let hook_caller = suite.staking_addr.to_string();
+    suite.register_reward_denom(DENOM, 100, 1000, &hook_caller);
 }
 
 #[test]

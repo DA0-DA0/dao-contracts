@@ -44,7 +44,7 @@ pub fn instantiate(
     Ok(Response::new().add_attribute("owner", msg.owner.unwrap_or_else(|| "None".to_string())))
 }
 
-pub fn validate_voting_power_contract(
+fn validate_voting_power_contract(
     deps: &DepsMut,
     vp_contract: String,
 ) -> Result<Addr, ContractError> {
@@ -67,7 +67,6 @@ pub fn execute(
         ExecuteMsg::StakeChangeHook(msg) => execute_stake_changed(deps, env, info, msg),
         ExecuteMsg::NftStakeChangeHook(msg) => execute_nft_stake_changed(deps, env, info, msg),
         ExecuteMsg::MemberChangedHook(msg) => execute_membership_changed(deps, env, info, msg),
-        // todo: make claim with optional vector of denoms or whatever
         ExecuteMsg::Claim { denom } => execute_claim(deps, env, info, denom),
         ExecuteMsg::Fund {} => execute_fund_native(deps, env, info),
         ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
@@ -92,7 +91,7 @@ pub fn execute(
 /// registers a new denom for rewards distribution.
 /// only the owner can register a new denom.
 /// a denom can only be registered once; update if you need to change something.
-pub fn execute_register_reward_denom(
+fn execute_register_reward_denom(
     deps: DepsMut,
     info: MessageInfo,
     msg: RewardDenomRegistrationMsg,
@@ -142,7 +141,7 @@ pub fn execute_register_reward_denom(
 /// can only be called by the admin and only during the distribution period.
 /// this will clawback all (undistributed) future rewards to the admin.
 /// updates the period finish expiration to the current block.
-pub fn execute_shutdown(
+fn execute_shutdown(
     deps: DepsMut,
     info: MessageInfo,
     env: Env,
@@ -156,7 +155,7 @@ pub fn execute_shutdown(
     // shutdown is only possible during the distribution period
     ensure!(
         !reward_config.distribution_expiration.is_expired(&env.block),
-        ContractError::ShutdownError("Reward period not finished".to_string())
+        ContractError::ShutdownError("Reward period already finished".to_string())
     );
 
     // we get the period start and finish units in u64 (seconds/blocks)
@@ -173,11 +172,13 @@ pub fn execute_shutdown(
     };
 
     // get the fraction of what part of rewards duration is in the past
-    let reward_duration_passed_fraction =
-        Decimal::from_ratio(passed_units_since_start, reward_duration_units);
-
-    // sub from 1 to get the remaining rewards duration
-    let remaining_reward_duration_fraction = Decimal::one() - reward_duration_passed_fraction;
+    // and sub from 1 to get the remaining rewards
+    let remaining_reward_duration_fraction = Decimal::one()
+        .checked_sub(Decimal::from_ratio(
+            passed_units_since_start,
+            reward_duration_units,
+        ))
+        .map_err(|e| ContractError::Std(StdError::overflow(e)))?;
 
     // to get the clawback msg
     let clawback_msg = get_transfer_msg(
@@ -200,7 +201,7 @@ pub fn execute_shutdown(
         .add_message(clawback_msg))
 }
 
-pub fn execute_receive(
+fn execute_receive(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -217,7 +218,7 @@ pub fn execute_receive(
     execute_fund(deps, env, sender, reward_denom_config, wrapper.amount)
 }
 
-pub fn execute_fund_native(
+fn execute_fund_native(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -235,7 +236,7 @@ pub fn execute_fund_native(
     )
 }
 
-pub fn execute_fund(
+fn execute_fund(
     mut deps: DepsMut,
     env: Env,
     sender: Addr,
@@ -255,10 +256,11 @@ pub fn execute_fund(
     let funded_period_duration = denom_reward_config
         .reward_emission_config
         .get_funded_period_duration(amount)?;
-    let funded_period_units = match funded_period_duration {
-        Duration::Height(h) => h,
-        Duration::Time(t) => t,
-    };
+    let funded_period_units = get_duration_units(&funded_period_duration);
+
+    denom_reward_config = denom_reward_config
+        .bump_funding_date(&env.block)
+        .bump_last_update(&env.block);
 
     denom_reward_config.distribution_expiration = match denom_reward_config.distribution_expiration
     {
@@ -288,9 +290,6 @@ pub fn execute_fund(
         }
     };
 
-    denom_reward_config = denom_reward_config
-        .bump_funding_date(&env.block)
-        .bump_last_update(&env.block);
     denom_reward_config.funded_amount += amount;
 
     REWARD_DENOM_CONFIGS.save(
@@ -302,7 +301,7 @@ pub fn execute_fund(
     Ok(Response::default())
 }
 
-pub fn execute_claim(
+fn execute_claim(
     mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -344,7 +343,7 @@ pub fn execute_claim(
         .add_attribute("action", "claim"))
 }
 
-pub fn execute_update_owner(
+fn execute_update_owner(
     deps: DepsMut,
     info: MessageInfo,
     env: Env,
@@ -358,7 +357,7 @@ pub fn execute_update_owner(
 }
 
 /// Returns the appropriate CosmosMsg for transferring the reward token.
-pub fn get_transfer_msg(recipient: Addr, amount: Uint128, denom: Denom) -> StdResult<CosmosMsg> {
+fn get_transfer_msg(recipient: Addr, amount: Uint128, denom: Denom) -> StdResult<CosmosMsg> {
     match denom {
         Denom::Native(denom) => Ok(BankMsg::Send {
             to_address: recipient.into_string(),
@@ -379,13 +378,13 @@ pub fn get_transfer_msg(recipient: Addr, amount: Uint128, denom: Denom) -> StdRe
         }
     }
 }
+
 pub fn update_rewards(
     deps: &mut DepsMut,
     env: &Env,
     addr: &Addr,
     denoms: Vec<String>,
 ) -> StdResult<()> {
-    println!("[CONTRACT-UPDATE-REWARDS] Updating rewards for {:?}", addr);
     for denom in denoms {
         let reward_config = REWARD_DENOM_CONFIGS.load(deps.storage, denom.clone())?;
 
@@ -494,13 +493,11 @@ fn get_rewards_per_token(
     if total_power.is_zero() {
         Ok(crpt)
     } else {
-        let reward_rate_time_units = match reward_config.reward_emission_config.reward_rate_time {
-            Duration::Height(h) => h,
-            Duration::Time(t) => t,
-        };
+        let reward_rate_time_units =
+            get_duration_units(&reward_config.reward_emission_config.reward_rate_time);
 
         let complete_distribution_periods =
-            expiration_diff.checked_div(Uint128::try_from(reward_rate_time_units).unwrap())?;
+            expiration_diff.checked_div(Uint128::from(reward_rate_time_units))?;
 
         let numerator = reward_config
             .reward_emission_config
@@ -512,7 +509,7 @@ fn get_rewards_per_token(
     }
 }
 
-pub fn get_accrued_rewards_since_last_user_action(
+fn get_accrued_rewards_since_last_user_action(
     deps: Deps,
     env: &Env,
     addr: &Addr,
@@ -574,7 +571,17 @@ fn get_voting_power(
     Ok(resp.power)
 }
 
-pub fn execute_update_denom_emission_config(
+/// returns underlying units for a given duration.
+/// if the duration is in blocks, returns the block height.
+/// if the duration is in time, returns the time in seconds.
+fn get_duration_units(duration: &Duration) -> u64 {
+    match duration {
+        Duration::Height(h) => *h,
+        Duration::Time(t) => *t,
+    }
+}
+
+fn execute_update_denom_emission_config(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -626,7 +633,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub fn query_info(deps: Deps, _env: Env) -> StdResult<InfoResponse> {
+fn query_info(deps: Deps, _env: Env) -> StdResult<InfoResponse> {
     let reward_configs = REWARD_DENOM_CONFIGS
         .range(deps.storage, None, None, Order::Ascending)
         .map(|item| item.map(|(_, v)| v))
@@ -634,11 +641,7 @@ pub fn query_info(deps: Deps, _env: Env) -> StdResult<InfoResponse> {
     Ok(InfoResponse { reward_configs })
 }
 
-pub fn query_pending_rewards(
-    deps: Deps,
-    env: Env,
-    addr: String,
-) -> StdResult<PendingRewardsResponse> {
+fn query_pending_rewards(deps: Deps, env: Env, addr: String) -> StdResult<PendingRewardsResponse> {
     let addr = deps.api.addr_validate(&addr)?;
     let reward_configs = REWARD_DENOM_CONFIGS
         .range(deps.storage, None, None, Order::Ascending)
