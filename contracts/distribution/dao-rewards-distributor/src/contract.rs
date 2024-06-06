@@ -258,8 +258,8 @@ fn execute_fund(
         .bump_last_update(&env.block);
 
     denom_reward_state.ends_at = match denom_reward_state.ends_at {
-        // if this is the first funding of the denom, the new expiration is the funded period duration
-        // from the current block
+        // if this is the first funding of the denom, the new expiration is the
+        // funded period duration from the current block
         Expiration::Never {} => funded_period_duration.after(&env.block),
         // otherwise we add the duration units to the existing expiration
         Expiration::AtHeight(h) => {
@@ -275,11 +275,11 @@ fn execute_fund(
         Expiration::AtTime(t) => {
             if t.seconds() <= env.block.time.seconds() {
                 // expiration is the funded duration after current block time
-                Expiration::AtTime(t.plus_seconds(funded_period_value))
+                Expiration::AtTime(env.block.time.plus_seconds(funded_period_value))
             } else {
                 // if the previous expiration had not yet expired, we extend
                 // the current rewards period by the newly funded duration
-                Expiration::AtTime(env.block.time.plus_seconds(funded_period_value))
+                Expiration::AtTime(t.plus_seconds(funded_period_value))
             }
         }
     };
