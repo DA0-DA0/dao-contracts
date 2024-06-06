@@ -238,9 +238,6 @@ fn execute_fund(
     mut denom_reward_state: DenomRewardState,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    // Ensure that the sender is the owner
-    cw_ownable::assert_owner(deps.storage, &sender)?;
-
     let denom_str = denom_reward_state.to_str_denom();
 
     // first we update the existing rewards (if any)
