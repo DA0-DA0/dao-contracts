@@ -14,9 +14,9 @@
 
 // use crate::msg::{
 //     ExecuteMsg, InfoResponse, PendingRewardsResponse, QueryMsg, ReceiveMsg,
-//     RewardDenomRegistrationMsg, RewardEmissionConfig,
+//     RewardDenomRegistrationMsg, RewardEmissionRate,
 // };
-// use crate::state::DenomRewardConfig;
+// use crate::state::DenomRewardState;
 // use crate::ContractError;
 
 // const DENOM: &str = "ujuno";
@@ -260,7 +260,7 @@
 //     hook_caller: String,
 //     reward_denoms_whitelist: Vec<UncheckedDenom>,
 //     owner: Addr,
-//     reward_rate_time: Duration,
+//     duration: Duration,
 // ) -> Addr {
 //     let reward_code_id = app.store_code(contract_rewards());
 //     let msg = crate::msg::InstantiateMsg {
@@ -272,9 +272,9 @@
 
 //     let register_reward_denom_msg = RewardDenomRegistrationMsg {
 //         denom: reward_denoms_whitelist[0].clone(),
-//         reward_emission_config: RewardEmissionConfig {
-//             reward_rate_emission: Uint128::new(1000),
-//             reward_rate_time,
+//         emission_rate: RewardEmissionRate {
+//             amount: Uint128::new(1000),
+//             duration,
 //         },
 //         hook_caller: hook_caller.clone(),
 //         vp_contract: vp_contract.to_string(),
@@ -481,9 +481,9 @@
 
 //     let denom_reward_registration_msg = RewardDenomRegistrationMsg {
 //         denom: reward_denoms_whitelist[0].clone(),
-//         reward_emission_config: RewardEmissionConfig {
-//             reward_rate_emission: Uint128::new(1000),
-//             reward_rate_time: Duration::Height(0),
+//         emission_rate: RewardEmissionRate {
+//             amount: Uint128::new(1000),
+//             duration: Duration::Height(0),
 //         },
 //         vp_contract: vp_addr.to_string(),
 //         hook_caller: staking_addr.to_string(),
@@ -560,13 +560,13 @@
 //         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
 //         .unwrap();
 
-//     assert_eq!(res.reward_configs[0].reward_emission_config.reward_rate_emission, Uint128::new(1000));
+//     assert_eq!(res.reward_configs[0].emission_rate.amount, Uint128::new(1000));
 //     assert_eq!(
-//         res.reward_configs[0].distribution_expiration,
+//         res.reward_configs[0].ends_at,
 //         Expiration::AtHeight(10001000)
 //     );
 //     assert_eq!(
-//         res.reward_configs[0].reward_emission_config.reward_rate_time,
+//         res.reward_configs[0].emission_rate.duration,
 //         Duration::Height(100)
 //     );
 
@@ -665,12 +665,11 @@
 //     }))
 //     .unwrap();
 
-//     let reward_config: DenomRewardConfig = app.wrap().query_wasm_smart(
+//     let reward_config: DenomRewardState = app.wrap().query_wasm_smart(
 //         reward_addr.clone(),
-//         &QueryMsg::DenomRewardConfig { denom: DENOM.to_string() }
+//         &QueryMsg::DenomRewardState { denom: DENOM.to_string() }
 //     )
 //     .unwrap();
-
 
 //     let _res = app
 //         .borrow_mut()
@@ -681,9 +680,9 @@
 //             &reward_funding,
 //         )
 //         .unwrap();
-//     let post_funding_reward_config: DenomRewardConfig = app.wrap().query_wasm_smart(
+//     let post_funding_reward_config: DenomRewardState = app.wrap().query_wasm_smart(
 //         reward_addr.clone(),
-//         &QueryMsg::DenomRewardConfig { denom: DENOM.to_string() }
+//         &QueryMsg::DenomRewardState { denom: DENOM.to_string() }
 //     )
 //     .unwrap();
 //     println!("reward config: {:?}", reward_config);
@@ -823,13 +822,13 @@
 //         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
 //         .unwrap();
 
-//     assert_eq!(res.reward_configs[0].reward_emission_config.reward_rate_emission, Uint128::new(1000));
+//     assert_eq!(res.reward_configs[0].emission_rate.amount, Uint128::new(1000));
 //     // period finish expiration should be 10000 seconds from now
 //     assert_eq!(
-//         res.reward_configs[0].distribution_expiration,
+//         res.reward_configs[0].ends_at,
 //         Expiration::AtTime(pre_fund_block.time.plus_seconds(100_000))
 //     );
-//     assert_eq!(res.reward_configs[0].reward_emission_config.reward_rate_time, Duration::Time(100));
+//     assert_eq!(res.reward_configs[0].emission_rate.duration, Duration::Time(100));
 
 //     assert_pending_rewards(&mut app, &reward_addr, ADDR1, DENOM, 0);
 //     assert_pending_rewards(&mut app, &reward_addr, ADDR2, DENOM, 0);
@@ -1001,13 +1000,13 @@
 //         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
 //         .unwrap();
 
-//     assert_eq!(res.reward_configs[0].reward_emission_config.reward_rate_emission, Uint128::new(1000));
+//     assert_eq!(res.reward_configs[0].emission_rate.amount, Uint128::new(1000));
 //     assert_eq!(
-//         res.reward_configs[0].distribution_expiration,
+//         res.reward_configs[0].ends_at,
 //         Expiration::AtHeight(101000)
 //     );
 //     assert_eq!(
-//         res.reward_configs[0].reward_emission_config.reward_rate_time,
+//         res.reward_configs[0].emission_rate.duration,
 //         Duration::Height(10)
 //     );
 
@@ -1321,13 +1320,13 @@
 //         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
 //         .unwrap();
 
-//     assert_eq!(res.reward_configs[0].reward_emission_config.reward_rate_emission, Uint128::new(2000));
+//     assert_eq!(res.reward_configs[0].emission_rate.amount, Uint128::new(2000));
 //     assert_eq!(
-//         res.reward_configs[0].distribution_expiration,
+//         res.reward_configs[0].ends_at,
 //         Expiration::AtHeight(101000)
 //     );
 //     assert_eq!(
-//         res.reward_configs[0].reward_emission_config.reward_rate_time,
+//         res.reward_configs[0].emission_rate.duration,
 //         Duration::Height(100000)
 //     );
 
@@ -1358,13 +1357,13 @@
 //         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
 //         .unwrap();
 
-//     assert_eq!(res.reward_configs[0].reward_emission_config.reward_rate_emission, Uint128::new(1000));
+//     assert_eq!(res.reward_configs[0].emission_rate.amount, Uint128::new(1000));
 //     assert_eq!(
-//         res.reward_configs[0].distribution_expiration,
+//         res.reward_configs[0].ends_at,
 //         Expiration::AtHeight(201000)
 //     );
 //     assert_eq!(
-//         res.reward_configs[0].reward_emission_config.reward_rate_time,
+//         res.reward_configs[0].emission_rate.duration,
 //         Duration::Height(100000)
 //     );
 
@@ -1394,13 +1393,13 @@
 //         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
 //         .unwrap();
 
-//     assert_eq!(res.reward_configs[0].reward_emission_config.reward_rate_emission, Uint128::new(1000));
+//     assert_eq!(res.reward_configs[0].emission_rate.amount, Uint128::new(1000));
 //     assert_eq!(
-//         res.reward_configs[0].distribution_expiration,
+//         res.reward_configs[0].ends_at,
 //         Expiration::AtHeight(201000)
 //     );
 //     assert_eq!(
-//         res.reward_configs[0].reward_emission_config.reward_rate_time,
+//         res.reward_configs[0].emission_rate.duration,
 //         Duration::Height(100000)
 //     );
 // }
@@ -1443,13 +1442,13 @@
 //         .unwrap();
 //     println!("query respnose: {:?}", res);
 
-//     // assert_eq!(res.reward_configs[0].reward_emission_config.reward_rate_emission, Uint128::new(0));
+//     // assert_eq!(res.reward_configs[0].emission_rate.amount, Uint128::new(0));
 //     assert_eq!(
-//         res.reward_configs[0].distribution_expiration,
+//         res.reward_configs[0].ends_at,
 //         Expiration::Never {}
 //     );
 //     assert_eq!(
-//         res.reward_configs[0].reward_emission_config.reward_rate_time,
+//         res.reward_configs[0].emission_rate.duration,
 //         Duration::Height(100000)
 //     );
 
@@ -1483,12 +1482,12 @@
 
 //     println!("query respnose: {:?}", res);
 
-//     assert_eq!(res.reward_configs[0].reward_emission_config.reward_rate_emission, Uint128::new(0));
+//     assert_eq!(res.reward_configs[0].emission_rate.amount, Uint128::new(0));
 //     assert_eq!(
-//         res.reward_configs[0].distribution_expiration,
+//         res.reward_configs[0].ends_at,
 //         Expiration::Never {}
 //     );
-//     assert_eq!(res.reward_configs[0].reward_emission_config.reward_rate_time, Duration::Height(10));
+//     assert_eq!(res.reward_configs[0].emission_rate.duration, Duration::Height(10));
 
 //     // Non-admin cannot update rewards
 //     let msg = ExecuteMsg::UpdateRewardDuration {
@@ -1540,12 +1539,12 @@
 //         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
 //         .unwrap();
 
-//     assert_eq!(res.reward_configs[0].reward_emission_config.reward_rate_emission, Uint128::new(100));
+//     assert_eq!(res.reward_configs[0].emission_rate.amount, Uint128::new(100));
 //     assert_eq!(
-//         res.reward_configs[0].distribution_expiration,
+//         res.reward_configs[0].ends_at,
 //         Expiration::AtHeight(1010)
 //     );
-//     assert_eq!(res.reward_configs[0].reward_emission_config.reward_rate_time, Duration::Height(10));
+//     assert_eq!(res.reward_configs[0].emission_rate.duration, Duration::Height(10));
 
 //     // Cannot update reward period before it finishes
 //     let msg = ExecuteMsg::UpdateRewardDuration {
@@ -1578,12 +1577,12 @@
 //         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
 //         .unwrap();
 
-//     assert_eq!(res.reward_configs[0].reward_emission_config.reward_rate_emission, Uint128::new(100));
+//     assert_eq!(res.reward_configs[0].emission_rate.amount, Uint128::new(100));
 //     assert_eq!(
-//         res.reward_configs[0].distribution_expiration,
+//         res.reward_configs[0].ends_at,
 //         Expiration::AtHeight(1010)
 //     );
-//     assert_eq!(res.reward_configs[0].reward_emission_config.reward_rate_time, Duration::Height(100));
+//     assert_eq!(res.reward_configs[0].emission_rate.duration, Duration::Height(100));
 // }
 
 // #[test]
@@ -1947,13 +1946,13 @@
 //         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
 //         .unwrap();
 
-//     assert_eq!(res.reward_configs[0].reward_emission_config.reward_rate_emission, Uint128::new(1000));
+//     assert_eq!(res.reward_configs[0].emission_rate.amount, Uint128::new(1000));
 //     assert_eq!(
-//         res.reward_configs[0].distribution_expiration,
+//         res.reward_configs[0].ends_at,
 //         Expiration::AtHeight(101000)
 //     );
 //     assert_eq!(
-//         res.reward_configs[0].reward_emission_config.reward_rate_time,
+//         res.reward_configs[0].emission_rate.duration,
 //         Duration::Height(100000)
 //     );
 
@@ -2038,13 +2037,13 @@
 //         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
 //         .unwrap();
 
-//     assert_eq!(res.reward_configs[0].reward_emission_config.reward_rate_emission, Uint128::new(10));
+//     assert_eq!(res.reward_configs[0].emission_rate.amount, Uint128::new(10));
 //     assert_eq!(
-//         res.reward_configs[0].distribution_expiration,
+//         res.reward_configs[0].ends_at,
 //         Expiration::AtHeight(101000)
 //     );
 //     assert_eq!(
-//         res.reward_configs[0].reward_emission_config.reward_rate_time,
+//         res.reward_configs[0].emission_rate.duration,
 //         Duration::Height(10)
 //     );
 
@@ -2181,13 +2180,13 @@
 
 //     println!("info response: {:?}", res);
 
-//     assert_eq!(res.reward_configs[0].reward_emission_config.reward_rate_emission, Uint128::new(1000));
+//     assert_eq!(res.reward_configs[0].emission_rate.amount, Uint128::new(1000));
 //     assert_eq!(
-//         res.reward_configs[0].distribution_expiration,
+//         res.reward_configs[0].ends_at,
 //         Expiration::AtHeight(101000)
 //     );
 //     assert_eq!(
-//         res.reward_configs[0].reward_emission_config.reward_rate_time,
+//         res.reward_configs[0].emission_rate.duration,
 //         Duration::Height(10)
 //     );
 
@@ -2329,13 +2328,13 @@
 //         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
 //         .unwrap();
 
-//     assert_eq!(res.reward_configs[0].reward_emission_config.reward_rate_emission, Uint128::new(1000));
+//     assert_eq!(res.reward_configs[0].emission_rate.amount, Uint128::new(1000));
 //     assert_eq!(
-//         res.reward_configs[0].distribution_expiration,
+//         res.reward_configs[0].ends_at,
 //         Expiration::AtHeight(101000)
 //     );
 //     assert_eq!(
-//         res.reward_configs[0].reward_emission_config.reward_rate_time,
+//         res.reward_configs[0].emission_rate.duration,
 //         Duration::Height(10)
 //     );
 
@@ -2474,13 +2473,13 @@
 //         .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
 //         .unwrap();
 
-//     assert_eq!(res.reward_configs[0].reward_emission_config.reward_rate_emission, Uint128::new(1000));
+//     assert_eq!(res.reward_configs[0].emission_rate.amount, Uint128::new(1000));
 //     assert_eq!(
-//         res.reward_configs[0].distribution_expiration,
+//         res.reward_configs[0].ends_at,
 //         Expiration::AtHeight(101000)
 //     );
 //     assert_eq!(
-//         res.reward_configs[0].reward_emission_config.reward_rate_time,
+//         res.reward_configs[0].emission_rate.duration,
 //         Duration::Height(10)
 //     );
 
@@ -2785,13 +2784,13 @@
 
 //     println!("info response: {:?}", res);
 
-//     assert_eq!(res.reward_configs[0].reward_emission_config.reward_rate_emission, Uint128::new(1000));
+//     assert_eq!(res.reward_configs[0].emission_rate.amount, Uint128::new(1000));
 //     assert_eq!(
-//         res.reward_configs[0].distribution_expiration,
+//         res.reward_configs[0].ends_at,
 //         Expiration::AtHeight(101000)
 //     );
 //     assert_eq!(
-//         res.reward_configs[0].reward_emission_config.reward_rate_time,
+//         res.reward_configs[0].emission_rate.duration,
 //         Duration::Height(100000)
 //     );
 

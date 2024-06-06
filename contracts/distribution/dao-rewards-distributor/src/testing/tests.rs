@@ -19,9 +19,9 @@ use super::{suite::SuiteBuilder, ALT_DENOM, OWNER};
 fn test_cw20_dao_native_rewards_block_height_based() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::CW20).build();
 
-    suite.assert_reward_rate_emission(1_000);
-    suite.assert_distribution_expiration(Expiration::AtHeight(1_000_000));
-    suite.assert_reward_rate_time(10);
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000));
+    suite.assert_duration(10);
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
@@ -108,9 +108,9 @@ fn test_cw20_dao_native_rewards_block_height_based() {
 fn test_cw721_dao_rewards() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::CW721).build();
 
-    suite.assert_reward_rate_emission(1_000);
-    suite.assert_distribution_expiration(Expiration::AtHeight(1_000_000));
-    suite.assert_reward_rate_time(10);
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000));
+    suite.assert_duration(10);
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
@@ -178,9 +178,9 @@ fn test_native_dao_rewards_time_based() {
 fn test_native_dao_rewards() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
-    suite.assert_reward_rate_emission(1_000);
-    suite.assert_distribution_expiration(Expiration::AtHeight(1_000_000));
-    suite.assert_reward_rate_time(10);
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000));
+    suite.assert_duration(10);
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
@@ -229,9 +229,9 @@ fn test_native_dao_rewards() {
 fn test_cw4_dao_rewards() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::CW4).build();
 
-    suite.assert_reward_rate_emission(1_000);
-    suite.assert_distribution_expiration(Expiration::AtHeight(1_000_000));
-    suite.assert_reward_rate_time(10);
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000));
+    suite.assert_duration(10);
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
@@ -390,23 +390,23 @@ fn test_shutdown_unregistered_denom() {
 
 #[test]
 #[should_panic(expected = "Reward duration can not be zero")]
-fn test_update_reward_emission_config_validates_zero_duration() {
+fn test_update_emission_rate_validates_zero_duration() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
-    suite.update_reward_emission_config(DENOM, 2_000, Duration::Height(0));
+    suite.update_emission_rate(DENOM, 2_000, Duration::Height(0));
 }
 
 #[test]
-fn test_update_reward_emission_config() {
+fn test_update_emission_rate() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
-    let start_date = Expiration::AtHeight(0);
+    let started_at = Expiration::AtHeight(0);
     let funded_blocks = 1_000_000;
     let expiration_date = Expiration::AtHeight(funded_blocks);
-    suite.assert_reward_rate_emission(1_000);
-    suite.assert_distribution_expiration(expiration_date);
-    suite.assert_period_start_date(start_date);
-    suite.assert_reward_rate_time(10);
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(expiration_date);
+    suite.assert_started_at(started_at);
+    suite.assert_duration(10);
 
     // pass the current reward config
     suite.skip_blocks(1_000_000);
@@ -415,10 +415,10 @@ fn test_update_reward_emission_config() {
     suite.assert_pending_rewards(ADDR2, DENOM, 25_000_000);
     suite.assert_pending_rewards(ADDR3, DENOM, 25_000_000);
 
-    suite.update_reward_emission_config(DENOM, 2_000, Duration::Height(1_000));
+    suite.update_emission_rate(DENOM, 2_000, Duration::Height(1_000));
 
     // TODO: should we make sure that stakers who didn't claim their rewards are not affected?
-    // this would likely be a paginated USER_REWARD_CONFIGS update for every member for a specific denom.
+    // this would likely be a paginated USER_REWARD_STATES update for every member for a specific denom.
     // suite.assert_pending_rewards(ADDR1, DENOM, 50_000_000);
     // suite.assert_pending_rewards(ADDR2, DENOM, 25_000_000);
     // suite.assert_pending_rewards(ADDR3, DENOM, 25_000_000);
@@ -480,13 +480,13 @@ fn test_fund_unauthorized() {
 fn test_fund_post_expiration() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
-    let start_date = Expiration::AtHeight(0);
+    let started_at = Expiration::AtHeight(0);
     let funded_blocks = 1_000_000;
     let expiration_date = Expiration::AtHeight(funded_blocks);
-    suite.assert_reward_rate_emission(1_000);
-    suite.assert_distribution_expiration(expiration_date);
-    suite.assert_period_start_date(start_date);
-    suite.assert_reward_rate_time(10);
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(expiration_date);
+    suite.assert_started_at(started_at);
+    suite.assert_duration(10);
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
@@ -508,8 +508,8 @@ fn test_fund_post_expiration() {
     suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
     suite.assert_pending_rewards(ADDR3, DENOM, 30_000_000);
 
-    suite.assert_distribution_expiration(expiration_date);
-    suite.assert_period_start_date(start_date);
+    suite.assert_ends_at(expiration_date);
+    suite.assert_started_at(started_at);
 
     // we fund the distributor with the same amount of coins as
     // during setup, meaning that the rewards distribution duration
@@ -520,26 +520,25 @@ fn test_fund_post_expiration() {
 
     // funding after the reward period had expired should
     // reset the start date to that of the funding.
-    suite.assert_period_start_date(Expiration::AtHeight(current_block.height));
+    suite.assert_started_at(Expiration::AtHeight(current_block.height));
 
     // funding after the reward period had expired should
     // set the distribution expiration to the funded duration
     // after current block
-    suite
-        .assert_distribution_expiration(Expiration::AtHeight(current_block.height + funded_blocks));
+    suite.assert_ends_at(Expiration::AtHeight(current_block.height + funded_blocks));
 }
 
 #[test]
 fn test_fund_pre_expiration() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
-    let start_date = Expiration::AtHeight(0);
+    let started_at = Expiration::AtHeight(0);
     let funded_blocks = 1_000_000;
     let expiration_date = Expiration::AtHeight(funded_blocks);
-    suite.assert_reward_rate_emission(1_000);
-    suite.assert_distribution_expiration(expiration_date);
-    suite.assert_period_start_date(start_date);
-    suite.assert_reward_rate_time(10);
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(expiration_date);
+    suite.assert_started_at(started_at);
+    suite.assert_duration(10);
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
@@ -561,8 +560,8 @@ fn test_fund_pre_expiration() {
     suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
     suite.assert_pending_rewards(ADDR3, DENOM, 26_666_666);
 
-    suite.assert_distribution_expiration(expiration_date);
-    suite.assert_period_start_date(start_date);
+    suite.assert_ends_at(expiration_date);
+    suite.assert_started_at(started_at);
 
     // we fund the distributor with the same amount of coins as
     // during setup, meaning that the rewards distribution duration
@@ -571,10 +570,10 @@ fn test_fund_pre_expiration() {
 
     // funding before the reward period expires should
     // not reset the existing rewards cycle
-    suite.assert_period_start_date(start_date);
+    suite.assert_started_at(started_at);
 
     // funding before the reward period expires should
     // extend the current distribution expiration by the
     // newly funded duration
-    suite.assert_distribution_expiration(Expiration::AtHeight(funded_blocks * 2));
+    suite.assert_ends_at(Expiration::AtHeight(funded_blocks * 2));
 }

@@ -7,8 +7,9 @@ use cw4::MemberChangedHookMsg;
 use cw_ownable::cw_ownable_execute;
 use cw_utils::Duration;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
+use dao_interface::voting::InfoResponse;
 
-use crate::{state::DenomRewardConfig, ContractError};
+use crate::{state::DenomRewardState, ContractError};
 
 // so that consumers don't need a cw_ownable or cw_controllers dependency
 // to consume this contract's queries.
@@ -38,39 +39,37 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     /// Used to fund this contract with native tokens.
     Fund {},
-    /// Updates the reward emission config which controls the rate at which rewards are issued.
-    UpdateRewardEmissionConfig {
+    /// Updates the reward emission rate which controls the rate at which
+    /// rewards are issued.
+    UpdateRewardEmissionRate {
         denom: String,
-        new_emission_rate: Uint128,
-        new_emission_time: Duration,
+        amount: Uint128,
+        duration: Duration,
     },
     /// shuts down the rewards distributor. withdraws all future staking rewards
     /// back to the treasury. members can claim whatever they earned until this point.
     Shutdown { denom: String },
     /// registers a new reward denom
-    RegisterRewardDenom(RewardDenomRegistrationMsg),
+    RegisterRewardDenom {
+        denom: UncheckedDenom,
+        emission_rate: RewardEmissionRate,
+        vp_contract: String,
+        hook_caller: String,
+    },
 }
 
+/// defines how many tokens (amount) should be distributed per amount of time
+/// (duration). e.g. 5udenom per hour.
 #[cw_serde]
-pub struct RewardDenomRegistrationMsg {
-    pub denom: UncheckedDenom,
-    pub reward_emission_config: RewardEmissionConfig,
-    pub vp_contract: String,
-    pub hook_caller: String,
+pub struct RewardEmissionRate {
+    pub amount: Uint128,
+    pub duration: Duration,
 }
 
-/// defines how many rewards should be distributed per unit of time.
-/// e.g. 5udenom per hour.
-#[cw_serde]
-pub struct RewardEmissionConfig {
-    pub reward_rate_emission: Uint128,
-    pub reward_rate_time: Duration,
-}
-
-impl RewardEmissionConfig {
+impl RewardEmissionRate {
     pub fn validate_emission_time_window(&self) -> Result<(), ContractError> {
         // Reward duration must be greater than 0
-        if let Duration::Height(0) | Duration::Time(0) = self.reward_rate_time {
+        if let Duration::Height(0) | Duration::Time(0) = self.duration {
             return Err(ContractError::ZeroRewardDuration {});
         }
         Ok(())
@@ -79,16 +78,15 @@ impl RewardEmissionConfig {
     // find the duration of the funded period given emission config and funded amount
     pub fn get_funded_period_duration(&self, funded_amount: Uint128) -> StdResult<Duration> {
         let funded_amount_u256 = Uint256::from(funded_amount);
-        let reward_rate_emission_u256 = Uint256::from(self.reward_rate_emission);
-        let amount_to_emission_rate_ratio =
-            funded_amount_u256.checked_div(reward_rate_emission_u256)?;
+        let amount_u256 = Uint256::from(self.amount);
+        let amount_to_emission_rate_ratio = funded_amount_u256.checked_div(amount_u256)?;
 
         let ratio_str = amount_to_emission_rate_ratio.to_string();
         let ratio = ratio_str
             .parse::<u64>()
             .map_err(|e| StdError::generic_err(e.to_string()))?;
 
-        let funded_period_duration = match self.reward_rate_time {
+        let funded_period_duration = match self.duration {
             Duration::Height(h) => {
                 let duration_height = match ratio.checked_mul(h) {
                     Some(duration) => duration,
@@ -121,22 +119,25 @@ pub enum ReceiveMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    /// Returns configuration information about this contract.
+    /// Returns contract version info
     #[returns(InfoResponse)]
     Info {},
+    /// Returns the state of the registered reward distributions.
+    #[returns(RewardsStateResponse)]
+    RewardsState {},
     /// Returns the pending rewards for the given address.
     #[returns(PendingRewardsResponse)]
     GetPendingRewards { address: String },
     /// Returns information about the ownership of this contract.
     #[returns(::cw_ownable::Ownership<::cosmwasm_std::Addr>)]
     Ownership {},
-    #[returns(DenomRewardConfig)]
-    DenomRewardConfig { denom: String },
+    #[returns(DenomRewardState)]
+    DenomRewardState { denom: String },
 }
 
 #[cw_serde]
-pub struct InfoResponse {
-    pub reward_configs: Vec<DenomRewardConfig>,
+pub struct RewardsStateResponse {
+    pub rewards: Vec<DenomRewardState>,
 }
 
 #[cw_serde]

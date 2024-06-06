@@ -2,14 +2,15 @@ use cosmwasm_std::{Addr, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw4::MemberChangedHookMsg;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 
-use crate::{contract::update_rewards, state::REGISTERED_HOOKS, ContractError};
+use crate::{contract::update_rewards, state::REGISTERED_HOOK_DENOMS, ContractError};
 
+/// Register a hook caller contract for a given denom.
 pub fn subscribe_denom_to_hook(
     deps: DepsMut,
-    hook: Addr,
     denom: String,
+    hook: Addr,
 ) -> Result<(), ContractError> {
-    REGISTERED_HOOKS.update(deps.storage, hook, |denoms| -> StdResult<_> {
+    REGISTERED_HOOK_DENOMS.update(deps.storage, hook, |denoms| -> StdResult<_> {
         let mut denoms = denoms.unwrap_or_default();
         denoms.push(denom.to_string());
         Ok(denoms)
@@ -23,7 +24,7 @@ pub fn subscribe_denom_to_hook(
 pub fn check_hook_caller(deps: Deps, info: MessageInfo) -> Result<Vec<String>, ContractError> {
     // only a designated hook_caller contract can call this hook.
     // failing to load the registered denoms for a given hook returns an error.
-    REGISTERED_HOOKS
+    REGISTERED_HOOK_DENOMS
         .load(deps.storage, info.sender.clone())
         .map_err(|_| ContractError::InvalidHookSender {})
 }

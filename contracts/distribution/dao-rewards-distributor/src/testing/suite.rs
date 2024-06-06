@@ -8,8 +8,8 @@ use cw_ownable::Ownership;
 use cw_utils::Duration;
 
 use crate::msg::{
-    ExecuteMsg, InfoResponse, InstantiateMsg, PendingRewardsResponse, QueryMsg,
-    RewardDenomRegistrationMsg, RewardEmissionConfig,
+    ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, RewardEmissionRate,
+    RewardsStateResponse,
 };
 
 use super::{
@@ -251,14 +251,13 @@ pub struct Suite {
 // SUITE QUERIES
 impl Suite {
     pub fn get_time_until_rewards_expiration(&mut self) -> u64 {
-        let info_response = self.get_info_response();
+        let rewards_state_response = self.get_rewards_state_response();
         let current_block = self.app.block_info();
-        let (expiration_unit, current_unit) =
-            match info_response.reward_configs[0].distribution_expiration {
-                cw20::Expiration::AtHeight(h) => (h, current_block.height),
-                cw20::Expiration::AtTime(t) => (t.seconds(), current_block.time.seconds()),
-                cw20::Expiration::Never {} => return 0,
-            };
+        let (expiration_unit, current_unit) = match rewards_state_response.rewards[0].ends_at {
+            cw20::Expiration::AtHeight(h) => (h, current_block.height),
+            cw20::Expiration::AtTime(t) => (t.seconds(), current_block.time.seconds()),
+            cw20::Expiration::Never {} => return 0,
+        };
 
         if expiration_unit > current_unit {
             expiration_unit - current_unit
@@ -305,45 +304,40 @@ impl Suite {
             .unwrap()
     }
 
-    pub fn get_info_response(&mut self) -> InfoResponse {
+    pub fn get_rewards_state_response(&mut self) -> RewardsStateResponse {
         self.app
             .wrap()
-            .query_wasm_smart(self.distribution_contract.clone(), &QueryMsg::Info {})
+            .query_wasm_smart(
+                self.distribution_contract.clone(),
+                &QueryMsg::RewardsState {},
+            )
             .unwrap()
     }
 }
 
 // SUITE ASSERTIONS
 impl Suite {
-    pub fn assert_distribution_expiration(&mut self, expected: Expiration) {
-        let info_response = self.get_info_response();
-        assert_eq!(
-            info_response.reward_configs[0].distribution_expiration,
-            expected
-        );
+    pub fn assert_ends_at(&mut self, expected: Expiration) {
+        let rewards_state_response = self.get_rewards_state_response();
+        assert_eq!(rewards_state_response.rewards[0].ends_at, expected);
     }
 
-    pub fn assert_period_start_date(&mut self, expected: Expiration) {
-        let denom_configs = self.get_info_response();
-        assert_eq!(denom_configs.reward_configs[0].period_start_date, expected);
+    pub fn assert_started_at(&mut self, expected: Expiration) {
+        let denom_configs = self.get_rewards_state_response();
+        assert_eq!(denom_configs.rewards[0].started_at, expected);
     }
 
-    pub fn assert_reward_rate_emission(&mut self, expected: u128) {
-        let info_response = self.get_info_response();
+    pub fn assert_amount(&mut self, expected: u128) {
+        let rewards_state_response = self.get_rewards_state_response();
         assert_eq!(
-            info_response.reward_configs[0]
-                .reward_emission_config
-                .reward_rate_emission,
+            rewards_state_response.rewards[0].emission_rate.amount,
             Uint128::new(expected)
         );
     }
 
-    pub fn assert_reward_rate_time(&mut self, expected: u64) {
-        let info_response = self.get_info_response();
-        let units = match info_response.reward_configs[0]
-            .reward_emission_config
-            .reward_rate_time
-        {
+    pub fn assert_duration(&mut self, expected: u64) {
+        let rewards_state_response = self.get_rewards_state_response();
+        let units = match rewards_state_response.rewards[0].emission_rate.duration {
             Duration::Height(h) => h,
             Duration::Time(t) => t,
         };
@@ -405,20 +399,15 @@ impl Suite {
             .unwrap();
     }
 
-    pub fn update_reward_emission_config(
-        &mut self,
-        denom: &str,
-        reward_rate_emission: u128,
-        reward_rate_time: Duration,
-    ) {
+    pub fn update_emission_rate(&mut self, denom: &str, amount: u128, duration: Duration) {
         self.app
             .execute_contract(
                 Addr::unchecked(OWNER),
                 self.distribution_contract.clone(),
-                &ExecuteMsg::UpdateRewardEmissionConfig {
+                &ExecuteMsg::UpdateRewardEmissionRate {
                     denom: denom.to_string(),
-                    new_emission_rate: reward_rate_emission.into(),
-                    new_emission_time: reward_rate_time,
+                    amount: amount.into(),
+                    duration,
                 },
                 &[],
             )
@@ -428,15 +417,15 @@ impl Suite {
     pub fn register_reward_denom(
         &mut self,
         denom: &str,
-        reward_rate_emission: u128,
-        reward_rate_time: u64,
+        amount: u128,
+        duration: u64,
         hook_caller: &str,
     ) {
-        let register_reward_denom_msg = RewardDenomRegistrationMsg {
+        let register_reward_denom_msg = ExecuteMsg::RegisterRewardDenom {
             denom: cw20::UncheckedDenom::Native(denom.to_string()),
-            reward_emission_config: RewardEmissionConfig {
-                reward_rate_emission: Uint128::new(reward_rate_emission),
-                reward_rate_time: Duration::Height(reward_rate_time),
+            emission_rate: RewardEmissionRate {
+                amount: Uint128::new(amount),
+                duration: Duration::Height(duration),
             },
             hook_caller: hook_caller.to_string(),
             vp_contract: self.voting_power_addr.to_string(),
@@ -447,7 +436,7 @@ impl Suite {
             .execute_contract(
                 self.owner.clone().unwrap(),
                 self.distribution_contract.clone(),
-                &ExecuteMsg::RegisterRewardDenom(register_reward_denom_msg),
+                &register_reward_denom_msg,
                 &[],
             )
             .unwrap();
