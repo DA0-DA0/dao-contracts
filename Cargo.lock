@@ -2160,6 +2160,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "dao-voting-onft-staked"
+version = "2.4.2"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-controllers 1.1.2",
+ "cw-hooks",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw721-controllers",
+ "dao-dao-macros",
+ "dao-hooks",
+ "dao-interface",
+ "dao-proposal-hook-counter",
+ "dao-proposal-single",
+ "dao-test-custom-factory",
+ "dao-testing",
+ "dao-voting 2.4.2",
+ "osmosis-std",
+ "osmosis-std-derive",
+ "osmosis-test-tube",
+ "prost 0.12.3",
+ "prost-types 0.12.3",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "dao-voting-token-staked"
 version = "2.4.2"
 dependencies = [
