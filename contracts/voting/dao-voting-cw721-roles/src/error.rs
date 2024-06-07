@@ -15,7 +15,7 @@ pub enum ContractError {
     #[error("New cw721-roles contract must be instantiated with at least one NFT")]
     NoInitialNfts {},
 
-    #[error("Only the owner of this contract my execute this message")]
+    #[error("Only the owner of this contract may execute this message")]
     NotOwner {},
 
     #[error("Got a submessage reply with unknown id: {id}")]

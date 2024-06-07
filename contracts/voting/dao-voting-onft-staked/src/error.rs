@@ -38,8 +38,17 @@ pub enum ContractError {
     #[error("Nothing to claim")]
     NothingToClaim {},
 
-    #[error("Only the owner of this contract may execute this message")]
-    NotOwner {},
+    #[error("Only an NFT's owner can prepare it to be staked")]
+    OnlyOwnerCanPrepareStake {},
+
+    #[error("NFTs must be prepared and transferred before they can be staked")]
+    StakeMustBePrepared {},
+
+    #[error("Recipient must be set when the DAO is cancelling a stake")]
+    NoRecipient {},
+
+    #[error("Only the owner or preparer can cancel a prepared stake")]
+    NotPreparerNorOwner {},
 
     #[error("Can not unstake that which you have not staked (unstaking {token_id})")]
     NotStaked { token_id: String },
