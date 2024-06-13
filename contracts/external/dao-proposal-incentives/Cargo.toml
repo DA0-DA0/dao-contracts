@@ -1,7 +1,7 @@
 [package]
 name ="dao-proposal-incentives"
 authors = ["Jake Hartnell <no-reply@no-reply.com>", "Gabe Lopez <ismellike@users.noreply.github.com>"]
-description = "A contract that implements incentives for voting in a DAO."
+description = "A contract that implements incentives for creating a successful proposal in a DAO."
 edition = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
