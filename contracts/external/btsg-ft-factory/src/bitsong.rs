@@ -64,3 +64,73 @@ pub struct MsgIssue {
 )]
 #[proto_message(type_url = "/bitsong.fantoken.v1beta1.MsgIssueResponse")]
 pub struct MsgIssueResponse {}
+
+/// MsgMint defines a message for minting a new fan token
+#[derive(
+    Clone,
+    PartialEq,
+    Eq,
+    ::prost::Message,
+    serde::Serialize,
+    serde::Deserialize,
+    schemars::JsonSchema,
+    CosmwasmExt,
+)]
+#[proto_message(type_url = "/bitsong.fantoken.v1beta1.MsgMint")]
+pub struct MsgMint {
+    #[prost(string, tag = "1")]
+    pub recipient: ::prost::alloc::string::String,
+    #[prost(message, tag = "2")]
+    pub coin: ::core::option::Option<Coin>,
+    #[prost(string, tag = "3")]
+    pub minter: ::prost::alloc::string::String,
+}
+
+/// MsgMintResponse defines the MsgMint response type
+#[derive(
+    Clone,
+    PartialEq,
+    Eq,
+    ::prost::Message,
+    serde::Serialize,
+    serde::Deserialize,
+    schemars::JsonSchema,
+    CosmwasmExt,
+)]
+#[proto_message(type_url = "/bitsong.fantoken.v1beta1.MsgMintResponse")]
+pub struct MsgMintResponse {}
+
+/// MsgSetMinter defines a message for changing the fan token minter address
+#[derive(
+    Clone,
+    PartialEq,
+    Eq,
+    ::prost::Message,
+    serde::Serialize,
+    serde::Deserialize,
+    schemars::JsonSchema,
+    CosmwasmExt,
+)]
+#[proto_message(type_url = "/bitsong.fantoken.v1beta1.MsgSetMinter")]
+pub struct MsgSetMinter {
+    #[prost(string, tag = "1")]
+    pub denom: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub old_minter: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub new_minter: ::prost::alloc::string::String,
+}
+
+/// MsgSetMinterResponse defines the MsgSetMinter response type
+#[derive(
+    Clone,
+    PartialEq,
+    Eq,
+    ::prost::Message,
+    serde::Serialize,
+    serde::Deserialize,
+    schemars::JsonSchema,
+    CosmwasmExt,
+)]
+#[proto_message(type_url = "/bitsong.fantoken.v1beta1.MsgSetMinterResponse")]
+pub struct MsgSetMinterResponse {}

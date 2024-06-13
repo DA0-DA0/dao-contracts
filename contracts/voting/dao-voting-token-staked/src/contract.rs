@@ -746,6 +746,32 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     // Save Denom
                     DENOM.save(deps.storage, &info.denom)?;
 
+                    // Load the DAO address
+                    let dao = DAO.load(deps.storage)?;
+
+                    // Ensure initial supply held by potential stakers is
+                    // nonzero (and surpasses the active threshold if set) so
+                    // the DAO is not immediately locked. Ignore DAO balance
+                    // since it's unable to be staked.
+                    let total_minted = deps.querier.query_supply(&info.denom)?;
+                    let dao_minted = deps.querier.query_balance(dao, &info.denom)?;
+                    let initial_supply = total_minted.amount - dao_minted.amount;
+
+                    // Validate active threshold absolute count if configured
+                    if let Some(ActiveThreshold::AbsoluteCount { count }) =
+                        ACTIVE_THRESHOLD.may_load(deps.storage)?
+                    {
+                        // We use initial_supply here because the DAO balance is
+                        // not able to be staked by users.
+                        assert_valid_absolute_count_threshold(count, initial_supply)?;
+                    }
+
+                    // Cannot instantiate with no initial token owners because
+                    // it would immediately lock the DAO.
+                    if initial_supply.is_zero() {
+                        return Err(ContractError::InitialBalancesError {});
+                    }
+
                     // Save token issuer contract if one is returned
                     if let Some(ref token_contract) = info.token_contract {
                         TOKEN_ISSUER_CONTRACT
