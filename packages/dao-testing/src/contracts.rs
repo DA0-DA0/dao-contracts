@@ -13,6 +13,17 @@ pub fn cw20_base_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
+pub fn cw20_hooks_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw20_hooks::contract::execute,
+        cw20_hooks::contract::instantiate,
+        cw20_hooks::contract::query,
+    )
+    .with_reply(cw20_hooks::contract::reply)
+    .with_migrate(cw20_hooks::contract::migrate);
+    Box::new(contract)
+}
+
 pub fn cw4_group_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         cw4_group::contract::execute,

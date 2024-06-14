@@ -55,7 +55,8 @@ pub fn instantiate(
             let msg = WasmMsg::Instantiate {
                 admin: Some(info.sender.to_string()),
                 code_id,
-                msg: to_json_binary(&cw20_base::msg::InstantiateMsg {
+                msg: to_json_binary(&cw20_hooks::msg::InstantiateMsg {
+                    owner: Some(info.sender.to_string()),
                     name,
                     symbol,
                     decimals,

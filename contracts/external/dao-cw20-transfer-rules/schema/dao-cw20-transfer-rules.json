@@ -1,0 +1,1020 @@
+{
+  "contract_name": "dao-cw20-transfer-rules",
+  "contract_version": "2.4.2",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "InstantiateMsg",
+    "type": "object",
+    "required": [
+      "dao"
+    ],
+    "properties": {
+      "allowances": {
+        "description": "An initial list of allowances allowances.",
+        "type": [
+          "array",
+          "null"
+        ],
+        "items": {
+          "$ref": "#/definitions/AllowanceUpdate"
+        }
+      },
+      "dao": {
+        "description": "The DAO whose members may be able to send and/or receive tokens.",
+        "type": "string"
+      },
+      "member_allowance": {
+        "description": "The allowance assigned to DAO members with no explicit allowance set. If None, members with no allowance set cannot send nor receive tokens.",
+        "anyOf": [
+          {
+            "$ref": "#/definitions/Allowance"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "owner": {
+        "description": "The address that can update the config and allowances.",
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "additionalProperties": false,
+    "definitions": {
+      "Allowance": {
+        "oneOf": [
+          {
+            "description": "The address cannot send nor receive tokens.",
+            "type": "string",
+            "enum": [
+              "none"
+            ]
+          },
+          {
+            "description": "The address can send tokens to allowed recipients.",
+            "type": "string",
+            "enum": [
+              "send"
+            ]
+          },
+          {
+            "description": "The address can send tokens to anyone, regardless of allowance.",
+            "type": "string",
+            "enum": [
+              "send_anywhere"
+            ]
+          },
+          {
+            "description": "The address can receive tokens from allowed senders.",
+            "type": "string",
+            "enum": [
+              "receive"
+            ]
+          },
+          {
+            "description": "The address can receive tokens from anyone, regardless of allowance.",
+            "type": "string",
+            "enum": [
+              "receive_anywhere"
+            ]
+          },
+          {
+            "description": "The address can send/receive tokens to/from allowed recipients/senders.",
+            "type": "string",
+            "enum": [
+              "send_and_receive"
+            ]
+          },
+          {
+            "description": "The address can send/receive tokens to/from anyone, regardless of allowance.",
+            "type": "string",
+            "enum": [
+              "send_and_receive_anywhere"
+            ]
+          }
+        ]
+      },
+      "AllowanceUpdate": {
+        "type": "object",
+        "required": [
+          "address",
+          "allowance"
+        ],
+        "properties": {
+          "address": {
+            "description": "The address to set the allowance for.",
+            "type": "string"
+          },
+          "allowance": {
+            "description": "The allowance to set.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Allowance"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "execute": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ExecuteMsg",
+    "oneOf": [
+      {
+        "type": "object",
+        "required": [
+          "cw20_hook"
+        ],
+        "properties": {
+          "cw20_hook": {
+            "$ref": "#/definitions/Cw20HookMsg"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "update_allowances"
+        ],
+        "properties": {
+          "update_allowances": {
+            "type": "object",
+            "required": [
+              "remove",
+              "set"
+            ],
+            "properties": {
+              "remove": {
+                "description": "Addresses to remove allowances from.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "set": {
+                "description": "Addresses to add/update allowances for.",
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AllowanceUpdate"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "update_config"
+        ],
+        "properties": {
+          "update_config": {
+            "type": "object",
+            "properties": {
+              "dao": {
+                "description": "The DAO whose members may be able to send or receive tokens.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "member_allowance": {
+                "description": "The allowance assigned to DAO members with no explicit allowance set. If None, members with no allowance set cannot send nor receive tokens.",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Allowance"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Update the contract's ownership. The `action` to be provided can be either to propose transferring ownership to an account, accept a pending ownership transfer, or renounce the ownership permanently.",
+        "type": "object",
+        "required": [
+          "update_ownership"
+        ],
+        "properties": {
+          "update_ownership": {
+            "$ref": "#/definitions/Action"
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "Action": {
+        "description": "Actions that can be taken to alter the contract's ownership",
+        "oneOf": [
+          {
+            "description": "Propose to transfer the contract's ownership to another account, optionally with an expiry time.\n\nCan only be called by the contract's current owner.\n\nAny existing pending ownership transfer is overwritten.",
+            "type": "object",
+            "required": [
+              "transfer_ownership"
+            ],
+            "properties": {
+              "transfer_ownership": {
+                "type": "object",
+                "required": [
+                  "new_owner"
+                ],
+                "properties": {
+                  "expiry": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Expiration"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "new_owner": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Accept the pending ownership transfer.\n\nCan only be called by the pending owner.",
+            "type": "string",
+            "enum": [
+              "accept_ownership"
+            ]
+          },
+          {
+            "description": "Give up the contract's ownership and the possibility of appointing a new owner.\n\nCan only be invoked by the contract's current owner.\n\nAny existing pending ownership transfer is canceled.",
+            "type": "string",
+            "enum": [
+              "renounce_ownership"
+            ]
+          }
+        ]
+      },
+      "Allowance": {
+        "oneOf": [
+          {
+            "description": "The address cannot send nor receive tokens.",
+            "type": "string",
+            "enum": [
+              "none"
+            ]
+          },
+          {
+            "description": "The address can send tokens to allowed recipients.",
+            "type": "string",
+            "enum": [
+              "send"
+            ]
+          },
+          {
+            "description": "The address can send tokens to anyone, regardless of allowance.",
+            "type": "string",
+            "enum": [
+              "send_anywhere"
+            ]
+          },
+          {
+            "description": "The address can receive tokens from allowed senders.",
+            "type": "string",
+            "enum": [
+              "receive"
+            ]
+          },
+          {
+            "description": "The address can receive tokens from anyone, regardless of allowance.",
+            "type": "string",
+            "enum": [
+              "receive_anywhere"
+            ]
+          },
+          {
+            "description": "The address can send/receive tokens to/from allowed recipients/senders.",
+            "type": "string",
+            "enum": [
+              "send_and_receive"
+            ]
+          },
+          {
+            "description": "The address can send/receive tokens to/from anyone, regardless of allowance.",
+            "type": "string",
+            "enum": [
+              "send_and_receive_anywhere"
+            ]
+          }
+        ]
+      },
+      "AllowanceUpdate": {
+        "type": "object",
+        "required": [
+          "address",
+          "allowance"
+        ],
+        "properties": {
+          "address": {
+            "description": "The address to set the allowance for.",
+            "type": "string"
+          },
+          "allowance": {
+            "description": "The allowance to set.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Allowance"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      },
+      "Cw20HookMsg": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "transfer"
+            ],
+            "properties": {
+              "transfer": {
+                "type": "object",
+                "required": [
+                  "amount",
+                  "recipient",
+                  "sender"
+                ],
+                "properties": {
+                  "amount": {
+                    "$ref": "#/definitions/Uint128"
+                  },
+                  "recipient": {
+                    "type": "string"
+                  },
+                  "sender": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "send"
+            ],
+            "properties": {
+              "send": {
+                "type": "object",
+                "required": [
+                  "amount",
+                  "contract",
+                  "msg",
+                  "sender"
+                ],
+                "properties": {
+                  "amount": {
+                    "$ref": "#/definitions/Uint128"
+                  },
+                  "contract": {
+                    "type": "string"
+                  },
+                  "msg": {
+                    "$ref": "#/definitions/Binary"
+                  },
+                  "sender": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "Expiration": {
+        "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
+        "oneOf": [
+          {
+            "description": "AtHeight will expire when `env.block.height` >= height",
+            "type": "object",
+            "required": [
+              "at_height"
+            ],
+            "properties": {
+              "at_height": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "AtTime will expire when `env.block.time` >= time",
+            "type": "object",
+            "required": [
+              "at_time"
+            ],
+            "properties": {
+              "at_time": {
+                "$ref": "#/definitions/Timestamp"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Never will never expire. Used to express the empty variant",
+            "type": "object",
+            "required": [
+              "never"
+            ],
+            "properties": {
+              "never": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "Timestamp": {
+        "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+        "allOf": [
+          {
+            "$ref": "#/definitions/Uint64"
+          }
+        ]
+      },
+      "Uint128": {
+        "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+        "type": "string"
+      },
+      "Uint64": {
+        "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+        "type": "string"
+      }
+    }
+  },
+  "query": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QueryMsg",
+    "oneOf": [
+      {
+        "description": "Returns the paginated list of allowances.",
+        "type": "object",
+        "required": [
+          "list_allowances"
+        ],
+        "properties": {
+          "list_allowances": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "description": "The address to start after.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Returns the config.",
+        "type": "object",
+        "required": [
+          "config"
+        ],
+        "properties": {
+          "config": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Returns allowance for an address.",
+        "type": "object",
+        "required": [
+          "allowance"
+        ],
+        "properties": {
+          "allowance": {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Returns contract info.",
+        "type": "object",
+        "required": [
+          "info"
+        ],
+        "properties": {
+          "info": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Returns info about the contract ownership.",
+        "type": "object",
+        "required": [
+          "ownership"
+        ],
+        "properties": {
+          "ownership": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ]
+  },
+  "migrate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "MigrateMsg",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "sudo": null,
+  "responses": {
+    "allowance": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AllowanceResponse",
+      "type": "object",
+      "required": [
+        "allowance",
+        "is_member_allowance"
+      ],
+      "properties": {
+        "allowance": {
+          "description": "The allowance.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Allowance"
+            }
+          ]
+        },
+        "is_member_allowance": {
+          "description": "Whether or not the allowance came from the member allowance fallback in the config.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Allowance": {
+          "oneOf": [
+            {
+              "description": "The address cannot send nor receive tokens.",
+              "type": "string",
+              "enum": [
+                "none"
+              ]
+            },
+            {
+              "description": "The address can send tokens to allowed recipients.",
+              "type": "string",
+              "enum": [
+                "send"
+              ]
+            },
+            {
+              "description": "The address can send tokens to anyone, regardless of allowance.",
+              "type": "string",
+              "enum": [
+                "send_anywhere"
+              ]
+            },
+            {
+              "description": "The address can receive tokens from allowed senders.",
+              "type": "string",
+              "enum": [
+                "receive"
+              ]
+            },
+            {
+              "description": "The address can receive tokens from anyone, regardless of allowance.",
+              "type": "string",
+              "enum": [
+                "receive_anywhere"
+              ]
+            },
+            {
+              "description": "The address can send/receive tokens to/from allowed recipients/senders.",
+              "type": "string",
+              "enum": [
+                "send_and_receive"
+              ]
+            },
+            {
+              "description": "The address can send/receive tokens to/from anyone, regardless of allowance.",
+              "type": "string",
+              "enum": [
+                "send_and_receive_anywhere"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "config": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ConfigResponse",
+      "type": "object",
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "description": "The config.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Config"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Allowance": {
+          "oneOf": [
+            {
+              "description": "The address cannot send nor receive tokens.",
+              "type": "string",
+              "enum": [
+                "none"
+              ]
+            },
+            {
+              "description": "The address can send tokens to allowed recipients.",
+              "type": "string",
+              "enum": [
+                "send"
+              ]
+            },
+            {
+              "description": "The address can send tokens to anyone, regardless of allowance.",
+              "type": "string",
+              "enum": [
+                "send_anywhere"
+              ]
+            },
+            {
+              "description": "The address can receive tokens from allowed senders.",
+              "type": "string",
+              "enum": [
+                "receive"
+              ]
+            },
+            {
+              "description": "The address can receive tokens from anyone, regardless of allowance.",
+              "type": "string",
+              "enum": [
+                "receive_anywhere"
+              ]
+            },
+            {
+              "description": "The address can send/receive tokens to/from allowed recipients/senders.",
+              "type": "string",
+              "enum": [
+                "send_and_receive"
+              ]
+            },
+            {
+              "description": "The address can send/receive tokens to/from anyone, regardless of allowance.",
+              "type": "string",
+              "enum": [
+                "send_and_receive_anywhere"
+              ]
+            }
+          ]
+        },
+        "Config": {
+          "type": "object",
+          "required": [
+            "dao",
+            "member_allowance"
+          ],
+          "properties": {
+            "dao": {
+              "description": "The DAO whose members may be able to send or receive tokens.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                }
+              ]
+            },
+            "member_allowance": {
+              "description": "The allowance assigned to DAO members with no explicit allowance set. If None, members with no allowance set cannot send nor receive tokens.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Allowance"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "info": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "InfoResponse",
+      "type": "object",
+      "required": [
+        "info"
+      ],
+      "properties": {
+        "info": {
+          "$ref": "#/definitions/ContractVersion"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "ContractVersion": {
+          "type": "object",
+          "required": [
+            "contract",
+            "version"
+          ],
+          "properties": {
+            "contract": {
+              "description": "contract is the crate name of the implementing contract, eg. `crate:cw20-base` we will use other prefixes for other languages, and their standard global namespacing",
+              "type": "string"
+            },
+            "version": {
+              "description": "version is any string that this implementation knows. It may be simple counter \"1\", \"2\". or semantic version on release tags \"v0.7.0\", or some custom feature flag list. the only code that needs to understand the version parsing is code that knows how to migrate from the given contract (and is tied to it's implementation somehow)",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "list_allowances": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ListAllowancesResponse",
+      "type": "object",
+      "required": [
+        "allowances"
+      ],
+      "properties": {
+        "allowances": {
+          "description": "The allowances.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AllowanceEntry"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Allowance": {
+          "oneOf": [
+            {
+              "description": "The address cannot send nor receive tokens.",
+              "type": "string",
+              "enum": [
+                "none"
+              ]
+            },
+            {
+              "description": "The address can send tokens to allowed recipients.",
+              "type": "string",
+              "enum": [
+                "send"
+              ]
+            },
+            {
+              "description": "The address can send tokens to anyone, regardless of allowance.",
+              "type": "string",
+              "enum": [
+                "send_anywhere"
+              ]
+            },
+            {
+              "description": "The address can receive tokens from allowed senders.",
+              "type": "string",
+              "enum": [
+                "receive"
+              ]
+            },
+            {
+              "description": "The address can receive tokens from anyone, regardless of allowance.",
+              "type": "string",
+              "enum": [
+                "receive_anywhere"
+              ]
+            },
+            {
+              "description": "The address can send/receive tokens to/from allowed recipients/senders.",
+              "type": "string",
+              "enum": [
+                "send_and_receive"
+              ]
+            },
+            {
+              "description": "The address can send/receive tokens to/from anyone, regardless of allowance.",
+              "type": "string",
+              "enum": [
+                "send_and_receive_anywhere"
+              ]
+            }
+          ]
+        },
+        "AllowanceEntry": {
+          "type": "object",
+          "required": [
+            "address",
+            "allowance"
+          ],
+          "properties": {
+            "address": {
+              "description": "The address.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                }
+              ]
+            },
+            "allowance": {
+              "description": "The allowance.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Allowance"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "ownership": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Ownership_for_Addr",
+      "description": "The contract's ownership info",
+      "type": "object",
+      "properties": {
+        "owner": {
+          "description": "The contract's current owner. `None` if the ownership has been renounced.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pending_expiry": {
+          "description": "The deadline for the pending owner to accept the ownership. `None` if there isn't a pending ownership transfer, or if a transfer exists and it doesn't have a deadline.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expiration"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pending_owner": {
+          "description": "The account who has been proposed to take over the ownership. `None` if there isn't a pending ownership transfer.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Expiration": {
+          "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
+          "oneOf": [
+            {
+              "description": "AtHeight will expire when `env.block.height` >= height",
+              "type": "object",
+              "required": [
+                "at_height"
+              ],
+              "properties": {
+                "at_height": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "AtTime will expire when `env.block.time` >= time",
+              "type": "object",
+              "required": [
+                "at_time"
+              ],
+              "properties": {
+                "at_time": {
+                  "$ref": "#/definitions/Timestamp"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "Never will never expire. Used to express the empty variant",
+              "type": "object",
+              "required": [
+                "never"
+              ],
+              "properties": {
+                "never": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

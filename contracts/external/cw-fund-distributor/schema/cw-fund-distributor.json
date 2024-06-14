@@ -344,7 +344,7 @@
                 ],
                 "properties": {
                   "code_id": {
-                    "description": "Code ID for cw20 token contract.",
+                    "description": "Code ID for cw20-hooks token contract.",
                     "type": "integer",
                     "format": "uint64",
                     "minimum": 0.0

@@ -4,7 +4,7 @@ use cw_multi_test::{next_block, App, Executor};
 use cw_utils::Duration;
 use dao_interface::query::{GetItemResponse, ProposalModuleCountResponse};
 use dao_testing::contracts::{
-    cw20_base_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
+    cw20_hooks_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
     dao_dao_contract, proposal_single_contract, v1_dao_dao_contract, v1_proposal_single_contract,
 };
 use dao_voting::veto::VetoConfig;
@@ -52,7 +52,7 @@ fn test_v1_v2_full_migration() {
 
     // cw20 staking and voting module has not changed across v1->v2 so
     // we use the current edition.
-    let cw20_code = app.store_code(cw20_base_contract());
+    let cw20_code = app.store_code(cw20_hooks_contract());
     let cw20_stake_code = app.store_code(cw20_stake_contract());
     let voting_code = app.store_code(cw20_staked_balances_voting_contract());
 

@@ -5,6 +5,7 @@ use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use dao_interface::state::ProposalModule;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 
+use dao_testing::contracts::cw20_hooks_contract;
 use dao_voting::{
     pre_propose::PreProposeInfo,
     threshold::{PercentageThreshold, Threshold},
@@ -16,15 +17,6 @@ use dao_proposal_single::state::Config;
 use dao_voting::proposal::SingleChoiceProposeMsg as ProposeMsg;
 
 const CREATOR_ADDR: &str = "creator";
-
-fn cw20_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        cw20_base::contract::execute,
-        cw20_base::contract::instantiate,
-        cw20_base::contract::query,
-    );
-    Box::new(contract)
-}
 
 fn single_govmod_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -87,7 +79,7 @@ fn instantiate_with_default_governance(
     msg: dao_proposal_single::msg::InstantiateMsg,
     initial_balances: Option<Vec<Cw20Coin>>,
 ) -> Addr {
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_hooks_contract());
     let governance_id = app.store_code(cw_gov_contract());
     let votemod_id = app.store_code(cw20_balances_voting());
 

@@ -5,8 +5,8 @@ use cosmwasm_std::{
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 use dao_interface::query::SubDao;
 use dao_testing::contracts::{
-    cw20_base_contract, cw20_staked_balances_voting_contract, cw4_group_contract, dao_dao_contract,
-    proposal_single_contract, v1_dao_dao_contract, v1_proposal_single_contract,
+    cw20_hooks_contract, cw20_staked_balances_voting_contract, cw4_group_contract,
+    dao_dao_contract, proposal_single_contract, v1_dao_dao_contract, v1_proposal_single_contract,
 };
 
 use crate::{
@@ -20,7 +20,7 @@ pub(crate) const SENDER_ADDR: &str = "creator";
 pub struct CodeIds {
     pub core: u64,
     pub proposal_single: u64,
-    pub cw20_base: u64,
+    pub cw20_hooks: u64,
     pub cw20_stake: u64,
     pub cw20_voting: u64,
     pub cw4_group: u64,
@@ -52,7 +52,7 @@ pub fn get_v1_code_ids(app: &mut App) -> (CodeIds, V1CodeIds) {
     let code_ids = CodeIds {
         core: app.store_code(v1_dao_dao_contract()),
         proposal_single: app.store_code(v1_proposal_single_contract()),
-        cw20_base: app.store_code(cw20_base_contract()),
+        cw20_hooks: app.store_code(cw20_hooks_contract()),
         cw20_stake: app.store_code(v1_cw20_stake_contract()),
         cw20_voting: app.store_code(cw20_staked_balances_voting_contract()),
         cw4_group: app.store_code(cw4_group_contract()),
@@ -72,7 +72,7 @@ pub fn get_v2_code_ids(app: &mut App) -> (CodeIds, V2CodeIds) {
     let code_ids = CodeIds {
         core: app.store_code(dao_dao_contract()),
         proposal_single: app.store_code(proposal_single_contract()),
-        cw20_base: app.store_code(cw20_base_contract()),
+        cw20_hooks: app.store_code(cw20_hooks_contract()),
         cw20_stake: app.store_code(v2_cw20_stake_contract()),
         cw20_voting: app.store_code(dao_voting_cw20_staked_contract()),
         cw4_group: app.store_code(cw4_group_contract()),
@@ -91,7 +91,7 @@ pub fn get_v2_code_ids(app: &mut App) -> (CodeIds, V2CodeIds) {
 pub fn get_cw20_init_msg(code_ids: CodeIds) -> cw20_staked_balance_voting_v1::msg::InstantiateMsg {
     cw20_staked_balance_voting_v1::msg::InstantiateMsg {
         token_info: cw20_staked_balance_voting_v1::msg::TokenInfo::New {
-            code_id: code_ids.cw20_base,
+            code_id: code_ids.cw20_hooks,
             label: "token".to_string(),
             name: "name".to_string(),
             symbol: "symbol".to_string(),

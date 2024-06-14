@@ -5,7 +5,7 @@ use cw_utils::Duration;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_pre_propose_multiple as cppm;
 use dao_testing::contracts::{
-    cw20_balances_voting_contract, cw20_base_contract, cw20_stake_contract,
+    cw20_balances_voting_contract, cw20_hooks_contract, cw20_stake_contract,
     cw20_staked_balances_voting_contract, cw4_group_contract, cw721_base_contract,
     dao_dao_contract, native_staked_balances_voting_contract, pre_propose_multiple_contract,
 };
@@ -348,7 +348,7 @@ pub fn instantiate_with_cw20_balances_governance(
 ) -> Addr {
     let proposal_module_code_id = app.store_code(proposal_multiple_contract());
 
-    let cw20_id = app.store_code(cw20_base_contract());
+    let cw20_id = app.store_code(cw20_hooks_contract());
     let core_id = app.store_code(dao_dao_contract());
     let votemod_id = app.store_code(cw20_balances_voting_contract());
 
@@ -452,7 +452,7 @@ pub fn instantiate_with_staked_balances_governance(
             .collect()
     };
 
-    let cw20_id = app.store_code(cw20_base_contract());
+    let cw20_id = app.store_code(cw20_hooks_contract());
     let cw20_stake_id = app.store_code(cw20_stake_contract());
     let staked_balances_voting_id = app.store_code(cw20_staked_balances_voting_contract());
     let core_contract_id = app.store_code(dao_dao_contract());
@@ -589,7 +589,7 @@ pub fn instantiate_with_multiple_staked_balances_governance(
             .collect()
     };
 
-    let cw20_id = app.store_code(cw20_base_contract());
+    let cw20_id = app.store_code(cw20_hooks_contract());
     let cw20_stake_id = app.store_code(cw20_stake_contract());
     let staked_balances_voting_id = app.store_code(cw20_staked_balances_voting_contract());
     let core_contract_id = app.store_code(dao_dao_contract());
@@ -699,7 +699,7 @@ pub fn instantiate_with_staking_active_threshold(
     active_threshold: Option<ActiveThreshold>,
 ) -> Addr {
     let proposal_module_code_id = app.store_code(proposal_multiple_contract());
-    let cw20_id = app.store_code(cw20_base_contract());
+    let cw20_id = app.store_code(cw20_hooks_contract());
     let cw20_staking_id = app.store_code(cw20_stake_contract());
     let core_id = app.store_code(dao_dao_contract());
     let votemod_id = app.store_code(cw20_staked_balances_voting_contract());

@@ -163,7 +163,7 @@ where
         app.execute_contract(
             Addr::unchecked(&proposer),
             token.clone(),
-            &cw20_base::msg::ExecuteMsg::IncreaseAllowance {
+            &cw20_hooks::msg::ExecuteMsg::IncreaseAllowance {
                 spender: pre_propose_module.to_string(),
                 amount,
                 expires: None,
