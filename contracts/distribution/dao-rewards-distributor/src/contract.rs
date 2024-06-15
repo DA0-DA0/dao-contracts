@@ -312,7 +312,7 @@ fn execute_claim(
     denom: String,
 ) -> Result<Response, ContractError> {
     // update the rewards information for the sender.
-    update_rewards(&mut deps, &env, &info.sender, vec![denom.to_string()])?;
+    update_rewards(&mut deps, &env, &info.sender, denom.to_string())?;
 
     // get the denom state for the string-based denom
     let denom_reward_state = DENOM_REWARD_STATES.load(deps.storage, denom.to_string())?;
@@ -383,68 +383,60 @@ fn get_transfer_msg(recipient: Addr, amount: Uint128, denom: Denom) -> StdResult
     }
 }
 
-pub fn update_rewards(
-    deps: &mut DepsMut,
-    env: &Env,
-    addr: &Addr,
-    denoms: Vec<String>,
-) -> StdResult<()> {
-    for denom in denoms {
-        let reward_state = DENOM_REWARD_STATES.load(deps.storage, denom.clone())?;
+pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr, denom: String) -> StdResult<()> {
+    let reward_state = DENOM_REWARD_STATES.load(deps.storage, denom.clone())?;
 
-        // first, we calculate the latest total rewards per unit voting power
-        // and update them
-        let total_earned_puvp = get_total_earned_puvp(env, deps.as_ref(), &reward_state)?;
+    // first, we calculate the latest total rewards per unit voting power
+    // and update them
+    let total_earned_puvp = get_total_earned_puvp(env, deps.as_ref(), &reward_state)?;
 
-        // update the denom state's total rewards earned and last updated
-        DENOM_REWARD_STATES.update(deps.storage, denom.clone(), |state| -> StdResult<_> {
-            match state {
-                Some(mut rc) => {
-                    rc.total_earned_puvp = total_earned_puvp;
-                    Ok(rc.bump_last_update(&env.block))
-                }
-                None => Err(StdError::generic_err("Denom reward state not found")),
+    // update the denom state's total rewards earned and last updated
+    DENOM_REWARD_STATES.update(deps.storage, denom.clone(), |state| -> StdResult<_> {
+        match state {
+            Some(mut rc) => {
+                rc.total_earned_puvp = total_earned_puvp;
+                Ok(rc.bump_last_update(&env.block))
             }
-        })?;
+            None => Err(StdError::generic_err("Denom reward state not found")),
+        }
+    })?;
 
-        // then we calculate the rewards earned since last user action
-        let earned_rewards = get_accrued_rewards_since_last_user_action(
-            deps.as_ref(),
-            env,
-            addr,
-            total_earned_puvp,
-            &reward_state.vp_contract,
-            vec![denom.clone()],
-        )?;
+    // then we calculate the rewards earned since last user action
+    let earned_rewards = get_accrued_rewards_since_last_user_action(
+        deps.as_ref(),
+        env,
+        addr,
+        total_earned_puvp,
+        &reward_state.vp_contract,
+        denom.clone(),
+    )?;
 
-        // reflect the earned rewards in the user's reward state
-        USER_REWARD_STATES.update(deps.storage, addr.clone(), |state| -> StdResult<_> {
-            // if user does not yet have state, create a new one
-            let mut user_reward_state = state.unwrap_or_default();
+    // reflect the earned rewards in the user's reward state
+    USER_REWARD_STATES.update(deps.storage, addr.clone(), |state| -> StdResult<_> {
+        // if user does not yet have state, create a new one
+        let mut user_reward_state = state.unwrap_or_default();
 
-            // get the pre-existing pending reward amount for the denom
-            let previous_pending_denom_reward_amount = *user_reward_state
-                .pending_denom_rewards
-                .get(&denom)
-                .unwrap_or(&Uint128::zero());
+        // get the pre-existing pending reward amount for the denom
+        let previous_pending_denom_reward_amount = *user_reward_state
+            .pending_denom_rewards
+            .get(&denom)
+            .unwrap_or(&Uint128::zero());
 
-            // get the amount of newly earned rewards for the denom
-            let earned_rewards_amount = earned_rewards.get(&denom).cloned().unwrap_or_default();
+        // get the amount of newly earned rewards for the denom
+        let earned_rewards_amount = earned_rewards.get(&denom).cloned().unwrap_or_default();
 
-            user_reward_state.pending_denom_rewards.insert(
-                denom.clone(),
-                previous_pending_denom_reward_amount + earned_rewards_amount,
-            );
+        user_reward_state.pending_denom_rewards.insert(
+            denom.clone(),
+            previous_pending_denom_reward_amount + earned_rewards_amount,
+        );
 
-            // update the user's earned rewards that have been accounted for
-            user_reward_state
-                .denom_rewards_puvp
-                .insert(denom.clone(), total_earned_puvp);
+        // update the user's earned rewards that have been accounted for
+        user_reward_state
+            .denom_rewards_puvp
+            .insert(denom.clone(), total_earned_puvp);
 
-            Ok(user_reward_state)
-        })?;
-    }
-
+        Ok(user_reward_state)
+    })?;
     Ok(())
 }
 
@@ -529,7 +521,7 @@ fn get_accrued_rewards_since_last_user_action(
     addr: &Addr,
     total_earned_puvp: Uint256,
     vp_contract: &Addr,
-    denoms: Vec<String>,
+    denom: String,
 ) -> StdResult<HashMap<String, Uint128>> {
     // get the user's voting power at the current height
     let voting_power = Uint256::from(get_voting_power(deps, env, vp_contract, addr)?);
@@ -540,28 +532,26 @@ fn get_accrued_rewards_since_last_user_action(
         .load(deps.storage, addr.clone())
         .unwrap_or_default();
 
-    for denom in denoms.iter() {
-        // get previous reward per unit voting power accounted for
-        let user_last_reward_puvp = user_reward_state
-            .denom_rewards_puvp
-            .get(denom)
-            .cloned()
-            .unwrap_or_default();
+    // get previous reward per unit voting power accounted for
+    let user_last_reward_puvp = user_reward_state
+        .denom_rewards_puvp
+        .get(&denom)
+        .cloned()
+        .unwrap_or_default();
 
-        // calculate the difference between the current total reward per unit
-        // voting power distributed and the user's latest reward per unit voting
-        // power accounted for
-        let reward_factor = total_earned_puvp.checked_sub(user_last_reward_puvp)?;
+    // calculate the difference between the current total reward per unit
+    // voting power distributed and the user's latest reward per unit voting
+    // power accounted for
+    let reward_factor = total_earned_puvp.checked_sub(user_last_reward_puvp)?;
 
-        // calculate the amount of rewards earned:
-        // voting_power * reward_factor / scale_factor
-        let accrued_rewards_amount: Uint128 = voting_power
-            .checked_mul(reward_factor)?
-            .checked_div(scale_factor())?
-            .try_into()?;
+    // calculate the amount of rewards earned:
+    // voting_power * reward_factor / scale_factor
+    let accrued_rewards_amount: Uint128 = voting_power
+        .checked_mul(reward_factor)?
+        .checked_div(scale_factor())?
+        .try_into()?;
 
-        accrued_rewards.insert(denom.to_string(), accrued_rewards_amount);
-    }
+    accrued_rewards.insert(denom.to_string(), accrued_rewards_amount);
 
     Ok(accrued_rewards)
 }
@@ -678,7 +668,7 @@ fn query_pending_rewards(deps: Deps, env: Env, addr: String) -> StdResult<Pendin
             &addr,
             total_earned_puvp,
             &reward_state.vp_contract,
-            vec![denom.to_string()],
+            denom.to_string(),
         )?;
 
         let user_reward_state = USER_REWARD_STATES

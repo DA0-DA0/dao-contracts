@@ -21,7 +21,10 @@ pub fn subscribe_denom_to_hook(
 /// Ensures hooks that update voting power are only called by a designated
 /// hook_caller contract.
 /// Returns a list of denoms that the hook caller is registered for.
-pub fn check_hook_caller(deps: Deps, info: MessageInfo) -> Result<Vec<String>, ContractError> {
+pub fn get_hook_caller_registered_denoms(
+    deps: Deps,
+    info: MessageInfo,
+) -> Result<Vec<String>, ContractError> {
     // only a designated hook_caller contract can call this hook.
     // failing to load the registered denoms for a given hook returns an error.
     REGISTERED_HOOK_DENOMS
@@ -36,11 +39,13 @@ pub fn execute_stake_changed(
     msg: StakeChangedHookMsg,
 ) -> Result<Response, ContractError> {
     // Check that the sender is the vp_contract (or the hook_caller if configured).
-    let hooks = check_hook_caller(deps.as_ref(), info)?;
+    let hooked_denoms = get_hook_caller_registered_denoms(deps.as_ref(), info)?;
 
     match msg {
-        StakeChangedHookMsg::Stake { addr, .. } => execute_stake(deps, env, addr, hooks),
-        StakeChangedHookMsg::Unstake { addr, .. } => execute_unstake(deps, env, addr, hooks),
+        StakeChangedHookMsg::Stake { addr, .. } => execute_stake(deps, env, addr, hooked_denoms),
+        StakeChangedHookMsg::Unstake { addr, .. } => {
+            execute_unstake(deps, env, addr, hooked_denoms)
+        }
     }
 }
 
@@ -51,12 +56,14 @@ pub fn execute_membership_changed(
     msg: MemberChangedHookMsg,
 ) -> Result<Response, ContractError> {
     // Check that the sender is the vp_contract (or the hook_caller if configured).
-    let hooks = check_hook_caller(deps.as_ref(), info)?;
+    let hooked_denoms = get_hook_caller_registered_denoms(deps.as_ref(), info)?;
 
     // Get the addresses of members whose voting power has changed.
     for member in msg.diffs {
         let addr = deps.api.addr_validate(&member.key)?;
-        update_rewards(&mut deps, &env, &addr, hooks.clone())?;
+        for denom in hooked_denoms.clone() {
+            update_rewards(&mut deps, &env, &addr, denom)?;
+        }
     }
 
     Ok(Response::new().add_attribute("action", "membership_changed"))
@@ -69,11 +76,13 @@ pub fn execute_nft_stake_changed(
     msg: NftStakeChangedHookMsg,
 ) -> Result<Response, ContractError> {
     // Check that the sender is the vp_contract (or the hook_caller if configured).
-    let hooks = check_hook_caller(deps.as_ref(), info)?;
+    let hooked_denoms = get_hook_caller_registered_denoms(deps.as_ref(), info)?;
 
     match msg {
-        NftStakeChangedHookMsg::Stake { addr, .. } => execute_stake(deps, env, addr, hooks),
-        NftStakeChangedHookMsg::Unstake { addr, .. } => execute_unstake(deps, env, addr, hooks),
+        NftStakeChangedHookMsg::Stake { addr, .. } => execute_stake(deps, env, addr, hooked_denoms),
+        NftStakeChangedHookMsg::Unstake { addr, .. } => {
+            execute_unstake(deps, env, addr, hooked_denoms)
+        }
     }
 }
 
@@ -81,9 +90,12 @@ pub fn execute_stake(
     mut deps: DepsMut,
     env: Env,
     addr: Addr,
-    hooks: Vec<String>,
+    hooked_denoms: Vec<String>,
 ) -> Result<Response, ContractError> {
-    update_rewards(&mut deps, &env, &addr, hooks)?;
+    // update rewards for every denom that the hook caller is registered for
+    for denom in hooked_denoms {
+        update_rewards(&mut deps, &env, &addr, denom)?;
+    }
     Ok(Response::new().add_attribute("action", "stake"))
 }
 
@@ -91,8 +103,11 @@ pub fn execute_unstake(
     mut deps: DepsMut,
     env: Env,
     addr: Addr,
-    hooks: Vec<String>,
+    hooked_denoms: Vec<String>,
 ) -> Result<Response, ContractError> {
-    update_rewards(&mut deps, &env, &addr, hooks)?;
+    // update rewards for every denom that the hook caller is registered for
+    for denom in hooked_denoms {
+        update_rewards(&mut deps, &env, &addr, denom)?;
+    }
     Ok(Response::new().add_attribute("action", "unstake"))
 }
