@@ -3,8 +3,9 @@ use std::borrow::BorrowMut;
 use cosmwasm_std::Uint128;
 use cosmwasm_std::{coin, to_json_binary, Addr, Timestamp};
 use cw20::{Cw20Coin, Expiration, UncheckedDenom};
+use cw4::Member;
 use cw_multi_test::Executor;
-use cw_utils::{parse_instantiate_response_data, Duration};
+use cw_utils::Duration;
 
 use crate::{
     msg::ExecuteMsg,
@@ -298,19 +299,121 @@ fn test_cw4_dao_rewards() {
     suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
     suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000);
 
+    // remove the second member
+    suite.update_members(vec![], vec![ADDR2.to_string()]);
+    suite.query_members();
+
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
 
-    suite.assert_pending_rewards(ADDR1, DENOM, 10_000_000);
-    suite.assert_pending_rewards(ADDR2, DENOM, 5_000_000);
-    suite.assert_pending_rewards(ADDR3, DENOM, 5_000_000);
+    // now that ADDR2 is no longer a member, ADDR1 and ADDR3 will split the rewards
+    suite.assert_pending_rewards(ADDR1, DENOM, 11_666_666);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 5_833_333);
+
+    // reintroduce the 2nd member with double the vp
+    let add_member_2 = Member {
+        addr: ADDR2.to_string(),
+        weight: 2,
+    };
+    suite.update_members(vec![add_member_2], vec![]);
+    suite.query_members();
+
+    // now the vp split is [ADDR1: 40%, ADDR2: 40%, ADDR3: 20%]
+    // meaning the token reward per 100k blocks is 4mil, 4mil, 2mil
 
     // ADDR1 claims rewards
     suite.claim_rewards(ADDR1, DENOM);
-    suite.assert_native_balance(ADDR1, DENOM, 10_000_000);
-    suite.assert_pending_rewards(ADDR1, DENOM, 0);
+    suite.assert_native_balance(ADDR1, DENOM, 11_666_666);
 
-    panic!()
+    // assert pending rewards are still the same (other than ADDR1)
+    suite.assert_pending_rewards(ADDR1, DENOM, 0);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 5_833_333);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 4_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 6_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 7_833_333);
+
+    // skip 1/2 of time, leaving 200k blocks left
+    suite.skip_blocks(500_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 24_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 26_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 17_833_333);
+
+    // remove all members
+    suite.update_members(
+        vec![],
+        vec![ADDR1.to_string(), ADDR2.to_string(), ADDR3.to_string()],
+    );
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 24_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 26_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 17_833_333);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 24_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 26_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 17_833_333);
+
+    suite.update_members(
+        vec![
+            Member {
+                addr: ADDR1.to_string(),
+                weight: 2,
+            },
+            Member {
+                addr: ADDR2.to_string(),
+                weight: 2,
+            },
+            Member {
+                addr: ADDR3.to_string(),
+                weight: 1,
+            },
+        ],
+        vec![],
+    );
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 24_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 26_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 17_833_333);
+
+    suite.claim_rewards(ADDR1, DENOM);
+    suite.assert_pending_rewards(ADDR1, DENOM, 0);
+    suite.assert_native_balance(ADDR1, DENOM, 35_666_666);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 4_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 30_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 19_833_333);
+
+    // at the very expiration block, claim rewards
+    suite.claim_rewards(ADDR2, DENOM);
+    suite.assert_pending_rewards(ADDR2, DENOM, 0);
+    suite.assert_native_balance(ADDR2, DENOM, 30_500_000);
+
+    suite.skip_blocks(100_000);
+
+    suite.claim_rewards(ADDR1, DENOM);
+    suite.claim_rewards(ADDR3, DENOM);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 0);
+    suite.assert_pending_rewards(ADDR2, DENOM, 0);
+    suite.assert_pending_rewards(ADDR3, DENOM, 0);
+
+    let contract = suite.distribution_contract.clone();
+
+    // for 100k blocks there were no members so some rewards are remaining in the contract.
+    let contract_token_balance = suite.get_balance_native(contract.clone(), DENOM);
+    assert!(contract_token_balance > 0);
 }
 
 #[test]

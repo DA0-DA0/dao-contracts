@@ -3,7 +3,7 @@ use std::borrow::BorrowMut;
 use cosmwasm_std::{coin, coins, to_json_binary, Addr, Coin, Empty, Timestamp, Uint128};
 use cw20::{Cw20Coin, Denom, Expiration, UncheckedDenom};
 use cw20_stake::msg::ReceiveMsg;
-use cw4::Member;
+use cw4::{Member, MemberListResponse};
 use cw_multi_test::{App, BankSudo, Executor, SudoMsg};
 use cw_ownable::Ownership;
 use cw_utils::Duration;
@@ -600,5 +600,29 @@ impl Suite {
 
     pub fn unstake_native_tokens(&mut self, address: &str, amount: u128) {
         unstake_tokenfactory_tokens(self.app.borrow_mut(), &self.staking_addr, address, amount)
+    }
+
+    pub fn update_members(&mut self, add: Vec<Member>, remove: Vec<String>) {
+        let msg = cw4_group::msg::ExecuteMsg::UpdateMembers { remove, add };
+
+        self.app
+            .execute_contract(Addr::unchecked(OWNER), self.staking_addr.clone(), &msg, &[])
+            .unwrap();
+    }
+
+    pub fn query_members(&mut self) -> Vec<Member> {
+        let members: MemberListResponse = self
+            .app
+            .wrap()
+            .query_wasm_smart(
+                self.staking_addr.clone(),
+                &cw4_group::msg::QueryMsg::ListMembers {
+                    start_after: None,
+                    limit: None,
+                },
+            )
+            .unwrap();
+        println!("[UPDATE CW4] new members: {:?}", members);
+        members.members
     }
 }
