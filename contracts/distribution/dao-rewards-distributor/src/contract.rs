@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_json, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps,
+    coins, ensure, from_json, to_json_binary, Addr, BankMsg, Binary, CosmosMsg, Decimal, Deps,
     DepsMut, Env, MessageInfo, Order, Response, StdError, StdResult, Uint128, Uint256, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -80,6 +80,7 @@ pub fn execute(
             emission_rate,
             vp_contract,
             hook_caller,
+            withdraw_destination,
         } => execute_register_reward_denom(
             deps,
             info,
@@ -87,6 +88,7 @@ pub fn execute(
             emission_rate,
             vp_contract,
             hook_caller,
+            withdraw_destination,
         ),
     }
 }
@@ -101,6 +103,7 @@ fn execute_register_reward_denom(
     emission_rate: RewardEmissionRate,
     vp_contract: String,
     hook_caller: String,
+    withdraw_destination: Option<String>,
 ) -> Result<Response, ContractError> {
     // only the owner can register a new denom
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
@@ -110,6 +113,13 @@ fn execute_register_reward_denom(
     let checked_denom = denom.into_checked(deps.as_ref())?;
     let hook_caller = deps.api.addr_validate(&hook_caller)?;
     let vp_contract = validate_voting_power_contract(&deps, vp_contract)?;
+
+    let withdraw_destination = match withdraw_destination {
+        // if withdraw destination is specified, we validate it
+        Some(addr) => deps.api.addr_validate(&addr)?,
+        // otherwise default to the owner
+        None => info.sender,
+    };
 
     // Initialize the reward state
     let reward_state = DenomRewardState {
@@ -122,6 +132,7 @@ fn execute_register_reward_denom(
         vp_contract,
         hook_caller: hook_caller.clone(),
         funded_amount: Uint128::zero(),
+        withdraw_destination,
     };
     let str_denom = reward_state.to_str_denom();
 
@@ -184,7 +195,7 @@ fn execute_shutdown(
 
     // to get the clawback msg
     let clawback_msg = get_transfer_msg(
-        info.sender.clone(),
+        reward_state.withdraw_destination.clone(),
         reward_state.funded_amount * remaining_reward_duration_fraction,
         reward_state.denom.clone(),
     )?;
@@ -216,7 +227,7 @@ fn execute_receive(
 
     let reward_denom_state = DENOM_REWARD_STATES.load(deps.storage, info.sender.to_string())?;
 
-    execute_fund(deps, env, sender, reward_denom_state, wrapper.amount)
+    execute_fund(deps, env, reward_denom_state, wrapper.amount)
 }
 
 fn execute_fund_native(
@@ -228,20 +239,20 @@ fn execute_fund_native(
 
     let reward_denom_state = DENOM_REWARD_STATES.load(deps.storage, fund_coin.denom.clone())?;
 
-    execute_fund(deps, env, info.sender, reward_denom_state, fund_coin.amount)
+    execute_fund(deps, env, reward_denom_state, fund_coin.amount)
 }
 
 fn execute_fund(
-    mut deps: DepsMut,
+    deps: DepsMut,
     env: Env,
-    sender: Addr,
     mut denom_reward_state: DenomRewardState,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let denom_str = denom_reward_state.to_str_denom();
+    // TODO: verify that these are unnecessary
+    // let denom_str = denom_reward_state.to_str_denom();
 
     // first we update the existing rewards (if any)
-    update_rewards(&mut deps, &env, &sender, vec![denom_str.to_string()])?;
+    // update_rewards(&mut deps, &env, &sender, vec![denom_str.to_string()])?;
 
     // we derive the period for which the rewards are funded
     // by looking at the existing reward emission rate and the funded amount
@@ -254,6 +265,8 @@ fn execute_fund(
         .bump_funding_date(&env.block)
         .bump_last_update(&env.block);
 
+    // the duration of rewards period is extended in different ways,
+    // depending on the current expiration state and current block
     denom_reward_state.ends_at = match denom_reward_state.ends_at {
         // if this is the first funding of the denom, the new expiration is the
         // funded period duration from the current block
@@ -352,7 +365,7 @@ fn get_transfer_msg(recipient: Addr, amount: Uint128, denom: Denom) -> StdResult
     match denom {
         Denom::Native(denom) => Ok(BankMsg::Send {
             to_address: recipient.into_string(),
-            amount: vec![Coin { denom, amount }],
+            amount: coins(amount.u128(), denom),
         }
         .into()),
         Denom::Cw20(addr) => {
@@ -504,7 +517,7 @@ fn get_total_earned_puvp(
         // the new rewards per unit voting power that have been distributed
         // since the last update
         let new_rewards_puvp = new_rewards_distributed.checked_div(total_power.into())?;
-
+        println!("new reward puvp: {:?}", new_rewards_puvp);
         Ok(curr + new_rewards_puvp)
     }
 }

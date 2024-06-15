@@ -55,6 +55,7 @@ pub enum ExecuteMsg {
         emission_rate: RewardEmissionRate,
         vp_contract: String,
         hook_caller: String,
+        withdraw_destination: Option<String>,
     },
 }
 

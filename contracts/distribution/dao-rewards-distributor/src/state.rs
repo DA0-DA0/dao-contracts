@@ -52,6 +52,8 @@ pub struct DenomRewardState {
     pub hook_caller: Addr,
     /// total amount of rewards funded
     pub funded_amount: Uint128,
+    /// optional destination address for reward clawbacks
+    pub withdraw_destination: Addr,
 }
 
 impl DenomRewardState {

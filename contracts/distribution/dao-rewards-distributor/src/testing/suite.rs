@@ -429,6 +429,7 @@ impl Suite {
             },
             hook_caller: hook_caller.to_string(),
             vp_contract: self.voting_power_addr.to_string(),
+            withdraw_destination: None,
         };
 
         self.app
