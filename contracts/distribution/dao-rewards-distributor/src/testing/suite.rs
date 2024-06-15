@@ -1,7 +1,8 @@
 use std::borrow::BorrowMut;
 
 use cosmwasm_std::{coin, coins, to_json_binary, Addr, Coin, Empty, Timestamp, Uint128};
-use cw20::{Cw20Coin, Expiration};
+use cw20::{Cw20Coin, Denom, Expiration, UncheckedDenom};
+use cw20_stake::msg::ReceiveMsg;
 use cw4::Member;
 use cw_multi_test::{App, BankSudo, Executor, SudoMsg};
 use cw_ownable::Ownership;
@@ -30,10 +31,25 @@ pub enum DaoType {
     CW4,
 }
 
+pub struct RewardsConfig {
+    pub amount: u128,
+    pub denom: UncheckedDenom,
+    pub duration: Duration,
+}
+
+impl RewardsConfig {
+    fn get_denom(&self) -> String {
+        match &self.denom {
+            UncheckedDenom::Native(denom) => denom.to_string(),
+            UncheckedDenom::Cw20(addr) => addr.to_string(),
+        }
+    }
+}
+
 pub struct SuiteBuilder {
     pub instantiate: InstantiateMsg,
     pub dao_type: DaoType,
-    pub reward_funding: Coin,
+    pub rewards_config: RewardsConfig,
 }
 
 impl SuiteBuilder {
@@ -43,8 +59,17 @@ impl SuiteBuilder {
                 owner: Some(OWNER.to_string()),
             },
             dao_type,
-            reward_funding: coin(100_000_000, DENOM.to_string()),
+            rewards_config: RewardsConfig {
+                amount: 1_000,
+                denom: UncheckedDenom::Native(DENOM.to_string()),
+                duration: Duration::Height(10),
+            },
         }
+    }
+
+    pub fn with_rewards_config(mut self, rewards_config: RewardsConfig) -> Self {
+        self.rewards_config = rewards_config;
+        self
     }
 }
 
@@ -205,17 +230,13 @@ impl SuiteBuilder {
         if let DaoType::CW721 = self.dao_type {
             suite_built.register_hook(suite_built.voting_power_addr.clone());
             suite_built.register_reward_denom(
-                DENOM,
-                1000,
-                10,
+                self.rewards_config,
                 suite_built.voting_power_addr.to_string().as_ref(),
             );
         } else {
             suite_built.register_hook(suite_built.staking_addr.clone());
             suite_built.register_reward_denom(
-                DENOM,
-                1000,
-                10,
+                self.rewards_config,
                 suite_built.staking_addr.to_string().as_ref(),
             );
         }
@@ -226,12 +247,6 @@ impl SuiteBuilder {
         suite_built.fund_distributor_native(coin(100_000_000, DENOM.to_string()));
 
         suite_built
-    }
-
-    #[allow(dead_code)]
-    pub fn with_reward_funding(mut self, reward_funding: Coin) -> Self {
-        self.reward_funding = reward_funding;
-        self
     }
 }
 
@@ -414,18 +429,12 @@ impl Suite {
             .unwrap();
     }
 
-    pub fn register_reward_denom(
-        &mut self,
-        denom: &str,
-        amount: u128,
-        duration: u64,
-        hook_caller: &str,
-    ) {
+    pub fn register_reward_denom(&mut self, reward_config: RewardsConfig, hook_caller: &str) {
         let register_reward_denom_msg = ExecuteMsg::RegisterRewardDenom {
-            denom: cw20::UncheckedDenom::Native(denom.to_string()),
+            denom: reward_config.denom.clone(),
             emission_rate: RewardEmissionRate {
-                amount: Uint128::new(amount),
-                duration: Duration::Height(duration),
+                amount: Uint128::new(reward_config.amount),
+                duration: reward_config.duration,
             },
             hook_caller: hook_caller.to_string(),
             vp_contract: self.voting_power_addr.to_string(),
@@ -456,18 +465,18 @@ impl Suite {
             .unwrap();
     }
 
-    #[allow(dead_code)]
     pub fn mint_cw20_coin(&mut self, coin: Cw20Coin, dest: &str) -> Addr {
         let _msg = cw20::Cw20ExecuteMsg::Mint {
             recipient: dest.to_string(),
             amount: coin.amount,
         };
-        cw20_setup::instantiate_cw20(self.app.borrow_mut(), "newcoin", vec![coin])
+        let new_cw20 = cw20_setup::instantiate_cw20(self.app.borrow_mut(), "newcoin", vec![coin]);
+        new_cw20
     }
 
     pub fn fund_distributor_native(&mut self, coin: Coin) {
         self.mint_native_coin(coin.clone(), OWNER);
-
+        println!("[FUNDING EVENT] native funding: {}", coin);
         self.app
             .borrow_mut()
             .execute_contract(
@@ -479,15 +488,48 @@ impl Suite {
             .unwrap();
     }
 
-    pub fn skip_blocks(&mut self, blocks: u64) {
-        self.app.borrow_mut().update_block(|b| b.height += blocks);
+    pub fn fund_distributor_cw20(&mut self, coin: Cw20Coin) {
+        let new_cw20_mint = self.mint_cw20_coin(coin.clone(), ADDR1);
+        println!("[FUNDING EVENT] cw20 funding: {}", coin);
+
+        let fund_sub_msg = to_json_binary(&ReceiveMsg::Fund {}).unwrap();
+        self.app
+            .execute_contract(
+                Addr::unchecked(ADDR1),
+                new_cw20_mint.clone(),
+                &cw20::Cw20ExecuteMsg::Send {
+                    contract: self.distribution_contract.to_string(),
+                    amount: coin.amount,
+                    msg: fund_sub_msg,
+                },
+                &[],
+            )
+            .unwrap();
     }
 
-    #[allow(dead_code)]
+    pub fn skip_blocks(&mut self, blocks: u64) {
+        self.app.borrow_mut().update_block(|b| {
+            println!("skipping blocks {:?} -> {:?}", b.height, b.height + blocks);
+            b.height += blocks
+        });
+    }
+
     pub fn skip_seconds(&mut self, seconds: u64) {
-        self.app
-            .borrow_mut()
-            .update_block(|b| b.time = b.time.plus_seconds(seconds));
+        self.app.borrow_mut().update_block(|b| {
+            let new_block_time = b.time.plus_seconds(seconds);
+            println!(
+                "skipping seconds {:?} -> {:?}",
+                b.time.seconds(),
+                new_block_time.seconds()
+            );
+            b.time = new_block_time;
+            // this is needed because voting power query only exists based on height.
+            // for time-based unit tests we assume that 1 block = 1 second.
+            // only implication I can think of is that during mainnet network downtime,
+            // rewards would continue to accrue for time-based distributions, whereas
+            // height-based distributions would not.
+            b.height += seconds;
+        });
     }
 
     pub fn claim_rewards(&mut self, address: &str, denom: &str) {

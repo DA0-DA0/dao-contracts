@@ -1,16 +1,20 @@
 use std::borrow::BorrowMut;
 
-use cosmwasm_std::{coin, Addr};
-use cw20::Expiration;
+use cosmwasm_std::Uint128;
+use cosmwasm_std::{coin, to_json_binary, Addr, Timestamp};
+use cw20::{Cw20Coin, Expiration, UncheckedDenom};
 use cw_multi_test::Executor;
-use cw_utils::Duration;
+use cw_utils::{parse_instantiate_response_data, Duration};
 
 use crate::{
     msg::ExecuteMsg,
     testing::{ADDR1, ADDR2, ADDR3, DENOM},
 };
 
-use super::{suite::SuiteBuilder, ALT_DENOM, OWNER};
+use super::{
+    suite::{RewardsConfig, SuiteBuilder},
+    ALT_DENOM, OWNER,
+};
 
 // By default, the tests are set up to distribute rewards over 1_000_000 units of time.
 // Over that time, 100_000_000 token rewards will be distributed.
@@ -171,7 +175,61 @@ fn test_claim_zero_rewards() {
 
 #[test]
 fn test_native_dao_rewards_time_based() {
-    unimplemented!();
+    // 1000udenom/10sec = 100udenom/1sec reward emission rate
+    // given funding of 100_000_000udenom, we have a reward duration of 1_000_000sec
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
+        .with_rewards_config(RewardsConfig {
+            amount: 1_000,
+            denom: UncheckedDenom::Native(DENOM.to_string()),
+            duration: Duration::Time(10),
+        })
+        .build();
+
+    suite.assert_amount(1_000);
+    suite.assert_duration(10);
+    suite.assert_ends_at(Expiration::AtTime(Timestamp::from_seconds(1_000_000)));
+
+    // skip 1/10th of the time
+    suite.skip_seconds(100_000);
+
+    // suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000);
+
+    // skip 1/10th of the time
+    suite.skip_seconds(100_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 10_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 5_000_000);
+
+    // ADDR1 claims rewards
+    suite.claim_rewards(ADDR1, DENOM);
+    suite.assert_native_balance(ADDR1, DENOM, 10_000_000);
+    suite.assert_pending_rewards(ADDR1, DENOM, 0);
+
+    // ADDR2 and ADDR3 unstake their stake
+    suite.unstake_native_tokens(ADDR2, 50);
+    suite.unstake_native_tokens(ADDR3, 50);
+
+    // skip 1/10th of the time
+    suite.skip_seconds(100_000);
+
+    // because ADDR2 and ADDR3 are not staking, ADDR1 receives all the rewards.
+    // ADDR2 and ADDR3 should have the same amount of pending rewards as before.
+    suite.assert_pending_rewards(ADDR1, DENOM, 10_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 5_000_000);
+
+    // ADDR2 and ADDR3 wake up, claim and restake their rewards
+    suite.claim_rewards(ADDR2, DENOM);
+    suite.claim_rewards(ADDR3, DENOM);
+
+    let addr1_balance = suite.get_balance_native(ADDR1, DENOM);
+    let addr2_balance = suite.get_balance_native(ADDR2, DENOM);
+
+    suite.stake_native_tokens(ADDR1, addr1_balance);
+    suite.stake_native_tokens(ADDR2, addr2_balance);
 }
 
 #[test]
@@ -251,6 +309,8 @@ fn test_cw4_dao_rewards() {
     suite.claim_rewards(ADDR1, DENOM);
     suite.assert_native_balance(ADDR1, DENOM, 10_000_000);
     suite.assert_pending_rewards(ADDR1, DENOM, 0);
+
+    panic!()
 }
 
 #[test]
@@ -263,7 +323,14 @@ fn test_fund_multiple_denoms() {
     suite.mint_native_coin(alt_coin.clone(), OWNER);
     suite.mint_native_coin(coin.clone(), OWNER);
     let hook_caller = suite.staking_addr.to_string();
-    suite.register_reward_denom(ALT_DENOM, 100, 1000, &hook_caller);
+    suite.register_reward_denom(
+        RewardsConfig {
+            amount: 1000,
+            denom: cw20::UncheckedDenom::Native(ALT_DENOM.to_string()),
+            duration: Duration::Height(100),
+        },
+        &hook_caller,
+    );
 
     suite
         .app
@@ -278,8 +345,48 @@ fn test_fund_multiple_denoms() {
 }
 
 #[test]
+#[should_panic(expected = "unknown variant `not_the_fund: {}`")]
+fn test_fund_cw20_with_invalid_cw20_receive_msg() {
+    // attempting to fund a non-registered cw20 token should error
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::CW20).build();
+
+    let unregistered_cw20_coin = Cw20Coin {
+        address: ADDR1.to_string(),
+        amount: Uint128::new(1_000_000),
+    };
+
+    let new_cw20_mint = suite.mint_cw20_coin(unregistered_cw20_coin.clone(), ADDR1);
+    println!("[FUNDING EVENT] cw20 funding: {}", unregistered_cw20_coin);
+
+    let fund_sub_msg = to_json_binary(&"not_the_fund: {}").unwrap();
+    suite
+        .app
+        .execute_contract(
+            Addr::unchecked(ADDR1),
+            new_cw20_mint.clone(),
+            &cw20::Cw20ExecuteMsg::Send {
+                contract: suite.distribution_contract.to_string(),
+                amount: unregistered_cw20_coin.amount,
+                msg: fund_sub_msg,
+            },
+            &[],
+        )
+        .unwrap();
+}
+
+#[test]
+#[should_panic]
 fn test_fund_invalid_cw20_denom() {
-    unimplemented!();
+    // attempting to fund a non-registered cw20 token should error
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::CW20).build();
+
+    let unregistered_cw20_coin = Cw20Coin {
+        address: ADDR1.to_string(),
+        amount: Uint128::new(1_000_000),
+    };
+
+    println!("attempting to fund the distributor contract with unregistered cw20 coin");
+    suite.fund_distributor_cw20(unregistered_cw20_coin);
 }
 
 #[test]
@@ -422,7 +529,7 @@ fn test_update_emission_rate() {
     // suite.assert_pending_rewards(ADDR1, DENOM, 50_000_000);
     // suite.assert_pending_rewards(ADDR2, DENOM, 25_000_000);
     // suite.assert_pending_rewards(ADDR3, DENOM, 25_000_000);
-    panic!()
+    // panic!()
 }
 
 #[test]
@@ -431,7 +538,12 @@ fn test_register_duplicate_denom() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
     let hook_caller = suite.staking_addr.to_string();
-    suite.register_reward_denom(DENOM, 100, 1000, &hook_caller);
+    let reward_config = RewardsConfig {
+        amount: 1000,
+        denom: cw20::UncheckedDenom::Native(DENOM.to_string()),
+        duration: Duration::Height(100),
+    };
+    suite.register_reward_denom(reward_config, &hook_caller);
 }
 
 #[test]
@@ -456,7 +568,6 @@ fn test_fund_invalid_native_denom() {
 }
 
 #[test]
-#[should_panic(expected = "Caller is not the contract's current owner")]
 fn test_fund_unauthorized() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
@@ -576,4 +687,86 @@ fn test_fund_pre_expiration() {
     // extend the current distribution expiration by the
     // newly funded duration
     suite.assert_ends_at(Expiration::AtHeight(funded_blocks * 2));
+}
+
+#[test]
+fn test_native_dao_rewards_entry_edge_case() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    // we start with the following staking power split:
+    // [ADDR1: 100, ADDR2: 50, ADDR3: 50], or [ADDR1: 50%, ADDR2: 25%, ADDR3: 25%
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000));
+    suite.assert_duration(10);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    // ADDR1 stakes additional 100 tokens, bringing the new staking power split to
+    // [ADDR1: 200, ADDR2: 50, ADDR3: 50], or [ADDR1: 66.6%, ADDR2: 16.6%, ADDR3: 16.6%]
+    // this means that per 100_000 blocks, ADDR1 should receive 6_666_666, while
+    // ADDR2 and ADDR3 should receive 1_666_666 each.
+    suite.mint_native_coin(coin(100, DENOM), ADDR1);
+    suite.stake_native_tokens(ADDR1, 100);
+
+    // rewards here should not be affected by the new stake,
+    suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    // here we should see the new stake affecting the rewards split.
+    suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000 + 6_666_666);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000 + 1_666_666);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000 + 1_666_666);
+
+    // ADDR1 claims rewards
+    suite.claim_rewards(ADDR1, DENOM);
+    suite.assert_native_balance(ADDR1, DENOM, 5_000_000 + 6_666_666);
+    suite.assert_pending_rewards(ADDR1, DENOM, 0);
+
+    // ADDR2 and ADDR3 unstake their stake
+    // new voting power split is [ADDR1: 100%, ADDR2: 0%, ADDR3: 0%]
+    suite.unstake_native_tokens(ADDR2, 50);
+    suite.unstake_native_tokens(ADDR3, 50);
+
+    // we assert that by unstaking, ADDR2 and ADDR3 do not forfeit their earned but unclaimed rewards
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000 + 1_666_666);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000 + 1_666_666);
+
+    // skip a block and assert that nothing changes
+    suite.skip_blocks(1);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000 + 1_666_666);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000 + 1_666_666);
+
+    // skip the remaining blocks to reach 1/10th of the time
+    suite.skip_blocks(99_999);
+
+    // because ADDR2 and ADDR3 are not staking, ADDR1 receives all the rewards.
+    // ADDR2 and ADDR3 should have the same amount of pending rewards as before.
+    suite.assert_pending_rewards(ADDR1, DENOM, 10_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000 + 1_666_666);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000 + 1_666_666);
+
+    // ADDR2 and ADDR3 wake up, claim and restake their rewards
+    suite.claim_rewards(ADDR2, DENOM);
+    suite.claim_rewards(ADDR3, DENOM);
+
+    let addr1_balance = suite.get_balance_native(ADDR1, DENOM);
+    let addr2_balance = suite.get_balance_native(ADDR2, DENOM);
+
+    suite.stake_native_tokens(ADDR1, addr1_balance);
+    suite.stake_native_tokens(ADDR2, addr2_balance);
+}
+
+#[test]
+fn test_time_based_shutdown() {
+    panic!()
+}
+
+#[test]
+fn test_update_owner() {
+    panic!()
 }

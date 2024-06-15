@@ -226,7 +226,6 @@ fn execute_receive(
     let sender = deps.api.addr_validate(&wrapper.sender)?;
 
     let reward_denom_state = DENOM_REWARD_STATES.load(deps.storage, info.sender.to_string())?;
-
     execute_fund(deps, env, reward_denom_state, wrapper.amount)
 }
 
@@ -248,12 +247,6 @@ fn execute_fund(
     mut denom_reward_state: DenomRewardState,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    // TODO: verify that these are unnecessary
-    // let denom_str = denom_reward_state.to_str_denom();
-
-    // first we update the existing rewards (if any)
-    // update_rewards(&mut deps, &env, &sender, vec![denom_str.to_string()])?;
-
     // we derive the period for which the rewards are funded
     // by looking at the existing reward emission rate and the funded amount
     let funded_period_duration = denom_reward_state
@@ -283,7 +276,7 @@ fn execute_fund(
             }
         }
         Expiration::AtTime(t) => {
-            if t.seconds() <= env.block.time.seconds() {
+            if t <= env.block.time {
                 // expiration is the funded duration after current block time
                 Expiration::AtTime(env.block.time.plus_seconds(funded_period_value))
             } else {
@@ -293,7 +286,6 @@ fn execute_fund(
             }
         }
     };
-
     denom_reward_state.funded_amount += amount;
 
     DENOM_REWARD_STATES.save(
@@ -509,7 +501,6 @@ fn get_total_earned_puvp(
         // the new rewards per unit voting power that have been distributed
         // since the last update
         let new_rewards_puvp = new_rewards_distributed.checked_div(total_power.into())?;
-        println!("new reward puvp: {:?}", new_rewards_puvp);
         Ok(curr + new_rewards_puvp)
     }
 }
