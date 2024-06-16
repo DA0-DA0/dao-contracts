@@ -1,7 +1,7 @@
 use std::borrow::BorrowMut;
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{coin, coins, to_json_binary, Addr, Coin, Empty, Never, Timestamp, Uint128};
+use cosmwasm_std::{coin, coins, to_json_binary, Addr, Coin, Empty, Timestamp, Uint128};
 use cw20::{Cw20Coin, Expiration, UncheckedDenom};
 use cw20_stake::msg::ReceiveMsg;
 use cw4::{Member, MemberListResponse};
@@ -41,15 +41,6 @@ pub struct RewardsConfig {
     pub denom: UncheckedDenom,
     pub duration: Duration,
     pub destination: Option<String>,
-}
-
-impl RewardsConfig {
-    fn get_denom(&self) -> String {
-        match &self.denom {
-            UncheckedDenom::Native(denom) => denom.to_string(),
-            UncheckedDenom::Cw20(addr) => addr.to_string(),
-        }
-    }
 }
 
 pub struct SuiteBuilder {
@@ -430,7 +421,7 @@ impl Suite {
         ownable_response.owner.unwrap()
     }
 
-    pub fn assert_pending_rewards(&mut self, address: &str, denom: &str, expected: u128) {
+    pub fn assert_pending_rewards(&mut self, address: &str, _denom: &str, expected: u128) {
         let res: PendingRewardsResponse = self
             .app
             .borrow_mut()

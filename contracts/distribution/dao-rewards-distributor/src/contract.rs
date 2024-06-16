@@ -210,9 +210,6 @@ fn execute_receive(
     // verify msg
     let _msg: ReceiveMsg = from_json(&wrapper.msg)?;
 
-    // only the token contract can execute this message
-    let sender = deps.api.addr_validate(&wrapper.sender)?;
-
     let reward_denom_state = DENOM_REWARD_STATES.load(deps.storage, info.sender.to_string())?;
     execute_fund(deps, env, reward_denom_state, wrapper.amount)
 }
