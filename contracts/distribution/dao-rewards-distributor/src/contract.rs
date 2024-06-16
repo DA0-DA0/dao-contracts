@@ -56,11 +56,6 @@ pub fn execute(
         ExecuteMsg::Claim { denom } => execute_claim(deps, env, info, denom),
         ExecuteMsg::Fund {} => execute_fund_native(deps, env, info),
         ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
-        ExecuteMsg::UpdateRewardEmissionRate {
-            denom,
-            amount,
-            duration,
-        } => execute_update_denom_emission_rate(deps, env, info, denom, amount, duration),
         ExecuteMsg::UpdateOwnership(action) => execute_update_owner(deps, info, env, action),
         ExecuteMsg::Shutdown { denom } => execute_shutdown(deps, info, env, denom),
         ExecuteMsg::RegisterRewardDenom {
@@ -516,36 +511,6 @@ fn get_duration_scalar(duration: &Duration) -> u64 {
         Duration::Height(h) => *h,
         Duration::Time(t) => *t,
     }
-}
-
-fn execute_update_denom_emission_rate(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    denom: String,
-    amount: Uint128,
-    duration: Duration,
-) -> Result<Response, ContractError> {
-    // Ensure the sender is the owner.
-    cw_ownable::assert_owner(deps.storage, &info.sender)?;
-
-    if let Duration::Height(0) | Duration::Time(0) = duration {
-        return Err(ContractError::ZeroRewardDuration {});
-    }
-
-    let mut reward_state = DENOM_REWARD_STATES.load(deps.storage, denom.to_string())?;
-
-    // Ensure that the current reward period has ended.
-    // TODO: look whether into whether this is necessary
-    reward_state.validate_period_finish_expiration_if_set(&env.block)?;
-    reward_state.emission_rate = RewardEmissionRate { amount, duration };
-
-    DENOM_REWARD_STATES.save(deps.storage, denom, &reward_state)?;
-
-    Ok(Response::new()
-        .add_attribute("action", "update_reward_duration")
-        .add_attribute("amount", amount.to_string())
-        .add_attribute("duration", duration.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

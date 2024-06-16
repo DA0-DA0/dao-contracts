@@ -39,13 +39,6 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     /// Used to fund this contract with native tokens.
     Fund {},
-    /// Updates the reward emission rate which controls the rate at which
-    /// rewards are issued.
-    UpdateRewardEmissionRate {
-        denom: String,
-        amount: Uint128,
-        duration: Duration,
-    },
     /// shuts down the rewards distributor. withdraws all future staking rewards
     /// back to the treasury. members can claim whatever they earned until this point.
     Shutdown { denom: String },

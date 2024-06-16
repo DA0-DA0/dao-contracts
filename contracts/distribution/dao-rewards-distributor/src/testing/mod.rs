@@ -130,7 +130,7 @@ mod cw20_setup {
         cw20_base_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
     };
 
-    use super::{ADDR1, OWNER};
+    use super::OWNER;
 
     pub fn instantiate_cw20(app: &mut App, name: &str, initial_balances: Vec<Cw20Coin>) -> Addr {
         let cw20_id = app.store_code(cw20_base_contract());
@@ -143,7 +143,7 @@ mod cw20_setup {
             marketing: None,
         };
 
-        app.instantiate_contract(cw20_id, Addr::unchecked(ADDR1), &msg, &[], "cw20", None)
+        app.instantiate_contract(cw20_id, Addr::unchecked(OWNER), &msg, &[], "cw20", None)
             .unwrap()
     }
 
@@ -160,7 +160,7 @@ mod cw20_setup {
         };
         app.instantiate_contract(
             staking_code_id,
-            Addr::unchecked(ADDR1),
+            Addr::unchecked(OWNER),
             &msg,
             &[],
             "staking",
@@ -180,7 +180,7 @@ mod cw20_setup {
             },
             active_threshold: None,
         };
-        app.instantiate_contract(vp_code_id, Addr::unchecked(ADDR1), &msg, &[], "vp", None)
+        app.instantiate_contract(vp_code_id, Addr::unchecked(OWNER), &msg, &[], "vp", None)
             .unwrap()
     }
 

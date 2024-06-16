@@ -771,43 +771,6 @@ fn test_shutdown_unregistered_denom() {
 }
 
 #[test]
-#[should_panic(expected = "Reward duration can not be zero")]
-fn test_update_emission_rate_validates_zero_duration() {
-    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
-
-    suite.update_emission_rate(DENOM, 2_000, Duration::Height(0));
-}
-
-#[test]
-fn test_update_emission_rate() {
-    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
-
-    let started_at = Expiration::AtHeight(0);
-    let funded_blocks = 1_000_000;
-    let expiration_date = Expiration::AtHeight(funded_blocks);
-    suite.assert_amount(1_000);
-    suite.assert_ends_at(expiration_date);
-    suite.assert_started_at(started_at);
-    suite.assert_duration(10);
-
-    // pass the current reward config
-    suite.skip_blocks(1_000_000);
-
-    suite.assert_pending_rewards(ADDR1, DENOM, 50_000_000);
-    suite.assert_pending_rewards(ADDR2, DENOM, 25_000_000);
-    suite.assert_pending_rewards(ADDR3, DENOM, 25_000_000);
-
-    suite.update_emission_rate(DENOM, 2_000, Duration::Height(1_000));
-
-    // TODO: should we make sure that stakers who didn't claim their rewards are not affected?
-    // this would likely be a paginated USER_REWARD_STATES update for every member for a specific denom.
-    // suite.assert_pending_rewards(ADDR1, DENOM, 50_000_000);
-    // suite.assert_pending_rewards(ADDR2, DENOM, 25_000_000);
-    // suite.assert_pending_rewards(ADDR3, DENOM, 25_000_000);
-    // panic!()
-}
-
-#[test]
 #[should_panic(expected = "Denom already registered")]
 fn test_register_duplicate_denom() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
@@ -864,7 +827,7 @@ fn test_fund_unauthorized() {
 }
 
 #[test]
-fn test_fund_post_expiration() {
+fn test_fund_native_block_based_post_expiration() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
     let started_at = Expiration::AtHeight(0);
@@ -916,7 +879,137 @@ fn test_fund_post_expiration() {
 }
 
 #[test]
-fn test_fund_pre_expiration() {
+fn test_fund_cw20_time_based_post_expiration() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::CW20)
+        .with_rewards_config(RewardsConfig {
+            amount: 1_000,
+            denom: UncheckedDenom::Cw20(DENOM.to_string()),
+            duration: Duration::Time(10),
+            destination: None,
+        })
+        .build();
+
+    let started_at = Expiration::AtTime(Timestamp::from_seconds(0));
+    let funded_timestamp = Timestamp::from_seconds(1_000_000);
+    let expiration_date = Expiration::AtTime(funded_timestamp.clone());
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(expiration_date);
+    suite.assert_started_at(started_at);
+    suite.assert_duration(10);
+
+    // skip 1/10th of the time
+    suite.skip_seconds(100_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000);
+
+    // ADDR2 unstake their stake
+    suite.unstake_cw20_tokens(50, ADDR2);
+
+    // addr3 claims their rewards
+    suite.claim_rewards(ADDR3, suite.reward_denom.clone().as_str());
+    suite.assert_cw20_balance(ADDR3, 2_500_000);
+
+    // skip to 100_000 blocks past the expiration
+    suite.skip_seconds(1_000_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 65_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 30_000_000);
+
+    suite.assert_ends_at(expiration_date);
+    suite.assert_started_at(started_at);
+
+    // we fund the distributor with the same amount of coins as
+    // during setup, meaning that the rewards distribution duration
+    // should be the same.
+    let funding_denom = Cw20Coin {
+        address: suite.reward_denom.to_string(),
+        amount: Uint128::new(100_000_000),
+    };
+
+    suite.fund_distributor_cw20(funding_denom.clone());
+
+    let current_block = suite.app.block_info();
+
+    // funding after the reward period had expired should
+    // reset the start date to that of the funding.
+    suite.assert_started_at(Expiration::AtTime(current_block.time));
+
+    // funding after the reward period had expired should
+    // set the distribution expiration to the funded duration
+    // after current block
+    suite.assert_ends_at(Expiration::AtTime(
+        current_block.time.plus_seconds(funded_timestamp.seconds()),
+    ));
+}
+
+#[test]
+fn test_fund_cw20_time_based_pre_expiration() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::CW20)
+        .with_rewards_config(RewardsConfig {
+            amount: 1_000,
+            denom: UncheckedDenom::Cw20(DENOM.to_string()),
+            duration: Duration::Time(10),
+            destination: None,
+        })
+        .build();
+
+    let started_at = Expiration::AtTime(Timestamp::from_seconds(0));
+    let funded_timestamp = Timestamp::from_seconds(1_000_000);
+    let expiration_date = Expiration::AtTime(funded_timestamp.clone());
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(expiration_date);
+    suite.assert_started_at(started_at);
+    suite.assert_duration(10);
+
+    // skip 1/10th of the time
+    suite.skip_seconds(100_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000);
+
+    // ADDR2 unstake their stake
+    suite.unstake_cw20_tokens(50, ADDR2);
+
+    // addr3 claims their rewards
+    suite.claim_rewards(ADDR3, suite.reward_denom.clone().as_str());
+
+    // skip to 100_000 blocks before the expiration
+    suite.skip_seconds(800_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 58_333_333);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 26_666_666);
+
+    suite.assert_ends_at(expiration_date);
+    suite.assert_started_at(started_at);
+
+    // we fund the distributor with the same amount of coins as
+    // during setup, meaning that the rewards distribution duration
+    // should be the same.
+    let funding_denom = Cw20Coin {
+        address: suite.reward_denom.to_string(),
+        amount: Uint128::new(100_000_000),
+    };
+    suite.fund_distributor_cw20(funding_denom.clone());
+
+    // funding before the reward period expires should
+    // not reset the existing rewards cycle
+    suite.assert_started_at(started_at);
+
+    // funding before the reward period expires should
+    // extend the current distribution expiration by the
+    // newly funded duration
+    suite.assert_ends_at(Expiration::AtTime(Timestamp::from_seconds(
+        funded_timestamp.seconds() * 2,
+    )));
+}
+
+#[test]
+fn test_fund_native_height_based_pre_expiration() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
     let started_at = Expiration::AtHeight(0);
@@ -983,6 +1076,7 @@ fn test_native_dao_rewards_entry_edge_case() {
     // this means that per 100_000 blocks, ADDR1 should receive 6_666_666, while
     // ADDR2 and ADDR3 should receive 1_666_666 each.
     suite.mint_native_coin(coin(100, DENOM), ADDR1);
+    println!("staking native coins\n");
     suite.stake_native_tokens(ADDR1, 100);
 
     // rewards here should not be affected by the new stake,

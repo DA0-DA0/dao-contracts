@@ -14,6 +14,7 @@ use crate::{
         ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, RewardEmissionRate,
         RewardsStateResponse,
     },
+    state::DenomRewardState,
     testing::cw20_setup::instantiate_cw20,
 };
 
@@ -265,8 +266,8 @@ impl SuiteBuilder {
                             suite_built.app.borrow_mut(),
                             "rewardcw",
                             vec![Cw20Coin {
-                                address: ADDR1.to_string(),
-                                amount: Uint128::new(100_000_000),
+                                address: OWNER.to_string(),
+                                amount: Uint128::new(1_000_000_000),
                             }],
                         )
                         .to_string(),
@@ -380,6 +381,21 @@ impl Suite {
             )
             .unwrap()
     }
+
+    pub fn get_denom_reward_state(&mut self, denom: &str) -> DenomRewardState {
+        let resp: DenomRewardState = self
+            .app
+            .wrap()
+            .query_wasm_smart(
+                self.distribution_contract.clone(),
+                &QueryMsg::DenomRewardState {
+                    denom: denom.to_string(),
+                },
+            )
+            .unwrap();
+        println!("[{} REWARD STATE] {:?}", denom, resp);
+        resp
+    }
 }
 
 // SUITE ASSERTIONS
@@ -482,21 +498,6 @@ impl Suite {
             .unwrap();
     }
 
-    pub fn update_emission_rate(&mut self, denom: &str, amount: u128, duration: Duration) {
-        self.app
-            .execute_contract(
-                Addr::unchecked(OWNER),
-                self.distribution_contract.clone(),
-                &ExecuteMsg::UpdateRewardEmissionRate {
-                    denom: denom.to_string(),
-                    amount: amount.into(),
-                    duration,
-                },
-                &[],
-            )
-            .unwrap();
-    }
-
     pub fn register_reward_denom(&mut self, reward_config: RewardsConfig, hook_caller: &str) {
         let register_reward_denom_msg = ExecuteMsg::RegisterRewardDenom {
             denom: reward_config.denom.clone(),
@@ -561,7 +562,7 @@ impl Suite {
         let fund_sub_msg = to_json_binary(&ReceiveMsg::Fund {}).unwrap();
         self.app
             .execute_contract(
-                Addr::unchecked(ADDR1),
+                Addr::unchecked(OWNER),
                 Addr::unchecked(coin.address),
                 &cw20::Cw20ExecuteMsg::Send {
                     contract: self.distribution_contract.to_string(),
