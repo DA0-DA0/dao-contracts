@@ -110,36 +110,6 @@
         "additionalProperties": false
       },
       {
-        "description": "Updates the reward emission rate which controls the rate at which rewards are issued.",
-        "type": "object",
-        "required": [
-          "update_reward_emission_rate"
-        ],
-        "properties": {
-          "update_reward_emission_rate": {
-            "type": "object",
-            "required": [
-              "amount",
-              "denom",
-              "duration"
-            ],
-            "properties": {
-              "amount": {
-                "$ref": "#/definitions/Uint128"
-              },
-              "denom": {
-                "type": "string"
-              },
-              "duration": {
-                "$ref": "#/definitions/Duration"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
         "description": "shuts down the rewards distributor. withdraws all future staking rewards back to the treasury. members can claim whatever they earned until this point.",
         "type": "object",
         "required": [
@@ -188,6 +158,12 @@
               },
               "vp_contract": {
                 "type": "string"
+              },
+              "withdraw_destination": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -705,7 +681,8 @@
         "last_update",
         "started_at",
         "total_earned_puvp",
-        "vp_contract"
+        "vp_contract",
+        "withdraw_destination"
       ],
       "properties": {
         "denom": {
@@ -749,7 +726,7 @@
           ]
         },
         "last_update": {
-          "description": "time when reward distribution was last updated for this denom. this means total_earned_puvp should be updated as well as users' earned rewards",
+          "description": "time when total_earned_puvp was last updated for this denom",
           "allOf": [
             {
               "$ref": "#/definitions/Expiration"
@@ -774,6 +751,14 @@
         },
         "vp_contract": {
           "description": "address to query the voting power",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            }
+          ]
+        },
+        "withdraw_destination": {
+          "description": "optional destination address for reward clawbacks",
           "allOf": [
             {
               "$ref": "#/definitions/Addr"
@@ -1164,7 +1149,8 @@
             "last_update",
             "started_at",
             "total_earned_puvp",
-            "vp_contract"
+            "vp_contract",
+            "withdraw_destination"
           ],
           "properties": {
             "denom": {
@@ -1208,7 +1194,7 @@
               ]
             },
             "last_update": {
-              "description": "time when reward distribution was last updated for this denom. this means total_earned_puvp should be updated as well as users' earned rewards",
+              "description": "time when total_earned_puvp was last updated for this denom",
               "allOf": [
                 {
                   "$ref": "#/definitions/Expiration"
@@ -1233,6 +1219,14 @@
             },
             "vp_contract": {
               "description": "address to query the voting power",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                }
+              ]
+            },
+            "withdraw_destination": {
+              "description": "optional destination address for reward clawbacks",
               "allOf": [
                 {
                   "$ref": "#/definitions/Addr"
