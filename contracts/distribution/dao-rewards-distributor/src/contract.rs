@@ -395,7 +395,6 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr, denom: String)
 }
 
 /// Calculate the total rewards earned per unit voting power since the last
-/// update, assuming the voting power has remained constant since the last
 /// update.
 fn get_total_earned_puvp(
     env: &Env,
@@ -404,8 +403,9 @@ fn get_total_earned_puvp(
 ) -> StdResult<Uint256> {
     let curr = reward_state.total_earned_puvp;
 
-    // query the current total voting power from the voting power contract
-    let total_power = get_total_voting_power(deps, env, &reward_state.vp_contract)?;
+    // query the total voting power just before this block from the voting power
+    // contract
+    let prev_total_power = get_prev_block_total_vp(deps, env, &reward_state.vp_contract)?;
 
     let last_time_rewards_distributed =
         reward_state.get_latest_reward_distribution_time(&env.block);
@@ -418,7 +418,7 @@ fn get_total_earned_puvp(
         reward_state.last_update,
     )?);
 
-    if total_power.is_zero() {
+    if prev_total_power.is_zero() {
         Ok(curr)
     } else {
         let duration_value = get_duration_scalar(&reward_state.emission_rate.duration);
@@ -439,7 +439,7 @@ fn get_total_earned_puvp(
 
         // the new rewards per unit voting power that have been distributed
         // since the last update
-        let new_rewards_puvp = new_rewards_distributed.checked_div(total_power.into())?;
+        let new_rewards_puvp = new_rewards_distributed.checked_div(prev_total_power.into())?;
         Ok(curr + new_rewards_puvp)
     }
 }
@@ -486,9 +486,9 @@ fn get_accrued_rewards_since_last_user_action(
     Ok(accrued_rewards)
 }
 
-fn get_total_voting_power(deps: Deps, env: &Env, contract_addr: &Addr) -> StdResult<Uint128> {
+fn get_prev_block_total_vp(deps: Deps, env: &Env, contract_addr: &Addr) -> StdResult<Uint128> {
     let msg = VotingQueryMsg::TotalPowerAtHeight {
-        height: Some(env.block.height),
+        height: Some(env.block.height.checked_sub(1).unwrap_or_default()),
     };
     let resp: TotalPowerAtHeightResponse = deps.querier.query_wasm_smart(contract_addr, &msg)?;
     Ok(resp.power)
