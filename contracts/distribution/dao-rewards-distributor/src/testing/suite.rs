@@ -382,7 +382,7 @@ impl Suite {
             .unwrap()
     }
 
-    pub fn get_denom_reward_state(&mut self, denom: &str) -> DenomRewardState {
+    pub fn _get_denom_reward_state(&mut self, denom: &str) -> DenomRewardState {
         let resp: DenomRewardState = self
             .app
             .wrap()

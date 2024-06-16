@@ -891,7 +891,7 @@ fn test_fund_cw20_time_based_post_expiration() {
 
     let started_at = Expiration::AtTime(Timestamp::from_seconds(0));
     let funded_timestamp = Timestamp::from_seconds(1_000_000);
-    let expiration_date = Expiration::AtTime(funded_timestamp.clone());
+    let expiration_date = Expiration::AtTime(funded_timestamp);
     suite.assert_amount(1_000);
     suite.assert_ends_at(expiration_date);
     suite.assert_started_at(started_at);
@@ -958,7 +958,7 @@ fn test_fund_cw20_time_based_pre_expiration() {
 
     let started_at = Expiration::AtTime(Timestamp::from_seconds(0));
     let funded_timestamp = Timestamp::from_seconds(1_000_000);
-    let expiration_date = Expiration::AtTime(funded_timestamp.clone());
+    let expiration_date = Expiration::AtTime(funded_timestamp);
     suite.assert_amount(1_000);
     suite.assert_ends_at(expiration_date);
     suite.assert_started_at(started_at);
