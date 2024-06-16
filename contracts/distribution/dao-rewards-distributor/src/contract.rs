@@ -428,6 +428,9 @@ fn get_total_earned_puvp(
         let complete_distribution_periods =
             new_reward_distribution_duration.checked_div(Uint128::from(duration_value))?;
 
+        // It is impossible for this to overflow as total rewards can never
+        // exceed max value of Uint128 as total tokens in existence cannot
+        // exceed Uint128 (because the bank module Coin type uses Uint128).
         let new_rewards_distributed = reward_state
             .emission_rate
             .amount
