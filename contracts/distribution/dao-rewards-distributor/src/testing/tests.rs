@@ -175,6 +175,63 @@ fn test_claim_zero_rewards() {
 }
 
 #[test]
+fn test_native_dao_cw20_rewards_time_based() {
+    // 1000udenom/10sec = 100udenom/1sec reward emission rate
+    // given funding of 100_000_000udenom, we have a reward duration of 1_000_000sec
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::CW20)
+        .with_rewards_config(RewardsConfig {
+            amount: 1_000,
+            denom: UncheckedDenom::Cw20(DENOM.to_string()),
+            duration: Duration::Time(10),
+            destination: None,
+        })
+        .build();
+
+    suite.assert_amount(1_000);
+    suite.assert_duration(10);
+    suite.assert_ends_at(Expiration::AtTime(Timestamp::from_seconds(1_000_000)));
+
+    // skip 1/10th of the time
+    suite.skip_seconds(100_000);
+
+    // suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000);
+
+    // skip 1/10th of the time
+    suite.skip_seconds(100_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 10_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 5_000_000);
+
+    // ADDR1 claims rewards
+    suite.claim_rewards(ADDR1, suite.reward_denom.clone().as_str());
+    suite.assert_cw20_balance(ADDR1, 10_000_000);
+    suite.assert_pending_rewards(ADDR1, DENOM, 0);
+
+    // ADDR2 and ADDR3 unstake their stake
+    suite.unstake_cw20_tokens(50, ADDR2);
+    suite.unstake_cw20_tokens(50, ADDR3);
+
+    // skip 1/10th of the time
+    suite.skip_seconds(100_000);
+
+    // because ADDR2 and ADDR3 are not staking, ADDR1 receives all the rewards.
+    // ADDR2 and ADDR3 should have the same amount of pending rewards as before.
+    suite.assert_pending_rewards(ADDR1, DENOM, 10_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 5_000_000);
+
+    // ADDR2 and ADDR3 wake up and claim their rewards
+    suite.claim_rewards(ADDR2, suite.reward_denom.clone().as_str());
+    suite.claim_rewards(ADDR3, suite.reward_denom.clone().as_str());
+
+    suite.assert_cw20_balance(ADDR1, 10_000_000);
+    suite.assert_cw20_balance(ADDR2, 5_000_000);
+}
+
+#[test]
 fn test_native_dao_rewards_time_based() {
     // 1000udenom/10sec = 100udenom/1sec reward emission rate
     // given funding of 100_000_000udenom, we have a reward duration of 1_000_000sec
@@ -183,6 +240,7 @@ fn test_native_dao_rewards_time_based() {
             amount: 1_000,
             denom: UncheckedDenom::Native(DENOM.to_string()),
             duration: Duration::Time(10),
+            destination: None,
         })
         .build();
 
@@ -431,6 +489,7 @@ fn test_fund_multiple_denoms() {
             amount: 1000,
             denom: cw20::UncheckedDenom::Native(ALT_DENOM.to_string()),
             duration: Duration::Height(100),
+            destination: None,
         },
         &hook_caller,
     );
@@ -458,7 +517,7 @@ fn test_fund_cw20_with_invalid_cw20_receive_msg() {
         amount: Uint128::new(1_000_000),
     };
 
-    let new_cw20_mint = suite.mint_cw20_coin(unregistered_cw20_coin.clone(), ADDR1);
+    let new_cw20_mint = suite.mint_cw20_coin(unregistered_cw20_coin.clone(), ADDR1, "newcoin");
     println!("[FUNDING EVENT] cw20 funding: {}", unregistered_cw20_coin);
 
     let fund_sub_msg = to_json_binary(&"not_the_fund: {}").unwrap();
@@ -504,7 +563,50 @@ fn test_shutdown_finished_rewards_period() {
 }
 
 #[test]
-fn test_shutdown_happy() {
+fn test_shutdown_alternative_destination_address() {
+    let subdao_addr = "some_subdao_maybe".to_string();
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
+        .with_withdraw_destination(Some(subdao_addr.to_string()))
+        .build();
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000);
+
+    // user 1 and 2 claim their rewards
+    suite.claim_rewards(ADDR1, DENOM);
+    suite.claim_rewards(ADDR2, DENOM);
+
+    // user 2 unstakes
+    suite.unstake_native_tokens(ADDR2, 50);
+
+    suite.skip_blocks(100_000);
+
+    let distribution_contract = suite.distribution_contract.to_string();
+
+    suite.assert_native_balance(subdao_addr.as_str(), DENOM, 0);
+    let pre_shutdown_distributor_balance =
+        suite.get_balance_native(distribution_contract.clone(), DENOM);
+
+    suite.shutdown_denom_distribution(DENOM);
+
+    let post_shutdown_distributor_balance =
+        suite.get_balance_native(distribution_contract.clone(), DENOM);
+    let post_shutdown_subdao_balance = suite.get_balance_native(subdao_addr.to_string(), DENOM);
+
+    // after shutdown the balance of the subdao should be the same
+    // as pre-shutdown-distributor-bal minus post-shutdown-distributor-bal
+    assert_eq!(
+        pre_shutdown_distributor_balance - post_shutdown_distributor_balance,
+        post_shutdown_subdao_balance
+    );
+}
+
+#[test]
+fn test_shutdown_block_based() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
     // skip 1/10th of the time
@@ -557,6 +659,76 @@ fn test_shutdown_happy() {
     // user 3 can unstake and claim their rewards
     suite.unstake_native_tokens(ADDR3, 50);
     suite.skip_blocks(100_000);
+    suite.assert_native_balance(ADDR3, DENOM, 50);
+    suite.claim_rewards(ADDR3, DENOM);
+    suite.assert_pending_rewards(ADDR3, DENOM, 0);
+    suite.assert_native_balance(ADDR3, DENOM, 5_833_333 + 50);
+
+    // TODO: fix this rug of 1 udenom by the distribution contract
+    suite.assert_native_balance(&distribution_contract, DENOM, 1);
+}
+
+#[test]
+fn test_shutdown_time_based() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
+        .with_rewards_config(RewardsConfig {
+            amount: 1_000,
+            denom: UncheckedDenom::Native(DENOM.to_string()),
+            duration: Duration::Time(10),
+            destination: None,
+        })
+        .build();
+
+    // skip 1/10th of the time
+    suite.skip_seconds(100_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000);
+
+    // user 1 and 2 claim their rewards
+    suite.claim_rewards(ADDR1, DENOM);
+    suite.claim_rewards(ADDR2, DENOM);
+
+    // user 2 unstakes
+    suite.unstake_native_tokens(ADDR2, 50);
+
+    suite.skip_seconds(100_000);
+
+    let distribution_contract = suite.distribution_contract.to_string();
+
+    let pre_shutdown_distributor_balance =
+        suite.get_balance_native(distribution_contract.clone(), DENOM);
+
+    suite.assert_native_balance(suite.owner.clone().unwrap().as_str(), DENOM, 0);
+    suite.shutdown_denom_distribution(DENOM);
+
+    let post_shutdown_distributor_balance =
+        suite.get_balance_native(distribution_contract.clone(), DENOM);
+    let post_shutdown_owner_balance = suite.get_balance_native(suite.owner.clone().unwrap(), DENOM);
+
+    // after shutdown the balance of the owner should be the same
+    // as pre-shutdown-distributor-bal minus post-shutdown-distributor-bal
+    assert_eq!(
+        pre_shutdown_distributor_balance - post_shutdown_distributor_balance,
+        post_shutdown_owner_balance
+    );
+
+    suite.skip_seconds(100_000);
+
+    // we assert that pending rewards did not change
+    suite.assert_pending_rewards(ADDR1, DENOM, 6_666_666);
+    suite.assert_pending_rewards(ADDR2, DENOM, 0);
+    suite.assert_pending_rewards(ADDR3, DENOM, 5_833_333);
+
+    // user 1 can claim their rewards
+    suite.claim_rewards(ADDR1, DENOM);
+    suite.assert_pending_rewards(ADDR1, DENOM, 0);
+    suite.assert_native_balance(ADDR1, DENOM, 11_666_666);
+
+    // user 3 can unstake and claim their rewards
+    suite.unstake_native_tokens(ADDR3, 50);
+    suite.skip_seconds(100_000);
     suite.assert_native_balance(ADDR3, DENOM, 50);
     suite.claim_rewards(ADDR3, DENOM);
     suite.assert_pending_rewards(ADDR3, DENOM, 0);
@@ -645,6 +817,7 @@ fn test_register_duplicate_denom() {
         amount: 1000,
         denom: cw20::UncheckedDenom::Native(DENOM.to_string()),
         duration: Duration::Height(100),
+        destination: None,
     };
     suite.register_reward_denom(reward_config, &hook_caller);
 }
@@ -865,11 +1038,12 @@ fn test_native_dao_rewards_entry_edge_case() {
 }
 
 #[test]
-fn test_time_based_shutdown() {
-    panic!()
-}
-
-#[test]
 fn test_update_owner() {
-    panic!()
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    let new_owner = "new_owner";
+    suite.update_owner(new_owner);
+
+    let owner = suite.get_owner().to_string();
+    assert_eq!(owner, new_owner);
 }
