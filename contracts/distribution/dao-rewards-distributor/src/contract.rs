@@ -42,18 +42,6 @@ pub fn instantiate(
     Ok(Response::new().add_attribute("owner", msg.owner.unwrap_or_else(|| "None".to_string())))
 }
 
-fn validate_voting_power_contract(
-    deps: &DepsMut,
-    vp_contract: String,
-) -> Result<Addr, ContractError> {
-    let vp_contract = deps.api.addr_validate(&vp_contract)?;
-    let _: TotalPowerAtHeightResponse = deps.querier.query_wasm_smart(
-        &vp_contract,
-        &VotingQueryMsg::TotalPowerAtHeight { height: None },
-    )?;
-    Ok(vp_contract)
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
@@ -352,29 +340,6 @@ fn execute_update_owner(
     Ok(Response::default().add_attributes(ownership.into_attributes()))
 }
 
-/// Returns the appropriate CosmosMsg for transferring the reward token.
-fn get_transfer_msg(recipient: Addr, amount: Uint128, denom: Denom) -> StdResult<CosmosMsg> {
-    match denom {
-        Denom::Native(denom) => Ok(BankMsg::Send {
-            to_address: recipient.into_string(),
-            amount: coins(amount.u128(), denom),
-        }
-        .into()),
-        Denom::Cw20(addr) => {
-            let cw20_msg = to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
-                recipient: recipient.into_string(),
-                amount,
-            })?;
-            Ok(WasmMsg::Execute {
-                contract_addr: addr.into_string(),
-                msg: cw20_msg,
-                funds: vec![],
-            }
-            .into())
-        }
-    }
-}
-
 pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr, denom: String) -> StdResult<()> {
     let reward_state = DENOM_REWARD_STATES.load(deps.storage, denom.clone())?;
 
@@ -430,32 +395,6 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr, denom: String)
         Ok(user_reward_state)
     })?;
     Ok(())
-}
-
-/// Calculate the duration from start to end. If the end is at or before the
-/// start, return 0.
-fn get_start_end_diff(end: Expiration, start: Expiration) -> StdResult<u64> {
-    match (end, start) {
-        (Expiration::AtHeight(end), Expiration::AtHeight(start)) => {
-            if end > start {
-                Ok(end - start)
-            } else {
-                Ok(0)
-            }
-        }
-        (Expiration::AtTime(end), Expiration::AtTime(start)) => {
-            if end > start {
-                Ok(end.seconds() - start.seconds())
-            } else {
-                Ok(0)
-            }
-        }
-        (Expiration::Never {}, Expiration::Never {}) => Ok(0),
-        _ => Err(StdError::generic_err(format!(
-            "incompatible expirations: got end {:?}, start {:?}",
-            end, start
-        ))),
-    }
 }
 
 /// Calculate the total rewards earned per unit voting power since the last
@@ -609,10 +548,6 @@ fn execute_update_denom_emission_rate(
         .add_attribute("duration", duration.to_string()))
 }
 
-pub fn scale_factor() -> Uint256 {
-    Uint256::from(10u8).pow(39)
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -629,7 +564,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub fn query_info(deps: Deps) -> StdResult<InfoResponse> {
+fn query_info(deps: Deps) -> StdResult<InfoResponse> {
     let info = get_contract_version(deps.storage)?;
     Ok(InfoResponse { info })
 }
@@ -680,4 +615,69 @@ fn query_pending_rewards(deps: Deps, env: Env, addr: String) -> StdResult<Pendin
         pending_rewards,
     };
     Ok(pending_rewards_response)
+}
+
+/// Returns the appropriate CosmosMsg for transferring the reward token.
+fn get_transfer_msg(recipient: Addr, amount: Uint128, denom: Denom) -> StdResult<CosmosMsg> {
+    match denom {
+        Denom::Native(denom) => Ok(BankMsg::Send {
+            to_address: recipient.into_string(),
+            amount: coins(amount.u128(), denom),
+        }
+        .into()),
+        Denom::Cw20(addr) => {
+            let cw20_msg = to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                recipient: recipient.into_string(),
+                amount,
+            })?;
+            Ok(WasmMsg::Execute {
+                contract_addr: addr.into_string(),
+                msg: cw20_msg,
+                funds: vec![],
+            }
+            .into())
+        }
+    }
+}
+
+pub(crate) fn scale_factor() -> Uint256 {
+    Uint256::from(10u8).pow(39)
+}
+
+/// Calculate the duration from start to end. If the end is at or before the
+/// start, return 0.
+fn get_start_end_diff(end: Expiration, start: Expiration) -> StdResult<u64> {
+    match (end, start) {
+        (Expiration::AtHeight(end), Expiration::AtHeight(start)) => {
+            if end > start {
+                Ok(end - start)
+            } else {
+                Ok(0)
+            }
+        }
+        (Expiration::AtTime(end), Expiration::AtTime(start)) => {
+            if end > start {
+                Ok(end.seconds() - start.seconds())
+            } else {
+                Ok(0)
+            }
+        }
+        (Expiration::Never {}, Expiration::Never {}) => Ok(0),
+        _ => Err(StdError::generic_err(format!(
+            "incompatible expirations: got end {:?}, start {:?}",
+            end, start
+        ))),
+    }
+}
+
+fn validate_voting_power_contract(
+    deps: &DepsMut,
+    vp_contract: String,
+) -> Result<Addr, ContractError> {
+    let vp_contract = deps.api.addr_validate(&vp_contract)?;
+    let _: TotalPowerAtHeightResponse = deps.querier.query_wasm_smart(
+        &vp_contract,
+        &VotingQueryMsg::TotalPowerAtHeight { height: None },
+    )?;
+    Ok(vp_contract)
 }

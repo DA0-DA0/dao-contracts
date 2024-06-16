@@ -5,7 +5,7 @@ use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 use crate::{contract::update_rewards, state::REGISTERED_HOOK_DENOMS, ContractError};
 
 /// Register a hook caller contract for a given denom.
-pub fn subscribe_denom_to_hook(
+pub(crate) fn subscribe_denom_to_hook(
     deps: DepsMut,
     denom: String,
     hook: Addr,
@@ -21,7 +21,7 @@ pub fn subscribe_denom_to_hook(
 /// Ensures hooks that update voting power are only called by a designated
 /// hook_caller contract.
 /// Returns a list of denoms that the hook caller is registered for.
-pub fn get_hook_caller_registered_denoms(
+pub(crate) fn get_hook_caller_registered_denoms(
     deps: Deps,
     info: MessageInfo,
 ) -> Result<Vec<String>, ContractError> {
@@ -32,7 +32,7 @@ pub fn get_hook_caller_registered_denoms(
         .map_err(|_| ContractError::InvalidHookSender {})
 }
 
-pub fn execute_stake_changed(
+pub(crate) fn execute_stake_changed(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -49,7 +49,7 @@ pub fn execute_stake_changed(
     }
 }
 
-pub fn execute_membership_changed(
+pub(crate) fn execute_membership_changed(
     mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -69,7 +69,7 @@ pub fn execute_membership_changed(
     Ok(Response::new().add_attribute("action", "membership_changed"))
 }
 
-pub fn execute_nft_stake_changed(
+pub(crate) fn execute_nft_stake_changed(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -86,7 +86,7 @@ pub fn execute_nft_stake_changed(
     }
 }
 
-pub fn execute_stake(
+pub(crate) fn execute_stake(
     mut deps: DepsMut,
     env: Env,
     addr: Addr,
@@ -99,7 +99,7 @@ pub fn execute_stake(
     Ok(Response::new().add_attribute("action", "stake"))
 }
 
-pub fn execute_unstake(
+pub(crate) fn execute_unstake(
     mut deps: DepsMut,
     env: Env,
     addr: Addr,
