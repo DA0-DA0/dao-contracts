@@ -392,7 +392,7 @@ where
         vec![TestMultipleChoiceVote {
             voter: "bluenote".to_string(),
             position: MultipleChoiceVote { option_id: 0 },
-            weight: Uint128::new(u128::max_value()),
+            weight: Uint128::new(u128::MAX),
             should_execute: ShouldExecute::Yes,
         }],
         VotingStrategy::SingleChoice {
@@ -414,7 +414,7 @@ where
             TestMultipleChoiceVote {
                 voter: "bob".to_string(),
                 position: MultipleChoiceVote { option_id: 1 },
-                weight: Uint128::new(u128::max_value() - 1),
+                weight: Uint128::new(u128::MAX - 1),
                 should_execute: ShouldExecute::Yes,
             },
         ],
@@ -463,7 +463,7 @@ where
         vec![TestMultipleChoiceVote {
             voter: "bluenote".to_string(),
             position: MultipleChoiceVote { option_id: 2 }, // the last index is none of the above
-            weight: Uint128::new(u64::max_value().into()),
+            weight: Uint128::new(u64::MAX.into()),
             should_execute: ShouldExecute::Yes,
         }],
         VotingStrategy::SingleChoice {
@@ -479,7 +479,7 @@ where
             vec![TestMultipleChoiceVote {
                 voter: "bluenote".to_string(),
                 position: MultipleChoiceVote { option_id: 2 },
-                weight: Uint128::new(u64::max_value().into()),
+                weight: Uint128::new(u64::MAX.into()),
                 should_execute: ShouldExecute::Yes,
             }],
             VotingStrategy::SingleChoice {

@@ -45,7 +45,7 @@ pub struct RewardsConfig {
 }
 
 pub struct SuiteBuilder {
-    pub instantiate: InstantiateMsg,
+    pub _instantiate: InstantiateMsg,
     pub dao_type: DaoType,
     pub rewards_config: RewardsConfig,
 }
@@ -53,7 +53,7 @@ pub struct SuiteBuilder {
 impl SuiteBuilder {
     pub fn base(dao_type: DaoType) -> Self {
         Self {
-            instantiate: InstantiateMsg {
+            _instantiate: InstantiateMsg {
                 owner: Some(OWNER.to_string()),
             },
             dao_type,
