@@ -174,6 +174,11 @@ pub fn execute_confirm_stake(
 
     register_staked_nfts(deps.storage, env.block.height, &info.sender, &token_ids)?;
 
+    // remove preparations
+    for token_id in &token_ids {
+        PREPARED_ONFTS.remove(deps.storage, token_id.to_string());
+    }
+
     let hook_msgs = token_ids
         .iter()
         .map(|token_id| {
@@ -202,7 +207,8 @@ pub fn execute_confirm_stake(
 /// - the current NFT(s) owner, the preparation will be canceled, if any.
 /// - the DAO, the preparation will be canceled (if any exists), and the NFT(s)
 ///   will be sent to the specified recipient (if the staking contract owns
-///   them).
+///   them). if no recipient is specified but the NFT was prepared, it will be
+///   sent back to the preparer.
 ///
 /// The recipient field only applies when the sender is the DAO. In the other
 /// cases, the NFT(s) will always be sent back to the sender. Note: if the NFTs
@@ -235,13 +241,20 @@ pub fn execute_cancel_stake(
     // If DAO, cancel preparations (if any) and send NFTs to the specified
     // recipient.
     if info.sender == dao {
-        for (token_id, owner, _) in token_ids_with_owners_and_preparers {
-            // cancel preparation
-            PREPARED_ONFTS.remove(deps.storage, token_id.to_string());
+        for (token_id, owner, preparer) in token_ids_with_owners_and_preparers {
+            // cancel preparation if it exists
+            if preparer.is_some() {
+                PREPARED_ONFTS.remove(deps.storage, token_id.to_string());
+            }
 
-            // if this contract owns the NFT, send it to the recipient.
+            // if this contract owns the NFT, send it to the recipient (or
+            // preparer if one exists and no recipient was specified).
             if owner == env.contract.address {
-                if let Some(recipient) = recipient.clone() {
+                let recipient = recipient
+                    .clone()
+                    .or_else(|| preparer.map(|p| p.to_string()));
+
+                if let Some(recipient) = recipient {
                     transfer_msgs.push(get_onft_transfer_msg(
                         &config.onft_collection_id,
                         token_id,
@@ -255,7 +268,7 @@ pub fn execute_cancel_stake(
         }
     } else {
         for (token_id, owner, preparer) in token_ids_with_owners_and_preparers {
-            let is_preparer = preparer != Some(info.sender.clone());
+            let is_preparer = preparer.as_ref().map_or(false, |p| *p == info.sender);
             // only owner or preparer can cancel stake
             if info.sender != owner && !is_preparer {
                 return Err(ContractError::NotPreparerNorOwner {});
@@ -283,7 +296,10 @@ pub fn execute_cancel_stake(
         .add_attribute("action", "cancel_stake")
         .add_attribute("sender", info.sender)
         .add_attribute("token_ids", token_ids.join(","))
-        .add_attribute("recipient", recipient.unwrap_or_default()))
+        .add_attribute(
+            "recipient",
+            recipient.unwrap_or_else(|| "_none".to_string()),
+        ))
 }
 
 pub fn execute_unstake(

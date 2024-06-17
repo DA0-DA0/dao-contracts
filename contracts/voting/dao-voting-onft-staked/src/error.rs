@@ -25,7 +25,7 @@ pub enum ContractError {
     #[error("NFTs must be prepared and transferred before they can be staked")]
     StakeMustBePrepared {},
 
-    #[error("Recipient must be set when the DAO is cancelling a stake")]
+    #[error("Recipient must be set when the DAO is cancelling a stake that was not prepared")]
     NoRecipient {},
 
     #[error("Only the owner or preparer can cancel a prepared stake")]
