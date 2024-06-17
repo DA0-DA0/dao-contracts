@@ -51,3 +51,4 @@ dao-proposal-hook-counter = { workspace = true }
 dao-test-custom-factory = { workspace = true }
 dao-testing = { workspace = true, features = ["test-tube"] }
 osmosis-test-tube = { workspace = true }
+prost = { workspace = true }

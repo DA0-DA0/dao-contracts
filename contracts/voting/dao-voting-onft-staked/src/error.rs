@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, StdError};
+use cosmwasm_std::StdError;
 use cw_utils::ParseReplyError;
 use dao_voting::threshold::ActiveThresholdError;
 use thiserror::Error;
@@ -22,9 +22,6 @@ pub enum ContractError {
 
     #[error("Can not stake that which has already been staked")]
     AlreadyStaked {},
-
-    #[error("Invalid token. Got ({received}), expected ({expected})")]
-    InvalidToken { received: Addr, expected: Addr },
 
     #[error("Error instantiating NFT contract")]
     NftInstantiateError {},
