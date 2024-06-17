@@ -31,7 +31,7 @@ cw-paginate-storage = { workspace = true }
 cw-core-v1 = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
-cw-multi-test = { workspace = true, features = ["stargate"] }
+cw-multi-test = { workspace = true }
 cw20-base = { workspace = true }
 cw721-base = { workspace = true }
 dao-proposal-sudo = { workspace = true }
