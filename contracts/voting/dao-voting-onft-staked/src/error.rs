@@ -1,5 +1,4 @@
 use cosmwasm_std::StdError;
-use cw_utils::ParseReplyError;
 use dao_voting::threshold::ActiveThresholdError;
 use thiserror::Error;
 
@@ -15,22 +14,7 @@ pub enum ContractError {
     HookError(#[from] cw_hooks::HookError),
 
     #[error(transparent)]
-    ParseReplyError(#[from] ParseReplyError),
-
-    #[error(transparent)]
     UnstakingDurationError(#[from] dao_voting::duration::UnstakingDurationError),
-
-    #[error("Can not stake that which has already been staked")]
-    AlreadyStaked {},
-
-    #[error("Error instantiating NFT contract")]
-    NftInstantiateError {},
-
-    #[error("New NFT contract must be instantiated with at least one NFT")]
-    NoInitialNfts {},
-
-    #[error("Factory contract did not implment the required NftFactoryCallback interface")]
-    NoFactoryCallback {},
 
     #[error("Nothing to claim")]
     NothingToClaim {},
@@ -58,9 +42,6 @@ pub enum ContractError {
 
     #[error("Got a submessage reply with unknown id: {id}")]
     UnknownReplyId { id: u64 },
-
-    #[error("Factory message must serialize to WasmMsg::Execute")]
-    UnsupportedFactoryMsg {},
 
     #[error("Can't unstake zero NFTs.")]
     ZeroUnstake {},
