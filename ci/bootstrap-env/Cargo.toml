@@ -8,7 +8,7 @@ repository = { workspace = true }
 cosm-orc = { workspace = true }
 cw20 = { workspace = true }
 cw-utils = { workspace = true }
-cosmwasm-std = { workspace = true, features = ["ibc3"] }
+cosmwasm-std = { workspace = true }
 cw-admin-factory = { workspace = true }
 dao-dao-core = { workspace = true }
 cw20-stake = { workspace = true }
