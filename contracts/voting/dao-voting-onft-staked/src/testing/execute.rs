@@ -88,13 +88,12 @@ pub fn send_nft(
     )
 }
 
-pub fn stake_nft(
+pub fn prepare_stake_nft(
     app: &mut OmniflixApp,
-    collection_id: &str,
     module: &Addr,
     sender: &str,
     token_id: &str,
-) -> AnyResult<()> {
+) -> AnyResult<AppResponse> {
     app.execute_contract(
         addr!(sender),
         module.clone(),
@@ -102,8 +101,15 @@ pub fn stake_nft(
             token_ids: vec![token_id.to_string()],
         },
         &[],
-    )?;
-    send_nft(app, collection_id, token_id, sender, module.as_str())?;
+    )
+}
+
+pub fn confirm_stake_nft(
+    app: &mut OmniflixApp,
+    module: &Addr,
+    sender: &str,
+    token_id: &str,
+) -> AnyResult<AppResponse> {
     app.execute_contract(
         addr!(sender),
         module.clone(),
@@ -111,7 +117,19 @@ pub fn stake_nft(
             token_ids: vec![token_id.to_string()],
         },
         &[],
-    )?;
+    )
+}
+
+pub fn stake_nft(
+    app: &mut OmniflixApp,
+    collection_id: &str,
+    module: &Addr,
+    sender: &str,
+    token_id: &str,
+) -> AnyResult<()> {
+    prepare_stake_nft(app, module, sender, token_id)?;
+    send_nft(app, collection_id, token_id, sender, module.as_str())?;
+    confirm_stake_nft(app, module, sender, token_id)?;
     Ok(())
 }
 
