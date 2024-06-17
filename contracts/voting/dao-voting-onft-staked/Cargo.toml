@@ -27,7 +27,6 @@ test-tube = []
 # default = ["test-tube"]
 
 [dependencies]
-chrono = { workspace = true }
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
@@ -40,11 +39,7 @@ dao-dao-macros = { workspace = true }
 dao-hooks = { workspace = true }
 dao-interface = { workspace = true }
 dao-voting = { workspace = true }
-osmosis-std = { workspace = true }
-osmosis-std-derive = { workspace = true }
-prost = { workspace = true }
-prost-types = { workspace = true }
-schemars = { workspace = true }
+omniflix-std = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 
