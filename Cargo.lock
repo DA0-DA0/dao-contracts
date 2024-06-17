@@ -2164,7 +2164,6 @@ name = "dao-voting-onft-staked"
 version = "2.4.2"
 dependencies = [
  "anyhow",
- "chrono",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-controllers 1.1.2",
@@ -2182,12 +2181,8 @@ dependencies = [
  "dao-test-custom-factory",
  "dao-testing",
  "dao-voting 2.4.2",
- "osmosis-std",
- "osmosis-std-derive",
+ "omniflix-std",
  "osmosis-test-tube",
- "prost 0.12.3",
- "prost-types 0.12.3",
- "schemars",
  "serde",
  "thiserror",
 ]
@@ -3159,6 +3154,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9cf5f9dd3933bd50a9e1f149ec995f39ae2c496d31fd772c1fd45ebc27e902b0"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "omniflix-std"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a662bd7782ef6ad1af3747a2b73d37f8e6a230bb7b1624d96c05b3567501600"
+dependencies = [
+ "chrono",
+ "cosmwasm-std",
+ "omniflix-std-derive",
+ "prost 0.12.3",
+ "prost-types 0.12.3",
+ "schemars",
+ "serde",
+ "serde-cw-value",
+]
+
+[[package]]
+name = "omniflix-std-derive"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8bbd85582e3ef1a23fa7b12e0415ea604260c114e72faf40d829c2c40f1c745e"
+dependencies = [
+ "itertools 0.10.5",
+ "proc-macro2",
+ "prost-types 0.11.9",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]

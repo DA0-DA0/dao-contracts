@@ -5,7 +5,6 @@ mod error;
 pub mod msg;
 mod omniflix;
 pub mod state;
-use osmosis_std::shim;
 
 // #[cfg(test)]
 // mod testing;
