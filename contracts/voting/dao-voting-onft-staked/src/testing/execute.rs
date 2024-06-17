@@ -7,6 +7,7 @@ use cw_utils::Duration;
 use omniflix_std::types::omniflix::onft::v1beta1::{MsgCreateDenom, MsgMintOnft, MsgTransferOnft};
 
 use super::app::OmniflixApp;
+use super::DAO;
 
 // Shorthand for an unchecked address.
 macro_rules! addr {
@@ -47,12 +48,11 @@ pub fn create_onft_collection(
 pub fn mint_nft(
     app: &mut OmniflixApp,
     collection_id: &str,
-    sender: &str,
     receiver: &str,
     token_id: &str,
 ) -> AnyResult<AppResponse> {
     app.execute(
-        addr!(sender),
+        addr!(DAO),
         MsgMintOnft {
             id: token_id.to_string(),
             denom_id: collection_id.to_string(),
@@ -62,7 +62,7 @@ pub fn mint_nft(
             extensible: false,
             nsfw: false,
             royalty_share: "".to_string(),
-            sender: sender.to_string(),
+            sender: DAO.to_string(),
             recipient: receiver.to_string(),
         }
         .into(),
@@ -133,15 +133,33 @@ pub fn stake_nft(
     Ok(())
 }
 
+pub fn cancel_stake(
+    app: &mut OmniflixApp,
+    module: &Addr,
+    sender: &str,
+    token_id: &str,
+    recipient: Option<&str>,
+) -> AnyResult<AppResponse> {
+    app.execute_contract(
+        addr!(sender),
+        module.clone(),
+        &ExecuteMsg::CancelStake {
+            token_ids: vec![token_id.to_string()],
+            recipient: recipient.map(|s| s.to_string()),
+        },
+        &[],
+    )
+}
+
 pub fn mint_and_stake_nft(
     app: &mut OmniflixApp,
     collection_id: &str,
     module: &Addr,
-    sender: &str,
+    staker: &str,
     token_id: &str,
 ) -> AnyResult<()> {
-    mint_nft(app, collection_id, sender, sender, token_id)?;
-    stake_nft(app, collection_id, module, sender, token_id)?;
+    mint_nft(app, collection_id, staker, token_id)?;
+    stake_nft(app, collection_id, module, staker, token_id)?;
 
     Ok(())
 }
