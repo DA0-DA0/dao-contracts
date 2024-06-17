@@ -67,7 +67,7 @@ where
         vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::Yes,
-            weight: Uint128::new(u128::max_value()),
+            weight: Uint128::new(u128::MAX),
             should_execute: ShouldExecute::Yes,
         }],
         Threshold::AbsolutePercentage {
@@ -86,7 +86,7 @@ where
         vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::Yes,
-            weight: Uint128::new(u128::max_value()),
+            weight: Uint128::new(u128::MAX),
             should_execute: ShouldExecute::Yes,
         }],
         Threshold::AbsolutePercentage {
@@ -107,7 +107,7 @@ where
             TestSingleChoiceVote {
                 voter: "ekez".to_string(),
                 position: Vote::Yes,
-                weight: Uint128::new(u128::max_value() - 1),
+                weight: Uint128::new(u128::MAX - 1),
                 should_execute: ShouldExecute::Yes,
             },
         ],
@@ -148,7 +148,7 @@ where
             percentage: PercentageThreshold::Percent(Decimal::percent(99)),
         },
         Status::Open,
-        Some(Uint128::from(u128::max_value())),
+        Some(Uint128::from(u128::MAX)),
     );
 }
 
@@ -160,7 +160,7 @@ where
         vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::Abstain,
-            weight: Uint128::new(u64::max_value().into()),
+            weight: Uint128::new(u64::MAX.into()),
             should_execute: ShouldExecute::Yes,
         }],
         Threshold::AbsolutePercentage {
@@ -177,7 +177,7 @@ where
             vec![TestSingleChoiceVote {
                 voter: "ekez".to_string(),
                 position: Vote::Abstain,
-                weight: Uint128::new(u64::max_value().into()),
+                weight: Uint128::new(u64::MAX.into()),
                 should_execute: ShouldExecute::Yes,
             }],
             Threshold::ThresholdQuorum {
