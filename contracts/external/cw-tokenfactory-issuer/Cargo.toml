@@ -29,7 +29,7 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = ["osmosis_tokenfactory"]
 # for more explicit tests, cargo test --features=backtraces
-backtraces = ["cosmwasm-std/backtraces"]
+backtraces = ["cw-multi-test/backtrace"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
 # use test tube feature to enable test-tube integration tests, for example

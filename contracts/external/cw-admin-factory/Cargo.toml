@@ -1,5 +1,5 @@
 [package]
-name ="cw-admin-factory"
+name = "cw-admin-factory"
 authors = ["Jake Hartnell", "blue-note", "ekez <ekez@withoutdoing.com>"]
 description = "A CosmWasm factory contract for instantiating a contract as its own admin."
 edition = { workspace = true }
@@ -12,7 +12,7 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 # for more explicit tests, cargo test --features=backtraces
-backtraces = ["cosmwasm-std/backtraces"]
+backtraces = ["cw-multi-test/backtrace"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
 

@@ -1,5 +1,5 @@
 [package]
-name ="cw-payroll-factory"
+name = "cw-payroll-factory"
 authors = ["Jake Hartnell"]
 description = "A CosmWasm factory contract for instantiating a payroll contract."
 edition = { workspace = true }
@@ -12,7 +12,7 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 # for more explicit tests, cargo test --features=backtraces
-backtraces = ["cosmwasm-std/backtraces"]
+backtraces = ["cw-multi-test/backtrace"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
 

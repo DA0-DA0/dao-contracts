@@ -1,6 +1,10 @@
 [package]
 name = "dao-pre-propose-multiple"
-authors = ["ekez <zekemedley@gmail.com>", "Jake Hartnell <meow@no-reply.com>", "blue-note"]
+authors = [
+  "ekez <zekemedley@gmail.com>",
+  "Jake Hartnell <meow@no-reply.com>",
+  "blue-note",
+]
 description = "A DAO DAO pre-propose module for dao-proposal-multiple for native and cw20 deposits."
 edition = { workspace = true }
 license = { workspace = true }
@@ -12,7 +16,7 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 # for more explicit tests, cargo test --features=backtraces
-backtraces = ["cosmwasm-std/backtraces"]
+backtraces = ["cw-multi-test/backtrace"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
 
