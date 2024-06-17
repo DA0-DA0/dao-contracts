@@ -17,7 +17,7 @@ cw721-base = { workspace = true }
 cw721-roles = { workspace = true }
 cw721 = { workspace = true }
 cw-utils = { workspace = true }
-cosmwasm-std = { workspace = true, features = ["ibc3"] }
+cosmwasm-std = { workspace = true }
 
 cw-vesting = { workspace = true }
 cw20-stake = { workspace = true }
