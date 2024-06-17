@@ -1,4 +1,3 @@
-mod adversarial;
 mod app;
 mod execute;
 mod hooks;
@@ -17,8 +16,10 @@ use crate::msg::{InstantiateMsg, OnftCollection};
 
 use self::execute::create_onft_collection;
 
-/// Address used as the owner, instantiator, and minter.
-pub(crate) const CREATOR_ADDR: &str = "creator";
+/// Address used as the instantiator.
+pub(crate) const DAO: &str = "dao";
+/// Address used to stake.
+pub(crate) const STAKER: &str = "staker";
 
 pub(crate) struct CommonTest {
     app: OmniflixApp,
@@ -34,11 +35,11 @@ pub(crate) fn setup_test(
     let mut app = OmniflixApp::new();
     let module_id = app.store_code(onft_staked_voting_contract());
 
-    let nft = create_onft_collection(&mut app, "nft", CREATOR_ADDR, CREATOR_ADDR);
+    let nft = create_onft_collection(&mut app, "nft", DAO, DAO);
     let module = app
         .instantiate_contract(
             module_id,
-            Addr::unchecked(CREATOR_ADDR),
+            Addr::unchecked(DAO),
             &InstantiateMsg {
                 onft_collection: OnftCollection::Existing {
                     id: nft.to_string(),

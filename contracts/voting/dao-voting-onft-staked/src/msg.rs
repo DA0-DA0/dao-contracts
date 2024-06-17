@@ -61,7 +61,8 @@ pub enum ExecuteMsg {
     /// - the current NFT(s) owner, the preparation will be canceled, if any.
     /// - the DAO, the preparation will be canceled (if any exists), and the
     ///   NFT(s) will be sent to the specified recipient (if the staking
-    ///   contract owns them).
+    ///   contract owns them). if no recipient is specified but the NFT was
+    ///   prepared, it will be sent back to the preparer.
     ///
     /// The recipient field only applies when the sender is the DAO. In the
     /// other cases, the NFT(s) will always be sent back to the sender. Note: if
