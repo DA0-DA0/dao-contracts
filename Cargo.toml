@@ -120,6 +120,7 @@ dao-voting-cw20-staked = { path = "./contracts/voting/dao-voting-cw20-staked", v
 dao-voting-cw4 = { path = "./contracts/voting/dao-voting-cw4", version = "2.5.0" }
 dao-voting-cw721-roles = { path = "./contracts/voting/dao-voting-cw721-roles", version = "2.5.0" }
 dao-voting-cw721-staked = { path = "./contracts/voting/dao-voting-cw721-staked", version = "2.5.0" }
+dao-voting-onft-staked = { path = "./contracts/voting/dao-voting-onft-staked", version = "2.5.0" }
 dao-voting-token-staked = { path = "./contracts/voting/dao-voting-token-staked", version = "2.5.0" }
 
 # v1 dependencies. used for state migrations.
