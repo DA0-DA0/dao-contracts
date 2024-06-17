@@ -5,7 +5,9 @@ use cw_utils::Duration;
 use crate::{
     state::MAX_CLAIMS,
     testing::{
-        execute::{mint_nft, stake_nft, unstake_nfts},
+        execute::{
+            confirm_stake_nft, mint_nft, prepare_stake_nft, send_nft, stake_nft, unstake_nfts,
+        },
         queries::query_voting_power,
     },
 };
@@ -89,7 +91,7 @@ fn test_immediate_unstake() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// I cannot stake NFTs I do not own.
+/// I cannot prepare/stake an NFT I do not own.
 #[test]
 fn test_stake_unowned() -> anyhow::Result<()> {
     let CommonTest {
@@ -107,6 +109,118 @@ fn test_stake_unowned() -> anyhow::Result<()> {
     app.update_block(next_block);
     let voting = query_voting_power(&app, &module, CREATOR_ADDR, None)?;
     assert_eq!(voting.power, Uint128::new(0));
+
+    Ok(())
+}
+
+/// I cannot confirm a stake before preparing it.
+#[test]
+fn test_stake_unprepared() -> anyhow::Result<()> {
+    let CommonTest {
+        mut app,
+        module,
+        nft,
+        ..
+    } = setup_test(None, None);
+
+    mint_nft(&mut app, &nft, CREATOR_ADDR, CREATOR_ADDR, "1")?;
+
+    // attempt confirm without preparing
+    let res = confirm_stake_nft(&mut app, &module, CREATOR_ADDR, "1");
+    is_error!(res => "NFTs must be prepared and transferred before they can be staked");
+
+    app.update_block(next_block);
+    let voting = query_voting_power(&app, &module, CREATOR_ADDR, None)?;
+    assert_eq!(voting.power, Uint128::new(0));
+
+    Ok(())
+}
+
+/// I cannot confirm a stake before preparing it and transferring NFT.
+#[test]
+fn test_stake_prepared_untransferred() -> anyhow::Result<()> {
+    let CommonTest {
+        mut app,
+        module,
+        nft,
+        ..
+    } = setup_test(None, None);
+
+    mint_nft(&mut app, &nft, CREATOR_ADDR, CREATOR_ADDR, "1")?;
+
+    // prepare but don't transfer
+    prepare_stake_nft(&mut app, &module, CREATOR_ADDR, "1")?;
+
+    // attempt confirm
+    let res = confirm_stake_nft(&mut app, &module, CREATOR_ADDR, "1");
+    is_error!(res => "NFTs must be prepared and transferred before they can be staked");
+
+    app.update_block(next_block);
+    let voting = query_voting_power(&app, &module, CREATOR_ADDR, None)?;
+    assert_eq!(voting.power, Uint128::new(0));
+
+    Ok(())
+}
+
+/// I cannot confirm a stake that someone else prepared.
+#[test]
+fn test_stake_prepared_confirm_other_owner() -> anyhow::Result<()> {
+    let CommonTest {
+        mut app,
+        module,
+        nft,
+        ..
+    } = setup_test(None, None);
+
+    mint_nft(&mut app, &nft, CREATOR_ADDR, CREATOR_ADDR, "1")?;
+
+    // prepare
+    prepare_stake_nft(&mut app, &module, CREATOR_ADDR, "1")?;
+
+    // transfer to voting contract
+    send_nft(&mut app, &nft, "1", CREATOR_ADDR, module.as_str())?;
+
+    // attempt confirm
+    let res = confirm_stake_nft(&mut app, &module, "other", "1");
+    is_error!(res => "NFTs must be prepared and transferred before they can be staked");
+
+    app.update_block(next_block);
+    let voting = query_voting_power(&app, &module, "other", None)?;
+    assert_eq!(voting.power, Uint128::new(0));
+
+    Ok(())
+}
+
+/// I can override a prepared stake.
+#[test]
+fn test_override_prepared() -> anyhow::Result<()> {
+    let CommonTest {
+        mut app,
+        module,
+        nft,
+        ..
+    } = setup_test(None, None);
+
+    mint_nft(&mut app, &nft, CREATOR_ADDR, CREATOR_ADDR, "1")?;
+
+    // prepare
+    prepare_stake_nft(&mut app, &module, CREATOR_ADDR, "1")?;
+
+    // transfer to someone else
+    send_nft(&mut app, &nft, "1", CREATOR_ADDR, "other")?;
+
+    // override previous owner's prepare
+    prepare_stake_nft(&mut app, &module, "other", "1")?;
+
+    // transfer to voting contract
+    send_nft(&mut app, &nft, "1", "other", module.as_str())?;
+
+    // confirm
+    confirm_stake_nft(&mut app, &module, "other", "1")?;
+
+    app.update_block(next_block);
+    let voting = query_voting_power(&app, &module, "other", None)?;
+    assert_eq!(voting.power, Uint128::new(1));
 
     Ok(())
 }
