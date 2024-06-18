@@ -100,13 +100,13 @@ fn test_issue_fantoken() -> anyhow::Result<()> {
 
     let voting_module: Addr = app
         .wrap()
-        .query_wasm_smart(&dao, &dao_interface::msg::QueryMsg::VotingModule {})
+        .query_wasm_smart(dao, &dao_interface::msg::QueryMsg::VotingModule {})
         .unwrap();
 
     let denom_res: dao_interface::voting::DenomResponse = app
         .wrap()
         .query_wasm_smart(
-            &voting_module,
+            voting_module,
             &dao_voting_token_staked::msg::QueryMsg::Denom {},
         )
         .unwrap();
@@ -208,7 +208,7 @@ fn test_initial_fantoken_balances() -> anyhow::Result<()> {
     let denom_res: dao_interface::voting::DenomResponse = app
         .wrap()
         .query_wasm_smart(
-            &voting_module,
+            voting_module,
             &dao_voting_token_staked::msg::QueryMsg::Denom {},
         )
         .unwrap();
@@ -315,7 +315,7 @@ fn test_fantoken_minter_set_to_dao() -> anyhow::Result<()> {
     let denom_res: dao_interface::voting::DenomResponse = app
         .wrap()
         .query_wasm_smart(
-            &voting_module,
+            voting_module,
             &dao_voting_token_staked::msg::QueryMsg::Denom {},
         )
         .unwrap();
@@ -442,7 +442,7 @@ fn test_fantoken_can_be_staked() -> anyhow::Result<()> {
 
     let voting_module: Addr = app
         .wrap()
-        .query_wasm_smart(&dao, &dao_interface::msg::QueryMsg::VotingModule {})
+        .query_wasm_smart(dao, &dao_interface::msg::QueryMsg::VotingModule {})
         .unwrap();
 
     let denom_res: dao_interface::voting::DenomResponse = app
@@ -468,7 +468,7 @@ fn test_fantoken_can_be_staked() -> anyhow::Result<()> {
         Addr::unchecked(STAKER),
         voting_module.clone(),
         &dao_voting_token_staked::msg::ExecuteMsg::Stake {},
-        &coins(100, &denom_res.denom),
+        &coins(100, denom_res.denom),
     )?;
 
     // next block so voting power is updated
