@@ -8,6 +8,7 @@ use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
 use crate::msg::OnftCollection;
 use crate::testing::execute::{cancel_stake, confirm_stake_nft, prepare_stake_nft, send_nft};
+use crate::testing::queries::query_dao;
 use crate::testing::DAO;
 use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
@@ -124,6 +125,19 @@ fn test_unstake_tokens_no_claims() -> anyhow::Result<()> {
     Ok(())
 }
 
+// I cannot unstake zero tokens.
+#[test]
+fn test_unstake_zero_tokens() -> anyhow::Result<()> {
+    let CommonTest {
+        mut app, module, ..
+    } = setup_test(None, None);
+
+    let res = unstake_nfts(&mut app, &module, STAKER, &[]);
+    is_error!(res => "Can't unstake zero NFTs.");
+
+    Ok(())
+}
+
 // I can update the unstaking duration and the owner. Only the owner
 // may do this. I can unset the owner. Updating the unstaking duration
 // does not impact outstanding claims.
@@ -135,6 +149,10 @@ fn test_update_config() -> anyhow::Result<()> {
         nft,
         ..
     } = setup_test(Some(Duration::Height(3)), None);
+
+    // non-DAO cannot update config
+    let res = update_config(&mut app, &module, STAKER, Some(Duration::Time(1)));
+    is_error!(res => "Unauthorized");
 
     mint_and_stake_nft(&mut app, &nft, &module, STAKER, "1")?;
     mint_and_stake_nft(&mut app, &nft, &module, STAKER, "2")?;
@@ -333,6 +351,14 @@ fn test_info_query_works() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[test]
+fn test_dao_query_works() -> anyhow::Result<()> {
+    let CommonTest { app, module, .. } = setup_test(None, None);
+    let dao = query_dao(&app, &module)?;
+    assert_eq!(dao, DAO.to_string());
+    Ok(())
+}
+
 // The owner may add and remove hooks.
 #[test]
 fn test_add_remove_hooks() -> anyhow::Result<()> {
@@ -366,6 +392,8 @@ fn test_add_remove_hooks() -> anyhow::Result<()> {
     is_error!(res => "Given address not registered as a hook");
 
     let res = add_hook(&mut app, &module, "ekez", "evil");
+    is_error!(res => "Unauthorized");
+    let res = remove_hook(&mut app, &module, "ekez", "evil");
     is_error!(res => "Unauthorized");
 
     Ok(())
@@ -602,7 +630,7 @@ fn test_update_active_threshold() {
 
     let resp: ActiveThresholdResponse = app
         .wrap()
-        .query_wasm_smart(module, &QueryMsg::ActiveThreshold {})
+        .query_wasm_smart(module.clone(), &QueryMsg::ActiveThreshold {})
         .unwrap();
     assert_eq!(
         resp.active_threshold,
@@ -610,6 +638,53 @@ fn test_update_active_threshold() {
             count: Uint128::new(1)
         })
     );
+
+    app.execute_contract(
+        Addr::unchecked(DAO),
+        module.clone(),
+        &ExecuteMsg::UpdateActiveThreshold {
+            new_threshold: Some(ActiveThreshold::Percentage {
+                percent: Decimal::percent(50),
+            }),
+        },
+        &[],
+    )
+    .unwrap();
+
+    let resp: ActiveThresholdResponse = app
+        .wrap()
+        .query_wasm_smart(module.clone(), &QueryMsg::ActiveThreshold {})
+        .unwrap();
+    assert_eq!(
+        resp.active_threshold,
+        Some(ActiveThreshold::Percentage {
+            percent: Decimal::percent(50)
+        })
+    );
+
+    // remove
+    app.execute_contract(
+        Addr::unchecked(DAO),
+        module.clone(),
+        &ExecuteMsg::UpdateActiveThreshold {
+            new_threshold: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let resp: ActiveThresholdResponse = app
+        .wrap()
+        .query_wasm_smart(module.clone(), &QueryMsg::ActiveThreshold {})
+        .unwrap();
+    assert_eq!(resp.active_threshold, None);
+
+    // verify is active
+    let is_active: IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(module, &QueryMsg::IsActive {})
+        .unwrap();
+    assert!(is_active.active);
 }
 
 #[test]
@@ -642,6 +717,13 @@ fn test_active_threshold_percentage_lte_0() {
 pub fn test_migrate_update_version() {
     let mut deps = mock_dependencies();
     cw2::set_contract_version(&mut deps.storage, "my-contract", "1.0.0").unwrap();
+
+    migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
+    let version = cw2::get_contract_version(&deps.storage).unwrap();
+    assert_eq!(version.version, CONTRACT_VERSION);
+    assert_eq!(version.contract, CONTRACT_NAME);
+
+    // migrate again, should do nothing
     migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
     let version = cw2::get_contract_version(&deps.storage).unwrap();
     assert_eq!(version.version, CONTRACT_VERSION);
