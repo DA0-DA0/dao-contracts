@@ -7,4 +7,5 @@ on BitSong and returns their denom for use with the
 contract.
 
 Instantiation and execution are permissionless. All DAOs will use the same
-factory and execute `Issue` to create new fantokens.
+factory and execute `Issue` to create new fantokens through `TokenInfo::Factory`
+during voting module instantiation.
