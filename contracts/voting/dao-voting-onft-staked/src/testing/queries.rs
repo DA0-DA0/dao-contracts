@@ -75,6 +75,11 @@ pub fn query_total_power(
     Ok(power)
 }
 
+pub fn query_dao(app: &OmniflixApp, module: &Addr) -> StdResult<Addr> {
+    let dao = app.wrap().query_wasm_smart(module, &QueryMsg::Dao {})?;
+    Ok(dao)
+}
+
 pub fn query_info(app: &OmniflixApp, module: &Addr) -> StdResult<InfoResponse> {
     let info = app.wrap().query_wasm_smart(module, &QueryMsg::Info {})?;
     Ok(info)
