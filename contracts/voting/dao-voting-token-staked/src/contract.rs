@@ -781,7 +781,10 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     // Construct the response
                     let mut res = Response::new()
                         .add_attribute("denom", info.denom)
-                        .add_attribute("token_contract", info.token_contract.unwrap_or_default());
+                        .add_attribute(
+                            "token_contract",
+                            info.token_contract.unwrap_or_else(|| "_none".to_string()),
+                        );
 
                     // If a callback has been configured, set the module
                     // instantiate callback data.

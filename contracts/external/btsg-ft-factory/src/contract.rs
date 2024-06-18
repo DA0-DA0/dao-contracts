@@ -165,6 +165,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             CREATING_FAN_TOKEN.remove(deps.storage);
 
             Ok(Response::default()
+                .add_messages(msgs)
                 .set_data(data)
                 .add_attribute("fantoken_denom", denom))
         }

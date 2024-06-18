@@ -9,3 +9,6 @@ pub mod state;
 mod shim;
 
 pub use crate::error::ContractError;
+
+#[cfg(test)]
+mod testing;

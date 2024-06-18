@@ -3,11 +3,7 @@ use cosmwasm_std::{Addr, Uint128};
 use dao_interface::token::InitialBalance;
 
 #[cw_serde]
-pub struct InstantiateMsg {
-    /// The account allowed to execute this contract. If no admin, anyone can
-    /// execute it.
-    pub admin: Option<String>,
-}
+pub struct InstantiateMsg {}
 
 #[cw_serde]
 pub enum ExecuteMsg {

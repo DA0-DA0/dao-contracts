@@ -30,6 +30,12 @@ serde = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+anyhow = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-multi-test = { workspace = true }
+cw-utils = { workspace = true }
 dao-dao-core = { workspace = true, features = ["library"] }
+dao-proposal-single = { workspace = true, features = ["library"] }
+dao-testing = { workspace = true }
+dao-voting-token-staked = { workspace = true, features = ["library"] }
+dao-voting = { workspace = true }
