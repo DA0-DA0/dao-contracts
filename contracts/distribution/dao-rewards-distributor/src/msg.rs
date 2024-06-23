@@ -43,13 +43,16 @@ pub enum ExecuteMsg {
     /// back to the treasury. members can claim whatever they earned until this point.
     Shutdown { denom: String },
     /// registers a new reward denom
-    RegisterRewardDenom {
-        denom: UncheckedDenom,
-        emission_rate: RewardEmissionRate,
-        vp_contract: String,
-        hook_caller: String,
-        withdraw_destination: Option<String>,
-    },
+    RegisterRewardDenom(RegisterRewardDenomMsg),
+}
+
+#[cw_serde]
+pub struct RegisterRewardDenomMsg {
+    pub denom: UncheckedDenom,
+    pub emission_rate: RewardEmissionRate,
+    pub vp_contract: String,
+    pub hook_caller: String,
+    pub withdraw_destination: Option<String>,
 }
 
 /// defines how many tokens (amount) should be distributed per amount of time

@@ -5,7 +5,7 @@ use cosmwasm_std::{
     DepsMut, Env, MessageInfo, Order, Response, StdError, StdResult, Uint128, Uint256, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
-use cw20::{Cw20ReceiveMsg, Denom, UncheckedDenom};
+use cw20::{Cw20ReceiveMsg, Denom};
 use cw_utils::{one_coin, Duration, Expiration};
 use dao_interface::voting::{
     InfoResponse, Query as VotingQueryMsg, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
@@ -18,8 +18,8 @@ use crate::hooks::{
     subscribe_denom_to_hook,
 };
 use crate::msg::{
-    ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, ReceiveMsg, RewardEmissionRate,
-    RewardsStateResponse,
+    ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, ReceiveMsg,
+    RegisterRewardDenomMsg, RewardsStateResponse,
 };
 use crate::state::{DenomRewardState, DENOM_REWARD_STATES, USER_REWARD_STATES};
 use crate::ContractError;
@@ -58,21 +58,9 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
         ExecuteMsg::UpdateOwnership(action) => execute_update_owner(deps, info, env, action),
         ExecuteMsg::Shutdown { denom } => execute_shutdown(deps, info, env, denom),
-        ExecuteMsg::RegisterRewardDenom {
-            denom,
-            emission_rate,
-            vp_contract,
-            hook_caller,
-            withdraw_destination,
-        } => execute_register_reward_denom(
-            deps,
-            info,
-            denom,
-            emission_rate,
-            vp_contract,
-            hook_caller,
-            withdraw_destination,
-        ),
+        ExecuteMsg::RegisterRewardDenom(register_msg) => {
+            execute_register_reward_denom(deps, info, register_msg)
+        }
     }
 }
 
@@ -82,22 +70,18 @@ pub fn execute(
 fn execute_register_reward_denom(
     deps: DepsMut,
     info: MessageInfo,
-    denom: UncheckedDenom,
-    emission_rate: RewardEmissionRate,
-    vp_contract: String,
-    hook_caller: String,
-    withdraw_destination: Option<String>,
+    msg: RegisterRewardDenomMsg,
 ) -> Result<Response, ContractError> {
     // only the owner can register a new denom
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
-    emission_rate.validate_emission_time_window()?;
+    msg.emission_rate.validate_emission_time_window()?;
 
-    let checked_denom = denom.into_checked(deps.as_ref())?;
-    let hook_caller = deps.api.addr_validate(&hook_caller)?;
-    let vp_contract = validate_voting_power_contract(&deps, vp_contract)?;
+    let checked_denom = msg.denom.into_checked(deps.as_ref())?;
+    let hook_caller = deps.api.addr_validate(&msg.hook_caller)?;
+    let vp_contract = validate_voting_power_contract(&deps, msg.vp_contract)?;
 
-    let withdraw_destination = match withdraw_destination {
+    let withdraw_destination = match msg.withdraw_destination {
         // if withdraw destination is specified, we validate it
         Some(addr) => deps.api.addr_validate(&addr)?,
         // otherwise default to the owner
@@ -109,7 +93,7 @@ fn execute_register_reward_denom(
         denom: checked_denom,
         started_at: Expiration::Never {},
         ends_at: Expiration::Never {},
-        emission_rate,
+        emission_rate: msg.emission_rate,
         total_earned_puvp: Uint256::zero(),
         last_update: Expiration::Never {},
         vp_contract,

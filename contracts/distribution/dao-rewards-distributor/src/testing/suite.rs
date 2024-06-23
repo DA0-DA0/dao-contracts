@@ -11,8 +11,8 @@ use cw_utils::Duration;
 
 use crate::{
     msg::{
-        ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, RewardEmissionRate,
-        RewardsStateResponse,
+        ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, RegisterRewardDenomMsg,
+        RewardEmissionRate, RewardsStateResponse,
     },
     state::DenomRewardState,
     testing::cw20_setup::instantiate_cw20,
@@ -499,7 +499,7 @@ impl Suite {
     }
 
     pub fn register_reward_denom(&mut self, reward_config: RewardsConfig, hook_caller: &str) {
-        let register_reward_denom_msg = ExecuteMsg::RegisterRewardDenom {
+        let register_reward_denom_msg = ExecuteMsg::RegisterRewardDenom(RegisterRewardDenomMsg {
             denom: reward_config.denom.clone(),
             emission_rate: RewardEmissionRate {
                 amount: Uint128::new(reward_config.amount),
@@ -508,7 +508,7 @@ impl Suite {
             hook_caller: hook_caller.to_string(),
             vp_contract: self.voting_power_addr.to_string(),
             withdraw_destination: reward_config.destination,
-        };
+        });
 
         self.app
             .borrow_mut()
