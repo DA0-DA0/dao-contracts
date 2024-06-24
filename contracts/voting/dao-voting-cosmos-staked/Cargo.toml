@@ -36,6 +36,7 @@ thiserror = { workspace = true }
 dao-dao-macros = { workspace = true }
 dao-interface = { workspace = true }
 dao-voting = { workspace = true }
+osmosis-std = { workspace = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }
@@ -45,6 +46,5 @@ cw-utils = { workspace = true }
 dao-proposal-single = { workspace = true }
 dao-test-custom-factory = { workspace = true }
 dao-testing = { workspace = true }
-osmosis-std = { workspace = true }
 osmosis-test-tube = { workspace = true }
 serde = { workspace = true }

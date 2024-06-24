@@ -6,6 +6,6 @@ pub enum ContractError {
     #[error(transparent)]
     Std(#[from] StdError),
 
-    #[error("Unauthorized: only the DAO can execute this contract")]
-    Unauthorized {},
+    #[error("Contract does not support executing")]
+    NoExecute {},
 }

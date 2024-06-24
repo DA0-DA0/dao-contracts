@@ -11,9 +11,8 @@ power in chain governance props).
 
 ## Limitations
 
-Unfortunately, CosmWasm does not currently allow querying historically staked
-amounts, nor does it allow querying the total amount staked with the staking
-module. Thus, this module suffers from two primary limitations.
+Unfortunately, the Cosmos SDK does not currently store historical staked
+amounts, so this module suffers from some limitations.
 
 ### Voter's staked amount
 
@@ -35,25 +34,3 @@ Cosmos SDK governance operates the same way—allowing for voting power to chang
 throughout a proposal's voting duration—though it at least re-tallies votes when
 the proposal closes so that all voters have equal opportunity to acquire more
 voting power.
-
-### Total staked amount
-
-The contract cannot determine the total amount staked on its own and thus relies
-on the DAO to set and keep this value up-to-date. Essentially, it relies on
-governance to source this value, which introduces the potential for human error.
-
-If the total staked amount is ever set to _less_ than any voter's staked amount
-or the sum of all voter's staked amounts, proposal outcomes may erroneously pass
-or fail too early as this interferes with the passing threshold calculation.
-
-## Solutions
-
-There is no solution to the problem of freezing voter's staked amount at the
-time of a vote. This mechanic must be accepted by the DAO if it wishes to use
-this contract.
-
-For the total staked amount, the easiest solution is to set up a bot with a
-wallet that is entrusted with the task of updating the total staked amount on
-behalf of the DAO. The DAO needs to authz-grant the bot's wallet the ability to
-update the total staked amount, and the bot needs to periodically submit update
-transactions via the wallet it controls.
