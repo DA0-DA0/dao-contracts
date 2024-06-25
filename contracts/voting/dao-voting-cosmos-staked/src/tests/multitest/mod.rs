@@ -1,3 +1,3 @@
 mod app;
-mod tests;
 mod stargate;
+mod tests;
