@@ -1,11 +1,13 @@
 [package]
-name = "dao-voting-token-staked"
+name = "dao-voting-cosmos-staked"
 authors = [
   "Callum Anderson <callumanderson745@gmail.com>",
   "Noah Saso <no-reply@no-reply.com>",
   "Jake Hartnell <no-reply@no-reply.com>",
+  "Joel Smith <joelsmith.2019@gmail.com>",
+  "Reece Williams <reecepbcups@gmail.com>",
 ]
-description = "A DAO DAO voting module based on staked token factory or native tokens. Only works with chains that support Token Factory."
+description = "A DAO DAO voting module based on Cosmos SDK staked balances."
 edition = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
@@ -15,7 +17,6 @@ version = { workspace = true }
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["osmosis_tokenfactory"]
 # for more explicit tests, cargo test --features=backtraces
 backtraces = ["cosmwasm-std/backtraces"]
 # use library feature to disable all instantiate/execute/query exports
@@ -25,37 +26,25 @@ library = []
 test-tube = []
 # when writing tests you may wish to enable test-tube as a default feature
 # default = ["test-tube"]
-# different tokenfactory cosmos sdk module standards. enable corresponding
-# standard in types library
-osmosis_tokenfactory = ["cw-tokenfactory-issuer/osmosis_tokenfactory"]
-cosmwasm_tokenfactory = ["cw-tokenfactory-issuer/cosmwasm_tokenfactory"]
-kujira_tokenfactory = ["cw-tokenfactory-issuer/kujira_tokenfactory"]
 
 [dependencies]
-cosmwasm-std = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["cosmwasm_1_1"] }
 cosmwasm-schema = { workspace = true }
-cw-ownable = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
-cw-utils = { workspace = true }
-cw-controllers = { workspace = true }
-cw-hooks = { workspace = true }
 thiserror = { workspace = true }
 dao-dao-macros = { workspace = true }
-dao-hooks = { workspace = true }
 dao-interface = { workspace = true }
 dao-voting = { workspace = true }
-cw-tokenfactory-issuer = { workspace = true, default-features = false, features = [
-  "library",
-] }
+osmosis-std = { workspace = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }
 cw-multi-test = { workspace = true }
+cw-tokenfactory-issuer = { workspace = true }
+cw-utils = { workspace = true }
 dao-proposal-single = { workspace = true }
-dao-proposal-hook-counter = { workspace = true }
 dao-test-custom-factory = { workspace = true }
-dao-testing = { workspace = true, features = ["test-tube"] }
-osmosis-std = { workspace = true }
+dao-testing = { workspace = true }
 osmosis-test-tube = { workspace = true }
 serde = { workspace = true }

@@ -1,11 +1,12 @@
 [package]
-name = "dao-voting-token-staked"
+name = "dao-voting-onft-staked"
 authors = [
-  "Callum Anderson <callumanderson745@gmail.com>",
-  "Noah Saso <no-reply@no-reply.com>",
-  "Jake Hartnell <no-reply@no-reply.com>",
+  "CypherApe cypherape@protonmail.com",
+  "Jake Hartnell",
+  "ekez",
+  "noah <noah@daodao.zone>",
 ]
-description = "A DAO DAO voting module based on staked token factory or native tokens. Only works with chains that support Token Factory."
+description = "A DAO DAO voting module based on staked x/onft tokens."
 edition = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
@@ -15,7 +16,6 @@ version = { workspace = true }
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["osmosis_tokenfactory"]
 # for more explicit tests, cargo test --features=backtraces
 backtraces = ["cosmwasm-std/backtraces"]
 # use library feature to disable all instantiate/execute/query exports
@@ -25,29 +25,23 @@ library = []
 test-tube = []
 # when writing tests you may wish to enable test-tube as a default feature
 # default = ["test-tube"]
-# different tokenfactory cosmos sdk module standards. enable corresponding
-# standard in types library
-osmosis_tokenfactory = ["cw-tokenfactory-issuer/osmosis_tokenfactory"]
-cosmwasm_tokenfactory = ["cw-tokenfactory-issuer/cosmwasm_tokenfactory"]
-kujira_tokenfactory = ["cw-tokenfactory-issuer/kujira_tokenfactory"]
 
 [dependencies]
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
-cw-ownable = { workspace = true }
 cw-storage-plus = { workspace = true }
-cw2 = { workspace = true }
-cw-utils = { workspace = true }
 cw-controllers = { workspace = true }
 cw-hooks = { workspace = true }
-thiserror = { workspace = true }
+cw721-controllers = { workspace = true }
+cw-utils = { workspace = true }
+cw2 = { workspace = true }
 dao-dao-macros = { workspace = true }
 dao-hooks = { workspace = true }
 dao-interface = { workspace = true }
 dao-voting = { workspace = true }
-cw-tokenfactory-issuer = { workspace = true, default-features = false, features = [
-  "library",
-] }
+omniflix-std = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }
@@ -56,6 +50,5 @@ dao-proposal-single = { workspace = true }
 dao-proposal-hook-counter = { workspace = true }
 dao-test-custom-factory = { workspace = true }
 dao-testing = { workspace = true, features = ["test-tube"] }
-osmosis-std = { workspace = true }
 osmosis-test-tube = { workspace = true }
-serde = { workspace = true }
+prost = { workspace = true }
