@@ -4,7 +4,9 @@ use cw_utils::ParseReplyError;
 use thiserror::Error;
 
 use cw_hooks::HookError;
-use dao_voting::{deposit::DepositError, status::Status};
+use dao_voting::{
+    deposit::DepositError, pre_propose::PreProposeSubmissionPolicyError, status::Status,
+};
 
 #[derive(Error, Debug, PartialEq)]
 pub enum PreProposeError {
@@ -22,6 +24,9 @@ pub enum PreProposeError {
 
     #[error(transparent)]
     ParseReplyError(#[from] ParseReplyError),
+
+    #[error(transparent)]
+    PreProposeSubmissionPolicyError(#[from] PreProposeSubmissionPolicyError),
 
     #[error("Message sender is not proposal module")]
     NotModule {},

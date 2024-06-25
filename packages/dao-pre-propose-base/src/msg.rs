@@ -2,6 +2,7 @@ use cosmwasm_schema::{cw_serde, schemars::JsonSchema, QueryResponses};
 use cw_denom::UncheckedDenom;
 use dao_voting::{
     deposit::{CheckedDepositInfo, UncheckedDepositInfo},
+    pre_propose::PreProposeSubmissionPolicy,
     status::Status,
 };
 
@@ -10,10 +11,8 @@ pub struct InstantiateMsg<InstantiateExt> {
     /// Information about the deposit requirements for this
     /// module. None if no deposit.
     pub deposit_info: Option<UncheckedDepositInfo>,
-    /// If false, only members (addresses with voting power) may create
-    /// proposals in the DAO. Otherwise, any address may create a
-    /// proposal so long as they pay the deposit.
-    pub open_proposal_submission: bool,
+    /// The policy dictating who is allowed to submit proposals.
+    pub submission_policy: PreProposeSubmissionPolicy,
     /// Extension for instantiation. The default implementation will
     /// do nothing with this data.
     pub extension: InstantiateExt,
@@ -31,7 +30,8 @@ pub enum ExecuteMsg<ProposalMessage, ExecuteExt> {
     /// updated. Only the DAO may execute this message.
     UpdateConfig {
         deposit_info: Option<UncheckedDepositInfo>,
-        open_proposal_submission: bool,
+        // TODO(pre-propose-submission-policy): allow optional updates like timewave
+        submission_policy: PreProposeSubmissionPolicy,
     },
 
     /// Withdraws funds inside of this contract to the message

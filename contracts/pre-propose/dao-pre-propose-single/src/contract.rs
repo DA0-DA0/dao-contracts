@@ -91,10 +91,10 @@ pub fn execute(
         ExecuteMsg::Withdraw { denom } => ExecuteInternal::Withdraw { denom },
         ExecuteMsg::UpdateConfig {
             deposit_info,
-            open_proposal_submission,
+            submission_policy,
         } => ExecuteInternal::UpdateConfig {
             deposit_info,
-            open_proposal_submission,
+            submission_policy,
         },
         ExecuteMsg::AddProposalSubmittedHook { address } => {
             ExecuteInternal::AddProposalSubmittedHook { address }

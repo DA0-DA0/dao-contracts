@@ -4,6 +4,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Empty, StdResult, SubMsg};
 use dao_interface::state::ModuleInstantiateInfo;
+use thiserror::Error;
 
 use crate::reply::pre_propose_module_instantiation_id;
 
@@ -16,6 +17,9 @@ pub enum PreProposeInfo {
     ModuleMayPropose { info: ModuleInstantiateInfo },
 }
 
+/// The policy configured in a proposal module that determines whether or not a
+/// pre-propose module is in use. If so, only the module can create new
+/// proposals. Otherwise, there is no restriction on proposal creation.
 #[cw_serde]
 pub enum ProposalCreationPolicy {
     /// Anyone may create a proposal, free of charge.
@@ -55,6 +59,58 @@ impl PreProposeInfo {
                 )],
             ),
         })
+    }
+}
+
+// TODO(pre-propose-submission-policy):
+// - add executions that add/remove individual addresses to/from the allowlist
+// - add tests for the allowlist
+
+/// The policy configured in a pre-propose module that determines who can submit
+/// proposals. This is the preferred way to restrict proposal creation (as
+/// opposed to the ProposalCreationPolicy above) since pre-propose modules
+/// support other features, such as proposal deposits.
+#[cw_serde]
+pub enum PreProposeSubmissionPolicy {
+    /// Anyone may create a proposal.
+    Anyone {},
+    /// Only members of the DAO may create a proposal.
+    DaoMembers {},
+    /// Only the specified addresses may create a proposal.
+    Allowlist { addresses: Vec<Addr> },
+}
+
+#[derive(Error, Debug, PartialEq, Eq)]
+pub enum PreProposeSubmissionPolicyError {
+    #[error("The proposal submission address allowlist cannot be empty")]
+    AllowlistCannotBeEmpty {},
+
+    #[error("You must be a member of the DAO to submit proposals")]
+    UnauthorizedDaoMembers {},
+
+    #[error("You must be in the allowlist to submit proposals")]
+    UnauthorizedAllowlist {},
+}
+
+impl PreProposeSubmissionPolicy {
+    /// Validate the policy configuration.
+    pub fn validate(&self) -> Result<(), PreProposeSubmissionPolicyError> {
+        if let PreProposeSubmissionPolicy::Allowlist { addresses } = self {
+            if addresses.is_empty() {
+                return Err(PreProposeSubmissionPolicyError::AllowlistCannotBeEmpty {});
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Human readable string for use in events.
+    pub fn human_readable(&self) -> String {
+        match self {
+            Self::Anyone {} => "anyone".to_string(),
+            Self::DaoMembers {} => "dao_members".to_string(),
+            Self::Allowlist { .. } => "allowlist".to_string(),
+        }
     }
 }
 

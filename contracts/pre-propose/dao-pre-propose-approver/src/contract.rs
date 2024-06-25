@@ -11,6 +11,7 @@ use dao_pre_propose_approval_single::msg::{
     ApproverProposeMessage, ExecuteExt as ApprovalExt, ExecuteMsg as PreProposeApprovalExecuteMsg,
 };
 use dao_pre_propose_base::{error::PreProposeError, state::PreProposeContract};
+use dao_voting::pre_propose::PreProposeSubmissionPolicy;
 use dao_voting::status::Status;
 
 use crate::msg::{
@@ -37,7 +38,7 @@ pub fn instantiate(
     // Here we hardcode the pre-propose-base instantiate message
     let base_instantiate_msg = BaseInstantiateMsg {
         deposit_info: None,
-        open_proposal_submission: false,
+        submission_policy: PreProposeSubmissionPolicy::DaoMembers {},
         extension: Empty {},
     };
     // Default pre-propose-base instantiation

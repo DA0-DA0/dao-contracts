@@ -10,6 +10,7 @@ use cw_denom::UncheckedDenom;
 use dao_interface::voting::{Query as CwCoreQuery, VotingPowerAtHeightResponse};
 use dao_voting::{
     deposit::{DepositRefundPolicy, UncheckedDepositInfo},
+    pre_propose::{PreProposeSubmissionPolicy, PreProposeSubmissionPolicyError},
     status::Status,
 };
 use serde::Serialize;
@@ -56,9 +57,11 @@ where
             .map(|info| info.into_checked(deps.as_ref(), dao.clone()))
             .transpose()?;
 
+        msg.submission_policy.validate()?;
+
         let config = Config {
             deposit_info,
-            open_proposal_submission: msg.open_proposal_submission,
+            submission_policy: msg.submission_policy,
         };
 
         self.config.save(deps.storage, &config)?;
@@ -68,8 +71,8 @@ where
             .add_attribute("proposal_module", info.sender.into_string())
             .add_attribute("deposit_info", format!("{:?}", config.deposit_info))
             .add_attribute(
-                "open_proposal_submission",
-                config.open_proposal_submission.to_string(),
+                "submission_policy",
+                config.submission_policy.human_readable(),
             )
             .add_attribute("dao", dao))
     }
@@ -85,8 +88,8 @@ where
             ExecuteMsg::Propose { msg } => self.execute_propose(deps, env, info, msg),
             ExecuteMsg::UpdateConfig {
                 deposit_info,
-                open_proposal_submission,
-            } => self.execute_update_config(deps, info, deposit_info, open_proposal_submission),
+                submission_policy,
+            } => self.execute_update_config(deps, info, deposit_info, submission_policy),
             ExecuteMsg::Withdraw { denom } => {
                 self.execute_withdraw(deps.as_ref(), env, info, denom)
             }
@@ -171,7 +174,7 @@ where
         deps: DepsMut,
         info: MessageInfo,
         deposit_info: Option<UncheckedDepositInfo>,
-        open_proposal_submission: bool,
+        submission_policy: PreProposeSubmissionPolicy,
     ) -> Result<Response, PreProposeError> {
         let dao = self.dao.load(deps.storage)?;
         if info.sender != dao {
@@ -180,11 +183,14 @@ where
             let deposit_info = deposit_info
                 .map(|d| d.into_checked(deps.as_ref(), dao))
                 .transpose()?;
+
+            submission_policy.validate()?;
+
             self.config.save(
                 deps.storage,
                 &Config {
                     deposit_info,
-                    open_proposal_submission,
+                    submission_policy,
                 },
             )?;
 
@@ -341,19 +347,32 @@ where
     pub fn check_can_submit(&self, deps: Deps, who: Addr) -> Result<(), PreProposeError> {
         let config = self.config.load(deps.storage)?;
 
-        if !config.open_proposal_submission {
-            let dao = self.dao.load(deps.storage)?;
-            let voting_power: VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
-                dao.into_string(),
-                &CwCoreQuery::VotingPowerAtHeight {
-                    address: who.into_string(),
-                    height: None,
-                },
-            )?;
-            if voting_power.power.is_zero() {
-                return Err(PreProposeError::NotMember {});
+        match config.submission_policy {
+            PreProposeSubmissionPolicy::DaoMembers {} => {
+                let dao = self.dao.load(deps.storage)?;
+                let voting_power: VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
+                    dao.into_string(),
+                    &CwCoreQuery::VotingPowerAtHeight {
+                        address: who.into_string(),
+                        height: None,
+                    },
+                )?;
+                if voting_power.power.is_zero() {
+                    return Err(PreProposeError::PreProposeSubmissionPolicyError(
+                        PreProposeSubmissionPolicyError::UnauthorizedDaoMembers {},
+                    ));
+                }
             }
+            PreProposeSubmissionPolicy::Allowlist { addresses } => {
+                if !addresses.contains(&who) {
+                    return Err(PreProposeError::PreProposeSubmissionPolicyError(
+                        PreProposeSubmissionPolicyError::UnauthorizedAllowlist {},
+                    ));
+                }
+            }
+            _ => {}
         }
+
         Ok(())
     }
 

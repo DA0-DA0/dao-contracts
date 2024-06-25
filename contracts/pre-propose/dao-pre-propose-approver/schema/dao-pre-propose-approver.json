@@ -52,7 +52,7 @@
           "update_config": {
             "type": "object",
             "required": [
-              "open_proposal_submission"
+              "submission_policy"
             ],
             "properties": {
               "deposit_info": {
@@ -65,8 +65,8 @@
                   }
                 ]
               },
-              "open_proposal_submission": {
-                "type": "boolean"
+              "submission_policy": {
+                "$ref": "#/definitions/PreProposeSubmissionPolicy"
               }
             },
             "additionalProperties": false
@@ -197,6 +197,10 @@
       }
     ],
     "definitions": {
+      "Addr": {
+        "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+        "type": "string"
+      },
       "ApproverProposeMessage": {
         "oneOf": [
           {
@@ -363,6 +367,64 @@
             "properties": {
               "never": {
                 "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "PreProposeSubmissionPolicy": {
+        "description": "The policy configured in a pre-propose module that determines who can submit proposals. This is the preferred way to restrict proposal creation (as opposed to the ProposalCreationPolicy above) since pre-propose modules support other features, such as proposal deposits.",
+        "oneOf": [
+          {
+            "description": "Anyone may create a proposal.",
+            "type": "object",
+            "required": [
+              "anyone"
+            ],
+            "properties": {
+              "anyone": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Only members of the DAO may create a proposal.",
+            "type": "object",
+            "required": [
+              "dao_members"
+            ],
+            "properties": {
+              "dao_members": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Only the specified addresses may create a proposal.",
+            "type": "object",
+            "required": [
+              "allowlist"
+            ],
+            "properties": {
+              "allowlist": {
+                "type": "object",
+                "required": [
+                  "addresses"
+                ],
+                "properties": {
+                  "addresses": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/Addr"
+                    }
+                  }
+                },
                 "additionalProperties": false
               }
             },
@@ -718,7 +780,7 @@
       "title": "Config",
       "type": "object",
       "required": [
-        "open_proposal_submission"
+        "submission_policy"
       ],
       "properties": {
         "deposit_info": {
@@ -732,9 +794,13 @@
             }
           ]
         },
-        "open_proposal_submission": {
-          "description": "If false, only members (addresses with voting power) may create proposals in the DAO. Otherwise, any address may create a proposal so long as they pay the deposit.",
-          "type": "boolean"
+        "submission_policy": {
+          "description": "The policy dictating who is allowed to submit proposals.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/PreProposeSubmissionPolicy"
+            }
+          ]
         }
       },
       "additionalProperties": false,
@@ -832,6 +898,64 @@
               "enum": [
                 "never"
               ]
+            }
+          ]
+        },
+        "PreProposeSubmissionPolicy": {
+          "description": "The policy configured in a pre-propose module that determines who can submit proposals. This is the preferred way to restrict proposal creation (as opposed to the ProposalCreationPolicy above) since pre-propose modules support other features, such as proposal deposits.",
+          "oneOf": [
+            {
+              "description": "Anyone may create a proposal.",
+              "type": "object",
+              "required": [
+                "anyone"
+              ],
+              "properties": {
+                "anyone": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "Only members of the DAO may create a proposal.",
+              "type": "object",
+              "required": [
+                "dao_members"
+              ],
+              "properties": {
+                "dao_members": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "Only the specified addresses may create a proposal.",
+              "type": "object",
+              "required": [
+                "allowlist"
+              ],
+              "properties": {
+                "allowlist": {
+                  "type": "object",
+                  "required": [
+                    "addresses"
+                  ],
+                  "properties": {
+                    "addresses": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/Addr"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
             }
           ]
         },

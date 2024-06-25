@@ -10,6 +10,7 @@ use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_pre_propose_base::{error::PreProposeError, msg::DepositInfoResponse, state::Config};
 use dao_proposal_multiple as cpm;
 use dao_testing::helpers::instantiate_with_cw4_groups_governance;
+use dao_voting::pre_propose::PreProposeSubmissionPolicy;
 use dao_voting::{
     deposit::{CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
     multiple_choice::{
@@ -54,6 +55,12 @@ fn get_default_proposal_module_instantiate(
 ) -> cpm::msg::InstantiateMsg {
     let pre_propose_id = app.store_code(cw_pre_propose_base_proposal_single());
 
+    let submission_policy = if open_proposal_submission {
+        PreProposeSubmissionPolicy::Anyone {}
+    } else {
+        PreProposeSubmissionPolicy::DaoMembers {}
+    };
+
     cpm::msg::InstantiateMsg {
         voting_strategy: VotingStrategy::SingleChoice {
             quorum: PercentageThreshold::Percent(Decimal::percent(10)),
@@ -67,7 +74,7 @@ fn get_default_proposal_module_instantiate(
                 code_id: pre_propose_id,
                 msg: to_json_binary(&InstantiateMsg {
                     deposit_info,
-                    open_proposal_submission,
+                    submission_policy,
                     extension: Empty::default(),
                 })
                 .unwrap(),
@@ -356,14 +363,14 @@ fn update_config(
     module: Addr,
     sender: &str,
     deposit_info: Option<UncheckedDepositInfo>,
-    open_proposal_submission: bool,
+    submission_policy: PreProposeSubmissionPolicy,
 ) -> Config {
     app.execute_contract(
         Addr::unchecked(sender),
         module.clone(),
         &ExecuteMsg::UpdateConfig {
             deposit_info,
-            open_proposal_submission,
+            submission_policy,
         },
         &[],
     )
@@ -377,14 +384,14 @@ fn update_config_should_fail(
     module: Addr,
     sender: &str,
     deposit_info: Option<UncheckedDepositInfo>,
-    open_proposal_submission: bool,
+    submission_policy: PreProposeSubmissionPolicy,
 ) -> PreProposeError {
     app.execute_contract(
         Addr::unchecked(sender),
         module,
         &ExecuteMsg::UpdateConfig {
             deposit_info,
-            open_proposal_submission,
+            submission_policy,
         },
         &[],
     )
@@ -1059,7 +1066,7 @@ fn test_instantiate_with_zero_native_deposit() {
                             amount: Uint128::zero(),
                             refund_policy: DepositRefundPolicy::OnlyPassed,
                         }),
-                        open_proposal_submission: false,
+                        submission_policy: PreProposeSubmissionPolicy::DaoMembers {},
                         extension: Empty::default(),
                     })
                     .unwrap(),
@@ -1122,7 +1129,7 @@ fn test_instantiate_with_zero_cw20_deposit() {
                             amount: Uint128::zero(),
                             refund_policy: DepositRefundPolicy::OnlyPassed,
                         }),
-                        open_proposal_submission: false,
+                        submission_policy: PreProposeSubmissionPolicy::DaoMembers {},
                         extension: Empty::default(),
                     })
                     .unwrap(),
@@ -1168,7 +1175,7 @@ fn test_update_config() {
         config,
         Config {
             deposit_info: None,
-            open_proposal_submission: false
+            submission_policy: PreProposeSubmissionPolicy::DaoMembers {}
         }
     );
 
@@ -1191,7 +1198,7 @@ fn test_update_config() {
             amount: Uint128::new(10),
             refund_policy: DepositRefundPolicy::Never,
         }),
-        true,
+        PreProposeSubmissionPolicy::Anyone {},
     );
 
     let config = get_config(&app, pre_propose.clone());
@@ -1203,7 +1210,7 @@ fn test_update_config() {
                 amount: Uint128::new(10),
                 refund_policy: DepositRefundPolicy::Never
             }),
-            open_proposal_submission: true,
+            submission_policy: PreProposeSubmissionPolicy::Anyone {},
         }
     );
 
@@ -1261,8 +1268,13 @@ fn test_update_config() {
     assert_eq!(balance, Uint128::new(0));
 
     // Only the core module can update the config.
-    let err =
-        update_config_should_fail(&mut app, pre_propose, proposal_single.as_str(), None, true);
+    let err = update_config_should_fail(
+        &mut app,
+        pre_propose,
+        proposal_single.as_str(),
+        None,
+        PreProposeSubmissionPolicy::Anyone {},
+    );
     assert_eq!(err, PreProposeError::NotDao {});
 }
 
@@ -1307,7 +1319,7 @@ fn test_withdraw() {
             amount: Uint128::new(10),
             refund_policy: DepositRefundPolicy::Always,
         }),
-        false,
+        PreProposeSubmissionPolicy::DaoMembers {},
     );
 
     // Withdraw with no specified denom - should fall back to the one
@@ -1351,7 +1363,7 @@ fn test_withdraw() {
             amount: Uint128::new(10),
             refund_policy: DepositRefundPolicy::Always,
         }),
-        false,
+        PreProposeSubmissionPolicy::DaoMembers {},
     );
 
     increase_allowance(

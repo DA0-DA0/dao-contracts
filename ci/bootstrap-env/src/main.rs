@@ -4,6 +4,7 @@ use cosm_orc::{config::cfg::Config, orchestrator::cosm_orc::CosmOrc};
 use cosmwasm_std::{to_json_binary, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
+use dao_voting::pre_propose::PreProposeSubmissionPolicy;
 use dao_voting::{
     deposit::{DepositRefundPolicy, DepositToken, UncheckedDepositInfo, VotingModuleTokenType},
     pre_propose::PreProposeInfo,
@@ -99,7 +100,7 @@ fn main() -> Result<()> {
                                 amount: Uint128::new(1000000000),
                                 refund_policy: DepositRefundPolicy::OnlyPassed,
                             }),
-                            open_proposal_submission: false,
+                            submission_policy: PreProposeSubmissionPolicy::DaoMembers {},
                             extension: Empty::default(),
                         })
                         .unwrap(),
