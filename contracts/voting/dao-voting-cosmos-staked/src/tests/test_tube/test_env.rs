@@ -7,7 +7,7 @@ use crate::{
     ContractError,
 };
 
-use cosmwasm_std::{to_json_binary, Addr, Coin, Decimal, Uint128};
+use cosmwasm_std::{to_json_binary, Addr, Coin, Decimal};
 use cw_utils::Duration;
 use dao_interface::{
     msg::QueryMsg as DaoQueryMsg,
@@ -111,14 +111,8 @@ impl TestEnvBuilder {
             .init_accounts(&[Coin::new(1000000000000000u128, "uosmo")], 10)
             .unwrap();
 
-        let vp_contract = TokenVotingContract::deploy(
-            app,
-            &InstantiateMsg {
-                total_staked: Uint128::zero(),
-            },
-            &accounts[0],
-        )
-        .unwrap();
+        let vp_contract =
+            TokenVotingContract::deploy(app, &InstantiateMsg {}, &accounts[0]).unwrap();
 
         TestEnv {
             app,
@@ -150,10 +144,7 @@ impl TestEnvBuilder {
             automatically_add_cw721s: false,
             voting_module_instantiate_info: ModuleInstantiateInfo {
                 code_id: vp_contract_id,
-                msg: to_json_binary(&InstantiateMsg {
-                    total_staked: Uint128::new(1000),
-                })
-                .unwrap(),
+                msg: to_json_binary(&InstantiateMsg {}).unwrap(),
                 admin: Some(Admin::CoreModule {}),
                 funds: vec![],
                 label: "DAO DAO Voting Module".to_string(),

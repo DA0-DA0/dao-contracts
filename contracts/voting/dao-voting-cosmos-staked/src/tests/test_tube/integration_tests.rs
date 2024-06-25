@@ -1,16 +1,6 @@
-use crate::{
-    msg::{ExecuteMsg, QueryMsg},
-    tests::test_tube::{authz::Authz, staking::Staking},
-};
-use cosmwasm_std::{to_json_binary, Addr, Coin, CosmosMsg, Uint128};
-use dao_voting::voting::{SingleChoiceAutoVote, Vote};
-use osmosis_std::types::{
-    cosmos::staking::v1beta1::MsgDelegate,
-    cosmwasm::wasm::v1::{
-        AcceptedMessageKeysFilter, ContractExecutionAuthorization, ContractGrant, MaxCallsLimit,
-        MsgExecuteContract,
-    },
-};
+use crate::{msg::QueryMsg, tests::test_tube::staking::Staking};
+use cosmwasm_std::{Addr, Coin, Uint128};
+use osmosis_std::types::cosmos::staking::v1beta1::MsgDelegate;
 use osmosis_test_tube::{Account, Module, OsmosisTestApp};
 
 use super::test_env::{TestEnv, TestEnvBuilder};
@@ -42,11 +32,7 @@ fn test_staked_voting_power() {
         ..
     } = env.full_dao_setup(&app);
 
-    let dao = _dao.unwrap();
-    let proposal_single = _proposal_single.unwrap();
-
     let staker = &accounts[0];
-    let bot = &accounts[1];
 
     let staking = Staking::new(&app);
 
