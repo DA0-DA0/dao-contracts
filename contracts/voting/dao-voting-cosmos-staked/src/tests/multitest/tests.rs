@@ -1,12 +1,14 @@
 use cosmwasm_std::{
     coin, coins, testing::mock_env, Addr, CosmosMsg, Decimal, Empty, StakingMsg, Uint128, Validator,
 };
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cw_multi_test::{Contract, ContractWrapper, Executor};
 use dao_interface::voting::{
     InfoResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
 
 use crate::msg::{InstantiateMsg, QueryMsg};
+
+use super::app::CustomApp;
 
 fn cosmos_staked_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -18,13 +20,13 @@ fn cosmos_staked_contract() -> Box<dyn Contract<Empty>> {
 }
 
 const DAO: &str = "dao";
-const DELEGATOR: &str = "delegator";
-const VALIDATOR: &str = "validator";
+pub const DELEGATOR: &str = "delegator";
+pub const VALIDATOR: &str = "validator";
 const VALIDATOR2: &str = "validator2";
 const DENOM: &str = "TOKEN";
 
-fn setup_test_env() -> App {
-    App::new(|router, api, storage| {
+fn setup_test_env() -> CustomApp {
+    CustomApp::new(|router, api, storage| {
         router
             .staking
             .add_validator(
