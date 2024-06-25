@@ -3,7 +3,7 @@ use cw2::ContractVersion;
 use cw20::Cw20Coin;
 use cw_denom::UncheckedDenom;
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor};
-use dao_voting::pre_propose::PreProposeSubmissionPolicy;
+use dao_voting::pre_propose::{PreProposeSubmissionPolicy, PreProposeSubmissionPolicyError};
 use dps::query::{ProposalListResponse, ProposalResponse};
 
 use dao_interface::state::ProposalModule;
@@ -1167,7 +1167,12 @@ fn test_permissions() {
         .unwrap_err()
         .downcast()
         .unwrap();
-    assert_eq!(err, PreProposeError::NotMember {});
+    assert_eq!(
+        err,
+        PreProposeError::SubmissionPolicy(
+            PreProposeSubmissionPolicyError::UnauthorizedDaoMembers {}
+        )
+    );
 }
 
 #[test]

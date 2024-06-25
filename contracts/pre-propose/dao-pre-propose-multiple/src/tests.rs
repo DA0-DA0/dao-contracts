@@ -10,7 +10,7 @@ use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_pre_propose_base::{error::PreProposeError, msg::DepositInfoResponse, state::Config};
 use dao_proposal_multiple as cpm;
 use dao_testing::helpers::instantiate_with_cw4_groups_governance;
-use dao_voting::pre_propose::PreProposeSubmissionPolicy;
+use dao_voting::pre_propose::{PreProposeSubmissionPolicy, PreProposeSubmissionPolicyError};
 use dao_voting::{
     deposit::{CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
     multiple_choice::{
@@ -885,7 +885,12 @@ fn test_permissions() {
         .unwrap_err()
         .downcast()
         .unwrap();
-    assert_eq!(err, PreProposeError::NotMember {})
+    assert_eq!(
+        err,
+        PreProposeError::SubmissionPolicy(
+            PreProposeSubmissionPolicyError::UnauthorizedDaoMembers {}
+        )
+    )
 }
 
 #[test]
@@ -992,7 +997,12 @@ fn test_no_deposit_required_members_submission() {
         .unwrap_err()
         .downcast()
         .unwrap();
-    assert_eq!(err, PreProposeError::NotMember {});
+    assert_eq!(
+        err,
+        PreProposeError::SubmissionPolicy(
+            PreProposeSubmissionPolicyError::UnauthorizedDaoMembers {}
+        )
+    );
 
     let id = make_proposal(&mut app, pre_propose, proposal_single.clone(), "ekez", &[]);
     let new_status = vote(

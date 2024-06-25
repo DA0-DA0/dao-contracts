@@ -358,14 +358,14 @@ where
                     },
                 )?;
                 if voting_power.power.is_zero() {
-                    return Err(PreProposeError::PreProposeSubmissionPolicyError(
+                    return Err(PreProposeError::SubmissionPolicy(
                         PreProposeSubmissionPolicyError::UnauthorizedDaoMembers {},
                     ));
                 }
             }
             PreProposeSubmissionPolicy::Allowlist { addresses } => {
                 if !addresses.contains(&who) {
-                    return Err(PreProposeError::PreProposeSubmissionPolicyError(
+                    return Err(PreProposeError::SubmissionPolicy(
                         PreProposeSubmissionPolicyError::UnauthorizedAllowlist {},
                     ));
                 }

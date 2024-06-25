@@ -26,16 +26,13 @@ pub enum PreProposeError {
     ParseReplyError(#[from] ParseReplyError),
 
     #[error(transparent)]
-    PreProposeSubmissionPolicyError(#[from] PreProposeSubmissionPolicyError),
+    SubmissionPolicy(#[from] PreProposeSubmissionPolicyError),
 
     #[error("Message sender is not proposal module")]
     NotModule {},
 
     #[error("Message sender is not dao")]
     NotDao {},
-
-    #[error("You must be a member of this DAO (have voting power) to create a proposal")]
-    NotMember {},
 
     #[error("No denomination for withdrawal. specify a denomination to withdraw")]
     NoWithdrawalDenom {},
