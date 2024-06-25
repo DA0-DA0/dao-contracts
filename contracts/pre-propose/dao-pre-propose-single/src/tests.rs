@@ -54,9 +54,13 @@ fn get_default_proposal_module_instantiate(
     let pre_propose_id = app.store_code(cw_pre_propose_base_proposal_single());
 
     let submission_policy = if open_proposal_submission {
-        PreProposeSubmissionPolicy::Anyone {}
+        PreProposeSubmissionPolicy::Anyone { denylist: None }
     } else {
-        PreProposeSubmissionPolicy::DaoMembers {}
+        PreProposeSubmissionPolicy::Specific {
+            dao_members: true,
+            allowlist: None,
+            denylist: None,
+        }
     };
 
     dps::msg::InstantiateMsg {
@@ -847,9 +851,7 @@ fn test_permissions() {
         .unwrap();
     assert_eq!(
         err,
-        PreProposeError::SubmissionPolicy(
-            PreProposeSubmissionPolicyError::UnauthorizedDaoMembers {}
-        )
+        PreProposeError::SubmissionPolicy(PreProposeSubmissionPolicyError::Unauthorized {})
     )
 }
 
@@ -941,9 +943,7 @@ fn test_no_deposit_required_members_submission() {
         .unwrap();
     assert_eq!(
         err,
-        PreProposeError::SubmissionPolicy(
-            PreProposeSubmissionPolicyError::UnauthorizedDaoMembers {}
-        )
+        PreProposeError::SubmissionPolicy(PreProposeSubmissionPolicyError::Unauthorized {})
     );
 
     let id = make_proposal(&mut app, pre_propose, proposal_single.clone(), "ekez", &[]);
@@ -1012,7 +1012,11 @@ fn test_instantiate_with_zero_native_deposit() {
                             amount: Uint128::zero(),
                             refund_policy: DepositRefundPolicy::OnlyPassed,
                         }),
-                        submission_policy: PreProposeSubmissionPolicy::DaoMembers {},
+                        submission_policy: PreProposeSubmissionPolicy::Specific {
+                            dao_members: true,
+                            allowlist: None,
+                            denylist: None,
+                        },
                         extension: Empty::default(),
                     })
                     .unwrap(),
@@ -1075,7 +1079,11 @@ fn test_instantiate_with_zero_cw20_deposit() {
                             amount: Uint128::zero(),
                             refund_policy: DepositRefundPolicy::OnlyPassed,
                         }),
-                        submission_policy: PreProposeSubmissionPolicy::DaoMembers {},
+                        submission_policy: PreProposeSubmissionPolicy::Specific {
+                            dao_members: true,
+                            allowlist: None,
+                            denylist: None,
+                        },
                         extension: Empty::default(),
                     })
                     .unwrap(),
@@ -1121,7 +1129,11 @@ fn test_update_config() {
         config,
         Config {
             deposit_info: None,
-            submission_policy: PreProposeSubmissionPolicy::DaoMembers {},
+            submission_policy: PreProposeSubmissionPolicy::Specific {
+                dao_members: true,
+                allowlist: None,
+                denylist: None
+            },
         }
     );
 
@@ -1144,7 +1156,7 @@ fn test_update_config() {
             amount: Uint128::new(10),
             refund_policy: DepositRefundPolicy::Never,
         }),
-        PreProposeSubmissionPolicy::Anyone {},
+        PreProposeSubmissionPolicy::Anyone { denylist: None },
     );
 
     let config = get_config(&app, pre_propose.clone());
@@ -1156,7 +1168,7 @@ fn test_update_config() {
                 amount: Uint128::new(10),
                 refund_policy: DepositRefundPolicy::Never
             }),
-            submission_policy: PreProposeSubmissionPolicy::Anyone {},
+            submission_policy: PreProposeSubmissionPolicy::Anyone { denylist: None },
         }
     );
 
@@ -1207,7 +1219,7 @@ fn test_update_config() {
         pre_propose,
         proposal_single.as_str(),
         None,
-        PreProposeSubmissionPolicy::Anyone {},
+        PreProposeSubmissionPolicy::Anyone { denylist: None },
     );
     assert_eq!(err, PreProposeError::NotDao {});
 }
@@ -1253,7 +1265,11 @@ fn test_withdraw() {
             amount: Uint128::new(10),
             refund_policy: DepositRefundPolicy::Always,
         }),
-        PreProposeSubmissionPolicy::DaoMembers {},
+        PreProposeSubmissionPolicy::Specific {
+            dao_members: true,
+            allowlist: None,
+            denylist: None,
+        },
     );
 
     // Withdraw with no specified denom - should fall back to the one
@@ -1297,7 +1313,11 @@ fn test_withdraw() {
             amount: Uint128::new(10),
             refund_policy: DepositRefundPolicy::Always,
         }),
-        PreProposeSubmissionPolicy::DaoMembers {},
+        PreProposeSubmissionPolicy::Specific {
+            dao_members: true,
+            allowlist: None,
+            denylist: None,
+        },
     );
 
     increase_allowance(

@@ -38,7 +38,11 @@ pub fn instantiate(
     // Here we hardcode the pre-propose-base instantiate message
     let base_instantiate_msg = BaseInstantiateMsg {
         deposit_info: None,
-        submission_policy: PreProposeSubmissionPolicy::DaoMembers {},
+        submission_policy: PreProposeSubmissionPolicy::Specific {
+            dao_members: true,
+            allowlist: None,
+            denylist: None,
+        },
         extension: Empty {},
     };
     // Default pre-propose-base instantiation

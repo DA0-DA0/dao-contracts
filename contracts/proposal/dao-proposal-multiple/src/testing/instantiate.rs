@@ -34,9 +34,13 @@ fn get_pre_propose_info(
     let pre_propose_contract = app.store_code(pre_propose_multiple_contract());
 
     let submission_policy = if open_proposal_submission {
-        PreProposeSubmissionPolicy::Anyone {}
+        PreProposeSubmissionPolicy::Anyone { denylist: None }
     } else {
-        PreProposeSubmissionPolicy::DaoMembers {}
+        PreProposeSubmissionPolicy::Specific {
+            dao_members: true,
+            allowlist: None,
+            denylist: None,
+        }
     };
 
     PreProposeInfo::ModuleMayPropose {

@@ -30,7 +30,6 @@ pub enum ExecuteMsg<ProposalMessage, ExecuteExt> {
     /// updated. Only the DAO may execute this message.
     UpdateConfig {
         deposit_info: Option<UncheckedDepositInfo>,
-        // TODO(pre-propose-submission-policy): allow optional updates like timewave
         submission_policy: PreProposeSubmissionPolicy,
     },
 

@@ -100,7 +100,11 @@ fn main() -> Result<()> {
                                 amount: Uint128::new(1000000000),
                                 refund_policy: DepositRefundPolicy::OnlyPassed,
                             }),
-                            submission_policy: PreProposeSubmissionPolicy::DaoMembers {},
+                            submission_policy: PreProposeSubmissionPolicy::Specific {
+                                dao_members: true,
+                                allowlist: None,
+                                denylist: None,
+                            },
                             extension: Empty::default(),
                         })
                         .unwrap(),

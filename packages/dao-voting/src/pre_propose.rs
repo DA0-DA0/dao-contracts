@@ -72,32 +72,57 @@ impl PreProposeInfo {
 /// support other features, such as proposal deposits.
 #[cw_serde]
 pub enum PreProposeSubmissionPolicy {
-    /// Anyone may create a proposal.
-    Anyone {},
-    /// Only members of the DAO may create a proposal.
-    DaoMembers {},
-    /// Only the specified addresses may create a proposal.
-    Allowlist { addresses: Vec<Addr> },
+    /// Anyone may create proposals, except for those in the denylist.
+    Anyone {
+        /// Addresses that may not create proposals.
+        denylist: Option<Vec<Addr>>,
+    },
+    /// Specific people may create proposals.
+    Specific {
+        /// Whether or not DAO members may create proposals.
+        dao_members: bool,
+        /// Addresses that may create proposals.
+        allowlist: Option<Vec<Addr>>,
+        /// Addresses that may not create proposals, overriding other settings.
+        denylist: Option<Vec<Addr>>,
+    },
 }
 
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum PreProposeSubmissionPolicyError {
-    #[error("The proposal submission address allowlist cannot be empty")]
-    AllowlistCannotBeEmpty {},
+    #[error("The proposal submission policy doesn't allow anyone to submit proposals")]
+    NoOneAllowed {},
 
-    #[error("You must be a member of the DAO to submit proposals")]
-    UnauthorizedDaoMembers {},
+    #[error("Denylist cannot contain addresses in the allowlist")]
+    DenylistAllowlistOverlap {},
 
-    #[error("You must be in the allowlist to submit proposals")]
-    UnauthorizedAllowlist {},
+    #[error("You are not allowed to submit proposals")]
+    Unauthorized {},
 }
 
 impl PreProposeSubmissionPolicy {
     /// Validate the policy configuration.
     pub fn validate(&self) -> Result<(), PreProposeSubmissionPolicyError> {
-        if let PreProposeSubmissionPolicy::Allowlist { addresses } = self {
-            if addresses.is_empty() {
-                return Err(PreProposeSubmissionPolicyError::AllowlistCannotBeEmpty {});
+        if let PreProposeSubmissionPolicy::Specific {
+            dao_members,
+            allowlist,
+            denylist,
+        } = self
+        {
+            let allowlist = allowlist.as_deref().unwrap_or_default();
+            let denylist = denylist.as_deref().unwrap_or_default();
+
+            // prevent allowlist and denylist from overlapping
+            if denylist.iter().any(|a| allowlist.iter().any(|b| a == b)) {
+                return Err(PreProposeSubmissionPolicyError::DenylistAllowlistOverlap {});
+            }
+
+            // ensure someone is allowed to submit proposals, be it DAO members
+            // or someone on the allowlist. we can't verify that the denylist
+            // doesn't contain all DAO members, so this is the best we can do to
+            // ensure that someone is allowed to submit.
+            if !dao_members && allowlist.is_empty() {
+                return Err(PreProposeSubmissionPolicyError::NoOneAllowed {});
             }
         }
 
@@ -107,9 +132,8 @@ impl PreProposeSubmissionPolicy {
     /// Human readable string for use in events.
     pub fn human_readable(&self) -> String {
         match self {
-            Self::Anyone {} => "anyone".to_string(),
-            Self::DaoMembers {} => "dao_members".to_string(),
-            Self::Allowlist { .. } => "allowlist".to_string(),
+            Self::Anyone { .. } => "anyone".to_string(),
+            Self::Specific { .. } => "specific".to_string(),
         }
     }
 }

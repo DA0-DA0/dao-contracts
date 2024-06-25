@@ -348,32 +348,46 @@ where
         let config = self.config.load(deps.storage)?;
 
         match config.submission_policy {
-            PreProposeSubmissionPolicy::DaoMembers {} => {
-                let dao = self.dao.load(deps.storage)?;
-                let voting_power: VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
-                    dao.into_string(),
-                    &CwCoreQuery::VotingPowerAtHeight {
-                        address: who.into_string(),
-                        height: None,
-                    },
-                )?;
-                if voting_power.power.is_zero() {
-                    return Err(PreProposeError::SubmissionPolicy(
-                        PreProposeSubmissionPolicyError::UnauthorizedDaoMembers {},
-                    ));
+            PreProposeSubmissionPolicy::Anyone { denylist } => {
+                if !denylist.unwrap_or_default().contains(&who) {
+                    return Ok(());
                 }
             }
-            PreProposeSubmissionPolicy::Allowlist { addresses } => {
-                if !addresses.contains(&who) {
-                    return Err(PreProposeError::SubmissionPolicy(
-                        PreProposeSubmissionPolicyError::UnauthorizedAllowlist {},
-                    ));
+            PreProposeSubmissionPolicy::Specific {
+                dao_members,
+                allowlist,
+                denylist,
+            } => {
+                // denylist overrides all other settings
+                if !denylist.unwrap_or_default().contains(&who) {
+                    // if on the allowlist, return early
+                    if allowlist.unwrap_or_default().contains(&who) {
+                        return Ok(());
+                    }
+
+                    // check DAO membership only if not on the allowlist
+                    if dao_members {
+                        let dao = self.dao.load(deps.storage)?;
+                        let voting_power: VotingPowerAtHeightResponse =
+                            deps.querier.query_wasm_smart(
+                                dao.into_string(),
+                                &CwCoreQuery::VotingPowerAtHeight {
+                                    address: who.into_string(),
+                                    height: None,
+                                },
+                            )?;
+                        if !voting_power.power.is_zero() {
+                            return Ok(());
+                        }
+                    }
                 }
             }
-            _ => {}
         }
 
-        Ok(())
+        // all other cases are not allowed
+        Err(PreProposeError::SubmissionPolicy(
+            PreProposeSubmissionPolicyError::Unauthorized {},
+        ))
     }
 
     pub fn query(&self, deps: Deps, _env: Env, msg: QueryMsg<QueryExt>) -> StdResult<Binary> {

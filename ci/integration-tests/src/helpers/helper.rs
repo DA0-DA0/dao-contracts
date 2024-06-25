@@ -84,7 +84,11 @@ pub fn create_dao(
                                 amount: DEPOSIT_AMOUNT,
                                 refund_policy: DepositRefundPolicy::OnlyPassed,
                             }),
-                            submission_policy: PreProposeSubmissionPolicy::DaoMembers {},
+                            submission_policy: PreProposeSubmissionPolicy::Specific {
+                                dao_members: true,
+                                allowlist: None,
+                                denylist: None,
+                            },
                             extension: Empty::default(),
                         })
                         .unwrap(),

@@ -3955,7 +3955,11 @@ fn test_update_pre_propose_module() {
                                 amount: Uint128::new(1),
                                 refund_policy: dao_voting::deposit::DepositRefundPolicy::OnlyPassed,
                             }),
-                            submission_policy: PreProposeSubmissionPolicy::DaoMembers {},
+                            submission_policy: PreProposeSubmissionPolicy::Specific {
+                                dao_members: true,
+                                allowlist: None,
+                                denylist: None,
+                            },
                             extension: Empty::default(),
                         })
                         .unwrap(),
@@ -4006,7 +4010,11 @@ fn test_update_pre_propose_module() {
                 amount: Uint128::new(1),
                 refund_policy: dao_voting::deposit::DepositRefundPolicy::OnlyPassed,
             }),
-            submission_policy: PreProposeSubmissionPolicy::DaoMembers {},
+            submission_policy: PreProposeSubmissionPolicy::Specific {
+                dao_members: true,
+                allowlist: None,
+                denylist: None
+            },
         }
     );
 
