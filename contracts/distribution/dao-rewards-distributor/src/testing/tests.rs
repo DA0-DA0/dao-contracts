@@ -21,6 +21,134 @@ use super::{
 // Over that time, 100_000_000 token rewards will be distributed.
 
 #[test]
+fn test_native_dao_rewards_update_reward_rate() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000));
+    suite.assert_duration(10);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+    let mut total_allocated = Uint128::zero();
+    suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000);
+
+    total_allocated = total_allocated
+        .checked_add(Uint128::new(10_000_000))
+        .unwrap();
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 10_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 5_000_000);
+
+    total_allocated = total_allocated
+        .checked_add(Uint128::new(10_000_000))
+        .unwrap();
+
+    // ADDR1 claims rewards
+    suite.claim_rewards(ADDR1, DENOM);
+    suite.assert_pending_rewards(ADDR1, DENOM, 0);
+
+    // set the rewards rate to half of the current one
+    // now there will be 5_000_000 tokens distributed over 100_000 blocks
+    suite.update_reward_emission_rate(DENOM, Duration::Height(10), 500);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+    total_allocated = total_allocated
+        .checked_add(Uint128::new(5_000_000))
+        .unwrap();
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 6_250_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 6_250_000);
+
+    // double the rewards rate
+    // now there will be 10_000_000 tokens distributed over 100_000 blocks
+    suite.update_reward_emission_rate(DENOM, Duration::Height(10), 1000);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+    total_allocated = total_allocated
+        .checked_add(Uint128::new(10_000_000))
+        .unwrap();
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 7_500_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 7_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 7_500_000);
+
+    // skip 2/10ths of the time
+    suite.skip_blocks(200_000);
+    total_allocated = total_allocated
+        .checked_add(Uint128::new(20_000_000))
+        .unwrap();
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 12_500_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 9_750_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 9_750_000);
+
+    // set the rewards rate to 0, pausing the rewards distribution
+    suite.update_reward_emission_rate(DENOM, Duration::Height(10), 0);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    // assert no pending rewards changed
+    suite.assert_pending_rewards(ADDR1, DENOM, 12_500_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 9_750_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 9_750_000);
+
+    // user 1 claims their rewards
+    suite.claim_rewards(ADDR1, DENOM);
+    suite.assert_pending_rewards(ADDR1, DENOM, 0);
+
+    // user 2 unstakes their stake
+    suite.unstake_native_tokens(ADDR2, 50);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    // only the ADDR1 pending rewards should have changed
+    suite.assert_pending_rewards(ADDR1, DENOM, 0);
+    suite.assert_pending_rewards(ADDR2, DENOM, 9_750_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 9_750_000);
+
+    // update the reward rate back to 1_000 / 10blocks
+    // this should now distribute 10_000_000 tokens over 100_000 blocks
+    // between ADDR1 (2/3rds) and ADDR3 (1/3rd)
+    suite.update_reward_emission_rate(DENOM, Duration::Height(10), 1000);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+    total_allocated = total_allocated
+        .checked_add(Uint128::new(10_000_000))
+        .unwrap();
+
+    // assert that rewards are being distributed at the expected rate
+    suite.assert_pending_rewards(ADDR1, DENOM, 6_666_666);
+    suite.assert_pending_rewards(ADDR2, DENOM, 9_750_000);
+
+    // ADDR3 claims their rewards
+    suite.assert_pending_rewards(ADDR3, DENOM, 9_750_000 + 3_333_333);
+    suite.claim_rewards(ADDR3, DENOM);
+    suite.assert_pending_rewards(ADDR3, DENOM, 0);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+    total_allocated = total_allocated
+        .checked_add(Uint128::new(10_000_000))
+        .unwrap();
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 6_666_666 + 6_666_666);
+    suite.assert_pending_rewards(ADDR2, DENOM, 9_750_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 3_333_333);
+}
+
+#[test]
 fn test_cw20_dao_native_rewards_block_height_based() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::CW20).build();
 

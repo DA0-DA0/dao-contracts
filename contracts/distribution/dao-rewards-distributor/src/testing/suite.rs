@@ -322,7 +322,10 @@ impl Suite {
     pub fn get_time_until_rewards_expiration(&mut self) -> u64 {
         let rewards_state_response = self.get_rewards_state_response();
         let current_block = self.app.block_info();
-        let (expiration_unit, current_unit) = match rewards_state_response.rewards[0].ends_at {
+        let (expiration_unit, current_unit) = match rewards_state_response.rewards[0]
+            .active_epoch_config
+            .ends_at
+        {
             cw20::Expiration::AtHeight(h) => (h, current_block.height),
             cw20::Expiration::AtTime(t) => (t.seconds(), current_block.time.seconds()),
             cw20::Expiration::Never {} => return 0,
@@ -402,25 +405,40 @@ impl Suite {
 impl Suite {
     pub fn assert_ends_at(&mut self, expected: Expiration) {
         let rewards_state_response = self.get_rewards_state_response();
-        assert_eq!(rewards_state_response.rewards[0].ends_at, expected);
+        assert_eq!(
+            rewards_state_response.rewards[0]
+                .active_epoch_config
+                .ends_at,
+            expected
+        );
     }
 
     pub fn assert_started_at(&mut self, expected: Expiration) {
         let denom_configs = self.get_rewards_state_response();
-        assert_eq!(denom_configs.rewards[0].started_at, expected);
+        assert_eq!(
+            denom_configs.rewards[0].active_epoch_config.started_at,
+            expected
+        );
     }
 
     pub fn assert_amount(&mut self, expected: u128) {
         let rewards_state_response = self.get_rewards_state_response();
         assert_eq!(
-            rewards_state_response.rewards[0].emission_rate.amount,
+            rewards_state_response.rewards[0]
+                .active_epoch_config
+                .emission_rate
+                .amount,
             Uint128::new(expected)
         );
     }
 
     pub fn assert_duration(&mut self, expected: u64) {
         let rewards_state_response = self.get_rewards_state_response();
-        let units = match rewards_state_response.rewards[0].emission_rate.duration {
+        let units = match rewards_state_response.rewards[0]
+            .active_epoch_config
+            .emission_rate
+            .duration
+        {
             Duration::Height(h) => h,
             Duration::Time(t) => t,
         };
@@ -667,6 +685,37 @@ impl Suite {
 
     pub fn unstake_native_tokens(&mut self, address: &str, amount: u128) {
         unstake_tokenfactory_tokens(self.app.borrow_mut(), &self.staking_addr, address, amount)
+    }
+
+    pub fn update_reward_emission_rate(
+        &mut self,
+        denom: &str,
+        epoch_duration: Duration,
+        epoch_rewards: u128,
+    ) {
+        let msg = ExecuteMsg::UpdateRewardEmissionRate {
+            denom: denom.to_string(),
+            emission_rate: RewardEmissionRate {
+                amount: Uint128::new(epoch_rewards),
+                duration: epoch_duration,
+            },
+        };
+
+        println!(
+            "[UPDATE REWARD EMISSION RATE] denom: {}, epoch_duration: {:?}, epoch_rewards: {}",
+            denom, epoch_duration, epoch_rewards
+        );
+        let resp = self
+            .app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+
+        println!("resp: {:?}", resp);
     }
 
     pub fn update_members(&mut self, add: Vec<Member>, remove: Vec<String>) {

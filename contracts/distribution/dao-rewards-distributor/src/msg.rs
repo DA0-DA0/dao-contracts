@@ -44,6 +44,11 @@ pub enum ExecuteMsg {
     Shutdown { denom: String },
     /// registers a new reward denom
     RegisterRewardDenom(RegisterRewardDenomMsg),
+    /// updates the reward emission rate for a registered denom
+    UpdateRewardEmissionRate {
+        denom: String,
+        emission_rate: RewardEmissionRate,
+    },
 }
 
 #[cw_serde]

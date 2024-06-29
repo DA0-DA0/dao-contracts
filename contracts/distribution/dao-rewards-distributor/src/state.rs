@@ -27,22 +27,28 @@ pub struct UserRewardState {
     pub denom_rewards_puvp: HashMap<String, Uint256>,
 }
 
-/// the state of a denom's reward distribution
 #[cw_serde]
-pub struct DenomRewardState {
-    /// validated denom (native or cw20)
-    pub denom: Denom,
+pub struct EpochConfig {
+    /// reward emission rate
+    pub emission_rate: RewardEmissionRate,
     /// the time when the current reward distribution period started. period
     /// finishes iff it reaches its end.
     pub started_at: Expiration,
     /// the time when all funded rewards are allocated to users and thus the
     /// distribution period ends.
     pub ends_at: Expiration,
-    /// reward emission rate
-    pub emission_rate: RewardEmissionRate,
     /// total rewards earned per unit voting power from started_at to
     /// last_update
     pub total_earned_puvp: Uint256,
+}
+
+/// the state of a denom's reward distribution
+#[cw_serde]
+pub struct DenomRewardState {
+    /// validated denom (native or cw20)
+    pub denom: Denom,
+    /// current denom distribution epoch configuration
+    pub active_epoch_config: EpochConfig,
     /// time when total_earned_puvp was last updated for this denom
     pub last_update: Expiration,
     /// address to query the voting power
@@ -54,11 +60,42 @@ pub struct DenomRewardState {
     pub funded_amount: Uint128,
     /// optional destination address for reward clawbacks
     pub withdraw_destination: Addr,
+    /// historic denom distribution epochs
+    pub historic_epoch_configs: Vec<EpochConfig>,
+}
+
+impl DenomRewardState {
+    pub fn transition_epoch(
+        &mut self,
+        new_emission_rate: RewardEmissionRate,
+        funded_amount: Uint128,
+        current_block: &BlockInfo,
+    ) -> StdResult<()> {
+        // todo:
+        // 1. finish current epoch
+        // 2. push current epoch to historic configs
+        // 3. start new epoch
+        
+        Ok(())
+    }
+
+    fn calculate_ends_at(
+        &self,
+        emission_rate: &RewardEmissionRate,
+        funded_amount: Uint128,
+        current_block: &BlockInfo,
+    ) -> StdResult<Expiration> {
+        let funded_period_duration = emission_rate.get_funded_period_duration(funded_amount)?;
+        match funded_period_duration {
+            Duration::Height(h) => Ok(Expiration::AtHeight(current_block.height + h)),
+            Duration::Time(t) => Ok(Expiration::AtTime(current_block.time.plus_seconds(t))),
+        }
+    }
 }
 
 impl DenomRewardState {
     pub fn bump_last_update(mut self, current_block: &BlockInfo) -> Self {
-        self.last_update = match self.emission_rate.duration {
+        self.last_update = match self.active_epoch_config.emission_rate.duration {
             Duration::Height(_) => Expiration::AtHeight(current_block.height),
             Duration::Time(_) => Expiration::AtTime(current_block.time),
         };
@@ -71,21 +108,23 @@ impl DenomRewardState {
     /// funding date becomes the current block.
     pub fn bump_funding_date(mut self, current_block: &BlockInfo) -> Self {
         // if its never been set before, we set it to current block and return
-        if let Expiration::Never {} = self.started_at {
-            self.started_at = match self.emission_rate.duration {
-                Duration::Height(_) => Expiration::AtHeight(current_block.height),
-                Duration::Time(_) => Expiration::AtTime(current_block.time),
-            };
+        if let Expiration::Never {} = self.active_epoch_config.started_at {
+            self.active_epoch_config.started_at =
+                match self.active_epoch_config.emission_rate.duration {
+                    Duration::Height(_) => Expiration::AtHeight(current_block.height),
+                    Duration::Time(_) => Expiration::AtTime(current_block.time),
+                };
             return self;
         }
 
         // if current distribution is expired, we set the funding date
         // to the current date
-        if self.ends_at.is_expired(current_block) {
-            self.started_at = match self.emission_rate.duration {
-                Duration::Height(_) => Expiration::AtHeight(current_block.height),
-                Duration::Time(_) => Expiration::AtTime(current_block.time),
-            };
+        if self.active_epoch_config.ends_at.is_expired(current_block) {
+            self.active_epoch_config.started_at =
+                match self.active_epoch_config.emission_rate.duration {
+                    Duration::Height(_) => Expiration::AtHeight(current_block.height),
+                    Duration::Time(_) => Expiration::AtTime(current_block.time),
+                };
         }
 
         self
@@ -103,7 +142,7 @@ impl DenomRewardState {
     /// - If `AtHeight(h)`, the value is `h`.
     /// - If `AtTime(t)`, the value is `t`, where t is seconds.
     pub fn get_ends_at_scalar(&self) -> StdResult<u64> {
-        match self.ends_at {
+        match self.active_epoch_config.ends_at {
             Expiration::Never {} => Err(StdError::generic_err("reward period is not active")),
             Expiration::AtHeight(h) => Ok(h),
             Expiration::AtTime(t) => Ok(t.seconds()),
@@ -115,7 +154,7 @@ impl DenomRewardState {
     /// - If `AtHeight(h)`, the value is `h`.
     /// - If `AtTime(t)`, the value is `t`, where t is seconds.
     pub fn get_started_at_scalar(&self) -> StdResult<u64> {
-        match self.started_at {
+        match self.active_epoch_config.started_at {
             Expiration::AtHeight(h) => Ok(h),
             Expiration::AtTime(t) => Ok(t.seconds()),
             Expiration::Never {} => Err(StdError::generic_err("reward period is not active")),
@@ -135,7 +174,7 @@ impl DenomRewardState {
     /// longer being distributed. We therefore return the end `height` or
     /// `time`, as that was the last date where rewards were distributed.
     pub fn get_latest_reward_distribution_time(&self, current_block: &BlockInfo) -> Expiration {
-        match self.ends_at {
+        match self.active_epoch_config.ends_at {
             Expiration::Never {} => Expiration::Never {},
             Expiration::AtHeight(h) => Expiration::AtHeight(min(current_block.height, h)),
             Expiration::AtTime(t) => Expiration::AtTime(min(current_block.time, t)),
@@ -149,10 +188,10 @@ impl DenomRewardState {
         &self,
         current_block: &BlockInfo,
     ) -> Result<(), ContractError> {
-        match self.ends_at {
+        match self.active_epoch_config.ends_at {
             Expiration::AtHeight(_) | Expiration::AtTime(_) => {
                 ensure!(
-                    self.ends_at.is_expired(current_block),
+                    self.active_epoch_config.ends_at.is_expired(current_block),
                     ContractError::RewardPeriodNotFinished {}
                 );
                 Ok(())
