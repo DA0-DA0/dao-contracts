@@ -1,8 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{
-    ensure, Addr, BlockInfo, CheckedMultiplyRatioError, Decimal, StdError, StdResult, Uint128,
-    Uint256,
-};
+use cosmwasm_std::{ensure, Addr, BlockInfo, StdError, StdResult, Uint128, Uint256};
 use cw20::{Denom, Expiration};
 use cw_storage_plus::Map;
 use cw_utils::Duration;
@@ -98,26 +95,30 @@ impl DenomRewardState {
 
         // 1. finish current epoch
         let mut curr_epoch = self.active_epoch_config.clone();
-        curr_epoch.ends_at = current_block_scalar.clone();
+        curr_epoch.ends_at = current_block_scalar;
         curr_epoch.finish_height = Some(current_block.to_owned());
 
+        println!("transition_epoch: {:?}", curr_epoch);
         // 2. push current epoch to historic configs
-        self.historic_epoch_configs.push(curr_epoch);
+        self.historic_epoch_configs.push(curr_epoch.clone());
 
         // 3. deduct the distributed rewards amount from total funded amount,
         // as those rewards are no longer available for distribution
-        let curr_epoch_earned_rewards = self
-            .active_epoch_config
-            .get_total_distributed_rewards()
-            .map_err(|e| StdError::generic_err(e.to_string()))?;
-        self.funded_amount = self.funded_amount.checked_sub(curr_epoch_earned_rewards)?;
+        let curr_epoch_earned_rewards = match curr_epoch.emission_rate.amount.is_zero() {
+            true => Uint128::zero(),
+            false => self
+                .active_epoch_config
+                .get_total_distributed_rewards()
+                .map_err(|e| StdError::generic_err(e.to_string()))?,
+        };
 
+        self.funded_amount = self.funded_amount.checked_sub(curr_epoch_earned_rewards)?;
         // 4. start new epoch
         let new_epoch_end_scalar =
             self.calculate_ends_at(&new_emission_rate, self.funded_amount, current_block)?;
         self.active_epoch_config = EpochConfig {
             emission_rate: new_emission_rate.clone(),
-            started_at: current_block_scalar.clone(),
+            started_at: current_block_scalar,
             ends_at: new_epoch_end_scalar,
             // start the new active epoch with zero puvp
             total_earned_puvp: Uint256::zero(),
@@ -133,10 +134,14 @@ impl DenomRewardState {
         funded_amount: Uint128,
         current_block: &BlockInfo,
     ) -> StdResult<Expiration> {
-        let funded_period_duration = emission_rate.get_funded_period_duration(funded_amount)?;
-        match funded_period_duration {
-            Duration::Height(h) => Ok(Expiration::AtHeight(current_block.height + h)),
-            Duration::Time(t) => Ok(Expiration::AtTime(current_block.time.plus_seconds(t))),
+        if emission_rate.amount.is_zero() {
+            Ok(Expiration::Never {})
+        } else {
+            let funded_period_duration = emission_rate.get_funded_period_duration(funded_amount)?;
+            match funded_period_duration {
+                Duration::Height(h) => Ok(Expiration::AtHeight(current_block.height + h)),
+                Duration::Time(t) => Ok(Expiration::AtTime(current_block.time.plus_seconds(t))),
+            }
         }
     }
 }

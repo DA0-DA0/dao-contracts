@@ -705,7 +705,7 @@ impl Suite {
             "[UPDATE REWARD EMISSION RATE] denom: {}, epoch_duration: {:?}, epoch_rewards: {}",
             denom, epoch_duration, epoch_rewards
         );
-        let resp = self
+        let _resp = self
             .app
             .execute_contract(
                 Addr::unchecked(OWNER),
@@ -714,8 +714,6 @@ impl Suite {
                 &[],
             )
             .unwrap();
-
-        println!("resp: {:?}", resp);
     }
 
     pub fn update_members(&mut self, add: Vec<Member>, remove: Vec<String>) {
