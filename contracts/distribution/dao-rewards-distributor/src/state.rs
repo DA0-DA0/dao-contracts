@@ -1,11 +1,14 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, Addr, BlockInfo, StdError, StdResult, Uint128, Uint256};
+use cosmwasm_std::{
+    ensure, Addr, BlockInfo, CheckedMultiplyRatioError, Decimal, StdError, StdResult, Uint128,
+    Uint256,
+};
 use cw20::{Denom, Expiration};
 use cw_storage_plus::Map;
 use cw_utils::Duration;
 use std::{cmp::min, collections::HashMap};
 
-use crate::{msg::RewardEmissionRate, ContractError};
+use crate::{contract::get_start_end_diff, msg::RewardEmissionRate, ContractError};
 
 /// map user address to their unique reward state
 pub const USER_REWARD_STATES: Map<Addr, UserRewardState> = Map::new("u_r_s");
@@ -40,6 +43,24 @@ pub struct EpochConfig {
     /// total rewards earned per unit voting power from started_at to
     /// last_update
     pub total_earned_puvp: Uint256,
+    /// finish block height
+    pub finish_height: Option<BlockInfo>,
+}
+
+impl EpochConfig {
+    pub fn get_total_distributed_rewards(&self) -> Result<Uint128, ContractError> {
+        let epoch_duration = get_start_end_diff(&self.started_at, &self.ends_at)?;
+
+        let emission_rate_duration_scalar = match self.emission_rate.duration {
+            Duration::Height(h) => h,
+            Duration::Time(t) => t,
+        };
+
+        self.emission_rate
+            .amount
+            .checked_multiply_ratio(epoch_duration, emission_rate_duration_scalar)
+            .map_err(|e| ContractError::Std(StdError::generic_err(e.to_string())))
+    }
 }
 
 /// the state of a denom's reward distribution
@@ -68,14 +89,41 @@ impl DenomRewardState {
     pub fn transition_epoch(
         &mut self,
         new_emission_rate: RewardEmissionRate,
-        funded_amount: Uint128,
         current_block: &BlockInfo,
     ) -> StdResult<()> {
-        // todo:
+        let current_block_scalar = match self.active_epoch_config.emission_rate.duration {
+            Duration::Height(_) => Expiration::AtHeight(current_block.height),
+            Duration::Time(_) => Expiration::AtTime(current_block.time),
+        };
+
         // 1. finish current epoch
+        let mut curr_epoch = self.active_epoch_config.clone();
+        curr_epoch.ends_at = current_block_scalar.clone();
+        curr_epoch.finish_height = Some(current_block.to_owned());
+
         // 2. push current epoch to historic configs
-        // 3. start new epoch
-        
+        self.historic_epoch_configs.push(curr_epoch);
+
+        // 3. deduct the distributed rewards amount from total funded amount,
+        // as those rewards are no longer available for distribution
+        let curr_epoch_earned_rewards = self
+            .active_epoch_config
+            .get_total_distributed_rewards()
+            .map_err(|e| StdError::generic_err(e.to_string()))?;
+        self.funded_amount = self.funded_amount.checked_sub(curr_epoch_earned_rewards)?;
+
+        // 4. start new epoch
+        let new_epoch_end_scalar =
+            self.calculate_ends_at(&new_emission_rate, self.funded_amount, current_block)?;
+        self.active_epoch_config = EpochConfig {
+            emission_rate: new_emission_rate.clone(),
+            started_at: current_block_scalar.clone(),
+            ends_at: new_epoch_end_scalar,
+            // start the new active epoch with zero puvp
+            total_earned_puvp: Uint256::zero(),
+            finish_height: None,
+        };
+
         Ok(())
     }
 
