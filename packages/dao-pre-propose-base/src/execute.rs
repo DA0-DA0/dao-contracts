@@ -236,129 +236,135 @@ where
             return Err(PreProposeError::NotDao {});
         }
 
-        // Validate addresses.
-        denylist_add
-            .as_ref()
-            .map(|list| {
-                list.iter()
-                    .map(|addr| deps.api.addr_validate(addr))
-                    .collect::<StdResult<Vec<Addr>>>()
-            })
-            .transpose()?;
-        denylist_remove
-            .as_ref()
-            .map(|list| {
-                list.iter()
-                    .map(|addr| deps.api.addr_validate(addr))
-                    .collect::<StdResult<Vec<Addr>>>()
-            })
-            .transpose()?;
-        allowlist_add
-            .as_ref()
-            .map(|list| {
-                list.iter()
-                    .map(|addr| deps.api.addr_validate(addr))
-                    .collect::<StdResult<Vec<Addr>>>()
-            })
-            .transpose()?;
-        allowlist_remove
-            .as_ref()
-            .map(|list| {
-                list.iter()
-                    .map(|addr| deps.api.addr_validate(addr))
-                    .collect::<StdResult<Vec<Addr>>>()
-            })
-            .transpose()?;
+        let mut config = self.config.load(deps.storage)?;
 
-        self.config
-            .update(deps.storage, |prev| -> Result<Config, PreProposeError> {
-                let mut submission_policy = prev.submission_policy;
-
-                match submission_policy {
-                    PreProposeSubmissionPolicy::Anyone { denylist } => {
-                        let mut denylist = denylist.unwrap_or_default();
-
-                        // Add to denylist.
-                        if let Some(mut denylist_add) = denylist_add {
-                            denylist.append(&mut denylist_add);
-                            denylist.dedup();
-                        }
-
-                        // Remove from denylist.
-                        if let Some(denylist_remove) = denylist_remove {
-                            denylist.retain(|a| !denylist_remove.contains(a));
-                        }
-
-                        let denylist = if denylist.is_empty() {
-                            None
-                        } else {
-                            Some(denylist)
-                        };
-
-                        submission_policy = PreProposeSubmissionPolicy::Anyone { denylist };
-                    }
-                    PreProposeSubmissionPolicy::Specific {
-                        dao_members,
-                        allowlist,
-                        denylist,
-                    } => {
-                        let dao_members = if let Some(new_dao_members) = set_dao_members {
-                            new_dao_members
-                        } else {
-                            dao_members
-                        };
-
-                        let mut allowlist = allowlist.unwrap_or_default();
-                        let mut denylist = denylist.unwrap_or_default();
-
-                        // Add to allowlist.
-                        if let Some(mut allowlist_add) = allowlist_add {
-                            allowlist.append(&mut allowlist_add);
-                            allowlist.dedup();
-                        }
-
-                        // Remove from allowlist.
-                        if let Some(allowlist_remove) = allowlist_remove {
-                            allowlist.retain(|a| !allowlist_remove.contains(a));
-                        }
-
-                        // Add to denylist.
-                        if let Some(mut denylist_add) = denylist_add {
-                            denylist.append(&mut denylist_add);
-                            denylist.dedup();
-                        }
-
-                        // Remove from denylist.
-                        if let Some(denylist_remove) = denylist_remove {
-                            denylist.retain(|a| !denylist_remove.contains(a));
-                        }
-
-                        let allowlist = if allowlist.is_empty() {
-                            None
-                        } else {
-                            Some(allowlist)
-                        };
-                        let denylist = if denylist.is_empty() {
-                            None
-                        } else {
-                            Some(denylist)
-                        };
-
-                        submission_policy = PreProposeSubmissionPolicy::Specific {
-                            dao_members,
-                            allowlist,
-                            denylist,
-                        };
-                    }
+        match config.submission_policy {
+            PreProposeSubmissionPolicy::Anyone { denylist } => {
+                // Error if other values that apply to Specific were set.
+                if set_dao_members.is_some()
+                    || allowlist_add.is_some()
+                    || allowlist_remove.is_some()
+                {
+                    return Err(PreProposeError::SubmissionPolicy(
+                        PreProposeSubmissionPolicyError::AnyoneInvalidUpdateFields {},
+                    ));
                 }
 
-                submission_policy.validate()?;
+                let mut denylist = denylist.unwrap_or_default();
 
-                Ok(Config {
-                    deposit_info: prev.deposit_info,
-                    submission_policy,
-                })
-            })?;
+                // Add to denylist.
+                if let Some(mut denylist_add) = denylist_add {
+                    // Validate addresses.
+                    denylist_add
+                        .iter()
+                        .map(|addr| deps.api.addr_validate(addr))
+                        .collect::<StdResult<Vec<Addr>>>()?;
+
+                    denylist.append(&mut denylist_add);
+                    denylist.dedup();
+                }
+
+                // Remove from denylist.
+                if let Some(denylist_remove) = denylist_remove {
+                    // Validate addresses.
+                    denylist_remove
+                        .iter()
+                        .map(|addr| deps.api.addr_validate(addr))
+                        .collect::<StdResult<Vec<Addr>>>()?;
+
+                    denylist.retain(|a| !denylist_remove.contains(a));
+                }
+
+                let denylist = if denylist.is_empty() {
+                    None
+                } else {
+                    Some(denylist)
+                };
+
+                config.submission_policy = PreProposeSubmissionPolicy::Anyone { denylist };
+            }
+            PreProposeSubmissionPolicy::Specific {
+                dao_members,
+                allowlist,
+                denylist,
+            } => {
+                let dao_members = if let Some(new_dao_members) = set_dao_members {
+                    new_dao_members
+                } else {
+                    dao_members
+                };
+
+                let mut allowlist = allowlist.unwrap_or_default();
+                let mut denylist = denylist.unwrap_or_default();
+
+                // Add to allowlist.
+                if let Some(mut allowlist_add) = allowlist_add {
+                    // Validate addresses.
+                    allowlist_add
+                        .iter()
+                        .map(|addr| deps.api.addr_validate(addr))
+                        .collect::<StdResult<Vec<Addr>>>()?;
+
+                    allowlist.append(&mut allowlist_add);
+                    allowlist.dedup();
+                }
+
+                // Remove from allowlist.
+                if let Some(allowlist_remove) = allowlist_remove {
+                    // Validate addresses.
+                    allowlist_remove
+                        .iter()
+                        .map(|addr| deps.api.addr_validate(addr))
+                        .collect::<StdResult<Vec<Addr>>>()?;
+
+                    allowlist.retain(|a| !allowlist_remove.contains(a));
+                }
+
+                // Add to denylist.
+                if let Some(mut denylist_add) = denylist_add {
+                    // Validate addresses.
+                    denylist_add
+                        .iter()
+                        .map(|addr| deps.api.addr_validate(addr))
+                        .collect::<StdResult<Vec<Addr>>>()?;
+
+                    denylist.append(&mut denylist_add);
+                    denylist.dedup();
+                }
+
+                // Remove from denylist.
+                if let Some(denylist_remove) = denylist_remove {
+                    // Validate addresses.
+                    denylist_remove
+                        .iter()
+                        .map(|addr| deps.api.addr_validate(addr))
+                        .collect::<StdResult<Vec<Addr>>>()?;
+
+                    denylist.retain(|a| !denylist_remove.contains(a));
+                }
+
+                // Replace empty vectors with None.
+                let allowlist = if allowlist.is_empty() {
+                    None
+                } else {
+                    Some(allowlist)
+                };
+                let denylist = if denylist.is_empty() {
+                    None
+                } else {
+                    Some(denylist)
+                };
+
+                config.submission_policy = PreProposeSubmissionPolicy::Specific {
+                    dao_members,
+                    allowlist,
+                    denylist,
+                };
+            }
+        }
+
+        config.submission_policy.validate()?;
+        self.config.save(deps.storage, &config)?;
 
         Ok(Response::default()
             .add_attribute("method", "update_submission_policy")

@@ -63,7 +63,7 @@ impl PreProposeInfo {
 }
 
 // TODO(pre-propose-submission-policy):
-// - add tests for the allowlist
+// - add tests for the allowlist and dao_members flags under the anyone denylist test
 
 /// The policy configured in a pre-propose module that determines who can submit
 /// proposals. This is the preferred way to restrict proposal creation (as
@@ -97,6 +97,9 @@ pub enum PreProposeSubmissionPolicyError {
 
     #[error("You are not allowed to submit proposals")]
     Unauthorized {},
+
+    #[error("The current proposal submission policy (Anyone) only supports a denylist. Change the policy to Specific in order to configure more granular permissions.")]
+    AnyoneInvalidUpdateFields {},
 }
 
 impl PreProposeSubmissionPolicy {
