@@ -321,7 +321,7 @@ fn update_config(
         module.clone(),
         &ExecuteMsg::UpdateConfig {
             deposit_info,
-            submission_policy,
+            submission_policy: Some(submission_policy),
         },
         &[],
     )
@@ -342,7 +342,7 @@ fn update_config_should_fail(
         module,
         &ExecuteMsg::UpdateConfig {
             deposit_info,
-            submission_policy,
+            submission_policy: Some(submission_policy),
         },
         &[],
     )

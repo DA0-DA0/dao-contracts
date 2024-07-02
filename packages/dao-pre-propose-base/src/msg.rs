@@ -29,8 +29,25 @@ pub enum ExecuteMsg<ProposalMessage, ExecuteExt> {
     /// will only apply to proposals created after the config is
     /// updated. Only the DAO may execute this message.
     UpdateConfig {
+        /// If None, will remove the deposit. Backwards compatible.
         deposit_info: Option<UncheckedDepositInfo>,
-        submission_policy: PreProposeSubmissionPolicy,
+        /// If None, will leave the submission policy in the config as-is.
+        submission_policy: Option<PreProposeSubmissionPolicy>,
+    },
+
+    /// Perform more granular submission policy updates to allow for atomic
+    /// operations that don't override others.
+    UpdateSubmissionPolicy {
+        /// Optionally add to the denylist. Works for any submission policy.
+        denylist_add: Option<Vec<String>>,
+        /// Optionally remove from denylist. Works for any submission policy.
+        denylist_remove: Option<Vec<String>>,
+        /// If using specific policy, optionally update the `dao_members` flag.
+        set_dao_members: Option<bool>,
+        /// If using specific policy, optionally add to the allowlist.
+        allowlist_add: Option<Vec<String>>,
+        /// If using specific policy, optionally remove from the allowlist.
+        allowlist_remove: Option<Vec<String>>,
     },
 
     /// Withdraws funds inside of this contract to the message

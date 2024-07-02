@@ -90,6 +90,21 @@ where
                 deposit_info,
                 submission_policy,
             } => self.execute_update_config(deps, info, deposit_info, submission_policy),
+            ExecuteMsg::UpdateSubmissionPolicy {
+                denylist_add,
+                denylist_remove,
+                set_dao_members,
+                allowlist_add,
+                allowlist_remove,
+            } => self.execute_update_submission_policy(
+                deps,
+                info,
+                denylist_add,
+                denylist_remove,
+                set_dao_members,
+                allowlist_add,
+                allowlist_remove,
+            ),
             ExecuteMsg::Withdraw { denom } => {
                 self.execute_withdraw(deps.as_ref(), env, info, denom)
             }
@@ -174,30 +189,180 @@ where
         deps: DepsMut,
         info: MessageInfo,
         deposit_info: Option<UncheckedDepositInfo>,
-        submission_policy: PreProposeSubmissionPolicy,
+        submission_policy: Option<PreProposeSubmissionPolicy>,
     ) -> Result<Response, PreProposeError> {
         let dao = self.dao.load(deps.storage)?;
         if info.sender != dao {
-            Err(PreProposeError::NotDao {})
-        } else {
-            let deposit_info = deposit_info
-                .map(|d| d.into_checked(deps.as_ref(), dao))
-                .transpose()?;
-
-            submission_policy.validate()?;
-
-            self.config.save(
-                deps.storage,
-                &Config {
-                    deposit_info,
-                    submission_policy,
-                },
-            )?;
-
-            Ok(Response::default()
-                .add_attribute("method", "update_config")
-                .add_attribute("sender", info.sender))
+            return Err(PreProposeError::NotDao {});
         }
+
+        let deposit_info = deposit_info
+            .map(|d| d.into_checked(deps.as_ref(), dao))
+            .transpose()?;
+
+        self.config
+            .update(deps.storage, |prev| -> Result<Config, PreProposeError> {
+                let new_submission_policy = if let Some(submission_policy) = submission_policy {
+                    submission_policy.validate()?;
+                    submission_policy
+                } else {
+                    prev.submission_policy
+                };
+
+                Ok(Config {
+                    deposit_info,
+                    submission_policy: new_submission_policy,
+                })
+            })?;
+
+        Ok(Response::default()
+            .add_attribute("method", "update_config")
+            .add_attribute("sender", info.sender))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn execute_update_submission_policy(
+        &self,
+        deps: DepsMut,
+        info: MessageInfo,
+        denylist_add: Option<Vec<String>>,
+        denylist_remove: Option<Vec<String>>,
+        set_dao_members: Option<bool>,
+        allowlist_add: Option<Vec<String>>,
+        allowlist_remove: Option<Vec<String>>,
+    ) -> Result<Response, PreProposeError> {
+        let dao = self.dao.load(deps.storage)?;
+        if info.sender != dao {
+            return Err(PreProposeError::NotDao {});
+        }
+
+        // Validate addresses.
+        denylist_add
+            .as_ref()
+            .map(|list| {
+                list.iter()
+                    .map(|addr| deps.api.addr_validate(addr))
+                    .collect::<StdResult<Vec<Addr>>>()
+            })
+            .transpose()?;
+        denylist_remove
+            .as_ref()
+            .map(|list| {
+                list.iter()
+                    .map(|addr| deps.api.addr_validate(addr))
+                    .collect::<StdResult<Vec<Addr>>>()
+            })
+            .transpose()?;
+        allowlist_add
+            .as_ref()
+            .map(|list| {
+                list.iter()
+                    .map(|addr| deps.api.addr_validate(addr))
+                    .collect::<StdResult<Vec<Addr>>>()
+            })
+            .transpose()?;
+        allowlist_remove
+            .as_ref()
+            .map(|list| {
+                list.iter()
+                    .map(|addr| deps.api.addr_validate(addr))
+                    .collect::<StdResult<Vec<Addr>>>()
+            })
+            .transpose()?;
+
+        self.config
+            .update(deps.storage, |prev| -> Result<Config, PreProposeError> {
+                let mut submission_policy = prev.submission_policy;
+
+                match submission_policy {
+                    PreProposeSubmissionPolicy::Anyone { denylist } => {
+                        let mut denylist = denylist.unwrap_or_default();
+
+                        // Add to denylist.
+                        if let Some(mut denylist_add) = denylist_add {
+                            denylist.append(&mut denylist_add);
+                            denylist.dedup();
+                        }
+
+                        // Remove from denylist.
+                        if let Some(denylist_remove) = denylist_remove {
+                            denylist.retain(|a| !denylist_remove.contains(a));
+                        }
+
+                        let denylist = if denylist.is_empty() {
+                            None
+                        } else {
+                            Some(denylist)
+                        };
+
+                        submission_policy = PreProposeSubmissionPolicy::Anyone { denylist };
+                    }
+                    PreProposeSubmissionPolicy::Specific {
+                        dao_members,
+                        allowlist,
+                        denylist,
+                    } => {
+                        let dao_members = if let Some(new_dao_members) = set_dao_members {
+                            new_dao_members
+                        } else {
+                            dao_members
+                        };
+
+                        let mut allowlist = allowlist.unwrap_or_default();
+                        let mut denylist = denylist.unwrap_or_default();
+
+                        // Add to allowlist.
+                        if let Some(mut allowlist_add) = allowlist_add {
+                            allowlist.append(&mut allowlist_add);
+                            allowlist.dedup();
+                        }
+
+                        // Remove from allowlist.
+                        if let Some(allowlist_remove) = allowlist_remove {
+                            allowlist.retain(|a| !allowlist_remove.contains(a));
+                        }
+
+                        // Add to denylist.
+                        if let Some(mut denylist_add) = denylist_add {
+                            denylist.append(&mut denylist_add);
+                            denylist.dedup();
+                        }
+
+                        // Remove from denylist.
+                        if let Some(denylist_remove) = denylist_remove {
+                            denylist.retain(|a| !denylist_remove.contains(a));
+                        }
+
+                        let allowlist = if allowlist.is_empty() {
+                            None
+                        } else {
+                            Some(allowlist)
+                        };
+                        let denylist = if denylist.is_empty() {
+                            None
+                        } else {
+                            Some(denylist)
+                        };
+
+                        submission_policy = PreProposeSubmissionPolicy::Specific {
+                            dao_members,
+                            allowlist,
+                            denylist,
+                        };
+                    }
+                }
+
+                submission_policy.validate()?;
+
+                Ok(Config {
+                    deposit_info: prev.deposit_info,
+                    submission_policy,
+                })
+            })?;
+
+        Ok(Response::default()
+            .add_attribute("method", "update_submission_policy")
+            .add_attribute("sender", info.sender))
     }
 
     pub fn execute_withdraw(
@@ -349,7 +514,7 @@ where
 
         match config.submission_policy {
             PreProposeSubmissionPolicy::Anyone { denylist } => {
-                if !denylist.unwrap_or_default().contains(&who) {
+                if !denylist.unwrap_or_default().contains(&who.to_string()) {
                     return Ok(());
                 }
             }
@@ -359,9 +524,9 @@ where
                 denylist,
             } => {
                 // denylist overrides all other settings
-                if !denylist.unwrap_or_default().contains(&who) {
+                if !denylist.unwrap_or_default().contains(&who.to_string()) {
                     // if on the allowlist, return early
-                    if allowlist.unwrap_or_default().contains(&who) {
+                    if allowlist.unwrap_or_default().contains(&who.to_string()) {
                         return Ok(());
                     }
 

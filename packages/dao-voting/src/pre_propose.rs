@@ -63,7 +63,6 @@ impl PreProposeInfo {
 }
 
 // TODO(pre-propose-submission-policy):
-// - add executions that add/remove individual addresses to/from the allowlist
 // - add tests for the allowlist
 
 /// The policy configured in a pre-propose module that determines who can submit
@@ -75,16 +74,16 @@ pub enum PreProposeSubmissionPolicy {
     /// Anyone may create proposals, except for those in the denylist.
     Anyone {
         /// Addresses that may not create proposals.
-        denylist: Option<Vec<Addr>>,
+        denylist: Option<Vec<String>>,
     },
     /// Specific people may create proposals.
     Specific {
         /// Whether or not DAO members may create proposals.
         dao_members: bool,
         /// Addresses that may create proposals.
-        allowlist: Option<Vec<Addr>>,
+        allowlist: Option<Vec<String>>,
         /// Addresses that may not create proposals, overriding other settings.
-        denylist: Option<Vec<Addr>>,
+        denylist: Option<Vec<String>>,
     },
 }
 

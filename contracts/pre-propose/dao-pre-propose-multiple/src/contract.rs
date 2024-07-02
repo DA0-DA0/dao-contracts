@@ -92,6 +92,19 @@ pub fn execute(
             deposit_info,
             submission_policy,
         },
+        ExecuteMsg::UpdateSubmissionPolicy {
+            denylist_add,
+            denylist_remove,
+            set_dao_members,
+            allowlist_add,
+            allowlist_remove,
+        } => ExecuteInternal::UpdateSubmissionPolicy {
+            denylist_add,
+            denylist_remove,
+            set_dao_members,
+            allowlist_add,
+            allowlist_remove,
+        },
         ExecuteMsg::AddProposalSubmittedHook { address } => {
             ExecuteInternal::AddProposalSubmittedHook { address }
         }
