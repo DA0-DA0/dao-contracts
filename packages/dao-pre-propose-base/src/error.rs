@@ -51,4 +51,7 @@ pub enum PreProposeError {
 
     #[error("An unknown reply ID was received.")]
     UnknownReplyID {},
+
+    #[error("Unsupported")]
+    Unsupported {},
 }

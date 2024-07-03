@@ -968,12 +968,14 @@ fn test_anyone_denylist() {
         PreProposeSubmissionPolicy::Anyone { denylist: None },
     );
 
+    let rando = "rando";
+
     // Proposal succeeds when anyone can propose.
     make_proposal(
         &mut app,
         pre_propose.clone(),
         proposal_single.clone(),
-        "rando",
+        rando,
         &[],
     );
 
@@ -983,14 +985,14 @@ fn test_anyone_denylist() {
         core_addr.as_str(),
         None,
         PreProposeSubmissionPolicy::Anyone {
-            denylist: Some(vec!["rando".to_string()]),
+            denylist: Some(vec![rando.to_string()]),
         },
     );
 
     // Proposing fails if on denylist.
     let err: PreProposeError = app
         .execute_contract(
-            Addr::unchecked("rando"),
+            Addr::unchecked(rando),
             pre_propose.clone(),
             &ExecuteMsg::Propose {
                 msg: ProposeMessage::Propose {
@@ -1012,6 +1014,162 @@ fn test_anyone_denylist() {
 
     // Proposing succeeds if not on denylist.
     make_proposal(&mut app, pre_propose, proposal_single.clone(), "ekez", &[]);
+}
+
+#[test]
+fn test_specific_allowlist_denylist() {
+    let mut app = App::default();
+    let DefaultTestSetup {
+        core_addr,
+        proposal_single,
+        pre_propose,
+    } = setup_default_test(&mut app, None, false);
+
+    update_config(
+        &mut app,
+        pre_propose.clone(),
+        core_addr.as_str(),
+        None,
+        PreProposeSubmissionPolicy::Specific {
+            dao_members: true,
+            allowlist: None,
+            denylist: None,
+        },
+    );
+
+    // Proposal succeeds for member.
+    make_proposal(
+        &mut app,
+        pre_propose.clone(),
+        proposal_single.clone(),
+        "ekez",
+        &[],
+    );
+
+    let rando = "rando";
+
+    // Proposing fails for non-member.
+    let err: PreProposeError = app
+        .execute_contract(
+            Addr::unchecked(rando),
+            pre_propose.clone(),
+            &ExecuteMsg::Propose {
+                msg: ProposeMessage::Propose {
+                    title: "I would like to join the DAO".to_string(),
+                    description: "though, I am currently not a member.".to_string(),
+                    msgs: vec![],
+                    vote: None,
+                },
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        PreProposeError::SubmissionPolicy(PreProposeSubmissionPolicyError::Unauthorized {})
+    );
+
+    update_config(
+        &mut app,
+        pre_propose.clone(),
+        core_addr.as_str(),
+        None,
+        PreProposeSubmissionPolicy::Specific {
+            dao_members: true,
+            allowlist: Some(vec![rando.to_string()]),
+            denylist: None,
+        },
+    );
+
+    // Proposal succeeds if on allowlist.
+    make_proposal(
+        &mut app,
+        pre_propose.clone(),
+        proposal_single.clone(),
+        rando,
+        &[],
+    );
+
+    update_config(
+        &mut app,
+        pre_propose.clone(),
+        core_addr.as_str(),
+        None,
+        PreProposeSubmissionPolicy::Specific {
+            dao_members: true,
+            allowlist: Some(vec![rando.to_string()]),
+            denylist: Some(vec!["ekez".to_string()]),
+        },
+    );
+
+    // Proposing fails if on denylist.
+    let err: PreProposeError = app
+        .execute_contract(
+            Addr::unchecked("ekez"),
+            pre_propose.clone(),
+            &ExecuteMsg::Propose {
+                msg: ProposeMessage::Propose {
+                    title: "Let me propose!".to_string(),
+                    description: "I am a member!!!".to_string(),
+                    msgs: vec![],
+                    vote: None,
+                },
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        PreProposeError::SubmissionPolicy(PreProposeSubmissionPolicyError::Unauthorized {})
+    );
+
+    update_config(
+        &mut app,
+        pre_propose.clone(),
+        core_addr.as_str(),
+        None,
+        PreProposeSubmissionPolicy::Specific {
+            dao_members: false,
+            allowlist: Some(vec![rando.to_string()]),
+            denylist: None,
+        },
+    );
+
+    // Proposing fails if members not allowed.
+    let err: PreProposeError = app
+        .execute_contract(
+            Addr::unchecked("ekez"),
+            pre_propose.clone(),
+            &ExecuteMsg::Propose {
+                msg: ProposeMessage::Propose {
+                    title: "Let me propose!".to_string(),
+                    description: "I am a member!!!".to_string(),
+                    msgs: vec![],
+                    vote: None,
+                },
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        PreProposeError::SubmissionPolicy(PreProposeSubmissionPolicyError::Unauthorized {})
+    );
+
+    // Proposal succeeds if on allowlist.
+    make_proposal(
+        &mut app,
+        pre_propose.clone(),
+        proposal_single.clone(),
+        rando,
+        &[],
+    );
 }
 
 #[test]

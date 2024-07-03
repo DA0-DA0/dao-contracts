@@ -1472,7 +1472,7 @@ fn test_update_config() {
 }
 
 #[test]
-fn test_update_submission_policy() {
+fn test_approver_unsupported_update_config() {
     let mut app = App::default();
 
     // Need to instantiate this so contract addresses match with cw20 test cases
@@ -1480,24 +1480,45 @@ fn test_update_submission_policy() {
 
     let DefaultTestSetup {
         core_addr,
-        pre_propose,
+        pre_propose_approver,
         ..
     } = setup_default_test(&mut app, None, true);
 
-    let config = get_config(&app, pre_propose.clone());
-    assert_eq!(
-        config,
-        Config {
-            deposit_info: None,
-            submission_policy: PreProposeSubmissionPolicy::Anyone { denylist: None },
-        }
+    // Should fail because config is not supported for the approver pre-propose
+    // contract.
+    let err = update_config_should_fail(
+        &mut app,
+        pre_propose_approver,
+        core_addr.as_str(),
+        None,
+        PreProposeSubmissionPolicy::Specific {
+            dao_members: false,
+            allowlist: Some(vec!["ekez".to_string()]),
+            denylist: None,
+        },
     );
+    assert_eq!(err, PreProposeError::Unsupported {});
+}
 
-    // Only the core module can update the submission policy.
+#[test]
+fn test_approver_unsupported_update_submission_policy() {
+    let mut app = App::default();
+
+    // Need to instantiate this so contract addresses match with cw20 test cases
+    let _ = instantiate_cw20_base_default(&mut app);
+
+    let DefaultTestSetup {
+        core_addr,
+        pre_propose_approver,
+        ..
+    } = setup_default_test(&mut app, None, true);
+
+    // Should fail because submission policy is not supported for the approver
+    // pre-propose contract.
     let err: PreProposeError = app
         .execute_contract(
-            Addr::unchecked("ekez"),
-            pre_propose.clone(),
+            core_addr,
+            pre_propose_approver,
             &ExecuteMsg::UpdateSubmissionPolicy {
                 denylist_add: Some(vec!["ekez".to_string()]),
                 denylist_remove: None,
@@ -1510,422 +1531,7 @@ fn test_update_submission_policy() {
         .unwrap_err()
         .downcast()
         .unwrap();
-    assert_eq!(err, PreProposeError::NotDao {});
-
-    // Append to denylist, with auto de-dupe.
-    app.execute_contract(
-        core_addr.clone(),
-        pre_propose.clone(),
-        &ExecuteMsg::UpdateSubmissionPolicy {
-            denylist_add: Some(vec!["ekez".to_string(), "ekez".to_string()]),
-            denylist_remove: None,
-            set_dao_members: None,
-            allowlist_add: None,
-            allowlist_remove: None,
-        },
-        &[],
-    )
-    .unwrap();
-
-    let config = get_config(&app, pre_propose.clone());
-    assert_eq!(
-        config,
-        Config {
-            deposit_info: None,
-            submission_policy: PreProposeSubmissionPolicy::Anyone {
-                denylist: Some(vec!["ekez".to_string()]),
-            },
-        }
-    );
-
-    // Add and remove to/from denylist.
-    app.execute_contract(
-        core_addr.clone(),
-        pre_propose.clone(),
-        &ExecuteMsg::UpdateSubmissionPolicy {
-            denylist_add: Some(vec!["someone".to_string(), "else".to_string()]),
-            denylist_remove: Some(vec!["ekez".to_string()]),
-            set_dao_members: None,
-            allowlist_add: None,
-            allowlist_remove: None,
-        },
-        &[],
-    )
-    .unwrap();
-
-    let config = get_config(&app, pre_propose.clone());
-    assert_eq!(
-        config,
-        Config {
-            deposit_info: None,
-            submission_policy: PreProposeSubmissionPolicy::Anyone {
-                denylist: Some(vec!["someone".to_string(), "else".to_string()]),
-            },
-        }
-    );
-
-    // Remove from denylist.
-    app.execute_contract(
-        core_addr.clone(),
-        pre_propose.clone(),
-        &ExecuteMsg::UpdateSubmissionPolicy {
-            denylist_add: None,
-            denylist_remove: Some(vec!["someone".to_string(), "else".to_string()]),
-            set_dao_members: None,
-            allowlist_add: None,
-            allowlist_remove: None,
-        },
-        &[],
-    )
-    .unwrap();
-
-    let config = get_config(&app, pre_propose.clone());
-    assert_eq!(
-        config,
-        Config {
-            deposit_info: None,
-            submission_policy: PreProposeSubmissionPolicy::Anyone { denylist: None },
-        }
-    );
-
-    // Error if try to change Specific fields when set to Anyone.
-    let err: PreProposeError = app
-        .execute_contract(
-            core_addr.clone(),
-            pre_propose.clone(),
-            &ExecuteMsg::UpdateSubmissionPolicy {
-                denylist_add: None,
-                denylist_remove: None,
-                set_dao_members: Some(true),
-                allowlist_add: None,
-                allowlist_remove: None,
-            },
-            &[],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert_eq!(
-        err,
-        PreProposeError::SubmissionPolicy(
-            PreProposeSubmissionPolicyError::AnyoneInvalidUpdateFields {}
-        )
-    );
-    let err: PreProposeError = app
-        .execute_contract(
-            core_addr.clone(),
-            pre_propose.clone(),
-            &ExecuteMsg::UpdateSubmissionPolicy {
-                denylist_add: None,
-                denylist_remove: None,
-                set_dao_members: None,
-                allowlist_add: Some(vec!["ekez".to_string()]),
-                allowlist_remove: None,
-            },
-            &[],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert_eq!(
-        err,
-        PreProposeError::SubmissionPolicy(
-            PreProposeSubmissionPolicyError::AnyoneInvalidUpdateFields {}
-        )
-    );
-    let err: PreProposeError = app
-        .execute_contract(
-            core_addr.clone(),
-            pre_propose.clone(),
-            &ExecuteMsg::UpdateSubmissionPolicy {
-                denylist_add: None,
-                denylist_remove: None,
-                set_dao_members: None,
-                allowlist_add: None,
-                allowlist_remove: Some(vec!["ekez".to_string()]),
-            },
-            &[],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert_eq!(
-        err,
-        PreProposeError::SubmissionPolicy(
-            PreProposeSubmissionPolicyError::AnyoneInvalidUpdateFields {}
-        )
-    );
-
-    // Change to Specific policy.
-    app.execute_contract(
-        core_addr.clone(),
-        pre_propose.clone(),
-        &ExecuteMsg::UpdateConfig {
-            deposit_info: None,
-            submission_policy: Some(PreProposeSubmissionPolicy::Specific {
-                dao_members: true,
-                allowlist: None,
-                denylist: None,
-            }),
-        },
-        &[],
-    )
-    .unwrap();
-
-    let config = get_config(&app, pre_propose.clone());
-    assert_eq!(
-        config,
-        Config {
-            deposit_info: None,
-            submission_policy: PreProposeSubmissionPolicy::Specific {
-                dao_members: true,
-                allowlist: None,
-                denylist: None,
-            },
-        }
-    );
-
-    // Append to denylist, with auto de-dupe.
-    app.execute_contract(
-        core_addr.clone(),
-        pre_propose.clone(),
-        &ExecuteMsg::UpdateSubmissionPolicy {
-            denylist_add: Some(vec!["ekez".to_string(), "ekez".to_string()]),
-            denylist_remove: None,
-            set_dao_members: None,
-            allowlist_add: None,
-            allowlist_remove: None,
-        },
-        &[],
-    )
-    .unwrap();
-
-    let config = get_config(&app, pre_propose.clone());
-    assert_eq!(
-        config,
-        Config {
-            deposit_info: None,
-            submission_policy: PreProposeSubmissionPolicy::Specific {
-                dao_members: true,
-                allowlist: None,
-                denylist: Some(vec!["ekez".to_string()]),
-            },
-        }
-    );
-
-    // Add and remove to/from denylist.
-    app.execute_contract(
-        core_addr.clone(),
-        pre_propose.clone(),
-        &ExecuteMsg::UpdateSubmissionPolicy {
-            denylist_add: Some(vec!["someone".to_string(), "else".to_string()]),
-            denylist_remove: Some(vec!["ekez".to_string()]),
-            set_dao_members: None,
-            allowlist_add: None,
-            allowlist_remove: None,
-        },
-        &[],
-    )
-    .unwrap();
-
-    let config = get_config(&app, pre_propose.clone());
-    assert_eq!(
-        config,
-        Config {
-            deposit_info: None,
-            submission_policy: PreProposeSubmissionPolicy::Specific {
-                dao_members: true,
-                allowlist: None,
-                denylist: Some(vec!["someone".to_string(), "else".to_string()]),
-            },
-        }
-    );
-
-    // Remove from denylist.
-    app.execute_contract(
-        core_addr.clone(),
-        pre_propose.clone(),
-        &ExecuteMsg::UpdateSubmissionPolicy {
-            denylist_add: None,
-            denylist_remove: Some(vec!["someone".to_string(), "else".to_string()]),
-            set_dao_members: None,
-            allowlist_add: None,
-            allowlist_remove: None,
-        },
-        &[],
-    )
-    .unwrap();
-
-    let config = get_config(&app, pre_propose.clone());
-    assert_eq!(
-        config,
-        Config {
-            deposit_info: None,
-            submission_policy: PreProposeSubmissionPolicy::Specific {
-                dao_members: true,
-                allowlist: None,
-                denylist: None
-            },
-        }
-    );
-
-    // Append to allowlist, with auto de-dupe.
-    app.execute_contract(
-        core_addr.clone(),
-        pre_propose.clone(),
-        &ExecuteMsg::UpdateSubmissionPolicy {
-            denylist_add: None,
-            denylist_remove: None,
-            set_dao_members: None,
-            allowlist_add: Some(vec!["ekez".to_string(), "ekez".to_string()]),
-            allowlist_remove: None,
-        },
-        &[],
-    )
-    .unwrap();
-
-    let config = get_config(&app, pre_propose.clone());
-    assert_eq!(
-        config,
-        Config {
-            deposit_info: None,
-            submission_policy: PreProposeSubmissionPolicy::Specific {
-                dao_members: true,
-                allowlist: Some(vec!["ekez".to_string()]),
-                denylist: None,
-            },
-        }
-    );
-
-    // Add and remove to/from allowlist.
-    app.execute_contract(
-        core_addr.clone(),
-        pre_propose.clone(),
-        &ExecuteMsg::UpdateSubmissionPolicy {
-            denylist_add: None,
-            denylist_remove: None,
-            set_dao_members: None,
-            allowlist_add: Some(vec!["someone".to_string(), "else".to_string()]),
-            allowlist_remove: Some(vec!["ekez".to_string()]),
-        },
-        &[],
-    )
-    .unwrap();
-
-    let config = get_config(&app, pre_propose.clone());
-    assert_eq!(
-        config,
-        Config {
-            deposit_info: None,
-            submission_policy: PreProposeSubmissionPolicy::Specific {
-                dao_members: true,
-                allowlist: Some(vec!["someone".to_string(), "else".to_string()]),
-                denylist: None,
-            },
-        }
-    );
-
-    // Remove from allowlist.
-    app.execute_contract(
-        core_addr.clone(),
-        pre_propose.clone(),
-        &ExecuteMsg::UpdateSubmissionPolicy {
-            denylist_add: None,
-            denylist_remove: None,
-            set_dao_members: None,
-            allowlist_add: None,
-            allowlist_remove: Some(vec!["someone".to_string(), "else".to_string()]),
-        },
-        &[],
-    )
-    .unwrap();
-
-    let config = get_config(&app, pre_propose.clone());
-    assert_eq!(
-        config,
-        Config {
-            deposit_info: None,
-            submission_policy: PreProposeSubmissionPolicy::Specific {
-                dao_members: true,
-                allowlist: None,
-                denylist: None
-            },
-        }
-    );
-
-    // Setting dao_members to false fails if allowlist is empty.
-    let err: PreProposeError = app
-        .execute_contract(
-            core_addr.clone(),
-            pre_propose.clone(),
-            &ExecuteMsg::UpdateSubmissionPolicy {
-                denylist_add: None,
-                denylist_remove: None,
-                set_dao_members: Some(false),
-                allowlist_add: None,
-                allowlist_remove: None,
-            },
-            &[],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert_eq!(
-        err,
-        PreProposeError::SubmissionPolicy(PreProposeSubmissionPolicyError::NoOneAllowed {})
-    );
-
-    // Set dao_members to false and add allowlist.
-    app.execute_contract(
-        core_addr.clone(),
-        pre_propose.clone(),
-        &ExecuteMsg::UpdateSubmissionPolicy {
-            denylist_add: None,
-            denylist_remove: None,
-            set_dao_members: Some(false),
-            allowlist_add: Some(vec!["ekez".to_string()]),
-            allowlist_remove: None,
-        },
-        &[],
-    )
-    .unwrap();
-
-    let config = get_config(&app, pre_propose.clone());
-    assert_eq!(
-        config,
-        Config {
-            deposit_info: None,
-            submission_policy: PreProposeSubmissionPolicy::Specific {
-                dao_members: false,
-                allowlist: Some(vec!["ekez".to_string()]),
-                denylist: None
-            },
-        }
-    );
-
-    // Errors when allowlist and denylist overlap.
-    let err: PreProposeError = app
-        .execute_contract(
-            core_addr.clone(),
-            pre_propose.clone(),
-            &ExecuteMsg::UpdateSubmissionPolicy {
-                denylist_add: Some(vec!["ekez".to_string()]),
-                denylist_remove: None,
-                set_dao_members: None,
-                allowlist_add: None,
-                allowlist_remove: None,
-            },
-            &[],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert_eq!(
-        err,
-        PreProposeError::SubmissionPolicy(
-            PreProposeSubmissionPolicyError::DenylistAllowlistOverlap {}
-        )
-    );
+    assert_eq!(err, PreProposeError::Unsupported {});
 }
 
 #[test]

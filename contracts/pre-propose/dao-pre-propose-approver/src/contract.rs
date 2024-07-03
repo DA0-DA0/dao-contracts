@@ -34,8 +34,9 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, PreProposeError> {
-    // This contract does not handle deposits or have open submissions
-    // Here we hardcode the pre-propose-base instantiate message
+    // This contract does not handle deposits or allow submission permissions
+    // since only the approval-single contract can create proposals. Just
+    // hardcode the pre-propose-base instantiate message.
     let base_instantiate_msg = BaseInstantiateMsg {
         deposit_info: None,
         submission_policy: PreProposeSubmissionPolicy::Specific {
@@ -97,6 +98,9 @@ pub fn execute(
         ExecuteMsg::Extension { msg } => match msg {
             ExecuteExt::ResetApprover {} => execute_reset_approver(deps, env, info),
         },
+        // Override config updates since they don't apply.
+        ExecuteMsg::UpdateConfig { .. } => Err(PreProposeError::Unsupported {}),
+        ExecuteMsg::UpdateSubmissionPolicy { .. } => Err(PreProposeError::Unsupported {}),
         _ => PrePropose::default().execute(deps, env, info, msg),
     }
 }
@@ -112,7 +116,7 @@ pub fn execute_propose(
         return Err(PreProposeError::Unauthorized {});
     }
 
-    // Get pre_prospose_id, transform proposal for the approver
+    // Get pre_propose_id, transform proposal for the approver
     // Here we make sure that there are no messages that can be executed
     let (pre_propose_id, sanitized_msg) = match msg {
         ApproverProposeMessage::Propose {

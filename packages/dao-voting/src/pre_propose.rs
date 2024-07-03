@@ -62,9 +62,6 @@ impl PreProposeInfo {
     }
 }
 
-// TODO(pre-propose-submission-policy):
-// - add tests for the allowlist and dao_members flags under the anyone denylist test
-
 /// The policy configured in a pre-propose module that determines who can submit
 /// proposals. This is the preferred way to restrict proposal creation (as
 /// opposed to the ProposalCreationPolicy above) since pre-propose modules
