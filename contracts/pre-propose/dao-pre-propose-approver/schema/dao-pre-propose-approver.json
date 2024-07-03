@@ -51,11 +51,9 @@
         "properties": {
           "update_config": {
             "type": "object",
-            "required": [
-              "submission_policy"
-            ],
             "properties": {
               "deposit_info": {
+                "description": "If None, will remove the deposit. Backwards compatible.",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/UncheckedDepositInfo"
@@ -66,7 +64,78 @@
                 ]
               },
               "submission_policy": {
-                "$ref": "#/definitions/PreProposeSubmissionPolicy"
+                "description": "If None, will leave the submission policy in the config as-is.",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/PreProposeSubmissionPolicy"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Perform more granular submission policy updates to allow for atomic operations that don't override others.",
+        "type": "object",
+        "required": [
+          "update_submission_policy"
+        ],
+        "properties": {
+          "update_submission_policy": {
+            "type": "object",
+            "properties": {
+              "allowlist_add": {
+                "description": "If using specific policy, optionally add to the allowlist.",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "allowlist_remove": {
+                "description": "If using specific policy, optionally remove from the allowlist.",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "denylist_add": {
+                "description": "Optionally add to the denylist. Works for any submission policy.",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "denylist_remove": {
+                "description": "Optionally remove from denylist. Works for any submission policy.",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "set_dao_members": {
+                "description": "If using specific policy, optionally update the `dao_members` flag.",
+                "type": [
+                  "boolean",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -197,10 +266,6 @@
       }
     ],
     "definitions": {
-      "Addr": {
-        "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
-        "type": "string"
-      },
       "ApproverProposeMessage": {
         "oneOf": [
           {
@@ -394,7 +459,7 @@
                       "null"
                     ],
                     "items": {
-                      "$ref": "#/definitions/Addr"
+                      "type": "string"
                     }
                   }
                 },
@@ -423,7 +488,7 @@
                       "null"
                     ],
                     "items": {
-                      "$ref": "#/definitions/Addr"
+                      "type": "string"
                     }
                   },
                   "dao_members": {
@@ -437,7 +502,7 @@
                       "null"
                     ],
                     "items": {
-                      "$ref": "#/definitions/Addr"
+                      "type": "string"
                     }
                   }
                 },
@@ -937,7 +1002,7 @@
                         "null"
                       ],
                       "items": {
-                        "$ref": "#/definitions/Addr"
+                        "type": "string"
                       }
                     }
                   },
@@ -966,7 +1031,7 @@
                         "null"
                       ],
                       "items": {
-                        "$ref": "#/definitions/Addr"
+                        "type": "string"
                       }
                     },
                     "dao_members": {
@@ -980,7 +1045,7 @@
                         "null"
                       ],
                       "items": {
-                        "$ref": "#/definitions/Addr"
+                        "type": "string"
                       }
                     }
                   },
