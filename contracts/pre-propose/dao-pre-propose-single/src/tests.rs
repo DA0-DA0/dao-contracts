@@ -1464,7 +1464,7 @@ fn test_update_config() {
     // Errors when allowlist and denylist overlap.
     let err = update_config_should_fail(
         &mut app,
-        pre_propose,
+        pre_propose.clone(),
         core_addr.as_str(),
         None,
         PreProposeSubmissionPolicy::Specific {
@@ -1478,6 +1478,27 @@ fn test_update_config() {
         PreProposeError::SubmissionPolicy(
             PreProposeSubmissionPolicyError::DenylistAllowlistOverlap {}
         )
+    );
+
+    // Doesn't change submission policy if omitted.
+    app.execute_contract(
+        core_addr,
+        pre_propose.clone(),
+        &ExecuteMsg::UpdateConfig {
+            deposit_info: None,
+            submission_policy: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let config = get_config(&app, pre_propose);
+    assert_eq!(
+        config,
+        Config {
+            deposit_info: None,
+            submission_policy: PreProposeSubmissionPolicy::Anyone { denylist: None },
+        }
     );
 }
 
