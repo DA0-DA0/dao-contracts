@@ -5,6 +5,7 @@ members = [
   "contracts/distribution/*",
   "contracts/delegation/*",
   "contracts/external/*",
+  "contracts/gauges/*",
   "contracts/proposal/*",
   "contracts/pre-propose/*",
   "contracts/staking/*",
@@ -143,6 +144,8 @@ dao-voting-cw721-roles = { path = "./contracts/voting/dao-voting-cw721-roles", v
 dao-voting-cw721-staked = { path = "./contracts/voting/dao-voting-cw721-staked", version = "2.8.0-alpha.2" }
 dao-voting-onft-staked = { path = "./contracts/voting/dao-voting-onft-staked", version = "2.8.0-alpha.2" }
 dao-voting-token-staked = { path = "./contracts/voting/dao-voting-token-staked", version = "2.8.0-alpha.2" }
+gauge-adapter = { path = "./contracts/gauges/gauge-adapter", version = "2.8.0-alpha.2" }
+gauge-orchestrator = { path = "./contracts/gauges/gauge", version = "2.8.0-alpha.2" }
 nft-controllers = { path = "./packages/nft-controllers", version = "2.8.0-alpha.2" }
 
 # v1 dependencies. used for state migrations.
