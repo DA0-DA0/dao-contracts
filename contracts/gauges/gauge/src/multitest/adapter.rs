@@ -4,7 +4,7 @@
 //! otherwise returns true - option is valid.
 
 use cosmwasm_std::{
-    coin, to_binary, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Empty, Env, MessageInfo,
+    coin, to_json_binary, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Empty, Env, MessageInfo,
     Order, Response, StdError, StdResult,
 };
 use cw_multi_test::{Contract, ContractWrapper};
@@ -65,12 +65,12 @@ fn execute(
 
 fn query(deps: Deps, _env: Env, msg: AdapterQueryMsg) -> Result<Binary, StdError> {
     match msg {
-        AdapterQueryMsg::AllOptions {} => to_binary(&AllOptionsResponse {
+        AdapterQueryMsg::AllOptions {} => to_json_binary(&AllOptionsResponse {
             options: OPTIONS
                 .keys(deps.storage, None, None, Order::Ascending)
                 .collect::<StdResult<Vec<_>>>()?,
         }),
-        AdapterQueryMsg::CheckOption { option } => to_binary(&CheckOptionResponse {
+        AdapterQueryMsg::CheckOption { option } => to_json_binary(&CheckOptionResponse {
             valid: OPTIONS.has(deps.storage, option),
         }),
         AdapterQueryMsg::SampleGaugeMsgs { selected } => {
@@ -89,7 +89,7 @@ fn query(deps: Deps, _env: Env, msg: AdapterQueryMsg) -> Result<Binary, StdError
                     })
                 })
                 .collect::<Vec<CosmosMsg>>();
-            to_binary(&SampleGaugeMsgsResponse { execute })
+            to_json_binary(&SampleGaugeMsgsResponse { execute })
         }
     }
 }

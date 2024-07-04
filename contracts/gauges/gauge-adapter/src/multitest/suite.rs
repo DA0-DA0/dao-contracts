@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, Addr, Binary, Coin, Uint128};
+use cosmwasm_std::{to_json_binary, Addr, Binary, Coin, Uint128};
 use cw20::{BalanceResponse, Cw20QueryMsg};
 use cw20::{Cw20Coin, MinterResponse};
 use cw_multi_test::{App, AppResponse, ContractWrapper, Executor};
@@ -225,7 +225,7 @@ impl Suite {
         amount: u128,
         cw20_addr: Addr,
     ) -> AnyResult<AppResponse> {
-        let msg: Binary = to_binary(&ReceiveMsg::CreateSubmission { name, url, address })?;
+        let msg: Binary = to_json_binary(&ReceiveMsg::CreateSubmission { name, url, address })?;
 
         self.app.execute_contract(
             sender,

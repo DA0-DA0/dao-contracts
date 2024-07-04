@@ -1,9 +1,8 @@
-use cosmwasm_std::{Addr, Decimal, StdError, Uint128};
-use cw_multi_test::{App, ContractWrapper, Executor};
-use voting::Vote;
+use cosmwasm_std::{Decimal, StdError, Uint128};
+use dao_voting::voting::Vote;
 
 use crate::{
-    msg::{GaugeMigrationConfig, GaugeResponse, ResetMigrationConfig, VoteInfo},
+    msg::{GaugeMigrationConfig, GaugeResponse, ResetMigrationConfig},
     multitest::suite::SuiteBuilder,
     ContractError,
 };
@@ -48,7 +47,7 @@ fn basic_gauge_reset() {
         .execute_single_proposal(voter1.to_string(), proposal)
         .unwrap();
     let proposal_modules = suite.query_proposal_modules().unwrap();
-    let gauge_contract = proposal_modules[0].clone();
+    let gauge_contract = proposal_modules[1].clone();
 
     let gauge_id = 0;
 
@@ -151,19 +150,6 @@ fn basic_gauge_reset() {
     );
 }
 
-fn store_old_gauge(app: &mut App) -> u64 {
-    let contract = Box::new(
-        ContractWrapper::new_with_empty(
-            gauge_orchestrator_1_6::contract::execute,
-            gauge_orchestrator_1_6::contract::instantiate,
-            gauge_orchestrator_1_6::contract::query,
-        )
-        .with_migrate(gauge_orchestrator_1_6::contract::migrate),
-    );
-
-    app.store_code(contract)
-}
-
 #[test]
 fn gauge_migrate_with_reset() {
     let voter1 = "voter1";
@@ -183,7 +169,7 @@ fn gauge_migrate_with_reset() {
     suite.execute_single_proposal(voter1, proposal).unwrap();
     let proposal_modules = suite.query_proposal_modules().unwrap();
     assert_eq!(proposal_modules.len(), 2);
-    let gauge_contract = proposal_modules[0].clone();
+    let gauge_contract = proposal_modules[1].clone();
 
     // create adapter
     let gauge_adapter = suite
@@ -299,7 +285,7 @@ fn gauge_migrate_keeps_last_reset() {
     suite.execute_single_proposal(voter1, proposal).unwrap();
     let proposal_modules = suite.query_proposal_modules().unwrap();
     assert_eq!(proposal_modules.len(), 2);
-    let gauge_contract = proposal_modules[0].clone();
+    let gauge_contract = proposal_modules[1].clone();
 
     // create adapter
     suite
@@ -380,7 +366,7 @@ fn partial_reset() {
         .execute_single_proposal(voter1.to_string(), proposal)
         .unwrap();
     let proposal_modules = suite.query_proposal_modules().unwrap();
-    let gauge_contract = proposal_modules[0].clone();
+    let gauge_contract = proposal_modules[1].clone();
 
     let gauge_id = 0;
 
@@ -428,175 +414,4 @@ fn partial_reset() {
     suite
         .reset_gauge("someone", &gauge_contract, gauge_id, 1)
         .unwrap();
-}
-
-#[test]
-fn vote_migration() {
-    let voter1 = "voter1";
-    let voter2 = "voter2";
-    let mut suite = SuiteBuilder::new()
-        .with_voting_members(&[(voter1, 100), (voter2, 200)])
-        .build();
-
-    // setup old gauge version
-    let old_gauge = store_old_gauge(&mut suite.app);
-    let new_gauge = suite.gauge_code_id;
-    suite.gauge_code_id = old_gauge;
-    suite.next_block();
-    suite.propose_update_proposal_module(voter1, None).unwrap();
-    suite.next_block();
-    let proposal = suite.list_proposals().unwrap()[0];
-    suite
-        .place_vote_single(voter1, proposal, Vote::Yes)
-        .unwrap();
-    suite
-        .place_vote_single(voter2, proposal, Vote::Yes)
-        .unwrap();
-    suite.next_block();
-    suite.execute_single_proposal(voter1, proposal).unwrap();
-    let proposal_modules = suite.query_proposal_modules().unwrap();
-    assert_eq!(proposal_modules.len(), 2);
-    let gauge_contract = proposal_modules[0].clone();
-    let gauge_id = 0;
-
-    // create adapter
-    let option = suite
-        .instantiate_adapter_and_return_config(&["option1", "option2"], (1000, "ujuno"), None, None)
-        .unwrap();
-    suite
-        .app
-        .execute_contract(
-            Addr::unchecked(&suite.owner),
-            gauge_contract.clone(),
-            &gauge_orchestrator_1_6::msg::ExecuteMsg::CreateGauge(
-                gauge_orchestrator_1_6::msg::GaugeConfig {
-                    title: option.title,
-                    adapter: option.adapter,
-                    epoch_size: option.epoch_size,
-                    min_percent_selected: option.min_percent_selected,
-                    max_options_selected: option.max_options_selected,
-                    max_available_percentage: option.max_available_percentage,
-                },
-            ),
-            &[],
-        )
-        .unwrap();
-
-    // place votes
-    suite
-        .place_vote(
-            &gauge_contract,
-            voter1,
-            gauge_id,
-            Some("option1".to_owned()),
-        )
-        .unwrap();
-    suite
-        .place_votes(
-            &gauge_contract,
-            voter2,
-            gauge_id,
-            vec![
-                ("option1".to_owned(), Decimal::percent(50)),
-                ("option2".to_owned(), Decimal::percent(50)),
-            ],
-        )
-        .unwrap();
-
-    // migrate the gauge to new code
-    suite.gauge_code_id = new_gauge;
-    suite
-        .auto_migrate_gauge(
-            &gauge_contract,
-            vec![(
-                gauge_id,
-                GaugeMigrationConfig {
-                    next_epoch: None,
-                    reset: Some(ResetMigrationConfig {
-                        reset_epoch: RESET_EPOCH,
-                        next_reset: suite.current_time() + 100,
-                    }),
-                },
-            )],
-        )
-        .unwrap();
-
-    // check that all votes are still there
-    let selected_set = suite.query_selected_set(&gauge_contract, gauge_id).unwrap();
-    assert_eq!(
-        selected_set,
-        vec![
-            ("option1".to_owned(), Uint128::new(200)),
-            ("option2".to_owned(), Uint128::new(100))
-        ]
-    );
-    let votes = suite.query_list_votes(&gauge_contract, gauge_id).unwrap();
-    let expected_votes1 = VoteInfo {
-        voter: voter1.to_owned(),
-        votes: vec![crate::state::Vote {
-            option: "option1".to_owned(),
-            weight: Decimal::one(),
-        }],
-        cast: None,
-    };
-    let expected_votes2 = VoteInfo {
-        voter: voter2.to_owned(),
-        votes: vec![
-            crate::state::Vote {
-                option: "option1".to_owned(),
-                weight: Decimal::percent(50),
-            },
-            crate::state::Vote {
-                option: "option2".to_owned(),
-                weight: Decimal::percent(50),
-            },
-        ],
-        cast: None,
-    };
-    assert_eq!(
-        votes,
-        vec![expected_votes1.clone(), expected_votes2.clone()]
-    );
-    let vote1 = suite.query_vote(&gauge_contract, gauge_id, voter1).unwrap();
-    assert_eq!(vote1, Some(expected_votes1));
-    let vote2 = suite.query_vote(&gauge_contract, gauge_id, voter2).unwrap();
-    assert_eq!(vote2, Some(expected_votes2));
-
-    // change vote
-    suite
-        .place_vote(
-            &gauge_contract,
-            voter1,
-            gauge_id,
-            Some("option2".to_owned()),
-        )
-        .unwrap();
-    let vote1 = suite.query_vote(&gauge_contract, gauge_id, voter1).unwrap();
-    assert_eq!(
-        vote1,
-        Some(VoteInfo {
-            voter: voter1.to_owned(),
-            votes: vec![crate::state::Vote {
-                option: "option2".to_owned(),
-                weight: Decimal::one()
-            }],
-            cast: Some(suite.current_time()),
-        })
-    );
-
-    // reset the gauge
-    suite.advance_time(100); // only 100 seconds, because we set it in the migration
-    suite
-        .reset_gauge("someone", &gauge_contract, gauge_id, 10)
-        .unwrap();
-
-    // check that all votes are gone
-    let selected_set = suite.query_selected_set(&gauge_contract, gauge_id).unwrap();
-    assert_eq!(selected_set, vec![]);
-    let votes = suite.query_list_votes(&gauge_contract, gauge_id).unwrap();
-    assert_eq!(votes, vec![]);
-    let vote1 = suite.query_vote(&gauge_contract, gauge_id, voter1).unwrap();
-    assert_eq!(vote1, None);
-    let vote2 = suite.query_vote(&gauge_contract, gauge_id, voter2).unwrap();
-    assert_eq!(vote2, None);
 }

@@ -1,15 +1,18 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{CosmosMsg, Decimal, Uint128};
+use cw4::MemberChangedHookMsg;
+use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 
 use crate::state::{Reset, Vote};
-use wynd_stake::hook::MemberChangedHookMsg;
 
 type GaugeId = u64;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    /// Address of contract to that contains all voting powers (where we query and listen to hooks)
+    /// Address of contract to that contains all voting powers (where we query)
     pub voting_powers: String,
+    /// Addres that will call voting power change hooks (often same as voting power contract)
+    pub hook_caller: String,
     /// Address that can add new gauges or stop them
     pub owner: String,
     /// Allow attaching multiple adaptors during instantiation.
@@ -40,8 +43,11 @@ pub struct GaugeConfig {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    /// Must be compatible with MemberChangedExecuteMsg from wynd-stake.
-    /// Use this to update
+    /// Updates gauge voting power in Token DAOs when a user stakes or unstakes
+    StakeChangeHook(StakeChangedHookMsg),
+    /// Updates gauge voting power in NFT DAOs when a user stakes or unstakes
+    NftStakeChangeHook(NftStakeChangedHookMsg),
+    /// Updates gauge voting power for membership changes
     MemberChangedHook(MemberChangedHookMsg),
     /// This creates a new Gauge, returns CreateGaugeReply JSON-encoded in the data field.
     /// Can only be called by owner
@@ -94,7 +100,7 @@ pub struct CreateGaugeReply {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(cw_core_interface::voting::InfoResponse)]
+    #[returns(dao_interface::voting::InfoResponse)]
     Info {},
     #[returns(GaugeResponse)]
     Gauge { id: u64 },

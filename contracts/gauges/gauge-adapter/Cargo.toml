@@ -1,12 +1,13 @@
 [package]
-name = "marketing-gauge-adapter"
+name = "gauge-adapter"
 authors = ["Jakub <jakub@confio.gmbh>"]
 version = { workspace = true }
 edition = { workspace = true }
-license = { workspace = true }
 repository = { workspace = true }
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# This repo was fork from https://github.com/wynddao/wynddao and does not use
+# the default DAO DAO license, git history has been retained
+license = "Apache-2.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

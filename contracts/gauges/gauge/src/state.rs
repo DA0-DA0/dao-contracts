@@ -33,8 +33,10 @@ const DEFAULT_LIMIT: u32 = 30;
 
 #[cw_serde]
 pub struct Config {
-    /// Address of contract to that contains all voting powers (where we query and listen to hooks)
+    /// Address of contract to that contains all voting powers (where we query)
     pub voting_powers: Addr,
+    /// Addres that will call voting power change hooks (often same as voting power contract)
+    pub hook_caller: Addr,
     /// Address that can add new gauges or stop them
     pub owner: Addr,
     /// Address of DAO core module resposible for instantiation and execution of messages

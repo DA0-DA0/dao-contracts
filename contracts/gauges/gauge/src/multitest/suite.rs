@@ -1,20 +1,30 @@
 use anyhow::Result as AnyResult;
-
-use cosmwasm_std::{coin, to_binary, Addr, Coin, CosmosMsg, Decimal, StdResult, Uint128, WasmMsg};
-use cw4::Member;
-use cw4_voting::msg::InstantiateMsg as VotingInstantiateMsg;
-use cw_core::msg::{
-    Admin, ExecuteMsg as CoreExecuteMsg, InstantiateMsg as CoreInstantiateMsg,
-    ModuleInstantiateInfo, QueryMsg as CoreQueryMsg,
+use cosmwasm_std::{
+    coin, to_json_binary, Addr, Coin, CosmosMsg, Decimal, StdResult, Uint128, WasmMsg,
 };
+use cw4::Member;
+use cw4_group::msg::ExecuteMsg as Cw4ExecuteMsg;
 use cw_multi_test::{App, AppResponse, ContractWrapper, Executor};
-use cw_proposal_single::{
+use cw_utils::Duration;
+use dao_interface::{
+    msg::{
+        ExecuteMsg as CoreExecuteMsg, InstantiateMsg as CoreInstantiateMsg,
+        QueryMsg as CoreQueryMsg,
+    },
+    state::{Admin, ModuleInstantiateInfo, ProposalModule},
+};
+use dao_proposal_single::{
     msg::ExecuteMsg as ProposalSingleExecuteMsg,
     msg::InstantiateMsg as ProposalSingleInstantiateMsg, msg::QueryMsg as ProposalSingleQueryMsg,
-    query::ProposalListResponse, state::Executor as ProposalSingleExecutor,
+    query::ProposalListResponse,
 };
-use cw_utils::Duration;
-use voting::{PercentageThreshold, Threshold, Vote};
+use dao_voting::{
+    pre_propose::PreProposeInfo,
+    proposal::SingleChoiceProposeMsg,
+    threshold::{PercentageThreshold, Threshold},
+    voting::Vote,
+};
+use dao_voting_cw4::msg::{InstantiateMsg as VotingInstantiateMsg, QueryMsg as VotingQueryMsg};
 
 use super::adapter::{
     contract as adapter_contract, ExecuteMsg as AdapterExecuteMsg,
@@ -56,11 +66,11 @@ fn store_group(app: &mut App) -> u64 {
 fn store_voting(app: &mut App) -> u64 {
     let contract = Box::new(
         ContractWrapper::new_with_empty(
-            cw4_voting::contract::execute,
-            cw4_voting::contract::instantiate,
-            cw4_voting::contract::query,
+            dao_voting_cw4::contract::execute,
+            dao_voting_cw4::contract::instantiate,
+            dao_voting_cw4::contract::query,
         )
-        .with_reply_empty(cw4_voting::contract::reply),
+        .with_reply_empty(dao_voting_cw4::contract::reply),
     );
 
     app.store_code(contract)
@@ -68,9 +78,9 @@ fn store_voting(app: &mut App) -> u64 {
 
 fn store_proposal_single(app: &mut App) -> u64 {
     let contract = Box::new(ContractWrapper::new_with_empty(
-        cw_proposal_single::contract::execute,
-        cw_proposal_single::contract::instantiate,
-        cw_proposal_single::contract::query,
+        dao_proposal_single::contract::execute,
+        dao_proposal_single::contract::instantiate,
+        dao_proposal_single::contract::query,
     ));
 
     app.store_code(contract)
@@ -79,11 +89,11 @@ fn store_proposal_single(app: &mut App) -> u64 {
 fn store_core(app: &mut App) -> u64 {
     let contract = Box::new(
         ContractWrapper::new_with_empty(
-            cw_core::contract::execute,
-            cw_core::contract::instantiate,
-            cw_core::contract::query,
+            dao_dao_core::contract::execute,
+            dao_dao_core::contract::instantiate,
+            dao_dao_core::contract::query,
         )
-        .with_reply_empty(cw_core::contract::reply),
+        .with_reply_empty(dao_dao_core::contract::reply),
     );
 
     app.store_code(contract)
@@ -129,36 +139,42 @@ impl SuiteBuilder {
         let voting_code_id = store_voting(&mut app);
         let voting_module = ModuleInstantiateInfo {
             code_id: voting_code_id,
-            msg: to_binary(&VotingInstantiateMsg {
-                cw4_group_code_id: group_code_id,
-                initial_members: self.voting_members,
+            msg: to_json_binary(&VotingInstantiateMsg {
+                group_contract: dao_voting_cw4::msg::GroupContract::New {
+                    cw4_group_code_id: group_code_id,
+                    initial_members: self.voting_members,
+                },
             })
             .unwrap(),
-            admin: Admin::Address {
+            admin: Some(Admin::Address {
                 addr: owner.to_string(),
-            },
+            }),
             label: "CW4 Voting Contract".to_owned(),
+            funds: vec![],
         };
 
         // instantiate proposal_single module
         let proposal_single_code_id = store_proposal_single(&mut app);
         let proposal_module = ModuleInstantiateInfo {
             code_id: proposal_single_code_id,
-            msg: to_binary(&ProposalSingleInstantiateMsg {
+            msg: to_json_binary(&ProposalSingleInstantiateMsg {
                 threshold: Threshold::AbsolutePercentage {
                     percentage: PercentageThreshold::Majority {},
                 },
                 max_voting_period: Duration::Time(66666666),
                 min_voting_period: None,
                 allow_revoting: false,
-                deposit_info: None,
-                executor: ProposalSingleExecutor::Members,
+                only_members_execute: false,
+                pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+                close_proposal_on_execution_failure: false,
+                veto: None,
             })
             .unwrap(),
-            admin: Admin::Address {
+            admin: Some(Admin::Address {
                 addr: owner.to_string(),
-            },
+            }),
             label: "Proposal Single Contract".to_owned(),
+            funds: vec![],
         };
 
         // intantiate core contract,
@@ -177,6 +193,7 @@ impl SuiteBuilder {
                     voting_module_instantiate_info: voting_module,
                     proposal_modules_instantiate_info: vec![proposal_module],
                     initial_items: None,
+                    dao_uri: None,
                 },
                 &[],
                 "CW CORE",
@@ -195,12 +212,16 @@ impl SuiteBuilder {
             .wrap()
             .query_wasm_smart(&core, &CoreQueryMsg::VotingModule {})
             .unwrap();
-        let proposal_single_contract: Vec<Addr> = app
+        let group_contract: Addr = app
+            .wrap()
+            .query_wasm_smart(voting_contract.clone(), &VotingQueryMsg::GroupContract {})
+            .unwrap();
+        let proposal_single_contract: Vec<ProposalModule> = app
             .wrap()
             .query_wasm_smart(
                 &core,
                 &CoreQueryMsg::ProposalModules {
-                    start_at: None,
+                    start_after: None,
                     limit: None,
                 },
             )
@@ -213,8 +234,9 @@ impl SuiteBuilder {
             owner: owner.to_string(),
             app,
             core,
+            group_contract,
             voting: voting_contract,
-            proposal_single: proposal_single_contract[0].clone(),
+            proposal_single: proposal_single_contract[0].address.clone(),
             gauge_code_id,
             gauge_adapter_code_id,
         }
@@ -225,10 +247,11 @@ pub struct Suite {
     pub owner: String,
     pub app: App,
     pub core: Addr,
-    voting: Addr,
-    proposal_single: Addr,
+    pub group_contract: Addr,
+    pub voting: Addr,
+    pub proposal_single: Addr,
     pub gauge_code_id: u64,
-    gauge_adapter_code_id: u64,
+    pub gauge_adapter_code_id: u64,
 }
 
 impl Suite {
@@ -484,29 +507,100 @@ impl Suite {
         proposer: impl Into<String>,
         gauge_config: impl Into<Option<Vec<GaugeConfig>>>,
     ) -> AnyResult<AppResponse> {
-        let propose_msg = ProposalSingleExecuteMsg::Propose {
+        let propose_msg = ProposalSingleExecuteMsg::Propose(SingleChoiceProposeMsg {
             title: "gauge as proposal module".to_owned(),
             description: "Propose core to set gauge as proposal module".to_owned(),
             msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: self.core.to_string(),
-                msg: to_binary(&CoreExecuteMsg::UpdateProposalModules {
+                msg: to_json_binary(&CoreExecuteMsg::UpdateProposalModules {
                     to_add: vec![ModuleInstantiateInfo {
                         code_id: self.gauge_code_id,
-                        msg: to_binary(&InstantiateMsg {
+                        msg: to_json_binary(&InstantiateMsg {
                             voting_powers: self.voting.to_string(),
+                            hook_caller: self.group_contract.to_string(),
                             owner: self.owner.clone(),
                             gauges: gauge_config.into(),
                         })?,
-                        admin: Admin::Address {
+                        admin: Some(Admin::Address {
                             addr: self.owner.clone(),
-                        },
+                        }),
                         label: "CW4 Voting Contract".to_owned(),
+                        funds: vec![],
                     }],
-                    to_remove: vec![],
+                    to_disable: vec![],
                 })?,
                 funds: vec![],
             })],
-        };
+            proposer: None,
+            vote: None,
+        });
+        self.app.execute_contract(
+            Addr::unchecked(proposer),
+            self.proposal_single.clone(),
+            &propose_msg,
+            &[],
+        )
+    }
+
+    pub fn propose_update_proposal_module_custom_hook_caller(
+        &mut self,
+        proposer: impl Into<String>,
+        hook_caller: impl Into<String>,
+        gauge_config: impl Into<Option<Vec<GaugeConfig>>>,
+    ) -> AnyResult<AppResponse> {
+        let propose_msg = ProposalSingleExecuteMsg::Propose(SingleChoiceProposeMsg {
+            title: "gauge as proposal module".to_owned(),
+            description: "Propose core to set gauge as proposal module".to_owned(),
+            msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: self.core.to_string(),
+                msg: to_json_binary(&CoreExecuteMsg::UpdateProposalModules {
+                    to_add: vec![ModuleInstantiateInfo {
+                        code_id: self.gauge_code_id,
+                        msg: to_json_binary(&InstantiateMsg {
+                            voting_powers: self.voting.to_string(),
+                            hook_caller: Addr::unchecked(hook_caller).to_string(),
+                            owner: self.owner.clone(),
+                            gauges: gauge_config.into(),
+                        })?,
+                        admin: Some(Admin::Address {
+                            addr: self.owner.clone(),
+                        }),
+                        label: "CW4 Voting Contract".to_owned(),
+                        funds: vec![],
+                    }],
+                    to_disable: vec![],
+                })?,
+                funds: vec![],
+            })],
+            proposer: None,
+            vote: None,
+        });
+        self.app.execute_contract(
+            Addr::unchecked(proposer),
+            self.proposal_single.clone(),
+            &propose_msg,
+            &[],
+        )
+    }
+
+    pub fn propose_add_membership_change_hook(
+        &mut self,
+        proposer: impl Into<String>,
+        gauge_contract: Addr,
+    ) -> AnyResult<AppResponse> {
+        let propose_msg = ProposalSingleExecuteMsg::Propose(SingleChoiceProposeMsg {
+            title: "Add membership change hook".to_owned(),
+            description: "Propose core to add membership change hook for gauge".to_owned(),
+            msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: self.group_contract.to_string(),
+                msg: to_json_binary(&Cw4ExecuteMsg::AddHook {
+                    addr: gauge_contract.to_string(),
+                })?,
+                funds: vec![],
+            })],
+            proposer: None,
+            vote: None,
+        });
         self.app.execute_contract(
             Addr::unchecked(proposer),
             self.proposal_single.clone(),
@@ -618,7 +712,11 @@ impl Suite {
         self.app.execute_contract(
             Addr::unchecked(voter),
             self.proposal_single.clone(),
-            &ProposalSingleExecuteMsg::Vote { proposal_id, vote },
+            &ProposalSingleExecuteMsg::Vote {
+                proposal_id,
+                vote,
+                rationale: None,
+            },
             &[],
         )
     }
@@ -636,6 +734,19 @@ impl Suite {
         )
     }
 
+    pub fn force_update_members(
+        &mut self,
+        remove: Vec<String>,
+        add: Vec<Member>,
+    ) -> AnyResult<AppResponse> {
+        self.app.execute_contract(
+            Addr::unchecked(self.core.clone()),
+            self.group_contract.clone(),
+            &Cw4ExecuteMsg::UpdateMembers { remove, add },
+            &[],
+        )
+    }
+
     pub fn list_proposals(&self) -> StdResult<Vec<u64>> {
         let list: ProposalListResponse = self.app.wrap().query_wasm_smart(
             self.proposal_single.clone(),
@@ -648,13 +759,21 @@ impl Suite {
     }
 
     pub fn query_proposal_modules(&self) -> StdResult<Vec<Addr>> {
-        self.app.wrap().query_wasm_smart(
-            self.core.clone(),
-            &CoreQueryMsg::ProposalModules {
-                start_at: None,
-                limit: None,
-            },
-        )
+        let proposal_module: Vec<ProposalModule> = self
+            .app
+            .wrap()
+            .query_wasm_smart(
+                self.core.clone(),
+                &CoreQueryMsg::ProposalModules {
+                    start_after: None,
+                    limit: None,
+                },
+            )
+            .unwrap();
+        proposal_module
+            .into_iter()
+            .map(|pm| Ok(pm.address))
+            .collect()
     }
 
     pub fn query_balance(&self, account: &str, denom: &str) -> StdResult<u128> {

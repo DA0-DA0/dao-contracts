@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coins, from_binary, to_binary, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env,
+    coins, from_json, to_json_binary, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env,
     MessageInfo, Order, Response, StdError, StdResult, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
@@ -56,6 +56,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::Receive(msg) => receive_cw20_message(deps, info, msg),
         ExecuteMsg::CreateSubmission { name, url, address } => {
+            // TODO this is very hacky
             let received = info.funds.into_iter().next().unwrap_or_default();
             execute::create_submission(
                 deps,
@@ -76,7 +77,7 @@ fn receive_cw20_message(
     info: MessageInfo,
     msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    match from_binary(&msg.msg)? {
+    match from_json(&msg.msg)? {
         ReceiveMsg::CreateSubmission { name, url, address } => {
             let denom = AssetType::Cw20(info.sender.to_string());
             execute::create_submission(
@@ -100,7 +101,7 @@ fn create_bank_msg(
     match denom {
         AssetType::Cw20(address) => Ok(WasmMsg::Execute {
             contract_addr: address.to_string(),
-            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                 recipient: recipient.to_string(),
                 amount,
             })?,
@@ -204,14 +205,18 @@ pub mod execute {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: AdapterQueryMsg) -> StdResult<Binary> {
     match msg {
-        AdapterQueryMsg::Config {} => to_binary(&CONFIG.load(deps.storage)?),
-        AdapterQueryMsg::AllOptions {} => to_binary(&query::all_options(deps)?),
-        AdapterQueryMsg::CheckOption { option } => to_binary(&query::check_option(deps, option)?),
-        AdapterQueryMsg::SampleGaugeMsgs { selected } => {
-            to_binary(&query::sample_gauge_msgs(deps, selected)?)
+        AdapterQueryMsg::Config {} => to_json_binary(&CONFIG.load(deps.storage)?),
+        AdapterQueryMsg::AllOptions {} => to_json_binary(&query::all_options(deps)?),
+        AdapterQueryMsg::CheckOption { option } => {
+            to_json_binary(&query::check_option(deps, option)?)
         }
-        AdapterQueryMsg::Submission { address } => to_binary(&query::submission(deps, address)?),
-        AdapterQueryMsg::AllSubmissions {} => to_binary(&query::all_submissions(deps)?),
+        AdapterQueryMsg::SampleGaugeMsgs { selected } => {
+            to_json_binary(&query::sample_gauge_msgs(deps, selected)?)
+        }
+        AdapterQueryMsg::Submission { address } => {
+            to_json_binary(&query::submission(deps, address)?)
+        }
+        AdapterQueryMsg::AllSubmissions {} => to_json_binary(&query::all_submissions(deps)?),
     }
 }
 
@@ -454,7 +459,7 @@ mod tests {
             [
                 CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: "wynd".to_owned(),
-                    msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                    msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                         recipient: "juno1t8ehvswxjfn3ejzkjtntcyrqwvmvuknzy3ajxy".to_string(),
                         amount: reward * Decimal::percent(41)
                     })
@@ -463,7 +468,7 @@ mod tests {
                 }),
                 CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: "wynd".to_owned(),
-                    msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                    msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                         recipient: "juno196ax4vc0lwpxndu9dyhvca7jhxp70rmcl99tyh".to_string(),
                         amount: reward * Decimal::percent(33)
                     })
@@ -472,7 +477,7 @@ mod tests {
                 }),
                 CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: "wynd".to_owned(),
-                    msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                    msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                         recipient: "juno1y0us8xvsvfvqkk9c6nt5cfyu5au5tww23dmh40".to_string(),
                         amount: reward * Decimal::percent(26)
                     })

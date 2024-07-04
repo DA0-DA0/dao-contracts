@@ -4,6 +4,10 @@ version = { workspace = true }
 authors = ["Cosmorama <cosmorama@proton.me>"]
 edition = { workspace = true }
 
+# This repo was fork from https://github.com/wynddao/wynddao and does not use
+# the default DAO DAO license, git history has been retained
+license = "Apache-2.0"
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
@@ -14,22 +18,21 @@ library = []
 [dependencies]
 cosmwasm-schema = { workspace = true }
 cosmwasm-std = { workspace = true }
-cw-core-interface = { workspace = true }
+dao-interface = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
-wynd-stake = { workspace = true }
+cw4 = { workspace = true }
+dao-hooks = { workspace = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }
-cw-core = { workspace = true }
+dao-dao-core = { workspace = true }
 cw-multi-test = { workspace = true }
-cw-proposal-single = { workspace = true }
-cw4 = { workspace = true }
+dao-proposal-single = { workspace = true }
 cw4-group = { workspace = true }
-cw4-voting = { workspace = true }
-voting = { workspace = true }
-gauge-orchestrator-1_6 = { git = "https://github.com/cosmorama/wynddao.git", tag = "v1.6.0", package = "gauge-orchestrator" }
+dao-voting-cw4 = { workspace = true }
+dao-voting = { workspace = true }

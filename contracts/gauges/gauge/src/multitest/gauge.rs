@@ -1,5 +1,5 @@
 use cosmwasm_std::{Addr, Decimal, Uint128};
-use voting::Vote;
+use dao_voting::voting::Vote;
 
 use super::suite::{Suite, SuiteBuilder};
 
@@ -206,7 +206,7 @@ fn execute_gauge() {
         .execute_single_proposal(voter1.to_string(), proposal)
         .unwrap();
     let proposal_modules = suite.query_proposal_modules().unwrap();
-    let gauge_contract = proposal_modules[0].clone();
+    let gauge_contract = proposal_modules[1].clone();
 
     let gauge_id = 0;
 
@@ -265,7 +265,7 @@ fn init_gauge(suite: &mut Suite, voters: &[&str]) -> Addr {
 
     // Second proposal module is cw proposal single, first one is newly added gauge
     assert_eq!(proposal_modules.len(), 2);
-    proposal_modules[0].clone()
+    proposal_modules[1].clone()
 }
 
 #[test]
@@ -402,7 +402,7 @@ fn execute_gauge_twice_same_epoch() {
         .execute_single_proposal(voter1.to_string(), proposal)
         .unwrap();
     let proposal_modules = suite.query_proposal_modules().unwrap();
-    let gauge_contract = proposal_modules[0].clone();
+    let gauge_contract = proposal_modules[1].clone();
 
     let gauge_id = 0;
 
@@ -512,7 +512,7 @@ fn execute_stopped_gauge() {
         .execute_single_proposal(voter1.to_string(), proposal)
         .unwrap();
     let proposal_modules = suite.query_proposal_modules().unwrap();
-    let gauge_contract = proposal_modules[0].clone();
+    let gauge_contract = proposal_modules[1].clone();
 
     let gauge_id = 0;
 

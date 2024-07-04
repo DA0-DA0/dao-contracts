@@ -1,17 +1,15 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, to_binary, Addr, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Order, QueryRequest,
-    Response, StdError, StdResult, Uint128, WasmMsg, WasmQuery,
+    ensure, to_json_binary, Addr, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Order,
+    QueryRequest, Response, StdError, StdResult, Uint128, WasmMsg, WasmQuery,
 };
-use cw2::set_contract_version;
-use cw_core_interface::{
-    voting::{Query as DaoQuery, VotingPowerAtHeightResponse},
-    ExecuteMsg as DaoExecuteMsg,
-};
+use cw2::{ensure_from_older_version, set_contract_version};
 use cw_storage_plus::Bound;
-use cw_utils::ensure_from_older_version;
-use wynd_stake::hook::MemberDiff;
+use dao_interface::{
+    msg::ExecuteMsg as DaoExecuteMsg,
+    voting::{Query as DaoQuery, VotingPowerAtHeightResponse},
+};
 
 use crate::msg::{
     AdapterQueryMsg, AllOptionsResponse, CheckOptionResponse, ExecuteMsg, GaugeConfig,
@@ -38,9 +36,11 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let voting_powers = deps.api.addr_validate(&msg.voting_powers)?;
+    let hook_caller = deps.api.addr_validate(&msg.hook_caller)?;
     let owner = deps.api.addr_validate(&msg.owner)?;
     let config = Config {
         voting_powers,
+        hook_caller,
         owner,
         dao_core: info.sender,
     };
@@ -64,6 +64,8 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::StakeChangeHook(msg) => execute::stake_changed(deps, info, msg),
+        ExecuteMsg::NftStakeChangeHook(msg) => execute::nft_stake_changed(deps, info, msg),
         ExecuteMsg::MemberChangedHook(hook_msg) => {
             execute::member_changed(deps, info.sender, hook_msg.diffs)
         }
@@ -101,6 +103,9 @@ pub fn execute(
 }
 
 mod execute {
+    use cw4::MemberDiff;
+    use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
+
     use super::*;
     use crate::state::{remove_tally, update_tallies, Reset, Vote};
     use std::collections::HashMap;
@@ -110,8 +115,8 @@ mod execute {
         sender: Addr,
         diffs: Vec<MemberDiff>,
     ) -> Result<Response, ContractError> {
-        // make sure only voting powers contract can activate this endpoint
-        if sender != CONFIG.load(deps.storage)?.voting_powers {
+        // make sure only hook caller contract can activate this endpoint
+        if sender != CONFIG.load(deps.storage)?.hook_caller {
             return Err(ContractError::Unauthorized {});
         }
 
@@ -128,8 +133,8 @@ mod execute {
                 votes().query_votes_by_voter(deps.as_ref(), &voter, None, Some(query::MAX_LIMIT))?
             {
                 // find change of vote powers
-                let old = diff.old.unwrap_or_default();
-                let new = diff.new.unwrap_or_default();
+                let old = Uint128::new(diff.old.unwrap_or_default().into());
+                let new = Uint128::new(diff.new.unwrap_or_default().into());
 
                 // load gauge if not already loaded
                 let gauge = gauges
@@ -161,6 +166,198 @@ mod execute {
         }
 
         Ok(response)
+    }
+
+    pub fn stake_changed(
+        deps: DepsMut,
+        info: MessageInfo,
+        msg: StakeChangedHookMsg,
+    ) -> Result<Response, ContractError> {
+        // make sure only hook caller contract can activate this endpoint
+        if info.sender != CONFIG.load(deps.storage)?.hook_caller {
+            return Err(ContractError::Unauthorized {});
+        }
+
+        match msg {
+            StakeChangedHookMsg::Stake { addr, amount } => {
+                // for each gauge this user voted on,
+                // update the tallies and update the users vote power
+                for mut vote in votes().query_votes_by_voter(
+                    deps.as_ref(),
+                    &addr,
+                    None,
+                    Some(query::MAX_LIMIT),
+                )? {
+                    let gauge = GAUGES.load(deps.storage, vote.gauge_id)?;
+
+                    let old = vote.power;
+
+                    // Voting power increases with staking amount
+                    let new = vote.power + amount;
+
+                    if vote.is_expired(&gauge) {
+                        continue;
+                    }
+
+                    // calculate updates and adjust tallies
+                    let updates: Vec<_> = vote
+                        .votes
+                        .iter()
+                        .map(|v| {
+                            (
+                                v.option.as_str(),
+                                (old * v.weight).u128(),
+                                (new * v.weight).u128(),
+                            )
+                        })
+                        .collect();
+                    update_tallies(deps.storage, vote.gauge_id, updates)?;
+
+                    // Update and store new vote power for this user
+                    vote.power = new;
+                    votes().save(deps.storage, &addr, vote.gauge_id, &vote)?;
+                }
+
+                Ok(Response::new())
+            }
+            StakeChangedHookMsg::Unstake { addr, amount } => {
+                // for each gauge this user voted on,
+                // update the tallies and update the users vote power
+                for mut vote in votes().query_votes_by_voter(
+                    deps.as_ref(),
+                    &addr,
+                    None,
+                    Some(query::MAX_LIMIT),
+                )? {
+                    let gauge = GAUGES.load(deps.storage, vote.gauge_id)?;
+
+                    let old = vote.power;
+
+                    // Decrease voting power by unstaked amount
+                    let new = vote.power - amount;
+
+                    if vote.is_expired(&gauge) {
+                        continue;
+                    }
+
+                    // calculate updates and adjust tallies
+                    let updates: Vec<_> = vote
+                        .votes
+                        .iter()
+                        .map(|v| {
+                            (
+                                v.option.as_str(),
+                                (old * v.weight).u128(),
+                                (new * v.weight).u128(),
+                            )
+                        })
+                        .collect();
+                    update_tallies(deps.storage, vote.gauge_id, updates)?;
+
+                    // Update and store new vote power for this user
+                    vote.power = new;
+                    votes().save(deps.storage, &addr, vote.gauge_id, &vote)?;
+                }
+
+                Ok(Response::new())
+            }
+        }
+    }
+
+    pub fn nft_stake_changed(
+        deps: DepsMut,
+        info: MessageInfo,
+        msg: NftStakeChangedHookMsg,
+    ) -> Result<Response, ContractError> {
+        // make sure only hook caller contract can activate this endpoint
+        if info.sender != CONFIG.load(deps.storage)?.hook_caller {
+            return Err(ContractError::Unauthorized {});
+        }
+
+        match msg {
+            NftStakeChangedHookMsg::Stake { addr, token_id: _ } => {
+                // for each gauge this user voted on,
+                // update the tallies and update the users vote power
+                for mut vote in votes().query_votes_by_voter(
+                    deps.as_ref(),
+                    &addr,
+                    None,
+                    Some(query::MAX_LIMIT),
+                )? {
+                    let gauge = GAUGES.load(deps.storage, vote.gauge_id)?;
+
+                    let old = vote.power;
+                    // Voting power increases by one (only one token_id staked at a time)
+                    let new = vote.power + Uint128::one();
+
+                    if vote.is_expired(&gauge) {
+                        continue;
+                    }
+
+                    // calculate updates and adjust tallies
+                    let updates: Vec<_> = vote
+                        .votes
+                        .iter()
+                        .map(|v| {
+                            (
+                                v.option.as_str(),
+                                (old * v.weight).u128(),
+                                (new * v.weight).u128(),
+                            )
+                        })
+                        .collect();
+                    update_tallies(deps.storage, vote.gauge_id, updates)?;
+
+                    // Update and store new vote power for this user
+                    vote.power = new;
+                    votes().save(deps.storage, &addr, vote.gauge_id, &vote)?;
+                }
+
+                Ok(Response::new())
+            }
+            NftStakeChangedHookMsg::Unstake { addr, token_ids } => {
+                // for each gauge this user voted on,
+                // update the tallies and update the users vote power
+                for mut vote in votes().query_votes_by_voter(
+                    deps.as_ref(),
+                    &addr,
+                    None,
+                    Some(query::MAX_LIMIT),
+                )? {
+                    let gauge = GAUGES.load(deps.storage, vote.gauge_id)?;
+
+                    let old = vote.power;
+
+                    // Decrease voting power by number of token_ids
+                    let amount: u128 = token_ids.len().try_into().unwrap();
+                    let new = vote.power - Uint128::new(amount);
+
+                    if vote.is_expired(&gauge) {
+                        continue;
+                    }
+
+                    // calculate updates and adjust tallies
+                    let updates: Vec<_> = vote
+                        .votes
+                        .iter()
+                        .map(|v| {
+                            (
+                                v.option.as_str(),
+                                (old * v.weight).u128(),
+                                (new * v.weight).u128(),
+                            )
+                        })
+                        .collect();
+                    update_tallies(deps.storage, vote.gauge_id, updates)?;
+
+                    // Update and store new vote power for this user
+                    vote.power = new;
+                    votes().save(deps.storage, &addr, vote.gauge_id, &vote)?;
+                }
+
+                Ok(Response::new())
+            }
+        }
     }
 
     pub fn create_gauge(
@@ -230,7 +427,7 @@ mod execute {
         let adapter_options: AllOptionsResponse =
             deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: adapter.to_string(),
-                msg: to_binary(&AdapterQueryMsg::AllOptions {})?,
+                msg: to_json_binary(&AdapterQueryMsg::AllOptions {})?,
             }))?;
         adapter_options.options.into_iter().try_for_each(|option| {
             execute::add_option(deps.branch(), adapter.clone(), last_id, option, false)?;
@@ -385,6 +582,8 @@ mod execute {
             .add_attribute("gauge_id", gauge_id.to_string()))
     }
 
+    // TODO this doesn't seem very safe... double check permissions here
+    // Why is check option optional?
     pub fn add_option(
         deps: DepsMut,
         sender: Addr,
@@ -424,7 +623,7 @@ mod execute {
                 .querier
                 .query::<VotingPowerAtHeightResponse>(&QueryRequest::Wasm(WasmQuery::Smart {
                     contract_addr: CONFIG.load(deps.storage)?.voting_powers.to_string(),
-                    msg: to_binary(&DaoQuery::VotingPowerAtHeight {
+                    msg: to_json_binary(&DaoQuery::VotingPowerAtHeight {
                         address: sender.to_string(),
                         height: None,
                     })?,
@@ -472,7 +671,7 @@ mod execute {
             .querier
             .query::<VotingPowerAtHeightResponse>(&QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: CONFIG.load(deps.storage)?.voting_powers.to_string(),
-                msg: to_binary(&DaoQuery::VotingPowerAtHeight {
+                msg: to_json_binary(&DaoQuery::VotingPowerAtHeight {
                     address: sender.to_string(),
                     height: None,
                 })?,
@@ -600,7 +799,7 @@ mod execute {
         let config = CONFIG.load(deps.storage)?;
         let execute_msg = WasmMsg::Execute {
             contract_addr: config.dao_core.to_string(),
-            msg: to_binary(&DaoExecuteMsg::ExecuteProposalHook {
+            msg: to_json_binary(&DaoExecuteMsg::ExecuteProposalHook {
                 msgs: execute_messages.execute,
             })?,
             funds: vec![],
@@ -617,17 +816,19 @@ mod execute {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Info {} => Ok(to_binary(&query::info(deps)?)?),
-        QueryMsg::Gauge { id } => Ok(to_binary(&query::gauge(deps, id)?)?),
-        QueryMsg::ListGauges { start_after, limit } => {
-            Ok(to_binary(&query::list_gauges(deps, start_after, limit)?)?)
-        }
-        QueryMsg::Vote { gauge, voter } => Ok(to_binary(&query::vote(deps, gauge, voter)?)?),
+        QueryMsg::Info {} => Ok(to_json_binary(&query::info(deps)?)?),
+        QueryMsg::Gauge { id } => Ok(to_json_binary(&query::gauge(deps, id)?)?),
+        QueryMsg::ListGauges { start_after, limit } => Ok(to_json_binary(&query::list_gauges(
+            deps,
+            start_after,
+            limit,
+        )?)?),
+        QueryMsg::Vote { gauge, voter } => Ok(to_json_binary(&query::vote(deps, gauge, voter)?)?),
         QueryMsg::ListVotes {
             gauge,
             start_after,
             limit,
-        } => Ok(to_binary(&query::list_votes(
+        } => Ok(to_json_binary(&query::list_votes(
             deps,
             gauge,
             start_after,
@@ -637,15 +838,15 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             gauge,
             start_after,
             limit,
-        } => Ok(to_binary(&query::list_options(
+        } => Ok(to_json_binary(&query::list_options(
             deps,
             gauge,
             start_after,
             limit,
         )?)?),
-        QueryMsg::SelectedSet { gauge } => Ok(to_binary(&query::selected_set(deps, gauge)?)?),
+        QueryMsg::SelectedSet { gauge } => Ok(to_json_binary(&query::selected_set(deps, gauge)?)?),
         QueryMsg::LastExecutedSet { gauge } => {
-            Ok(to_binary(&query::last_executed_set(deps, gauge)?)?)
+            Ok(to_json_binary(&query::last_executed_set(deps, gauge)?)?)
         }
     }
 }
@@ -654,7 +855,7 @@ mod query {
     use super::*;
 
     use crate::msg::{LastExecutedSetResponse, VoteInfo, VoteResponse};
-    use cw_core_interface::voting::InfoResponse;
+    use dao_interface::voting::InfoResponse;
 
     pub fn info(deps: Deps) -> StdResult<InfoResponse> {
         let info = cw2::get_contract_version(deps.storage)?;

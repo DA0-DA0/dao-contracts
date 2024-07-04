@@ -1,5 +1,5 @@
 use cosmwasm_std::Uint128;
-use voting::Vote;
+use dao_voting::voting::Vote;
 
 use super::suite::SuiteBuilder;
 
@@ -38,7 +38,7 @@ fn multiple_options_one_gauge() {
         .execute_single_proposal(voter1.to_string(), proposal)
         .unwrap();
     let proposal_modules = suite.query_proposal_modules().unwrap();
-    let gauge_contract = proposal_modules[0].clone();
+    let gauge_contract = proposal_modules[1].clone();
 
     suite
         .instantiate_adapter_and_create_gauge(
@@ -169,7 +169,7 @@ fn multiple_options_two_gauges() {
         .execute_single_proposal(voter1.to_string(), proposal)
         .unwrap();
     let proposal_modules = suite.query_proposal_modules().unwrap();
-    let gauge_contract = proposal_modules[0].clone();
+    let gauge_contract = proposal_modules[1].clone();
 
     let first_gauge_id = 0;
     suite
@@ -273,7 +273,7 @@ fn not_voted_options_are_not_selected() {
         .execute_single_proposal(voter1.to_string(), proposal)
         .unwrap();
     let proposal_modules = suite.query_proposal_modules().unwrap();
-    let gauge_contract = proposal_modules[0].clone();
+    let gauge_contract = proposal_modules[1].clone();
 
     suite
         .instantiate_adapter_and_create_gauge(
