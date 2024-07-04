@@ -1,9 +1,9 @@
 use anyhow::Result as AnyResult;
-
 use cosmwasm_std::{
     coin, to_json_binary, Addr, Coin, CosmosMsg, Decimal, StdResult, Uint128, WasmMsg,
 };
 use cw4::Member;
+use cw4_group::msg::ExecuteMsg as Cw4ExecuteMsg;
 use cw_multi_test::{App, AppResponse, ContractWrapper, Executor};
 use cw_utils::Duration;
 use dao_interface::{
@@ -24,7 +24,7 @@ use dao_voting::{
     threshold::{PercentageThreshold, Threshold},
     voting::Vote,
 };
-use dao_voting_cw4::msg::InstantiateMsg as VotingInstantiateMsg;
+use dao_voting_cw4::msg::{InstantiateMsg as VotingInstantiateMsg, QueryMsg as VotingQueryMsg};
 
 use super::adapter::{
     contract as adapter_contract, ExecuteMsg as AdapterExecuteMsg,
@@ -212,6 +212,10 @@ impl SuiteBuilder {
             .wrap()
             .query_wasm_smart(&core, &CoreQueryMsg::VotingModule {})
             .unwrap();
+        let group_contract: Addr = app
+            .wrap()
+            .query_wasm_smart(voting_contract.clone(), &VotingQueryMsg::GroupContract {})
+            .unwrap();
         let proposal_single_contract: Vec<ProposalModule> = app
             .wrap()
             .query_wasm_smart(
@@ -230,6 +234,7 @@ impl SuiteBuilder {
             owner: owner.to_string(),
             app,
             core,
+            group_contract,
             voting: voting_contract,
             proposal_single: proposal_single_contract[0].address.clone(),
             gauge_code_id,
@@ -242,10 +247,11 @@ pub struct Suite {
     pub owner: String,
     pub app: App,
     pub core: Addr,
-    voting: Addr,
-    proposal_single: Addr,
+    pub group_contract: Addr,
+    pub voting: Addr,
+    pub proposal_single: Addr,
     pub gauge_code_id: u64,
-    gauge_adapter_code_id: u64,
+    pub gauge_adapter_code_id: u64,
 }
 
 impl Suite {
@@ -511,6 +517,7 @@ impl Suite {
                         code_id: self.gauge_code_id,
                         msg: to_json_binary(&InstantiateMsg {
                             voting_powers: self.voting.to_string(),
+                            hook_caller: self.group_contract.to_string(),
                             owner: self.owner.clone(),
                             gauges: gauge_config.into(),
                         })?,
@@ -521,6 +528,73 @@ impl Suite {
                         funds: vec![],
                     }],
                     to_disable: vec![],
+                })?,
+                funds: vec![],
+            })],
+            proposer: None,
+            vote: None,
+        });
+        self.app.execute_contract(
+            Addr::unchecked(proposer),
+            self.proposal_single.clone(),
+            &propose_msg,
+            &[],
+        )
+    }
+
+    pub fn propose_update_proposal_module_custom_hook_caller(
+        &mut self,
+        proposer: impl Into<String>,
+        hook_caller: impl Into<String>,
+        gauge_config: impl Into<Option<Vec<GaugeConfig>>>,
+    ) -> AnyResult<AppResponse> {
+        let propose_msg = ProposalSingleExecuteMsg::Propose(SingleChoiceProposeMsg {
+            title: "gauge as proposal module".to_owned(),
+            description: "Propose core to set gauge as proposal module".to_owned(),
+            msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: self.core.to_string(),
+                msg: to_json_binary(&CoreExecuteMsg::UpdateProposalModules {
+                    to_add: vec![ModuleInstantiateInfo {
+                        code_id: self.gauge_code_id,
+                        msg: to_json_binary(&InstantiateMsg {
+                            voting_powers: self.voting.to_string(),
+                            hook_caller: Addr::unchecked(hook_caller).to_string(),
+                            owner: self.owner.clone(),
+                            gauges: gauge_config.into(),
+                        })?,
+                        admin: Some(Admin::Address {
+                            addr: self.owner.clone(),
+                        }),
+                        label: "CW4 Voting Contract".to_owned(),
+                        funds: vec![],
+                    }],
+                    to_disable: vec![],
+                })?,
+                funds: vec![],
+            })],
+            proposer: None,
+            vote: None,
+        });
+        self.app.execute_contract(
+            Addr::unchecked(proposer),
+            self.proposal_single.clone(),
+            &propose_msg,
+            &[],
+        )
+    }
+
+    pub fn propose_add_membership_change_hook(
+        &mut self,
+        proposer: impl Into<String>,
+        gauge_contract: Addr,
+    ) -> AnyResult<AppResponse> {
+        let propose_msg = ProposalSingleExecuteMsg::Propose(SingleChoiceProposeMsg {
+            title: "Add membership change hook".to_owned(),
+            description: "Propose core to add membership change hook for gauge".to_owned(),
+            msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: self.group_contract.to_string(),
+                msg: to_json_binary(&Cw4ExecuteMsg::AddHook {
+                    addr: gauge_contract.to_string(),
                 })?,
                 funds: vec![],
             })],
@@ -656,6 +730,19 @@ impl Suite {
             Addr::unchecked(executor),
             self.proposal_single.clone(),
             &ProposalSingleExecuteMsg::Execute { proposal_id },
+            &[],
+        )
+    }
+
+    pub fn force_update_members(
+        &mut self,
+        remove: Vec<String>,
+        add: Vec<Member>,
+    ) -> AnyResult<AppResponse> {
+        self.app.execute_contract(
+            Addr::unchecked(self.core.clone()),
+            self.group_contract.clone(),
+            &Cw4ExecuteMsg::UpdateMembers { remove, add },
             &[],
         )
     }

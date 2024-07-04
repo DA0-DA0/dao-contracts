@@ -1,6 +1,8 @@
 # Marketing Gauge Adapter Contract
 
-This is an adapter contract for use in conjunction with the [WYND gauge contract](https://github.com/cosmorama/wynddao/tree/main/contracts/gauge). The purpose of this adapter is to allow people related to marketing to apply for a reward. The total reward amount is set during contract instantiation and will be divided among applicants based on community votes.
+This is an adapter contract for use in conjunction with the [gauge contract](../gauge/README.md). 
+
+The purpose of this adapter is to allow people to apply for a reward. The total reward amount is set during contract instantiation and will be divided among applicants based on community votes.
 
 ## Implementation
 
@@ -11,6 +13,7 @@ CreateSubmission {
     name: String,
     url: String,
     address: String,
+}
 ```
 
 Depending on how the gauge contract is instantiated a spam preventing deposit can be required to create a submission. This is specified by the field `required_deposit` in the `Config` structure.
