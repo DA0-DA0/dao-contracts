@@ -1,0 +1,34 @@
+[package]
+name = "gauge-orchestrator"
+version = { workspace = true }
+authors = ["Cosmorama <cosmorama@proton.me>"]
+edition = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+backtraces = ["cosmwasm-std/backtraces"]
+library = []
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true }
+dao-interface = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-utils = { workspace = true }
+cw2 = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+cw4 = { workspace = true }
+dao-hooks = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+dao-dao-core = { workspace = true }
+cw-multi-test = { workspace = true }
+dao-proposal-single = { workspace = true }
+cw4-group = { workspace = true }
+dao-voting-cw4 = { workspace = true }
+dao-voting = { workspace = true }
