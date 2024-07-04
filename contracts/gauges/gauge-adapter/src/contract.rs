@@ -56,6 +56,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::Receive(msg) => receive_cw20_message(deps, info, msg),
         ExecuteMsg::CreateSubmission { name, url, address } => {
+            // TODO this is very hacky
             let received = info.funds.into_iter().next().unwrap_or_default();
             execute::create_submission(
                 deps,
