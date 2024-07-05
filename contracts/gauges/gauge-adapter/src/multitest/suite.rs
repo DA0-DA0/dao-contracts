@@ -67,7 +67,7 @@ impl SuiteBuilder {
     }
 
     pub fn with_community_pool(mut self, community_pool: &str) -> Self {
-        self.community_pool = community_pool.to_owned();
+        self.community_pool = community_pool.to_string();
         self
     }
 
