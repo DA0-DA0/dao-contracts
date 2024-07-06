@@ -1559,14 +1559,16 @@ fn test_approver_can_propose() {
     } = setup_default_test(&mut app, None, true);
 
     // Only the pre-propose-approval-single contract can propose.
-    assert_eq!(
-        query_can_propose(&app, pre_propose_approver.clone(), pre_propose),
-        true
-    );
-    assert_eq!(
-        query_can_propose(&app, pre_propose_approver, "someone_else"),
-        false
-    );
+    assert!(query_can_propose(
+        &app,
+        pre_propose_approver.clone(),
+        pre_propose
+    ));
+    assert!(!query_can_propose(
+        &app,
+        pre_propose_approver,
+        "someone_else"
+    ));
 }
 
 #[test]

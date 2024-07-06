@@ -9,7 +9,10 @@
     "properties": {
       "admin": {
         "description": "The account allowed to execute this contract. If no admin, anyone can execute it.",
-        "type": ["string", "null"]
+        "type": [
+          "string",
+          "null"
+        ]
       }
     },
     "additionalProperties": false
@@ -21,11 +24,17 @@
       {
         "description": "Instantiates the target contract with the provided instantiate message and code id and updates the contract's admin to be itself.",
         "type": "object",
-        "required": ["instantiate_contract_with_self_admin"],
+        "required": [
+          "instantiate_contract_with_self_admin"
+        ],
         "properties": {
           "instantiate_contract_with_self_admin": {
             "type": "object",
-            "required": ["code_id", "instantiate_msg", "label"],
+            "required": [
+              "code_id",
+              "instantiate_msg",
+              "label"
+            ],
             "properties": {
               "code_id": {
                 "type": "integer",
@@ -58,7 +67,9 @@
     "oneOf": [
       {
         "type": "object",
-        "required": ["admin"],
+        "required": [
+          "admin"
+        ],
         "properties": {
           "admin": {
             "type": "object",

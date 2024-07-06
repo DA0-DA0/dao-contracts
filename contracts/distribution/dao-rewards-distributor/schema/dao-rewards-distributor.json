@@ -9,7 +9,10 @@
     "properties": {
       "owner": {
         "description": "The owner of the contract. Is able to fund the contract and update the reward duration.",
-        "type": ["string", "null"]
+        "type": [
+          "string",
+          "null"
+        ]
       }
     },
     "additionalProperties": false
@@ -21,7 +24,9 @@
       {
         "description": "Called when a member is added or removed to a cw4-groups or cw721-roles contract.",
         "type": "object",
-        "required": ["member_changed_hook"],
+        "required": [
+          "member_changed_hook"
+        ],
         "properties": {
           "member_changed_hook": {
             "$ref": "#/definitions/MemberChangedHookMsg"
@@ -32,7 +37,9 @@
       {
         "description": "Called when NFTs are staked or unstaked.",
         "type": "object",
-        "required": ["nft_stake_change_hook"],
+        "required": [
+          "nft_stake_change_hook"
+        ],
         "properties": {
           "nft_stake_change_hook": {
             "$ref": "#/definitions/NftStakeChangedHookMsg"
@@ -43,7 +50,9 @@
       {
         "description": "Called when tokens are staked or unstaked.",
         "type": "object",
-        "required": ["stake_change_hook"],
+        "required": [
+          "stake_change_hook"
+        ],
         "properties": {
           "stake_change_hook": {
             "$ref": "#/definitions/StakeChangedHookMsg"
@@ -54,11 +63,15 @@
       {
         "description": "Claims rewards for the sender.",
         "type": "object",
-        "required": ["claim"],
+        "required": [
+          "claim"
+        ],
         "properties": {
           "claim": {
             "type": "object",
-            "required": ["denom"],
+            "required": [
+              "denom"
+            ],
             "properties": {
               "denom": {
                 "type": "string"
@@ -72,7 +85,9 @@
       {
         "description": "Used to fund this contract with cw20 tokens.",
         "type": "object",
-        "required": ["receive"],
+        "required": [
+          "receive"
+        ],
         "properties": {
           "receive": {
             "$ref": "#/definitions/Cw20ReceiveMsg"
@@ -83,7 +98,9 @@
       {
         "description": "Used to fund this contract with native tokens.",
         "type": "object",
-        "required": ["fund"],
+        "required": [
+          "fund"
+        ],
         "properties": {
           "fund": {
             "type": "object",
@@ -95,11 +112,15 @@
       {
         "description": "shuts down the rewards distributor. withdraws all future staking rewards back to the treasury. members can claim whatever they earned until this point.",
         "type": "object",
-        "required": ["shutdown"],
+        "required": [
+          "shutdown"
+        ],
         "properties": {
           "shutdown": {
             "type": "object",
-            "required": ["denom"],
+            "required": [
+              "denom"
+            ],
             "properties": {
               "denom": {
                 "type": "string"
@@ -113,7 +134,9 @@
       {
         "description": "registers a new reward denom",
         "type": "object",
-        "required": ["register_reward_denom"],
+        "required": [
+          "register_reward_denom"
+        ],
         "properties": {
           "register_reward_denom": {
             "type": "object",
@@ -137,7 +160,10 @@
                 "type": "string"
               },
               "withdraw_destination": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -148,7 +174,9 @@
       {
         "description": "Update the contract's ownership. The `action` to be provided can be either to propose transferring ownership to an account, accept a pending ownership transfer, or renounce the ownership permanently.",
         "type": "object",
-        "required": ["update_ownership"],
+        "required": [
+          "update_ownership"
+        ],
         "properties": {
           "update_ownership": {
             "$ref": "#/definitions/Action"
@@ -164,11 +192,15 @@
           {
             "description": "Propose to transfer the contract's ownership to another account, optionally with an expiry time.\n\nCan only be called by the contract's current owner.\n\nAny existing pending ownership transfer is overwritten.",
             "type": "object",
-            "required": ["transfer_ownership"],
+            "required": [
+              "transfer_ownership"
+            ],
             "properties": {
               "transfer_ownership": {
                 "type": "object",
-                "required": ["new_owner"],
+                "required": [
+                  "new_owner"
+                ],
                 "properties": {
                   "expiry": {
                     "anyOf": [
@@ -192,12 +224,16 @@
           {
             "description": "Accept the pending ownership transfer.\n\nCan only be called by the pending owner.",
             "type": "string",
-            "enum": ["accept_ownership"]
+            "enum": [
+              "accept_ownership"
+            ]
           },
           {
             "description": "Give up the contract's ownership and the possibility of appointing a new owner.\n\nCan only be invoked by the contract's current owner.\n\nAny existing pending ownership transfer is canceled.",
             "type": "string",
-            "enum": ["renounce_ownership"]
+            "enum": [
+              "renounce_ownership"
+            ]
           }
         ]
       },
@@ -212,7 +248,11 @@
       "Cw20ReceiveMsg": {
         "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
         "type": "object",
-        "required": ["amount", "msg", "sender"],
+        "required": [
+          "amount",
+          "msg",
+          "sender"
+        ],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -231,7 +271,9 @@
         "oneOf": [
           {
             "type": "object",
-            "required": ["height"],
+            "required": [
+              "height"
+            ],
             "properties": {
               "height": {
                 "type": "integer",
@@ -244,7 +286,9 @@
           {
             "description": "Time in seconds",
             "type": "object",
-            "required": ["time"],
+            "required": [
+              "time"
+            ],
             "properties": {
               "time": {
                 "type": "integer",
@@ -262,7 +306,9 @@
           {
             "description": "AtHeight will expire when `env.block.height` >= height",
             "type": "object",
-            "required": ["at_height"],
+            "required": [
+              "at_height"
+            ],
             "properties": {
               "at_height": {
                 "type": "integer",
@@ -275,7 +321,9 @@
           {
             "description": "AtTime will expire when `env.block.time` >= time",
             "type": "object",
-            "required": ["at_time"],
+            "required": [
+              "at_time"
+            ],
             "properties": {
               "at_time": {
                 "$ref": "#/definitions/Timestamp"
@@ -286,7 +334,9 @@
           {
             "description": "Never will never expire. Used to express the empty variant",
             "type": "object",
-            "required": ["never"],
+            "required": [
+              "never"
+            ],
             "properties": {
               "never": {
                 "type": "object",
@@ -300,7 +350,9 @@
       "MemberChangedHookMsg": {
         "description": "MemberChangedHookMsg should be de/serialized under `MemberChangedHook()` variant in a ExecuteMsg. This contains a list of all diffs on the given transaction.",
         "type": "object",
-        "required": ["diffs"],
+        "required": [
+          "diffs"
+        ],
         "properties": {
           "diffs": {
             "type": "array",
@@ -314,18 +366,26 @@
       "MemberDiff": {
         "description": "MemberDiff shows the old and new states for a given cw4 member They cannot both be None. old = None, new = Some -> Insert old = Some, new = Some -> Update old = Some, new = None -> Delete",
         "type": "object",
-        "required": ["key"],
+        "required": [
+          "key"
+        ],
         "properties": {
           "key": {
             "type": "string"
           },
           "new": {
-            "type": ["integer", "null"],
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "uint64",
             "minimum": 0.0
           },
           "old": {
-            "type": ["integer", "null"],
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "uint64",
             "minimum": 0.0
           }
@@ -337,11 +397,16 @@
         "oneOf": [
           {
             "type": "object",
-            "required": ["stake"],
+            "required": [
+              "stake"
+            ],
             "properties": {
               "stake": {
                 "type": "object",
-                "required": ["addr", "token_id"],
+                "required": [
+                  "addr",
+                  "token_id"
+                ],
                 "properties": {
                   "addr": {
                     "$ref": "#/definitions/Addr"
@@ -357,11 +422,16 @@
           },
           {
             "type": "object",
-            "required": ["unstake"],
+            "required": [
+              "unstake"
+            ],
             "properties": {
               "unstake": {
                 "type": "object",
-                "required": ["addr", "token_ids"],
+                "required": [
+                  "addr",
+                  "token_ids"
+                ],
                 "properties": {
                   "addr": {
                     "$ref": "#/definitions/Addr"
@@ -383,7 +453,10 @@
       "RewardEmissionRate": {
         "description": "defines how many tokens (amount) should be distributed per amount of time (duration). e.g. 5udenom per hour.",
         "type": "object",
-        "required": ["amount", "duration"],
+        "required": [
+          "amount",
+          "duration"
+        ],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -399,11 +472,16 @@
         "oneOf": [
           {
             "type": "object",
-            "required": ["stake"],
+            "required": [
+              "stake"
+            ],
             "properties": {
               "stake": {
                 "type": "object",
-                "required": ["addr", "amount"],
+                "required": [
+                  "addr",
+                  "amount"
+                ],
                 "properties": {
                   "addr": {
                     "$ref": "#/definitions/Addr"
@@ -419,11 +497,16 @@
           },
           {
             "type": "object",
-            "required": ["unstake"],
+            "required": [
+              "unstake"
+            ],
             "properties": {
               "unstake": {
                 "type": "object",
-                "required": ["addr", "amount"],
+                "required": [
+                  "addr",
+                  "amount"
+                ],
                 "properties": {
                   "addr": {
                     "$ref": "#/definitions/Addr"
@@ -459,7 +542,9 @@
         "oneOf": [
           {
             "type": "object",
-            "required": ["native"],
+            "required": [
+              "native"
+            ],
             "properties": {
               "native": {
                 "type": "string"
@@ -469,7 +554,9 @@
           },
           {
             "type": "object",
-            "required": ["cw20"],
+            "required": [
+              "cw20"
+            ],
             "properties": {
               "cw20": {
                 "type": "string"
@@ -488,7 +575,9 @@
       {
         "description": "Returns contract version info",
         "type": "object",
-        "required": ["info"],
+        "required": [
+          "info"
+        ],
         "properties": {
           "info": {
             "type": "object",
@@ -500,7 +589,9 @@
       {
         "description": "Returns the state of the registered reward distributions.",
         "type": "object",
-        "required": ["rewards_state"],
+        "required": [
+          "rewards_state"
+        ],
         "properties": {
           "rewards_state": {
             "type": "object",
@@ -512,11 +603,15 @@
       {
         "description": "Returns the pending rewards for the given address.",
         "type": "object",
-        "required": ["get_pending_rewards"],
+        "required": [
+          "get_pending_rewards"
+        ],
         "properties": {
           "get_pending_rewards": {
             "type": "object",
-            "required": ["address"],
+            "required": [
+              "address"
+            ],
             "properties": {
               "address": {
                 "type": "string"
@@ -530,7 +625,9 @@
       {
         "description": "Returns information about the ownership of this contract.",
         "type": "object",
-        "required": ["ownership"],
+        "required": [
+          "ownership"
+        ],
         "properties": {
           "ownership": {
             "type": "object",
@@ -541,11 +638,15 @@
       },
       {
         "type": "object",
-        "required": ["denom_reward_state"],
+        "required": [
+          "denom_reward_state"
+        ],
         "properties": {
           "denom_reward_state": {
             "type": "object",
-            "required": ["denom"],
+            "required": [
+              "denom"
+            ],
             "properties": {
               "denom": {
                 "type": "string"
@@ -675,7 +776,9 @@
           "oneOf": [
             {
               "type": "object",
-              "required": ["native"],
+              "required": [
+                "native"
+              ],
               "properties": {
                 "native": {
                   "type": "string"
@@ -685,7 +788,9 @@
             },
             {
               "type": "object",
-              "required": ["cw20"],
+              "required": [
+                "cw20"
+              ],
               "properties": {
                 "cw20": {
                   "$ref": "#/definitions/Addr"
@@ -700,7 +805,9 @@
           "oneOf": [
             {
               "type": "object",
-              "required": ["height"],
+              "required": [
+                "height"
+              ],
               "properties": {
                 "height": {
                   "type": "integer",
@@ -713,7 +820,9 @@
             {
               "description": "Time in seconds",
               "type": "object",
-              "required": ["time"],
+              "required": [
+                "time"
+              ],
               "properties": {
                 "time": {
                   "type": "integer",
@@ -731,7 +840,9 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": ["at_height"],
+              "required": [
+                "at_height"
+              ],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -744,7 +855,9 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": ["at_time"],
+              "required": [
+                "at_time"
+              ],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -755,7 +868,9 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": ["never"],
+              "required": [
+                "never"
+              ],
               "properties": {
                 "never": {
                   "type": "object",
@@ -769,7 +884,10 @@
         "RewardEmissionRate": {
           "description": "defines how many tokens (amount) should be distributed per amount of time (duration). e.g. 5udenom per hour.",
           "type": "object",
-          "required": ["amount", "duration"],
+          "required": [
+            "amount",
+            "duration"
+          ],
           "properties": {
             "amount": {
               "$ref": "#/definitions/Uint128"
@@ -806,7 +924,10 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "PendingRewardsResponse",
       "type": "object",
-      "required": ["address", "pending_rewards"],
+      "required": [
+        "address",
+        "pending_rewards"
+      ],
       "properties": {
         "address": {
           "type": "string"
@@ -830,7 +951,9 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "InfoResponse",
       "type": "object",
-      "required": ["info"],
+      "required": [
+        "info"
+      ],
       "properties": {
         "info": {
           "$ref": "#/definitions/ContractVersion"
@@ -840,7 +963,10 @@
       "definitions": {
         "ContractVersion": {
           "type": "object",
-          "required": ["contract", "version"],
+          "required": [
+            "contract",
+            "version"
+          ],
           "properties": {
             "contract": {
               "description": "contract is the crate name of the implementing contract, eg. `crate:cw20-base` we will use other prefixes for other languages, and their standard global namespacing",
@@ -907,7 +1033,9 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": ["at_height"],
+              "required": [
+                "at_height"
+              ],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -920,7 +1048,9 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": ["at_time"],
+              "required": [
+                "at_time"
+              ],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -931,7 +1061,9 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": ["never"],
+              "required": [
+                "never"
+              ],
               "properties": {
                 "never": {
                   "type": "object",
@@ -960,7 +1092,9 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "RewardsStateResponse",
       "type": "object",
-      "required": ["rewards"],
+      "required": [
+        "rewards"
+      ],
       "properties": {
         "rewards": {
           "type": "array",
@@ -979,7 +1113,9 @@
           "oneOf": [
             {
               "type": "object",
-              "required": ["native"],
+              "required": [
+                "native"
+              ],
               "properties": {
                 "native": {
                   "type": "string"
@@ -989,7 +1125,9 @@
             },
             {
               "type": "object",
-              "required": ["cw20"],
+              "required": [
+                "cw20"
+              ],
               "properties": {
                 "cw20": {
                   "$ref": "#/definitions/Addr"
@@ -1103,7 +1241,9 @@
           "oneOf": [
             {
               "type": "object",
-              "required": ["height"],
+              "required": [
+                "height"
+              ],
               "properties": {
                 "height": {
                   "type": "integer",
@@ -1116,7 +1256,9 @@
             {
               "description": "Time in seconds",
               "type": "object",
-              "required": ["time"],
+              "required": [
+                "time"
+              ],
               "properties": {
                 "time": {
                   "type": "integer",
@@ -1134,7 +1276,9 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": ["at_height"],
+              "required": [
+                "at_height"
+              ],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -1147,7 +1291,9 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": ["at_time"],
+              "required": [
+                "at_time"
+              ],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -1158,7 +1304,9 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": ["never"],
+              "required": [
+                "never"
+              ],
               "properties": {
                 "never": {
                   "type": "object",
@@ -1172,7 +1320,10 @@
         "RewardEmissionRate": {
           "description": "defines how many tokens (amount) should be distributed per amount of time (duration). e.g. 5udenom per hour.",
           "type": "object",
-          "required": ["amount", "duration"],
+          "required": [
+            "amount",
+            "duration"
+          ],
           "properties": {
             "amount": {
               "$ref": "#/definitions/Uint128"

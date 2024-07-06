@@ -10,11 +10,15 @@
       {
         "description": "`NewToken` will create a new token when instantiate the contract. Newly created token will have full denom as `factory/<contract_address>/<subdenom>`. It will be attached to the contract setup the beforesend listener automatically.",
         "type": "object",
-        "required": ["new_token"],
+        "required": [
+          "new_token"
+        ],
         "properties": {
           "new_token": {
             "type": "object",
-            "required": ["subdenom"],
+            "required": [
+              "subdenom"
+            ],
             "properties": {
               "subdenom": {
                 "description": "component of fulldenom (`factory/<contract_address>/<subdenom>`).",
@@ -29,11 +33,15 @@
       {
         "description": "`ExistingToken` will use already created token. So to set this up, Token Factory admin for the existing token needs trasfer admin over to this contract, and optionally set the `BeforeSendHook` manually.",
         "type": "object",
-        "required": ["existing_token"],
+        "required": [
+          "existing_token"
+        ],
         "properties": {
           "existing_token": {
             "type": "object",
-            "required": ["denom"],
+            "required": [
+              "denom"
+            ],
             "properties": {
               "denom": {
                 "type": "string"
@@ -54,11 +62,16 @@
       {
         "description": "Allow adds the target address to the allowlist to be able to send or recieve tokens even if the token is frozen. Token Factory's BeforeSendHook listener must be set to this contract in order for this feature to work.\n\nThis functionality is intedended for DAOs who do not wish to have a their tokens liquid while bootstrapping their DAO. For example, a DAO may wish to white list a Token Staking contract (to allow users to stake their tokens in the DAO) or a Merkle Drop contract (to allow users to claim their tokens).",
         "type": "object",
-        "required": ["allow"],
+        "required": [
+          "allow"
+        ],
         "properties": {
           "allow": {
             "type": "object",
-            "required": ["address", "status"],
+            "required": [
+              "address",
+              "status"
+            ],
             "properties": {
               "address": {
                 "type": "string"
@@ -75,11 +88,16 @@
       {
         "description": "Burn token to address. Burn allowance is required and wiil be deducted after successful burn.",
         "type": "object",
-        "required": ["burn"],
+        "required": [
+          "burn"
+        ],
         "properties": {
           "burn": {
             "type": "object",
-            "required": ["amount", "from_address"],
+            "required": [
+              "amount",
+              "from_address"
+            ],
             "properties": {
               "amount": {
                 "$ref": "#/definitions/Uint128"
@@ -96,11 +114,16 @@
       {
         "description": "Mint token to address. Mint allowance is required and wiil be deducted after successful mint.",
         "type": "object",
-        "required": ["mint"],
+        "required": [
+          "mint"
+        ],
         "properties": {
           "mint": {
             "type": "object",
-            "required": ["amount", "to_address"],
+            "required": [
+              "amount",
+              "to_address"
+            ],
             "properties": {
               "amount": {
                 "$ref": "#/definitions/Uint128"
@@ -117,11 +140,16 @@
       {
         "description": "Deny adds the target address to the denylist, whis prevents them from sending/receiving the token attached to this contract tokenfactory's BeforeSendHook listener must be set to this contract in order for this feature to work as intended.",
         "type": "object",
-        "required": ["deny"],
+        "required": [
+          "deny"
+        ],
         "properties": {
           "deny": {
             "type": "object",
-            "required": ["address", "status"],
+            "required": [
+              "address",
+              "status"
+            ],
             "properties": {
               "address": {
                 "type": "string"
@@ -138,11 +166,15 @@
       {
         "description": "Block every token transfers of the token attached to this contract. Token Factory's BeforeSendHook listener must be set to this contract in order for this feature to work as intended.",
         "type": "object",
-        "required": ["freeze"],
+        "required": [
+          "freeze"
+        ],
         "properties": {
           "freeze": {
             "type": "object",
-            "required": ["status"],
+            "required": [
+              "status"
+            ],
             "properties": {
               "status": {
                 "type": "boolean"
@@ -156,11 +188,17 @@
       {
         "description": "Force transfer token from one address to another.",
         "type": "object",
-        "required": ["force_transfer"],
+        "required": [
+          "force_transfer"
+        ],
         "properties": {
           "force_transfer": {
             "type": "object",
-            "required": ["amount", "from_address", "to_address"],
+            "required": [
+              "amount",
+              "from_address",
+              "to_address"
+            ],
             "properties": {
               "amount": {
                 "$ref": "#/definitions/Uint128"
@@ -180,11 +218,15 @@
       {
         "description": "Attempt to SetBeforeSendHook on the token attached to this contract. This will fail if the chain does not support bank module hooks (many Token Factory implementations do not yet support).\n\nThis takes a cosmwasm_address as an argument, which is the address of the contract that will be called before every token transfer. Normally, this will be the issuer contract itself, though it can be a custom contract for greater flexibility.\n\nSetting the address to an empty string will remove the SetBeforeSendHook.\n\nThis method can only be called by the contract owner.",
         "type": "object",
-        "required": ["set_before_send_hook"],
+        "required": [
+          "set_before_send_hook"
+        ],
         "properties": {
           "set_before_send_hook": {
             "type": "object",
-            "required": ["cosmwasm_address"],
+            "required": [
+              "cosmwasm_address"
+            ],
             "properties": {
               "cosmwasm_address": {
                 "type": "string"
@@ -198,11 +240,16 @@
       {
         "description": "Grant/revoke burn allowance.",
         "type": "object",
-        "required": ["set_burner_allowance"],
+        "required": [
+          "set_burner_allowance"
+        ],
         "properties": {
           "set_burner_allowance": {
             "type": "object",
-            "required": ["address", "allowance"],
+            "required": [
+              "address",
+              "allowance"
+            ],
             "properties": {
               "address": {
                 "type": "string"
@@ -219,11 +266,15 @@
       {
         "description": "Set denom metadata. see: https://docs.cosmos.network/main/modules/bank#denom-metadata.",
         "type": "object",
-        "required": ["set_denom_metadata"],
+        "required": [
+          "set_denom_metadata"
+        ],
         "properties": {
           "set_denom_metadata": {
             "type": "object",
-            "required": ["metadata"],
+            "required": [
+              "metadata"
+            ],
             "properties": {
               "metadata": {
                 "$ref": "#/definitions/Metadata"
@@ -237,11 +288,16 @@
       {
         "description": "Grant/revoke mint allowance.",
         "type": "object",
-        "required": ["set_minter_allowance"],
+        "required": [
+          "set_minter_allowance"
+        ],
         "properties": {
           "set_minter_allowance": {
             "type": "object",
-            "required": ["address", "allowance"],
+            "required": [
+              "address",
+              "allowance"
+            ],
             "properties": {
               "address": {
                 "type": "string"
@@ -258,11 +314,15 @@
       {
         "description": "Updates the admin of the Token Factory token. Normally this is the cw-tokenfactory-issuer contract itself. This is intended to be used only if you seek to transfer ownership of the Token somewhere else (i.e. to another management contract).",
         "type": "object",
-        "required": ["update_token_factory_admin"],
+        "required": [
+          "update_token_factory_admin"
+        ],
         "properties": {
           "update_token_factory_admin": {
             "type": "object",
-            "required": ["new_admin"],
+            "required": [
+              "new_admin"
+            ],
             "properties": {
               "new_admin": {
                 "type": "string"
@@ -276,7 +336,9 @@
       {
         "description": "Updates the owner of this contract who is allowed to call privileged methods. NOTE: this is separate from the Token Factory token admin, for this contract to work at all, it needs to the be the Token Factory token admin.\n\nNormally, the contract owner will be a DAO.\n\nThe `action` to be provided can be either to propose transferring ownership to an account, accept a pending ownership transfer, or renounce the ownership permanently.",
         "type": "object",
-        "required": ["update_ownership"],
+        "required": [
+          "update_ownership"
+        ],
         "properties": {
           "update_ownership": {
             "$ref": "#/definitions/Action"
@@ -292,11 +354,15 @@
           {
             "description": "Propose to transfer the contract's ownership to another account, optionally with an expiry time.\n\nCan only be called by the contract's current owner.\n\nAny existing pending ownership transfer is overwritten.",
             "type": "object",
-            "required": ["transfer_ownership"],
+            "required": [
+              "transfer_ownership"
+            ],
             "properties": {
               "transfer_ownership": {
                 "type": "object",
-                "required": ["new_owner"],
+                "required": [
+                  "new_owner"
+                ],
                 "properties": {
                   "expiry": {
                     "anyOf": [
@@ -320,19 +386,27 @@
           {
             "description": "Accept the pending ownership transfer.\n\nCan only be called by the pending owner.",
             "type": "string",
-            "enum": ["accept_ownership"]
+            "enum": [
+              "accept_ownership"
+            ]
           },
           {
             "description": "Give up the contract's ownership and the possibility of appointing a new owner.\n\nCan only be invoked by the contract's current owner.\n\nAny existing pending ownership transfer is canceled.",
             "type": "string",
-            "enum": ["renounce_ownership"]
+            "enum": [
+              "renounce_ownership"
+            ]
           }
         ]
       },
       "DenomUnit": {
         "description": "DenomUnit represents a struct that describes a given denomination unit of the basic token.",
         "type": "object",
-        "required": ["aliases", "denom", "exponent"],
+        "required": [
+          "aliases",
+          "denom",
+          "exponent"
+        ],
         "properties": {
           "aliases": {
             "description": "aliases is a list of string aliases for the given denom",
@@ -359,7 +433,9 @@
           {
             "description": "AtHeight will expire when `env.block.height` >= height",
             "type": "object",
-            "required": ["at_height"],
+            "required": [
+              "at_height"
+            ],
             "properties": {
               "at_height": {
                 "type": "integer",
@@ -372,7 +448,9 @@
           {
             "description": "AtTime will expire when `env.block.time` >= time",
             "type": "object",
-            "required": ["at_time"],
+            "required": [
+              "at_time"
+            ],
             "properties": {
               "at_time": {
                 "$ref": "#/definitions/Timestamp"
@@ -383,7 +461,9 @@
           {
             "description": "Never will never expire. Used to express the empty variant",
             "type": "object",
-            "required": ["never"],
+            "required": [
+              "never"
+            ],
             "properties": {
               "never": {
                 "type": "object",
@@ -460,7 +540,9 @@
       {
         "description": "Returns if token transfer is disabled. Response: IsFrozenResponse",
         "type": "object",
-        "required": ["is_frozen"],
+        "required": [
+          "is_frozen"
+        ],
         "properties": {
           "is_frozen": {
             "type": "object",
@@ -472,7 +554,9 @@
       {
         "description": "Returns the token denom that this contract is the admin for. Response: DenomResponse",
         "type": "object",
-        "required": ["denom"],
+        "required": [
+          "denom"
+        ],
         "properties": {
           "denom": {
             "type": "object",
@@ -483,7 +567,9 @@
       },
       {
         "type": "object",
-        "required": ["ownership"],
+        "required": [
+          "ownership"
+        ],
         "properties": {
           "ownership": {
             "type": "object",
@@ -495,11 +581,15 @@
       {
         "description": "Returns the burn allowance of the specified address. Response: AllowanceResponse",
         "type": "object",
-        "required": ["burn_allowance"],
+        "required": [
+          "burn_allowance"
+        ],
         "properties": {
           "burn_allowance": {
             "type": "object",
-            "required": ["address"],
+            "required": [
+              "address"
+            ],
             "properties": {
               "address": {
                 "type": "string"
@@ -513,18 +603,26 @@
       {
         "description": "Enumerates over all burn allownances. Response: AllowancesResponse",
         "type": "object",
-        "required": ["burn_allowances"],
+        "required": [
+          "burn_allowances"
+        ],
         "properties": {
           "burn_allowances": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": ["integer", "null"],
+                "type": [
+                  "integer",
+                  "null"
+                ],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -535,11 +633,15 @@
       {
         "description": "Returns the mint allowance of the specified user. Response: AllowanceResponse",
         "type": "object",
-        "required": ["mint_allowance"],
+        "required": [
+          "mint_allowance"
+        ],
         "properties": {
           "mint_allowance": {
             "type": "object",
-            "required": ["address"],
+            "required": [
+              "address"
+            ],
             "properties": {
               "address": {
                 "type": "string"
@@ -553,18 +655,26 @@
       {
         "description": "Enumerates over all mint allownances. Response: AllowancesResponse",
         "type": "object",
-        "required": ["mint_allowances"],
+        "required": [
+          "mint_allowances"
+        ],
         "properties": {
           "mint_allowances": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": ["integer", "null"],
+                "type": [
+                  "integer",
+                  "null"
+                ],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -575,11 +685,15 @@
       {
         "description": "Returns wether the user is on denylist or not. Response: StatusResponse",
         "type": "object",
-        "required": ["is_denied"],
+        "required": [
+          "is_denied"
+        ],
         "properties": {
           "is_denied": {
             "type": "object",
-            "required": ["address"],
+            "required": [
+              "address"
+            ],
             "properties": {
               "address": {
                 "type": "string"
@@ -593,18 +707,26 @@
       {
         "description": "Enumerates over all addresses on the denylist. Response: DenylistResponse",
         "type": "object",
-        "required": ["denylist"],
+        "required": [
+          "denylist"
+        ],
         "properties": {
           "denylist": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": ["integer", "null"],
+                "type": [
+                  "integer",
+                  "null"
+                ],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -615,11 +737,15 @@
       {
         "description": "Returns wether the user is on the allowlist or not. Response: StatusResponse",
         "type": "object",
-        "required": ["is_allowed"],
+        "required": [
+          "is_allowed"
+        ],
         "properties": {
           "is_allowed": {
             "type": "object",
-            "required": ["address"],
+            "required": [
+              "address"
+            ],
             "properties": {
               "address": {
                 "type": "string"
@@ -633,18 +759,26 @@
       {
         "description": "Enumerates over all addresses on the allowlist. Response: AllowlistResponse",
         "type": "object",
-        "required": ["allowlist"],
+        "required": [
+          "allowlist"
+        ],
         "properties": {
           "allowlist": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": ["integer", "null"],
+                "type": [
+                  "integer",
+                  "null"
+                ],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -655,7 +789,9 @@
       {
         "description": "Returns information about the BeforeSendHook for the token. Note: many Token Factory chains do not yet support this feature.\n\nThe information returned is: - Whether features in this contract that require MsgBeforeSendHook are enabled. - The address of the BeforeSendHook contract if configured.\n\nResponse: BeforeSendHookInfo",
         "type": "object",
-        "required": ["before_send_hook_info"],
+        "required": [
+          "before_send_hook_info"
+        ],
         "properties": {
           "before_send_hook_info": {
             "type": "object",
@@ -674,11 +810,17 @@
     "oneOf": [
       {
         "type": "object",
-        "required": ["block_before_send"],
+        "required": [
+          "block_before_send"
+        ],
         "properties": {
           "block_before_send": {
             "type": "object",
-            "required": ["amount", "from", "to"],
+            "required": [
+              "amount",
+              "from",
+              "to"
+            ],
             "properties": {
               "amount": {
                 "$ref": "#/definitions/Coin"
@@ -699,7 +841,10 @@
     "definitions": {
       "Coin": {
         "type": "object",
-        "required": ["amount", "denom"],
+        "required": [
+          "amount",
+          "denom"
+        ],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -721,7 +866,9 @@
       "title": "AllowlistResponse",
       "description": "Returns a list of addresses currently on the allowlist",
       "type": "object",
-      "required": ["allowlist"],
+      "required": [
+        "allowlist"
+      ],
       "properties": {
         "allowlist": {
           "type": "array",
@@ -735,7 +882,10 @@
         "StatusInfo": {
           "description": "Account info for list queries related to allowlist and denylist",
           "type": "object",
-          "required": ["address", "status"],
+          "required": [
+            "address",
+            "status"
+          ],
           "properties": {
             "address": {
               "type": "string"
@@ -753,7 +903,9 @@
       "title": "BeforeSendHookInfo",
       "description": "Whether or not features that require MsgBeforeSendHook are enabled Many Token Factory chains do not yet support MsgBeforeSendHook",
       "type": "object",
-      "required": ["advanced_features_enabled"],
+      "required": [
+        "advanced_features_enabled"
+      ],
       "properties": {
         "advanced_features_enabled": {
           "description": "Whether or not features in this contract that require MsgBeforeSendHook are enabled.",
@@ -761,7 +913,10 @@
         },
         "hook_contract_address": {
           "description": "The address of the contract that implements the BeforeSendHook interface. Most often this will be the cw_tokenfactory_issuer contract itself.",
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "additionalProperties": false
@@ -771,7 +926,9 @@
       "title": "AllowanceResponse",
       "description": "Returns a mint or burn allowance for a particular address, representing the amount of tokens the account is allowed to mint or burn",
       "type": "object",
-      "required": ["allowance"],
+      "required": [
+        "allowance"
+      ],
       "properties": {
         "allowance": {
           "$ref": "#/definitions/Uint128"
@@ -790,7 +947,9 @@
       "title": "AllowancesResponse",
       "description": "Returns a list of all mint or burn allowances",
       "type": "object",
-      "required": ["allowances"],
+      "required": [
+        "allowances"
+      ],
       "properties": {
         "allowances": {
           "type": "array",
@@ -804,7 +963,10 @@
         "AllowanceInfo": {
           "description": "Information about a particular account and its mint / burn allowances. Used in list queries.",
           "type": "object",
-          "required": ["address", "allowance"],
+          "required": [
+            "address",
+            "allowance"
+          ],
           "properties": {
             "address": {
               "type": "string"
@@ -826,7 +988,9 @@
       "title": "DenomResponse",
       "description": "Returns the full denomination for the Token Factory token. For example: `factory/{contract address}/{subdenom}`",
       "type": "object",
-      "required": ["denom"],
+      "required": [
+        "denom"
+      ],
       "properties": {
         "denom": {
           "type": "string"
@@ -839,7 +1003,9 @@
       "title": "DenylistResponse",
       "description": "Returns a list of addresses currently on the denylist.",
       "type": "object",
-      "required": ["denylist"],
+      "required": [
+        "denylist"
+      ],
       "properties": {
         "denylist": {
           "type": "array",
@@ -853,7 +1019,10 @@
         "StatusInfo": {
           "description": "Account info for list queries related to allowlist and denylist",
           "type": "object",
-          "required": ["address", "status"],
+          "required": [
+            "address",
+            "status"
+          ],
           "properties": {
             "address": {
               "type": "string"
@@ -871,7 +1040,9 @@
       "title": "StatusResponse",
       "description": "Whether a particular account is allowed or denied",
       "type": "object",
-      "required": ["status"],
+      "required": [
+        "status"
+      ],
       "properties": {
         "status": {
           "type": "boolean"
@@ -884,7 +1055,9 @@
       "title": "StatusResponse",
       "description": "Whether a particular account is allowed or denied",
       "type": "object",
-      "required": ["status"],
+      "required": [
+        "status"
+      ],
       "properties": {
         "status": {
           "type": "boolean"
@@ -897,7 +1070,9 @@
       "title": "IsFrozenResponse",
       "description": "Returns whether or not the Token Factory token is frozen and transfers are disabled.",
       "type": "object",
-      "required": ["is_frozen"],
+      "required": [
+        "is_frozen"
+      ],
       "properties": {
         "is_frozen": {
           "type": "boolean"
@@ -910,7 +1085,9 @@
       "title": "AllowanceResponse",
       "description": "Returns a mint or burn allowance for a particular address, representing the amount of tokens the account is allowed to mint or burn",
       "type": "object",
-      "required": ["allowance"],
+      "required": [
+        "allowance"
+      ],
       "properties": {
         "allowance": {
           "$ref": "#/definitions/Uint128"
@@ -929,7 +1106,9 @@
       "title": "AllowancesResponse",
       "description": "Returns a list of all mint or burn allowances",
       "type": "object",
-      "required": ["allowances"],
+      "required": [
+        "allowances"
+      ],
       "properties": {
         "allowances": {
           "type": "array",
@@ -943,7 +1122,10 @@
         "AllowanceInfo": {
           "description": "Information about a particular account and its mint / burn allowances. Used in list queries.",
           "type": "object",
-          "required": ["address", "allowance"],
+          "required": [
+            "address",
+            "allowance"
+          ],
           "properties": {
             "address": {
               "type": "string"
@@ -1012,7 +1194,9 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": ["at_height"],
+              "required": [
+                "at_height"
+              ],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -1025,7 +1209,9 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": ["at_time"],
+              "required": [
+                "at_time"
+              ],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -1036,7 +1222,9 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": ["never"],
+              "required": [
+                "never"
+              ],
               "properties": {
                 "never": {
                   "type": "object",

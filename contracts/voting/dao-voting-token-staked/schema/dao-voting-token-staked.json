@@ -6,7 +6,9 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
-    "required": ["token_info"],
+    "required": [
+      "token_info"
+    ],
     "properties": {
       "active_threshold": {
         "description": "The number or percentage of tokens that must be staked for the DAO to be active",
@@ -47,11 +49,15 @@
           {
             "description": "The absolute number of tokens that must be staked for the module to be active.",
             "type": "object",
-            "required": ["absolute_count"],
+            "required": [
+              "absolute_count"
+            ],
             "properties": {
               "absolute_count": {
                 "type": "object",
-                "required": ["count"],
+                "required": [
+                  "count"
+                ],
                 "properties": {
                   "count": {
                     "$ref": "#/definitions/Uint128"
@@ -65,11 +71,15 @@
           {
             "description": "The percentage of tokens that must be staked for the module to be active. Computed as `staked / total_supply`.",
             "type": "object",
-            "required": ["percentage"],
+            "required": [
+              "percentage"
+            ],
             "properties": {
               "percentage": {
                 "type": "object",
-                "required": ["percent"],
+                "required": [
+                  "percent"
+                ],
                 "properties": {
                   "percent": {
                     "$ref": "#/definitions/Decimal"
@@ -93,7 +103,11 @@
       "DenomUnit": {
         "description": "DenomUnit represents a struct that describes a given denomination unit of the basic token.",
         "type": "object",
-        "required": ["aliases", "denom", "exponent"],
+        "required": [
+          "aliases",
+          "denom",
+          "exponent"
+        ],
         "properties": {
           "aliases": {
             "description": "aliases is a list of string aliases for the given denom",
@@ -119,7 +133,9 @@
         "oneOf": [
           {
             "type": "object",
-            "required": ["height"],
+            "required": [
+              "height"
+            ],
             "properties": {
               "height": {
                 "type": "integer",
@@ -132,7 +148,9 @@
           {
             "description": "Time in seconds",
             "type": "object",
-            "required": ["time"],
+            "required": [
+              "time"
+            ],
             "properties": {
               "time": {
                 "type": "integer",
@@ -146,7 +164,10 @@
       },
       "InitialBalance": {
         "type": "object",
-        "required": ["address", "amount"],
+        "required": [
+          "address",
+          "amount"
+        ],
         "properties": {
           "address": {
             "type": "string"
@@ -159,11 +180,19 @@
       },
       "NewDenomMetadata": {
         "type": "object",
-        "required": ["description", "display", "name", "symbol"],
+        "required": [
+          "description",
+          "display",
+          "name",
+          "symbol"
+        ],
         "properties": {
           "additional_denom_units": {
             "description": "Used define additional units of the token (e.g. \"tiger\") These must have an exponent larger than 0.",
-            "type": ["array", "null"],
+            "type": [
+              "array",
+              "null"
+            ],
             "items": {
               "$ref": "#/definitions/DenomUnit"
             }
@@ -189,7 +218,11 @@
       },
       "NewTokenInfo": {
         "type": "object",
-        "required": ["initial_balances", "subdenom", "token_issuer_code_id"],
+        "required": [
+          "initial_balances",
+          "subdenom",
+          "token_issuer_code_id"
+        ],
         "properties": {
           "initial_balances": {
             "description": "The initial balances to set for the token, cannot be empty.",
@@ -238,11 +271,15 @@
           {
             "description": "Uses an existing Token Factory token and creates a new issuer contract. Full setup, such as transferring ownership or setting up MsgSetBeforeSendHook, must be done manually.",
             "type": "object",
-            "required": ["existing"],
+            "required": [
+              "existing"
+            ],
             "properties": {
               "existing": {
                 "type": "object",
-                "required": ["denom"],
+                "required": [
+                  "denom"
+                ],
                 "properties": {
                   "denom": {
                     "description": "Token factory denom",
@@ -257,7 +294,9 @@
           {
             "description": "Creates a new Token Factory token via the issue contract with the DAO automatically setup as admin and owner.",
             "type": "object",
-            "required": ["new"],
+            "required": [
+              "new"
+            ],
             "properties": {
               "new": {
                 "$ref": "#/definitions/NewTokenInfo"
@@ -268,7 +307,9 @@
           {
             "description": "Uses a factory contract that must return the denom, optionally a Token Contract address. The binary must serialize to a `WasmMsg::Execute` message. Validation happens in the factory contract itself, so be sure to use a trusted factory contract.",
             "type": "object",
-            "required": ["factory"],
+            "required": [
+              "factory"
+            ],
             "properties": {
               "factory": {
                 "$ref": "#/definitions/Binary"
@@ -291,7 +332,9 @@
       {
         "description": "Stakes tokens with the contract to get voting power in the DAO",
         "type": "object",
-        "required": ["stake"],
+        "required": [
+          "stake"
+        ],
         "properties": {
           "stake": {
             "type": "object",
@@ -303,11 +346,15 @@
       {
         "description": "Unstakes tokens so that they begin unbonding",
         "type": "object",
-        "required": ["unstake"],
+        "required": [
+          "unstake"
+        ],
         "properties": {
           "unstake": {
             "type": "object",
-            "required": ["amount"],
+            "required": [
+              "amount"
+            ],
             "properties": {
               "amount": {
                 "$ref": "#/definitions/Uint128"
@@ -321,7 +368,9 @@
       {
         "description": "Updates the contract configuration",
         "type": "object",
-        "required": ["update_config"],
+        "required": [
+          "update_config"
+        ],
         "properties": {
           "update_config": {
             "type": "object",
@@ -345,7 +394,9 @@
       {
         "description": "Claims unstaked tokens that have completed the unbonding period",
         "type": "object",
-        "required": ["claim"],
+        "required": [
+          "claim"
+        ],
         "properties": {
           "claim": {
             "type": "object",
@@ -357,7 +408,9 @@
       {
         "description": "Sets the active threshold to a new value. Only the instantiator of this contract (a DAO most likely) may call this method.",
         "type": "object",
-        "required": ["update_active_threshold"],
+        "required": [
+          "update_active_threshold"
+        ],
         "properties": {
           "update_active_threshold": {
             "type": "object",
@@ -381,11 +434,15 @@
       {
         "description": "Adds a hook that fires on staking / unstaking",
         "type": "object",
-        "required": ["add_hook"],
+        "required": [
+          "add_hook"
+        ],
         "properties": {
           "add_hook": {
             "type": "object",
-            "required": ["addr"],
+            "required": [
+              "addr"
+            ],
             "properties": {
               "addr": {
                 "type": "string"
@@ -399,11 +456,15 @@
       {
         "description": "Removes a hook that fires on staking / unstaking",
         "type": "object",
-        "required": ["remove_hook"],
+        "required": [
+          "remove_hook"
+        ],
         "properties": {
           "remove_hook": {
             "type": "object",
-            "required": ["addr"],
+            "required": [
+              "addr"
+            ],
             "properties": {
               "addr": {
                 "type": "string"
@@ -422,11 +483,15 @@
           {
             "description": "The absolute number of tokens that must be staked for the module to be active.",
             "type": "object",
-            "required": ["absolute_count"],
+            "required": [
+              "absolute_count"
+            ],
             "properties": {
               "absolute_count": {
                 "type": "object",
-                "required": ["count"],
+                "required": [
+                  "count"
+                ],
                 "properties": {
                   "count": {
                     "$ref": "#/definitions/Uint128"
@@ -440,11 +505,15 @@
           {
             "description": "The percentage of tokens that must be staked for the module to be active. Computed as `staked / total_supply`.",
             "type": "object",
-            "required": ["percentage"],
+            "required": [
+              "percentage"
+            ],
             "properties": {
               "percentage": {
                 "type": "object",
-                "required": ["percent"],
+                "required": [
+                  "percent"
+                ],
                 "properties": {
                   "percent": {
                     "$ref": "#/definitions/Decimal"
@@ -466,7 +535,9 @@
         "oneOf": [
           {
             "type": "object",
-            "required": ["height"],
+            "required": [
+              "height"
+            ],
             "properties": {
               "height": {
                 "type": "integer",
@@ -479,7 +550,9 @@
           {
             "description": "Time in seconds",
             "type": "object",
-            "required": ["time"],
+            "required": [
+              "time"
+            ],
             "properties": {
               "time": {
                 "type": "integer",
@@ -503,7 +576,9 @@
     "oneOf": [
       {
         "type": "object",
-        "required": ["get_config"],
+        "required": [
+          "get_config"
+        ],
         "properties": {
           "get_config": {
             "type": "object",
@@ -514,11 +589,15 @@
       },
       {
         "type": "object",
-        "required": ["claims"],
+        "required": [
+          "claims"
+        ],
         "properties": {
           "claims": {
             "type": "object",
-            "required": ["address"],
+            "required": [
+              "address"
+            ],
             "properties": {
               "address": {
                 "type": "string"
@@ -531,18 +610,26 @@
       },
       {
         "type": "object",
-        "required": ["list_stakers"],
+        "required": [
+          "list_stakers"
+        ],
         "properties": {
           "list_stakers": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": ["integer", "null"],
+                "type": [
+                  "integer",
+                  "null"
+                ],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -552,7 +639,9 @@
       },
       {
         "type": "object",
-        "required": ["active_threshold"],
+        "required": [
+          "active_threshold"
+        ],
         "properties": {
           "active_threshold": {
             "type": "object",
@@ -563,7 +652,9 @@
       },
       {
         "type": "object",
-        "required": ["get_hooks"],
+        "required": [
+          "get_hooks"
+        ],
         "properties": {
           "get_hooks": {
             "type": "object",
@@ -574,7 +665,9 @@
       },
       {
         "type": "object",
-        "required": ["token_contract"],
+        "required": [
+          "token_contract"
+        ],
         "properties": {
           "token_contract": {
             "type": "object",
@@ -585,7 +678,9 @@
       },
       {
         "type": "object",
-        "required": ["denom"],
+        "required": [
+          "denom"
+        ],
         "properties": {
           "denom": {
             "type": "object",
@@ -596,7 +691,9 @@
       },
       {
         "type": "object",
-        "required": ["is_active"],
+        "required": [
+          "is_active"
+        ],
         "properties": {
           "is_active": {
             "type": "object",
@@ -608,17 +705,24 @@
       {
         "description": "Returns the voting power for an address at a given height.",
         "type": "object",
-        "required": ["voting_power_at_height"],
+        "required": [
+          "voting_power_at_height"
+        ],
         "properties": {
           "voting_power_at_height": {
             "type": "object",
-            "required": ["address"],
+            "required": [
+              "address"
+            ],
             "properties": {
               "address": {
                 "type": "string"
               },
               "height": {
-                "type": ["integer", "null"],
+                "type": [
+                  "integer",
+                  "null"
+                ],
                 "format": "uint64",
                 "minimum": 0.0
               }
@@ -631,13 +735,18 @@
       {
         "description": "Returns the total voting power at a given block heigh.",
         "type": "object",
-        "required": ["total_power_at_height"],
+        "required": [
+          "total_power_at_height"
+        ],
         "properties": {
           "total_power_at_height": {
             "type": "object",
             "properties": {
               "height": {
-                "type": ["integer", "null"],
+                "type": [
+                  "integer",
+                  "null"
+                ],
                 "format": "uint64",
                 "minimum": 0.0
               }
@@ -650,7 +759,9 @@
       {
         "description": "Returns the address of the DAO this module belongs to.",
         "type": "object",
-        "required": ["dao"],
+        "required": [
+          "dao"
+        ],
         "properties": {
           "dao": {
             "type": "object",
@@ -662,7 +773,9 @@
       {
         "description": "Returns contract version info.",
         "type": "object",
-        "required": ["info"],
+        "required": [
+          "info"
+        ],
         "properties": {
           "info": {
             "type": "object",
@@ -705,11 +818,15 @@
             {
               "description": "The absolute number of tokens that must be staked for the module to be active.",
               "type": "object",
-              "required": ["absolute_count"],
+              "required": [
+                "absolute_count"
+              ],
               "properties": {
                 "absolute_count": {
                   "type": "object",
-                  "required": ["count"],
+                  "required": [
+                    "count"
+                  ],
                   "properties": {
                     "count": {
                       "$ref": "#/definitions/Uint128"
@@ -723,11 +840,15 @@
             {
               "description": "The percentage of tokens that must be staked for the module to be active. Computed as `staked / total_supply`.",
               "type": "object",
-              "required": ["percentage"],
+              "required": [
+                "percentage"
+              ],
               "properties": {
                 "percentage": {
                   "type": "object",
-                  "required": ["percent"],
+                  "required": [
+                    "percent"
+                  ],
                   "properties": {
                     "percent": {
                       "$ref": "#/definitions/Decimal"
@@ -754,7 +875,9 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ClaimsResponse",
       "type": "object",
-      "required": ["claims"],
+      "required": [
+        "claims"
+      ],
       "properties": {
         "claims": {
           "type": "array",
@@ -767,7 +890,10 @@
       "definitions": {
         "Claim": {
           "type": "object",
-          "required": ["amount", "release_at"],
+          "required": [
+            "amount",
+            "release_at"
+          ],
           "properties": {
             "amount": {
               "$ref": "#/definitions/Uint128"
@@ -784,7 +910,9 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": ["at_height"],
+              "required": [
+                "at_height"
+              ],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -797,7 +925,9 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": ["at_time"],
+              "required": [
+                "at_time"
+              ],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -808,7 +938,9 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": ["never"],
+              "required": [
+                "never"
+              ],
               "properties": {
                 "never": {
                   "type": "object",
@@ -847,7 +979,9 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "DenomResponse",
       "type": "object",
-      "required": ["denom"],
+      "required": [
+        "denom"
+      ],
       "properties": {
         "denom": {
           "type": "string"
@@ -878,7 +1012,9 @@
           "oneOf": [
             {
               "type": "object",
-              "required": ["height"],
+              "required": [
+                "height"
+              ],
               "properties": {
                 "height": {
                   "type": "integer",
@@ -891,7 +1027,9 @@
             {
               "description": "Time in seconds",
               "type": "object",
-              "required": ["time"],
+              "required": [
+                "time"
+              ],
               "properties": {
                 "time": {
                   "type": "integer",
@@ -909,7 +1047,9 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "GetHooksResponse",
       "type": "object",
-      "required": ["hooks"],
+      "required": [
+        "hooks"
+      ],
       "properties": {
         "hooks": {
           "type": "array",
@@ -924,7 +1064,9 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "InfoResponse",
       "type": "object",
-      "required": ["info"],
+      "required": [
+        "info"
+      ],
       "properties": {
         "info": {
           "$ref": "#/definitions/ContractVersion"
@@ -934,7 +1076,10 @@
       "definitions": {
         "ContractVersion": {
           "type": "object",
-          "required": ["contract", "version"],
+          "required": [
+            "contract",
+            "version"
+          ],
           "properties": {
             "contract": {
               "description": "contract is the crate name of the implementing contract, eg. `crate:cw20-base` we will use other prefixes for other languages, and their standard global namespacing",
@@ -958,7 +1103,9 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ListStakersResponse",
       "type": "object",
-      "required": ["stakers"],
+      "required": [
+        "stakers"
+      ],
       "properties": {
         "stakers": {
           "type": "array",
@@ -971,7 +1118,10 @@
       "definitions": {
         "StakerBalanceResponse": {
           "type": "object",
-          "required": ["address", "balance"],
+          "required": [
+            "address",
+            "balance"
+          ],
           "properties": {
             "address": {
               "type": "string"
@@ -1010,7 +1160,10 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "TotalPowerAtHeightResponse",
       "type": "object",
-      "required": ["height", "power"],
+      "required": [
+        "height",
+        "power"
+      ],
       "properties": {
         "height": {
           "type": "integer",
@@ -1033,7 +1186,10 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "VotingPowerAtHeightResponse",
       "type": "object",
-      "required": ["height", "power"],
+      "required": [
+        "height",
+        "power"
+      ],
       "properties": {
         "height": {
           "type": "integer",
