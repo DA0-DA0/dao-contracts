@@ -1,14 +1,12 @@
 {
   "contract_name": "dao-voting-cw4",
-  "contract_version": "2.4.2",
+  "contract_version": "2.5.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
-    "required": [
-      "group_contract"
-    ],
+    "required": ["group_contract"],
     "properties": {
       "group_contract": {
         "$ref": "#/definitions/GroupContract"
@@ -20,15 +18,11 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "existing"
-            ],
+            "required": ["existing"],
             "properties": {
               "existing": {
                 "type": "object",
-                "required": [
-                  "address"
-                ],
+                "required": ["address"],
                 "properties": {
                   "address": {
                     "type": "string"
@@ -41,16 +35,11 @@
           },
           {
             "type": "object",
-            "required": [
-              "new"
-            ],
+            "required": ["new"],
             "properties": {
               "new": {
                 "type": "object",
-                "required": [
-                  "cw4_group_code_id",
-                  "initial_members"
-                ],
+                "required": ["cw4_group_code_id", "initial_members"],
                 "properties": {
                   "cw4_group_code_id": {
                     "type": "integer",
@@ -74,10 +63,7 @@
       "Member": {
         "description": "A group member has a weight associated with them. This may all be equal, or may have meaning in the app that makes use of the group (eg. voting power)",
         "type": "object",
-        "required": [
-          "addr",
-          "weight"
-        ],
+        "required": ["addr", "weight"],
         "properties": {
           "addr": {
             "type": "string"
@@ -104,9 +90,7 @@
     "oneOf": [
       {
         "type": "object",
-        "required": [
-          "group_contract"
-        ],
+        "required": ["group_contract"],
         "properties": {
           "group_contract": {
             "type": "object",
@@ -118,24 +102,17 @@
       {
         "description": "Returns the voting power for an address at a given height.",
         "type": "object",
-        "required": [
-          "voting_power_at_height"
-        ],
+        "required": ["voting_power_at_height"],
         "properties": {
           "voting_power_at_height": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
               },
               "height": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint64",
                 "minimum": 0.0
               }
@@ -148,18 +125,13 @@
       {
         "description": "Returns the total voting power at a given block heigh.",
         "type": "object",
-        "required": [
-          "total_power_at_height"
-        ],
+        "required": ["total_power_at_height"],
         "properties": {
           "total_power_at_height": {
             "type": "object",
             "properties": {
               "height": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint64",
                 "minimum": 0.0
               }
@@ -172,9 +144,7 @@
       {
         "description": "Returns the address of the DAO this module belongs to.",
         "type": "object",
-        "required": [
-          "dao"
-        ],
+        "required": ["dao"],
         "properties": {
           "dao": {
             "type": "object",
@@ -186,9 +156,7 @@
       {
         "description": "Returns contract version info.",
         "type": "object",
-        "required": [
-          "info"
-        ],
+        "required": ["info"],
         "properties": {
           "info": {
             "type": "object",
@@ -223,9 +191,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "InfoResponse",
       "type": "object",
-      "required": [
-        "info"
-      ],
+      "required": ["info"],
       "properties": {
         "info": {
           "$ref": "#/definitions/ContractVersion"
@@ -235,10 +201,7 @@
       "definitions": {
         "ContractVersion": {
           "type": "object",
-          "required": [
-            "contract",
-            "version"
-          ],
+          "required": ["contract", "version"],
           "properties": {
             "contract": {
               "description": "contract is the crate name of the implementing contract, eg. `crate:cw20-base` we will use other prefixes for other languages, and their standard global namespacing",
@@ -257,10 +220,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "TotalPowerAtHeightResponse",
       "type": "object",
-      "required": [
-        "height",
-        "power"
-      ],
+      "required": ["height", "power"],
       "properties": {
         "height": {
           "type": "integer",
@@ -283,10 +243,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "VotingPowerAtHeightResponse",
       "type": "object",
-      "required": [
-        "height",
-        "power"
-      ],
+      "required": ["height", "power"],
       "properties": {
         "height": {
           "type": "integer",

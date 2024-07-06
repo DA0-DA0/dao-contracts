@@ -1,14 +1,12 @@
 {
   "contract_name": "cw-fund-distributor",
-  "contract_version": "2.4.2",
+  "contract_version": "2.5.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
-    "required": [
-      "token_info"
-    ],
+    "required": ["token_info"],
     "properties": {
       "active_threshold": {
         "description": "The number or percentage of tokens that must be staked for the DAO to be active",
@@ -33,15 +31,11 @@
           {
             "description": "The absolute number of tokens that must be staked for the module to be active.",
             "type": "object",
-            "required": [
-              "absolute_count"
-            ],
+            "required": ["absolute_count"],
             "properties": {
               "absolute_count": {
                 "type": "object",
-                "required": [
-                  "count"
-                ],
+                "required": ["count"],
                 "properties": {
                   "count": {
                     "$ref": "#/definitions/Uint128"
@@ -55,15 +49,11 @@
           {
             "description": "The percentage of tokens that must be staked for the module to be active. Computed as `staked / total_supply`.",
             "type": "object",
-            "required": [
-              "percentage"
-            ],
+            "required": ["percentage"],
             "properties": {
               "percentage": {
                 "type": "object",
-                "required": [
-                  "percent"
-                ],
+                "required": ["percent"],
                 "properties": {
                   "percent": {
                     "$ref": "#/definitions/Decimal"
@@ -82,10 +72,7 @@
       },
       "Cw20Coin": {
         "type": "object",
-        "required": [
-          "address",
-          "amount"
-        ],
+        "required": ["address", "amount"],
         "properties": {
           "address": {
             "type": "string"
@@ -105,9 +92,7 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "height"
-            ],
+            "required": ["height"],
             "properties": {
               "height": {
                 "type": "integer",
@@ -120,9 +105,7 @@
           {
             "description": "Time in seconds",
             "type": "object",
-            "required": [
-              "time"
-            ],
+            "required": ["time"],
             "properties": {
               "time": {
                 "type": "integer",
@@ -140,9 +123,7 @@
           {
             "description": "Store the Logo as an SVG file. The content must conform to the spec at https://en.wikipedia.org/wiki/Scalable_Vector_Graphics (The contract should do some light-weight sanity-check validation)",
             "type": "object",
-            "required": [
-              "svg"
-            ],
+            "required": ["svg"],
             "properties": {
               "svg": {
                 "$ref": "#/definitions/Binary"
@@ -153,9 +134,7 @@
           {
             "description": "Store the Logo as a PNG file. This will likely only support up to 64x64 or so within the 5KB limit.",
             "type": "object",
-            "required": [
-              "png"
-            ],
+            "required": ["png"],
             "properties": {
               "png": {
                 "$ref": "#/definitions/Binary"
@@ -169,10 +148,7 @@
         "type": "object",
         "properties": {
           "description": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "logo": {
             "anyOf": [
@@ -185,16 +161,10 @@
             ]
           },
           "marketing": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "project": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           }
         },
         "additionalProperties": false
@@ -205,9 +175,7 @@
           {
             "description": "A reference to an externally hosted logo. Must be a valid HTTP or HTTPS URL.",
             "type": "object",
-            "required": [
-              "url"
-            ],
+            "required": ["url"],
             "properties": {
               "url": {
                 "type": "string"
@@ -218,9 +186,7 @@
           {
             "description": "Logo content stored on the blockchain. Enforce maximum size of 5KB on all variants",
             "type": "object",
-            "required": [
-              "embedded"
-            ],
+            "required": ["embedded"],
             "properties": {
               "embedded": {
                 "$ref": "#/definitions/EmbeddedLogo"
@@ -235,15 +201,11 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "existing"
-            ],
+            "required": ["existing"],
             "properties": {
               "existing": {
                 "type": "object",
-                "required": [
-                  "staking_contract_address"
-                ],
+                "required": ["staking_contract_address"],
                 "properties": {
                   "staking_contract_address": {
                     "description": "Address of an already instantiated staking contract.",
@@ -257,15 +219,11 @@
           },
           {
             "type": "object",
-            "required": [
-              "new"
-            ],
+            "required": ["new"],
             "properties": {
               "new": {
                 "type": "object",
-                "required": [
-                  "staking_code_id"
-                ],
+                "required": ["staking_code_id"],
                 "properties": {
                   "staking_code_id": {
                     "description": "Code ID for staking contract to instantiate.",
@@ -296,16 +254,11 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "existing"
-            ],
+            "required": ["existing"],
             "properties": {
               "existing": {
                 "type": "object",
-                "required": [
-                  "address",
-                  "staking_contract"
-                ],
+                "required": ["address", "staking_contract"],
                 "properties": {
                   "address": {
                     "description": "Address of an already instantiated cw20 token contract.",
@@ -327,9 +280,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "new"
-            ],
+            "required": ["new"],
             "properties": {
               "new": {
                 "type": "object",
@@ -426,9 +377,7 @@
       {
         "description": "Sets the active threshold to a new value. Only the instantiator this contract (a DAO most likely) may call this method.",
         "type": "object",
-        "required": [
-          "update_active_threshold"
-        ],
+        "required": ["update_active_threshold"],
         "properties": {
           "update_active_threshold": {
             "type": "object",
@@ -457,15 +406,11 @@
           {
             "description": "The absolute number of tokens that must be staked for the module to be active.",
             "type": "object",
-            "required": [
-              "absolute_count"
-            ],
+            "required": ["absolute_count"],
             "properties": {
               "absolute_count": {
                 "type": "object",
-                "required": [
-                  "count"
-                ],
+                "required": ["count"],
                 "properties": {
                   "count": {
                     "$ref": "#/definitions/Uint128"
@@ -479,15 +424,11 @@
           {
             "description": "The percentage of tokens that must be staked for the module to be active. Computed as `staked / total_supply`.",
             "type": "object",
-            "required": [
-              "percentage"
-            ],
+            "required": ["percentage"],
             "properties": {
               "percentage": {
                 "type": "object",
-                "required": [
-                  "percent"
-                ],
+                "required": ["percent"],
                 "properties": {
                   "percent": {
                     "$ref": "#/definitions/Decimal"
@@ -517,9 +458,7 @@
       {
         "description": "Gets the address of the cw20-stake contract this voting module is wrapping.",
         "type": "object",
-        "required": [
-          "staking_contract"
-        ],
+        "required": ["staking_contract"],
         "properties": {
           "staking_contract": {
             "type": "object",
@@ -530,9 +469,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "active_threshold"
-        ],
+        "required": ["active_threshold"],
         "properties": {
           "active_threshold": {
             "type": "object",
@@ -544,24 +481,17 @@
       {
         "description": "Returns the voting power for an address at a given height.",
         "type": "object",
-        "required": [
-          "voting_power_at_height"
-        ],
+        "required": ["voting_power_at_height"],
         "properties": {
           "voting_power_at_height": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
               },
               "height": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint64",
                 "minimum": 0.0
               }
@@ -574,18 +504,13 @@
       {
         "description": "Returns the total voting power at a given block heigh.",
         "type": "object",
-        "required": [
-          "total_power_at_height"
-        ],
+        "required": ["total_power_at_height"],
         "properties": {
           "total_power_at_height": {
             "type": "object",
             "properties": {
               "height": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint64",
                 "minimum": 0.0
               }
@@ -598,9 +523,7 @@
       {
         "description": "Returns the address of the DAO this module belongs to.",
         "type": "object",
-        "required": [
-          "dao"
-        ],
+        "required": ["dao"],
         "properties": {
           "dao": {
             "type": "object",
@@ -612,9 +535,7 @@
       {
         "description": "Returns contract version info.",
         "type": "object",
-        "required": [
-          "info"
-        ],
+        "required": ["info"],
         "properties": {
           "info": {
             "type": "object",
@@ -625,9 +546,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "token_contract"
-        ],
+        "required": ["token_contract"],
         "properties": {
           "token_contract": {
             "type": "object",
@@ -638,9 +557,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "is_active"
-        ],
+        "required": ["is_active"],
         "properties": {
           "is_active": {
             "type": "object",
@@ -683,15 +600,11 @@
             {
               "description": "The absolute number of tokens that must be staked for the module to be active.",
               "type": "object",
-              "required": [
-                "absolute_count"
-              ],
+              "required": ["absolute_count"],
               "properties": {
                 "absolute_count": {
                   "type": "object",
-                  "required": [
-                    "count"
-                  ],
+                  "required": ["count"],
                   "properties": {
                     "count": {
                       "$ref": "#/definitions/Uint128"
@@ -705,15 +618,11 @@
             {
               "description": "The percentage of tokens that must be staked for the module to be active. Computed as `staked / total_supply`.",
               "type": "object",
-              "required": [
-                "percentage"
-              ],
+              "required": ["percentage"],
               "properties": {
                 "percentage": {
                   "type": "object",
-                  "required": [
-                    "percent"
-                  ],
+                  "required": ["percent"],
                   "properties": {
                     "percent": {
                       "$ref": "#/definitions/Decimal"
@@ -746,9 +655,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "InfoResponse",
       "type": "object",
-      "required": [
-        "info"
-      ],
+      "required": ["info"],
       "properties": {
         "info": {
           "$ref": "#/definitions/ContractVersion"
@@ -758,10 +665,7 @@
       "definitions": {
         "ContractVersion": {
           "type": "object",
-          "required": [
-            "contract",
-            "version"
-          ],
+          "required": ["contract", "version"],
           "properties": {
             "contract": {
               "description": "contract is the crate name of the implementing contract, eg. `crate:cw20-base` we will use other prefixes for other languages, and their standard global namespacing",
@@ -797,10 +701,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "TotalPowerAtHeightResponse",
       "type": "object",
-      "required": [
-        "height",
-        "power"
-      ],
+      "required": ["height", "power"],
       "properties": {
         "height": {
           "type": "integer",
@@ -823,10 +724,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "VotingPowerAtHeightResponse",
       "type": "object",
-      "required": [
-        "height",
-        "power"
-      ],
+      "required": ["height", "power"],
       "properties": {
         "height": {
           "type": "integer",

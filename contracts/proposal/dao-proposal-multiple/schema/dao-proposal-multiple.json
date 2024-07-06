@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-proposal-multiple",
-  "contract_version": "2.4.2",
+  "contract_version": "2.5.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -82,15 +82,11 @@
           {
             "description": "Set the admin to a specified address.",
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "object",
-                "required": [
-                  "addr"
-                ],
+                "required": ["addr"],
                 "properties": {
                   "addr": {
                     "type": "string"
@@ -104,9 +100,7 @@
           {
             "description": "Sets the admin as the core module address.",
             "type": "object",
-            "required": [
-              "core_module"
-            ],
+            "required": ["core_module"],
             "properties": {
               "core_module": {
                 "type": "object",
@@ -123,10 +117,7 @@
       },
       "Coin": {
         "type": "object",
-        "required": [
-          "amount",
-          "denom"
-        ],
+        "required": ["amount", "denom"],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -145,9 +136,7 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "height"
-            ],
+            "required": ["height"],
             "properties": {
               "height": {
                 "type": "integer",
@@ -160,9 +149,7 @@
           {
             "description": "Time in seconds",
             "type": "object",
-            "required": [
-              "time"
-            ],
+            "required": ["time"],
             "properties": {
               "time": {
                 "type": "integer",
@@ -177,12 +164,7 @@
       "ModuleInstantiateInfo": {
         "description": "Information needed to instantiate a module.",
         "type": "object",
-        "required": [
-          "code_id",
-          "funds",
-          "label",
-          "msg"
-        ],
+        "required": ["code_id", "funds", "label", "msg"],
         "properties": {
           "admin": {
             "description": "CosmWasm level admin of the instantiated contract. See: <https://docs.cosmwasm.com/docs/1.0/smart-contracts/migration>",
@@ -229,9 +211,7 @@
           {
             "description": "The majority of voters must vote yes for the proposal to pass.",
             "type": "object",
-            "required": [
-              "majority"
-            ],
+            "required": ["majority"],
             "properties": {
               "majority": {
                 "type": "object",
@@ -243,9 +223,7 @@
           {
             "description": "A percentage of voting power >= percent must vote yes for the proposal to pass.",
             "type": "object",
-            "required": [
-              "percent"
-            ],
+            "required": ["percent"],
             "properties": {
               "percent": {
                 "$ref": "#/definitions/Decimal"
@@ -260,9 +238,7 @@
           {
             "description": "Anyone may create a proposal free of charge.",
             "type": "object",
-            "required": [
-              "anyone_may_propose"
-            ],
+            "required": ["anyone_may_propose"],
             "properties": {
               "anyone_may_propose": {
                 "type": "object",
@@ -274,15 +250,11 @@
           {
             "description": "The module specified in INFO has exclusive rights to proposal creation.",
             "type": "object",
-            "required": [
-              "module_may_propose"
-            ],
+            "required": ["module_may_propose"],
             "properties": {
               "module_may_propose": {
                 "type": "object",
-                "required": [
-                  "info"
-                ],
+                "required": ["info"],
                 "properties": {
                   "info": {
                     "$ref": "#/definitions/ModuleInstantiateInfo"
@@ -336,15 +308,11 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "single_choice"
-            ],
+            "required": ["single_choice"],
             "properties": {
               "single_choice": {
                 "type": "object",
-                "required": [
-                  "quorum"
-                ],
+                "required": ["quorum"],
                 "properties": {
                   "quorum": {
                     "$ref": "#/definitions/PercentageThreshold"
@@ -366,9 +334,7 @@
       {
         "description": "Creates a proposal in the governance module.",
         "type": "object",
-        "required": [
-          "propose"
-        ],
+        "required": ["propose"],
         "properties": {
           "propose": {
             "$ref": "#/definitions/MultipleChoiceProposeMsg"
@@ -379,16 +345,11 @@
       {
         "description": "Votes on a proposal. Voting power is determined by the DAO's voting power module.",
         "type": "object",
-        "required": [
-          "vote"
-        ],
+        "required": ["vote"],
         "properties": {
           "vote": {
             "type": "object",
-            "required": [
-              "proposal_id",
-              "vote"
-            ],
+            "required": ["proposal_id", "vote"],
             "properties": {
               "proposal_id": {
                 "description": "The ID of the proposal to vote on.",
@@ -398,10 +359,7 @@
               },
               "rationale": {
                 "description": "An optional rationale for why this vote was cast. This can be updated, set, or removed later by the address casting the vote.",
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               },
               "vote": {
                 "description": "The senders position on the proposal.",
@@ -420,15 +378,11 @@
       {
         "description": "Causes the messages associated with a passed proposal to be executed by the DAO.",
         "type": "object",
-        "required": [
-          "execute"
-        ],
+        "required": ["execute"],
         "properties": {
           "execute": {
             "type": "object",
-            "required": [
-              "proposal_id"
-            ],
+            "required": ["proposal_id"],
             "properties": {
               "proposal_id": {
                 "description": "The ID of the proposal to execute.",
@@ -445,15 +399,11 @@
       {
         "description": "Callable only if veto is configured",
         "type": "object",
-        "required": [
-          "veto"
-        ],
+        "required": ["veto"],
         "properties": {
           "veto": {
             "type": "object",
-            "required": [
-              "proposal_id"
-            ],
+            "required": ["proposal_id"],
             "properties": {
               "proposal_id": {
                 "description": "The ID of the proposal to veto.",
@@ -470,15 +420,11 @@
       {
         "description": "Closes a proposal that has failed (either not passed or timed out). If applicable this will cause the proposal deposit associated wth said proposal to be returned.",
         "type": "object",
-        "required": [
-          "close"
-        ],
+        "required": ["close"],
         "properties": {
           "close": {
             "type": "object",
-            "required": [
-              "proposal_id"
-            ],
+            "required": ["proposal_id"],
             "properties": {
               "proposal_id": {
                 "description": "The ID of the proposal to close.",
@@ -495,9 +441,7 @@
       {
         "description": "Updates the governance module's config.",
         "type": "object",
-        "required": [
-          "update_config"
-        ],
+        "required": ["update_config"],
         "properties": {
           "update_config": {
             "type": "object",
@@ -573,15 +517,11 @@
       {
         "description": "Updates the sender's rationale for their vote on the specified proposal. Errors if no vote vote has been cast.",
         "type": "object",
-        "required": [
-          "update_rationale"
-        ],
+        "required": ["update_rationale"],
         "properties": {
           "update_rationale": {
             "type": "object",
-            "required": [
-              "proposal_id"
-            ],
+            "required": ["proposal_id"],
             "properties": {
               "proposal_id": {
                 "type": "integer",
@@ -589,10 +529,7 @@
                 "minimum": 0.0
               },
               "rationale": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -603,15 +540,11 @@
       {
         "description": "Update's the proposal creation policy used for this module. Only the DAO may call this method.",
         "type": "object",
-        "required": [
-          "update_pre_propose_info"
-        ],
+        "required": ["update_pre_propose_info"],
         "properties": {
           "update_pre_propose_info": {
             "type": "object",
-            "required": [
-              "info"
-            ],
+            "required": ["info"],
             "properties": {
               "info": {
                 "$ref": "#/definitions/PreProposeInfo"
@@ -624,15 +557,11 @@
       },
       {
         "type": "object",
-        "required": [
-          "add_proposal_hook"
-        ],
+        "required": ["add_proposal_hook"],
         "properties": {
           "add_proposal_hook": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
@@ -645,15 +574,11 @@
       },
       {
         "type": "object",
-        "required": [
-          "remove_proposal_hook"
-        ],
+        "required": ["remove_proposal_hook"],
         "properties": {
           "remove_proposal_hook": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
@@ -666,15 +591,11 @@
       },
       {
         "type": "object",
-        "required": [
-          "add_vote_hook"
-        ],
+        "required": ["add_vote_hook"],
         "properties": {
           "add_vote_hook": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
@@ -687,15 +608,11 @@
       },
       {
         "type": "object",
-        "required": [
-          "remove_vote_hook"
-        ],
+        "required": ["remove_vote_hook"],
         "properties": {
           "remove_vote_hook": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
@@ -714,15 +631,11 @@
           {
             "description": "Set the admin to a specified address.",
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "object",
-                "required": [
-                  "addr"
-                ],
+                "required": ["addr"],
                 "properties": {
                   "addr": {
                     "type": "string"
@@ -736,9 +649,7 @@
           {
             "description": "Sets the admin as the core module address.",
             "type": "object",
-            "required": [
-              "core_module"
-            ],
+            "required": ["core_module"],
             "properties": {
               "core_module": {
                 "type": "object",
@@ -755,16 +666,11 @@
           {
             "description": "Sends native tokens from the contract to the given address.\n\nThis is translated to a [MsgSend](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto#L19-L28). `from_address` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "send"
-            ],
+            "required": ["send"],
             "properties": {
               "send": {
                 "type": "object",
-                "required": [
-                  "amount",
-                  "to_address"
-                ],
+                "required": ["amount", "to_address"],
                 "properties": {
                   "amount": {
                     "type": "array",
@@ -783,15 +689,11 @@
           {
             "description": "This will burn the given coins from the contract's account. There is no Cosmos SDK message that performs this, but it can be done by calling the bank keeper. Important if a contract controls significant token supply that must be retired.",
             "type": "object",
-            "required": [
-              "burn"
-            ],
+            "required": ["burn"],
             "properties": {
               "burn": {
                 "type": "object",
-                "required": [
-                  "amount"
-                ],
+                "required": ["amount"],
                 "properties": {
                   "amount": {
                     "type": "array",
@@ -812,10 +714,7 @@
       },
       "Coin": {
         "type": "object",
-        "required": [
-          "amount",
-          "denom"
-        ],
+        "required": ["amount", "denom"],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -829,9 +728,7 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "bank"
-            ],
+            "required": ["bank"],
             "properties": {
               "bank": {
                 "$ref": "#/definitions/BankMsg"
@@ -841,9 +738,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "custom"
-            ],
+            "required": ["custom"],
             "properties": {
               "custom": {
                 "$ref": "#/definitions/Empty"
@@ -853,9 +748,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "staking"
-            ],
+            "required": ["staking"],
             "properties": {
               "staking": {
                 "$ref": "#/definitions/StakingMsg"
@@ -865,9 +758,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "distribution"
-            ],
+            "required": ["distribution"],
             "properties": {
               "distribution": {
                 "$ref": "#/definitions/DistributionMsg"
@@ -878,16 +769,11 @@
           {
             "description": "A Stargate message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto). This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
             "type": "object",
-            "required": [
-              "stargate"
-            ],
+            "required": ["stargate"],
             "properties": {
               "stargate": {
                 "type": "object",
-                "required": [
-                  "type_url",
-                  "value"
-                ],
+                "required": ["type_url", "value"],
                 "properties": {
                   "type_url": {
                     "type": "string"
@@ -902,9 +788,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "ibc"
-            ],
+            "required": ["ibc"],
             "properties": {
               "ibc": {
                 "$ref": "#/definitions/IbcMsg"
@@ -914,9 +798,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "wasm"
-            ],
+            "required": ["wasm"],
             "properties": {
               "wasm": {
                 "$ref": "#/definitions/WasmMsg"
@@ -926,9 +808,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "gov"
-            ],
+            "required": ["gov"],
             "properties": {
               "gov": {
                 "$ref": "#/definitions/GovMsg"
@@ -948,15 +828,11 @@
           {
             "description": "This is translated to a [MsgSetWithdrawAddress](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L29-L37). `delegator_address` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "set_withdraw_address"
-            ],
+            "required": ["set_withdraw_address"],
             "properties": {
               "set_withdraw_address": {
                 "type": "object",
-                "required": [
-                  "address"
-                ],
+                "required": ["address"],
                 "properties": {
                   "address": {
                     "description": "The `withdraw_address`",
@@ -970,15 +846,11 @@
           {
             "description": "This is translated to a [[MsgWithdrawDelegatorReward](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L42-L50). `delegator_address` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "withdraw_delegator_reward"
-            ],
+            "required": ["withdraw_delegator_reward"],
             "properties": {
               "withdraw_delegator_reward": {
                 "type": "object",
-                "required": [
-                  "validator"
-                ],
+                "required": ["validator"],
                 "properties": {
                   "validator": {
                     "description": "The `validator_address`",
@@ -996,9 +868,7 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "height"
-            ],
+            "required": ["height"],
             "properties": {
               "height": {
                 "type": "integer",
@@ -1011,9 +881,7 @@
           {
             "description": "Time in seconds",
             "type": "object",
-            "required": [
-              "time"
-            ],
+            "required": ["time"],
             "properties": {
               "time": {
                 "type": "integer",
@@ -1035,16 +903,11 @@
           {
             "description": "This maps directly to [MsgVote](https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/gov/v1beta1/tx.proto#L46-L56) in the Cosmos SDK with voter set to the contract address.",
             "type": "object",
-            "required": [
-              "vote"
-            ],
+            "required": ["vote"],
             "properties": {
               "vote": {
                 "type": "object",
-                "required": [
-                  "proposal_id",
-                  "vote"
-                ],
+                "required": ["proposal_id", "vote"],
                 "properties": {
                   "proposal_id": {
                     "type": "integer",
@@ -1072,18 +935,11 @@
           {
             "description": "Sends bank tokens owned by the contract to the given address on another chain. The channel must already be established between the ibctransfer module on this chain and a matching module on the remote chain. We cannot select the port_id, this is whatever the local chain has bound the ibctransfer module to.",
             "type": "object",
-            "required": [
-              "transfer"
-            ],
+            "required": ["transfer"],
             "properties": {
               "transfer": {
                 "type": "object",
-                "required": [
-                  "amount",
-                  "channel_id",
-                  "timeout",
-                  "to_address"
-                ],
+                "required": ["amount", "channel_id", "timeout", "to_address"],
                 "properties": {
                   "amount": {
                     "description": "packet data only supports one coin https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/ibc/applications/transfer/v1/transfer.proto#L11-L20",
@@ -1117,17 +973,11 @@
           {
             "description": "Sends an IBC packet with given data over the existing channel. Data should be encoded in a format defined by the channel version, and the module on the other side should know how to parse this.",
             "type": "object",
-            "required": [
-              "send_packet"
-            ],
+            "required": ["send_packet"],
             "properties": {
               "send_packet": {
                 "type": "object",
-                "required": [
-                  "channel_id",
-                  "data",
-                  "timeout"
-                ],
+                "required": ["channel_id", "data", "timeout"],
                 "properties": {
                   "channel_id": {
                     "type": "string"
@@ -1151,15 +1001,11 @@
           {
             "description": "This will close an existing channel that is owned by this contract. Port is auto-assigned to the contract's IBC port",
             "type": "object",
-            "required": [
-              "close_channel"
-            ],
+            "required": ["close_channel"],
             "properties": {
               "close_channel": {
                 "type": "object",
-                "required": [
-                  "channel_id"
-                ],
+                "required": ["channel_id"],
                 "properties": {
                   "channel_id": {
                     "type": "string"
@@ -1200,10 +1046,7 @@
       "IbcTimeoutBlock": {
         "description": "IBCTimeoutHeight Height is a monotonically increasing data type that can be compared against another Height for the purposes of updating and freezing clients. Ordering is (revision_number, timeout_height)",
         "type": "object",
-        "required": [
-          "height",
-          "revision"
-        ],
+        "required": ["height", "revision"],
         "properties": {
           "height": {
             "description": "block height after which the packet times out. the height within the given revision",
@@ -1222,12 +1065,7 @@
       "ModuleInstantiateInfo": {
         "description": "Information needed to instantiate a module.",
         "type": "object",
-        "required": [
-          "code_id",
-          "funds",
-          "label",
-          "msg"
-        ],
+        "required": ["code_id", "funds", "label", "msg"],
         "properties": {
           "admin": {
             "description": "CosmWasm level admin of the instantiated contract. See: <https://docs.cosmwasm.com/docs/1.0/smart-contracts/migration>",
@@ -1270,16 +1108,11 @@
       },
       "MultipleChoiceAutoVote": {
         "type": "object",
-        "required": [
-          "vote"
-        ],
+        "required": ["vote"],
         "properties": {
           "rationale": {
             "description": "An optional rationale for why this vote was cast. This can be updated, set, or removed later by the address casting the vote.",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "vote": {
             "description": "The proposer's position on the proposal.",
@@ -1295,11 +1128,7 @@
       "MultipleChoiceOption": {
         "description": "Unchecked multiple choice option",
         "type": "object",
-        "required": [
-          "description",
-          "msgs",
-          "title"
-        ],
+        "required": ["description", "msgs", "title"],
         "properties": {
           "description": {
             "type": "string"
@@ -1319,9 +1148,7 @@
       "MultipleChoiceOptions": {
         "description": "Represents unchecked multiple choice options",
         "type": "object",
-        "required": [
-          "options"
-        ],
+        "required": ["options"],
         "properties": {
           "options": {
             "type": "array",
@@ -1335,11 +1162,7 @@
       "MultipleChoiceProposeMsg": {
         "description": "The contents of a message to create a proposal in the multiple choice proposal module.\n\nWe break this type out of `ExecuteMsg` because we want pre-propose modules that interact with this contract to be able to get type checking on their propose messages.\n\nWe move this type to this package so that pre-propose modules can import it without importing dao-proposal-multiple with the library feature which (as it is not additive) cause the execute exports to not be included in wasm builds.",
         "type": "object",
-        "required": [
-          "choices",
-          "description",
-          "title"
-        ],
+        "required": ["choices", "description", "title"],
         "properties": {
           "choices": {
             "description": "The multiple choices.",
@@ -1355,10 +1178,7 @@
           },
           "proposer": {
             "description": "The address creating the proposal. If no pre-propose module is attached to this module this must always be None as the proposer is the sender of the propose message. If a pre-propose module is attached, this must be Some and will set the proposer of the proposal it creates.",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "title": {
             "description": "The title of the proposal.",
@@ -1381,9 +1201,7 @@
       "MultipleChoiceVote": {
         "description": "A multiple choice vote, picking the desired option",
         "type": "object",
-        "required": [
-          "option_id"
-        ],
+        "required": ["option_id"],
         "properties": {
           "option_id": {
             "type": "integer",
@@ -1399,9 +1217,7 @@
           {
             "description": "The majority of voters must vote yes for the proposal to pass.",
             "type": "object",
-            "required": [
-              "majority"
-            ],
+            "required": ["majority"],
             "properties": {
               "majority": {
                 "type": "object",
@@ -1413,9 +1229,7 @@
           {
             "description": "A percentage of voting power >= percent must vote yes for the proposal to pass.",
             "type": "object",
-            "required": [
-              "percent"
-            ],
+            "required": ["percent"],
             "properties": {
               "percent": {
                 "$ref": "#/definitions/Decimal"
@@ -1430,9 +1244,7 @@
           {
             "description": "Anyone may create a proposal free of charge.",
             "type": "object",
-            "required": [
-              "anyone_may_propose"
-            ],
+            "required": ["anyone_may_propose"],
             "properties": {
               "anyone_may_propose": {
                 "type": "object",
@@ -1444,15 +1256,11 @@
           {
             "description": "The module specified in INFO has exclusive rights to proposal creation.",
             "type": "object",
-            "required": [
-              "module_may_propose"
-            ],
+            "required": ["module_may_propose"],
             "properties": {
               "module_may_propose": {
                 "type": "object",
-                "required": [
-                  "info"
-                ],
+                "required": ["info"],
                 "properties": {
                   "info": {
                     "$ref": "#/definitions/ModuleInstantiateInfo"
@@ -1471,16 +1279,11 @@
           {
             "description": "This is translated to a [MsgDelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L81-L90). `delegator_address` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "delegate"
-            ],
+            "required": ["delegate"],
             "properties": {
               "delegate": {
                 "type": "object",
-                "required": [
-                  "amount",
-                  "validator"
-                ],
+                "required": ["amount", "validator"],
                 "properties": {
                   "amount": {
                     "$ref": "#/definitions/Coin"
@@ -1496,16 +1299,11 @@
           {
             "description": "This is translated to a [MsgUndelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L112-L121). `delegator_address` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "undelegate"
-            ],
+            "required": ["undelegate"],
             "properties": {
               "undelegate": {
                 "type": "object",
-                "required": [
-                  "amount",
-                  "validator"
-                ],
+                "required": ["amount", "validator"],
                 "properties": {
                   "amount": {
                     "$ref": "#/definitions/Coin"
@@ -1521,17 +1319,11 @@
           {
             "description": "This is translated to a [MsgBeginRedelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L95-L105). `delegator_address` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "redelegate"
-            ],
+            "required": ["redelegate"],
             "properties": {
               "redelegate": {
                 "type": "object",
-                "required": [
-                  "amount",
-                  "dst_validator",
-                  "src_validator"
-                ],
+                "required": ["amount", "dst_validator", "src_validator"],
                 "properties": {
                   "amount": {
                     "$ref": "#/definitions/Coin"
@@ -1599,27 +1391,18 @@
       },
       "VoteOption": {
         "type": "string",
-        "enum": [
-          "yes",
-          "no",
-          "abstain",
-          "no_with_veto"
-        ]
+        "enum": ["yes", "no", "abstain", "no_with_veto"]
       },
       "VotingStrategy": {
         "description": "Determines how many choices may be selected.",
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "single_choice"
-            ],
+            "required": ["single_choice"],
             "properties": {
               "single_choice": {
                 "type": "object",
-                "required": [
-                  "quorum"
-                ],
+                "required": ["quorum"],
                 "properties": {
                   "quorum": {
                     "$ref": "#/definitions/PercentageThreshold"
@@ -1638,17 +1421,11 @@
           {
             "description": "Dispatches a call to another contract at a known address (with known ABI).\n\nThis is translated to a [MsgExecuteContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L68-L78). `sender` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "execute"
-            ],
+            "required": ["execute"],
             "properties": {
               "execute": {
                 "type": "object",
-                "required": [
-                  "contract_addr",
-                  "funds",
-                  "msg"
-                ],
+                "required": ["contract_addr", "funds", "msg"],
                 "properties": {
                   "contract_addr": {
                     "type": "string"
@@ -1675,24 +1452,14 @@
           {
             "description": "Instantiates a new contracts from previously uploaded Wasm code.\n\nThe contract address is non-predictable. But it is guaranteed that when emitting the same Instantiate message multiple times, multiple instances on different addresses will be generated. See also Instantiate2.\n\nThis is translated to a [MsgInstantiateContract](https://github.com/CosmWasm/wasmd/blob/v0.29.2/proto/cosmwasm/wasm/v1/tx.proto#L53-L71). `sender` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "instantiate"
-            ],
+            "required": ["instantiate"],
             "properties": {
               "instantiate": {
                 "type": "object",
-                "required": [
-                  "code_id",
-                  "funds",
-                  "label",
-                  "msg"
-                ],
+                "required": ["code_id", "funds", "label", "msg"],
                 "properties": {
                   "admin": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
+                    "type": ["string", "null"]
                   },
                   "code_id": {
                     "type": "integer",
@@ -1725,17 +1492,11 @@
           {
             "description": "Migrates a given contracts to use new wasm code. Passes a MigrateMsg to allow us to customize behavior.\n\nOnly the contract admin (as defined in wasmd), if any, is able to make this call.\n\nThis is translated to a [MsgMigrateContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L86-L96). `sender` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "migrate"
-            ],
+            "required": ["migrate"],
             "properties": {
               "migrate": {
                 "type": "object",
-                "required": [
-                  "contract_addr",
-                  "msg",
-                  "new_code_id"
-                ],
+                "required": ["contract_addr", "msg", "new_code_id"],
                 "properties": {
                   "contract_addr": {
                     "type": "string"
@@ -1762,16 +1523,11 @@
           {
             "description": "Sets a new admin (for migrate) on the given contract. Fails if this contract is not currently admin of the target contract.",
             "type": "object",
-            "required": [
-              "update_admin"
-            ],
+            "required": ["update_admin"],
             "properties": {
               "update_admin": {
                 "type": "object",
-                "required": [
-                  "admin",
-                  "contract_addr"
-                ],
+                "required": ["admin", "contract_addr"],
                 "properties": {
                   "admin": {
                     "type": "string"
@@ -1787,15 +1543,11 @@
           {
             "description": "Clears the admin on the given contract, so no more migration possible. Fails if this contract is not currently admin of the target contract.",
             "type": "object",
-            "required": [
-              "clear_admin"
-            ],
+            "required": ["clear_admin"],
             "properties": {
               "clear_admin": {
                 "type": "object",
-                "required": [
-                  "contract_addr"
-                ],
+                "required": ["contract_addr"],
                 "properties": {
                   "contract_addr": {
                     "type": "string"
@@ -1816,9 +1568,7 @@
       {
         "description": "Gets the governance module's config.",
         "type": "object",
-        "required": [
-          "config"
-        ],
+        "required": ["config"],
         "properties": {
           "config": {
             "type": "object",
@@ -1830,15 +1580,11 @@
       {
         "description": "Gets information about a proposal.",
         "type": "object",
-        "required": [
-          "proposal"
-        ],
+        "required": ["proposal"],
         "properties": {
           "proposal": {
             "type": "object",
-            "required": [
-              "proposal_id"
-            ],
+            "required": ["proposal_id"],
             "properties": {
               "proposal_id": {
                 "type": "integer",
@@ -1854,26 +1600,18 @@
       {
         "description": "Lists all the proposals that have been cast in this module.",
         "type": "object",
-        "required": [
-          "list_proposals"
-        ],
+        "required": ["list_proposals"],
         "properties": {
           "list_proposals": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint64",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint64",
                 "minimum": 0.0
               }
@@ -1886,26 +1624,18 @@
       {
         "description": "Lists all of the proposals that have been cast in this module in decending order of proposal ID.",
         "type": "object",
-        "required": [
-          "reverse_proposals"
-        ],
+        "required": ["reverse_proposals"],
         "properties": {
           "reverse_proposals": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint64",
                 "minimum": 0.0
               },
               "start_before": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint64",
                 "minimum": 0.0
               }
@@ -1918,16 +1648,11 @@
       {
         "description": "Returns a voters position on a proposal.",
         "type": "object",
-        "required": [
-          "get_vote"
-        ],
+        "required": ["get_vote"],
         "properties": {
           "get_vote": {
             "type": "object",
-            "required": [
-              "proposal_id",
-              "voter"
-            ],
+            "required": ["proposal_id", "voter"],
             "properties": {
               "proposal_id": {
                 "type": "integer",
@@ -1946,21 +1671,14 @@
       {
         "description": "Lists all of the votes that have been cast on a proposal.",
         "type": "object",
-        "required": [
-          "list_votes"
-        ],
+        "required": ["list_votes"],
         "properties": {
           "list_votes": {
             "type": "object",
-            "required": [
-              "proposal_id"
-            ],
+            "required": ["proposal_id"],
             "properties": {
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint64",
                 "minimum": 0.0
               },
@@ -1970,10 +1688,7 @@
                 "minimum": 0.0
               },
               "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -1984,9 +1699,7 @@
       {
         "description": "Returns the number of proposals that have been created in this module.",
         "type": "object",
-        "required": [
-          "proposal_count"
-        ],
+        "required": ["proposal_count"],
         "properties": {
           "proposal_count": {
             "type": "object",
@@ -1998,9 +1711,7 @@
       {
         "description": "Gets the current proposal creation policy for this module.",
         "type": "object",
-        "required": [
-          "proposal_creation_policy"
-        ],
+        "required": ["proposal_creation_policy"],
         "properties": {
           "proposal_creation_policy": {
             "type": "object",
@@ -2012,9 +1723,7 @@
       {
         "description": "Lists all of the consumers of proposal hooks for this module.",
         "type": "object",
-        "required": [
-          "proposal_hooks"
-        ],
+        "required": ["proposal_hooks"],
         "properties": {
           "proposal_hooks": {
             "type": "object",
@@ -2026,9 +1735,7 @@
       {
         "description": "Lists all of the consumers of vote hooks for this module.",
         "type": "object",
-        "required": [
-          "vote_hooks"
-        ],
+        "required": ["vote_hooks"],
         "properties": {
           "vote_hooks": {
             "type": "object",
@@ -2040,9 +1747,7 @@
       {
         "description": "Returns the address of the DAO this module belongs to",
         "type": "object",
-        "required": [
-          "dao"
-        ],
+        "required": ["dao"],
         "properties": {
           "dao": {
             "type": "object",
@@ -2054,9 +1759,7 @@
       {
         "description": "Returns contract version info",
         "type": "object",
-        "required": [
-          "info"
-        ],
+        "required": ["info"],
         "properties": {
           "info": {
             "type": "object",
@@ -2068,9 +1771,7 @@
       {
         "description": "Returns the proposal ID that will be assigned to the next proposal created.",
         "type": "object",
-        "required": [
-          "next_proposal_id"
-        ],
+        "required": ["next_proposal_id"],
         "properties": {
           "next_proposal_id": {
             "type": "object",
@@ -2087,9 +1788,7 @@
     "oneOf": [
       {
         "type": "object",
-        "required": [
-          "from_v1"
-        ],
+        "required": ["from_v1"],
         "properties": {
           "from_v1": {
             "type": "object",
@@ -2129,9 +1828,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "from_compatible"
-        ],
+        "required": ["from_compatible"],
         "properties": {
           "from_compatible": {
             "type": "object",
@@ -2148,15 +1845,11 @@
           {
             "description": "Set the admin to a specified address.",
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "object",
-                "required": [
-                  "addr"
-                ],
+                "required": ["addr"],
                 "properties": {
                   "addr": {
                     "type": "string"
@@ -2170,9 +1863,7 @@
           {
             "description": "Sets the admin as the core module address.",
             "type": "object",
-            "required": [
-              "core_module"
-            ],
+            "required": ["core_module"],
             "properties": {
               "core_module": {
                 "type": "object",
@@ -2189,10 +1880,7 @@
       },
       "Coin": {
         "type": "object",
-        "required": [
-          "amount",
-          "denom"
-        ],
+        "required": ["amount", "denom"],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -2207,9 +1895,7 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "height"
-            ],
+            "required": ["height"],
             "properties": {
               "height": {
                 "type": "integer",
@@ -2222,9 +1908,7 @@
           {
             "description": "Time in seconds",
             "type": "object",
-            "required": [
-              "time"
-            ],
+            "required": ["time"],
             "properties": {
               "time": {
                 "type": "integer",
@@ -2239,12 +1923,7 @@
       "ModuleInstantiateInfo": {
         "description": "Information needed to instantiate a module.",
         "type": "object",
-        "required": [
-          "code_id",
-          "funds",
-          "label",
-          "msg"
-        ],
+        "required": ["code_id", "funds", "label", "msg"],
         "properties": {
           "admin": {
             "description": "CosmWasm level admin of the instantiated contract. See: <https://docs.cosmwasm.com/docs/1.0/smart-contracts/migration>",
@@ -2290,9 +1969,7 @@
           {
             "description": "Anyone may create a proposal free of charge.",
             "type": "object",
-            "required": [
-              "anyone_may_propose"
-            ],
+            "required": ["anyone_may_propose"],
             "properties": {
               "anyone_may_propose": {
                 "type": "object",
@@ -2304,15 +1981,11 @@
           {
             "description": "The module specified in INFO has exclusive rights to proposal creation.",
             "type": "object",
-            "required": [
-              "module_may_propose"
-            ],
+            "required": ["module_may_propose"],
             "properties": {
               "module_may_propose": {
                 "type": "object",
-                "required": [
-                  "info"
-                ],
+                "required": ["info"],
                 "properties": {
                   "info": {
                     "$ref": "#/definitions/ModuleInstantiateInfo"
@@ -2453,9 +2126,7 @@
           "oneOf": [
             {
               "type": "object",
-              "required": [
-                "height"
-              ],
+              "required": ["height"],
               "properties": {
                 "height": {
                   "type": "integer",
@@ -2468,9 +2139,7 @@
             {
               "description": "Time in seconds",
               "type": "object",
-              "required": [
-                "time"
-              ],
+              "required": ["time"],
               "properties": {
                 "time": {
                   "type": "integer",
@@ -2488,9 +2157,7 @@
             {
               "description": "The majority of voters must vote yes for the proposal to pass.",
               "type": "object",
-              "required": [
-                "majority"
-              ],
+              "required": ["majority"],
               "properties": {
                 "majority": {
                   "type": "object",
@@ -2502,9 +2169,7 @@
             {
               "description": "A percentage of voting power >= percent must vote yes for the proposal to pass.",
               "type": "object",
-              "required": [
-                "percent"
-              ],
+              "required": ["percent"],
               "properties": {
                 "percent": {
                   "$ref": "#/definitions/Decimal"
@@ -2551,15 +2216,11 @@
           "oneOf": [
             {
               "type": "object",
-              "required": [
-                "single_choice"
-              ],
+              "required": ["single_choice"],
               "properties": {
                 "single_choice": {
                   "type": "object",
-                  "required": [
-                    "quorum"
-                  ],
+                  "required": ["quorum"],
                   "properties": {
                     "quorum": {
                       "$ref": "#/definitions/PercentageThreshold"
@@ -2605,9 +2266,7 @@
         "MultipleChoiceVote": {
           "description": "A multiple choice vote, picking the desired option",
           "type": "object",
-          "required": [
-            "option_id"
-          ],
+          "required": ["option_id"],
           "properties": {
             "option_id": {
               "type": "integer",
@@ -2624,11 +2283,7 @@
         "VoteInfo": {
           "description": "Information about a vote that was cast.",
           "type": "object",
-          "required": [
-            "power",
-            "vote",
-            "voter"
-          ],
+          "required": ["power", "vote", "voter"],
           "properties": {
             "power": {
               "description": "The voting power behind the vote.",
@@ -2640,10 +2295,7 @@
             },
             "rationale": {
               "description": "The rationale behind the vote.",
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": ["string", "null"]
             },
             "vote": {
               "description": "Position on the vote.",
@@ -2670,9 +2322,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "InfoResponse",
       "type": "object",
-      "required": [
-        "info"
-      ],
+      "required": ["info"],
       "properties": {
         "info": {
           "$ref": "#/definitions/ContractVersion"
@@ -2682,10 +2332,7 @@
       "definitions": {
         "ContractVersion": {
           "type": "object",
-          "required": [
-            "contract",
-            "version"
-          ],
+          "required": ["contract", "version"],
           "properties": {
             "contract": {
               "description": "contract is the crate name of the implementing contract, eg. `crate:cw20-base` we will use other prefixes for other languages, and their standard global namespacing",
@@ -2704,9 +2351,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ProposalListResponse",
       "type": "object",
-      "required": [
-        "proposals"
-      ],
+      "required": ["proposals"],
       "properties": {
         "proposals": {
           "type": "array",
@@ -2727,16 +2372,11 @@
             {
               "description": "Sends native tokens from the contract to the given address.\n\nThis is translated to a [MsgSend](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto#L19-L28). `from_address` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "send"
-              ],
+              "required": ["send"],
               "properties": {
                 "send": {
                   "type": "object",
-                  "required": [
-                    "amount",
-                    "to_address"
-                  ],
+                  "required": ["amount", "to_address"],
                   "properties": {
                     "amount": {
                       "type": "array",
@@ -2755,15 +2395,11 @@
             {
               "description": "This will burn the given coins from the contract's account. There is no Cosmos SDK message that performs this, but it can be done by calling the bank keeper. Important if a contract controls significant token supply that must be retired.",
               "type": "object",
-              "required": [
-                "burn"
-              ],
+              "required": ["burn"],
               "properties": {
                 "burn": {
                   "type": "object",
-                  "required": [
-                    "amount"
-                  ],
+                  "required": ["amount"],
                   "properties": {
                     "amount": {
                       "type": "array",
@@ -2822,10 +2458,7 @@
         },
         "Coin": {
           "type": "object",
-          "required": [
-            "amount",
-            "denom"
-          ],
+          "required": ["amount", "denom"],
           "properties": {
             "amount": {
               "$ref": "#/definitions/Uint128"
@@ -2839,9 +2472,7 @@
           "oneOf": [
             {
               "type": "object",
-              "required": [
-                "bank"
-              ],
+              "required": ["bank"],
               "properties": {
                 "bank": {
                   "$ref": "#/definitions/BankMsg"
@@ -2851,9 +2482,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "custom"
-              ],
+              "required": ["custom"],
               "properties": {
                 "custom": {
                   "$ref": "#/definitions/Empty"
@@ -2863,9 +2492,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "staking"
-              ],
+              "required": ["staking"],
               "properties": {
                 "staking": {
                   "$ref": "#/definitions/StakingMsg"
@@ -2875,9 +2502,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "distribution"
-              ],
+              "required": ["distribution"],
               "properties": {
                 "distribution": {
                   "$ref": "#/definitions/DistributionMsg"
@@ -2888,16 +2513,11 @@
             {
               "description": "A Stargate message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto). This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
               "type": "object",
-              "required": [
-                "stargate"
-              ],
+              "required": ["stargate"],
               "properties": {
                 "stargate": {
                   "type": "object",
-                  "required": [
-                    "type_url",
-                    "value"
-                  ],
+                  "required": ["type_url", "value"],
                   "properties": {
                     "type_url": {
                       "type": "string"
@@ -2912,9 +2532,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "ibc"
-              ],
+              "required": ["ibc"],
               "properties": {
                 "ibc": {
                   "$ref": "#/definitions/IbcMsg"
@@ -2924,9 +2542,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "wasm"
-              ],
+              "required": ["wasm"],
               "properties": {
                 "wasm": {
                   "$ref": "#/definitions/WasmMsg"
@@ -2936,9 +2552,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "gov"
-              ],
+              "required": ["gov"],
               "properties": {
                 "gov": {
                   "$ref": "#/definitions/GovMsg"
@@ -2958,15 +2572,11 @@
             {
               "description": "This is translated to a [MsgSetWithdrawAddress](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L29-L37). `delegator_address` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "set_withdraw_address"
-              ],
+              "required": ["set_withdraw_address"],
               "properties": {
                 "set_withdraw_address": {
                   "type": "object",
-                  "required": [
-                    "address"
-                  ],
+                  "required": ["address"],
                   "properties": {
                     "address": {
                       "description": "The `withdraw_address`",
@@ -2980,15 +2590,11 @@
             {
               "description": "This is translated to a [[MsgWithdrawDelegatorReward](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L42-L50). `delegator_address` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "withdraw_delegator_reward"
-              ],
+              "required": ["withdraw_delegator_reward"],
               "properties": {
                 "withdraw_delegator_reward": {
                   "type": "object",
-                  "required": [
-                    "validator"
-                  ],
+                  "required": ["validator"],
                   "properties": {
                     "validator": {
                       "description": "The `validator_address`",
@@ -3006,9 +2612,7 @@
           "oneOf": [
             {
               "type": "object",
-              "required": [
-                "height"
-              ],
+              "required": ["height"],
               "properties": {
                 "height": {
                   "type": "integer",
@@ -3021,9 +2625,7 @@
             {
               "description": "Time in seconds",
               "type": "object",
-              "required": [
-                "time"
-              ],
+              "required": ["time"],
               "properties": {
                 "time": {
                   "type": "integer",
@@ -3045,9 +2647,7 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": [
-                "at_height"
-              ],
+              "required": ["at_height"],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -3060,9 +2660,7 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": [
-                "at_time"
-              ],
+              "required": ["at_time"],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -3073,9 +2671,7 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": [
-                "never"
-              ],
+              "required": ["never"],
               "properties": {
                 "never": {
                   "type": "object",
@@ -3092,16 +2688,11 @@
             {
               "description": "This maps directly to [MsgVote](https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/gov/v1beta1/tx.proto#L46-L56) in the Cosmos SDK with voter set to the contract address.",
               "type": "object",
-              "required": [
-                "vote"
-              ],
+              "required": ["vote"],
               "properties": {
                 "vote": {
                   "type": "object",
-                  "required": [
-                    "proposal_id",
-                    "vote"
-                  ],
+                  "required": ["proposal_id", "vote"],
                   "properties": {
                     "proposal_id": {
                       "type": "integer",
@@ -3129,18 +2720,11 @@
             {
               "description": "Sends bank tokens owned by the contract to the given address on another chain. The channel must already be established between the ibctransfer module on this chain and a matching module on the remote chain. We cannot select the port_id, this is whatever the local chain has bound the ibctransfer module to.",
               "type": "object",
-              "required": [
-                "transfer"
-              ],
+              "required": ["transfer"],
               "properties": {
                 "transfer": {
                   "type": "object",
-                  "required": [
-                    "amount",
-                    "channel_id",
-                    "timeout",
-                    "to_address"
-                  ],
+                  "required": ["amount", "channel_id", "timeout", "to_address"],
                   "properties": {
                     "amount": {
                       "description": "packet data only supports one coin https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/ibc/applications/transfer/v1/transfer.proto#L11-L20",
@@ -3174,17 +2758,11 @@
             {
               "description": "Sends an IBC packet with given data over the existing channel. Data should be encoded in a format defined by the channel version, and the module on the other side should know how to parse this.",
               "type": "object",
-              "required": [
-                "send_packet"
-              ],
+              "required": ["send_packet"],
               "properties": {
                 "send_packet": {
                   "type": "object",
-                  "required": [
-                    "channel_id",
-                    "data",
-                    "timeout"
-                  ],
+                  "required": ["channel_id", "data", "timeout"],
                   "properties": {
                     "channel_id": {
                       "type": "string"
@@ -3208,15 +2786,11 @@
             {
               "description": "This will close an existing channel that is owned by this contract. Port is auto-assigned to the contract's IBC port",
               "type": "object",
-              "required": [
-                "close_channel"
-              ],
+              "required": ["close_channel"],
               "properties": {
                 "close_channel": {
                   "type": "object",
-                  "required": [
-                    "channel_id"
-                  ],
+                  "required": ["channel_id"],
                   "properties": {
                     "channel_id": {
                       "type": "string"
@@ -3257,10 +2831,7 @@
         "IbcTimeoutBlock": {
           "description": "IBCTimeoutHeight Height is a monotonically increasing data type that can be compared against another Height for the purposes of updating and freezing clients. Ordering is (revision_number, timeout_height)",
           "type": "object",
-          "required": [
-            "height",
-            "revision"
-          ],
+          "required": ["height", "revision"],
           "properties": {
             "height": {
               "description": "block height after which the packet times out. the height within the given revision",
@@ -3281,16 +2852,12 @@
           "oneOf": [
             {
               "type": "string",
-              "enum": [
-                "standard"
-              ]
+              "enum": ["standard"]
             },
             {
               "description": "Choice that represents selecting none of the options; still counts toward quorum and allows proposals with all bad options to be voted against.",
               "type": "string",
-              "enum": [
-                "none"
-              ]
+              "enum": ["none"]
             }
           ]
         },
@@ -3410,9 +2977,7 @@
         },
         "MultipleChoiceVotes": {
           "type": "object",
-          "required": [
-            "vote_weights"
-          ],
+          "required": ["vote_weights"],
           "properties": {
             "vote_weights": {
               "type": "array",
@@ -3429,9 +2994,7 @@
             {
               "description": "The majority of voters must vote yes for the proposal to pass.",
               "type": "object",
-              "required": [
-                "majority"
-              ],
+              "required": ["majority"],
               "properties": {
                 "majority": {
                   "type": "object",
@@ -3443,9 +3006,7 @@
             {
               "description": "A percentage of voting power >= percent must vote yes for the proposal to pass.",
               "type": "object",
-              "required": [
-                "percent"
-              ],
+              "required": ["percent"],
               "properties": {
                 "percent": {
                   "$ref": "#/definitions/Decimal"
@@ -3458,10 +3019,7 @@
         "ProposalResponse": {
           "description": "Information about a proposal returned by proposal queries.",
           "type": "object",
-          "required": [
-            "id",
-            "proposal"
-          ],
+          "required": ["id", "proposal"],
           "properties": {
             "id": {
               "type": "integer",
@@ -3480,16 +3038,11 @@
             {
               "description": "This is translated to a [MsgDelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L81-L90). `delegator_address` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "delegate"
-              ],
+              "required": ["delegate"],
               "properties": {
                 "delegate": {
                   "type": "object",
-                  "required": [
-                    "amount",
-                    "validator"
-                  ],
+                  "required": ["amount", "validator"],
                   "properties": {
                     "amount": {
                       "$ref": "#/definitions/Coin"
@@ -3505,16 +3058,11 @@
             {
               "description": "This is translated to a [MsgUndelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L112-L121). `delegator_address` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "undelegate"
-              ],
+              "required": ["undelegate"],
               "properties": {
                 "undelegate": {
                   "type": "object",
-                  "required": [
-                    "amount",
-                    "validator"
-                  ],
+                  "required": ["amount", "validator"],
                   "properties": {
                     "amount": {
                       "$ref": "#/definitions/Coin"
@@ -3530,17 +3078,11 @@
             {
               "description": "This is translated to a [MsgBeginRedelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L95-L105). `delegator_address` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "redelegate"
-              ],
+              "required": ["redelegate"],
               "properties": {
                 "redelegate": {
                   "type": "object",
-                  "required": [
-                    "amount",
-                    "dst_validator",
-                    "src_validator"
-                  ],
+                  "required": ["amount", "dst_validator", "src_validator"],
                   "properties": {
                     "amount": {
                       "$ref": "#/definitions/Coin"
@@ -3563,57 +3105,41 @@
             {
               "description": "The proposal is open for voting.",
               "type": "string",
-              "enum": [
-                "open"
-              ]
+              "enum": ["open"]
             },
             {
               "description": "The proposal has been rejected.",
               "type": "string",
-              "enum": [
-                "rejected"
-              ]
+              "enum": ["rejected"]
             },
             {
               "description": "The proposal has been passed but has not been executed.",
               "type": "string",
-              "enum": [
-                "passed"
-              ]
+              "enum": ["passed"]
             },
             {
               "description": "The proposal has been passed and executed.",
               "type": "string",
-              "enum": [
-                "executed"
-              ]
+              "enum": ["executed"]
             },
             {
               "description": "The proposal has failed or expired and has been closed. A proposal deposit refund has been issued if applicable.",
               "type": "string",
-              "enum": [
-                "closed"
-              ]
+              "enum": ["closed"]
             },
             {
               "description": "The proposal's execution failed.",
               "type": "string",
-              "enum": [
-                "execution_failed"
-              ]
+              "enum": ["execution_failed"]
             },
             {
               "description": "The proposal is timelocked. Only the configured vetoer can execute or veto until the timelock expires.",
               "type": "object",
-              "required": [
-                "veto_timelock"
-              ],
+              "required": ["veto_timelock"],
               "properties": {
                 "veto_timelock": {
                   "type": "object",
-                  "required": [
-                    "expiration"
-                  ],
+                  "required": ["expiration"],
                   "properties": {
                     "expiration": {
                       "$ref": "#/definitions/Expiration"
@@ -3627,9 +3153,7 @@
             {
               "description": "The proposal has been vetoed.",
               "type": "string",
-              "enum": [
-                "vetoed"
-              ]
+              "enum": ["vetoed"]
             }
           ]
         },
@@ -3683,27 +3207,18 @@
         },
         "VoteOption": {
           "type": "string",
-          "enum": [
-            "yes",
-            "no",
-            "abstain",
-            "no_with_veto"
-          ]
+          "enum": ["yes", "no", "abstain", "no_with_veto"]
         },
         "VotingStrategy": {
           "description": "Determines how many choices may be selected.",
           "oneOf": [
             {
               "type": "object",
-              "required": [
-                "single_choice"
-              ],
+              "required": ["single_choice"],
               "properties": {
                 "single_choice": {
                   "type": "object",
-                  "required": [
-                    "quorum"
-                  ],
+                  "required": ["quorum"],
                   "properties": {
                     "quorum": {
                       "$ref": "#/definitions/PercentageThreshold"
@@ -3722,17 +3237,11 @@
             {
               "description": "Dispatches a call to another contract at a known address (with known ABI).\n\nThis is translated to a [MsgExecuteContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L68-L78). `sender` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "execute"
-              ],
+              "required": ["execute"],
               "properties": {
                 "execute": {
                   "type": "object",
-                  "required": [
-                    "contract_addr",
-                    "funds",
-                    "msg"
-                  ],
+                  "required": ["contract_addr", "funds", "msg"],
                   "properties": {
                     "contract_addr": {
                       "type": "string"
@@ -3759,24 +3268,14 @@
             {
               "description": "Instantiates a new contracts from previously uploaded Wasm code.\n\nThe contract address is non-predictable. But it is guaranteed that when emitting the same Instantiate message multiple times, multiple instances on different addresses will be generated. See also Instantiate2.\n\nThis is translated to a [MsgInstantiateContract](https://github.com/CosmWasm/wasmd/blob/v0.29.2/proto/cosmwasm/wasm/v1/tx.proto#L53-L71). `sender` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "instantiate"
-              ],
+              "required": ["instantiate"],
               "properties": {
                 "instantiate": {
                   "type": "object",
-                  "required": [
-                    "code_id",
-                    "funds",
-                    "label",
-                    "msg"
-                  ],
+                  "required": ["code_id", "funds", "label", "msg"],
                   "properties": {
                     "admin": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
+                      "type": ["string", "null"]
                     },
                     "code_id": {
                       "type": "integer",
@@ -3809,17 +3308,11 @@
             {
               "description": "Migrates a given contracts to use new wasm code. Passes a MigrateMsg to allow us to customize behavior.\n\nOnly the contract admin (as defined in wasmd), if any, is able to make this call.\n\nThis is translated to a [MsgMigrateContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L86-L96). `sender` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "migrate"
-              ],
+              "required": ["migrate"],
               "properties": {
                 "migrate": {
                   "type": "object",
-                  "required": [
-                    "contract_addr",
-                    "msg",
-                    "new_code_id"
-                  ],
+                  "required": ["contract_addr", "msg", "new_code_id"],
                   "properties": {
                     "contract_addr": {
                       "type": "string"
@@ -3846,16 +3339,11 @@
             {
               "description": "Sets a new admin (for migrate) on the given contract. Fails if this contract is not currently admin of the target contract.",
               "type": "object",
-              "required": [
-                "update_admin"
-              ],
+              "required": ["update_admin"],
               "properties": {
                 "update_admin": {
                   "type": "object",
-                  "required": [
-                    "admin",
-                    "contract_addr"
-                  ],
+                  "required": ["admin", "contract_addr"],
                   "properties": {
                     "admin": {
                       "type": "string"
@@ -3871,15 +3359,11 @@
             {
               "description": "Clears the admin on the given contract, so no more migration possible. Fails if this contract is not currently admin of the target contract.",
               "type": "object",
-              "required": [
-                "clear_admin"
-              ],
+              "required": ["clear_admin"],
               "properties": {
                 "clear_admin": {
                   "type": "object",
-                  "required": [
-                    "contract_addr"
-                  ],
+                  "required": ["contract_addr"],
                   "properties": {
                     "contract_addr": {
                       "type": "string"
@@ -3897,9 +3381,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "VoteListResponse",
       "type": "object",
-      "required": [
-        "votes"
-      ],
+      "required": ["votes"],
       "properties": {
         "votes": {
           "type": "array",
@@ -3917,9 +3399,7 @@
         "MultipleChoiceVote": {
           "description": "A multiple choice vote, picking the desired option",
           "type": "object",
-          "required": [
-            "option_id"
-          ],
+          "required": ["option_id"],
           "properties": {
             "option_id": {
               "type": "integer",
@@ -3936,11 +3416,7 @@
         "VoteInfo": {
           "description": "Information about a vote that was cast.",
           "type": "object",
-          "required": [
-            "power",
-            "vote",
-            "voter"
-          ],
+          "required": ["power", "vote", "voter"],
           "properties": {
             "power": {
               "description": "The voting power behind the vote.",
@@ -3952,10 +3428,7 @@
             },
             "rationale": {
               "description": "The rationale behind the vote.",
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": ["string", "null"]
             },
             "vote": {
               "description": "Position on the vote.",
@@ -3990,10 +3463,7 @@
       "title": "ProposalResponse",
       "description": "Information about a proposal returned by proposal queries.",
       "type": "object",
-      "required": [
-        "id",
-        "proposal"
-      ],
+      "required": ["id", "proposal"],
       "properties": {
         "id": {
           "type": "integer",
@@ -4016,16 +3486,11 @@
             {
               "description": "Sends native tokens from the contract to the given address.\n\nThis is translated to a [MsgSend](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto#L19-L28). `from_address` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "send"
-              ],
+              "required": ["send"],
               "properties": {
                 "send": {
                   "type": "object",
-                  "required": [
-                    "amount",
-                    "to_address"
-                  ],
+                  "required": ["amount", "to_address"],
                   "properties": {
                     "amount": {
                       "type": "array",
@@ -4044,15 +3509,11 @@
             {
               "description": "This will burn the given coins from the contract's account. There is no Cosmos SDK message that performs this, but it can be done by calling the bank keeper. Important if a contract controls significant token supply that must be retired.",
               "type": "object",
-              "required": [
-                "burn"
-              ],
+              "required": ["burn"],
               "properties": {
                 "burn": {
                   "type": "object",
-                  "required": [
-                    "amount"
-                  ],
+                  "required": ["amount"],
                   "properties": {
                     "amount": {
                       "type": "array",
@@ -4111,10 +3572,7 @@
         },
         "Coin": {
           "type": "object",
-          "required": [
-            "amount",
-            "denom"
-          ],
+          "required": ["amount", "denom"],
           "properties": {
             "amount": {
               "$ref": "#/definitions/Uint128"
@@ -4128,9 +3586,7 @@
           "oneOf": [
             {
               "type": "object",
-              "required": [
-                "bank"
-              ],
+              "required": ["bank"],
               "properties": {
                 "bank": {
                   "$ref": "#/definitions/BankMsg"
@@ -4140,9 +3596,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "custom"
-              ],
+              "required": ["custom"],
               "properties": {
                 "custom": {
                   "$ref": "#/definitions/Empty"
@@ -4152,9 +3606,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "staking"
-              ],
+              "required": ["staking"],
               "properties": {
                 "staking": {
                   "$ref": "#/definitions/StakingMsg"
@@ -4164,9 +3616,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "distribution"
-              ],
+              "required": ["distribution"],
               "properties": {
                 "distribution": {
                   "$ref": "#/definitions/DistributionMsg"
@@ -4177,16 +3627,11 @@
             {
               "description": "A Stargate message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto). This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
               "type": "object",
-              "required": [
-                "stargate"
-              ],
+              "required": ["stargate"],
               "properties": {
                 "stargate": {
                   "type": "object",
-                  "required": [
-                    "type_url",
-                    "value"
-                  ],
+                  "required": ["type_url", "value"],
                   "properties": {
                     "type_url": {
                       "type": "string"
@@ -4201,9 +3646,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "ibc"
-              ],
+              "required": ["ibc"],
               "properties": {
                 "ibc": {
                   "$ref": "#/definitions/IbcMsg"
@@ -4213,9 +3656,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "wasm"
-              ],
+              "required": ["wasm"],
               "properties": {
                 "wasm": {
                   "$ref": "#/definitions/WasmMsg"
@@ -4225,9 +3666,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "gov"
-              ],
+              "required": ["gov"],
               "properties": {
                 "gov": {
                   "$ref": "#/definitions/GovMsg"
@@ -4247,15 +3686,11 @@
             {
               "description": "This is translated to a [MsgSetWithdrawAddress](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L29-L37). `delegator_address` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "set_withdraw_address"
-              ],
+              "required": ["set_withdraw_address"],
               "properties": {
                 "set_withdraw_address": {
                   "type": "object",
-                  "required": [
-                    "address"
-                  ],
+                  "required": ["address"],
                   "properties": {
                     "address": {
                       "description": "The `withdraw_address`",
@@ -4269,15 +3704,11 @@
             {
               "description": "This is translated to a [[MsgWithdrawDelegatorReward](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L42-L50). `delegator_address` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "withdraw_delegator_reward"
-              ],
+              "required": ["withdraw_delegator_reward"],
               "properties": {
                 "withdraw_delegator_reward": {
                   "type": "object",
-                  "required": [
-                    "validator"
-                  ],
+                  "required": ["validator"],
                   "properties": {
                     "validator": {
                       "description": "The `validator_address`",
@@ -4295,9 +3726,7 @@
           "oneOf": [
             {
               "type": "object",
-              "required": [
-                "height"
-              ],
+              "required": ["height"],
               "properties": {
                 "height": {
                   "type": "integer",
@@ -4310,9 +3739,7 @@
             {
               "description": "Time in seconds",
               "type": "object",
-              "required": [
-                "time"
-              ],
+              "required": ["time"],
               "properties": {
                 "time": {
                   "type": "integer",
@@ -4334,9 +3761,7 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": [
-                "at_height"
-              ],
+              "required": ["at_height"],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -4349,9 +3774,7 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": [
-                "at_time"
-              ],
+              "required": ["at_time"],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -4362,9 +3785,7 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": [
-                "never"
-              ],
+              "required": ["never"],
               "properties": {
                 "never": {
                   "type": "object",
@@ -4381,16 +3802,11 @@
             {
               "description": "This maps directly to [MsgVote](https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/gov/v1beta1/tx.proto#L46-L56) in the Cosmos SDK with voter set to the contract address.",
               "type": "object",
-              "required": [
-                "vote"
-              ],
+              "required": ["vote"],
               "properties": {
                 "vote": {
                   "type": "object",
-                  "required": [
-                    "proposal_id",
-                    "vote"
-                  ],
+                  "required": ["proposal_id", "vote"],
                   "properties": {
                     "proposal_id": {
                       "type": "integer",
@@ -4418,18 +3834,11 @@
             {
               "description": "Sends bank tokens owned by the contract to the given address on another chain. The channel must already be established between the ibctransfer module on this chain and a matching module on the remote chain. We cannot select the port_id, this is whatever the local chain has bound the ibctransfer module to.",
               "type": "object",
-              "required": [
-                "transfer"
-              ],
+              "required": ["transfer"],
               "properties": {
                 "transfer": {
                   "type": "object",
-                  "required": [
-                    "amount",
-                    "channel_id",
-                    "timeout",
-                    "to_address"
-                  ],
+                  "required": ["amount", "channel_id", "timeout", "to_address"],
                   "properties": {
                     "amount": {
                       "description": "packet data only supports one coin https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/ibc/applications/transfer/v1/transfer.proto#L11-L20",
@@ -4463,17 +3872,11 @@
             {
               "description": "Sends an IBC packet with given data over the existing channel. Data should be encoded in a format defined by the channel version, and the module on the other side should know how to parse this.",
               "type": "object",
-              "required": [
-                "send_packet"
-              ],
+              "required": ["send_packet"],
               "properties": {
                 "send_packet": {
                   "type": "object",
-                  "required": [
-                    "channel_id",
-                    "data",
-                    "timeout"
-                  ],
+                  "required": ["channel_id", "data", "timeout"],
                   "properties": {
                     "channel_id": {
                       "type": "string"
@@ -4497,15 +3900,11 @@
             {
               "description": "This will close an existing channel that is owned by this contract. Port is auto-assigned to the contract's IBC port",
               "type": "object",
-              "required": [
-                "close_channel"
-              ],
+              "required": ["close_channel"],
               "properties": {
                 "close_channel": {
                   "type": "object",
-                  "required": [
-                    "channel_id"
-                  ],
+                  "required": ["channel_id"],
                   "properties": {
                     "channel_id": {
                       "type": "string"
@@ -4546,10 +3945,7 @@
         "IbcTimeoutBlock": {
           "description": "IBCTimeoutHeight Height is a monotonically increasing data type that can be compared against another Height for the purposes of updating and freezing clients. Ordering is (revision_number, timeout_height)",
           "type": "object",
-          "required": [
-            "height",
-            "revision"
-          ],
+          "required": ["height", "revision"],
           "properties": {
             "height": {
               "description": "block height after which the packet times out. the height within the given revision",
@@ -4570,16 +3966,12 @@
           "oneOf": [
             {
               "type": "string",
-              "enum": [
-                "standard"
-              ]
+              "enum": ["standard"]
             },
             {
               "description": "Choice that represents selecting none of the options; still counts toward quorum and allows proposals with all bad options to be voted against.",
               "type": "string",
-              "enum": [
-                "none"
-              ]
+              "enum": ["none"]
             }
           ]
         },
@@ -4699,9 +4091,7 @@
         },
         "MultipleChoiceVotes": {
           "type": "object",
-          "required": [
-            "vote_weights"
-          ],
+          "required": ["vote_weights"],
           "properties": {
             "vote_weights": {
               "type": "array",
@@ -4718,9 +4108,7 @@
             {
               "description": "The majority of voters must vote yes for the proposal to pass.",
               "type": "object",
-              "required": [
-                "majority"
-              ],
+              "required": ["majority"],
               "properties": {
                 "majority": {
                   "type": "object",
@@ -4732,9 +4120,7 @@
             {
               "description": "A percentage of voting power >= percent must vote yes for the proposal to pass.",
               "type": "object",
-              "required": [
-                "percent"
-              ],
+              "required": ["percent"],
               "properties": {
                 "percent": {
                   "$ref": "#/definitions/Decimal"
@@ -4750,16 +4136,11 @@
             {
               "description": "This is translated to a [MsgDelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L81-L90). `delegator_address` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "delegate"
-              ],
+              "required": ["delegate"],
               "properties": {
                 "delegate": {
                   "type": "object",
-                  "required": [
-                    "amount",
-                    "validator"
-                  ],
+                  "required": ["amount", "validator"],
                   "properties": {
                     "amount": {
                       "$ref": "#/definitions/Coin"
@@ -4775,16 +4156,11 @@
             {
               "description": "This is translated to a [MsgUndelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L112-L121). `delegator_address` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "undelegate"
-              ],
+              "required": ["undelegate"],
               "properties": {
                 "undelegate": {
                   "type": "object",
-                  "required": [
-                    "amount",
-                    "validator"
-                  ],
+                  "required": ["amount", "validator"],
                   "properties": {
                     "amount": {
                       "$ref": "#/definitions/Coin"
@@ -4800,17 +4176,11 @@
             {
               "description": "This is translated to a [MsgBeginRedelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L95-L105). `delegator_address` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "redelegate"
-              ],
+              "required": ["redelegate"],
               "properties": {
                 "redelegate": {
                   "type": "object",
-                  "required": [
-                    "amount",
-                    "dst_validator",
-                    "src_validator"
-                  ],
+                  "required": ["amount", "dst_validator", "src_validator"],
                   "properties": {
                     "amount": {
                       "$ref": "#/definitions/Coin"
@@ -4833,57 +4203,41 @@
             {
               "description": "The proposal is open for voting.",
               "type": "string",
-              "enum": [
-                "open"
-              ]
+              "enum": ["open"]
             },
             {
               "description": "The proposal has been rejected.",
               "type": "string",
-              "enum": [
-                "rejected"
-              ]
+              "enum": ["rejected"]
             },
             {
               "description": "The proposal has been passed but has not been executed.",
               "type": "string",
-              "enum": [
-                "passed"
-              ]
+              "enum": ["passed"]
             },
             {
               "description": "The proposal has been passed and executed.",
               "type": "string",
-              "enum": [
-                "executed"
-              ]
+              "enum": ["executed"]
             },
             {
               "description": "The proposal has failed or expired and has been closed. A proposal deposit refund has been issued if applicable.",
               "type": "string",
-              "enum": [
-                "closed"
-              ]
+              "enum": ["closed"]
             },
             {
               "description": "The proposal's execution failed.",
               "type": "string",
-              "enum": [
-                "execution_failed"
-              ]
+              "enum": ["execution_failed"]
             },
             {
               "description": "The proposal is timelocked. Only the configured vetoer can execute or veto until the timelock expires.",
               "type": "object",
-              "required": [
-                "veto_timelock"
-              ],
+              "required": ["veto_timelock"],
               "properties": {
                 "veto_timelock": {
                   "type": "object",
-                  "required": [
-                    "expiration"
-                  ],
+                  "required": ["expiration"],
                   "properties": {
                     "expiration": {
                       "$ref": "#/definitions/Expiration"
@@ -4897,9 +4251,7 @@
             {
               "description": "The proposal has been vetoed.",
               "type": "string",
-              "enum": [
-                "vetoed"
-              ]
+              "enum": ["vetoed"]
             }
           ]
         },
@@ -4953,27 +4305,18 @@
         },
         "VoteOption": {
           "type": "string",
-          "enum": [
-            "yes",
-            "no",
-            "abstain",
-            "no_with_veto"
-          ]
+          "enum": ["yes", "no", "abstain", "no_with_veto"]
         },
         "VotingStrategy": {
           "description": "Determines how many choices may be selected.",
           "oneOf": [
             {
               "type": "object",
-              "required": [
-                "single_choice"
-              ],
+              "required": ["single_choice"],
               "properties": {
                 "single_choice": {
                   "type": "object",
-                  "required": [
-                    "quorum"
-                  ],
+                  "required": ["quorum"],
                   "properties": {
                     "quorum": {
                       "$ref": "#/definitions/PercentageThreshold"
@@ -4992,17 +4335,11 @@
             {
               "description": "Dispatches a call to another contract at a known address (with known ABI).\n\nThis is translated to a [MsgExecuteContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L68-L78). `sender` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "execute"
-              ],
+              "required": ["execute"],
               "properties": {
                 "execute": {
                   "type": "object",
-                  "required": [
-                    "contract_addr",
-                    "funds",
-                    "msg"
-                  ],
+                  "required": ["contract_addr", "funds", "msg"],
                   "properties": {
                     "contract_addr": {
                       "type": "string"
@@ -5029,24 +4366,14 @@
             {
               "description": "Instantiates a new contracts from previously uploaded Wasm code.\n\nThe contract address is non-predictable. But it is guaranteed that when emitting the same Instantiate message multiple times, multiple instances on different addresses will be generated. See also Instantiate2.\n\nThis is translated to a [MsgInstantiateContract](https://github.com/CosmWasm/wasmd/blob/v0.29.2/proto/cosmwasm/wasm/v1/tx.proto#L53-L71). `sender` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "instantiate"
-              ],
+              "required": ["instantiate"],
               "properties": {
                 "instantiate": {
                   "type": "object",
-                  "required": [
-                    "code_id",
-                    "funds",
-                    "label",
-                    "msg"
-                  ],
+                  "required": ["code_id", "funds", "label", "msg"],
                   "properties": {
                     "admin": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
+                      "type": ["string", "null"]
                     },
                     "code_id": {
                       "type": "integer",
@@ -5079,17 +4406,11 @@
             {
               "description": "Migrates a given contracts to use new wasm code. Passes a MigrateMsg to allow us to customize behavior.\n\nOnly the contract admin (as defined in wasmd), if any, is able to make this call.\n\nThis is translated to a [MsgMigrateContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L86-L96). `sender` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "migrate"
-              ],
+              "required": ["migrate"],
               "properties": {
                 "migrate": {
                   "type": "object",
-                  "required": [
-                    "contract_addr",
-                    "msg",
-                    "new_code_id"
-                  ],
+                  "required": ["contract_addr", "msg", "new_code_id"],
                   "properties": {
                     "contract_addr": {
                       "type": "string"
@@ -5116,16 +4437,11 @@
             {
               "description": "Sets a new admin (for migrate) on the given contract. Fails if this contract is not currently admin of the target contract.",
               "type": "object",
-              "required": [
-                "update_admin"
-              ],
+              "required": ["update_admin"],
               "properties": {
                 "update_admin": {
                   "type": "object",
-                  "required": [
-                    "admin",
-                    "contract_addr"
-                  ],
+                  "required": ["admin", "contract_addr"],
                   "properties": {
                     "admin": {
                       "type": "string"
@@ -5141,15 +4457,11 @@
             {
               "description": "Clears the admin on the given contract, so no more migration possible. Fails if this contract is not currently admin of the target contract.",
               "type": "object",
-              "required": [
-                "clear_admin"
-              ],
+              "required": ["clear_admin"],
               "properties": {
                 "clear_admin": {
                   "type": "object",
-                  "required": [
-                    "contract_addr"
-                  ],
+                  "required": ["contract_addr"],
                   "properties": {
                     "contract_addr": {
                       "type": "string"
@@ -5178,9 +4490,7 @@
         {
           "description": "Anyone may create a proposal, free of charge.",
           "type": "object",
-          "required": [
-            "anyone"
-          ],
+          "required": ["anyone"],
           "properties": {
             "anyone": {
               "type": "object",
@@ -5192,15 +4502,11 @@
         {
           "description": "Only ADDR may create proposals. It is expected that ADDR is a pre-propose module, though we only require that it is a valid address.",
           "type": "object",
-          "required": [
-            "module"
-          ],
+          "required": ["module"],
           "properties": {
             "module": {
               "type": "object",
-              "required": [
-                "addr"
-              ],
+              "required": ["addr"],
               "properties": {
                 "addr": {
                   "$ref": "#/definitions/Addr"
@@ -5223,9 +4529,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "HooksResponse",
       "type": "object",
-      "required": [
-        "hooks"
-      ],
+      "required": ["hooks"],
       "properties": {
         "hooks": {
           "type": "array",
@@ -5240,9 +4544,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ProposalListResponse",
       "type": "object",
-      "required": [
-        "proposals"
-      ],
+      "required": ["proposals"],
       "properties": {
         "proposals": {
           "type": "array",
@@ -5263,16 +4565,11 @@
             {
               "description": "Sends native tokens from the contract to the given address.\n\nThis is translated to a [MsgSend](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto#L19-L28). `from_address` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "send"
-              ],
+              "required": ["send"],
               "properties": {
                 "send": {
                   "type": "object",
-                  "required": [
-                    "amount",
-                    "to_address"
-                  ],
+                  "required": ["amount", "to_address"],
                   "properties": {
                     "amount": {
                       "type": "array",
@@ -5291,15 +4588,11 @@
             {
               "description": "This will burn the given coins from the contract's account. There is no Cosmos SDK message that performs this, but it can be done by calling the bank keeper. Important if a contract controls significant token supply that must be retired.",
               "type": "object",
-              "required": [
-                "burn"
-              ],
+              "required": ["burn"],
               "properties": {
                 "burn": {
                   "type": "object",
-                  "required": [
-                    "amount"
-                  ],
+                  "required": ["amount"],
                   "properties": {
                     "amount": {
                       "type": "array",
@@ -5358,10 +4651,7 @@
         },
         "Coin": {
           "type": "object",
-          "required": [
-            "amount",
-            "denom"
-          ],
+          "required": ["amount", "denom"],
           "properties": {
             "amount": {
               "$ref": "#/definitions/Uint128"
@@ -5375,9 +4665,7 @@
           "oneOf": [
             {
               "type": "object",
-              "required": [
-                "bank"
-              ],
+              "required": ["bank"],
               "properties": {
                 "bank": {
                   "$ref": "#/definitions/BankMsg"
@@ -5387,9 +4675,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "custom"
-              ],
+              "required": ["custom"],
               "properties": {
                 "custom": {
                   "$ref": "#/definitions/Empty"
@@ -5399,9 +4685,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "staking"
-              ],
+              "required": ["staking"],
               "properties": {
                 "staking": {
                   "$ref": "#/definitions/StakingMsg"
@@ -5411,9 +4695,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "distribution"
-              ],
+              "required": ["distribution"],
               "properties": {
                 "distribution": {
                   "$ref": "#/definitions/DistributionMsg"
@@ -5424,16 +4706,11 @@
             {
               "description": "A Stargate message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto). This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
               "type": "object",
-              "required": [
-                "stargate"
-              ],
+              "required": ["stargate"],
               "properties": {
                 "stargate": {
                   "type": "object",
-                  "required": [
-                    "type_url",
-                    "value"
-                  ],
+                  "required": ["type_url", "value"],
                   "properties": {
                     "type_url": {
                       "type": "string"
@@ -5448,9 +4725,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "ibc"
-              ],
+              "required": ["ibc"],
               "properties": {
                 "ibc": {
                   "$ref": "#/definitions/IbcMsg"
@@ -5460,9 +4735,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "wasm"
-              ],
+              "required": ["wasm"],
               "properties": {
                 "wasm": {
                   "$ref": "#/definitions/WasmMsg"
@@ -5472,9 +4745,7 @@
             },
             {
               "type": "object",
-              "required": [
-                "gov"
-              ],
+              "required": ["gov"],
               "properties": {
                 "gov": {
                   "$ref": "#/definitions/GovMsg"
@@ -5494,15 +4765,11 @@
             {
               "description": "This is translated to a [MsgSetWithdrawAddress](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L29-L37). `delegator_address` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "set_withdraw_address"
-              ],
+              "required": ["set_withdraw_address"],
               "properties": {
                 "set_withdraw_address": {
                   "type": "object",
-                  "required": [
-                    "address"
-                  ],
+                  "required": ["address"],
                   "properties": {
                     "address": {
                       "description": "The `withdraw_address`",
@@ -5516,15 +4783,11 @@
             {
               "description": "This is translated to a [[MsgWithdrawDelegatorReward](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L42-L50). `delegator_address` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "withdraw_delegator_reward"
-              ],
+              "required": ["withdraw_delegator_reward"],
               "properties": {
                 "withdraw_delegator_reward": {
                   "type": "object",
-                  "required": [
-                    "validator"
-                  ],
+                  "required": ["validator"],
                   "properties": {
                     "validator": {
                       "description": "The `validator_address`",
@@ -5542,9 +4805,7 @@
           "oneOf": [
             {
               "type": "object",
-              "required": [
-                "height"
-              ],
+              "required": ["height"],
               "properties": {
                 "height": {
                   "type": "integer",
@@ -5557,9 +4818,7 @@
             {
               "description": "Time in seconds",
               "type": "object",
-              "required": [
-                "time"
-              ],
+              "required": ["time"],
               "properties": {
                 "time": {
                   "type": "integer",
@@ -5581,9 +4840,7 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": [
-                "at_height"
-              ],
+              "required": ["at_height"],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -5596,9 +4853,7 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": [
-                "at_time"
-              ],
+              "required": ["at_time"],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -5609,9 +4864,7 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": [
-                "never"
-              ],
+              "required": ["never"],
               "properties": {
                 "never": {
                   "type": "object",
@@ -5628,16 +4881,11 @@
             {
               "description": "This maps directly to [MsgVote](https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/gov/v1beta1/tx.proto#L46-L56) in the Cosmos SDK with voter set to the contract address.",
               "type": "object",
-              "required": [
-                "vote"
-              ],
+              "required": ["vote"],
               "properties": {
                 "vote": {
                   "type": "object",
-                  "required": [
-                    "proposal_id",
-                    "vote"
-                  ],
+                  "required": ["proposal_id", "vote"],
                   "properties": {
                     "proposal_id": {
                       "type": "integer",
@@ -5665,18 +4913,11 @@
             {
               "description": "Sends bank tokens owned by the contract to the given address on another chain. The channel must already be established between the ibctransfer module on this chain and a matching module on the remote chain. We cannot select the port_id, this is whatever the local chain has bound the ibctransfer module to.",
               "type": "object",
-              "required": [
-                "transfer"
-              ],
+              "required": ["transfer"],
               "properties": {
                 "transfer": {
                   "type": "object",
-                  "required": [
-                    "amount",
-                    "channel_id",
-                    "timeout",
-                    "to_address"
-                  ],
+                  "required": ["amount", "channel_id", "timeout", "to_address"],
                   "properties": {
                     "amount": {
                       "description": "packet data only supports one coin https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/ibc/applications/transfer/v1/transfer.proto#L11-L20",
@@ -5710,17 +4951,11 @@
             {
               "description": "Sends an IBC packet with given data over the existing channel. Data should be encoded in a format defined by the channel version, and the module on the other side should know how to parse this.",
               "type": "object",
-              "required": [
-                "send_packet"
-              ],
+              "required": ["send_packet"],
               "properties": {
                 "send_packet": {
                   "type": "object",
-                  "required": [
-                    "channel_id",
-                    "data",
-                    "timeout"
-                  ],
+                  "required": ["channel_id", "data", "timeout"],
                   "properties": {
                     "channel_id": {
                       "type": "string"
@@ -5744,15 +4979,11 @@
             {
               "description": "This will close an existing channel that is owned by this contract. Port is auto-assigned to the contract's IBC port",
               "type": "object",
-              "required": [
-                "close_channel"
-              ],
+              "required": ["close_channel"],
               "properties": {
                 "close_channel": {
                   "type": "object",
-                  "required": [
-                    "channel_id"
-                  ],
+                  "required": ["channel_id"],
                   "properties": {
                     "channel_id": {
                       "type": "string"
@@ -5793,10 +5024,7 @@
         "IbcTimeoutBlock": {
           "description": "IBCTimeoutHeight Height is a monotonically increasing data type that can be compared against another Height for the purposes of updating and freezing clients. Ordering is (revision_number, timeout_height)",
           "type": "object",
-          "required": [
-            "height",
-            "revision"
-          ],
+          "required": ["height", "revision"],
           "properties": {
             "height": {
               "description": "block height after which the packet times out. the height within the given revision",
@@ -5817,16 +5045,12 @@
           "oneOf": [
             {
               "type": "string",
-              "enum": [
-                "standard"
-              ]
+              "enum": ["standard"]
             },
             {
               "description": "Choice that represents selecting none of the options; still counts toward quorum and allows proposals with all bad options to be voted against.",
               "type": "string",
-              "enum": [
-                "none"
-              ]
+              "enum": ["none"]
             }
           ]
         },
@@ -5946,9 +5170,7 @@
         },
         "MultipleChoiceVotes": {
           "type": "object",
-          "required": [
-            "vote_weights"
-          ],
+          "required": ["vote_weights"],
           "properties": {
             "vote_weights": {
               "type": "array",
@@ -5965,9 +5187,7 @@
             {
               "description": "The majority of voters must vote yes for the proposal to pass.",
               "type": "object",
-              "required": [
-                "majority"
-              ],
+              "required": ["majority"],
               "properties": {
                 "majority": {
                   "type": "object",
@@ -5979,9 +5199,7 @@
             {
               "description": "A percentage of voting power >= percent must vote yes for the proposal to pass.",
               "type": "object",
-              "required": [
-                "percent"
-              ],
+              "required": ["percent"],
               "properties": {
                 "percent": {
                   "$ref": "#/definitions/Decimal"
@@ -5994,10 +5212,7 @@
         "ProposalResponse": {
           "description": "Information about a proposal returned by proposal queries.",
           "type": "object",
-          "required": [
-            "id",
-            "proposal"
-          ],
+          "required": ["id", "proposal"],
           "properties": {
             "id": {
               "type": "integer",
@@ -6016,16 +5231,11 @@
             {
               "description": "This is translated to a [MsgDelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L81-L90). `delegator_address` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "delegate"
-              ],
+              "required": ["delegate"],
               "properties": {
                 "delegate": {
                   "type": "object",
-                  "required": [
-                    "amount",
-                    "validator"
-                  ],
+                  "required": ["amount", "validator"],
                   "properties": {
                     "amount": {
                       "$ref": "#/definitions/Coin"
@@ -6041,16 +5251,11 @@
             {
               "description": "This is translated to a [MsgUndelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L112-L121). `delegator_address` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "undelegate"
-              ],
+              "required": ["undelegate"],
               "properties": {
                 "undelegate": {
                   "type": "object",
-                  "required": [
-                    "amount",
-                    "validator"
-                  ],
+                  "required": ["amount", "validator"],
                   "properties": {
                     "amount": {
                       "$ref": "#/definitions/Coin"
@@ -6066,17 +5271,11 @@
             {
               "description": "This is translated to a [MsgBeginRedelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L95-L105). `delegator_address` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "redelegate"
-              ],
+              "required": ["redelegate"],
               "properties": {
                 "redelegate": {
                   "type": "object",
-                  "required": [
-                    "amount",
-                    "dst_validator",
-                    "src_validator"
-                  ],
+                  "required": ["amount", "dst_validator", "src_validator"],
                   "properties": {
                     "amount": {
                       "$ref": "#/definitions/Coin"
@@ -6099,57 +5298,41 @@
             {
               "description": "The proposal is open for voting.",
               "type": "string",
-              "enum": [
-                "open"
-              ]
+              "enum": ["open"]
             },
             {
               "description": "The proposal has been rejected.",
               "type": "string",
-              "enum": [
-                "rejected"
-              ]
+              "enum": ["rejected"]
             },
             {
               "description": "The proposal has been passed but has not been executed.",
               "type": "string",
-              "enum": [
-                "passed"
-              ]
+              "enum": ["passed"]
             },
             {
               "description": "The proposal has been passed and executed.",
               "type": "string",
-              "enum": [
-                "executed"
-              ]
+              "enum": ["executed"]
             },
             {
               "description": "The proposal has failed or expired and has been closed. A proposal deposit refund has been issued if applicable.",
               "type": "string",
-              "enum": [
-                "closed"
-              ]
+              "enum": ["closed"]
             },
             {
               "description": "The proposal's execution failed.",
               "type": "string",
-              "enum": [
-                "execution_failed"
-              ]
+              "enum": ["execution_failed"]
             },
             {
               "description": "The proposal is timelocked. Only the configured vetoer can execute or veto until the timelock expires.",
               "type": "object",
-              "required": [
-                "veto_timelock"
-              ],
+              "required": ["veto_timelock"],
               "properties": {
                 "veto_timelock": {
                   "type": "object",
-                  "required": [
-                    "expiration"
-                  ],
+                  "required": ["expiration"],
                   "properties": {
                     "expiration": {
                       "$ref": "#/definitions/Expiration"
@@ -6163,9 +5346,7 @@
             {
               "description": "The proposal has been vetoed.",
               "type": "string",
-              "enum": [
-                "vetoed"
-              ]
+              "enum": ["vetoed"]
             }
           ]
         },
@@ -6219,27 +5400,18 @@
         },
         "VoteOption": {
           "type": "string",
-          "enum": [
-            "yes",
-            "no",
-            "abstain",
-            "no_with_veto"
-          ]
+          "enum": ["yes", "no", "abstain", "no_with_veto"]
         },
         "VotingStrategy": {
           "description": "Determines how many choices may be selected.",
           "oneOf": [
             {
               "type": "object",
-              "required": [
-                "single_choice"
-              ],
+              "required": ["single_choice"],
               "properties": {
                 "single_choice": {
                   "type": "object",
-                  "required": [
-                    "quorum"
-                  ],
+                  "required": ["quorum"],
                   "properties": {
                     "quorum": {
                       "$ref": "#/definitions/PercentageThreshold"
@@ -6258,17 +5430,11 @@
             {
               "description": "Dispatches a call to another contract at a known address (with known ABI).\n\nThis is translated to a [MsgExecuteContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L68-L78). `sender` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "execute"
-              ],
+              "required": ["execute"],
               "properties": {
                 "execute": {
                   "type": "object",
-                  "required": [
-                    "contract_addr",
-                    "funds",
-                    "msg"
-                  ],
+                  "required": ["contract_addr", "funds", "msg"],
                   "properties": {
                     "contract_addr": {
                       "type": "string"
@@ -6295,24 +5461,14 @@
             {
               "description": "Instantiates a new contracts from previously uploaded Wasm code.\n\nThe contract address is non-predictable. But it is guaranteed that when emitting the same Instantiate message multiple times, multiple instances on different addresses will be generated. See also Instantiate2.\n\nThis is translated to a [MsgInstantiateContract](https://github.com/CosmWasm/wasmd/blob/v0.29.2/proto/cosmwasm/wasm/v1/tx.proto#L53-L71). `sender` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "instantiate"
-              ],
+              "required": ["instantiate"],
               "properties": {
                 "instantiate": {
                   "type": "object",
-                  "required": [
-                    "code_id",
-                    "funds",
-                    "label",
-                    "msg"
-                  ],
+                  "required": ["code_id", "funds", "label", "msg"],
                   "properties": {
                     "admin": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
+                      "type": ["string", "null"]
                     },
                     "code_id": {
                       "type": "integer",
@@ -6345,17 +5501,11 @@
             {
               "description": "Migrates a given contracts to use new wasm code. Passes a MigrateMsg to allow us to customize behavior.\n\nOnly the contract admin (as defined in wasmd), if any, is able to make this call.\n\nThis is translated to a [MsgMigrateContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L86-L96). `sender` is automatically filled with the current contract's address.",
               "type": "object",
-              "required": [
-                "migrate"
-              ],
+              "required": ["migrate"],
               "properties": {
                 "migrate": {
                   "type": "object",
-                  "required": [
-                    "contract_addr",
-                    "msg",
-                    "new_code_id"
-                  ],
+                  "required": ["contract_addr", "msg", "new_code_id"],
                   "properties": {
                     "contract_addr": {
                       "type": "string"
@@ -6382,16 +5532,11 @@
             {
               "description": "Sets a new admin (for migrate) on the given contract. Fails if this contract is not currently admin of the target contract.",
               "type": "object",
-              "required": [
-                "update_admin"
-              ],
+              "required": ["update_admin"],
               "properties": {
                 "update_admin": {
                   "type": "object",
-                  "required": [
-                    "admin",
-                    "contract_addr"
-                  ],
+                  "required": ["admin", "contract_addr"],
                   "properties": {
                     "admin": {
                       "type": "string"
@@ -6407,15 +5552,11 @@
             {
               "description": "Clears the admin on the given contract, so no more migration possible. Fails if this contract is not currently admin of the target contract.",
               "type": "object",
-              "required": [
-                "clear_admin"
-              ],
+              "required": ["clear_admin"],
               "properties": {
                 "clear_admin": {
                   "type": "object",
-                  "required": [
-                    "contract_addr"
-                  ],
+                  "required": ["contract_addr"],
                   "properties": {
                     "contract_addr": {
                       "type": "string"
@@ -6433,9 +5574,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "HooksResponse",
       "type": "object",
-      "required": [
-        "hooks"
-      ],
+      "required": ["hooks"],
       "properties": {
         "hooks": {
           "type": "array",

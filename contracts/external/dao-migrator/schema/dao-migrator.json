@@ -1,17 +1,12 @@
 {
   "contract_name": "dao-migrator",
-  "contract_version": "2.4.2",
+  "contract_version": "2.5.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
-    "required": [
-      "migration_params",
-      "sub_daos",
-      "v1_code_ids",
-      "v2_code_ids"
-    ],
+    "required": ["migration_params", "sub_daos", "v1_code_ids", "v2_code_ids"],
     "properties": {
       "migration_params": {
         "$ref": "#/definitions/MigrationParams"
@@ -37,15 +32,11 @@
           {
             "description": "Set the admin to a specified address.",
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "object",
-                "required": [
-                  "addr"
-                ],
+                "required": ["addr"],
                 "properties": {
                   "addr": {
                     "type": "string"
@@ -59,9 +50,7 @@
           {
             "description": "Sets the admin as the core module address.",
             "type": "object",
-            "required": [
-              "core_module"
-            ],
+            "required": ["core_module"],
             "properties": {
               "core_module": {
                 "type": "object",
@@ -78,10 +67,7 @@
       },
       "Coin": {
         "type": "object",
-        "required": [
-          "amount",
-          "denom"
-        ],
+        "required": ["amount", "denom"],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -96,9 +82,7 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "height"
-            ],
+            "required": ["height"],
             "properties": {
               "height": {
                 "type": "integer",
@@ -111,9 +95,7 @@
           {
             "description": "Time in seconds",
             "type": "object",
-            "required": [
-              "time"
-            ],
+            "required": ["time"],
             "properties": {
               "time": {
                 "type": "integer",
@@ -127,16 +109,11 @@
       },
       "MigrationParams": {
         "type": "object",
-        "required": [
-          "proposal_params"
-        ],
+        "required": ["proposal_params"],
         "properties": {
           "migrate_stake_cw20_manager": {
             "description": "Rather or not to migrate the stake_cw20 contract and its manager. If this is not set to true and a stake_cw20 contract is detected in the DAO's configuration the migration will be aborted.",
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "type": ["boolean", "null"]
           },
           "proposal_params": {
             "description": "List of (address, ProposalParams) where `address` is an address of a proposal module currently part of the DAO.",
@@ -161,12 +138,7 @@
       "ModuleInstantiateInfo": {
         "description": "Information needed to instantiate a module.",
         "type": "object",
-        "required": [
-          "code_id",
-          "funds",
-          "label",
-          "msg"
-        ],
+        "required": ["code_id", "funds", "label", "msg"],
         "properties": {
           "admin": {
             "description": "CosmWasm level admin of the instantiated contract. See: <https://docs.cosmwasm.com/docs/1.0/smart-contracts/migration>",
@@ -212,9 +184,7 @@
           {
             "description": "Anyone may create a proposal free of charge.",
             "type": "object",
-            "required": [
-              "anyone_may_propose"
-            ],
+            "required": ["anyone_may_propose"],
             "properties": {
               "anyone_may_propose": {
                 "type": "object",
@@ -226,15 +196,11 @@
           {
             "description": "The module specified in INFO has exclusive rights to proposal creation.",
             "type": "object",
-            "required": [
-              "module_may_propose"
-            ],
+            "required": ["module_may_propose"],
             "properties": {
               "module_may_propose": {
                 "type": "object",
-                "required": [
-                  "info"
-                ],
+                "required": ["info"],
                 "properties": {
                   "info": {
                     "$ref": "#/definitions/ModuleInstantiateInfo"
@@ -250,10 +216,7 @@
       "ProposalParams": {
         "description": "The params we need to provide for migration msgs",
         "type": "object",
-        "required": [
-          "close_proposal_on_execution_failure",
-          "pre_propose_info"
-        ],
+        "required": ["close_proposal_on_execution_failure", "pre_propose_info"],
         "properties": {
           "close_proposal_on_execution_failure": {
             "type": "boolean"
@@ -276,9 +239,7 @@
       },
       "SubDao": {
         "type": "object",
-        "required": [
-          "addr"
-        ],
+        "required": ["addr"],
         "properties": {
           "addr": {
             "description": "The contract address of the SubDAO",
@@ -286,10 +247,7 @@
           },
           "charter": {
             "description": "The purpose/constitution for the SubDAO",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           }
         },
         "additionalProperties": false
@@ -400,12 +358,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "ExecuteMsg",
     "type": "object",
-    "required": [
-      "migration_params",
-      "sub_daos",
-      "v1_code_ids",
-      "v2_code_ids"
-    ],
+    "required": ["migration_params", "sub_daos", "v1_code_ids", "v2_code_ids"],
     "properties": {
       "migration_params": {
         "$ref": "#/definitions/MigrationParams"
@@ -431,15 +384,11 @@
           {
             "description": "Set the admin to a specified address.",
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "object",
-                "required": [
-                  "addr"
-                ],
+                "required": ["addr"],
                 "properties": {
                   "addr": {
                     "type": "string"
@@ -453,9 +402,7 @@
           {
             "description": "Sets the admin as the core module address.",
             "type": "object",
-            "required": [
-              "core_module"
-            ],
+            "required": ["core_module"],
             "properties": {
               "core_module": {
                 "type": "object",
@@ -472,10 +419,7 @@
       },
       "Coin": {
         "type": "object",
-        "required": [
-          "amount",
-          "denom"
-        ],
+        "required": ["amount", "denom"],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -490,9 +434,7 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "height"
-            ],
+            "required": ["height"],
             "properties": {
               "height": {
                 "type": "integer",
@@ -505,9 +447,7 @@
           {
             "description": "Time in seconds",
             "type": "object",
-            "required": [
-              "time"
-            ],
+            "required": ["time"],
             "properties": {
               "time": {
                 "type": "integer",
@@ -521,16 +461,11 @@
       },
       "MigrationParams": {
         "type": "object",
-        "required": [
-          "proposal_params"
-        ],
+        "required": ["proposal_params"],
         "properties": {
           "migrate_stake_cw20_manager": {
             "description": "Rather or not to migrate the stake_cw20 contract and its manager. If this is not set to true and a stake_cw20 contract is detected in the DAO's configuration the migration will be aborted.",
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "type": ["boolean", "null"]
           },
           "proposal_params": {
             "description": "List of (address, ProposalParams) where `address` is an address of a proposal module currently part of the DAO.",
@@ -555,12 +490,7 @@
       "ModuleInstantiateInfo": {
         "description": "Information needed to instantiate a module.",
         "type": "object",
-        "required": [
-          "code_id",
-          "funds",
-          "label",
-          "msg"
-        ],
+        "required": ["code_id", "funds", "label", "msg"],
         "properties": {
           "admin": {
             "description": "CosmWasm level admin of the instantiated contract. See: <https://docs.cosmwasm.com/docs/1.0/smart-contracts/migration>",
@@ -606,9 +536,7 @@
           {
             "description": "Anyone may create a proposal free of charge.",
             "type": "object",
-            "required": [
-              "anyone_may_propose"
-            ],
+            "required": ["anyone_may_propose"],
             "properties": {
               "anyone_may_propose": {
                 "type": "object",
@@ -620,15 +548,11 @@
           {
             "description": "The module specified in INFO has exclusive rights to proposal creation.",
             "type": "object",
-            "required": [
-              "module_may_propose"
-            ],
+            "required": ["module_may_propose"],
             "properties": {
               "module_may_propose": {
                 "type": "object",
-                "required": [
-                  "info"
-                ],
+                "required": ["info"],
                 "properties": {
                   "info": {
                     "$ref": "#/definitions/ModuleInstantiateInfo"
@@ -644,10 +568,7 @@
       "ProposalParams": {
         "description": "The params we need to provide for migration msgs",
         "type": "object",
-        "required": [
-          "close_proposal_on_execution_failure",
-          "pre_propose_info"
-        ],
+        "required": ["close_proposal_on_execution_failure", "pre_propose_info"],
         "properties": {
           "close_proposal_on_execution_failure": {
             "type": "boolean"
@@ -670,9 +591,7 @@
       },
       "SubDao": {
         "type": "object",
-        "required": [
-          "addr"
-        ],
+        "required": ["addr"],
         "properties": {
           "addr": {
             "description": "The contract address of the SubDAO",
@@ -680,10 +599,7 @@
           },
           "charter": {
             "description": "The purpose/constitution for the SubDAO",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           }
         },
         "additionalProperties": false

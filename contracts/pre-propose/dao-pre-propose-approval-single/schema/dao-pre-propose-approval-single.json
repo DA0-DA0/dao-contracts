@@ -1,15 +1,12 @@
 {
   "contract_name": "dao-pre-propose-approval-single",
-  "contract_version": "2.4.2",
+  "contract_version": "2.5.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
-    "required": [
-      "extension",
-      "submission_policy"
-    ],
+    "required": ["extension", "submission_policy"],
     "properties": {
       "deposit_info": {
         "description": "Information about the deposit requirements for this module. None if no deposit.",
@@ -46,23 +43,17 @@
           {
             "description": "Deposits should always be refunded.",
             "type": "string",
-            "enum": [
-              "always"
-            ]
+            "enum": ["always"]
           },
           {
             "description": "Deposits should only be refunded for passed proposals.",
             "type": "string",
-            "enum": [
-              "only_passed"
-            ]
+            "enum": ["only_passed"]
           },
           {
             "description": "Deposits should never be refunded.",
             "type": "string",
-            "enum": [
-              "never"
-            ]
+            "enum": ["never"]
           }
         ]
       },
@@ -72,15 +63,11 @@
           {
             "description": "Use a specific token address as the deposit token.",
             "type": "object",
-            "required": [
-              "token"
-            ],
+            "required": ["token"],
             "properties": {
               "token": {
                 "type": "object",
-                "required": [
-                  "denom"
-                ],
+                "required": ["denom"],
                 "properties": {
                   "denom": {
                     "$ref": "#/definitions/UncheckedDenom"
@@ -94,15 +81,11 @@
           {
             "description": "Use the token native denom or cw20 contract address of the associated DAO's voting module. NOTE: in order to retrieve the token automatically via this variant, the voting module must either (1) use a native token and implement the `Denom {}` query type defined by `dao_dao_macros::native_token_query` OR (2) use a cw20 token and implement the `TokenContract {}` query type defined by `dao_dao_macros::cw20_token_query`. Failing to implement correctly will cause this option to fail to instantiate.",
             "type": "object",
-            "required": [
-              "voting_module_token"
-            ],
+            "required": ["voting_module_token"],
             "properties": {
               "voting_module_token": {
                 "type": "object",
-                "required": [
-                  "token_type"
-                ],
+                "required": ["token_type"],
                 "properties": {
                   "token_type": {
                     "$ref": "#/definitions/VotingModuleTokenType"
@@ -117,9 +100,7 @@
       },
       "InstantiateExt": {
         "type": "object",
-        "required": [
-          "approver"
-        ],
+        "required": ["approver"],
         "properties": {
           "approver": {
             "type": "string"
@@ -133,19 +114,14 @@
           {
             "description": "Anyone may create proposals, except for those in the denylist.",
             "type": "object",
-            "required": [
-              "anyone"
-            ],
+            "required": ["anyone"],
             "properties": {
               "anyone": {
                 "type": "object",
                 "properties": {
                   "denylist": {
                     "description": "Addresses that may not create proposals.",
-                    "type": [
-                      "array",
-                      "null"
-                    ],
+                    "type": ["array", "null"],
                     "items": {
                       "type": "string"
                     }
@@ -159,22 +135,15 @@
           {
             "description": "Specific people may create proposals.",
             "type": "object",
-            "required": [
-              "specific"
-            ],
+            "required": ["specific"],
             "properties": {
               "specific": {
                 "type": "object",
-                "required": [
-                  "dao_members"
-                ],
+                "required": ["dao_members"],
                 "properties": {
                   "allowlist": {
                     "description": "Addresses that may create proposals.",
-                    "type": [
-                      "array",
-                      "null"
-                    ],
+                    "type": ["array", "null"],
                     "items": {
                       "type": "string"
                     }
@@ -185,10 +154,7 @@
                   },
                   "denylist": {
                     "description": "Addresses that may not create proposals, overriding other settings.",
-                    "type": [
-                      "array",
-                      "null"
-                    ],
+                    "type": ["array", "null"],
                     "items": {
                       "type": "string"
                     }
@@ -211,9 +177,7 @@
           {
             "description": "A native (bank module) asset.",
             "type": "object",
-            "required": [
-              "native"
-            ],
+            "required": ["native"],
             "properties": {
               "native": {
                 "type": "string"
@@ -224,9 +188,7 @@
           {
             "description": "A cw20 asset.",
             "type": "object",
-            "required": [
-              "cw20"
-            ],
+            "required": ["cw20"],
             "properties": {
               "cw20": {
                 "type": "string"
@@ -239,11 +201,7 @@
       "UncheckedDepositInfo": {
         "description": "Information about the deposit required to create a proposal.",
         "type": "object",
-        "required": [
-          "amount",
-          "denom",
-          "refund_policy"
-        ],
+        "required": ["amount", "denom", "refund_policy"],
         "properties": {
           "amount": {
             "description": "The number of tokens that must be deposited to create a proposal. Must be a positive, non-zero number.",
@@ -274,10 +232,7 @@
       },
       "VotingModuleTokenType": {
         "type": "string",
-        "enum": [
-          "native",
-          "cw20"
-        ]
+        "enum": ["native", "cw20"]
       }
     }
   },
@@ -288,15 +243,11 @@
       {
         "description": "Creates a new proposal in the pre-propose module. MSG will be serialized and used as the proposal creation message.",
         "type": "object",
-        "required": [
-          "propose"
-        ],
+        "required": ["propose"],
         "properties": {
           "propose": {
             "type": "object",
-            "required": [
-              "msg"
-            ],
+            "required": ["msg"],
             "properties": {
               "msg": {
                 "$ref": "#/definitions/ProposeMessage"
@@ -310,9 +261,7 @@
       {
         "description": "Updates the configuration of this module. This will completely override the existing configuration. This new configuration will only apply to proposals created after the config is updated. Only the DAO may execute this message.",
         "type": "object",
-        "required": [
-          "update_config"
-        ],
+        "required": ["update_config"],
         "properties": {
           "update_config": {
             "type": "object",
@@ -348,59 +297,42 @@
       {
         "description": "Perform more granular submission policy updates to allow for atomic operations that don't override others.",
         "type": "object",
-        "required": [
-          "update_submission_policy"
-        ],
+        "required": ["update_submission_policy"],
         "properties": {
           "update_submission_policy": {
             "type": "object",
             "properties": {
               "allowlist_add": {
                 "description": "If using specific policy, optionally add to the allowlist.",
-                "type": [
-                  "array",
-                  "null"
-                ],
+                "type": ["array", "null"],
                 "items": {
                   "type": "string"
                 }
               },
               "allowlist_remove": {
                 "description": "If using specific policy, optionally remove from the allowlist.",
-                "type": [
-                  "array",
-                  "null"
-                ],
+                "type": ["array", "null"],
                 "items": {
                   "type": "string"
                 }
               },
               "denylist_add": {
                 "description": "Optionally add to the denylist. Works for any submission policy.",
-                "type": [
-                  "array",
-                  "null"
-                ],
+                "type": ["array", "null"],
                 "items": {
                   "type": "string"
                 }
               },
               "denylist_remove": {
                 "description": "Optionally remove from denylist. Works for any submission policy.",
-                "type": [
-                  "array",
-                  "null"
-                ],
+                "type": ["array", "null"],
                 "items": {
                   "type": "string"
                 }
               },
               "set_dao_members": {
                 "description": "If using specific policy, optionally update the `dao_members` flag.",
-                "type": [
-                  "boolean",
-                  "null"
-                ]
+                "type": ["boolean", "null"]
               }
             },
             "additionalProperties": false
@@ -411,9 +343,7 @@
       {
         "description": "Withdraws funds inside of this contract to the message sender. The contracts entire balance for the specifed DENOM is withdrawn to the message sender. Only the DAO may call this method.\n\nThis is intended only as an escape hatch in the event of a critical bug in this contract or it's proposal module. Withdrawing funds will cause future attempts to return proposal deposits to fail their transactions as the contract will have insufficent balance to return them. In the case of `cw-proposal-single` this transaction failure will cause the module to remove the pre-propose module from its proposal hook receivers.\n\nMore likely than not, this should NEVER BE CALLED unless a bug in this contract or the proposal module it is associated with has caused it to stop receiving proposal hook messages, or if a critical security vulnerability has been found that allows an attacker to drain proposal deposits.",
         "type": "object",
-        "required": [
-          "withdraw"
-        ],
+        "required": ["withdraw"],
         "properties": {
           "withdraw": {
             "type": "object",
@@ -438,15 +368,11 @@
       {
         "description": "Extension message. Contracts that extend this one should put their custom execute logic here. The default implementation will do nothing if this variant is executed.",
         "type": "object",
-        "required": [
-          "extension"
-        ],
+        "required": ["extension"],
         "properties": {
           "extension": {
             "type": "object",
-            "required": [
-              "msg"
-            ],
+            "required": ["msg"],
             "properties": {
               "msg": {
                 "$ref": "#/definitions/ExecuteExt"
@@ -460,15 +386,11 @@
       {
         "description": "Adds a proposal submitted hook. Fires when a new proposal is submitted to the pre-propose contract. Only the DAO may call this method.",
         "type": "object",
-        "required": [
-          "add_proposal_submitted_hook"
-        ],
+        "required": ["add_proposal_submitted_hook"],
         "properties": {
           "add_proposal_submitted_hook": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
@@ -482,15 +404,11 @@
       {
         "description": "Removes a proposal submitted hook. Only the DAO may call this method.",
         "type": "object",
-        "required": [
-          "remove_proposal_submitted_hook"
-        ],
+        "required": ["remove_proposal_submitted_hook"],
         "properties": {
           "remove_proposal_submitted_hook": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
@@ -504,16 +422,11 @@
       {
         "description": "Handles proposal hook fired by the associated proposal module when a proposal is completed (ie executed or rejected). By default, the base contract will return deposits proposals, when they are closed, when proposals are executed, or, if it is refunding failed.",
         "type": "object",
-        "required": [
-          "proposal_completed_hook"
-        ],
+        "required": ["proposal_completed_hook"],
         "properties": {
           "proposal_completed_hook": {
             "type": "object",
-            "required": [
-              "new_status",
-              "proposal_id"
-            ],
+            "required": ["new_status", "proposal_id"],
             "properties": {
               "new_status": {
                 "$ref": "#/definitions/Status"
@@ -537,16 +450,11 @@
           {
             "description": "Sends native tokens from the contract to the given address.\n\nThis is translated to a [MsgSend](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto#L19-L28). `from_address` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "send"
-            ],
+            "required": ["send"],
             "properties": {
               "send": {
                 "type": "object",
-                "required": [
-                  "amount",
-                  "to_address"
-                ],
+                "required": ["amount", "to_address"],
                 "properties": {
                   "amount": {
                     "type": "array",
@@ -565,15 +473,11 @@
           {
             "description": "This will burn the given coins from the contract's account. There is no Cosmos SDK message that performs this, but it can be done by calling the bank keeper. Important if a contract controls significant token supply that must be retired.",
             "type": "object",
-            "required": [
-              "burn"
-            ],
+            "required": ["burn"],
             "properties": {
               "burn": {
                 "type": "object",
-                "required": [
-                  "amount"
-                ],
+                "required": ["amount"],
                 "properties": {
                   "amount": {
                     "type": "array",
@@ -594,10 +498,7 @@
       },
       "Coin": {
         "type": "object",
-        "required": [
-          "amount",
-          "denom"
-        ],
+        "required": ["amount", "denom"],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -611,9 +512,7 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "bank"
-            ],
+            "required": ["bank"],
             "properties": {
               "bank": {
                 "$ref": "#/definitions/BankMsg"
@@ -623,9 +522,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "custom"
-            ],
+            "required": ["custom"],
             "properties": {
               "custom": {
                 "$ref": "#/definitions/Empty"
@@ -635,9 +532,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "staking"
-            ],
+            "required": ["staking"],
             "properties": {
               "staking": {
                 "$ref": "#/definitions/StakingMsg"
@@ -647,9 +542,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "distribution"
-            ],
+            "required": ["distribution"],
             "properties": {
               "distribution": {
                 "$ref": "#/definitions/DistributionMsg"
@@ -660,16 +553,11 @@
           {
             "description": "A Stargate message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto). This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
             "type": "object",
-            "required": [
-              "stargate"
-            ],
+            "required": ["stargate"],
             "properties": {
               "stargate": {
                 "type": "object",
-                "required": [
-                  "type_url",
-                  "value"
-                ],
+                "required": ["type_url", "value"],
                 "properties": {
                   "type_url": {
                     "type": "string"
@@ -684,9 +572,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "ibc"
-            ],
+            "required": ["ibc"],
             "properties": {
               "ibc": {
                 "$ref": "#/definitions/IbcMsg"
@@ -696,9 +582,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "wasm"
-            ],
+            "required": ["wasm"],
             "properties": {
               "wasm": {
                 "$ref": "#/definitions/WasmMsg"
@@ -708,9 +592,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "gov"
-            ],
+            "required": ["gov"],
             "properties": {
               "gov": {
                 "$ref": "#/definitions/GovMsg"
@@ -725,23 +607,17 @@
           {
             "description": "Deposits should always be refunded.",
             "type": "string",
-            "enum": [
-              "always"
-            ]
+            "enum": ["always"]
           },
           {
             "description": "Deposits should only be refunded for passed proposals.",
             "type": "string",
-            "enum": [
-              "only_passed"
-            ]
+            "enum": ["only_passed"]
           },
           {
             "description": "Deposits should never be refunded.",
             "type": "string",
-            "enum": [
-              "never"
-            ]
+            "enum": ["never"]
           }
         ]
       },
@@ -751,15 +627,11 @@
           {
             "description": "Use a specific token address as the deposit token.",
             "type": "object",
-            "required": [
-              "token"
-            ],
+            "required": ["token"],
             "properties": {
               "token": {
                 "type": "object",
-                "required": [
-                  "denom"
-                ],
+                "required": ["denom"],
                 "properties": {
                   "denom": {
                     "$ref": "#/definitions/UncheckedDenom"
@@ -773,15 +645,11 @@
           {
             "description": "Use the token native denom or cw20 contract address of the associated DAO's voting module. NOTE: in order to retrieve the token automatically via this variant, the voting module must either (1) use a native token and implement the `Denom {}` query type defined by `dao_dao_macros::native_token_query` OR (2) use a cw20 token and implement the `TokenContract {}` query type defined by `dao_dao_macros::cw20_token_query`. Failing to implement correctly will cause this option to fail to instantiate.",
             "type": "object",
-            "required": [
-              "voting_module_token"
-            ],
+            "required": ["voting_module_token"],
             "properties": {
               "voting_module_token": {
                 "type": "object",
-                "required": [
-                  "token_type"
-                ],
+                "required": ["token_type"],
                 "properties": {
                   "token_type": {
                     "$ref": "#/definitions/VotingModuleTokenType"
@@ -800,15 +668,11 @@
           {
             "description": "This is translated to a [MsgSetWithdrawAddress](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L29-L37). `delegator_address` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "set_withdraw_address"
-            ],
+            "required": ["set_withdraw_address"],
             "properties": {
               "set_withdraw_address": {
                 "type": "object",
-                "required": [
-                  "address"
-                ],
+                "required": ["address"],
                 "properties": {
                   "address": {
                     "description": "The `withdraw_address`",
@@ -822,15 +686,11 @@
           {
             "description": "This is translated to a [[MsgWithdrawDelegatorReward](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L42-L50). `delegator_address` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "withdraw_delegator_reward"
-            ],
+            "required": ["withdraw_delegator_reward"],
             "properties": {
               "withdraw_delegator_reward": {
                 "type": "object",
-                "required": [
-                  "validator"
-                ],
+                "required": ["validator"],
                 "properties": {
                   "validator": {
                     "description": "The `validator_address`",
@@ -852,15 +712,11 @@
           {
             "description": "Approve a proposal, only callable by approver",
             "type": "object",
-            "required": [
-              "approve"
-            ],
+            "required": ["approve"],
             "properties": {
               "approve": {
                 "type": "object",
-                "required": [
-                  "id"
-                ],
+                "required": ["id"],
                 "properties": {
                   "id": {
                     "type": "integer",
@@ -876,15 +732,11 @@
           {
             "description": "Reject a proposal, only callable by approver",
             "type": "object",
-            "required": [
-              "reject"
-            ],
+            "required": ["reject"],
             "properties": {
               "reject": {
                 "type": "object",
-                "required": [
-                  "id"
-                ],
+                "required": ["id"],
                 "properties": {
                   "id": {
                     "type": "integer",
@@ -900,15 +752,11 @@
           {
             "description": "Updates the approver, can only be called the current approver",
             "type": "object",
-            "required": [
-              "update_approver"
-            ],
+            "required": ["update_approver"],
             "properties": {
               "update_approver": {
                 "type": "object",
-                "required": [
-                  "address"
-                ],
+                "required": ["address"],
                 "properties": {
                   "address": {
                     "type": "string"
@@ -927,9 +775,7 @@
           {
             "description": "AtHeight will expire when `env.block.height` >= height",
             "type": "object",
-            "required": [
-              "at_height"
-            ],
+            "required": ["at_height"],
             "properties": {
               "at_height": {
                 "type": "integer",
@@ -942,9 +788,7 @@
           {
             "description": "AtTime will expire when `env.block.time` >= time",
             "type": "object",
-            "required": [
-              "at_time"
-            ],
+            "required": ["at_time"],
             "properties": {
               "at_time": {
                 "$ref": "#/definitions/Timestamp"
@@ -955,9 +799,7 @@
           {
             "description": "Never will never expire. Used to express the empty variant",
             "type": "object",
-            "required": [
-              "never"
-            ],
+            "required": ["never"],
             "properties": {
               "never": {
                 "type": "object",
@@ -974,16 +816,11 @@
           {
             "description": "This maps directly to [MsgVote](https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/gov/v1beta1/tx.proto#L46-L56) in the Cosmos SDK with voter set to the contract address.",
             "type": "object",
-            "required": [
-              "vote"
-            ],
+            "required": ["vote"],
             "properties": {
               "vote": {
                 "type": "object",
-                "required": [
-                  "proposal_id",
-                  "vote"
-                ],
+                "required": ["proposal_id", "vote"],
                 "properties": {
                   "proposal_id": {
                     "type": "integer",
@@ -1011,18 +848,11 @@
           {
             "description": "Sends bank tokens owned by the contract to the given address on another chain. The channel must already be established between the ibctransfer module on this chain and a matching module on the remote chain. We cannot select the port_id, this is whatever the local chain has bound the ibctransfer module to.",
             "type": "object",
-            "required": [
-              "transfer"
-            ],
+            "required": ["transfer"],
             "properties": {
               "transfer": {
                 "type": "object",
-                "required": [
-                  "amount",
-                  "channel_id",
-                  "timeout",
-                  "to_address"
-                ],
+                "required": ["amount", "channel_id", "timeout", "to_address"],
                 "properties": {
                   "amount": {
                     "description": "packet data only supports one coin https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/ibc/applications/transfer/v1/transfer.proto#L11-L20",
@@ -1056,17 +886,11 @@
           {
             "description": "Sends an IBC packet with given data over the existing channel. Data should be encoded in a format defined by the channel version, and the module on the other side should know how to parse this.",
             "type": "object",
-            "required": [
-              "send_packet"
-            ],
+            "required": ["send_packet"],
             "properties": {
               "send_packet": {
                 "type": "object",
-                "required": [
-                  "channel_id",
-                  "data",
-                  "timeout"
-                ],
+                "required": ["channel_id", "data", "timeout"],
                 "properties": {
                   "channel_id": {
                     "type": "string"
@@ -1090,15 +914,11 @@
           {
             "description": "This will close an existing channel that is owned by this contract. Port is auto-assigned to the contract's IBC port",
             "type": "object",
-            "required": [
-              "close_channel"
-            ],
+            "required": ["close_channel"],
             "properties": {
               "close_channel": {
                 "type": "object",
-                "required": [
-                  "channel_id"
-                ],
+                "required": ["channel_id"],
                 "properties": {
                   "channel_id": {
                     "type": "string"
@@ -1139,10 +959,7 @@
       "IbcTimeoutBlock": {
         "description": "IBCTimeoutHeight Height is a monotonically increasing data type that can be compared against another Height for the purposes of updating and freezing clients. Ordering is (revision_number, timeout_height)",
         "type": "object",
-        "required": [
-          "height",
-          "revision"
-        ],
+        "required": ["height", "revision"],
         "properties": {
           "height": {
             "description": "block height after which the packet times out. the height within the given revision",
@@ -1164,19 +981,14 @@
           {
             "description": "Anyone may create proposals, except for those in the denylist.",
             "type": "object",
-            "required": [
-              "anyone"
-            ],
+            "required": ["anyone"],
             "properties": {
               "anyone": {
                 "type": "object",
                 "properties": {
                   "denylist": {
                     "description": "Addresses that may not create proposals.",
-                    "type": [
-                      "array",
-                      "null"
-                    ],
+                    "type": ["array", "null"],
                     "items": {
                       "type": "string"
                     }
@@ -1190,22 +1002,15 @@
           {
             "description": "Specific people may create proposals.",
             "type": "object",
-            "required": [
-              "specific"
-            ],
+            "required": ["specific"],
             "properties": {
               "specific": {
                 "type": "object",
-                "required": [
-                  "dao_members"
-                ],
+                "required": ["dao_members"],
                 "properties": {
                   "allowlist": {
                     "description": "Addresses that may create proposals.",
-                    "type": [
-                      "array",
-                      "null"
-                    ],
+                    "type": ["array", "null"],
                     "items": {
                       "type": "string"
                     }
@@ -1216,10 +1021,7 @@
                   },
                   "denylist": {
                     "description": "Addresses that may not create proposals, overriding other settings.",
-                    "type": [
-                      "array",
-                      "null"
-                    ],
+                    "type": ["array", "null"],
                     "items": {
                       "type": "string"
                     }
@@ -1236,17 +1038,11 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "propose"
-            ],
+            "required": ["propose"],
             "properties": {
               "propose": {
                 "type": "object",
-                "required": [
-                  "description",
-                  "msgs",
-                  "title"
-                ],
+                "required": ["description", "msgs", "title"],
                 "properties": {
                   "description": {
                     "type": "string"
@@ -1280,16 +1076,11 @@
       },
       "SingleChoiceAutoVote": {
         "type": "object",
-        "required": [
-          "vote"
-        ],
+        "required": ["vote"],
         "properties": {
           "rationale": {
             "description": "An optional rationale for why this vote was cast. This can be updated, set, or removed later by the address casting the vote.",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "vote": {
             "description": "The proposer's position on the proposal.",
@@ -1308,16 +1099,11 @@
           {
             "description": "This is translated to a [MsgDelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L81-L90). `delegator_address` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "delegate"
-            ],
+            "required": ["delegate"],
             "properties": {
               "delegate": {
                 "type": "object",
-                "required": [
-                  "amount",
-                  "validator"
-                ],
+                "required": ["amount", "validator"],
                 "properties": {
                   "amount": {
                     "$ref": "#/definitions/Coin"
@@ -1333,16 +1119,11 @@
           {
             "description": "This is translated to a [MsgUndelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L112-L121). `delegator_address` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "undelegate"
-            ],
+            "required": ["undelegate"],
             "properties": {
               "undelegate": {
                 "type": "object",
-                "required": [
-                  "amount",
-                  "validator"
-                ],
+                "required": ["amount", "validator"],
                 "properties": {
                   "amount": {
                     "$ref": "#/definitions/Coin"
@@ -1358,17 +1139,11 @@
           {
             "description": "This is translated to a [MsgBeginRedelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L95-L105). `delegator_address` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "redelegate"
-            ],
+            "required": ["redelegate"],
             "properties": {
               "redelegate": {
                 "type": "object",
-                "required": [
-                  "amount",
-                  "dst_validator",
-                  "src_validator"
-                ],
+                "required": ["amount", "dst_validator", "src_validator"],
                 "properties": {
                   "amount": {
                     "$ref": "#/definitions/Coin"
@@ -1391,57 +1166,41 @@
           {
             "description": "The proposal is open for voting.",
             "type": "string",
-            "enum": [
-              "open"
-            ]
+            "enum": ["open"]
           },
           {
             "description": "The proposal has been rejected.",
             "type": "string",
-            "enum": [
-              "rejected"
-            ]
+            "enum": ["rejected"]
           },
           {
             "description": "The proposal has been passed but has not been executed.",
             "type": "string",
-            "enum": [
-              "passed"
-            ]
+            "enum": ["passed"]
           },
           {
             "description": "The proposal has been passed and executed.",
             "type": "string",
-            "enum": [
-              "executed"
-            ]
+            "enum": ["executed"]
           },
           {
             "description": "The proposal has failed or expired and has been closed. A proposal deposit refund has been issued if applicable.",
             "type": "string",
-            "enum": [
-              "closed"
-            ]
+            "enum": ["closed"]
           },
           {
             "description": "The proposal's execution failed.",
             "type": "string",
-            "enum": [
-              "execution_failed"
-            ]
+            "enum": ["execution_failed"]
           },
           {
             "description": "The proposal is timelocked. Only the configured vetoer can execute or veto until the timelock expires.",
             "type": "object",
-            "required": [
-              "veto_timelock"
-            ],
+            "required": ["veto_timelock"],
             "properties": {
               "veto_timelock": {
                 "type": "object",
-                "required": [
-                  "expiration"
-                ],
+                "required": ["expiration"],
                 "properties": {
                   "expiration": {
                     "$ref": "#/definitions/Expiration"
@@ -1455,9 +1214,7 @@
           {
             "description": "The proposal has been vetoed.",
             "type": "string",
-            "enum": [
-              "vetoed"
-            ]
+            "enum": ["vetoed"]
           }
         ]
       },
@@ -1483,9 +1240,7 @@
           {
             "description": "A native (bank module) asset.",
             "type": "object",
-            "required": [
-              "native"
-            ],
+            "required": ["native"],
             "properties": {
               "native": {
                 "type": "string"
@@ -1496,9 +1251,7 @@
           {
             "description": "A cw20 asset.",
             "type": "object",
-            "required": [
-              "cw20"
-            ],
+            "required": ["cw20"],
             "properties": {
               "cw20": {
                 "type": "string"
@@ -1511,11 +1264,7 @@
       "UncheckedDepositInfo": {
         "description": "Information about the deposit required to create a proposal.",
         "type": "object",
-        "required": [
-          "amount",
-          "denom",
-          "refund_policy"
-        ],
+        "required": ["amount", "denom", "refund_policy"],
         "properties": {
           "amount": {
             "description": "The number of tokens that must be deposited to create a proposal. Must be a positive, non-zero number.",
@@ -1549,41 +1298,27 @@
           {
             "description": "Marks support for the proposal.",
             "type": "string",
-            "enum": [
-              "yes"
-            ]
+            "enum": ["yes"]
           },
           {
             "description": "Marks opposition to the proposal.",
             "type": "string",
-            "enum": [
-              "no"
-            ]
+            "enum": ["no"]
           },
           {
             "description": "Marks participation but does not count towards the ratio of support / opposed.",
             "type": "string",
-            "enum": [
-              "abstain"
-            ]
+            "enum": ["abstain"]
           }
         ]
       },
       "VoteOption": {
         "type": "string",
-        "enum": [
-          "yes",
-          "no",
-          "abstain",
-          "no_with_veto"
-        ]
+        "enum": ["yes", "no", "abstain", "no_with_veto"]
       },
       "VotingModuleTokenType": {
         "type": "string",
-        "enum": [
-          "native",
-          "cw20"
-        ]
+        "enum": ["native", "cw20"]
       },
       "WasmMsg": {
         "description": "The message types of the wasm module.\n\nSee https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto",
@@ -1591,17 +1326,11 @@
           {
             "description": "Dispatches a call to another contract at a known address (with known ABI).\n\nThis is translated to a [MsgExecuteContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L68-L78). `sender` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "execute"
-            ],
+            "required": ["execute"],
             "properties": {
               "execute": {
                 "type": "object",
-                "required": [
-                  "contract_addr",
-                  "funds",
-                  "msg"
-                ],
+                "required": ["contract_addr", "funds", "msg"],
                 "properties": {
                   "contract_addr": {
                     "type": "string"
@@ -1628,24 +1357,14 @@
           {
             "description": "Instantiates a new contracts from previously uploaded Wasm code.\n\nThe contract address is non-predictable. But it is guaranteed that when emitting the same Instantiate message multiple times, multiple instances on different addresses will be generated. See also Instantiate2.\n\nThis is translated to a [MsgInstantiateContract](https://github.com/CosmWasm/wasmd/blob/v0.29.2/proto/cosmwasm/wasm/v1/tx.proto#L53-L71). `sender` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "instantiate"
-            ],
+            "required": ["instantiate"],
             "properties": {
               "instantiate": {
                 "type": "object",
-                "required": [
-                  "code_id",
-                  "funds",
-                  "label",
-                  "msg"
-                ],
+                "required": ["code_id", "funds", "label", "msg"],
                 "properties": {
                   "admin": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
+                    "type": ["string", "null"]
                   },
                   "code_id": {
                     "type": "integer",
@@ -1678,17 +1397,11 @@
           {
             "description": "Migrates a given contracts to use new wasm code. Passes a MigrateMsg to allow us to customize behavior.\n\nOnly the contract admin (as defined in wasmd), if any, is able to make this call.\n\nThis is translated to a [MsgMigrateContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L86-L96). `sender` is automatically filled with the current contract's address.",
             "type": "object",
-            "required": [
-              "migrate"
-            ],
+            "required": ["migrate"],
             "properties": {
               "migrate": {
                 "type": "object",
-                "required": [
-                  "contract_addr",
-                  "msg",
-                  "new_code_id"
-                ],
+                "required": ["contract_addr", "msg", "new_code_id"],
                 "properties": {
                   "contract_addr": {
                     "type": "string"
@@ -1715,16 +1428,11 @@
           {
             "description": "Sets a new admin (for migrate) on the given contract. Fails if this contract is not currently admin of the target contract.",
             "type": "object",
-            "required": [
-              "update_admin"
-            ],
+            "required": ["update_admin"],
             "properties": {
               "update_admin": {
                 "type": "object",
-                "required": [
-                  "admin",
-                  "contract_addr"
-                ],
+                "required": ["admin", "contract_addr"],
                 "properties": {
                   "admin": {
                     "type": "string"
@@ -1740,15 +1448,11 @@
           {
             "description": "Clears the admin on the given contract, so no more migration possible. Fails if this contract is not currently admin of the target contract.",
             "type": "object",
-            "required": [
-              "clear_admin"
-            ],
+            "required": ["clear_admin"],
             "properties": {
               "clear_admin": {
                 "type": "object",
-                "required": [
-                  "contract_addr"
-                ],
+                "required": ["contract_addr"],
                 "properties": {
                   "contract_addr": {
                     "type": "string"
@@ -1769,9 +1473,7 @@
       {
         "description": "Gets the proposal module that this pre propose module is associated with. Returns `Addr`.",
         "type": "object",
-        "required": [
-          "proposal_module"
-        ],
+        "required": ["proposal_module"],
         "properties": {
           "proposal_module": {
             "type": "object",
@@ -1783,9 +1485,7 @@
       {
         "description": "Gets the DAO (dao-dao-core) module this contract is associated with. Returns `Addr`.",
         "type": "object",
-        "required": [
-          "dao"
-        ],
+        "required": ["dao"],
         "properties": {
           "dao": {
             "type": "object",
@@ -1797,9 +1497,7 @@
       {
         "description": "Gets the module's configuration.",
         "type": "object",
-        "required": [
-          "config"
-        ],
+        "required": ["config"],
         "properties": {
           "config": {
             "type": "object",
@@ -1811,15 +1509,11 @@
       {
         "description": "Gets the deposit info for the proposal identified by PROPOSAL_ID.",
         "type": "object",
-        "required": [
-          "deposit_info"
-        ],
+        "required": ["deposit_info"],
         "properties": {
           "deposit_info": {
             "type": "object",
-            "required": [
-              "proposal_id"
-            ],
+            "required": ["proposal_id"],
             "properties": {
               "proposal_id": {
                 "type": "integer",
@@ -1835,9 +1529,7 @@
       {
         "description": "Returns list of proposal submitted hooks.",
         "type": "object",
-        "required": [
-          "proposal_submitted_hooks"
-        ],
+        "required": ["proposal_submitted_hooks"],
         "properties": {
           "proposal_submitted_hooks": {
             "type": "object",
@@ -1849,15 +1541,11 @@
       {
         "description": "Extension for queries. The default implementation will do nothing if queried for will return `Binary::default()`.",
         "type": "object",
-        "required": [
-          "query_extension"
-        ],
+        "required": ["query_extension"],
         "properties": {
           "query_extension": {
             "type": "object",
-            "required": [
-              "msg"
-            ],
+            "required": ["msg"],
             "properties": {
               "msg": {
                 "$ref": "#/definitions/QueryExt"
@@ -1875,9 +1563,7 @@
           {
             "description": "List the approver address",
             "type": "object",
-            "required": [
-              "approver"
-            ],
+            "required": ["approver"],
             "properties": {
               "approver": {
                 "type": "object",
@@ -1889,15 +1575,11 @@
           {
             "description": "Return whether or not the proposal is pending",
             "type": "object",
-            "required": [
-              "is_pending"
-            ],
+            "required": ["is_pending"],
             "properties": {
               "is_pending": {
                 "type": "object",
-                "required": [
-                  "id"
-                ],
+                "required": ["id"],
                 "properties": {
                   "id": {
                     "type": "integer",
@@ -1913,15 +1595,11 @@
           {
             "description": "A proposal, pending or completed.",
             "type": "object",
-            "required": [
-              "proposal"
-            ],
+            "required": ["proposal"],
             "properties": {
               "proposal": {
                 "type": "object",
-                "required": [
-                  "id"
-                ],
+                "required": ["id"],
                 "properties": {
                   "id": {
                     "type": "integer",
@@ -1937,15 +1615,11 @@
           {
             "description": "A pending proposal",
             "type": "object",
-            "required": [
-              "pending_proposal"
-            ],
+            "required": ["pending_proposal"],
             "properties": {
               "pending_proposal": {
                 "type": "object",
-                "required": [
-                  "id"
-                ],
+                "required": ["id"],
                 "properties": {
                   "id": {
                     "type": "integer",
@@ -1961,26 +1635,18 @@
           {
             "description": "List of proposals awaiting approval",
             "type": "object",
-            "required": [
-              "pending_proposals"
-            ],
+            "required": ["pending_proposals"],
             "properties": {
               "pending_proposals": {
                 "type": "object",
                 "properties": {
                   "limit": {
-                    "type": [
-                      "integer",
-                      "null"
-                    ],
+                    "type": ["integer", "null"],
                     "format": "uint32",
                     "minimum": 0.0
                   },
                   "start_after": {
-                    "type": [
-                      "integer",
-                      "null"
-                    ],
+                    "type": ["integer", "null"],
                     "format": "uint64",
                     "minimum": 0.0
                   }
@@ -1992,26 +1658,18 @@
           },
           {
             "type": "object",
-            "required": [
-              "reverse_pending_proposals"
-            ],
+            "required": ["reverse_pending_proposals"],
             "properties": {
               "reverse_pending_proposals": {
                 "type": "object",
                 "properties": {
                   "limit": {
-                    "type": [
-                      "integer",
-                      "null"
-                    ],
+                    "type": ["integer", "null"],
                     "format": "uint32",
                     "minimum": 0.0
                   },
                   "start_before": {
-                    "type": [
-                      "integer",
-                      "null"
-                    ],
+                    "type": ["integer", "null"],
                     "format": "uint64",
                     "minimum": 0.0
                   }
@@ -2024,15 +1682,11 @@
           {
             "description": "A completed proposal",
             "type": "object",
-            "required": [
-              "completed_proposal"
-            ],
+            "required": ["completed_proposal"],
             "properties": {
               "completed_proposal": {
                 "type": "object",
-                "required": [
-                  "id"
-                ],
+                "required": ["id"],
                 "properties": {
                   "id": {
                     "type": "integer",
@@ -2048,26 +1702,18 @@
           {
             "description": "List of completed proposals",
             "type": "object",
-            "required": [
-              "completed_proposals"
-            ],
+            "required": ["completed_proposals"],
             "properties": {
               "completed_proposals": {
                 "type": "object",
                 "properties": {
                   "limit": {
-                    "type": [
-                      "integer",
-                      "null"
-                    ],
+                    "type": ["integer", "null"],
                     "format": "uint32",
                     "minimum": 0.0
                   },
                   "start_after": {
-                    "type": [
-                      "integer",
-                      "null"
-                    ],
+                    "type": ["integer", "null"],
                     "format": "uint64",
                     "minimum": 0.0
                   }
@@ -2079,26 +1725,18 @@
           },
           {
             "type": "object",
-            "required": [
-              "reverse_completed_proposals"
-            ],
+            "required": ["reverse_completed_proposals"],
             "properties": {
               "reverse_completed_proposals": {
                 "type": "object",
                 "properties": {
                   "limit": {
-                    "type": [
-                      "integer",
-                      "null"
-                    ],
+                    "type": ["integer", "null"],
                     "format": "uint32",
                     "minimum": 0.0
                   },
                   "start_before": {
-                    "type": [
-                      "integer",
-                      "null"
-                    ],
+                    "type": ["integer", "null"],
                     "format": "uint64",
                     "minimum": 0.0
                   }
@@ -2111,15 +1749,11 @@
           {
             "description": "The completed approval ID for a created proposal ID.",
             "type": "object",
-            "required": [
-              "completed_proposal_id_for_created_proposal_id"
-            ],
+            "required": ["completed_proposal_id_for_created_proposal_id"],
             "properties": {
               "completed_proposal_id_for_created_proposal_id": {
                 "type": "object",
-                "required": [
-                  "id"
-                ],
+                "required": ["id"],
                 "properties": {
                   "id": {
                     "type": "integer",
@@ -2143,9 +1777,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Config",
       "type": "object",
-      "required": [
-        "submission_policy"
-      ],
+      "required": ["submission_policy"],
       "properties": {
         "deposit_info": {
           "description": "Information about the deposit required to create a proposal. If `None`, no deposit is required.",
@@ -2179,9 +1811,7 @@
             {
               "description": "A native (bank module) asset.",
               "type": "object",
-              "required": [
-                "native"
-              ],
+              "required": ["native"],
               "properties": {
                 "native": {
                   "type": "string"
@@ -2192,9 +1822,7 @@
             {
               "description": "A cw20 asset.",
               "type": "object",
-              "required": [
-                "cw20"
-              ],
+              "required": ["cw20"],
               "properties": {
                 "cw20": {
                   "$ref": "#/definitions/Addr"
@@ -2207,11 +1835,7 @@
         "CheckedDepositInfo": {
           "description": "Counterpart to the `DepositInfo` struct which has been processed. This type should never be constructed literally and should always by built by calling `into_checked` on a `DepositInfo` instance.",
           "type": "object",
-          "required": [
-            "amount",
-            "denom",
-            "refund_policy"
-          ],
+          "required": ["amount", "denom", "refund_policy"],
           "properties": {
             "amount": {
               "description": "The number of tokens that must be deposited to create a proposal. This is validated to be non-zero if this struct is constructed by converted via the `into_checked` method on `DepositInfo`.",
@@ -2245,23 +1869,17 @@
             {
               "description": "Deposits should always be refunded.",
               "type": "string",
-              "enum": [
-                "always"
-              ]
+              "enum": ["always"]
             },
             {
               "description": "Deposits should only be refunded for passed proposals.",
               "type": "string",
-              "enum": [
-                "only_passed"
-              ]
+              "enum": ["only_passed"]
             },
             {
               "description": "Deposits should never be refunded.",
               "type": "string",
-              "enum": [
-                "never"
-              ]
+              "enum": ["never"]
             }
           ]
         },
@@ -2271,19 +1889,14 @@
             {
               "description": "Anyone may create proposals, except for those in the denylist.",
               "type": "object",
-              "required": [
-                "anyone"
-              ],
+              "required": ["anyone"],
               "properties": {
                 "anyone": {
                   "type": "object",
                   "properties": {
                     "denylist": {
                       "description": "Addresses that may not create proposals.",
-                      "type": [
-                        "array",
-                        "null"
-                      ],
+                      "type": ["array", "null"],
                       "items": {
                         "type": "string"
                       }
@@ -2297,22 +1910,15 @@
             {
               "description": "Specific people may create proposals.",
               "type": "object",
-              "required": [
-                "specific"
-              ],
+              "required": ["specific"],
               "properties": {
                 "specific": {
                   "type": "object",
-                  "required": [
-                    "dao_members"
-                  ],
+                  "required": ["dao_members"],
                   "properties": {
                     "allowlist": {
                       "description": "Addresses that may create proposals.",
-                      "type": [
-                        "array",
-                        "null"
-                      ],
+                      "type": ["array", "null"],
                       "items": {
                         "type": "string"
                       }
@@ -2323,10 +1929,7 @@
                     },
                     "denylist": {
                       "description": "Addresses that may not create proposals, overriding other settings.",
-                      "type": [
-                        "array",
-                        "null"
-                      ],
+                      "type": ["array", "null"],
                       "items": {
                         "type": "string"
                       }
@@ -2355,9 +1958,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "DepositInfoResponse",
       "type": "object",
-      "required": [
-        "proposer"
-      ],
+      "required": ["proposer"],
       "properties": {
         "deposit_info": {
           "description": "The deposit that has been paid for the specified proposal.",
@@ -2391,9 +1992,7 @@
             {
               "description": "A native (bank module) asset.",
               "type": "object",
-              "required": [
-                "native"
-              ],
+              "required": ["native"],
               "properties": {
                 "native": {
                   "type": "string"
@@ -2404,9 +2003,7 @@
             {
               "description": "A cw20 asset.",
               "type": "object",
-              "required": [
-                "cw20"
-              ],
+              "required": ["cw20"],
               "properties": {
                 "cw20": {
                   "$ref": "#/definitions/Addr"
@@ -2419,11 +2016,7 @@
         "CheckedDepositInfo": {
           "description": "Counterpart to the `DepositInfo` struct which has been processed. This type should never be constructed literally and should always by built by calling `into_checked` on a `DepositInfo` instance.",
           "type": "object",
-          "required": [
-            "amount",
-            "denom",
-            "refund_policy"
-          ],
+          "required": ["amount", "denom", "refund_policy"],
           "properties": {
             "amount": {
               "description": "The number of tokens that must be deposited to create a proposal. This is validated to be non-zero if this struct is constructed by converted via the `into_checked` method on `DepositInfo`.",
@@ -2457,23 +2050,17 @@
             {
               "description": "Deposits should always be refunded.",
               "type": "string",
-              "enum": [
-                "always"
-              ]
+              "enum": ["always"]
             },
             {
               "description": "Deposits should only be refunded for passed proposals.",
               "type": "string",
-              "enum": [
-                "only_passed"
-              ]
+              "enum": ["only_passed"]
             },
             {
               "description": "Deposits should never be refunded.",
               "type": "string",
-              "enum": [
-                "never"
-              ]
+              "enum": ["never"]
             }
           ]
         },
@@ -2493,9 +2080,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "HooksResponse",
       "type": "object",
-      "required": [
-        "hooks"
-      ],
+      "required": ["hooks"],
       "properties": {
         "hooks": {
           "type": "array",

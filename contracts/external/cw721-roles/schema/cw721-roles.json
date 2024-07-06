@@ -1,16 +1,12 @@
 {
   "contract_name": "cw721-roles",
-  "contract_version": "2.4.2",
+  "contract_version": "2.5.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
-    "required": [
-      "minter",
-      "name",
-      "symbol"
-    ],
+    "required": ["minter", "name", "symbol"],
     "properties": {
       "minter": {
         "description": "The minter is the only one who can create new NFTs. This is designed for a base NFT that is controlled by an external program or contract. You will likely replace this with custom logic in custom NFTs",
@@ -35,16 +31,11 @@
       {
         "description": "Transfer is a base message to move a token to another account without triggering actions",
         "type": "object",
-        "required": [
-          "transfer_nft"
-        ],
+        "required": ["transfer_nft"],
         "properties": {
           "transfer_nft": {
             "type": "object",
-            "required": [
-              "recipient",
-              "token_id"
-            ],
+            "required": ["recipient", "token_id"],
             "properties": {
               "recipient": {
                 "type": "string"
@@ -61,17 +52,11 @@
       {
         "description": "Send is a base message to transfer a token to a contract and trigger an action on the receiving contract.",
         "type": "object",
-        "required": [
-          "send_nft"
-        ],
+        "required": ["send_nft"],
         "properties": {
           "send_nft": {
             "type": "object",
-            "required": [
-              "contract",
-              "msg",
-              "token_id"
-            ],
+            "required": ["contract", "msg", "token_id"],
             "properties": {
               "contract": {
                 "type": "string"
@@ -91,16 +76,11 @@
       {
         "description": "Allows operator to transfer / send the token from the owner's account. If expiration is set, then this allowance has a time/height limit",
         "type": "object",
-        "required": [
-          "approve"
-        ],
+        "required": ["approve"],
         "properties": {
           "approve": {
             "type": "object",
-            "required": [
-              "spender",
-              "token_id"
-            ],
+            "required": ["spender", "token_id"],
             "properties": {
               "expires": {
                 "anyOf": [
@@ -127,16 +107,11 @@
       {
         "description": "Remove previously granted Approval",
         "type": "object",
-        "required": [
-          "revoke"
-        ],
+        "required": ["revoke"],
         "properties": {
           "revoke": {
             "type": "object",
-            "required": [
-              "spender",
-              "token_id"
-            ],
+            "required": ["spender", "token_id"],
             "properties": {
               "spender": {
                 "type": "string"
@@ -153,15 +128,11 @@
       {
         "description": "Allows operator to transfer / send any token from the owner's account. If expiration is set, then this allowance has a time/height limit",
         "type": "object",
-        "required": [
-          "approve_all"
-        ],
+        "required": ["approve_all"],
         "properties": {
           "approve_all": {
             "type": "object",
-            "required": [
-              "operator"
-            ],
+            "required": ["operator"],
             "properties": {
               "expires": {
                 "anyOf": [
@@ -185,15 +156,11 @@
       {
         "description": "Remove previously granted ApproveAll permission",
         "type": "object",
-        "required": [
-          "revoke_all"
-        ],
+        "required": ["revoke_all"],
         "properties": {
           "revoke_all": {
             "type": "object",
-            "required": [
-              "operator"
-            ],
+            "required": ["operator"],
             "properties": {
               "operator": {
                 "type": "string"
@@ -207,17 +174,11 @@
       {
         "description": "Mint a new NFT, can only be called by the contract minter",
         "type": "object",
-        "required": [
-          "mint"
-        ],
+        "required": ["mint"],
         "properties": {
           "mint": {
             "type": "object",
-            "required": [
-              "extension",
-              "owner",
-              "token_id"
-            ],
+            "required": ["extension", "owner", "token_id"],
             "properties": {
               "extension": {
                 "description": "Any custom extension used by this contract",
@@ -237,10 +198,7 @@
               },
               "token_uri": {
                 "description": "Universal resource identifier for this NFT Should point to a JSON file that conforms to the ERC721 Metadata JSON Schema",
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -251,15 +209,11 @@
       {
         "description": "Burn an NFT the sender has access to",
         "type": "object",
-        "required": [
-          "burn"
-        ],
+        "required": ["burn"],
         "properties": {
           "burn": {
             "type": "object",
-            "required": [
-              "token_id"
-            ],
+            "required": ["token_id"],
             "properties": {
               "token_id": {
                 "type": "string"
@@ -273,15 +227,11 @@
       {
         "description": "Extension msg",
         "type": "object",
-        "required": [
-          "extension"
-        ],
+        "required": ["extension"],
         "properties": {
           "extension": {
             "type": "object",
-            "required": [
-              "msg"
-            ],
+            "required": ["msg"],
             "properties": {
               "msg": {
                 "$ref": "#/definitions/ExecuteExt"
@@ -295,9 +245,7 @@
       {
         "description": "Update the contract's ownership. The `action` to be provided can be either to propose transferring ownership to an account, accept a pending ownership transfer, or renounce the ownership permanently.",
         "type": "object",
-        "required": [
-          "update_ownership"
-        ],
+        "required": ["update_ownership"],
         "properties": {
           "update_ownership": {
             "$ref": "#/definitions/Action"
@@ -313,15 +261,11 @@
           {
             "description": "Propose to transfer the contract's ownership to another account, optionally with an expiry time.\n\nCan only be called by the contract's current owner.\n\nAny existing pending ownership transfer is overwritten.",
             "type": "object",
-            "required": [
-              "transfer_ownership"
-            ],
+            "required": ["transfer_ownership"],
             "properties": {
               "transfer_ownership": {
                 "type": "object",
-                "required": [
-                  "new_owner"
-                ],
+                "required": ["new_owner"],
                 "properties": {
                   "expiry": {
                     "anyOf": [
@@ -345,16 +289,12 @@
           {
             "description": "Accept the pending ownership transfer.\n\nCan only be called by the pending owner.",
             "type": "string",
-            "enum": [
-              "accept_ownership"
-            ]
+            "enum": ["accept_ownership"]
           },
           {
             "description": "Give up the contract's ownership and the possibility of appointing a new owner.\n\nCan only be invoked by the contract's current owner.\n\nAny existing pending ownership transfer is canceled.",
             "type": "string",
-            "enum": [
-              "renounce_ownership"
-            ]
+            "enum": ["renounce_ownership"]
           }
         ]
       },
@@ -367,15 +307,11 @@
           {
             "description": "Add a new hook to be informed of all membership changes. Must be called by Admin",
             "type": "object",
-            "required": [
-              "add_hook"
-            ],
+            "required": ["add_hook"],
             "properties": {
               "add_hook": {
                 "type": "object",
-                "required": [
-                  "addr"
-                ],
+                "required": ["addr"],
                 "properties": {
                   "addr": {
                     "type": "string"
@@ -389,15 +325,11 @@
           {
             "description": "Remove a hook. Must be called by Admin",
             "type": "object",
-            "required": [
-              "remove_hook"
-            ],
+            "required": ["remove_hook"],
             "properties": {
               "remove_hook": {
                 "type": "object",
-                "required": [
-                  "addr"
-                ],
+                "required": ["addr"],
                 "properties": {
                   "addr": {
                     "type": "string"
@@ -411,24 +343,17 @@
           {
             "description": "Update the token_uri for a particular NFT. Must be called by minter / admin",
             "type": "object",
-            "required": [
-              "update_token_uri"
-            ],
+            "required": ["update_token_uri"],
             "properties": {
               "update_token_uri": {
                 "type": "object",
-                "required": [
-                  "token_id"
-                ],
+                "required": ["token_id"],
                 "properties": {
                   "token_id": {
                     "type": "string"
                   },
                   "token_uri": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
+                    "type": ["string", "null"]
                   }
                 },
                 "additionalProperties": false
@@ -439,16 +364,11 @@
           {
             "description": "Updates the voting weight of a token. Must be called by minter / admin",
             "type": "object",
-            "required": [
-              "update_token_weight"
-            ],
+            "required": ["update_token_weight"],
             "properties": {
               "update_token_weight": {
                 "type": "object",
-                "required": [
-                  "token_id",
-                  "weight"
-                ],
+                "required": ["token_id", "weight"],
                 "properties": {
                   "token_id": {
                     "type": "string"
@@ -467,21 +387,14 @@
           {
             "description": "Udates the role of a token. Must be called by minter / admin",
             "type": "object",
-            "required": [
-              "update_token_role"
-            ],
+            "required": ["update_token_role"],
             "properties": {
               "update_token_role": {
                 "type": "object",
-                "required": [
-                  "token_id"
-                ],
+                "required": ["token_id"],
                 "properties": {
                   "role": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
+                    "type": ["string", "null"]
                   },
                   "token_id": {
                     "type": "string"
@@ -500,9 +413,7 @@
           {
             "description": "AtHeight will expire when `env.block.height` >= height",
             "type": "object",
-            "required": [
-              "at_height"
-            ],
+            "required": ["at_height"],
             "properties": {
               "at_height": {
                 "type": "integer",
@@ -515,9 +426,7 @@
           {
             "description": "AtTime will expire when `env.block.time` >= time",
             "type": "object",
-            "required": [
-              "at_time"
-            ],
+            "required": ["at_time"],
             "properties": {
               "at_time": {
                 "$ref": "#/definitions/Timestamp"
@@ -528,9 +437,7 @@
           {
             "description": "Never will never expire. Used to express the empty variant",
             "type": "object",
-            "required": [
-              "never"
-            ],
+            "required": ["never"],
             "properties": {
               "never": {
                 "type": "object",
@@ -543,16 +450,11 @@
       },
       "MetadataExt": {
         "type": "object",
-        "required": [
-          "weight"
-        ],
+        "required": ["weight"],
         "properties": {
           "role": {
             "description": "Optional on-chain role for this member, can be used by other contracts to enforce permissions",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "weight": {
             "description": "The voting weight of this role",
@@ -584,22 +486,15 @@
       {
         "description": "Return the owner of the given token, error if token does not exist",
         "type": "object",
-        "required": [
-          "owner_of"
-        ],
+        "required": ["owner_of"],
         "properties": {
           "owner_of": {
             "type": "object",
-            "required": [
-              "token_id"
-            ],
+            "required": ["token_id"],
             "properties": {
               "include_expired": {
                 "description": "unset or false will filter out expired approvals, you must set to true to see them",
-                "type": [
-                  "boolean",
-                  "null"
-                ]
+                "type": ["boolean", "null"]
               },
               "token_id": {
                 "type": "string"
@@ -613,22 +508,14 @@
       {
         "description": "Return operator that can access all of the owner's tokens.",
         "type": "object",
-        "required": [
-          "approval"
-        ],
+        "required": ["approval"],
         "properties": {
           "approval": {
             "type": "object",
-            "required": [
-              "spender",
-              "token_id"
-            ],
+            "required": ["spender", "token_id"],
             "properties": {
               "include_expired": {
-                "type": [
-                  "boolean",
-                  "null"
-                ]
+                "type": ["boolean", "null"]
               },
               "spender": {
                 "type": "string"
@@ -645,21 +532,14 @@
       {
         "description": "Return approvals that a token has",
         "type": "object",
-        "required": [
-          "approvals"
-        ],
+        "required": ["approvals"],
         "properties": {
           "approvals": {
             "type": "object",
-            "required": [
-              "token_id"
-            ],
+            "required": ["token_id"],
             "properties": {
               "include_expired": {
-                "type": [
-                  "boolean",
-                  "null"
-                ]
+                "type": ["boolean", "null"]
               },
               "token_id": {
                 "type": "string"
@@ -673,22 +553,14 @@
       {
         "description": "Return approval of a given operator for all tokens of an owner, error if not set",
         "type": "object",
-        "required": [
-          "operator"
-        ],
+        "required": ["operator"],
         "properties": {
           "operator": {
             "type": "object",
-            "required": [
-              "operator",
-              "owner"
-            ],
+            "required": ["operator", "owner"],
             "properties": {
               "include_expired": {
-                "type": [
-                  "boolean",
-                  "null"
-                ]
+                "type": ["boolean", "null"]
               },
               "operator": {
                 "type": "string"
@@ -705,28 +577,18 @@
       {
         "description": "List all operators that can access all of the owner's tokens",
         "type": "object",
-        "required": [
-          "all_operators"
-        ],
+        "required": ["all_operators"],
         "properties": {
           "all_operators": {
             "type": "object",
-            "required": [
-              "owner"
-            ],
+            "required": ["owner"],
             "properties": {
               "include_expired": {
                 "description": "unset or false will filter out expired items, you must set to true to see them",
-                "type": [
-                  "boolean",
-                  "null"
-                ]
+                "type": ["boolean", "null"]
               },
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint32",
                 "minimum": 0.0
               },
@@ -734,10 +596,7 @@
                 "type": "string"
               },
               "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -748,9 +607,7 @@
       {
         "description": "Total number of tokens issued",
         "type": "object",
-        "required": [
-          "num_tokens"
-        ],
+        "required": ["num_tokens"],
         "properties": {
           "num_tokens": {
             "type": "object",
@@ -762,9 +619,7 @@
       {
         "description": "With MetaData Extension. Returns top-level metadata about the contract",
         "type": "object",
-        "required": [
-          "contract_info"
-        ],
+        "required": ["contract_info"],
         "properties": {
           "contract_info": {
             "type": "object",
@@ -776,15 +631,11 @@
       {
         "description": "With MetaData Extension. Returns metadata about one particular token, based on *ERC721 Metadata JSON Schema* but directly from the contract",
         "type": "object",
-        "required": [
-          "nft_info"
-        ],
+        "required": ["nft_info"],
         "properties": {
           "nft_info": {
             "type": "object",
-            "required": [
-              "token_id"
-            ],
+            "required": ["token_id"],
             "properties": {
               "token_id": {
                 "type": "string"
@@ -798,22 +649,15 @@
       {
         "description": "With MetaData Extension. Returns the result of both `NftInfo` and `OwnerOf` as one query as an optimization for clients",
         "type": "object",
-        "required": [
-          "all_nft_info"
-        ],
+        "required": ["all_nft_info"],
         "properties": {
           "all_nft_info": {
             "type": "object",
-            "required": [
-              "token_id"
-            ],
+            "required": ["token_id"],
             "properties": {
               "include_expired": {
                 "description": "unset or false will filter out expired approvals, you must set to true to see them",
-                "type": [
-                  "boolean",
-                  "null"
-                ]
+                "type": ["boolean", "null"]
               },
               "token_id": {
                 "type": "string"
@@ -827,21 +671,14 @@
       {
         "description": "With Enumerable extension. Returns all tokens owned by the given address, [] if unset.",
         "type": "object",
-        "required": [
-          "tokens"
-        ],
+        "required": ["tokens"],
         "properties": {
           "tokens": {
             "type": "object",
-            "required": [
-              "owner"
-            ],
+            "required": ["owner"],
             "properties": {
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint32",
                 "minimum": 0.0
               },
@@ -849,10 +686,7 @@
                 "type": "string"
               },
               "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -863,26 +697,18 @@
       {
         "description": "With Enumerable extension. Requires pagination. Lists all token_ids controlled by the contract.",
         "type": "object",
-        "required": [
-          "all_tokens"
-        ],
+        "required": ["all_tokens"],
         "properties": {
           "all_tokens": {
             "type": "object",
             "properties": {
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -893,9 +719,7 @@
       {
         "description": "Return the minter",
         "type": "object",
-        "required": [
-          "minter"
-        ],
+        "required": ["minter"],
         "properties": {
           "minter": {
             "type": "object",
@@ -907,15 +731,11 @@
       {
         "description": "Extension query",
         "type": "object",
-        "required": [
-          "extension"
-        ],
+        "required": ["extension"],
         "properties": {
           "extension": {
             "type": "object",
-            "required": [
-              "msg"
-            ],
+            "required": ["msg"],
             "properties": {
               "msg": {
                 "$ref": "#/definitions/QueryExt"
@@ -929,9 +749,7 @@
       {
         "description": "Query the contract's ownership information",
         "type": "object",
-        "required": [
-          "ownership"
-        ],
+        "required": ["ownership"],
         "properties": {
           "ownership": {
             "type": "object",
@@ -947,18 +765,13 @@
           {
             "description": "Total weight at a given height",
             "type": "object",
-            "required": [
-              "total_weight"
-            ],
+            "required": ["total_weight"],
             "properties": {
               "total_weight": {
                 "type": "object",
                 "properties": {
                   "at_height": {
-                    "type": [
-                      "integer",
-                      "null"
-                    ],
+                    "type": ["integer", "null"],
                     "format": "uint64",
                     "minimum": 0.0
                   }
@@ -971,26 +784,18 @@
           {
             "description": "Returns a list of Members",
             "type": "object",
-            "required": [
-              "list_members"
-            ],
+            "required": ["list_members"],
             "properties": {
               "list_members": {
                 "type": "object",
                 "properties": {
                   "limit": {
-                    "type": [
-                      "integer",
-                      "null"
-                    ],
+                    "type": ["integer", "null"],
                     "format": "uint32",
                     "minimum": 0.0
                   },
                   "start_after": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
+                    "type": ["string", "null"]
                   }
                 },
                 "additionalProperties": false
@@ -1001,24 +806,17 @@
           {
             "description": "Returns the weight of a certain member",
             "type": "object",
-            "required": [
-              "member"
-            ],
+            "required": ["member"],
             "properties": {
               "member": {
                 "type": "object",
-                "required": [
-                  "addr"
-                ],
+                "required": ["addr"],
                 "properties": {
                   "addr": {
                     "type": "string"
                   },
                   "at_height": {
-                    "type": [
-                      "integer",
-                      "null"
-                    ],
+                    "type": ["integer", "null"],
                     "format": "uint64",
                     "minimum": 0.0
                   }
@@ -1031,9 +829,7 @@
           {
             "description": "Shows all registered hooks.",
             "type": "object",
-            "required": [
-              "hooks"
-            ],
+            "required": ["hooks"],
             "properties": {
               "hooks": {
                 "type": "object",
@@ -1053,10 +849,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AllNftInfoResponse_for_QueryExt",
       "type": "object",
-      "required": [
-        "access",
-        "info"
-      ],
+      "required": ["access", "info"],
       "properties": {
         "access": {
           "description": "Who can transfer the token",
@@ -1079,10 +872,7 @@
       "definitions": {
         "Approval": {
           "type": "object",
-          "required": [
-            "expires",
-            "spender"
-          ],
+          "required": ["expires", "spender"],
           "properties": {
             "expires": {
               "description": "When the Approval expires (maybe Expiration::never)",
@@ -1105,9 +895,7 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": [
-                "at_height"
-              ],
+              "required": ["at_height"],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -1120,9 +908,7 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": [
-                "at_time"
-              ],
+              "required": ["at_time"],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -1133,9 +919,7 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": [
-                "never"
-              ],
+              "required": ["never"],
               "properties": {
                 "never": {
                   "type": "object",
@@ -1148,9 +932,7 @@
         },
         "NftInfoResponse_for_QueryExt": {
           "type": "object",
-          "required": [
-            "extension"
-          ],
+          "required": ["extension"],
           "properties": {
             "extension": {
               "description": "You can add any custom metadata here when you extend cw721-base",
@@ -1162,20 +944,14 @@
             },
             "token_uri": {
               "description": "Universal resource identifier for this NFT Should point to a JSON file that conforms to the ERC721 Metadata JSON Schema",
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": ["string", "null"]
             }
           },
           "additionalProperties": false
         },
         "OwnerOfResponse": {
           "type": "object",
-          "required": [
-            "approvals",
-            "owner"
-          ],
+          "required": ["approvals", "owner"],
           "properties": {
             "approvals": {
               "description": "If set this address is approved to transfer/send the token as well",
@@ -1196,18 +972,13 @@
             {
               "description": "Total weight at a given height",
               "type": "object",
-              "required": [
-                "total_weight"
-              ],
+              "required": ["total_weight"],
               "properties": {
                 "total_weight": {
                   "type": "object",
                   "properties": {
                     "at_height": {
-                      "type": [
-                        "integer",
-                        "null"
-                      ],
+                      "type": ["integer", "null"],
                       "format": "uint64",
                       "minimum": 0.0
                     }
@@ -1220,26 +991,18 @@
             {
               "description": "Returns a list of Members",
               "type": "object",
-              "required": [
-                "list_members"
-              ],
+              "required": ["list_members"],
               "properties": {
                 "list_members": {
                   "type": "object",
                   "properties": {
                     "limit": {
-                      "type": [
-                        "integer",
-                        "null"
-                      ],
+                      "type": ["integer", "null"],
                       "format": "uint32",
                       "minimum": 0.0
                     },
                     "start_after": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
+                      "type": ["string", "null"]
                     }
                   },
                   "additionalProperties": false
@@ -1250,24 +1013,17 @@
             {
               "description": "Returns the weight of a certain member",
               "type": "object",
-              "required": [
-                "member"
-              ],
+              "required": ["member"],
               "properties": {
                 "member": {
                   "type": "object",
-                  "required": [
-                    "addr"
-                  ],
+                  "required": ["addr"],
                   "properties": {
                     "addr": {
                       "type": "string"
                     },
                     "at_height": {
-                      "type": [
-                        "integer",
-                        "null"
-                      ],
+                      "type": ["integer", "null"],
                       "format": "uint64",
                       "minimum": 0.0
                     }
@@ -1280,9 +1036,7 @@
             {
               "description": "Shows all registered hooks.",
               "type": "object",
-              "required": [
-                "hooks"
-              ],
+              "required": ["hooks"],
               "properties": {
                 "hooks": {
                   "type": "object",
@@ -1311,9 +1065,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "OperatorsResponse",
       "type": "object",
-      "required": [
-        "operators"
-      ],
+      "required": ["operators"],
       "properties": {
         "operators": {
           "type": "array",
@@ -1326,10 +1078,7 @@
       "definitions": {
         "Approval": {
           "type": "object",
-          "required": [
-            "expires",
-            "spender"
-          ],
+          "required": ["expires", "spender"],
           "properties": {
             "expires": {
               "description": "When the Approval expires (maybe Expiration::never)",
@@ -1352,9 +1101,7 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": [
-                "at_height"
-              ],
+              "required": ["at_height"],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -1367,9 +1114,7 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": [
-                "at_time"
-              ],
+              "required": ["at_time"],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -1380,9 +1125,7 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": [
-                "never"
-              ],
+              "required": ["never"],
               "properties": {
                 "never": {
                   "type": "object",
@@ -1411,9 +1154,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "TokensResponse",
       "type": "object",
-      "required": [
-        "tokens"
-      ],
+      "required": ["tokens"],
       "properties": {
         "tokens": {
           "description": "Contains all token_ids in lexicographical ordering If there are more than `limit`, use `start_after` in future queries to achieve pagination.",
@@ -1429,9 +1170,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ApprovalResponse",
       "type": "object",
-      "required": [
-        "approval"
-      ],
+      "required": ["approval"],
       "properties": {
         "approval": {
           "$ref": "#/definitions/Approval"
@@ -1441,10 +1180,7 @@
       "definitions": {
         "Approval": {
           "type": "object",
-          "required": [
-            "expires",
-            "spender"
-          ],
+          "required": ["expires", "spender"],
           "properties": {
             "expires": {
               "description": "When the Approval expires (maybe Expiration::never)",
@@ -1467,9 +1203,7 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": [
-                "at_height"
-              ],
+              "required": ["at_height"],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -1482,9 +1216,7 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": [
-                "at_time"
-              ],
+              "required": ["at_time"],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -1495,9 +1227,7 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": [
-                "never"
-              ],
+              "required": ["never"],
               "properties": {
                 "never": {
                   "type": "object",
@@ -1526,9 +1256,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ApprovalsResponse",
       "type": "object",
-      "required": [
-        "approvals"
-      ],
+      "required": ["approvals"],
       "properties": {
         "approvals": {
           "type": "array",
@@ -1541,10 +1269,7 @@
       "definitions": {
         "Approval": {
           "type": "object",
-          "required": [
-            "expires",
-            "spender"
-          ],
+          "required": ["expires", "spender"],
           "properties": {
             "expires": {
               "description": "When the Approval expires (maybe Expiration::never)",
@@ -1567,9 +1292,7 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": [
-                "at_height"
-              ],
+              "required": ["at_height"],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -1582,9 +1305,7 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": [
-                "at_time"
-              ],
+              "required": ["at_time"],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -1595,9 +1316,7 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": [
-                "never"
-              ],
+              "required": ["never"],
               "properties": {
                 "never": {
                   "type": "object",
@@ -1626,10 +1345,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ContractInfoResponse",
       "type": "object",
-      "required": [
-        "name",
-        "symbol"
-      ],
+      "required": ["name", "symbol"],
       "properties": {
         "name": {
           "type": "string"
@@ -1652,10 +1368,7 @@
       "type": "object",
       "properties": {
         "minter": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "additionalProperties": false
@@ -1664,9 +1377,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "NftInfoResponse_for_QueryExt",
       "type": "object",
-      "required": [
-        "extension"
-      ],
+      "required": ["extension"],
       "properties": {
         "extension": {
           "description": "You can add any custom metadata here when you extend cw721-base",
@@ -1678,10 +1389,7 @@
         },
         "token_uri": {
           "description": "Universal resource identifier for this NFT Should point to a JSON file that conforms to the ERC721 Metadata JSON Schema",
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "additionalProperties": false,
@@ -1691,18 +1399,13 @@
             {
               "description": "Total weight at a given height",
               "type": "object",
-              "required": [
-                "total_weight"
-              ],
+              "required": ["total_weight"],
               "properties": {
                 "total_weight": {
                   "type": "object",
                   "properties": {
                     "at_height": {
-                      "type": [
-                        "integer",
-                        "null"
-                      ],
+                      "type": ["integer", "null"],
                       "format": "uint64",
                       "minimum": 0.0
                     }
@@ -1715,26 +1418,18 @@
             {
               "description": "Returns a list of Members",
               "type": "object",
-              "required": [
-                "list_members"
-              ],
+              "required": ["list_members"],
               "properties": {
                 "list_members": {
                   "type": "object",
                   "properties": {
                     "limit": {
-                      "type": [
-                        "integer",
-                        "null"
-                      ],
+                      "type": ["integer", "null"],
                       "format": "uint32",
                       "minimum": 0.0
                     },
                     "start_after": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
+                      "type": ["string", "null"]
                     }
                   },
                   "additionalProperties": false
@@ -1745,24 +1440,17 @@
             {
               "description": "Returns the weight of a certain member",
               "type": "object",
-              "required": [
-                "member"
-              ],
+              "required": ["member"],
               "properties": {
                 "member": {
                   "type": "object",
-                  "required": [
-                    "addr"
-                  ],
+                  "required": ["addr"],
                   "properties": {
                     "addr": {
                       "type": "string"
                     },
                     "at_height": {
-                      "type": [
-                        "integer",
-                        "null"
-                      ],
+                      "type": ["integer", "null"],
                       "format": "uint64",
                       "minimum": 0.0
                     }
@@ -1775,9 +1463,7 @@
             {
               "description": "Shows all registered hooks.",
               "type": "object",
-              "required": [
-                "hooks"
-              ],
+              "required": ["hooks"],
               "properties": {
                 "hooks": {
                   "type": "object",
@@ -1794,9 +1480,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "NumTokensResponse",
       "type": "object",
-      "required": [
-        "count"
-      ],
+      "required": ["count"],
       "properties": {
         "count": {
           "type": "integer",
@@ -1810,9 +1494,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "OperatorResponse",
       "type": "object",
-      "required": [
-        "approval"
-      ],
+      "required": ["approval"],
       "properties": {
         "approval": {
           "$ref": "#/definitions/Approval"
@@ -1822,10 +1504,7 @@
       "definitions": {
         "Approval": {
           "type": "object",
-          "required": [
-            "expires",
-            "spender"
-          ],
+          "required": ["expires", "spender"],
           "properties": {
             "expires": {
               "description": "When the Approval expires (maybe Expiration::never)",
@@ -1848,9 +1527,7 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": [
-                "at_height"
-              ],
+              "required": ["at_height"],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -1863,9 +1540,7 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": [
-                "at_time"
-              ],
+              "required": ["at_time"],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -1876,9 +1551,7 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": [
-                "never"
-              ],
+              "required": ["never"],
               "properties": {
                 "never": {
                   "type": "object",
@@ -1907,10 +1580,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "OwnerOfResponse",
       "type": "object",
-      "required": [
-        "approvals",
-        "owner"
-      ],
+      "required": ["approvals", "owner"],
       "properties": {
         "approvals": {
           "description": "If set this address is approved to transfer/send the token as well",
@@ -1928,10 +1598,7 @@
       "definitions": {
         "Approval": {
           "type": "object",
-          "required": [
-            "expires",
-            "spender"
-          ],
+          "required": ["expires", "spender"],
           "properties": {
             "expires": {
               "description": "When the Approval expires (maybe Expiration::never)",
@@ -1954,9 +1621,7 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": [
-                "at_height"
-              ],
+              "required": ["at_height"],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -1969,9 +1634,7 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": [
-                "at_time"
-              ],
+              "required": ["at_time"],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -1982,9 +1645,7 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": [
-                "never"
-              ],
+              "required": ["never"],
               "properties": {
                 "never": {
                   "type": "object",
@@ -2017,10 +1678,7 @@
       "properties": {
         "owner": {
           "description": "The contract's current owner. `None` if the ownership has been renounced.",
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "pending_expiry": {
           "description": "The deadline for the pending owner to accept the ownership. `None` if there isn't a pending ownership transfer, or if a transfer exists and it doesn't have a deadline.",
@@ -2035,10 +1693,7 @@
         },
         "pending_owner": {
           "description": "The account who has been proposed to take over the ownership. `None` if there isn't a pending ownership transfer.",
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "additionalProperties": false,
@@ -2049,9 +1704,7 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": [
-                "at_height"
-              ],
+              "required": ["at_height"],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -2064,9 +1717,7 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": [
-                "at_time"
-              ],
+              "required": ["at_time"],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -2077,9 +1728,7 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": [
-                "never"
-              ],
+              "required": ["never"],
               "properties": {
                 "never": {
                   "type": "object",
@@ -2108,9 +1757,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "TokensResponse",
       "type": "object",
-      "required": [
-        "tokens"
-      ],
+      "required": ["tokens"],
       "properties": {
         "tokens": {
           "description": "Contains all token_ids in lexicographical ordering If there are more than `limit`, use `start_after` in future queries to achieve pagination.",

@@ -1,17 +1,12 @@
 {
   "contract_name": "cw20-stake-reward-distributor",
-  "contract_version": "2.4.2",
+  "contract_version": "2.5.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
-    "required": [
-      "owner",
-      "reward_rate",
-      "reward_token",
-      "staking_addr"
-    ],
+    "required": ["owner", "reward_rate", "reward_token", "staking_addr"],
     "properties": {
       "owner": {
         "type": "string"
@@ -40,17 +35,11 @@
     "oneOf": [
       {
         "type": "object",
-        "required": [
-          "update_config"
-        ],
+        "required": ["update_config"],
         "properties": {
           "update_config": {
             "type": "object",
-            "required": [
-              "reward_rate",
-              "reward_token",
-              "staking_addr"
-            ],
+            "required": ["reward_rate", "reward_token", "staking_addr"],
             "properties": {
               "reward_rate": {
                 "$ref": "#/definitions/Uint128"
@@ -69,9 +58,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "distribute"
-        ],
+        "required": ["distribute"],
         "properties": {
           "distribute": {
             "type": "object",
@@ -82,9 +69,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "withdraw"
-        ],
+        "required": ["withdraw"],
         "properties": {
           "withdraw": {
             "type": "object",
@@ -96,9 +81,7 @@
       {
         "description": "Update the contract's ownership. The `action` to be provided can be either to propose transferring ownership to an account, accept a pending ownership transfer, or renounce the ownership permanently.",
         "type": "object",
-        "required": [
-          "update_ownership"
-        ],
+        "required": ["update_ownership"],
         "properties": {
           "update_ownership": {
             "$ref": "#/definitions/Action"
@@ -114,15 +97,11 @@
           {
             "description": "Propose to transfer the contract's ownership to another account, optionally with an expiry time.\n\nCan only be called by the contract's current owner.\n\nAny existing pending ownership transfer is overwritten.",
             "type": "object",
-            "required": [
-              "transfer_ownership"
-            ],
+            "required": ["transfer_ownership"],
             "properties": {
               "transfer_ownership": {
                 "type": "object",
-                "required": [
-                  "new_owner"
-                ],
+                "required": ["new_owner"],
                 "properties": {
                   "expiry": {
                     "anyOf": [
@@ -146,16 +125,12 @@
           {
             "description": "Accept the pending ownership transfer.\n\nCan only be called by the pending owner.",
             "type": "string",
-            "enum": [
-              "accept_ownership"
-            ]
+            "enum": ["accept_ownership"]
           },
           {
             "description": "Give up the contract's ownership and the possibility of appointing a new owner.\n\nCan only be invoked by the contract's current owner.\n\nAny existing pending ownership transfer is canceled.",
             "type": "string",
-            "enum": [
-              "renounce_ownership"
-            ]
+            "enum": ["renounce_ownership"]
           }
         ]
       },
@@ -165,9 +140,7 @@
           {
             "description": "AtHeight will expire when `env.block.height` >= height",
             "type": "object",
-            "required": [
-              "at_height"
-            ],
+            "required": ["at_height"],
             "properties": {
               "at_height": {
                 "type": "integer",
@@ -180,9 +153,7 @@
           {
             "description": "AtTime will expire when `env.block.time` >= time",
             "type": "object",
-            "required": [
-              "at_time"
-            ],
+            "required": ["at_time"],
             "properties": {
               "at_time": {
                 "$ref": "#/definitions/Timestamp"
@@ -193,9 +164,7 @@
           {
             "description": "Never will never expire. Used to express the empty variant",
             "type": "object",
-            "required": [
-              "never"
-            ],
+            "required": ["never"],
             "properties": {
               "never": {
                 "type": "object",
@@ -230,9 +199,7 @@
     "oneOf": [
       {
         "type": "object",
-        "required": [
-          "info"
-        ],
+        "required": ["info"],
         "properties": {
           "info": {
             "type": "object",
@@ -243,9 +210,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "ownership"
-        ],
+        "required": ["ownership"],
         "properties": {
           "ownership": {
             "type": "object",
@@ -263,9 +228,7 @@
       {
         "description": "Updates the contract from v1 -> v2. Version two implements a two step ownership transfer.",
         "type": "object",
-        "required": [
-          "from_v1"
-        ],
+        "required": ["from_v1"],
         "properties": {
           "from_v1": {
             "type": "object",
@@ -282,11 +245,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "InfoResponse",
       "type": "object",
-      "required": [
-        "balance",
-        "config",
-        "last_payment_block"
-      ],
+      "required": ["balance", "config", "last_payment_block"],
       "properties": {
         "balance": {
           "$ref": "#/definitions/Uint128"
@@ -308,11 +267,7 @@
         },
         "Config": {
           "type": "object",
-          "required": [
-            "reward_rate",
-            "reward_token",
-            "staking_addr"
-          ],
+          "required": ["reward_rate", "reward_token", "staking_addr"],
           "properties": {
             "reward_rate": {
               "$ref": "#/definitions/Uint128"
@@ -384,9 +339,7 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": [
-                "at_height"
-              ],
+              "required": ["at_height"],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -399,9 +352,7 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": [
-                "at_time"
-              ],
+              "required": ["at_time"],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -412,9 +363,7 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": [
-                "never"
-              ],
+              "required": ["never"],
               "properties": {
                 "never": {
                   "type": "object",

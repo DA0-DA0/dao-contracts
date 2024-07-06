@@ -1,14 +1,12 @@
 {
   "contract_name": "dao-voting-cw721-staked",
-  "contract_version": "2.4.2",
+  "contract_version": "2.5.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
-    "required": [
-      "nft_contract"
-    ],
+    "required": ["nft_contract"],
     "properties": {
       "active_threshold": {
         "description": "The number or percentage of tokens that must be staked for the DAO to be active",
@@ -49,15 +47,11 @@
           {
             "description": "The absolute number of tokens that must be staked for the module to be active.",
             "type": "object",
-            "required": [
-              "absolute_count"
-            ],
+            "required": ["absolute_count"],
             "properties": {
               "absolute_count": {
                 "type": "object",
-                "required": [
-                  "count"
-                ],
+                "required": ["count"],
                 "properties": {
                   "count": {
                     "$ref": "#/definitions/Uint128"
@@ -71,15 +65,11 @@
           {
             "description": "The percentage of tokens that must be staked for the module to be active. Computed as `staked / total_supply`.",
             "type": "object",
-            "required": [
-              "percentage"
-            ],
+            "required": ["percentage"],
             "properties": {
               "percentage": {
                 "type": "object",
-                "required": [
-                  "percent"
-                ],
+                "required": ["percent"],
                 "properties": {
                   "percent": {
                     "$ref": "#/definitions/Decimal"
@@ -105,9 +95,7 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "height"
-            ],
+            "required": ["height"],
             "properties": {
               "height": {
                 "type": "integer",
@@ -120,9 +108,7 @@
           {
             "description": "Time in seconds",
             "type": "object",
-            "required": [
-              "time"
-            ],
+            "required": ["time"],
             "properties": {
               "time": {
                 "type": "integer",
@@ -139,15 +125,11 @@
           {
             "description": "Uses an existing cw721 or sg721 token contract.",
             "type": "object",
-            "required": [
-              "existing"
-            ],
+            "required": ["existing"],
             "properties": {
               "existing": {
                 "type": "object",
-                "required": [
-                  "address"
-                ],
+                "required": ["address"],
                 "properties": {
                   "address": {
                     "description": "Address of an already instantiated cw721 or sg721 token contract.",
@@ -162,18 +144,11 @@
           {
             "description": "Creates a new NFT collection used for staking and governance.",
             "type": "object",
-            "required": [
-              "new"
-            ],
+            "required": ["new"],
             "properties": {
               "new": {
                 "type": "object",
-                "required": [
-                  "code_id",
-                  "initial_nfts",
-                  "label",
-                  "msg"
-                ],
+                "required": ["code_id", "initial_nfts", "label", "msg"],
                 "properties": {
                   "code_id": {
                     "description": "Code ID for cw721 token contract.",
@@ -204,9 +179,7 @@
           {
             "description": "Uses a factory contract that must return the address of the NFT contract. The binary must serialize to a `WasmMsg::Execute` message. Validation happens in the factory contract itself, so be sure to use a trusted factory contract.",
             "type": "object",
-            "required": [
-              "factory"
-            ],
+            "required": ["factory"],
             "properties": {
               "factory": {
                 "$ref": "#/definitions/Binary"
@@ -229,9 +202,7 @@
       {
         "description": "Used to stake NFTs. To stake a NFT send a cw721 send message to this contract with the NFT you would like to stake. The `msg` field is ignored.",
         "type": "object",
-        "required": [
-          "receive_nft"
-        ],
+        "required": ["receive_nft"],
         "properties": {
           "receive_nft": {
             "$ref": "#/definitions/Cw721ReceiveMsg"
@@ -242,15 +213,11 @@
       {
         "description": "Unstakes the specified token_ids on behalf of the sender. token_ids must have unique values and have non-zero length.",
         "type": "object",
-        "required": [
-          "unstake"
-        ],
+        "required": ["unstake"],
         "properties": {
           "unstake": {
             "type": "object",
-            "required": [
-              "token_ids"
-            ],
+            "required": ["token_ids"],
             "properties": {
               "token_ids": {
                 "type": "array",
@@ -267,9 +234,7 @@
       {
         "description": "Claim NFTs that have been unstaked for the specified duration.",
         "type": "object",
-        "required": [
-          "claim_nfts"
-        ],
+        "required": ["claim_nfts"],
         "properties": {
           "claim_nfts": {
             "type": "object",
@@ -281,9 +246,7 @@
       {
         "description": "Updates the contract configuration, namely unstaking duration. Only callable by the DAO that initialized this voting contract.",
         "type": "object",
-        "required": [
-          "update_config"
-        ],
+        "required": ["update_config"],
         "properties": {
           "update_config": {
             "type": "object",
@@ -307,15 +270,11 @@
       {
         "description": "Adds a hook which is called on staking / unstaking events. Only callable by the DAO that initialized this voting contract.",
         "type": "object",
-        "required": [
-          "add_hook"
-        ],
+        "required": ["add_hook"],
         "properties": {
           "add_hook": {
             "type": "object",
-            "required": [
-              "addr"
-            ],
+            "required": ["addr"],
             "properties": {
               "addr": {
                 "type": "string"
@@ -329,15 +288,11 @@
       {
         "description": "Removes a hook which is called on staking / unstaking events. Only callable by the DAO that initialized this voting contract.",
         "type": "object",
-        "required": [
-          "remove_hook"
-        ],
+        "required": ["remove_hook"],
         "properties": {
           "remove_hook": {
             "type": "object",
-            "required": [
-              "addr"
-            ],
+            "required": ["addr"],
             "properties": {
               "addr": {
                 "type": "string"
@@ -351,9 +306,7 @@
       {
         "description": "Sets the active threshold to a new value. Only callable by the DAO that initialized this voting contract.",
         "type": "object",
-        "required": [
-          "update_active_threshold"
-        ],
+        "required": ["update_active_threshold"],
         "properties": {
           "update_active_threshold": {
             "type": "object",
@@ -382,15 +335,11 @@
           {
             "description": "The absolute number of tokens that must be staked for the module to be active.",
             "type": "object",
-            "required": [
-              "absolute_count"
-            ],
+            "required": ["absolute_count"],
             "properties": {
               "absolute_count": {
                 "type": "object",
-                "required": [
-                  "count"
-                ],
+                "required": ["count"],
                 "properties": {
                   "count": {
                     "$ref": "#/definitions/Uint128"
@@ -404,15 +353,11 @@
           {
             "description": "The percentage of tokens that must be staked for the module to be active. Computed as `staked / total_supply`.",
             "type": "object",
-            "required": [
-              "percentage"
-            ],
+            "required": ["percentage"],
             "properties": {
               "percentage": {
                 "type": "object",
-                "required": [
-                  "percent"
-                ],
+                "required": ["percent"],
                 "properties": {
                   "percent": {
                     "$ref": "#/definitions/Decimal"
@@ -432,11 +377,7 @@
       "Cw721ReceiveMsg": {
         "description": "Cw721ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
         "type": "object",
-        "required": [
-          "msg",
-          "sender",
-          "token_id"
-        ],
+        "required": ["msg", "sender", "token_id"],
         "properties": {
           "msg": {
             "$ref": "#/definitions/Binary"
@@ -459,9 +400,7 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "height"
-            ],
+            "required": ["height"],
             "properties": {
               "height": {
                 "type": "integer",
@@ -474,9 +413,7 @@
           {
             "description": "Time in seconds",
             "type": "object",
-            "required": [
-              "time"
-            ],
+            "required": ["time"],
             "properties": {
               "time": {
                 "type": "integer",
@@ -500,9 +437,7 @@
     "oneOf": [
       {
         "type": "object",
-        "required": [
-          "config"
-        ],
+        "required": ["config"],
         "properties": {
           "config": {
             "type": "object",
@@ -513,15 +448,11 @@
       },
       {
         "type": "object",
-        "required": [
-          "nft_claims"
-        ],
+        "required": ["nft_claims"],
         "properties": {
           "nft_claims": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
@@ -534,9 +465,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "hooks"
-        ],
+        "required": ["hooks"],
         "properties": {
           "hooks": {
             "type": "object",
@@ -547,32 +476,22 @@
       },
       {
         "type": "object",
-        "required": [
-          "staked_nfts"
-        ],
+        "required": ["staked_nfts"],
         "properties": {
           "staked_nfts": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
               },
               "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint32",
                 "minimum": 0.0
               },
               "start_after": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
@@ -582,9 +501,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "active_threshold"
-        ],
+        "required": ["active_threshold"],
         "properties": {
           "active_threshold": {
             "type": "object",
@@ -595,9 +512,7 @@
       },
       {
         "type": "object",
-        "required": [
-          "is_active"
-        ],
+        "required": ["is_active"],
         "properties": {
           "is_active": {
             "type": "object",
@@ -609,24 +524,17 @@
       {
         "description": "Returns the voting power for an address at a given height.",
         "type": "object",
-        "required": [
-          "voting_power_at_height"
-        ],
+        "required": ["voting_power_at_height"],
         "properties": {
           "voting_power_at_height": {
             "type": "object",
-            "required": [
-              "address"
-            ],
+            "required": ["address"],
             "properties": {
               "address": {
                 "type": "string"
               },
               "height": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint64",
                 "minimum": 0.0
               }
@@ -639,18 +547,13 @@
       {
         "description": "Returns the total voting power at a given block heigh.",
         "type": "object",
-        "required": [
-          "total_power_at_height"
-        ],
+        "required": ["total_power_at_height"],
         "properties": {
           "total_power_at_height": {
             "type": "object",
             "properties": {
               "height": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
+                "type": ["integer", "null"],
                 "format": "uint64",
                 "minimum": 0.0
               }
@@ -663,9 +566,7 @@
       {
         "description": "Returns the address of the DAO this module belongs to.",
         "type": "object",
-        "required": [
-          "dao"
-        ],
+        "required": ["dao"],
         "properties": {
           "dao": {
             "type": "object",
@@ -677,9 +578,7 @@
       {
         "description": "Returns contract version info.",
         "type": "object",
-        "required": [
-          "info"
-        ],
+        "required": ["info"],
         "properties": {
           "info": {
             "type": "object",
@@ -717,15 +616,11 @@
             {
               "description": "The absolute number of tokens that must be staked for the module to be active.",
               "type": "object",
-              "required": [
-                "absolute_count"
-              ],
+              "required": ["absolute_count"],
               "properties": {
                 "absolute_count": {
                   "type": "object",
-                  "required": [
-                    "count"
-                  ],
+                  "required": ["count"],
                   "properties": {
                     "count": {
                       "$ref": "#/definitions/Uint128"
@@ -739,15 +634,11 @@
             {
               "description": "The percentage of tokens that must be staked for the module to be active. Computed as `staked / total_supply`.",
               "type": "object",
-              "required": [
-                "percentage"
-              ],
+              "required": ["percentage"],
               "properties": {
                 "percentage": {
                   "type": "object",
-                  "required": [
-                    "percent"
-                  ],
+                  "required": ["percent"],
                   "properties": {
                     "percent": {
                       "$ref": "#/definitions/Decimal"
@@ -774,9 +665,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Config",
       "type": "object",
-      "required": [
-        "nft_address"
-      ],
+      "required": ["nft_address"],
       "properties": {
         "nft_address": {
           "$ref": "#/definitions/Addr"
@@ -803,9 +692,7 @@
           "oneOf": [
             {
               "type": "object",
-              "required": [
-                "height"
-              ],
+              "required": ["height"],
               "properties": {
                 "height": {
                   "type": "integer",
@@ -818,9 +705,7 @@
             {
               "description": "Time in seconds",
               "type": "object",
-              "required": [
-                "time"
-              ],
+              "required": ["time"],
               "properties": {
                 "time": {
                   "type": "integer",
@@ -844,9 +729,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "HooksResponse",
       "type": "object",
-      "required": [
-        "hooks"
-      ],
+      "required": ["hooks"],
       "properties": {
         "hooks": {
           "type": "array",
@@ -861,9 +744,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "InfoResponse",
       "type": "object",
-      "required": [
-        "info"
-      ],
+      "required": ["info"],
       "properties": {
         "info": {
           "$ref": "#/definitions/ContractVersion"
@@ -873,10 +754,7 @@
       "definitions": {
         "ContractVersion": {
           "type": "object",
-          "required": [
-            "contract",
-            "version"
-          ],
+          "required": ["contract", "version"],
           "properties": {
             "contract": {
               "description": "contract is the crate name of the implementing contract, eg. `crate:cw20-base` we will use other prefixes for other languages, and their standard global namespacing",
@@ -900,9 +778,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "NftClaimsResponse",
       "type": "object",
-      "required": [
-        "nft_claims"
-      ],
+      "required": ["nft_claims"],
       "properties": {
         "nft_claims": {
           "type": "array",
@@ -919,9 +795,7 @@
             {
               "description": "AtHeight will expire when `env.block.height` >= height",
               "type": "object",
-              "required": [
-                "at_height"
-              ],
+              "required": ["at_height"],
               "properties": {
                 "at_height": {
                   "type": "integer",
@@ -934,9 +808,7 @@
             {
               "description": "AtTime will expire when `env.block.time` >= time",
               "type": "object",
-              "required": [
-                "at_time"
-              ],
+              "required": ["at_time"],
               "properties": {
                 "at_time": {
                   "$ref": "#/definitions/Timestamp"
@@ -947,9 +819,7 @@
             {
               "description": "Never will never expire. Used to express the empty variant",
               "type": "object",
-              "required": [
-                "never"
-              ],
+              "required": ["never"],
               "properties": {
                 "never": {
                   "type": "object",
@@ -962,10 +832,7 @@
         },
         "NftClaim": {
           "type": "object",
-          "required": [
-            "release_at",
-            "token_id"
-          ],
+          "required": ["release_at", "token_id"],
           "properties": {
             "release_at": {
               "$ref": "#/definitions/Expiration"
@@ -1002,10 +869,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "TotalPowerAtHeightResponse",
       "type": "object",
-      "required": [
-        "height",
-        "power"
-      ],
+      "required": ["height", "power"],
       "properties": {
         "height": {
           "type": "integer",
@@ -1028,10 +892,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "VotingPowerAtHeightResponse",
       "type": "object",
-      "required": [
-        "height",
-        "power"
-      ],
+      "required": ["height", "power"],
       "properties": {
         "height": {
           "type": "integer",
