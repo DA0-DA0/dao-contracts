@@ -457,6 +457,17 @@ fn get_latest_proposal_id(app: &App, module: Addr) -> u64 {
     props.proposals[props.proposals.len() - 1].id
 }
 
+fn query_can_propose(app: &App, module: Addr, address: impl Into<String>) -> bool {
+    app.wrap()
+        .query_wasm_smart(
+            module,
+            &QueryMsg::CanPropose {
+                address: address.into(),
+            },
+        )
+        .unwrap()
+}
+
 fn update_config(
     app: &mut App,
     module: Addr,
@@ -1532,6 +1543,30 @@ fn test_approver_unsupported_update_submission_policy() {
         .downcast()
         .unwrap();
     assert_eq!(err, PreProposeError::Unsupported {});
+}
+
+#[test]
+fn test_approver_can_propose() {
+    let mut app = App::default();
+
+    // Need to instantiate this so contract addresses match with cw20 test cases
+    let _ = instantiate_cw20_base_default(&mut app);
+
+    let DefaultTestSetup {
+        pre_propose,
+        pre_propose_approver,
+        ..
+    } = setup_default_test(&mut app, None, true);
+
+    // Only the pre-propose-approval-single contract can propose.
+    assert_eq!(
+        query_can_propose(&app, pre_propose_approver.clone(), pre_propose),
+        true
+    );
+    assert_eq!(
+        query_can_propose(&app, pre_propose_approver, "someone_else"),
+        false
+    );
 }
 
 #[test]

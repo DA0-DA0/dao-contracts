@@ -362,6 +362,17 @@ fn get_deposit_info(app: &App, module: Addr, id: u64) -> DepositInfoResponse {
         .unwrap()
 }
 
+fn query_can_propose(app: &App, module: Addr, address: impl Into<String>) -> bool {
+    app.wrap()
+        .query_wasm_smart(
+            module,
+            &QueryMsg::CanPropose {
+                address: address.into(),
+            },
+        )
+        .unwrap()
+}
+
 fn update_config(
     app: &mut App,
     module: Addr,
@@ -1035,6 +1046,7 @@ fn test_anyone_denylist() {
     let rando = "rando";
 
     // Proposal succeeds when anyone can propose.
+    assert_eq!(query_can_propose(&app, pre_propose.clone(), rando), true);
     make_proposal(
         &mut app,
         pre_propose.clone(),
@@ -1054,6 +1066,7 @@ fn test_anyone_denylist() {
     );
 
     // Proposing fails if on denylist.
+    assert_eq!(query_can_propose(&app, pre_propose.clone(), rando), false);
     let err: PreProposeError = app
         .execute_contract(
             Addr::unchecked(rando),
@@ -1083,6 +1096,7 @@ fn test_anyone_denylist() {
     );
 
     // Proposing succeeds if not on denylist.
+    assert_eq!(query_can_propose(&app, pre_propose.clone(), "ekez"), true);
     make_proposal(&mut app, pre_propose, proposal_single.clone(), "ekez", &[]);
 }
 
@@ -1108,6 +1122,7 @@ fn test_specific_allowlist_denylist() {
     );
 
     // Proposal succeeds for member.
+    assert_eq!(query_can_propose(&app, pre_propose.clone(), "ekez"), true);
     make_proposal(
         &mut app,
         pre_propose.clone(),
@@ -1119,6 +1134,7 @@ fn test_specific_allowlist_denylist() {
     let rando = "rando";
 
     // Proposing fails for non-member.
+    assert_eq!(query_can_propose(&app, pre_propose.clone(), rando), false);
     let err: PreProposeError = app
         .execute_contract(
             Addr::unchecked(rando),
@@ -1160,6 +1176,7 @@ fn test_specific_allowlist_denylist() {
     );
 
     // Proposal succeeds if on allowlist.
+    assert_eq!(query_can_propose(&app, pre_propose.clone(), rando), true);
     make_proposal(
         &mut app,
         pre_propose.clone(),
@@ -1181,6 +1198,7 @@ fn test_specific_allowlist_denylist() {
     );
 
     // Proposing fails if on denylist.
+    assert_eq!(query_can_propose(&app, pre_propose.clone(), "ekez"), false);
     let err: PreProposeError = app
         .execute_contract(
             Addr::unchecked("ekez"),
@@ -1222,6 +1240,7 @@ fn test_specific_allowlist_denylist() {
     );
 
     // Proposing fails if members not allowed.
+    assert_eq!(query_can_propose(&app, pre_propose.clone(), "ekez"), false);
     let err: PreProposeError = app
         .execute_contract(
             Addr::unchecked("ekez"),
@@ -1251,6 +1270,7 @@ fn test_specific_allowlist_denylist() {
     );
 
     // Proposal succeeds if on allowlist.
+    assert_eq!(query_can_propose(&app, pre_propose.clone(), rando), true);
     make_proposal(
         &mut app,
         pre_propose.clone(),

@@ -125,6 +125,9 @@ where
     /// PROPOSAL_ID.
     #[returns(DepositInfoResponse)]
     DepositInfo { proposal_id: u64 },
+    /// Returns whether or not the address can submit proposals.
+    #[returns(bool)]
+    CanPropose { address: String },
     /// Returns list of proposal submitted hooks.
     #[returns(cw_hooks::HooksResponse)]
     ProposalSubmittedHooks {},

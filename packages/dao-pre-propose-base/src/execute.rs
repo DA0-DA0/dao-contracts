@@ -1,7 +1,7 @@
 use cosmwasm_schema::schemars::JsonSchema;
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg,
-    WasmMsg,
+    to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
+    SubMsg, WasmMsg,
 };
 
 use cw2::set_contract_version;
@@ -574,6 +574,22 @@ where
                     deposit_info,
                     proposer,
                 })
+            }
+            QueryMsg::CanPropose { address } => {
+                let addr = deps.api.addr_validate(&address)?;
+                match self.check_can_submit(deps, addr) {
+                    Ok(_) => to_json_binary(&true),
+                    Err(err) => match err {
+                        PreProposeError::SubmissionPolicy(
+                            PreProposeSubmissionPolicyError::Unauthorized {},
+                        ) => to_json_binary(&false),
+                        PreProposeError::Std(err) => Err(err),
+                        _ => Err(StdError::generic_err(format!(
+                            "unexpected error: {:?}",
+                            err
+                        ))),
+                    },
+                }
             }
             QueryMsg::ProposalSubmittedHooks {} => {
                 to_json_binary(&self.proposal_submitted_hooks.query_hooks(deps)?)

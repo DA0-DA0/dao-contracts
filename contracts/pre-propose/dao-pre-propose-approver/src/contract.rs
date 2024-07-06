@@ -237,6 +237,11 @@ pub fn execute_reset_approver(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
+        QueryMsg::CanPropose { address } => {
+            let approval_contract = PRE_PROPOSE_APPROVAL_CONTRACT.load(deps.storage)?;
+            let can_propose = address == approval_contract;
+            to_json_binary(&can_propose)
+        }
         QueryMsg::QueryExtension { msg } => match msg {
             QueryExt::PreProposeApprovalContract {} => {
                 to_json_binary(&PRE_PROPOSE_APPROVAL_CONTRACT.load(deps.storage)?)
