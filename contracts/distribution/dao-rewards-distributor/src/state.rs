@@ -24,7 +24,7 @@ pub struct UserRewardState {
     /// map denom string to the user's earned rewards per unit voting power that
     /// have already been accounted for in pending rewards and potentially
     /// claimed
-    pub denom_rewards_puvp: HashMap<String, Uint256>,
+    pub accounted_denom_rewards_puvp: HashMap<String, Uint256>,
 }
 
 #[cw_serde]
@@ -83,6 +83,12 @@ pub struct DenomRewardState {
 }
 
 impl DenomRewardState {
+    pub fn get_historic_epoch_puvp_sum(&self) -> Uint256 {
+        self.historic_epoch_configs
+            .iter()
+            .fold(Uint256::zero(), |acc, epoch| acc + epoch.total_earned_puvp)
+    }
+
     pub fn transition_epoch(
         &mut self,
         new_emission_rate: RewardEmissionRate,

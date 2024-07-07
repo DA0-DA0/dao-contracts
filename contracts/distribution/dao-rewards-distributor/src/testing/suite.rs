@@ -396,7 +396,7 @@ impl Suite {
                 },
             )
             .unwrap();
-        println!("[{} REWARD STATE] {:?}", denom, resp);
+        // println!("[{} REWARD STATE] {:?}", denom, resp);
         resp
     }
 }
@@ -562,7 +562,7 @@ impl Suite {
 
     pub fn fund_distributor_native(&mut self, coin: Coin) {
         self.mint_native_coin(coin.clone(), OWNER);
-        println!("[FUNDING EVENT] native funding: {}", coin);
+        // println!("[FUNDING EVENT] native funding: {}", coin);
         self.app
             .borrow_mut()
             .execute_contract(
@@ -575,7 +575,7 @@ impl Suite {
     }
 
     pub fn fund_distributor_cw20(&mut self, coin: Cw20Coin) {
-        println!("[FUNDING EVENT] cw20 funding: {}", coin);
+        // println!("[FUNDING EVENT] cw20 funding: {}", coin);
 
         let fund_sub_msg = to_json_binary(&ReceiveMsg::Fund {}).unwrap();
         self.app
@@ -639,7 +639,7 @@ impl Suite {
             amount: Uint128::new(amount),
             msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
         };
-        println!("[STAKING EVENT] {} staked {}", sender, amount);
+        // println!("[STAKING EVENT] {} staked {}", sender, amount);
         self.app
             .execute_contract(Addr::unchecked(sender), self.cw20_addr.clone(), &msg, &[])
             .unwrap();
@@ -649,7 +649,7 @@ impl Suite {
         let msg = cw20_stake::msg::ExecuteMsg::Unstake {
             amount: Uint128::new(amount),
         };
-        println!("[STAKING EVENT] {} unstaked {}", sender, amount);
+        // println!("[STAKING EVENT] {} unstaked {}", sender, amount);
         self.app
             .execute_contract(
                 Addr::unchecked(sender),
@@ -732,7 +732,7 @@ impl Suite {
                 },
             )
             .unwrap();
-        println!("[UPDATE CW4] new members: {:?}", members);
+        // println!("[UPDATE CW4] new members: {:?}", members);
         members.members
     }
 
