@@ -128,15 +128,6 @@ pub fn cw721_staked_voting_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn onft_staked_voting_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        dao_voting_onft_staked::contract::execute,
-        dao_voting_onft_staked::contract::instantiate,
-        dao_voting_onft_staked::contract::query,
-    );
-    Box::new(contract)
-}
-
 pub fn dao_dao_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         dao_dao_core::contract::execute,
