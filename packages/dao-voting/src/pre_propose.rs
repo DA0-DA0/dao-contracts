@@ -4,6 +4,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Empty, StdResult, SubMsg};
 use dao_interface::state::ModuleInstantiateInfo;
+use thiserror::Error;
 
 use crate::reply::pre_propose_module_instantiation_id;
 
@@ -16,6 +17,9 @@ pub enum PreProposeInfo {
     ModuleMayPropose { info: ModuleInstantiateInfo },
 }
 
+/// The policy configured in a proposal module that determines whether or not a
+/// pre-propose module is in use. If so, only the module can create new
+/// proposals. Otherwise, there is no restriction on proposal creation.
 #[cw_serde]
 pub enum ProposalCreationPolicy {
     /// Anyone may create a proposal, free of charge.
@@ -55,6 +59,81 @@ impl PreProposeInfo {
                 )],
             ),
         })
+    }
+}
+
+/// The policy configured in a pre-propose module that determines who can submit
+/// proposals. This is the preferred way to restrict proposal creation (as
+/// opposed to the ProposalCreationPolicy above) since pre-propose modules
+/// support other features, such as proposal deposits.
+#[cw_serde]
+pub enum PreProposeSubmissionPolicy {
+    /// Anyone may create proposals, except for those in the denylist.
+    Anyone {
+        /// Addresses that may not create proposals.
+        denylist: Option<Vec<String>>,
+    },
+    /// Specific people may create proposals.
+    Specific {
+        /// Whether or not DAO members may create proposals.
+        dao_members: bool,
+        /// Addresses that may create proposals.
+        allowlist: Option<Vec<String>>,
+        /// Addresses that may not create proposals, overriding other settings.
+        denylist: Option<Vec<String>>,
+    },
+}
+
+#[derive(Error, Debug, PartialEq, Eq)]
+pub enum PreProposeSubmissionPolicyError {
+    #[error("The proposal submission policy doesn't allow anyone to submit proposals")]
+    NoOneAllowed {},
+
+    #[error("Denylist cannot contain addresses in the allowlist")]
+    DenylistAllowlistOverlap {},
+
+    #[error("You are not allowed to submit proposals")]
+    Unauthorized {},
+
+    #[error("The current proposal submission policy (Anyone) only supports a denylist. Change the policy to Specific in order to configure more granular permissions.")]
+    AnyoneInvalidUpdateFields {},
+}
+
+impl PreProposeSubmissionPolicy {
+    /// Validate the policy configuration.
+    pub fn validate(&self) -> Result<(), PreProposeSubmissionPolicyError> {
+        if let PreProposeSubmissionPolicy::Specific {
+            dao_members,
+            allowlist,
+            denylist,
+        } = self
+        {
+            let allowlist = allowlist.as_deref().unwrap_or_default();
+            let denylist = denylist.as_deref().unwrap_or_default();
+
+            // prevent allowlist and denylist from overlapping
+            if denylist.iter().any(|a| allowlist.iter().any(|b| a == b)) {
+                return Err(PreProposeSubmissionPolicyError::DenylistAllowlistOverlap {});
+            }
+
+            // ensure someone is allowed to submit proposals, be it DAO members
+            // or someone on the allowlist. we can't verify that the denylist
+            // doesn't contain all DAO members, so this is the best we can do to
+            // ensure that someone is allowed to submit.
+            if !dao_members && allowlist.is_empty() {
+                return Err(PreProposeSubmissionPolicyError::NoOneAllowed {});
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Human readable string for use in events.
+    pub fn human_readable(&self) -> String {
+        match self {
+            Self::Anyone { .. } => "anyone".to_string(),
+            Self::Specific { .. } => "specific".to_string(),
+        }
     }
 }
 

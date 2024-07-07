@@ -4,7 +4,7 @@ use cosmwasm_std::{
     to_json_binary, Addr, Binary, ContractResult, Empty, Response, SubMsg, WasmMsg,
 };
 use cw_hooks::HooksResponse;
-use dao_voting::status::Status;
+use dao_voting::{pre_propose::PreProposeSubmissionPolicy, status::Status};
 
 use crate::{
     error::PreProposeError,
@@ -87,7 +87,7 @@ fn test_proposal_submitted_hooks() {
             &mut deps.storage,
             &Config {
                 deposit_info: None,
-                open_proposal_submission: true,
+                submission_policy: PreProposeSubmissionPolicy::Anyone { denylist: None },
             },
         )
         .unwrap();

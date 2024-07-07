@@ -8,7 +8,7 @@ use dao_interface::query::DumpStateResponse;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_voting::{
     deposit::{DepositRefundPolicy, DepositToken, UncheckedDepositInfo, VotingModuleTokenType},
-    pre_propose::{PreProposeInfo, ProposalCreationPolicy},
+    pre_propose::{PreProposeInfo, PreProposeSubmissionPolicy, ProposalCreationPolicy},
     threshold::PercentageThreshold,
     threshold::Threshold,
     voting::Vote,
@@ -84,7 +84,11 @@ pub fn create_dao(
                                 amount: DEPOSIT_AMOUNT,
                                 refund_policy: DepositRefundPolicy::OnlyPassed,
                             }),
-                            open_proposal_submission: false,
+                            submission_policy: PreProposeSubmissionPolicy::Specific {
+                                dao_members: true,
+                                allowlist: None,
+                                denylist: None,
+                            },
                             extension: Empty::default(),
                         })
                         .unwrap(),

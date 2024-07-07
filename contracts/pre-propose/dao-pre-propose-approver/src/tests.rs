@@ -3,6 +3,7 @@ use cw2::ContractVersion;
 use cw20::Cw20Coin;
 use cw_denom::UncheckedDenom;
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor};
+use dao_voting::pre_propose::{PreProposeSubmissionPolicy, PreProposeSubmissionPolicyError};
 use dps::query::{ProposalListResponse, ProposalResponse};
 
 use dao_interface::state::ProposalModule;
@@ -79,6 +80,16 @@ fn get_proposal_module_approval_single_instantiate(
 ) -> dps::msg::InstantiateMsg {
     let pre_propose_id = app.store_code(cw_pre_propose_base_proposal_single());
 
+    let submission_policy = if open_proposal_submission {
+        PreProposeSubmissionPolicy::Anyone { denylist: None }
+    } else {
+        PreProposeSubmissionPolicy::Specific {
+            dao_members: true,
+            allowlist: None,
+            denylist: None,
+        }
+    };
+
     dps::msg::InstantiateMsg {
         threshold: Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Majority {},
@@ -92,7 +103,7 @@ fn get_proposal_module_approval_single_instantiate(
                 code_id: pre_propose_id,
                 msg: to_json_binary(&InstantiateMsg {
                     deposit_info,
-                    open_proposal_submission,
+                    submission_policy,
                     extension: InstantiateExt {
                         approver: APPROVER.to_string(),
                     },
@@ -446,19 +457,30 @@ fn get_latest_proposal_id(app: &App, module: Addr) -> u64 {
     props.proposals[props.proposals.len() - 1].id
 }
 
+fn query_can_propose(app: &App, module: Addr, address: impl Into<String>) -> bool {
+    app.wrap()
+        .query_wasm_smart(
+            module,
+            &QueryMsg::CanPropose {
+                address: address.into(),
+            },
+        )
+        .unwrap()
+}
+
 fn update_config(
     app: &mut App,
     module: Addr,
     sender: &str,
     deposit_info: Option<UncheckedDepositInfo>,
-    open_proposal_submission: bool,
+    submission_policy: PreProposeSubmissionPolicy,
 ) -> Config {
     app.execute_contract(
         Addr::unchecked(sender),
         module.clone(),
         &ExecuteMsg::UpdateConfig {
             deposit_info,
-            open_proposal_submission,
+            submission_policy: Some(submission_policy),
         },
         &[],
     )
@@ -472,14 +494,14 @@ fn update_config_should_fail(
     module: Addr,
     sender: &str,
     deposit_info: Option<UncheckedDepositInfo>,
-    open_proposal_submission: bool,
+    submission_policy: PreProposeSubmissionPolicy,
 ) -> PreProposeError {
     app.execute_contract(
         Addr::unchecked(sender),
         module,
         &ExecuteMsg::UpdateConfig {
             deposit_info,
-            open_proposal_submission,
+            submission_policy: Some(submission_policy),
         },
         &[],
     )
@@ -1160,7 +1182,10 @@ fn test_permissions() {
         .unwrap_err()
         .downcast()
         .unwrap();
-    assert_eq!(err, PreProposeError::NotMember {});
+    assert_eq!(
+        err,
+        PreProposeError::SubmissionPolicy(PreProposeSubmissionPolicyError::Unauthorized {})
+    );
 }
 
 #[test]
@@ -1316,7 +1341,11 @@ fn test_update_config() {
         config,
         Config {
             deposit_info: None,
-            open_proposal_submission: false
+            submission_policy: PreProposeSubmissionPolicy::Specific {
+                dao_members: true,
+                allowlist: None,
+                denylist: None
+            }
         }
     );
 
@@ -1343,7 +1372,7 @@ fn test_update_config() {
             amount: Uint128::new(10),
             refund_policy: DepositRefundPolicy::Never,
         }),
-        true,
+        PreProposeSubmissionPolicy::Anyone { denylist: None },
     );
 
     let config = get_config(&app, pre_propose.clone());
@@ -1355,7 +1384,7 @@ fn test_update_config() {
                 amount: Uint128::new(10),
                 refund_policy: DepositRefundPolicy::Never
             }),
-            open_proposal_submission: true,
+            submission_policy: PreProposeSubmissionPolicy::Anyone { denylist: None },
         }
     );
 
@@ -1407,9 +1436,139 @@ fn test_update_config() {
     assert_eq!(balance, Uint128::new(0));
 
     // Only the core module can update the config.
-    let err =
-        update_config_should_fail(&mut app, pre_propose, proposal_single.as_str(), None, true);
+    let err = update_config_should_fail(
+        &mut app,
+        pre_propose.clone(),
+        proposal_single.as_str(),
+        None,
+        PreProposeSubmissionPolicy::Anyone { denylist: None },
+    );
     assert_eq!(err, PreProposeError::NotDao {});
+
+    // Errors when no one is authorized to create proposals.
+    let err = update_config_should_fail(
+        &mut app,
+        pre_propose.clone(),
+        core_addr.as_str(),
+        None,
+        PreProposeSubmissionPolicy::Specific {
+            dao_members: false,
+            allowlist: None,
+            denylist: None,
+        },
+    );
+    assert_eq!(
+        err,
+        PreProposeError::SubmissionPolicy(PreProposeSubmissionPolicyError::NoOneAllowed {})
+    );
+
+    // Errors when allowlist and denylist overlap.
+    let err = update_config_should_fail(
+        &mut app,
+        pre_propose,
+        core_addr.as_str(),
+        None,
+        PreProposeSubmissionPolicy::Specific {
+            dao_members: false,
+            allowlist: Some(vec!["ekez".to_string()]),
+            denylist: Some(vec!["ekez".to_string()]),
+        },
+    );
+    assert_eq!(
+        err,
+        PreProposeError::SubmissionPolicy(
+            PreProposeSubmissionPolicyError::DenylistAllowlistOverlap {}
+        )
+    );
+}
+
+#[test]
+fn test_approver_unsupported_update_config() {
+    let mut app = App::default();
+
+    // Need to instantiate this so contract addresses match with cw20 test cases
+    let _ = instantiate_cw20_base_default(&mut app);
+
+    let DefaultTestSetup {
+        core_addr,
+        pre_propose_approver,
+        ..
+    } = setup_default_test(&mut app, None, true);
+
+    // Should fail because config is not supported for the approver pre-propose
+    // contract.
+    let err = update_config_should_fail(
+        &mut app,
+        pre_propose_approver,
+        core_addr.as_str(),
+        None,
+        PreProposeSubmissionPolicy::Specific {
+            dao_members: false,
+            allowlist: Some(vec!["ekez".to_string()]),
+            denylist: None,
+        },
+    );
+    assert_eq!(err, PreProposeError::Unsupported {});
+}
+
+#[test]
+fn test_approver_unsupported_update_submission_policy() {
+    let mut app = App::default();
+
+    // Need to instantiate this so contract addresses match with cw20 test cases
+    let _ = instantiate_cw20_base_default(&mut app);
+
+    let DefaultTestSetup {
+        core_addr,
+        pre_propose_approver,
+        ..
+    } = setup_default_test(&mut app, None, true);
+
+    // Should fail because submission policy is not supported for the approver
+    // pre-propose contract.
+    let err: PreProposeError = app
+        .execute_contract(
+            core_addr,
+            pre_propose_approver,
+            &ExecuteMsg::UpdateSubmissionPolicy {
+                denylist_add: Some(vec!["ekez".to_string()]),
+                denylist_remove: None,
+                set_dao_members: None,
+                allowlist_add: None,
+                allowlist_remove: None,
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, PreProposeError::Unsupported {});
+}
+
+#[test]
+fn test_approver_can_propose() {
+    let mut app = App::default();
+
+    // Need to instantiate this so contract addresses match with cw20 test cases
+    let _ = instantiate_cw20_base_default(&mut app);
+
+    let DefaultTestSetup {
+        pre_propose,
+        pre_propose_approver,
+        ..
+    } = setup_default_test(&mut app, None, true);
+
+    // Only the pre-propose-approval-single contract can propose.
+    assert!(query_can_propose(
+        &app,
+        pre_propose_approver.clone(),
+        pre_propose
+    ));
+    assert!(!query_can_propose(
+        &app,
+        pre_propose_approver,
+        "someone_else"
+    ));
 }
 
 #[test]
@@ -1459,7 +1618,11 @@ fn test_withdraw() {
             amount: Uint128::new(10),
             refund_policy: DepositRefundPolicy::Always,
         }),
-        false,
+        PreProposeSubmissionPolicy::Specific {
+            dao_members: true,
+            allowlist: None,
+            denylist: None,
+        },
     );
 
     // Withdraw with no specified denom - should fall back to the one
@@ -1508,7 +1671,11 @@ fn test_withdraw() {
             amount: Uint128::new(10),
             refund_policy: DepositRefundPolicy::Always,
         }),
-        false,
+        PreProposeSubmissionPolicy::Specific {
+            dao_members: true,
+            allowlist: None,
+            denylist: None,
+        },
     );
 
     increase_allowance(

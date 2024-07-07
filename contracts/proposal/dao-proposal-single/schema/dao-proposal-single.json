@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-proposal-single",
-  "contract_version": "2.4.2",
+  "contract_version": "2.5.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -5326,6 +5326,7 @@
     "proposal_creation_policy": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ProposalCreationPolicy",
+      "description": "The policy configured in a proposal module that determines whether or not a pre-propose module is in use. If so, only the module can create new proposals. Otherwise, there is no restriction on proposal creation.",
       "oneOf": [
         {
           "description": "Anyone may create a proposal, free of charge.",

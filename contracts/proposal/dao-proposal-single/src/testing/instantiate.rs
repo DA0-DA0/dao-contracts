@@ -8,7 +8,7 @@ use dao_pre_propose_single as cppbps;
 
 use dao_voting::{
     deposit::{DepositRefundPolicy, UncheckedDepositInfo, VotingModuleTokenType},
-    pre_propose::PreProposeInfo,
+    pre_propose::{PreProposeInfo, PreProposeSubmissionPolicy},
     threshold::{ActiveThreshold, PercentageThreshold, Threshold::ThresholdQuorum},
 };
 use dao_voting_cw4::msg::GroupContract;
@@ -31,12 +31,23 @@ pub(crate) fn get_pre_propose_info(
 ) -> PreProposeInfo {
     let pre_propose_contract =
         app.store_code(crate::testing::contracts::pre_propose_single_contract());
+
+    let submission_policy = if open_proposal_submission {
+        PreProposeSubmissionPolicy::Anyone { denylist: None }
+    } else {
+        PreProposeSubmissionPolicy::Specific {
+            dao_members: true,
+            allowlist: None,
+            denylist: None,
+        }
+    };
+
     PreProposeInfo::ModuleMayPropose {
         info: ModuleInstantiateInfo {
             code_id: pre_propose_contract,
             msg: to_json_binary(&cppbps::InstantiateMsg {
                 deposit_info,
-                open_proposal_submission,
+                submission_policy,
                 extension: Empty::default(),
             })
             .unwrap(),
