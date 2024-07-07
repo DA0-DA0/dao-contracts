@@ -134,3 +134,73 @@ pub struct MsgSetMinter {
 )]
 #[proto_message(type_url = "/bitsong.fantoken.MsgSetMinterResponse")]
 pub struct MsgSetMinterResponse {}
+
+// MsgSetAuthority defines a message for changing the fan token minter address
+#[derive(
+    Clone,
+    PartialEq,
+    Eq,
+    ::prost::Message,
+    serde::Serialize,
+    serde::Deserialize,
+    schemars::JsonSchema,
+    CosmwasmExt,
+)]
+#[proto_message(type_url = "/bitsong.fantoken.MsgSetAuthority")]
+pub struct MsgSetAuthority {
+    #[prost(string, tag = "1")]
+    pub denom: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub old_authority: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub new_authority: ::prost::alloc::string::String,
+}
+
+// MsgSetAuthorityResponse defines the MsgSetAuthority response type
+#[derive(
+    Clone,
+    PartialEq,
+    Eq,
+    ::prost::Message,
+    serde::Serialize,
+    serde::Deserialize,
+    schemars::JsonSchema,
+    CosmwasmExt,
+)]
+#[proto_message(type_url = "/bitsong.fantoken.MsgSetAuthorityResponse")]
+pub struct MsgSetAuthorityResponse {}
+
+/// MsgSetUri defines a message for updating the fan token URI
+#[derive(
+    Clone,
+    PartialEq,
+    Eq,
+    ::prost::Message,
+    serde::Serialize,
+    serde::Deserialize,
+    schemars::JsonSchema,
+    CosmwasmExt,
+)]
+#[proto_message(type_url = "/bitsong.fantoken.MsgSetUri")]
+pub struct MsgSetUri {
+    #[prost(string, tag = "1")]
+    pub authority: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub denom: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub uri: ::prost::alloc::string::String,
+}
+
+/// MsgSetUriResponse defines the MsgSetUri response type
+#[derive(
+    Clone,
+    PartialEq,
+    Eq,
+    ::prost::Message,
+    serde::Serialize,
+    serde::Deserialize,
+    schemars::JsonSchema,
+    CosmwasmExt,
+)]
+#[proto_message(type_url = "/bitsong.fantoken.MsgSetUriResponse")]
+pub struct MsgSetUriResponse {}

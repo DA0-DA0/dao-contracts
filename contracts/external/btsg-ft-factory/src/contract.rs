@@ -8,7 +8,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use dao_interface::token::{InitialBalance, TokenFactoryCallback};
 
-use crate::bitsong::{Coin, MsgIssue, MsgMint, MsgSetMinter};
+use crate::bitsong::{Coin, MsgIssue, MsgMint, MsgSetAuthority, MsgSetMinter};
 use crate::error::ContractError;
 use crate::msg::{CreatingFanToken, ExecuteMsg, InstantiateMsg, MigrateMsg, NewFanToken, QueryMsg};
 use crate::state::CREATING_FAN_TOKEN;
@@ -66,8 +66,13 @@ pub fn execute_issue(
             symbol: token.symbol,
             name: token.name,
             max_supply: token.max_supply.to_string(),
-            authority: dao.to_string(),
-            // will be set to DAO in reply once initial balances are minted
+            // this needs to be the current contract address as the authority is
+            // used to determine who is allowed to send this message. will be
+            // set to DAO in reply once token is issued.
+            authority: env.contract.address.to_string(),
+            // this needs to be the current contract address as we mint initial
+            // balances in the reply. will be set to DAO in reply once initial
+            // balances are minted.
             minter: env.contract.address.to_string(),
             uri: token.uri,
         },
@@ -144,7 +149,15 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 }
             }
 
-            // set minter to DAO
+            // set authority and minter to DAO
+            msgs.push(
+                MsgSetAuthority {
+                    denom: denom.clone(),
+                    old_authority: env.contract.address.to_string(),
+                    new_authority: dao.to_string(),
+                }
+                .into(),
+            );
             msgs.push(
                 MsgSetMinter {
                     denom: denom.clone(),

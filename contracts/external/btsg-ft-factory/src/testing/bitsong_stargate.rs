@@ -7,7 +7,8 @@ use cw_multi_test::{error::AnyResult, AppResponse, BankSudo, CosmosRouter, Starg
 use prost::Message;
 
 use crate::bitsong::{
-    MsgIssue, MsgIssueResponse, MsgMint, MsgMintResponse, MsgSetMinter, MsgSetMinterResponse,
+    MsgIssue, MsgIssueResponse, MsgMint, MsgMintResponse, MsgSetAuthority, MsgSetMinter,
+    MsgSetMinterResponse, MsgSetUri, MsgSetUriResponse,
 };
 
 const DENOMS_PREFIX: &str = "denoms";
@@ -77,7 +78,7 @@ impl Stargate for StargateKeeper {
             let fantoken: FanToken =
                 from_json(serialized_ft.unwrap()).expect("Failed to deserialize FanToken");
 
-            if fantoken.minter != msg.minter || sender != msg.minter {
+            if sender != fantoken.minter || msg.minter != fantoken.minter {
                 return Err(Error::msg("Minter unauthorized"));
             }
 
@@ -104,7 +105,11 @@ impl Stargate for StargateKeeper {
             let mut fantoken: FanToken =
                 from_json(serialized_ft.unwrap()).expect("Failed to deserialize FanToken");
 
-            if fantoken.minter != msg.old_minter {
+            if sender != fantoken.minter {
+                return Err(Error::msg("Unauthorized"));
+            }
+
+            if msg.old_minter != fantoken.minter {
                 return Err(Error::msg("Old minter does not match"));
             }
 
@@ -114,6 +119,50 @@ impl Stargate for StargateKeeper {
             return Ok(AppResponse {
                 events: vec![],
                 data: Some(Binary::from(MsgSetMinterResponse {})),
+            });
+        }
+        if type_url == *"/bitsong.fantoken.MsgSetAuthority" {
+            let msg: MsgSetAuthority = Message::decode(value.as_slice()).unwrap();
+
+            let key = format!("{}:{}", DENOMS_PREFIX, msg.denom.clone());
+            let serialized_ft = storage.get(key.as_bytes());
+            let mut fantoken: FanToken =
+                from_json(serialized_ft.unwrap()).expect("Failed to deserialize FanToken");
+
+            if sender != fantoken.authority {
+                return Err(Error::msg("Unauthorized"));
+            }
+
+            if msg.old_authority != fantoken.authority {
+                return Err(Error::msg("Old authority does not match"));
+            }
+
+            fantoken.authority = msg.new_authority;
+            storage.set(key.as_bytes(), &to_json_binary(&fantoken).unwrap());
+
+            return Ok(AppResponse {
+                events: vec![],
+                data: Some(Binary::from(MsgSetMinterResponse {})),
+            });
+        }
+        if type_url == *"/bitsong.fantoken.MsgSetUri" {
+            let msg: MsgSetUri = Message::decode(value.as_slice()).unwrap();
+
+            let key = format!("{}:{}", DENOMS_PREFIX, msg.denom.clone());
+            let serialized_ft = storage.get(key.as_bytes());
+            let mut fantoken: FanToken =
+                from_json(serialized_ft.unwrap()).expect("Failed to deserialize FanToken");
+
+            if sender != fantoken.authority || msg.authority != fantoken.authority {
+                return Err(Error::msg("Authority unauthorized"));
+            }
+
+            fantoken.uri = msg.uri;
+            storage.set(key.as_bytes(), &to_json_binary(&fantoken).unwrap());
+
+            return Ok(AppResponse {
+                events: vec![],
+                data: Some(Binary::from(MsgSetUriResponse {})),
             });
         }
         Ok(AppResponse::default())

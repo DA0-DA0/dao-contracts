@@ -12,7 +12,7 @@ use dao_interface::{
 use dao_testing::contracts::{dao_dao_contract, proposal_single_contract};
 
 use crate::{
-    bitsong::{Coin, MsgMint},
+    bitsong::{Coin, MsgMint, MsgSetUri},
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
     msg::{ExecuteMsg, MigrateMsg, NewFanToken},
     testing::is_error,
@@ -229,9 +229,9 @@ fn test_initial_fantoken_balances() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// The minter is set to the DAO.
+/// The minter and authority are set to the DAO.
 #[test]
-fn test_fantoken_minter_set_to_dao() -> anyhow::Result<()> {
+fn test_fantoken_minter_and_authority_set_to_dao() -> anyhow::Result<()> {
     let CommonTest {
         mut app,
         factory,
@@ -350,6 +350,30 @@ fn test_fantoken_minter_set_to_dao() -> anyhow::Result<()> {
                 denom: denom_res.denom.clone(),
             }),
             minter: dao.to_string(),
+        }
+        .into(),
+    )
+    .unwrap();
+
+    // attempt to change URI with factory that created the token, and fail
+    let res = app.execute(
+        factory.clone(),
+        MsgSetUri {
+            authority: factory.to_string(),
+            denom: denom_res.denom.clone(),
+            uri: "https://example.com".to_string(),
+        }
+        .into(),
+    );
+    is_error!(res => "Authority unauthorized");
+
+    // verify authority is the DAO
+    app.execute(
+        dao.clone(),
+        MsgSetUri {
+            authority: dao.to_string(),
+            denom: denom_res.denom.clone(),
+            uri: "https://example.com".to_string(),
         }
         .into(),
     )
