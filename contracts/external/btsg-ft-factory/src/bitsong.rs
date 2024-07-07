@@ -35,7 +35,7 @@ pub struct Coin {
     schemars::JsonSchema,
     CosmwasmExt,
 )]
-#[proto_message(type_url = "/bitsong.fantoken.v1beta1.MsgIssue")]
+#[proto_message(type_url = "/bitsong.fantoken.MsgIssue")]
 pub struct MsgIssue {
     #[prost(string, tag = "1")]
     pub symbol: ::prost::alloc::string::String,
@@ -62,7 +62,7 @@ pub struct MsgIssue {
     schemars::JsonSchema,
     CosmwasmExt,
 )]
-#[proto_message(type_url = "/bitsong.fantoken.v1beta1.MsgIssueResponse")]
+#[proto_message(type_url = "/bitsong.fantoken.MsgIssueResponse")]
 pub struct MsgIssueResponse {}
 
 /// MsgMint defines a message for minting a new fan token
@@ -76,7 +76,7 @@ pub struct MsgIssueResponse {}
     schemars::JsonSchema,
     CosmwasmExt,
 )]
-#[proto_message(type_url = "/bitsong.fantoken.v1beta1.MsgMint")]
+#[proto_message(type_url = "/bitsong.fantoken.MsgMint")]
 pub struct MsgMint {
     #[prost(string, tag = "1")]
     pub recipient: ::prost::alloc::string::String,
@@ -97,7 +97,7 @@ pub struct MsgMint {
     schemars::JsonSchema,
     CosmwasmExt,
 )]
-#[proto_message(type_url = "/bitsong.fantoken.v1beta1.MsgMintResponse")]
+#[proto_message(type_url = "/bitsong.fantoken.MsgMintResponse")]
 pub struct MsgMintResponse {}
 
 /// MsgSetMinter defines a message for changing the fan token minter address
@@ -111,7 +111,7 @@ pub struct MsgMintResponse {}
     schemars::JsonSchema,
     CosmwasmExt,
 )]
-#[proto_message(type_url = "/bitsong.fantoken.v1beta1.MsgSetMinter")]
+#[proto_message(type_url = "/bitsong.fantoken.MsgSetMinter")]
 pub struct MsgSetMinter {
     #[prost(string, tag = "1")]
     pub denom: ::prost::alloc::string::String,
@@ -132,5 +132,5 @@ pub struct MsgSetMinter {
     schemars::JsonSchema,
     CosmwasmExt,
 )]
-#[proto_message(type_url = "/bitsong.fantoken.v1beta1.MsgSetMinterResponse")]
+#[proto_message(type_url = "/bitsong.fantoken.MsgSetMinterResponse")]
 pub struct MsgSetMinterResponse {}

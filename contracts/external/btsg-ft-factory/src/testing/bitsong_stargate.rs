@@ -39,7 +39,7 @@ impl Stargate for StargateKeeper {
         type_url: String,
         value: Binary,
     ) -> AnyResult<AppResponse> {
-        if type_url == *"/bitsong.fantoken.v1beta1.MsgIssue" {
+        if type_url == *"/bitsong.fantoken.MsgIssue" {
             let denoms_count: Uint64 = storage
                 .get(DENOMS_COUNT_KEY.as_bytes())
                 .map_or_else(Uint64::zero, |d| from_json(d).unwrap());
@@ -67,7 +67,7 @@ impl Stargate for StargateKeeper {
                 data: Some(Binary::from(MsgIssueResponse {})),
             });
         }
-        if type_url == *"/bitsong.fantoken.v1beta1.MsgMint" {
+        if type_url == *"/bitsong.fantoken.MsgMint" {
             let msg: MsgMint = Message::decode(value.as_slice()).unwrap();
 
             let coin = msg.coin.unwrap();
@@ -96,7 +96,7 @@ impl Stargate for StargateKeeper {
                 data: Some(Binary::from(MsgMintResponse {})),
             });
         }
-        if type_url == *"/bitsong.fantoken.v1beta1.MsgSetMinter" {
+        if type_url == *"/bitsong.fantoken.MsgSetMinter" {
             let msg: MsgSetMinter = Message::decode(value.as_slice()).unwrap();
 
             let key = format!("{}:{}", DENOMS_PREFIX, msg.denom.clone());
