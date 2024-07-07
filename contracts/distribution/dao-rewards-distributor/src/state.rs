@@ -22,8 +22,7 @@ pub struct UserRewardState {
     /// map denom to the user's pending rewards
     pub pending_denom_rewards: HashMap<String, Uint128>,
     /// map denom string to the user's earned rewards per unit voting power that
-    /// have already been accounted for in pending rewards and potentially
-    /// claimed
+    /// have already been accounted for (claimed).
     pub accounted_denom_rewards_puvp: HashMap<String, Uint256>,
 }
 

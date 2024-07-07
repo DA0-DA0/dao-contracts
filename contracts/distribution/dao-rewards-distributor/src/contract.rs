@@ -313,7 +313,6 @@ fn execute_claim(
     info: MessageInfo,
     denom: String,
 ) -> Result<Response, ContractError> {
-    println!("\n[claim]\n");
     // update the rewards information for the sender. this updates the denom reward state
     // and the user reward state, so we operate on the correct state.
     update_rewards(&mut deps, &env, &info.sender, denom.to_string())?;
@@ -331,8 +330,6 @@ fn execute_claim(
         .insert(denom.to_string(), Uint128::zero())
         .unwrap_or_default();
 
-    println!("[claim] pending claim amount: {claim_amount}");
-
     // if there are no rewards to claim, error out
     if claim_amount.is_zero() {
         return Err(ContractError::NoRewardsClaimable {});
@@ -345,7 +342,6 @@ fn execute_claim(
     // otherwise reflect the updated user reward state and transfer out the claimed rewards
     USER_REWARD_STATES.save(deps.storage, info.sender.clone(), &user_reward_state)?;
 
-    println!("\n[end of claim]\n");
     Ok(Response::new()
         .add_message(get_transfer_msg(
             info.sender.clone(),
@@ -440,13 +436,10 @@ pub fn get_accrued_rewards_since_last_user_action(
         .get(&denom)
         .cloned()
         .unwrap_or_default();
-    println!(
-        "[accrued rewards since last user action] user last reward puvp: {user_last_reward_puvp}"
-    );
+
     // calculate the difference between the current total reward per unit
     // voting power distributed and the user's latest reward per unit voting
     // power accounted for.
-    // TODO: this may overlap with a historic epoch in the past, this needs to be checked for.
     let reward_factor = total_earned_puvp.checked_sub(user_last_reward_puvp)?;
     // get the user's voting power at the current height
     let voting_power = Uint256::from(get_voting_power_at_block(
@@ -571,12 +564,10 @@ fn query_pending_rewards(deps: Deps, env: Env, addr: String) -> StdResult<Pendin
             denom.to_string(),
         )?;
         let earned_amount = earned_rewards.get(&denom).unwrap_or(&default_amt);
-        println!("[query_pending_rewards] earned amount: {earned_amount}");
         let existing_amount = user_reward_state
             .pending_denom_rewards
             .get(&denom)
             .unwrap_or(&default_amt);
-        println!("[query_pending_rewards] existing amount: {existing_amount}");
         pending_rewards.insert(denom, *earned_amount + *existing_amount);
     }
 

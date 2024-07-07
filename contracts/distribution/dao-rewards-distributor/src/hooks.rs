@@ -64,11 +64,11 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr, denom: String)
     user_reward_state
         .pending_denom_rewards
         .insert(denom.clone(), amount_sum);
-    // update the user's earned rewards that have been accounted for
-    user_reward_state.accounted_denom_rewards_puvp.insert(
-        denom.clone(),
-        denom_reward_state.active_epoch_config.total_earned_puvp,
-    );
+
+    // update the accounted for amount to that of the total applicable puvp
+    user_reward_state
+        .accounted_denom_rewards_puvp
+        .insert(denom.clone(), total_applicable_puvp);
 
     // reflect the updated state changes
     USER_REWARD_STATES.save(deps.storage, addr.clone(), &user_reward_state)?;
