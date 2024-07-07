@@ -30,24 +30,17 @@ fn test_native_dao_rewards_update_reward_rate() {
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
-    let mut total_allocated = Uint128::zero();
+
     suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000);
     suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
     suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000);
 
-    total_allocated = total_allocated
-        .checked_add(Uint128::new(10_000_000))
-        .unwrap();
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
 
     suite.assert_pending_rewards(ADDR1, DENOM, 10_000_000);
     suite.assert_pending_rewards(ADDR2, DENOM, 5_000_000);
     suite.assert_pending_rewards(ADDR3, DENOM, 5_000_000);
-
-    total_allocated = total_allocated
-        .checked_add(Uint128::new(10_000_000))
-        .unwrap();
 
     // ADDR1 claims rewards
     suite.claim_rewards(ADDR1, DENOM);
@@ -59,9 +52,6 @@ fn test_native_dao_rewards_update_reward_rate() {
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
-    total_allocated = total_allocated
-        .checked_add(Uint128::new(5_000_000))
-        .unwrap();
 
     suite.assert_pending_rewards(ADDR1, DENOM, 2_500_000);
     suite.assert_pending_rewards(ADDR2, DENOM, 6_250_000);
@@ -73,9 +63,6 @@ fn test_native_dao_rewards_update_reward_rate() {
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
-    total_allocated = total_allocated
-        .checked_add(Uint128::new(10_000_000))
-        .unwrap();
 
     suite.assert_pending_rewards(ADDR1, DENOM, 7_500_000);
     suite.assert_pending_rewards(ADDR2, DENOM, 8_750_000);
@@ -83,9 +70,6 @@ fn test_native_dao_rewards_update_reward_rate() {
 
     // skip 2/10ths of the time
     suite.skip_blocks(200_000);
-    total_allocated = total_allocated
-        .checked_add(Uint128::new(20_000_000))
-        .unwrap();
 
     suite.assert_pending_rewards(ADDR1, DENOM, 17_500_000);
     suite.assert_pending_rewards(ADDR2, DENOM, 13_750_000);
@@ -102,8 +86,13 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR2, DENOM, 13_750_000);
     suite.assert_pending_rewards(ADDR3, DENOM, 13_750_000);
 
-    // user 1 claims their rewards
+    // assert ADDR1 pre-claim balance
+    suite.assert_native_balance(ADDR1, DENOM, 10_000_000);
+    // ADDR1 claims their rewards
     suite.claim_rewards(ADDR1, DENOM);
+    // assert ADDR1 post-claim balance to be pre-claim + pending
+    suite.assert_native_balance(ADDR1, DENOM, 10_000_000 + 17_500_000);
+    // assert ADDR1 is now entitled to 0 pending rewards
     suite.assert_pending_rewards(ADDR1, DENOM, 0);
 
     // user 2 unstakes their stake
@@ -124,9 +113,6 @@ fn test_native_dao_rewards_update_reward_rate() {
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
-    total_allocated = total_allocated
-        .checked_add(Uint128::new(10_000_000))
-        .unwrap();
 
     // assert that rewards are being distributed at the expected rate
     // suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000);
@@ -139,9 +125,6 @@ fn test_native_dao_rewards_update_reward_rate() {
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
-    total_allocated = total_allocated
-        .checked_add(Uint128::new(10_000_000))
-        .unwrap();
 
     suite.assert_pending_rewards(ADDR1, DENOM, 6_666_666 + 6_666_666);
     suite.assert_pending_rewards(ADDR2, DENOM, 9_750_000);

@@ -313,34 +313,42 @@ fn execute_claim(
     info: MessageInfo,
     denom: String,
 ) -> Result<Response, ContractError> {
+    println!(
+        "pre-update pending rewards: {:?}",
+        USER_REWARD_STATES
+            .may_load(deps.storage, info.sender.clone())?
+            .unwrap_or_default()
+            .pending_denom_rewards
+            .get(&denom)
+            .unwrap_or(&Uint128::zero())
+    );
     // update the rewards information for the sender.
     update_rewards(&mut deps, &env, &info.sender, denom.to_string())?;
 
+    println!("claiming rewards, updated state");
     // get the denom state for the string-based denom
     let denom_reward_state = DENOM_REWARD_STATES.load(deps.storage, denom.to_string())?;
-
-    let mut amount = Uint128::zero();
 
     let mut user_reward_state = USER_REWARD_STATES
         .may_load(deps.storage, info.sender.clone())?
         .unwrap_or_default();
-    println!("user reward state during claim: {:?}", user_reward_state);
 
     // updating the map returns the previous value if it existed.
     // we set the value to zero and store it in the amount defined before the update.
-    amount = user_reward_state
+    let mut claim_amount = user_reward_state
         .pending_denom_rewards
         .insert(denom.to_string(), Uint128::zero())
         .unwrap_or_default();
-    println!("amount: {:?}", amount);
+    println!("{:?} claim amount: {:?}", info.sender, claim_amount);
     // if active epoch never expires, means rewards are paused. we manually query the rewards.
     if let Expiration::Never {} = denom_reward_state.active_epoch_config.ends_at {
         let pending_rewards = query_pending_rewards(deps.as_ref(), env, info.sender.to_string())?;
         println!("pending rewards: {:?}", pending_rewards);
-        amount = *pending_rewards
+        claim_amount = *pending_rewards
             .pending_rewards
             .get(&denom)
             .unwrap_or(&Uint128::zero());
+        println!("{:?} claim amount: {:?}", info.sender, claim_amount);
         let current_denom_reward_puvp = user_reward_state
             .denom_rewards_puvp
             .get(&denom)
@@ -350,12 +358,16 @@ fn execute_claim(
         user_reward_state.denom_rewards_puvp.insert(
             denom.clone(),
             current_denom_reward_puvp
-                .checked_add(Uint256::from(amount).checked_mul(scale_factor()).unwrap())
+                .checked_add(
+                    Uint256::from(claim_amount)
+                        .checked_mul(scale_factor())
+                        .unwrap(),
+                )
                 .unwrap(),
         );
     }
 
-    if amount.is_zero() {
+    if claim_amount.is_zero() {
         return Err(ContractError::NoRewardsClaimable {});
     }
 
@@ -363,7 +375,7 @@ fn execute_claim(
     Ok(Response::new()
         .add_message(get_transfer_msg(
             info.sender.clone(),
-            amount,
+            claim_amount,
             denom_reward_state.denom,
         )?)
         .add_attribute("action", "claim"))
@@ -461,11 +473,9 @@ fn get_total_earned_puvp(
     last_update: &Expiration,
 ) -> StdResult<Uint256> {
     let curr = epoch.total_earned_puvp;
-    println!("[EPOCH EARNED PUVP] epoch.total_earned_puvp: \t\t{curr}",);
-    // query the total voting power just before this block from the voting power
-    // contract
+
     let prev_total_power = get_prev_block_total_vp(deps, block, vp_contract)?;
-    println!("[EPOCH EARNED PUVP] prev_total_power: \t\t\t{prev_total_power}",);
+
     // if epoch is past, we return the epoch end date. otherwise the specified block.
     // returns time scalar based on the epoch date config.
     let last_time_rewards_distributed = match epoch.ends_at {
@@ -474,32 +484,22 @@ fn get_total_earned_puvp(
         Expiration::AtTime(t) => Expiration::AtTime(min(block.time, t)),
     };
 
-    println!(
-        "[EPOCH EARNED PUVP] last_time_rewards_distributed: \t{last_time_rewards_distributed}",
-    );
     // get the duration from the last time rewards were updated to the last time
     // rewards were distributed. this will be 0 if the rewards were updated at
     // or after the last time rewards were distributed.
     let new_reward_distribution_duration: Uint128 =
         get_start_end_diff(&last_time_rewards_distributed, last_update)?.into();
 
-    println!(
-        "[EPOCH EARNED PUVP] new_reward_distribution_duration: \t{new_reward_distribution_duration}"
-    );
     if prev_total_power.is_zero() {
         Ok(curr)
     } else {
         let duration_value = get_duration_scalar(&epoch.emission_rate.duration);
 
-        println!("[EPOCH EARNED PUVP] duration_value: \t\t\t{duration_value}",);
         // count intervals of the rewards emission that have passed since the
         // last update which need to be distributed
         let complete_distribution_periods =
             new_reward_distribution_duration.checked_div(Uint128::from(duration_value))?;
 
-        println!(
-            "[EPOCH EARNED PUVP] complete_distribution_periods: \t{complete_distribution_periods}",
-        );
         // It is impossible for this to overflow as total rewards can never
         // exceed max value of Uint128 as total tokens in existence cannot
         // exceed Uint128 (because the bank module Coin type uses Uint128).
@@ -509,11 +509,9 @@ fn get_total_earned_puvp(
             .full_mul(complete_distribution_periods)
             .checked_mul(scale_factor())?;
 
-        println!("[EPOCH EARNED PUVP] new_rewards_distributed:\t\t{new_rewards_distributed}",);
         // the new rewards per unit voting power that have been distributed
         // since the last update
         let new_rewards_puvp = new_rewards_distributed.checked_div(prev_total_power.into())?;
-        println!("[EPOCH EARNED PUVP] new_rewards_puvp:\t\t\t{new_rewards_puvp}",);
         Ok(curr + new_rewards_puvp)
     }
 }
@@ -538,17 +536,11 @@ fn get_accrued_rewards_since_last_user_action(
         .cloned()
         .unwrap_or_default();
 
-    println!("[REWARDS ACCRUED SINCE LAST USER ACTION]addr:\t\t{addr}");
-    println!(
-        "[REWARDS ACCRUED SINCE LAST USER ACTION]user_last_reward_puvp:\t\t{user_last_reward_puvp}",
-    );
-    println!("[REWARDS ACCRUED SINCE LAST USER ACTION]total_earned_puvp:\t\t{total_earned_puvp}",);
     // calculate the difference between the current total reward per unit
     // voting power distributed and the user's latest reward per unit voting
     // power accounted for.
     // TODO: this may overlap with a historic epoch in the past, this needs to be checked for.
     let reward_factor = total_earned_puvp.checked_sub(user_last_reward_puvp)?;
-    println!("[REWARDS ACCRUED SINCE LAST USER ACTION]reward_factor:\t\t\t{reward_factor}",);
     // get the user's voting power at the current height
     let voting_power = Uint256::from(get_voting_power_at_block(
         deps,
@@ -556,7 +548,6 @@ fn get_accrued_rewards_since_last_user_action(
         vp_contract,
         addr,
     )?);
-    println!("[REWARDS ACCRUED SINCE LAST USER ACTION]voting power at now:\t\t{reward_factor}",);
 
     // calculate the amount of rewards earned:
     // voting_power * reward_factor / scale_factor
@@ -564,9 +555,6 @@ fn get_accrued_rewards_since_last_user_action(
         .checked_mul(reward_factor)?
         .checked_div(scale_factor())?
         .try_into()?;
-    println!(
-        "[REWARDS ACCRUED SINCE LAST USER ACTION]accrued_rewards_amount:\t\t{accrued_rewards_amount}"
-    );
 
     Ok(HashMap::from_iter(vec![(
         denom.to_string(),
@@ -669,8 +657,7 @@ fn query_pending_rewards(deps: Deps, env: Env, addr: String) -> StdResult<Pendin
             &reward_state.vp_contract,
             &reward_state.last_update,
         )?;
-        println!("[QUERY PENDING REWARDS] total historic puvp:\t\t{total_historic_puvp}",);
-        println!("[QUERY PENDING REWARDS] active epoch earned puvp:\t{total_earned_puvp}",);
+
         let earned_rewards = get_accrued_rewards_since_last_user_action(
             deps,
             &env,
@@ -680,12 +667,10 @@ fn query_pending_rewards(deps: Deps, env: Env, addr: String) -> StdResult<Pendin
             denom.to_string(),
         )?;
         let earned_amount = earned_rewards.get(&denom).unwrap_or(&default_amt);
-        println!("[QUERY PENDING REWARDS] earned amount: {earned_amount}");
         let existing_amount = user_reward_state
             .pending_denom_rewards
             .get(&denom)
             .unwrap_or(&default_amt);
-        println!("[QUERY PENDING REWARDS] existing amount: {existing_amount}",);
         pending_rewards.insert(denom, *earned_amount + *existing_amount);
     }
 

@@ -81,6 +81,14 @@ impl RewardEmissionRate {
     pub fn get_funded_period_duration(&self, funded_amount: Uint128) -> StdResult<Duration> {
         let funded_amount_u256 = Uint256::from(funded_amount);
         let amount_u256 = Uint256::from(self.amount);
+
+        // if amount being distributed is 0 (rewards are paused), we return the max duration
+        if amount_u256.is_zero() {
+            return match self.duration {
+                Duration::Height(_) => Ok(Duration::Height(u64::MAX)),
+                Duration::Time(_) => Ok(Duration::Time(u64::MAX)),
+            };
+        }
         let amount_to_emission_rate_ratio = funded_amount_u256.checked_div(amount_u256)?;
 
         let ratio_str = amount_to_emission_rate_ratio.to_string();

@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, Addr, BlockInfo, StdError, StdResult, Uint128, Uint256};
+use cosmwasm_std::{ensure, Addr, BlockInfo, StdError, StdResult, Timestamp, Uint128, Uint256};
 use cw20::{Denom, Expiration};
 use cw_storage_plus::Map;
 use cw_utils::Duration;
@@ -114,6 +114,8 @@ impl DenomRewardState {
 
         self.funded_amount = self.funded_amount.checked_sub(curr_epoch_earned_rewards)?;
         // 4. start new epoch
+        println!("fund amount: {:?}", self.funded_amount);
+        println!("new_emission_rate: {:?}", new_emission_rate);
         let new_epoch_end_scalar =
             self.calculate_ends_at(&new_emission_rate, self.funded_amount, current_block)?;
         self.active_epoch_config = EpochConfig {
@@ -134,13 +136,23 @@ impl DenomRewardState {
         funded_amount: Uint128,
         current_block: &BlockInfo,
     ) -> StdResult<Expiration> {
-        if emission_rate.amount.is_zero() {
-            Ok(Expiration::Never {})
-        } else {
-            let funded_period_duration = emission_rate.get_funded_period_duration(funded_amount)?;
-            match funded_period_duration {
-                Duration::Height(h) => Ok(Expiration::AtHeight(current_block.height + h)),
-                Duration::Time(t) => Ok(Expiration::AtTime(current_block.time.plus_seconds(t))),
+        // we get the duration of the funded period and add it to the current
+        // block height. if the sum overflows, we return u64::MAX, as it suggests
+        // that the period is infinite or so long that it doesn't matter.
+        match emission_rate.get_funded_period_duration(funded_amount)? {
+            Duration::Height(h) => {
+                if current_block.height.checked_add(h).is_some() {
+                    Ok(Expiration::AtHeight(current_block.height + h))
+                } else {
+                    Ok(Expiration::AtHeight(u64::MAX))
+                }
+            }
+            Duration::Time(t) => {
+                if current_block.time.seconds().checked_add(t).is_some() {
+                    Ok(Expiration::AtTime(current_block.time.plus_seconds(t)))
+                } else {
+                    Ok(Expiration::AtTime(Timestamp::from_seconds(u64::MAX)))
+                }
             }
         }
     }

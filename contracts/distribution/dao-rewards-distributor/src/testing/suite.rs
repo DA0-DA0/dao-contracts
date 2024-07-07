@@ -701,10 +701,6 @@ impl Suite {
             },
         };
 
-        println!(
-            "[UPDATE REWARD EMISSION RATE] denom: {}, epoch_duration: {:?}, epoch_rewards: {}",
-            denom, epoch_duration, epoch_rewards
-        );
         let _resp = self
             .app
             .execute_contract(
