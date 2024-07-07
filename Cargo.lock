@@ -295,7 +295,7 @@ dependencies = [
 
 [[package]]
 name = "btsg-ft-factory"
-version = "2.4.2"
+version = "2.5.0"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
@@ -308,7 +308,7 @@ dependencies = [
  "dao-interface",
  "dao-proposal-single",
  "dao-testing",
- "dao-voting 2.4.2",
+ "dao-voting 2.5.0",
  "dao-voting-token-staked",
  "osmosis-std-derive",
  "prost 0.12.3",
