@@ -170,7 +170,7 @@ impl Suite {
     }
 
     pub fn process_unbonds(&mut self) {
-        self.app.sudo(StakingSudo::ProcessQueue {}.into()).unwrap();
+        self.app.update_block(|_| {});
     }
 }
 

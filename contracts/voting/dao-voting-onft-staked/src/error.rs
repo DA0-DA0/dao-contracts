@@ -1,5 +1,4 @@
-use cosmwasm_std::{Addr, StdError};
-use cw_utils::ParseReplyError;
+use cosmwasm_std::StdError;
 use dao_voting::threshold::ActiveThresholdError;
 use thiserror::Error;
 
@@ -15,31 +14,22 @@ pub enum ContractError {
     HookError(#[from] cw_hooks::HookError),
 
     #[error(transparent)]
-    ParseReplyError(#[from] ParseReplyError),
-
-    #[error(transparent)]
     UnstakingDurationError(#[from] dao_voting::duration::UnstakingDurationError),
-
-    #[error("Can not stake that which has already been staked")]
-    AlreadyStaked {},
-
-    #[error("Invalid token. Got ({received}), expected ({expected})")]
-    InvalidToken { received: Addr, expected: Addr },
-
-    #[error("Error instantiating NFT contract")]
-    NftInstantiateError {},
-
-    #[error("New NFT contract must be instantiated with at least one NFT")]
-    NoInitialNfts {},
-
-    #[error("Factory contract did not implment the required NftFactoryCallback interface")]
-    NoFactoryCallback {},
 
     #[error("Nothing to claim")]
     NothingToClaim {},
 
-    #[error("Only the owner of this contract may execute this message")]
-    NotOwner {},
+    #[error("Only an NFT's owner can prepare it to be staked")]
+    OnlyOwnerCanPrepareStake {},
+
+    #[error("NFTs must be prepared and transferred before they can be staked")]
+    StakeMustBePrepared {},
+
+    #[error("Recipient must be set when the DAO is cancelling a stake that was not prepared")]
+    NoRecipient {},
+
+    #[error("Only the owner or preparer can cancel a prepared stake")]
+    NotPreparerNorOwner {},
 
     #[error("Can not unstake that which you have not staked (unstaking {token_id})")]
     NotStaked { token_id: String },
@@ -52,9 +42,6 @@ pub enum ContractError {
 
     #[error("Got a submessage reply with unknown id: {id}")]
     UnknownReplyId { id: u64 },
-
-    #[error("Factory message must serialize to WasmMsg::Execute")]
-    UnsupportedFactoryMsg {},
 
     #[error("Can't unstake zero NFTs.")]
     ZeroUnstake {},
