@@ -38,7 +38,7 @@ pub enum ContractError {
     #[error("Nothing to claim")]
     NothingToClaim {},
 
-    #[error("Only the owner of this contract my execute this message")]
+    #[error("Only the owner of this contract may execute this message")]
     NotOwner {},
 
     #[error("Can not unstake that which you have not staked (unstaking {token_id})")]

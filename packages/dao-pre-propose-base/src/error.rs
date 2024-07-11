@@ -4,7 +4,9 @@ use cw_utils::ParseReplyError;
 use thiserror::Error;
 
 use cw_hooks::HookError;
-use dao_voting::{deposit::DepositError, status::Status};
+use dao_voting::{
+    deposit::DepositError, pre_propose::PreProposeSubmissionPolicyError, status::Status,
+};
 
 #[derive(Error, Debug, PartialEq)]
 pub enum PreProposeError {
@@ -23,14 +25,14 @@ pub enum PreProposeError {
     #[error(transparent)]
     ParseReplyError(#[from] ParseReplyError),
 
+    #[error(transparent)]
+    SubmissionPolicy(#[from] PreProposeSubmissionPolicyError),
+
     #[error("Message sender is not proposal module")]
     NotModule {},
 
     #[error("Message sender is not dao")]
     NotDao {},
-
-    #[error("You must be a member of this DAO (have voting power) to create a proposal")]
-    NotMember {},
 
     #[error("No denomination for withdrawal. specify a denomination to withdraw")]
     NoWithdrawalDenom {},
@@ -49,4 +51,7 @@ pub enum PreProposeError {
 
     #[error("An unknown reply ID was received.")]
     UnknownReplyID {},
+
+    #[error("Unsupported")]
+    Unsupported {},
 }

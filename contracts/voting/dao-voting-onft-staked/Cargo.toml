@@ -1,0 +1,54 @@
+[package]
+name = "dao-voting-onft-staked"
+authors = [
+  "CypherApe cypherape@protonmail.com",
+  "Jake Hartnell",
+  "ekez",
+  "noah <noah@daodao.zone>",
+]
+description = "A DAO DAO voting module based on staked x/onft tokens."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+# use test tube feature to enable test-tube integration tests, for example
+# cargo test --features "test-tube"
+test-tube = []
+# when writing tests you may wish to enable test-tube as a default feature
+# default = ["test-tube"]
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-controllers = { workspace = true }
+cw-hooks = { workspace = true }
+cw721-controllers = { workspace = true }
+cw-utils = { workspace = true }
+cw2 = { workspace = true }
+dao-dao-macros = { workspace = true }
+dao-hooks = { workspace = true }
+dao-interface = { workspace = true }
+dao-voting = { workspace = true }
+omniflix-std = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+cw-multi-test = { workspace = true }
+dao-proposal-single = { workspace = true }
+dao-proposal-hook-counter = { workspace = true }
+dao-test-custom-factory = { workspace = true }
+dao-testing = { workspace = true, features = ["test-tube"] }
+osmosis-test-tube = { workspace = true }
+prost = { workspace = true }

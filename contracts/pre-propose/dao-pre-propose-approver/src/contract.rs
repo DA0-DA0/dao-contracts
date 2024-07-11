@@ -11,6 +11,7 @@ use dao_pre_propose_approval_single::msg::{
     ApproverProposeMessage, ExecuteExt as ApprovalExt, ExecuteMsg as PreProposeApprovalExecuteMsg,
 };
 use dao_pre_propose_base::{error::PreProposeError, state::PreProposeContract};
+use dao_voting::pre_propose::PreProposeSubmissionPolicy;
 use dao_voting::status::Status;
 
 use crate::msg::{
@@ -33,11 +34,16 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, PreProposeError> {
-    // This contract does not handle deposits or have open submissions
-    // Here we hardcode the pre-propose-base instantiate message
+    // This contract does not handle deposits or allow submission permissions
+    // since only the approval-single contract can create proposals. Just
+    // hardcode the pre-propose-base instantiate message.
     let base_instantiate_msg = BaseInstantiateMsg {
         deposit_info: None,
-        open_proposal_submission: false,
+        submission_policy: PreProposeSubmissionPolicy::Specific {
+            dao_members: true,
+            allowlist: None,
+            denylist: None,
+        },
         extension: Empty {},
     };
     // Default pre-propose-base instantiation
@@ -92,6 +98,9 @@ pub fn execute(
         ExecuteMsg::Extension { msg } => match msg {
             ExecuteExt::ResetApprover {} => execute_reset_approver(deps, env, info),
         },
+        // Override config updates since they don't apply.
+        ExecuteMsg::UpdateConfig { .. } => Err(PreProposeError::Unsupported {}),
+        ExecuteMsg::UpdateSubmissionPolicy { .. } => Err(PreProposeError::Unsupported {}),
         _ => PrePropose::default().execute(deps, env, info, msg),
     }
 }
@@ -107,7 +116,7 @@ pub fn execute_propose(
         return Err(PreProposeError::Unauthorized {});
     }
 
-    // Get pre_prospose_id, transform proposal for the approver
+    // Get pre_propose_id, transform proposal for the approver
     // Here we make sure that there are no messages that can be executed
     let (pre_propose_id, sanitized_msg) = match msg {
         ApproverProposeMessage::Propose {
@@ -228,6 +237,11 @@ pub fn execute_reset_approver(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
+        QueryMsg::CanPropose { address } => {
+            let approval_contract = PRE_PROPOSE_APPROVAL_CONTRACT.load(deps.storage)?;
+            let can_propose = address == approval_contract;
+            to_json_binary(&can_propose)
+        }
         QueryMsg::QueryExtension { msg } => match msg {
             QueryExt::PreProposeApprovalContract {} => {
                 to_json_binary(&PRE_PROPOSE_APPROVAL_CONTRACT.load(deps.storage)?)

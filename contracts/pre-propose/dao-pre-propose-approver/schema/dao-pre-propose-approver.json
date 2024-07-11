@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-pre-propose-approver",
-  "contract_version": "2.4.2",
+  "contract_version": "2.5.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -51,11 +51,9 @@
         "properties": {
           "update_config": {
             "type": "object",
-            "required": [
-              "open_proposal_submission"
-            ],
             "properties": {
               "deposit_info": {
+                "description": "If None, will remove the deposit. Backwards compatible.",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/UncheckedDepositInfo"
@@ -65,8 +63,79 @@
                   }
                 ]
               },
-              "open_proposal_submission": {
-                "type": "boolean"
+              "submission_policy": {
+                "description": "If None, will leave the submission policy in the config as-is.",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/PreProposeSubmissionPolicy"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Perform more granular submission policy updates to allow for atomic operations that don't override others.",
+        "type": "object",
+        "required": [
+          "update_submission_policy"
+        ],
+        "properties": {
+          "update_submission_policy": {
+            "type": "object",
+            "properties": {
+              "allowlist_add": {
+                "description": "If using specific policy, optionally add to the allowlist.",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "allowlist_remove": {
+                "description": "If using specific policy, optionally remove from the allowlist.",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "denylist_add": {
+                "description": "Optionally add to the denylist. Works for any submission policy.",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "denylist_remove": {
+                "description": "Optionally remove from denylist. Works for any submission policy.",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "set_dao_members": {
+                "description": "If using specific policy, optionally update the `dao_members` flag.",
+                "type": [
+                  "boolean",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -370,6 +439,80 @@
           }
         ]
       },
+      "PreProposeSubmissionPolicy": {
+        "description": "The policy configured in a pre-propose module that determines who can submit proposals. This is the preferred way to restrict proposal creation (as opposed to the ProposalCreationPolicy above) since pre-propose modules support other features, such as proposal deposits.",
+        "oneOf": [
+          {
+            "description": "Anyone may create proposals, except for those in the denylist.",
+            "type": "object",
+            "required": [
+              "anyone"
+            ],
+            "properties": {
+              "anyone": {
+                "type": "object",
+                "properties": {
+                  "denylist": {
+                    "description": "Addresses that may not create proposals.",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Specific people may create proposals.",
+            "type": "object",
+            "required": [
+              "specific"
+            ],
+            "properties": {
+              "specific": {
+                "type": "object",
+                "required": [
+                  "dao_members"
+                ],
+                "properties": {
+                  "allowlist": {
+                    "description": "Addresses that may create proposals.",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "dao_members": {
+                    "description": "Whether or not DAO members may create proposals.",
+                    "type": "boolean"
+                  },
+                  "denylist": {
+                    "description": "Addresses that may not create proposals, overriding other settings.",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
       "Status": {
         "oneOf": [
           {
@@ -608,6 +751,28 @@
         "additionalProperties": false
       },
       {
+        "description": "Returns whether or not the address can submit proposals.",
+        "type": "object",
+        "required": [
+          "can_propose"
+        ],
+        "properties": {
+          "can_propose": {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "description": "Returns list of proposal submitted hooks.",
         "type": "object",
         "required": [
@@ -713,12 +878,17 @@
   "migrate": null,
   "sudo": null,
   "responses": {
+    "can_propose": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Boolean",
+      "type": "boolean"
+    },
     "config": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Config",
       "type": "object",
       "required": [
-        "open_proposal_submission"
+        "submission_policy"
       ],
       "properties": {
         "deposit_info": {
@@ -732,9 +902,13 @@
             }
           ]
         },
-        "open_proposal_submission": {
-          "description": "If false, only members (addresses with voting power) may create proposals in the DAO. Otherwise, any address may create a proposal so long as they pay the deposit.",
-          "type": "boolean"
+        "submission_policy": {
+          "description": "The policy dictating who is allowed to submit proposals.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/PreProposeSubmissionPolicy"
+            }
+          ]
         }
       },
       "additionalProperties": false,
@@ -832,6 +1006,80 @@
               "enum": [
                 "never"
               ]
+            }
+          ]
+        },
+        "PreProposeSubmissionPolicy": {
+          "description": "The policy configured in a pre-propose module that determines who can submit proposals. This is the preferred way to restrict proposal creation (as opposed to the ProposalCreationPolicy above) since pre-propose modules support other features, such as proposal deposits.",
+          "oneOf": [
+            {
+              "description": "Anyone may create proposals, except for those in the denylist.",
+              "type": "object",
+              "required": [
+                "anyone"
+              ],
+              "properties": {
+                "anyone": {
+                  "type": "object",
+                  "properties": {
+                    "denylist": {
+                      "description": "Addresses that may not create proposals.",
+                      "type": [
+                        "array",
+                        "null"
+                      ],
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "Specific people may create proposals.",
+              "type": "object",
+              "required": [
+                "specific"
+              ],
+              "properties": {
+                "specific": {
+                  "type": "object",
+                  "required": [
+                    "dao_members"
+                  ],
+                  "properties": {
+                    "allowlist": {
+                      "description": "Addresses that may create proposals.",
+                      "type": [
+                        "array",
+                        "null"
+                      ],
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "dao_members": {
+                      "description": "Whether or not DAO members may create proposals.",
+                      "type": "boolean"
+                    },
+                    "denylist": {
+                      "description": "Addresses that may not create proposals, overriding other settings.",
+                      "type": [
+                        "array",
+                        "null"
+                      ],
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
             }
           ]
         },

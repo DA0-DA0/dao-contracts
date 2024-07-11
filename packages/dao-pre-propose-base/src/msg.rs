@@ -2,6 +2,7 @@ use cosmwasm_schema::{cw_serde, schemars::JsonSchema, QueryResponses};
 use cw_denom::UncheckedDenom;
 use dao_voting::{
     deposit::{CheckedDepositInfo, UncheckedDepositInfo},
+    pre_propose::PreProposeSubmissionPolicy,
     status::Status,
 };
 
@@ -10,10 +11,8 @@ pub struct InstantiateMsg<InstantiateExt> {
     /// Information about the deposit requirements for this
     /// module. None if no deposit.
     pub deposit_info: Option<UncheckedDepositInfo>,
-    /// If false, only members (addresses with voting power) may create
-    /// proposals in the DAO. Otherwise, any address may create a
-    /// proposal so long as they pay the deposit.
-    pub open_proposal_submission: bool,
+    /// The policy dictating who is allowed to submit proposals.
+    pub submission_policy: PreProposeSubmissionPolicy,
     /// Extension for instantiation. The default implementation will
     /// do nothing with this data.
     pub extension: InstantiateExt,
@@ -31,8 +30,25 @@ pub enum ExecuteMsg<ProposalMessage, ExecuteExt> {
     /// will only apply to proposals created after the config is
     /// updated. Only the DAO may execute this message.
     UpdateConfig {
+        /// If None, will remove the deposit. Backwards compatible.
         deposit_info: Option<UncheckedDepositInfo>,
-        open_proposal_submission: bool,
+        /// If None, will leave the submission policy in the config as-is.
+        submission_policy: Option<PreProposeSubmissionPolicy>,
+    },
+
+    /// Perform more granular submission policy updates to allow for atomic
+    /// operations that don't override others.
+    UpdateSubmissionPolicy {
+        /// Optionally add to the denylist. Works for any submission policy.
+        denylist_add: Option<Vec<String>>,
+        /// Optionally remove from denylist. Works for any submission policy.
+        denylist_remove: Option<Vec<String>>,
+        /// If using specific policy, optionally update the `dao_members` flag.
+        set_dao_members: Option<bool>,
+        /// If using specific policy, optionally add to the allowlist.
+        allowlist_add: Option<Vec<String>>,
+        /// If using specific policy, optionally remove from the allowlist.
+        allowlist_remove: Option<Vec<String>>,
     },
 
     /// Withdraws funds inside of this contract to the message
@@ -110,6 +126,9 @@ where
     /// PROPOSAL_ID.
     #[returns(DepositInfoResponse)]
     DepositInfo { proposal_id: u64 },
+    /// Returns whether or not the address can submit proposals.
+    #[returns(bool)]
+    CanPropose { address: String },
     /// Returns list of proposal submitted hooks.
     #[returns(cw_hooks::HooksResponse)]
     ProposalSubmittedHooks {},

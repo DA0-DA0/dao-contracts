@@ -117,13 +117,22 @@ pub fn native_staked_balances_voting_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn voting_cw721_staked_contract() -> Box<dyn Contract<Empty>> {
+pub fn cw721_staked_voting_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         dao_voting_cw721_staked::contract::execute,
         dao_voting_cw721_staked::contract::instantiate,
         dao_voting_cw721_staked::contract::query,
     )
     .with_reply(dao_voting_cw721_staked::contract::reply);
+    Box::new(contract)
+}
+
+pub fn onft_staked_voting_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        dao_voting_onft_staked::contract::execute,
+        dao_voting_onft_staked::contract::instantiate,
+        dao_voting_onft_staked::contract::query,
+    );
     Box::new(contract)
 }
 

@@ -87,10 +87,23 @@ pub fn execute(
         ExecuteMsg::Withdraw { denom } => ExecuteInternal::Withdraw { denom },
         ExecuteMsg::UpdateConfig {
             deposit_info,
-            open_proposal_submission,
+            submission_policy,
         } => ExecuteInternal::UpdateConfig {
             deposit_info,
-            open_proposal_submission,
+            submission_policy,
+        },
+        ExecuteMsg::UpdateSubmissionPolicy {
+            denylist_add,
+            denylist_remove,
+            set_dao_members,
+            allowlist_add,
+            allowlist_remove,
+        } => ExecuteInternal::UpdateSubmissionPolicy {
+            denylist_add,
+            denylist_remove,
+            set_dao_members,
+            allowlist_add,
+            allowlist_remove,
         },
         ExecuteMsg::AddProposalSubmittedHook { address } => {
             ExecuteInternal::AddProposalSubmittedHook { address }
