@@ -252,7 +252,7 @@ pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
 
     let is_active = match active_threshold {
         ActiveThreshold::AbsoluteCount { count } => {
-            total_weight.weight >= count.to_string().parse::<u64>().unwrap()
+            Uint128::new(total_weight.weight as u128) >= count
         }
         _ => false, // Should never happen as percentage is not supported
     };
