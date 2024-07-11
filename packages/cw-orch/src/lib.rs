@@ -12,5 +12,6 @@ pub use staking::*;
 pub use test_contracts::*;
 pub use voting::*;
 
+#[cfg(feature = "wasm_test")]
 #[cfg(test)]
 pub mod tests;
