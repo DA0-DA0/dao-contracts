@@ -7,11 +7,11 @@ use cw_orch::{
 };
 
 use crate::{
-    Cw20Stake, Cw20StakeExternalRewards, Cw20StakeRewardDistributor, DaoDaoCore,DaoVotingCw20Balance, 
+    Cw20Stake, Cw20StakeExternalRewards, Cw20StakeRewardDistributor, DaoDaoCore,
     DaoPreProposeApprovalSingle, DaoPreProposeApprover, DaoPreProposeMultiple, DaoPreProposeSingle,
     DaoProposalCondorcet, DaoProposalHookCounter, DaoProposalMultiple, DaoProposalSingle,
-    DaoProposalSudo, DaoTestCustomFactory, DaoVotingCw20Staked, DaoVotingCw4, DaoVotingCw721Roles,
-    DaoVotingCw721Staked, DaoVotingTokenStaked,
+    DaoProposalSudo, DaoTestCustomFactory, DaoVotingCw20Balance, DaoVotingCw20Staked, DaoVotingCw4,
+    DaoVotingCw721Roles, DaoVotingCw721Staked, DaoVotingTokenStaked,
 };
 
 pub const DUMMY_CHAIN_INFO: ChainInfo = ChainInfo {
