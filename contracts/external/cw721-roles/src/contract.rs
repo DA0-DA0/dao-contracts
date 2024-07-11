@@ -319,7 +319,7 @@ pub fn execute_update_token_role(
     let mut token = contract.tokens.load(deps.storage, &token_id)?;
 
     // Update role with new value
-    token.extension.role = role.clone();
+    token.extension.role.clone_from(&role);
     contract.tokens.save(deps.storage, &token_id, &token)?;
 
     Ok(Response::default()
@@ -341,7 +341,7 @@ pub fn execute_update_token_uri(
     let mut token = contract.tokens.load(deps.storage, &token_id)?;
 
     // Set new token URI
-    token.token_uri = token_uri.clone();
+    token.token_uri.clone_from(&token_uri);
     contract.tokens.save(deps.storage, &token_id, &token)?;
 
     Ok(Response::new()
