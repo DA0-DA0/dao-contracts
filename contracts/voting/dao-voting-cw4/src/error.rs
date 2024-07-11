@@ -29,4 +29,7 @@ pub enum ContractError {
 
     #[error("Total weight of the CW4 contract cannot be zero")]
     ZeroTotalWeight {},
+
+    #[error("The provided threshold is invalid: thresholds must be positive and within designated limits (e.g., percentages between 0 and 100)")]
+    InvalidThreshold {},
 }

@@ -8,7 +8,7 @@ use dao_interface::{
 use dao_testing::contracts::{
     cw4_group_contract, dao_dao_contract, dao_voting_cw4_contract, proposal_condorcet_contract,
 };
-use dao_voting::threshold::PercentageThreshold;
+use dao_voting::threshold::{ActiveThreshold, PercentageThreshold};
 use dao_voting_cw4::msg::GroupContract;
 
 use crate::{
@@ -30,6 +30,7 @@ pub(crate) struct SuiteBuilder {
     pub instantiate: InstantiateMsg,
     with_proposal: Option<u32>,
     with_voters: Vec<(String, u64)>,
+    active_threshold: Option<ActiveThreshold>,
 }
 
 impl Default for SuiteBuilder {
@@ -43,6 +44,7 @@ impl Default for SuiteBuilder {
             },
             with_proposal: None,
             with_voters: vec![("sender".to_string(), 10)],
+            active_threshold: None,
         }
     }
 }
@@ -93,6 +95,7 @@ impl SuiteBuilder {
                         cw4_group_code_id: cw4_id,
                         initial_members,
                     },
+                    active_threshold: self.active_threshold.clone(),
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),

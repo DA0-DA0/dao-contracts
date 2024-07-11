@@ -143,6 +143,7 @@ fn setup_default_test(
                 amount: Uint128::new(8),
             },
         ]),
+        None,
     );
     let proposal_modules: Vec<ProposalModule> = app
         .wrap()
@@ -1286,6 +1287,7 @@ fn test_instantiate_with_zero_native_deposit() {
                 amount: Uint128::new(8),
             },
         ]),
+        None,
     );
 }
 
@@ -1353,6 +1355,7 @@ fn test_instantiate_with_zero_cw20_deposit() {
                 amount: Uint128::new(8),
             },
         ]),
+        None,
     );
 }
 

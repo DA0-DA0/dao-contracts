@@ -8,9 +8,12 @@ use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw4::{MemberListResponse, MemberResponse, TotalWeightResponse};
 use cw_utils::parse_reply_instantiate_data;
 
+use dao_interface::voting::IsActiveResponse;
+use dao_voting::threshold::ActiveThreshold;
+
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, GroupContract, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state::{DAO, GROUP_CONTRACT};
+use crate::state::{ACTIVE_THRESHOLD, DAO, GROUP_CONTRACT};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw4";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -25,6 +28,19 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    // Validate and save the active threshold if provided
+    if let Some(threshold) = msg.active_threshold {
+        if let ActiveThreshold::AbsoluteCount { count } = threshold {
+            if count > Uint128::zero() {
+                ACTIVE_THRESHOLD.save(deps.storage, &threshold)?;
+            } else {
+                return Err(ContractError::InvalidThreshold {});
+            }
+        } else {
+            return Err(ContractError::InvalidThreshold {});
+        }
+    }
 
     DAO.save(deps.storage, &info.sender)?;
 
@@ -108,12 +124,69 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    _deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
-    _info: MessageInfo,
-    _msg: ExecuteMsg,
+    info: MessageInfo,
+    msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    Err(ContractError::NoExecute {})
+    match msg {
+        ExecuteMsg::UpdateActiveThreshold { new_threshold } => {
+            let dao = DAO.load(deps.storage)?;
+            if info.sender != dao {
+                return Err(ContractError::Unauthorized {});
+            }
+            if let Some(threshold) = new_threshold {
+                if let ActiveThreshold::AbsoluteCount { count } = threshold {
+                    if count > Uint128::zero() {
+                        ACTIVE_THRESHOLD.save(deps.storage, &threshold)?;
+                    } else {
+                        return Err(ContractError::InvalidThreshold {});
+                    }
+                } else {
+                    return Err(ContractError::InvalidThreshold {});
+                }
+            } else {
+                ACTIVE_THRESHOLD.remove(deps.storage);
+            }
+
+            Ok(Response::new()
+                .add_attribute("method", "update_active_threshold")
+                .add_attribute("status", "success"))
+        }
+    }
+}
+
+pub fn execute_update_active_threshold(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    new_active_threshold: Option<ActiveThreshold>,
+) -> Result<Response, ContractError> {
+    let dao = DAO.load(deps.storage)?;
+    if info.sender != dao {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    if let Some(active_threshold) = new_active_threshold {
+        match active_threshold {
+            ActiveThreshold::AbsoluteCount { count } => {
+                if count.is_zero() {
+                    return Err(ContractError::InvalidThreshold {});
+                }
+                ACTIVE_THRESHOLD.save(deps.storage, &active_threshold)?;
+            }
+            // Reject percentage-based thresholds
+            ActiveThreshold::Percentage { .. } => {
+                return Err(ContractError::InvalidThreshold {});
+            }
+        }
+    } else {
+        ACTIVE_THRESHOLD.remove(deps.storage);
+    }
+
+    Ok(Response::new()
+        .add_attribute("method", "update_active_threshold")
+        .add_attribute("status", "success"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -126,6 +199,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Info {} => query_info(deps),
         QueryMsg::GroupContract {} => to_json_binary(&GROUP_CONTRACT.load(deps.storage)?),
         QueryMsg::Dao {} => to_json_binary(&DAO.load(deps.storage)?),
+        QueryMsg::IsActive {} => query_is_active(deps),
     }
 }
 
@@ -164,8 +238,26 @@ pub fn query_total_power_at_height(deps: Deps, env: Env, height: Option<u64>) ->
 }
 
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
-    let info = cw2::get_contract_version(deps.storage)?;
+    let info = get_contract_version(deps.storage)?;
     to_json_binary(&dao_interface::voting::InfoResponse { info })
+}
+
+pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
+    let active_threshold = ACTIVE_THRESHOLD.load(deps.storage)?;
+    let group_contract = GROUP_CONTRACT.load(deps.storage)?;
+    let total_weight: TotalWeightResponse = deps.querier.query_wasm_smart(
+        group_contract,
+        &cw4_group::msg::QueryMsg::TotalWeight { at_height: None },
+    )?;
+
+    let is_active = match active_threshold {
+        ActiveThreshold::AbsoluteCount { count } => {
+            Uint128::new(total_weight.weight as u128) >= count
+        }
+        _ => false, // Should never happen as percentage is not supported
+    };
+
+    to_json_binary(&IsActiveResponse { active: is_active })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

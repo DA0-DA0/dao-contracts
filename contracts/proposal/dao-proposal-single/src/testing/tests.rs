@@ -1055,6 +1055,7 @@ fn test_timelocked_proposal_veto_expired_timelock() -> anyhow::Result<()> {
             },
         ]),
     );
+
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
 
@@ -1141,6 +1142,7 @@ fn test_timelocked_proposal_execute_no_early_exec() -> anyhow::Result<()> {
             amount: Uint128::new(85),
         }]),
     );
+
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
 
@@ -1225,6 +1227,7 @@ fn test_timelocked_proposal_execute_early() -> anyhow::Result<()> {
             amount: Uint128::new(85),
         }]),
     );
+
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
 
@@ -1315,6 +1318,7 @@ fn test_timelocked_proposal_execute_active_timelock_unauthorized() -> anyhow::Re
             amount: Uint128::new(85),
         }]),
     );
+
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
 
@@ -1406,6 +1410,7 @@ fn test_timelocked_proposal_execute_expired_timelock_not_vetoer() -> anyhow::Res
             amount: Uint128::new(85),
         }]),
     );
+
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
 
@@ -1492,6 +1497,7 @@ fn test_proposal_message_timelock_veto() -> anyhow::Result<()> {
             amount: Uint128::new(85),
         }]),
     );
+
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
 
@@ -1617,6 +1623,7 @@ fn test_proposal_message_timelock_early_execution() -> anyhow::Result<()> {
             },
         ]),
     );
+
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
 
@@ -1704,6 +1711,7 @@ fn test_proposal_message_timelock_veto_before_passed() {
             },
         ]),
     );
+
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
 
@@ -1777,6 +1785,7 @@ fn test_veto_only_members_execute_proposal() -> anyhow::Result<()> {
             amount: Uint128::new(85),
         }]),
     );
+
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
 
@@ -1902,6 +1911,7 @@ fn test_proposal_cant_close_after_expiry_is_passed() {
             },
         ]),
     );
+
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
 
@@ -2629,6 +2639,7 @@ fn test_min_duration_same_as_proposal_duration() {
             },
         ]),
     );
+
     let gov_token = query_dao_token(&app, &core_addr);
     let proposal_module = query_single_proposal_module(&app, &core_addr);
 

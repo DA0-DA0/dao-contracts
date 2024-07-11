@@ -601,6 +601,7 @@ pub(crate) fn instantiate_with_cw4_groups_governance(
                     cw4_group_code_id: cw4_id,
                     initial_members: initial_weights,
                 },
+                active_threshold: None,
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),

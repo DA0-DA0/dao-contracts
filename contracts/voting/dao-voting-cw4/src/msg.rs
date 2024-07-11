@@ -1,5 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use dao_dao_macros::voting_module_query;
+use dao_dao_macros::{active_query, voting_module_query};
+use dao_voting::threshold::ActiveThreshold;
 
 #[cw_serde]
 pub enum GroupContract {
@@ -15,11 +16,20 @@ pub enum GroupContract {
 #[cw_serde]
 pub struct InstantiateMsg {
     pub group_contract: GroupContract,
+    pub active_threshold: Option<ActiveThreshold>,
 }
 
 #[cw_serde]
-pub enum ExecuteMsg {}
+pub enum ExecuteMsg {
+    /// Sets the active threshold to a new value. Only the
+    /// instantiator of this contract (a DAO most likely) may call this
+    /// method.
+    UpdateActiveThreshold {
+        new_threshold: Option<ActiveThreshold>,
+    },
+}
 
+#[active_query]
 #[voting_module_query]
 #[cw_serde]
 #[derive(QueryResponses)]
