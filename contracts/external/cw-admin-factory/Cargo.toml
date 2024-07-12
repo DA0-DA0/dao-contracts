@@ -1,5 +1,5 @@
 [package]
-name ="cw-admin-factory"
+name = "cw-admin-factory"
 authors = ["Jake Hartnell", "blue-note", "ekez <ekez@withoutdoing.com>"]
 description = "A CosmWasm factory contract for instantiating a contract as its own admin."
 edition = { workspace = true }
@@ -17,7 +17,7 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-cosmwasm-std = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["cosmwasm_1_2"] }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
