@@ -162,9 +162,12 @@ fn create_submission_required_deposit() {
         )
         .unwrap_err();
 
-    assert_eq!(ContractError::DepositRequired {}, err.downcast().unwrap());
+    assert_eq!(
+        ContractError::PaymentError(cw_utils::PaymentError::NoFunds {}),
+        err.downcast().unwrap()
+    );
 
-    // Fails if correct denom but not enought amount.
+    // Fails if correct denom but not enough amount.
     let err = suite
         .execute_create_submission(
             suite.owner.clone(),

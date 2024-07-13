@@ -1,15 +1,19 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coins, from_json, to_json_binary, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Order, Response, StdError, StdResult, Uint128, WasmMsg,
+    from_json, to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response,
+    StdResult, Uint128,
 };
 use cw2::set_contract_version;
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw20::Cw20ReceiveMsg;
+use cw_denom::UncheckedDenom;
+use cw_utils::{one_coin, PaymentError};
 
 use crate::error::ContractError;
-use crate::msg::{AdapterQueryMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, ReceiveMsg};
-use crate::state::{AssetType, Config, Submission, CONFIG, SUBMISSIONS};
+use crate::msg::{
+    AdapterQueryMsg, AssetUnchecked, ExecuteMsg, InstantiateMsg, MigrateMsg, ReceiveMsg,
+};
+use crate::state::{Config, Submission, CONFIG, SUBMISSIONS};
 
 // Version info for migration info.
 const CONTRACT_NAME: &str = "crates.io:marketing-gauge-adapter";
@@ -37,9 +41,12 @@ pub fn instantiate(
 
     let config = Config {
         admin: deps.api.addr_validate(&msg.admin)?,
-        required_deposit: msg.required_deposit,
+        required_deposit: msg
+            .required_deposit
+            .map(|x| x.into_checked(deps.as_ref()))
+            .transpose()?,
         community_pool,
-        reward: msg.reward,
+        reward: msg.reward.into_checked(deps.as_ref())?,
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -56,17 +63,17 @@ pub fn execute(
     match msg {
         ExecuteMsg::Receive(msg) => receive_cw20_message(deps, info, msg),
         ExecuteMsg::CreateSubmission { name, url, address } => {
-            // TODO this is very hacky
-            let received = info.funds.into_iter().next().unwrap_or_default();
-            execute::create_submission(
-                deps,
-                info.sender,
-                name,
-                url,
-                address,
-                received.amount,
-                AssetType::Native(received.denom),
-            )
+            let received = match one_coin(&info) {
+                Ok(coin) => Ok(Some(coin)),
+                Err(PaymentError::NoFunds {}) => Ok(None),
+                Err(error) => Err(error),
+            }?
+            .map(|x| AssetUnchecked {
+                denom: UncheckedDenom::Native(x.denom),
+                amount: x.amount,
+            });
+
+            execute::create_submission(deps, info.sender, name, url, address, received)
         }
         ExecuteMsg::ReturnDeposits {} => execute::return_deposits(deps, info.sender),
     }
@@ -78,44 +85,17 @@ fn receive_cw20_message(
     msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     match from_json(&msg.msg)? {
-        ReceiveMsg::CreateSubmission { name, url, address } => {
-            let denom = AssetType::Cw20(info.sender.to_string());
-            execute::create_submission(
-                deps,
-                Addr::unchecked(msg.sender),
-                name,
-                url,
-                address,
-                msg.amount,
-                denom,
-            )
-        }
-    }
-}
-
-fn create_bank_msg(
-    denom: &AssetType,
-    amount: Uint128,
-    recipient: Addr,
-) -> Result<CosmosMsg, StdError> {
-    match denom {
-        AssetType::Cw20(address) => Ok(WasmMsg::Execute {
-            contract_addr: address.to_string(),
-            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
-                recipient: recipient.to_string(),
-                amount,
-            })?,
-            funds: vec![],
-        }
-        .into()),
-        AssetType::Native(denom) => {
-            let amount = coins(amount.u128(), denom);
-            Ok(BankMsg::Send {
-                to_address: recipient.to_string(),
-                amount,
-            }
-            .into())
-        }
+        ReceiveMsg::CreateSubmission { name, url, address } => execute::create_submission(
+            deps,
+            Addr::unchecked(msg.sender),
+            name,
+            url,
+            address,
+            Some(AssetUnchecked::new_cw20(
+                info.sender.as_str(),
+                msg.amount.u128(),
+            )),
+        ),
     }
 }
 
@@ -130,8 +110,7 @@ pub mod execute {
         name: String,
         url: String,
         address: String,
-        received_amount: Uint128,
-        received_denom: AssetType,
+        received: Option<AssetUnchecked>,
     ) -> Result<Response, ContractError> {
         let address = deps.api.addr_validate(&address)?;
 
@@ -142,20 +121,23 @@ pub mod execute {
             admin: _,
         } = CONFIG.load(deps.storage)?;
         if let Some(required_deposit) = required_deposit {
-            if AssetType::Native("".into()) == received_denom {
-                return Err(ContractError::DepositRequired {});
+            if let Some(received) = received {
+                let received_denom = received.denom.into_checked(deps.as_ref())?;
+
+                if required_deposit.denom != received_denom {
+                    return Err(ContractError::InvalidDepositType {});
+                }
+                if received.amount != required_deposit.amount {
+                    return Err(ContractError::InvalidDepositAmount {
+                        correct_amount: required_deposit.amount,
+                    });
+                }
+            } else {
+                return Err(ContractError::PaymentError(PaymentError::NoFunds {}));
             }
-            if required_deposit.denom != received_denom {
-                return Err(ContractError::InvalidDepositType {});
-            }
-            if received_amount != required_deposit.amount {
-                return Err(ContractError::InvalidDepositAmount {
-                    correct_amount: required_deposit.amount,
-                });
-            }
-        } else {
+        } else if let Some(received) = received {
             // If no deposit is required, then any deposit invalidates a submission.
-            if !received_amount.is_zero() {
+            if !received.amount.is_zero() {
                 return Err(ContractError::InvalidDepositAmount {
                     correct_amount: Uint128::zero(),
                 });
@@ -190,11 +172,10 @@ pub mod execute {
             .range(deps.storage, None, None, Order::Ascending)
             .map(|item| {
                 let (_submission_recipient, submission) = item?;
-                create_bank_msg(
-                    &required_deposit.denom,
-                    required_deposit.amount,
-                    submission.sender,
-                )
+
+                required_deposit
+                    .denom
+                    .get_transfer_to_message(&submission.sender, required_deposit.amount)
             })
             .collect::<StdResult<Vec<CosmosMsg>>>()?;
 
@@ -221,7 +202,7 @@ pub fn query(deps: Deps, _env: Env, msg: AdapterQueryMsg) -> StdResult<Binary> {
 }
 
 mod query {
-    use cosmwasm_std::{CosmosMsg, Decimal};
+    use cosmwasm_std::{CosmosMsg, Decimal, StdError};
 
     use crate::msg::{
         AllOptionsResponse, AllSubmissionsResponse, CheckOptionResponse, SampleGaugeMsgsResponse,
@@ -254,12 +235,16 @@ mod query {
         let execute = winners
             .into_iter()
             .map(|(to_address, fraction)| {
-                // Gauge already sents chosen tally to this query by using results we send in
+                // Gauge already sends chosen tally to this query by using results we send in
                 // all_options query; they are already validated
-                create_bank_msg(
-                    &reward.denom,
-                    fraction * reward.amount,
-                    Addr::unchecked(to_address),
+                let to_address = deps.api.addr_validate(&to_address)?;
+
+                reward.denom.get_transfer_to_message(
+                    &to_address,
+                    reward
+                        .amount
+                        .checked_mul_floor(fraction)
+                        .map_err(|x| StdError::generic_err(x.to_string()))?,
                 )
             })
             .collect::<StdResult<Vec<CosmosMsg>>>()?;
@@ -306,20 +291,23 @@ mod tests {
     use super::*;
 
     use cosmwasm_std::{
+        coins,
         testing::{mock_dependencies, mock_env, mock_info},
-        Decimal, Uint128,
+        BankMsg, CosmosMsg, Decimal, Uint128, WasmMsg,
     };
+    use cw20::Cw20ExecuteMsg;
+    use cw_denom::CheckedDenom;
 
-    use crate::state::Asset;
+    use crate::{msg::AssetUnchecked, state::Asset};
 
     #[test]
     fn proper_initialization() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
             admin: "admin".to_owned(),
-            required_deposit: Some(Asset::new_cw20("wynd", 10_000_000)),
+            required_deposit: Some(AssetUnchecked::new_cw20("wynd", 10_000_000)),
             community_pool: "community".to_owned(),
-            reward: Asset::new_native("ujuno", 150_000_000_000),
+            reward: AssetUnchecked::new_native("ujuno", 150_000_000_000),
         };
         instantiate(
             deps.as_mut(),
@@ -335,7 +323,7 @@ mod tests {
         assert_eq!(
             config.required_deposit,
             Some(Asset {
-                denom: AssetType::Cw20("wynd".to_owned()),
+                denom: CheckedDenom::Cw20(Addr::unchecked("wynd")),
                 amount: Uint128::new(10_000_000)
             })
         );
@@ -343,13 +331,13 @@ mod tests {
         assert_eq!(
             config.reward,
             Asset {
-                denom: AssetType::Native("ujuno".to_owned()),
+                denom: CheckedDenom::Native("ujuno".to_owned()),
                 amount: Uint128::new(150_000_000_000)
             }
         );
 
         let msg = InstantiateMsg {
-            reward: Asset::new_native("ujuno", 10_000_000),
+            reward: AssetUnchecked::new_native("ujuno", 10_000_000),
             ..msg
         };
         instantiate(
@@ -363,7 +351,7 @@ mod tests {
         assert_eq!(
             config.reward,
             Asset {
-                denom: AssetType::Native("ujuno".to_owned()),
+                denom: CheckedDenom::Native("ujuno".to_owned()),
                 amount: Uint128::new(10_000_000)
             }
         );
@@ -384,9 +372,9 @@ mod tests {
         let reward = Uint128::new(150_000_000_000);
         let msg = InstantiateMsg {
             admin: "admin".to_owned(),
-            required_deposit: Some(Asset::new_cw20("wynd", 10_000_000)),
+            required_deposit: Some(AssetUnchecked::new_cw20("wynd", 10_000_000)),
             community_pool: "community".to_owned(),
-            reward: Asset::new_native("ujuno", reward.into()),
+            reward: AssetUnchecked::new_native("ujuno", reward.into()),
         };
         instantiate(deps.as_mut(), mock_env(), mock_info("user", &[]), msg).unwrap();
 
@@ -432,9 +420,9 @@ mod tests {
         let reward = Uint128::new(150_000_000_000);
         let msg = InstantiateMsg {
             admin: "admin".to_owned(),
-            required_deposit: Some(Asset::new_cw20("wynd", 10_000_000)),
+            required_deposit: Some(AssetUnchecked::new_cw20("wynd", 10_000_000)),
             community_pool: "community".to_owned(),
-            reward: Asset::new_cw20("wynd", reward.into()),
+            reward: AssetUnchecked::new_cw20("wynd", reward.into()),
         };
         instantiate(deps.as_mut(), mock_env(), mock_info("user", &[]), msg).unwrap();
 
@@ -495,7 +483,7 @@ mod tests {
             admin: "admin".to_owned(),
             required_deposit: None,
             community_pool: "community".to_owned(),
-            reward: Asset::new_native("ujuno", 150_000_000_000),
+            reward: AssetUnchecked::new_native("ujuno", 150_000_000_000),
         };
         instantiate(
             deps.as_mut(),
@@ -509,7 +497,7 @@ mod tests {
         assert_eq!(err, ContractError::NoDepositToRefund {});
 
         let msg = InstantiateMsg {
-            required_deposit: Some(Asset::new_native("ujuno", 10_000_000)),
+            required_deposit: Some(AssetUnchecked::new_native("ujuno", 10_000_000)),
             ..msg
         };
         instantiate(deps.as_mut(), mock_env(), mock_info("user", &[]), msg).unwrap();

@@ -27,6 +27,7 @@ cw20 = { workspace = true }
 cw-utils = { workspace = true }
 semver = { workspace = true }
 thiserror = { workspace = true }
+cw-denom = { workspace = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }

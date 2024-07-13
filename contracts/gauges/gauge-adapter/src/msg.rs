@@ -1,19 +1,18 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, CosmosMsg, Decimal};
+use cosmwasm_std::{Addr, CosmosMsg, Decimal, Uint128};
 use cw20::Cw20ReceiveMsg;
-
-use crate::state::Asset;
+use cw_denom::UncheckedDenom;
 
 #[cw_serde]
 pub struct InstantiateMsg {
     /// Address that is allowed to return deposits.
     pub admin: String,
     /// Deposit required for valid submission. This option allows to reduce spam.
-    pub required_deposit: Option<Asset>,
+    pub required_deposit: Option<AssetUnchecked>,
     /// Address of contract where each deposit is transferred.
     pub community_pool: String,
     /// Total reward amount.
-    pub reward: Asset,
+    pub reward: AssetUnchecked,
 }
 
 #[cw_serde]
@@ -96,4 +95,10 @@ pub struct SubmissionResponse {
 #[cw_serde]
 pub struct AllSubmissionsResponse {
     pub submissions: Vec<SubmissionResponse>,
+}
+
+#[cw_serde]
+pub struct AssetUnchecked {
+    pub denom: UncheckedDenom,
+    pub amount: Uint128,
 }

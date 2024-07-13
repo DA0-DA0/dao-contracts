@@ -1,10 +1,18 @@
 use cosmwasm_std::{StdError, Uint128};
+use cw_denom::DenomError;
+use cw_utils::PaymentError;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
+
+    #[error("{0}")]
+    PaymentError(#[from] PaymentError),
+
+    #[error("{0}")]
+    DenomError(#[from] DenomError),
 
     #[error("Operation unauthorized - only admin can release deposits")]
     Unauthorized {},
@@ -20,7 +28,4 @@ pub enum ContractError {
 
     #[error("No deposit was required, therefore no deposit can be returned")]
     NoDepositToRefund {},
-
-    #[error("Deposit required, cannot create submission.")]
-    DepositRequired {},
 }

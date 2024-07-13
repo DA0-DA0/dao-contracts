@@ -1,20 +1,18 @@
 use cosmwasm_std::{to_json_binary, Addr, Binary, Coin, Uint128};
 use cw20::{BalanceResponse, Cw20QueryMsg};
 use cw20::{Cw20Coin, MinterResponse};
+use cw_denom::UncheckedDenom;
 use cw_multi_test::{App, AppResponse, ContractWrapper, Executor};
 
 use anyhow::Result as AnyResult;
 use cw20_base::msg::ExecuteMsg as Cw20BaseExecuteMsg;
 use cw20_base::msg::InstantiateMsg as Cw20BaseInstantiateMsg;
 
-use crate::msg::CheckOptionResponse;
-use crate::{
-    msg::{
-        AdapterQueryMsg, AllOptionsResponse, AllSubmissionsResponse, ExecuteMsg, ReceiveMsg,
-        SubmissionResponse,
-    },
-    state::{Asset, AssetType},
+use crate::msg::{
+    AdapterQueryMsg, AllOptionsResponse, AllSubmissionsResponse, ExecuteMsg, ReceiveMsg,
+    SubmissionResponse,
 };
+use crate::msg::{AssetUnchecked, CheckOptionResponse};
 
 pub const NATIVE: &str = "juno";
 pub const CW20: &str = "wynd";
@@ -46,8 +44,8 @@ fn store_cw20(app: &mut App) -> u64 {
 pub struct SuiteBuilder {
     // Gauge adapter's instantiate params
     community_pool: String,
-    required_deposit: Option<Asset>,
-    reward: Asset,
+    required_deposit: Option<AssetUnchecked>,
+    reward: AssetUnchecked,
     funds: Vec<(Addr, Vec<Coin>)>,
     cw20_funds: Vec<Cw20Coin>,
 }
@@ -57,8 +55,8 @@ impl SuiteBuilder {
         Self {
             community_pool: "community".to_owned(),
             required_deposit: None,
-            reward: Asset {
-                denom: AssetType::Native(NATIVE.into()),
+            reward: AssetUnchecked {
+                denom: UncheckedDenom::Native(NATIVE.into()),
                 amount: Uint128::new(1_000_000),
             },
             funds: vec![],
@@ -88,8 +86,8 @@ impl SuiteBuilder {
 
     // Allows to initialize the marketing gauge adapter with required native coins in the config.
     pub fn with_native_deposit(mut self, amount: u128) -> Self {
-        self.required_deposit = Some(Asset {
-            denom: AssetType::Native(NATIVE.into()),
+        self.required_deposit = Some(AssetUnchecked {
+            denom: UncheckedDenom::Native(NATIVE.into()),
             amount: Uint128::from(amount),
         });
         self
@@ -97,8 +95,8 @@ impl SuiteBuilder {
 
     // Allows to initialize the marketing gauge adapter with required cw20 tokens in the config.
     pub fn with_cw20_deposit(mut self, amount: u128) -> Self {
-        self.required_deposit = Some(Asset {
-            denom: AssetType::Cw20("contract1".to_string()),
+        self.required_deposit = Some(AssetUnchecked {
+            denom: UncheckedDenom::Cw20("contract1".to_string()),
             amount: Uint128::from(amount),
         });
         self

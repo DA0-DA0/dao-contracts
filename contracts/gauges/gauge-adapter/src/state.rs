@@ -1,5 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
+use cw_denom::CheckedDenom;
 use cw_storage_plus::{Item, Map};
 
 #[cw_serde]
@@ -17,31 +18,9 @@ pub struct Config {
 pub const CONFIG: Item<Config> = Item::new("config");
 
 #[cw_serde]
-pub enum AssetType {
-    Native(String),
-    Cw20(String),
-}
-
-#[cw_serde]
 pub struct Asset {
-    pub denom: AssetType,
+    pub denom: CheckedDenom,
     pub amount: Uint128,
-}
-
-impl Asset {
-    pub fn new_native(denom: &str, amount: u128) -> Self {
-        Self {
-            denom: AssetType::Native(denom.to_owned()),
-            amount: amount.into(),
-        }
-    }
-
-    pub fn new_cw20(denom: &str, amount: u128) -> Self {
-        Self {
-            denom: AssetType::Cw20(denom.to_owned()),
-            amount: amount.into(),
-        }
-    }
 }
 
 #[cw_serde]
@@ -51,5 +30,5 @@ pub struct Submission {
     pub url: String,
 }
 
-// All submissions indexed by submition's fund destination address.
+// All submissions mapped by fund destination address.
 pub const SUBMISSIONS: Map<Addr, Submission> = Map::new("submissions");

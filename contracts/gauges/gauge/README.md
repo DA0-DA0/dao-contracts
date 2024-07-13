@@ -24,13 +24,13 @@ and eventually stopping them if we don't need them anymore (to avoid extra write
 
 ## Gauge Functionality
 
-A gauge is initialised with a set of options. Anyone with voting power may vote for any option at any time,
-which is recorded, and also updates the tally. If they revote, it checks their last vote to reduce power on
+A gauge is initialized with a set of options. Anyone with voting power may vote for any option at any time,
+which is recorded, and also updates the tally. If they re-vote, it checks their last vote to reduce power on
 that before adding to the new one. When an "update hook" is triggered, it updates the voting power of that user's vote, while maintaining the same option. Either increasing or decreasing the tally for the given option as appropriate.
 
 Every epoch (eg 1/week), the current tally of the gauge is sampled, and some cut-off applies
 (top 20, min 0.5% of votes, etc). The resulting set is the "selected set" and the options along with
-their relative vote counts (normalised to 1.0 = total votes within this set) is used to initiate some
+their relative vote counts (normalized to 1.0 = total votes within this set) is used to initiate some
 action (eg. distribute reward tokens).
 
 ## Extensibility
