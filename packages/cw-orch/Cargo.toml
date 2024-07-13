@@ -18,6 +18,13 @@ cw20-stake = { version = "2.4.2", path = "../../contracts/staking/cw20-stake" }
 cw20-stake-external-rewards = { version = "2.4.2", path = "../../contracts/staking/cw20-stake-external-rewards" }
 cw20-stake-reward-distributor = { version = "2.4.2", path = "../../contracts/staking/cw20-stake-reward-distributor" }
 cw721-base.workspace = true
+cw721-roles = { path = "../../contracts/external/cw721-roles", version = "2.4.2" }
+cw-admin-factory = { path = "../../contracts/external/cw-admin-factory", version = "2.5.0" }
+cw-vesting  = { version = "2.4.2", path = "../../contracts/external/cw-vesting" }
+cw-payroll-factory = { version = "2.4.2", path = "../../contracts/external/cw-payroll-factory" }
+cw-token-swap  = { version = "2.4.2", path = "../../contracts/external/cw-token-swap" }
+cw-tokenfactory-issuer  = { version = "2.4.2", path = "../../contracts/external/cw-tokenfactory-issuer" }
+dao-migrator  = { version = "2.4.2", path = "../../contracts/external/dao-migrator" }
 dao-dao-core = { version = "2.4.2", path = "../../contracts/dao-dao-core" }
 dao-interface = { version = "2.4.2", path = "../dao-interface" }
 dao-pre-propose-approval-single = { version = "2.4.2", path = "../../contracts/pre-propose/dao-pre-propose-approval-single" }

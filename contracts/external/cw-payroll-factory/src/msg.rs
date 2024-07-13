@@ -11,6 +11,7 @@ pub struct InstantiateMsg {
 
 #[cw_ownable_execute]
 #[cw_serde]
+#[derive(cw_orch::ExecuteFns)]
 pub enum ExecuteMsg {
     /// Instantiates a new vesting contract that is funded by a cw20 token.
     Receive(Cw20ReceiveMsg),
@@ -36,7 +37,7 @@ pub enum ReceiveMsg {
 }
 
 #[cw_serde]
-#[derive(QueryResponses)]
+#[derive(QueryResponses,cw_orch::QueryFns)]
 pub enum QueryMsg {
     /// Returns list of all vesting payment contracts
     #[returns(Vec<crate::state::VestingContract>)]
