@@ -1,4 +1,5 @@
 mod core;
+mod external;
 mod pre_propose;
 mod proposal;
 mod staking;
@@ -6,6 +7,7 @@ mod test_contracts;
 mod voting;
 
 pub use core::*;
+pub use external::*;
 pub use pre_propose::*;
 pub use proposal::*;
 pub use staking::*;
