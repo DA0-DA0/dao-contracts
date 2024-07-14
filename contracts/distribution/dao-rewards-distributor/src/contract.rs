@@ -1,9 +1,9 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coins, ensure, from_json, to_json_binary, Addr, BankMsg, Binary, BlockInfo, CosmosMsg, Decimal,
-    Deps, DepsMut, Env, MessageInfo, Order, Response, StdError, StdResult, Uint128, Uint256,
-    WasmMsg,
+    coin, coins, ensure, from_json, to_json_binary, Addr, BankMsg, Binary, BlockInfo, Coin,
+    CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError, StdResult,
+    Uint128, Uint256, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20ReceiveMsg, Denom};
@@ -24,7 +24,9 @@ use crate::msg::{
     ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, ReceiveMsg,
     RegisterRewardDenomMsg, RewardEmissionRate, RewardsStateResponse,
 };
-use crate::state::{DenomRewardState, EpochConfig, DENOM_REWARD_STATES, USER_REWARD_STATES};
+use crate::state::{
+    DenomRewardState, EpochConfig, UserRewardState, DENOM_REWARD_STATES, USER_REWARD_STATES,
+};
 use crate::ContractError;
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -90,7 +92,7 @@ fn execute_update_reward_rate(
         &reward_state.vp_contract,
         &reward_state.last_update,
     )?;
-    reward_state = reward_state.bump_last_update(&env.block);
+    reward_state.bump_last_update(&env.block);
 
     // transition the epoch to the new emission rate and save
     reward_state.transition_epoch(new_emission_rate, &env.block)?;
@@ -111,7 +113,10 @@ fn execute_register_reward_denom(
     // only the owner can register a new denom
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
-    msg.emission_rate.validate_emission_time_window()?;
+    // Reward duration must be greater than 0 seconds/blocks
+    if get_duration_scalar(&msg.emission_rate.duration) == 0 {
+        return Err(ContractError::ZeroRewardDuration {});
+    }
 
     let checked_denom = msg.denom.into_checked(deps.as_ref())?;
     let hook_caller = deps.api.addr_validate(&msg.hook_caller)?;
@@ -156,7 +161,7 @@ fn execute_register_reward_denom(
     // update the registered hooks to include the new denom
     subscribe_denom_to_hook(deps, str_denom, hook_caller.clone())?;
 
-    Ok(Response::default())
+    Ok(Response::default().add_attribute("action", "register_reward_denom"))
 }
 
 /// shutdown the rewards distributor contract.
@@ -186,7 +191,7 @@ fn execute_shutdown(
     // we get the start and end scalar values in u64 (seconds/blocks)
     let started_at = reward_state.get_started_at_scalar()?;
     let ends_at = reward_state.get_ends_at_scalar()?;
-    let reward_duration = ends_at - started_at;
+    let reward_duration_scalar = ends_at - started_at;
 
     // find the % of reward_duration that remains from current block
     let passed_units_since_start = match reward_state.active_epoch_config.emission_rate.duration {
@@ -199,7 +204,7 @@ fn execute_shutdown(
     let remaining_reward_duration_fraction = Decimal::one()
         .checked_sub(Decimal::from_ratio(
             passed_units_since_start,
-            reward_duration,
+            reward_duration_scalar,
         ))
         .map_err(|e| ContractError::Std(StdError::overflow(e)))?;
 
@@ -263,9 +268,8 @@ fn execute_fund(
         .get_funded_period_duration(amount)?;
     let funded_period_value = get_duration_scalar(&funded_period_duration);
 
-    denom_reward_state = denom_reward_state
-        .bump_funding_date(&env.block)
-        .bump_last_update(&env.block);
+    denom_reward_state.bump_last_update(&env.block);
+    denom_reward_state.bump_funding_date(&env.block);
 
     // the duration of rewards period is extended in different ways,
     // depending on the current expiration state and current block
@@ -304,7 +308,10 @@ fn execute_fund(
         &denom_reward_state,
     )?;
 
-    Ok(Response::default())
+    Ok(Response::default()
+        .add_attribute("action", "fund")
+        .add_attribute("fund_denom", denom_reward_state.to_str_denom())
+        .add_attribute("fund_amount", amount))
 }
 
 fn execute_claim(
@@ -317,14 +324,12 @@ fn execute_claim(
     // and the user reward state, so we operate on the correct state.
     update_rewards(&mut deps, &env, &info.sender, denom.to_string())?;
 
-    // load the updated states
+    // load the updated states. previous `update_rewards` call ensures that these states exist.
     let denom_reward_state = DENOM_REWARD_STATES.load(deps.storage, denom.to_string())?;
-    let mut user_reward_state = USER_REWARD_STATES
-        .may_load(deps.storage, info.sender.clone())?
-        .unwrap_or_default();
+    let mut user_reward_state = USER_REWARD_STATES.load(deps.storage, info.sender.clone())?;
 
     // updating the map returns the previous value if it existed.
-    // we set the value to zero and store it in the amount defined before the update.
+    // we set the value to zero and get the amount of pending rewards until this point.
     let claim_amount = user_reward_state
         .pending_denom_rewards
         .insert(denom.to_string(), Uint128::zero())
@@ -334,10 +339,6 @@ fn execute_claim(
     if claim_amount.is_zero() {
         return Err(ContractError::NoRewardsClaimable {});
     }
-
-    user_reward_state
-        .pending_denom_rewards
-        .insert(denom.clone(), Uint128::zero());
 
     // otherwise reflect the updated user reward state and transfer out the claimed rewards
     USER_REWARD_STATES.save(deps.storage, info.sender.clone(), &user_reward_state)?;
@@ -394,13 +395,10 @@ pub fn get_total_earned_puvp(
     if prev_total_power.is_zero() {
         Ok(curr)
     } else {
-        let duration_value = get_duration_scalar(&epoch.emission_rate.duration);
-
         // count intervals of the rewards emission that have passed since the
         // last update which need to be distributed
-        let complete_distribution_periods =
-            new_reward_distribution_duration.checked_div(Uint128::from(duration_value))?;
-
+        let complete_distribution_periods = new_reward_distribution_duration
+            .checked_div(get_duration_scalar(&epoch.emission_rate.duration).into())?;
         // It is impossible for this to overflow as total rewards can never
         // exceed max value of Uint128 as total tokens in existence cannot
         // exceed Uint128 (because the bank module Coin type uses Uint128).
@@ -413,11 +411,11 @@ pub fn get_total_earned_puvp(
         // the new rewards per unit voting power that have been distributed
         // since the last update
         let new_rewards_puvp = new_rewards_distributed.checked_div(prev_total_power.into())?;
-        Ok(curr + new_rewards_puvp)
+        Ok(curr.checked_add(new_rewards_puvp)?)
     }
 }
 
-// get a user's rewards not yet accounted for in their reward state
+// get a user's rewards not yet accounted for in their reward states.
 pub fn get_accrued_rewards_since_last_user_action(
     deps: Deps,
     env: &Env,
@@ -425,11 +423,8 @@ pub fn get_accrued_rewards_since_last_user_action(
     total_earned_puvp: Uint256,
     vp_contract: &Addr,
     denom: String,
-) -> StdResult<HashMap<String, Uint128>> {
-    let user_reward_state = USER_REWARD_STATES
-        .load(deps.storage, addr.clone())
-        .unwrap_or_default();
-
+    user_reward_state: &UserRewardState,
+) -> StdResult<Coin> {
     // get previous reward per unit voting power accounted for
     let user_last_reward_puvp = user_reward_state
         .accounted_denom_rewards_puvp
@@ -442,12 +437,8 @@ pub fn get_accrued_rewards_since_last_user_action(
     // power accounted for.
     let reward_factor = total_earned_puvp.checked_sub(user_last_reward_puvp)?;
     // get the user's voting power at the current height
-    let voting_power = Uint256::from(get_voting_power_at_block(
-        deps,
-        &env.block,
-        vp_contract,
-        addr,
-    )?);
+    let voting_power: Uint256 =
+        get_voting_power_at_block(deps, &env.block, vp_contract, addr)?.into();
 
     // calculate the amount of rewards earned:
     // voting_power * reward_factor / scale_factor
@@ -456,10 +447,7 @@ pub fn get_accrued_rewards_since_last_user_action(
         .checked_div(scale_factor())?
         .try_into()?;
 
-    Ok(HashMap::from_iter(vec![(
-        denom.to_string(),
-        accrued_rewards_amount,
-    )]))
+    Ok(coin(accrued_rewards_amount.u128(), denom))
 }
 
 fn get_prev_block_total_vp(
@@ -530,14 +518,14 @@ fn query_rewards_state(deps: Deps, _env: Env) -> StdResult<RewardsStateResponse>
 /// returns the pending rewards for a given address that are ready to be claimed.
 fn query_pending_rewards(deps: Deps, env: Env, addr: String) -> StdResult<PendingRewardsResponse> {
     let addr = deps.api.addr_validate(&addr)?;
-
+    // user may not have interacted with the contract before this query so we
+    // potentially return the default user reward state
     let user_reward_state = USER_REWARD_STATES
         .load(deps.storage, addr.clone())
         .unwrap_or_default();
     let reward_states = DENOM_REWARD_STATES
         .range(deps.storage, None, None, Order::Ascending)
         .collect::<StdResult<Vec<_>>>()?;
-    let default_amt = Uint128::zero();
 
     let mut pending_rewards: HashMap<String, Uint128> = HashMap::new();
 
@@ -562,13 +550,15 @@ fn query_pending_rewards(deps: Deps, env: Env, addr: String) -> StdResult<Pendin
             total_earned_puvp.checked_add(total_historic_puvp)?,
             &reward_state.vp_contract,
             denom.to_string(),
+            &user_reward_state,
         )?;
-        let earned_amount = earned_rewards.get(&denom).unwrap_or(&default_amt);
+        let earned_amount = earned_rewards.amount;
         let existing_amount = user_reward_state
             .pending_denom_rewards
             .get(&denom)
-            .unwrap_or(&default_amt);
-        pending_rewards.insert(denom, *earned_amount + *existing_amount);
+            .cloned()
+            .unwrap_or_default();
+        pending_rewards.insert(denom, earned_amount + existing_amount);
     }
 
     let pending_rewards_response = PendingRewardsResponse {

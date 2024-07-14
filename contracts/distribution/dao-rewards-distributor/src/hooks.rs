@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128};
+use cosmwasm_std::{Addr, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw4::MemberChangedHookMsg;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 
@@ -17,7 +17,6 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr, denom: String)
         .may_load(deps.storage, addr.clone())?
         .unwrap_or_default();
     let mut denom_reward_state = DENOM_REWARD_STATES.load(deps.storage, denom.clone())?;
-    let default_amount = Uint128::zero();
 
     // first we go over the historic epochs and sum the historic puvp
     let total_historic_puvp = denom_reward_state.get_historic_epoch_puvp_sum();
@@ -37,7 +36,7 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr, denom: String)
         .total_earned_puvp
         .checked_add(total_historic_puvp)?;
 
-    denom_reward_state = denom_reward_state.bump_last_update(&env.block);
+    denom_reward_state.bump_last_update(&env.block);
 
     let earned_rewards = get_accrued_rewards_since_last_user_action(
         deps.as_ref(),
@@ -46,19 +45,19 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr, denom: String)
         total_applicable_puvp,
         &denom_reward_state.vp_contract,
         denom.to_string(),
+        &user_reward_state,
     )?;
 
-    let earned_amount = earned_rewards.get(&denom).unwrap_or(&default_amount);
+    let earned_amount = earned_rewards.amount;
 
     // get the pre-existing pending reward amount for the denom
-    let previous_pending_denom_reward_amount = *user_reward_state
+    let previous_pending_denom_reward_amount = user_reward_state
         .pending_denom_rewards
         .get(&denom)
-        .unwrap_or(&Uint128::zero());
+        .cloned()
+        .unwrap_or_default();
 
-    let amount_sum = (*earned_amount)
-        .checked_add(previous_pending_denom_reward_amount)
-        .unwrap();
+    let amount_sum = earned_amount.checked_add(previous_pending_denom_reward_amount)?;
 
     // get the amount of newly earned rewards for the denom
     user_reward_state

@@ -164,19 +164,18 @@ impl DenomRewardState {
 }
 
 impl DenomRewardState {
-    pub fn bump_last_update(mut self, current_block: &BlockInfo) -> Self {
+    pub fn bump_last_update(&mut self, current_block: &BlockInfo) {
         self.last_update = match self.active_epoch_config.emission_rate.duration {
             Duration::Height(_) => Expiration::AtHeight(current_block.height),
             Duration::Time(_) => Expiration::AtTime(current_block.time),
         };
-        self
     }
 
     /// tries to update the last funding date.
     /// if distribution expiration is in the future, nothing changes.
     /// if distribution expiration is in the past, or had never been set,
     /// funding date becomes the current block.
-    pub fn bump_funding_date(mut self, current_block: &BlockInfo) -> Self {
+    pub fn bump_funding_date(&mut self, current_block: &BlockInfo) {
         // if its never been set before, we set it to current block and return
         if let Expiration::Never {} = self.active_epoch_config.started_at {
             self.active_epoch_config.started_at =
@@ -184,7 +183,6 @@ impl DenomRewardState {
                     Duration::Height(_) => Expiration::AtHeight(current_block.height),
                     Duration::Time(_) => Expiration::AtTime(current_block.time),
                 };
-            return self;
         }
 
         // if current distribution is expired, we set the funding date
@@ -196,8 +194,6 @@ impl DenomRewardState {
                     Duration::Time(_) => Expiration::AtTime(current_block.time),
                 };
         }
-
-        self
     }
 
     pub fn to_str_denom(&self) -> String {

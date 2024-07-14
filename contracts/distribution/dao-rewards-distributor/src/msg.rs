@@ -9,12 +9,12 @@ use cw_utils::Duration;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 use dao_interface::voting::InfoResponse;
 
-use crate::{state::DenomRewardState, ContractError};
-
 // so that consumers don't need a cw_ownable or cw_controllers dependency
 // to consume this contract's queries.
 pub use cw_controllers::ClaimsResponse;
 pub use cw_ownable::Ownership;
+
+use crate::state::DenomRewardState;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -69,14 +69,6 @@ pub struct RewardEmissionRate {
 }
 
 impl RewardEmissionRate {
-    pub fn validate_emission_time_window(&self) -> Result<(), ContractError> {
-        // Reward duration must be greater than 0
-        if let Duration::Height(0) | Duration::Time(0) = self.duration {
-            return Err(ContractError::ZeroRewardDuration {});
-        }
-        Ok(())
-    }
-
     // find the duration of the funded period given emission config and funded amount
     pub fn get_funded_period_duration(&self, funded_amount: Uint128) -> StdResult<Duration> {
         let funded_amount_u256 = Uint256::from(funded_amount);
