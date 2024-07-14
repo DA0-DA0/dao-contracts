@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{StdError, StdResult, Uint128, Uint256};
+use cosmwasm_std::{Decimal, StdError, StdResult, Uint128, Uint64};
 use cw20::{Cw20ReceiveMsg, UncheckedDenom};
 use cw4::MemberChangedHookMsg;
 use cw_ownable::cw_ownable_execute;
@@ -71,41 +71,33 @@ pub struct RewardEmissionRate {
 impl RewardEmissionRate {
     // find the duration of the funded period given emission config and funded amount
     pub fn get_funded_period_duration(&self, funded_amount: Uint128) -> StdResult<Duration> {
-        let funded_amount_u256 = Uint256::from(funded_amount);
-        let amount_u256 = Uint256::from(self.amount);
-
         // if amount being distributed is 0 (rewards are paused), we return the max duration
-        if amount_u256.is_zero() {
+        if self.amount.is_zero() {
             return match self.duration {
                 Duration::Height(_) => Ok(Duration::Height(u64::MAX)),
                 Duration::Time(_) => Ok(Duration::Time(u64::MAX)),
             };
         }
-        let amount_to_emission_rate_ratio = funded_amount_u256.checked_div(amount_u256)?;
+        let amount_to_emission_rate_ratio = Decimal::from_ratio(funded_amount, self.amount);
 
-        let ratio_str = amount_to_emission_rate_ratio.to_string();
-        let ratio = ratio_str
-            .parse::<u64>()
-            .map_err(|e| StdError::generic_err(e.to_string()))?;
-
-        let funded_period_duration = match self.duration {
+        let funded_duration = match self.duration {
             Duration::Height(h) => {
-                let duration_height = match ratio.checked_mul(h) {
-                    Some(duration) => duration,
-                    None => return Err(StdError::generic_err("overflow")),
-                };
-                Duration::Height(duration_height)
+                let duration_height = Uint128::from(h)
+                    .checked_mul_floor(amount_to_emission_rate_ratio)
+                    .map_err(|e| StdError::generic_err(e.to_string()))?;
+                let duration = Uint64::try_from(duration_height)?.u64();
+                Duration::Height(duration)
             }
             Duration::Time(t) => {
-                let duration_time = match ratio.checked_mul(t) {
-                    Some(duration) => duration,
-                    None => return Err(StdError::generic_err("overflow")),
-                };
-                Duration::Time(duration_time)
+                let duration_time = Uint128::from(t)
+                    .checked_mul_floor(amount_to_emission_rate_ratio)
+                    .map_err(|e| StdError::generic_err(e.to_string()))?;
+                let duration = Uint64::try_from(duration_time)?.u64();
+                Duration::Time(duration)
             }
         };
 
-        Ok(funded_period_duration)
+        Ok(funded_duration)
     }
 }
 
