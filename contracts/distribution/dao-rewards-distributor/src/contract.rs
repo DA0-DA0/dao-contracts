@@ -194,19 +194,20 @@ fn execute_shutdown(
     let reward_duration_scalar = ends_at - started_at;
 
     // find the % of reward_duration that remains from current block
-    let passed_units_since_start = match reward_state.active_epoch_config.emission_rate.duration {
-        Duration::Height(_) => Uint128::from(env.block.height - started_at),
-        Duration::Time(_) => Uint128::from(env.block.time.seconds() - started_at),
-    };
+    let passed_scalar_units_since_start =
+        match reward_state.active_epoch_config.emission_rate.duration {
+            Duration::Height(_) => env.block.height - started_at,
+            Duration::Time(_) => env.block.time.seconds() - started_at,
+        };
 
     // get the fraction of what part of rewards duration is in the past
     // and sub from 1 to get the remaining rewards
     let remaining_reward_duration_fraction = Decimal::one()
         .checked_sub(Decimal::from_ratio(
-            passed_units_since_start,
+            passed_scalar_units_since_start,
             reward_duration_scalar,
         ))
-        .map_err(|e| ContractError::Std(StdError::overflow(e)))?;
+        .map_err(|e| ContractError::Std(e.into()))?;
 
     // to get the clawback msg
     let clawback_msg = get_transfer_msg(
