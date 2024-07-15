@@ -7,7 +7,7 @@ use crate::{
         AdapterQueryMsg, AllOptionsResponse, AllSubmissionsResponse, AssetUnchecked,
         CheckOptionResponse,
     },
-    multitest::suite::{create_native_submission_helper, setup_gauge_adapter, SuiteBuilder},
+    multitest::suite::{native_submission_helper, setup_gauge_adapter, SuiteBuilder},
 };
 
 #[test]
@@ -35,7 +35,7 @@ fn option_queries() {
     assert_eq!(options.submissions.len(), 1);
 
     // Valid submission.
-    create_native_submission_helper(
+    native_submission_helper(
         adapter.clone(),
         mock.sender.clone(),
         recipient.clone(),
@@ -44,7 +44,7 @@ fn option_queries() {
     .unwrap();
 
     // Valid submission.
-    create_native_submission_helper(
+    native_submission_helper(
         adapter.clone(),
         einstein.clone(),
         einstein.clone(),

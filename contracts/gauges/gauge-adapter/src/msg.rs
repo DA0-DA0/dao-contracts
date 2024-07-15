@@ -16,6 +16,7 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
+#[derive(cw_orch::ExecuteFns)]
 pub enum ExecuteMsg {
     /// Implements the Cw20 receiver interface.
     Receive(Cw20ReceiveMsg),
@@ -47,7 +48,7 @@ pub enum MigrateMsg {}
 // Queries copied from gauge-orchestrator for now (we could use a common crate for this).
 /// Queries the gauge requires from the adapter contract in order to function.
 #[cw_serde]
-#[derive(QueryResponses)]
+#[derive(QueryResponses, cw_orch::QueryFns)]
 pub enum AdapterQueryMsg {
     #[returns(crate::state::Config)]
     Config {},

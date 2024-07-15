@@ -1,13 +1,13 @@
 use crate::{
     msg::{
-        AdapterQueryMsg, AllSubmissionsResponse, AssetUnchecked, ExecuteMsg, ReceiveMsg,
-        SubmissionResponse,
+        AdapterQueryMsg, AdapterQueryMsgFns, AllSubmissionsResponse, AssetUnchecked, ExecuteMsg,
+        ExecuteMsgFns, ReceiveMsg, SubmissionResponse,
     },
-    multitest::suite::{create_native_submission_helper, cw20_helper, setup_gauge_adapter},
+    multitest::suite::{native_submission_helper, cw20_helper, setup_gauge_adapter},
     ContractError,
 };
 
-use super::suite::{GaugeAdapter, SuiteBuilder};
+use super::suite::GaugeAdapter;
 use crate::msg::InstantiateMsg as GaugeOrchInstantiateMsg;
 
 use abstract_cw20::msg::Cw20ExecuteMsgFns;
@@ -24,15 +24,9 @@ use cw_orch::{
 #[test]
 fn create_default_submission() {
     let mock = MockBech32::new("mock");
-    let com_pool = &mock.addr_make("community_pool").to_string();
+    let treasury = &mock.addr_make("community_pool");
 
     let adapter = setup_gauge_adapter(mock.clone(), None);
-
-    let msg = &ExecuteMsg::CreateSubmission {
-        name: "Unimpressed".to_owned(),
-        url: "Those funds go back to the community pool".to_owned(),
-        address: "mock1eq4aagr86henn5uaxu7xsneefyh2k2srt85q9znjuml36xfgssgqseh4dl".into(),
-    };
 
     // this one is created by default during instantiation
     assert_eq!(
@@ -40,13 +34,11 @@ fn create_default_submission() {
             sender: adapter.address().unwrap(),
             name: "Unimpressed".to_owned(),
             url: "Those funds go back to the community pool".to_owned(),
-            address: Addr::unchecked(
-                "mock1eq4aagr86henn5uaxu7xsneefyh2k2srt85q9znjuml36xfgssgqseh4dl"
-            ),
+            address: treasury.clone(),
         },
         adapter
             .query(&crate::msg::AdapterQueryMsg::Submission {
-                address: com_pool.to_string()
+                address: treasury.to_string()
             })
             .unwrap()
     )
@@ -65,16 +57,13 @@ fn create_submission_no_required_deposit() {
     // println!("{:#?}", res);
 
     // // Fails send funds along with the tx.
-    let err = adapter
-        .execute(
-            &ExecuteMsg::CreateSubmission {
-                name: "WYNDers".to_owned(),
-                url: "https://www.wynddao.com/".to_owned(),
-                address: recipient.to_string(),
-            },
-            Some(&[coin(1_000, "juno")]),
-        )
-        .unwrap_err();
+    let err = native_submission_helper(
+        adapter.clone(),
+        mock.sender.clone(),
+        recipient.clone(),
+        Some(coin(1_000, "juno")),
+    )
+    .unwrap_err();
 
     assert_eq!(
         ContractError::InvalidDepositAmount {
@@ -84,23 +73,19 @@ fn create_submission_no_required_deposit() {
     );
 
     // Valid submission.
-    _ = adapter
-        .execute(
-            &ExecuteMsg::CreateSubmission {
-                name: "WYNDers".to_owned(),
-                url: "https://www.wynddao.com/".to_owned(),
-
-                address: recipient.to_string(),
-            },
-            None,
-        )
-        .unwrap();
+    native_submission_helper(
+        adapter.clone(),
+        mock.sender.clone(),
+        recipient.clone(),
+        None,
+    )
+    .unwrap_err();
 
     assert_eq!(
         SubmissionResponse {
             sender: mock.sender,
             name: "WYNDers".to_owned(),
-            url: "https://www.wynddao.com/".to_owned(),
+            url: "https://daodao.zone/".to_owned(),
             address: recipient.clone(),
         },
         adapter
@@ -116,18 +101,13 @@ fn overwrite_existing_submission() {
     let mock = MockBech32::new("mock");
     let adapter = setup_gauge_adapter(mock.clone(), None);
     let recipient = mock.addr_make("recipient");
-    let create = create_native_submission_helper(
+    native_submission_helper(
         adapter.clone(),
         mock.sender.clone(),
         recipient.clone(),
         None,
     )
     .unwrap();
-    let create: SubmissionResponse = adapter
-        .query(&AdapterQueryMsg::Submission {
-            address: recipient.to_string(),
-        })
-        .unwrap();
 
     assert_eq!(
         SubmissionResponse {
@@ -136,15 +116,11 @@ fn overwrite_existing_submission() {
             url: "https://daodao.zone".to_string(),
             address: recipient.clone(),
         },
-        adapter
-            .query(&AdapterQueryMsg::Submission {
-                address: recipient.to_string()
-            })
-            .unwrap()
+        adapter.submission(recipient.to_string()).unwrap()
     );
 
     // Try to submit to the same address with different user
-    let err = create_native_submission_helper(
+    let err = native_submission_helper(
         adapter.clone(),
         Addr::unchecked("anotheruser"),
         recipient.clone(),
@@ -158,13 +134,9 @@ fn overwrite_existing_submission() {
     );
 
     // Overwriting submission as same author works
-    create_native_submission_helper(adapter.clone(), mock.sender, recipient.clone(), None).unwrap();
+    native_submission_helper(adapter.clone(), mock.sender, recipient.clone(), None).unwrap();
 
-    let response: SubmissionResponse = adapter
-        .query(&AdapterQueryMsg::Submission {
-            address: recipient.to_string(),
-        })
-        .unwrap();
+    let response = adapter.submission(recipient.to_string()).unwrap();
     assert_eq!(response.url, "https://daodao.zone".to_owned());
 }
 
@@ -186,7 +158,7 @@ fn create_submission_required_deposit() {
         .unwrap();
 
     // Fails if no funds sent.
-    let err = create_native_submission_helper(
+    let err = native_submission_helper(
         adapter.clone(),
         mock.sender.clone(),
         recipient.clone(),
@@ -201,7 +173,7 @@ fn create_submission_required_deposit() {
 
     // Fails if correct denom but not enough amount.
     // Fails if no funds sent.
-    let err = create_native_submission_helper(
+    let err = native_submission_helper(
         adapter.clone(),
         mock.sender.clone(),
         recipient.clone(),
@@ -220,7 +192,7 @@ fn create_submission_required_deposit() {
     );
 
     // Fails if enough amount but incorrect denom.
-    let err = create_native_submission_helper(
+    let err = native_submission_helper(
         adapter.clone(),
         mock.sender.clone(),
         recipient.clone(),
@@ -237,7 +209,7 @@ fn create_submission_required_deposit() {
     );
 
     // Valid submission.
-    create_native_submission_helper(
+    native_submission_helper(
         adapter.clone(),
         mock.sender.clone(),
         recipient.clone(),
@@ -412,7 +384,7 @@ fn return_deposits_required_native_deposit() {
     let recipient = mock.addr_make("recipient");
 
     // Valid submission.
-    create_native_submission_helper(
+    native_submission_helper(
         adapter.clone(),
         mock.sender.clone(),
         recipient.clone(),
@@ -470,7 +442,7 @@ fn return_deposits_required_native_deposit_multiple_deposits() {
     mock.add_balance(&mock.sender, vec![coin(1_000u128, "juno")])
         .unwrap();
     // Valid submission.
-    create_native_submission_helper(
+    native_submission_helper(
         adapter.clone(),
         mock.sender.clone(),
         recipient.clone(),
@@ -478,7 +450,7 @@ fn return_deposits_required_native_deposit_multiple_deposits() {
     )
     .unwrap();
     // Valid submission.
-    create_native_submission_helper(
+    native_submission_helper(
         adapter.clone(),
         einstien.clone(),
         einstien.clone(),
@@ -486,10 +458,7 @@ fn return_deposits_required_native_deposit_multiple_deposits() {
     )
     .unwrap();
 
-    adapter
-        .execute(&ExecuteMsg::ReturnDeposits {}, None)
-        .unwrap();
-
+    adapter.return_deposits().unwrap();
     assert_eq!(
         mock.query_balance(&mock.sender.clone(), "juno").unwrap(),
         Uint128::from(1000u128)
@@ -529,20 +498,7 @@ fn return_deposits_required_cw20_deposit() {
     .unwrap();
 
     // Valid submission.
-    // adapter
-    //     .call_as(&cw20.address().unwrap())
-    //     .execute(
-    //         &ExecuteMsg::Receive(cw20::Cw20ReceiveMsg {
-    //             sender: recipient.to_string(),
-    //             amount: Uint128::from(1_000u128),
-    //             msg: binary_msg.clone(),
-    //         }),
-    //         None,
-    //     )
-    //     .unwrap();
-
-    cw20
-        .send(1_000u128.into(), adapter.addr_str().unwrap(), binary_msg)
+    cw20.send(1_000u128.into(), adapter.addr_str().unwrap(), binary_msg)
         .unwrap();
 
     assert_eq!(
@@ -560,9 +516,7 @@ fn return_deposits_required_cw20_deposit() {
         Uint128::from(1_000u128),
     );
 
-    adapter
-        .execute(&ExecuteMsg::ReturnDeposits {}, None)
-        .unwrap();
+    adapter.return_deposits().unwrap();
 
     assert_eq!(
         cw20.balance(mock.sender.to_string()).unwrap().balance,

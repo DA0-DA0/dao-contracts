@@ -45,7 +45,7 @@ pub fn setup_gauge_adapter(
 }
 
 //
-pub fn create_native_submission_helper(
+pub fn native_submission_helper(
     adapter: GaugeAdapter<MockBech32>,
     sender: Addr,
     recipient: Addr,
