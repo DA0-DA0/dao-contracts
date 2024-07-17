@@ -692,13 +692,20 @@ version = "2.5.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-admin-factory",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
  "cw20-base 1.1.2",
+ "cw4 1.1.2",
  "dao-dao-core",
  "dao-interface",
+ "dao-proposal-single",
+ "dao-testing",
+ "dao-voting 2.5.0",
+ "dao-voting-cw4",
+ "osmosis-test-tube",
  "thiserror",
 ]
 
@@ -2013,6 +2020,7 @@ version = "2.5.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-admin-factory",
  "cw-core",
  "cw-hooks",
  "cw-multi-test",
