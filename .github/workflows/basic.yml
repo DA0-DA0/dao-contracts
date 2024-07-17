@@ -20,16 +20,14 @@ jobs:
           target: wasm32-unknown-unknown
           override: true
 
-      - name: Rust Dependencies Cache
+      - name: Cache dependencies
         uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/
-            artifacts/
-          key: ${{ runner.os }}-cargo-with-artifacts-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-deps-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run tests
         uses: actions-rs/cargo@v1
@@ -64,16 +62,14 @@ jobs:
           override: true
           components: rustfmt, clippy
 
-      - name: Rust Dependencies Cache
+      - name: Cache dependencies
         uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/
-            artifacts/
-          key: ${{ runner.os }}-cargo-with-artifacts-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-deps-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
