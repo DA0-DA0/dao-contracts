@@ -113,7 +113,8 @@ pub fn native_staked_balances_voting_contract() -> Box<dyn Contract<Empty>> {
         dao_voting_token_staked::contract::execute,
         dao_voting_token_staked::contract::instantiate,
         dao_voting_token_staked::contract::query,
-    );
+    )
+    .with_reply(dao_voting_token_staked::contract::reply);
     Box::new(contract)
 }
 
