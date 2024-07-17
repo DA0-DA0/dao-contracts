@@ -101,7 +101,7 @@ impl<'a> DaoVotingCw4<'a> {
                 .join("..")
                 .join("..")
                 .join("artifacts")
-                .join("cw_admin_factory.wasm"),
+                .join("dao_voting_cw4.wasm"),
         );
         match byte_code {
             Ok(byte_code) => byte_code,
@@ -111,7 +111,7 @@ impl<'a> DaoVotingCw4<'a> {
                     .join("..")
                     .join("..")
                     .join("artifacts")
-                    .join("cw_admin_factory-aarch64.wasm"),
+                    .join("dao_voting_cw4-aarch64.wasm"),
             )
             .unwrap(),
         }
