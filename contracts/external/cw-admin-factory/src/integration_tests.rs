@@ -1,5 +1,6 @@
 use cosmwasm_std::{
-    instantiate2_address, testing::mock_dependencies, to_json_binary, Api, Binary, Coin, Decimal,
+    instantiate2_address, testing::mock_dependencies, to_json_binary, Addr, Api, Binary, Coin,
+    Decimal,
 };
 use cw_utils::Duration;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
@@ -13,9 +14,10 @@ use dao_voting::{
 };
 use osmosis_test_tube::{
     osmosis_std::types::cosmwasm::wasm::v1::{
-        QueryCodeRequest, QueryCodeResponse, QueryContractInfoRequest, QueryContractInfoResponse,
+        MsgExecuteContractResponse, QueryCodeRequest, QueryCodeResponse, QueryContractInfoRequest,
+        QueryContractInfoResponse,
     },
-    Account, OsmosisTestApp, Runner, RunnerError,
+    Account, ExecuteResponse, OsmosisTestApp, Runner, RunnerError,
 };
 
 use cw_admin_factory::msg::ExecuteMsg;
@@ -96,7 +98,7 @@ fn test_set_self_admin_instantiate2() {
     };
 
     let salt = Binary::from("salt".as_bytes());
-    let res = cw_admin_factory
+    let res: ExecuteResponse<MsgExecuteContractResponse> = cw_admin_factory
         .execute(
             &ExecuteMsg::Instantiate2ContractWithSelfAdmin {
                 instantiate_msg: to_json_binary(&msg).unwrap(),
@@ -109,23 +111,35 @@ fn test_set_self_admin_instantiate2() {
             &accounts[0],
         )
         .unwrap();
-    let instantiate_event = &res.events[2];
-    assert_eq!(instantiate_event.ty, "instantiate");
-    let core_addr = instantiate_event.attributes[0].value.clone();
+    let core_addr = &res
+        .events
+        .iter()
+        .find(|e| {
+            e.ty == "instantiate"
+                && e.attributes
+                    .iter()
+                    .any(|a| a.key == "code_id" && a.value == dao_dao_core_id.to_string())
+        })
+        .unwrap()
+        .attributes
+        .iter()
+        .find(|a| a.key == "_contract_address")
+        .unwrap()
+        .value;
 
     // Check that admin of core address is itself
     let core_admin = app
         .query::<QueryContractInfoRequest, QueryContractInfoResponse>(
             "/cosmwasm.wasm.v1.Query/ContractInfo",
             &QueryContractInfoRequest {
-                address: core_addr.clone(),
+                address: core_addr.to_string(),
             },
         )
         .unwrap()
         .contract_info
         .unwrap()
         .admin;
-    assert_eq!(core_admin, core_addr.clone());
+    assert_eq!(core_admin, core_addr.to_string());
 
     let deps = mock_dependencies();
 
@@ -136,7 +150,7 @@ fn test_set_self_admin_instantiate2() {
         .unwrap();
     let expected_addr =
         instantiate2_address(&dao_core_checksum, &canonical_factory, salt.as_slice()).unwrap();
-    let canonical_core = deps.api.addr_canonicalize(&core_addr).unwrap();
+    let canonical_core = deps.api.addr_canonicalize(core_addr).unwrap();
     assert_eq!(canonical_core, expected_addr);
 
     // Check that it succeeds when expect matches.
@@ -147,7 +161,7 @@ fn test_set_self_admin_instantiate2() {
             &instantiate2_address(&dao_core_checksum, &canonical_factory, salt.as_slice()).unwrap(),
         )
         .unwrap();
-    let res = cw_admin_factory
+    let res: ExecuteResponse<MsgExecuteContractResponse> = cw_admin_factory
         .execute(
             &ExecuteMsg::Instantiate2ContractWithSelfAdmin {
                 instantiate_msg: to_json_binary(&msg).unwrap(),
@@ -160,10 +174,22 @@ fn test_set_self_admin_instantiate2() {
             &accounts[0],
         )
         .unwrap();
-    let instantiate_event = &res.events[2];
-    assert_eq!(instantiate_event.ty, "instantiate");
-    let core_addr = instantiate_event.attributes[0].value.clone();
-    assert_eq!(core_addr, expected_addr);
+    let core_addr = &res
+        .events
+        .iter()
+        .find(|e| {
+            e.ty == "instantiate"
+                && e.attributes
+                    .iter()
+                    .any(|a| a.key == "code_id" && a.value == dao_dao_core_id.to_string())
+        })
+        .unwrap()
+        .attributes
+        .iter()
+        .find(|a| a.key == "_contract_address")
+        .unwrap()
+        .value;
+    assert_eq!(Addr::unchecked(core_addr), expected_addr);
 
     // Check that admin of core address is itself
     let core_admin = app
