@@ -1,4 +1,4 @@
-use cosmwasm_std::{coin, coins, Addr, Coin};
+use cosmwasm_std::{coin, coins};
 use cw_denom::UncheckedDenom;
 use cw_orch::{contract::interface_traits::CwOrchQuery, mock::MockBech32};
 
@@ -7,7 +7,7 @@ use crate::{
         AdapterQueryMsg, AllOptionsResponse, AllSubmissionsResponse, AssetUnchecked,
         CheckOptionResponse,
     },
-    multitest::suite::{native_submission_helper, setup_gauge_adapter, SuiteBuilder},
+    multitest::suite::{native_submission_helper, setup_gauge_adapter},
 };
 
 #[test]

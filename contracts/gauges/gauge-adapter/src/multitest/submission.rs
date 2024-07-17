@@ -3,23 +3,15 @@ use crate::{
         AdapterQueryMsg, AdapterQueryMsgFns, AllSubmissionsResponse, AssetUnchecked, ExecuteMsg,
         ExecuteMsgFns, ReceiveMsg, SubmissionResponse,
     },
-    multitest::suite::{native_submission_helper, cw20_helper, setup_gauge_adapter},
+    multitest::suite::{cw20_helper, native_submission_helper, setup_gauge_adapter},
     ContractError,
 };
-
-use super::suite::GaugeAdapter;
-use crate::msg::InstantiateMsg as GaugeOrchInstantiateMsg;
 
 use abstract_cw20::msg::Cw20ExecuteMsgFns;
 use abstract_cw20_base::msg::QueryMsgFns;
 use cosmwasm_std::{coin, to_json_binary, Addr, Uint128};
 use cw_denom::UncheckedDenom;
-use cw_orch::{
-    contract::interface_traits::{CwOrchExecute, CwOrchInstantiate, CwOrchUpload},
-    environment::IndexResponse,
-    mock::{cw_multi_test::AppResponse, MockBech32},
-    prelude::*,
-};
+use cw_orch::{contract::interface_traits::CwOrchExecute, mock::MockBech32, prelude::*};
 
 #[test]
 fn create_default_submission() {
@@ -73,19 +65,19 @@ fn create_submission_no_required_deposit() {
     );
 
     // Valid submission.
-    native_submission_helper(
+    let result = native_submission_helper(
         adapter.clone(),
         mock.sender.clone(),
         recipient.clone(),
         None,
-    )
-    .unwrap_err();
+    );
+    assert!(result.is_ok());
 
     assert_eq!(
         SubmissionResponse {
             sender: mock.sender,
-            name: "WYNDers".to_owned(),
-            url: "https://daodao.zone/".to_owned(),
+            name: "DAOers".to_owned(),
+            url: "https://daodao.zone".to_owned(),
             address: recipient.clone(),
         },
         adapter
