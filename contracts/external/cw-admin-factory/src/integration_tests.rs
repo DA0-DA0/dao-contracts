@@ -224,11 +224,13 @@ fn test_set_self_admin_instantiate2() {
     assert_eq!(
         err,
         RunnerError::ExecuteError {
-            msg: ContractError::UnexpectedContractAddress {
-                expected: cw_admin_factory.contract_addr.clone(),
-                actual: actual_addr.to_string(),
-            }
-            .to_string()
+            msg: format!(
+                "failed to execute message; message index: 0: dispatch: submessages: reply: {}: execute wasm contract failed",
+                ContractError::UnexpectedContractAddress {
+                    expected: cw_admin_factory.contract_addr.clone(),
+                    actual: actual_addr.to_string(),
+                }
+            )
         },
     );
 }
