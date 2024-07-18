@@ -690,6 +690,7 @@ dependencies = [
 name = "cw-admin-factory"
 version = "2.5.0"
 dependencies = [
+ "bech32",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-admin-factory",

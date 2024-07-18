@@ -1,5 +1,6 @@
+use bech32::{decode, encode, FromBase32, ToBase32, Variant};
 use cosmwasm_std::{
-    instantiate2_address, testing::mock_dependencies, to_json_binary, Api, Binary, Coin, Decimal,
+    instantiate2_address, to_json_binary, Addr, Binary, CanonicalAddr, Coin, Decimal,
 };
 use cw_utils::Duration;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
@@ -29,6 +30,9 @@ fn test_set_self_admin_instantiate2() {
     let accounts = app
         .init_accounts(&[Coin::new(1000000000000000u128, "uosmo")], 10)
         .unwrap();
+
+    // get bech32 prefix from created account
+    let prefix = decode(&accounts[0].address()).unwrap().0;
 
     let cw_admin_factory = CwAdminFactory::new(&app, None, &accounts[0], &[]).unwrap();
     let dao_dao_core_id = DaoCore::upload(&app, &accounts[0]).unwrap();
@@ -140,29 +144,20 @@ fn test_set_self_admin_instantiate2() {
         .admin;
     assert_eq!(&core_admin, core_addr);
 
-    let deps = mock_dependencies();
-
     // Check that the address matches the predicted address
-    let canonical_factory = deps
-        .api
-        .addr_canonicalize(&cw_admin_factory.contract_addr)
-        .unwrap();
-    let expected_addr = deps
-        .api
-        .addr_humanize(
-            &instantiate2_address(&dao_core_checksum, &canonical_factory, salt.as_slice()).unwrap(),
-        )
-        .unwrap();
+    let canonical_factory = addr_canonicalize(&prefix, &cw_admin_factory.contract_addr);
+    let expected_addr = addr_humanize(
+        &prefix,
+        &instantiate2_address(&dao_core_checksum, &canonical_factory, salt.as_slice()).unwrap(),
+    );
     assert_eq!(core_addr, expected_addr.as_str());
 
     // Check that it succeeds when expect matches.
     let salt = Binary::from("salt_two".as_bytes());
-    let expected_addr = deps
-        .api
-        .addr_humanize(
-            &instantiate2_address(&dao_core_checksum, &canonical_factory, salt.as_slice()).unwrap(),
-        )
-        .unwrap();
+    let expected_addr = addr_humanize(
+        &prefix,
+        &instantiate2_address(&dao_core_checksum, &canonical_factory, salt.as_slice()).unwrap(),
+    );
     let res: ExecuteResponse<MsgExecuteContractResponse> = cw_admin_factory
         .execute(
             &ExecuteMsg::Instantiate2ContractWithSelfAdmin {
@@ -209,12 +204,10 @@ fn test_set_self_admin_instantiate2() {
 
     // Check that it fails when expect does not match.
     let salt = Binary::from("salt_mismatch".as_bytes());
-    let actual_addr = deps
-        .api
-        .addr_humanize(
-            &instantiate2_address(&dao_core_checksum, &canonical_factory, salt.as_slice()).unwrap(),
-        )
-        .unwrap();
+    let actual_addr = addr_humanize(
+        &prefix,
+        &instantiate2_address(&dao_core_checksum, &canonical_factory, salt.as_slice()).unwrap(),
+    );
     let err = cw_admin_factory
         .execute(
             &ExecuteMsg::Instantiate2ContractWithSelfAdmin {
@@ -239,4 +232,17 @@ fn test_set_self_admin_instantiate2() {
             .to_string()
         },
     );
+}
+
+fn addr_canonicalize(prefix: &str, input: &str) -> CanonicalAddr {
+    let (p, decoded, variant) = decode(input).unwrap();
+    if p == prefix && variant == Variant::Bech32 {
+        return Vec::<u8>::from_base32(&decoded).unwrap().into();
+    }
+    panic!("Invalid address: {}", input);
+}
+
+fn addr_humanize(prefix: &str, canonical: &CanonicalAddr) -> Addr {
+    let encoded = encode(prefix, canonical.as_slice().to_base32(), Variant::Bech32).unwrap();
+    return Addr::unchecked(encoded);
 }

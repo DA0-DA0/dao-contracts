@@ -30,6 +30,7 @@ thiserror = { workspace = true }
 cw-utils = { workspace = true }
 
 [dev-dependencies]
+bech32 = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-admin-factory = { workspace = true }
 cw-multi-test = { workspace = true }
