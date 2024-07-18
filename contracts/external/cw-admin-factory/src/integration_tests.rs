@@ -1,6 +1,5 @@
 use cosmwasm_std::{
-    instantiate2_address, testing::mock_dependencies, to_json_binary, Addr, Api, Binary, Coin,
-    Decimal,
+    instantiate2_address, testing::mock_dependencies, to_json_binary, Api, Binary, Coin, Decimal,
 };
 use cw_utils::Duration;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
@@ -139,7 +138,7 @@ fn test_set_self_admin_instantiate2() {
         .contract_info
         .unwrap()
         .admin;
-    assert_eq!(core_admin, core_addr.to_string());
+    assert_eq!(&core_admin, core_addr);
 
     let deps = mock_dependencies();
 
@@ -148,10 +147,13 @@ fn test_set_self_admin_instantiate2() {
         .api
         .addr_canonicalize(&cw_admin_factory.contract_addr)
         .unwrap();
-    let expected_addr =
-        instantiate2_address(&dao_core_checksum, &canonical_factory, salt.as_slice()).unwrap();
-    let canonical_core = deps.api.addr_canonicalize(core_addr).unwrap();
-    assert_eq!(canonical_core, expected_addr);
+    let expected_addr = deps
+        .api
+        .addr_humanize(
+            &instantiate2_address(&dao_core_checksum, &canonical_factory, salt.as_slice()).unwrap(),
+        )
+        .unwrap();
+    assert_eq!(core_addr, expected_addr.as_str());
 
     // Check that it succeeds when expect matches.
     let salt = Binary::from("salt_two".as_bytes());
@@ -189,7 +191,7 @@ fn test_set_self_admin_instantiate2() {
         .find(|a| a.key == "_contract_address")
         .unwrap()
         .value;
-    assert_eq!(Addr::unchecked(core_addr), expected_addr);
+    assert_eq!(core_addr, expected_addr.as_str());
 
     // Check that admin of core address is itself
     let core_admin = app
@@ -203,7 +205,7 @@ fn test_set_self_admin_instantiate2() {
         .contract_info
         .unwrap()
         .admin;
-    assert_eq!(core_admin, core_addr.clone());
+    assert_eq!(&core_admin, core_addr);
 
     // Check that it fails when expect does not match.
     let salt = Binary::from("salt_mismatch".as_bytes());
