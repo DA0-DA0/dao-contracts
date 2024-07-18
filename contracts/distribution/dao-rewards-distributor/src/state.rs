@@ -115,7 +115,7 @@ impl DenomRewardState {
         // as those rewards are no longer available for distribution
         let curr_epoch_earned_rewards = match curr_epoch.emission_rate.amount.is_zero() {
             true => Uint128::zero(),
-            false => self.active_epoch_config.get_total_rewards()?,
+            false => curr_epoch.get_total_rewards()?,
         };
         self.funded_amount = self.funded_amount.checked_sub(curr_epoch_earned_rewards)?;
 
