@@ -121,7 +121,7 @@ pub fn instantiate2_contract(
         salt,
     };
 
-    let msg = SubMsg::reply_on_success(instantiate, INSTANTIATE_CONTRACT_REPLY_ID);
+    let msg = SubMsg::reply_on_success(instantiate, INSTANTIATE2_CONTRACT_REPLY_ID);
     Ok(Response::default()
         .add_attribute("action", "instantiate2_contract_with_self_admin")
         .add_submessage(msg))

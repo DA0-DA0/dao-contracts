@@ -215,18 +215,17 @@ fn test_set_self_admin_instantiate2() {
                 code_id: dao_dao_core_id,
                 label: "third".to_string(),
                 salt: salt.clone(),
-                expect: Some("wrong".to_string()),
+                expect: Some(cw_admin_factory.contract_addr.clone()),
             },
             &[],
             &accounts[0],
         )
         .unwrap_err();
-
     assert_eq!(
         err,
         RunnerError::ExecuteError {
             msg: ContractError::UnexpectedContractAddress {
-                expected: "wrong".to_string(),
+                expected: cw_admin_factory.contract_addr.clone(),
                 actual: actual_addr.to_string(),
             }
             .to_string()
@@ -244,5 +243,5 @@ fn addr_canonicalize(prefix: &str, input: &str) -> CanonicalAddr {
 
 fn addr_humanize(prefix: &str, canonical: &CanonicalAddr) -> Addr {
     let encoded = encode(prefix, canonical.as_slice().to_base32(), Variant::Bech32).unwrap();
-    return Addr::unchecked(encoded);
+    Addr::unchecked(encoded)
 }
