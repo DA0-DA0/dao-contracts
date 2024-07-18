@@ -18,12 +18,13 @@ use std::convert::TryInto;
 
 use crate::hooks::{
     execute_membership_changed, execute_nft_stake_changed, execute_stake_changed,
-    subscribe_denom_to_hook, update_rewards,
+    subscribe_denom_to_hook,
 };
 use crate::msg::{
     ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, ReceiveMsg,
     RegisterRewardDenomMsg, RewardEmissionRate, RewardsStateResponse,
 };
+use crate::rewards::update_rewards;
 use crate::state::{
     DenomRewardState, EpochConfig, UserRewardState, DENOM_REWARD_STATES, USER_REWARD_STATES,
 };
@@ -85,13 +86,8 @@ fn execute_update_reward_rate(
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     let mut reward_state = DENOM_REWARD_STATES.load(deps.storage, denom.clone())?;
-    reward_state.active_epoch_config.total_earned_puvp = get_total_earned_puvp(
-        deps.as_ref(),
-        &env.block,
-        &reward_state.active_epoch_config,
-        &reward_state.vp_contract,
-        &reward_state.last_update,
-    )?;
+    reward_state.active_epoch_config.total_earned_puvp =
+        get_total_earned_puvp(deps.as_ref(), &env.block, &reward_state)?;
     reward_state.bump_last_update(&env.block);
 
     // transition the epoch to the new emission rate and save
@@ -371,18 +367,16 @@ fn execute_update_owner(
 pub fn get_total_earned_puvp(
     deps: Deps,
     block: &BlockInfo,
-    epoch: &EpochConfig,
-    vp_contract: &Addr,
-    last_update: &Expiration,
+    reward_state: &DenomRewardState,
 ) -> StdResult<Uint256> {
-    let curr = epoch.total_earned_puvp;
+    let curr = reward_state.active_epoch_config.total_earned_puvp;
 
-    let prev_total_power = get_prev_block_total_vp(deps, block, vp_contract)?;
+    let prev_total_power = get_prev_block_total_vp(deps, block, &reward_state.vp_contract)?;
 
     // if epoch is past, we return the epoch end date. otherwise the specified block.
     // returns time scalar based on the epoch date config.
-    let last_time_rewards_distributed = match epoch.ends_at {
-        Expiration::Never {} => *last_update,
+    let last_time_rewards_distributed = match reward_state.active_epoch_config.ends_at {
+        Expiration::Never {} => reward_state.last_update,
         Expiration::AtHeight(h) => Expiration::AtHeight(min(block.height, h)),
         Expiration::AtTime(t) => Expiration::AtTime(min(block.time, t)),
     };
@@ -391,19 +385,21 @@ pub fn get_total_earned_puvp(
     // rewards were distributed. this will be 0 if the rewards were updated at
     // or after the last time rewards were distributed.
     let new_reward_distribution_duration: Uint128 =
-        get_start_end_diff(&last_time_rewards_distributed, last_update)?.into();
+        get_start_end_diff(&last_time_rewards_distributed, &reward_state.last_update)?.into();
 
     if prev_total_power.is_zero() {
         Ok(curr)
     } else {
         // count intervals of the rewards emission that have passed since the
         // last update which need to be distributed
-        let complete_distribution_periods = new_reward_distribution_duration
-            .checked_div(get_duration_scalar(&epoch.emission_rate.duration).into())?;
+        let complete_distribution_periods = new_reward_distribution_duration.checked_div(
+            get_duration_scalar(&reward_state.active_epoch_config.emission_rate.duration).into(),
+        )?;
         // It is impossible for this to overflow as total rewards can never
         // exceed max value of Uint128 as total tokens in existence cannot
         // exceed Uint128 (because the bank module Coin type uses Uint128).
-        let new_rewards_distributed = epoch
+        let new_rewards_distributed = reward_state
+            .active_epoch_config
             .emission_rate
             .amount
             .full_mul(complete_distribution_periods)
@@ -536,13 +532,7 @@ fn query_pending_rewards(deps: Deps, env: Env, addr: String) -> StdResult<Pendin
         let historic_rewards_earned_puvp = reward_state.get_historic_rewards_earned_puvp_sum();
 
         // then we get the active epoch earned puvp value
-        let total_earned_puvp = get_total_earned_puvp(
-            deps,
-            &env.block,
-            &reward_state.active_epoch_config,
-            &reward_state.vp_contract,
-            &reward_state.last_update,
-        )?;
+        let total_earned_puvp = get_total_earned_puvp(deps, &env.block, &reward_state)?;
 
         let earned_rewards = get_accrued_rewards_since_last_user_action(
             deps,
