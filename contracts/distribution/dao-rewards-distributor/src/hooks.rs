@@ -19,7 +19,7 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr, denom: String)
     let mut denom_reward_state = DENOM_REWARD_STATES.load(deps.storage, denom.clone())?;
 
     // first we go over the historic epochs and sum the historic puvp
-    let total_historic_puvp = denom_reward_state.get_historic_epoch_puvp_sum();
+    let total_historic_puvp = denom_reward_state.get_historic_rewards_earned_puvp_sum();
 
     // we update the active epoch earned puvp value, from it's start to the current block
     denom_reward_state.active_epoch_config.total_earned_puvp = get_total_earned_puvp(

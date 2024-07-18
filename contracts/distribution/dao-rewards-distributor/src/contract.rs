@@ -137,7 +137,7 @@ fn execute_register_reward_denom(
             ends_at: Expiration::Never {},
             emission_rate: msg.emission_rate,
             total_earned_puvp: Uint256::zero(),
-            finish_height: None,
+            finish_block: None,
         },
         last_update: Expiration::Never {},
         vp_contract,
@@ -532,8 +532,8 @@ fn query_pending_rewards(deps: Deps, env: Env, addr: String) -> StdResult<Pendin
 
     // we iterate over every registered denom and calculate the pending rewards for the user
     for (denom, reward_state) in reward_states {
-        // first we go over the historic epochs and sum the historic puvp
-        let total_historic_puvp = reward_state.get_historic_epoch_puvp_sum();
+        // first we go over the historic epochs and sum rewards earned puvp
+        let historic_rewards_earned_puvp = reward_state.get_historic_rewards_earned_puvp_sum();
 
         // then we get the active epoch earned puvp value
         let total_earned_puvp = get_total_earned_puvp(
@@ -548,7 +548,7 @@ fn query_pending_rewards(deps: Deps, env: Env, addr: String) -> StdResult<Pendin
             deps,
             &env,
             &addr,
-            total_earned_puvp.checked_add(total_historic_puvp)?,
+            total_earned_puvp.checked_add(historic_rewards_earned_puvp)?,
             &reward_state.vp_contract,
             denom.to_string(),
             &user_reward_state,

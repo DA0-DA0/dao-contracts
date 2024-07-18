@@ -15,7 +15,6 @@ pub const DENOM_REWARD_STATES: Map<String, DenomRewardState> = Map::new("d_r_s")
 
 /// map registered hooks to list of denoms they're registered for
 pub const REGISTERED_HOOK_DENOMS: Map<Addr, Vec<String>> = Map::new("r_h_d");
-
 #[cw_serde]
 #[derive(Default)]
 pub struct UserRewardState {
@@ -39,12 +38,12 @@ pub struct EpochConfig {
     /// total rewards earned per unit voting power from started_at to
     /// last_update
     pub total_earned_puvp: Uint256,
-    /// finish block height
-    pub finish_height: Option<BlockInfo>,
+    /// finish block set when epoch is over
+    pub finish_block: Option<BlockInfo>,
 }
 
 impl EpochConfig {
-    pub fn get_total_distributed_rewards(&self) -> Result<Uint128, ContractError> {
+    pub fn get_total_distributed_rewards(&self) -> StdResult<Uint128> {
         let epoch_duration = get_start_end_diff(&self.started_at, &self.ends_at)?;
 
         let emission_rate_duration_scalar = match self.emission_rate.duration {
@@ -55,7 +54,7 @@ impl EpochConfig {
         self.emission_rate
             .amount
             .checked_multiply_ratio(epoch_duration, emission_rate_duration_scalar)
-            .map_err(|e| ContractError::Std(StdError::generic_err(e.to_string())))
+            .map_err(|e| StdError::generic_err(e.to_string()))
     }
 }
 
@@ -82,27 +81,30 @@ pub struct DenomRewardState {
 }
 
 impl DenomRewardState {
-    pub fn get_historic_epoch_puvp_sum(&self) -> Uint256 {
+    /// Sum all historical total_earned_puvp values.
+    pub fn get_historic_rewards_earned_puvp_sum(&self) -> Uint256 {
         self.historic_epoch_configs
             .iter()
             .fold(Uint256::zero(), |acc, epoch| acc + epoch.total_earned_puvp)
     }
 
+    /// Finish current epoch early and start a new one with a new emission rate.
     pub fn transition_epoch(
         &mut self,
         new_emission_rate: RewardEmissionRate,
         current_block: &BlockInfo,
     ) -> StdResult<()> {
-        let current_block_scalar = match self.active_epoch_config.emission_rate.duration {
+        let current_block_expiration = match self.active_epoch_config.emission_rate.duration {
             Duration::Height(_) => Expiration::AtHeight(current_block.height),
             Duration::Time(_) => Expiration::AtTime(current_block.time),
         };
 
-        // 1. finish current epoch
+        // 1. finish current epoch by changing the end to now
         let mut curr_epoch = self.active_epoch_config.clone();
-        curr_epoch.ends_at = current_block_scalar;
-        curr_epoch.finish_height = Some(current_block.to_owned());
+        curr_epoch.ends_at = current_block_expiration;
+        curr_epoch.finish_block = Some(current_block.to_owned());
 
+        // TODO: remove println
         println!("transition_epoch: {:?}", curr_epoch);
         // 2. push current epoch to historic configs
         self.historic_epoch_configs.push(curr_epoch.clone());
@@ -111,55 +113,48 @@ impl DenomRewardState {
         // as those rewards are no longer available for distribution
         let curr_epoch_earned_rewards = match curr_epoch.emission_rate.amount.is_zero() {
             true => Uint128::zero(),
-            false => self
-                .active_epoch_config
-                .get_total_distributed_rewards()
-                .map_err(|e| StdError::generic_err(e.to_string()))?,
+            false => self.active_epoch_config.get_total_distributed_rewards()?,
         };
-
         self.funded_amount = self.funded_amount.checked_sub(curr_epoch_earned_rewards)?;
+
         // 4. start new epoch
+        // TODO: remove println
         println!("fund amount: {:?}", self.funded_amount);
+        // TODO: remove println
         println!("new_emission_rate: {:?}", new_emission_rate);
+
+        // we get the duration of the funded period and add it to the current
+        // block height. if the sum overflows, we return u64::MAX, as it
+        // suggests that the period is infinite or so long that it doesn't
+        // matter.
         let new_epoch_end_scalar =
-            self.calculate_ends_at(&new_emission_rate, self.funded_amount, current_block)?;
+            match new_emission_rate.get_funded_period_duration(self.funded_amount)? {
+                Duration::Height(h) => {
+                    if current_block.height.checked_add(h).is_some() {
+                        Expiration::AtHeight(current_block.height + h)
+                    } else {
+                        Expiration::AtHeight(u64::MAX)
+                    }
+                }
+                Duration::Time(t) => {
+                    if current_block.time.seconds().checked_add(t).is_some() {
+                        Expiration::AtTime(current_block.time.plus_seconds(t))
+                    } else {
+                        Expiration::AtTime(Timestamp::from_seconds(u64::MAX))
+                    }
+                }
+            };
+
         self.active_epoch_config = EpochConfig {
             emission_rate: new_emission_rate.clone(),
-            started_at: current_block_scalar,
+            started_at: current_block_expiration,
             ends_at: new_epoch_end_scalar,
-            // start the new active epoch with zero puvp
+            // start the new active epoch with zero rewards earned
             total_earned_puvp: Uint256::zero(),
-            finish_height: None,
+            finish_block: None,
         };
 
         Ok(())
-    }
-
-    fn calculate_ends_at(
-        &self,
-        emission_rate: &RewardEmissionRate,
-        funded_amount: Uint128,
-        current_block: &BlockInfo,
-    ) -> StdResult<Expiration> {
-        // we get the duration of the funded period and add it to the current
-        // block height. if the sum overflows, we return u64::MAX, as it suggests
-        // that the period is infinite or so long that it doesn't matter.
-        match emission_rate.get_funded_period_duration(funded_amount)? {
-            Duration::Height(h) => {
-                if current_block.height.checked_add(h).is_some() {
-                    Ok(Expiration::AtHeight(current_block.height + h))
-                } else {
-                    Ok(Expiration::AtHeight(u64::MAX))
-                }
-            }
-            Duration::Time(t) => {
-                if current_block.time.seconds().checked_add(t).is_some() {
-                    Ok(Expiration::AtTime(current_block.time.plus_seconds(t)))
-                } else {
-                    Ok(Expiration::AtTime(Timestamp::from_seconds(u64::MAX)))
-                }
-            }
-        }
     }
 }
 
