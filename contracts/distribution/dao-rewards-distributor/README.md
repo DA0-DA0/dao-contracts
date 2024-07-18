@@ -22,7 +22,7 @@ to be the address instantiating the contract.
 
 After instantiating the contract it is VITAL to setup the required hooks for it to work. This is because to pay out rewards accurately, this contract needs to know about staking or voting power changes in the DAO.
 
-This can be achieved using the `add_hook` method on contracts that support voting power changes, which are:
+This can be achieved using the `add_hook` method on contracts that support voting power changes, such as:
 
 - `cw4-group`
 - `dao-voting-cw721-staked`
