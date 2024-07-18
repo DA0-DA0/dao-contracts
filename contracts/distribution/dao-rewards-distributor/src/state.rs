@@ -43,7 +43,9 @@ pub struct EpochConfig {
 }
 
 impl EpochConfig {
-    pub fn get_total_distributed_rewards(&self) -> StdResult<Uint128> {
+    /// get the total rewards to be distributed based on the emission rate and
+    /// duration from start to end
+    pub fn get_total_rewards(&self) -> StdResult<Uint128> {
         let epoch_duration = get_start_end_diff(&self.started_at, &self.ends_at)?;
 
         let emission_rate_duration_scalar = match self.emission_rate.duration {
@@ -113,7 +115,7 @@ impl DenomRewardState {
         // as those rewards are no longer available for distribution
         let curr_epoch_earned_rewards = match curr_epoch.emission_rate.amount.is_zero() {
             true => Uint128::zero(),
-            false => self.active_epoch_config.get_total_distributed_rewards()?,
+            false => self.active_epoch_config.get_total_rewards()?,
         };
         self.funded_amount = self.funded_amount.checked_sub(curr_epoch_earned_rewards)?;
 
