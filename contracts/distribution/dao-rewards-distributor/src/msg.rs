@@ -64,12 +64,17 @@ pub struct RegisterRewardDenomMsg {
 /// (duration). e.g. 5udenom per hour.
 #[cw_serde]
 pub struct RewardEmissionRate {
+    /// amount of tokens to distribute per amount of time
     pub amount: Uint128,
+    /// duration of time to distribute amount
     pub duration: Duration,
 }
 
 impl RewardEmissionRate {
-    // find the duration of the funded period given emission config and funded amount
+    // find the duration of the funded period given funded amount. e.g. if the
+    // funded amount is twice the emission rate amount, the funded period should
+    // be twice the emission rate duration, since the funded amount takes two
+    // emission cycles to be distributed.
     pub fn get_funded_period_duration(&self, funded_amount: Uint128) -> StdResult<Duration> {
         // if amount being distributed is 0 (rewards are paused), we return the max duration
         if self.amount.is_zero() {
@@ -78,6 +83,7 @@ impl RewardEmissionRate {
                 Duration::Time(_) => Ok(Duration::Time(u64::MAX)),
             };
         }
+
         let amount_to_emission_rate_ratio = Decimal::from_ratio(funded_amount, self.amount);
 
         let funded_duration = match self.duration {

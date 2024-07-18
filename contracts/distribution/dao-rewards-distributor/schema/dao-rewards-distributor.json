@@ -488,10 +488,20 @@
         ],
         "properties": {
           "amount": {
-            "$ref": "#/definitions/Uint128"
+            "description": "amount of tokens to distribute per amount of time",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Uint128"
+              }
+            ]
           },
           "duration": {
-            "$ref": "#/definitions/Duration"
+            "description": "duration of time to distribute amount",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Duration"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -982,10 +992,20 @@
           ],
           "properties": {
             "amount": {
-              "$ref": "#/definitions/Uint128"
+              "description": "amount of tokens to distribute per amount of time",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                }
+              ]
             },
             "duration": {
-              "$ref": "#/definitions/Duration"
+              "description": "duration of time to distribute amount",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Duration"
+                }
+              ]
             }
           },
           "additionalProperties": false
@@ -1481,10 +1501,20 @@
           ],
           "properties": {
             "amount": {
-              "$ref": "#/definitions/Uint128"
+              "description": "amount of tokens to distribute per amount of time",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                }
+              ]
             },
             "duration": {
-              "$ref": "#/definitions/Duration"
+              "description": "duration of time to distribute amount",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Duration"
+                }
+              ]
             }
           },
           "additionalProperties": false
