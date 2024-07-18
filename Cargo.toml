@@ -36,6 +36,7 @@ overflow-checks = true
 [workspace.dependencies]
 anyhow = { version = "1.0" }
 assert_matches = "1.5"
+bech32 = "0.9.1"
 cosm-orc = { version = "4.0" }
 cosm-tome = "0.2"
 cosmos-sdk-proto = "0.19"
