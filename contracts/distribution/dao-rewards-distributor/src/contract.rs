@@ -1,21 +1,17 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, coins, ensure, from_json, to_json_binary, Addr, BankMsg, Binary, BlockInfo, Coin,
-    CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError, StdResult,
-    Uint128, Uint256, WasmMsg,
+    ensure, from_json, to_json_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Order,
+    Response, StdResult, Uint128, Uint256,
 };
 use cw2::{get_contract_version, set_contract_version};
-use cw20::{Cw20ReceiveMsg, Denom};
+use cw20::Cw20ReceiveMsg;
 use cw_utils::{one_coin, Duration, Expiration};
-use dao_interface::voting::{
-    InfoResponse, Query as VotingQueryMsg, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
-};
+use dao_interface::voting::InfoResponse;
 
-use std::cmp::min;
 use std::collections::HashMap;
-use std::convert::TryInto;
 
+use crate::helpers::{get_duration_scalar, get_transfer_msg, validate_voting_power_contract};
 use crate::hooks::{
     execute_membership_changed, execute_nft_stake_changed, execute_stake_changed,
     subscribe_denom_to_hook,
@@ -24,10 +20,10 @@ use crate::msg::{
     ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, ReceiveMsg,
     RegisterRewardDenomMsg, RewardEmissionRate, RewardsStateResponse,
 };
-use crate::rewards::update_rewards;
-use crate::state::{
-    DenomRewardState, EpochConfig, UserRewardState, DENOM_REWARD_STATES, USER_REWARD_STATES,
+use crate::rewards::{
+    get_accrued_rewards_since_last_user_action, get_active_total_earned_puvp, update_rewards,
 };
+use crate::state::{DenomRewardState, EpochConfig, DENOM_REWARD_STATES, USER_REWARD_STATES};
 use crate::ContractError;
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -87,7 +83,7 @@ fn execute_update_reward_rate(
 
     let mut reward_state = DENOM_REWARD_STATES.load(deps.storage, denom.clone())?;
     reward_state.active_epoch_config.total_earned_puvp =
-        get_total_earned_puvp(deps.as_ref(), &env.block, &reward_state)?;
+        get_active_total_earned_puvp(deps.as_ref(), &env.block, &reward_state)?;
     reward_state.bump_last_update(&env.block);
 
     // transition the epoch to the new emission rate and save
@@ -362,127 +358,6 @@ fn execute_update_owner(
     Ok(Response::default().add_attributes(ownership.into_attributes()))
 }
 
-/// Calculate the total rewards earned per unit voting power since the last
-/// update.
-pub fn get_total_earned_puvp(
-    deps: Deps,
-    block: &BlockInfo,
-    reward_state: &DenomRewardState,
-) -> StdResult<Uint256> {
-    let curr = reward_state.active_epoch_config.total_earned_puvp;
-
-    let prev_total_power = get_prev_block_total_vp(deps, block, &reward_state.vp_contract)?;
-
-    // if epoch is past, we return the epoch end date. otherwise the specified block.
-    // returns time scalar based on the epoch date config.
-    let last_time_rewards_distributed = match reward_state.active_epoch_config.ends_at {
-        Expiration::Never {} => reward_state.last_update,
-        Expiration::AtHeight(h) => Expiration::AtHeight(min(block.height, h)),
-        Expiration::AtTime(t) => Expiration::AtTime(min(block.time, t)),
-    };
-
-    // get the duration from the last time rewards were updated to the last time
-    // rewards were distributed. this will be 0 if the rewards were updated at
-    // or after the last time rewards were distributed.
-    let new_reward_distribution_duration: Uint128 =
-        get_start_end_diff(&last_time_rewards_distributed, &reward_state.last_update)?.into();
-
-    if prev_total_power.is_zero() {
-        Ok(curr)
-    } else {
-        // count intervals of the rewards emission that have passed since the
-        // last update which need to be distributed
-        let complete_distribution_periods = new_reward_distribution_duration.checked_div(
-            get_duration_scalar(&reward_state.active_epoch_config.emission_rate.duration).into(),
-        )?;
-        // It is impossible for this to overflow as total rewards can never
-        // exceed max value of Uint128 as total tokens in existence cannot
-        // exceed Uint128 (because the bank module Coin type uses Uint128).
-        let new_rewards_distributed = reward_state
-            .active_epoch_config
-            .emission_rate
-            .amount
-            .full_mul(complete_distribution_periods)
-            .checked_mul(scale_factor())?;
-
-        // the new rewards per unit voting power that have been distributed
-        // since the last update
-        let new_rewards_puvp = new_rewards_distributed.checked_div(prev_total_power.into())?;
-        Ok(curr.checked_add(new_rewards_puvp)?)
-    }
-}
-
-// get a user's rewards not yet accounted for in their reward states.
-pub fn get_accrued_rewards_since_last_user_action(
-    deps: Deps,
-    env: &Env,
-    addr: &Addr,
-    total_earned_puvp: Uint256,
-    vp_contract: &Addr,
-    denom: String,
-    user_reward_state: &UserRewardState,
-) -> StdResult<Coin> {
-    // get previous reward per unit voting power accounted for
-    let user_last_reward_puvp = user_reward_state
-        .accounted_denom_rewards_puvp
-        .get(&denom)
-        .cloned()
-        .unwrap_or_default();
-
-    // calculate the difference between the current total reward per unit
-    // voting power distributed and the user's latest reward per unit voting
-    // power accounted for.
-    let reward_factor = total_earned_puvp.checked_sub(user_last_reward_puvp)?;
-    // get the user's voting power at the current height
-    let voting_power: Uint256 =
-        get_voting_power_at_block(deps, &env.block, vp_contract, addr)?.into();
-
-    // calculate the amount of rewards earned:
-    // voting_power * reward_factor / scale_factor
-    let accrued_rewards_amount: Uint128 = voting_power
-        .checked_mul(reward_factor)?
-        .checked_div(scale_factor())?
-        .try_into()?;
-
-    Ok(coin(accrued_rewards_amount.u128(), denom))
-}
-
-fn get_prev_block_total_vp(
-    deps: Deps,
-    block: &BlockInfo,
-    contract_addr: &Addr,
-) -> StdResult<Uint128> {
-    let msg = VotingQueryMsg::TotalPowerAtHeight {
-        height: Some(block.height.checked_sub(1).unwrap_or_default()),
-    };
-    let resp: TotalPowerAtHeightResponse = deps.querier.query_wasm_smart(contract_addr, &msg)?;
-    Ok(resp.power)
-}
-
-fn get_voting_power_at_block(
-    deps: Deps,
-    block: &BlockInfo,
-    contract_addr: &Addr,
-    addr: &Addr,
-) -> StdResult<Uint128> {
-    let msg = VotingQueryMsg::VotingPowerAtHeight {
-        address: addr.into(),
-        height: Some(block.height),
-    };
-    let resp: VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(contract_addr, &msg)?;
-    Ok(resp.power)
-}
-
-/// returns underlying scalar value for a given duration.
-/// if the duration is in blocks, returns the block height.
-/// if the duration is in time, returns the time in seconds.
-fn get_duration_scalar(duration: &Duration) -> u64 {
-    match duration {
-        Duration::Height(h) => *h,
-        Duration::Time(t) => *t,
-    }
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -532,24 +407,27 @@ fn query_pending_rewards(deps: Deps, env: Env, addr: String) -> StdResult<Pendin
         let historic_rewards_earned_puvp = reward_state.get_historic_rewards_earned_puvp_sum();
 
         // then we get the active epoch earned puvp value
-        let total_earned_puvp = get_total_earned_puvp(deps, &env.block, &reward_state)?;
+        let active_total_earned_puvp =
+            get_active_total_earned_puvp(deps, &env.block, &reward_state)?;
+
+        let total_earned_puvp =
+            active_total_earned_puvp.checked_add(historic_rewards_earned_puvp)?;
 
         let earned_rewards = get_accrued_rewards_since_last_user_action(
             deps,
             &env,
             &addr,
-            total_earned_puvp.checked_add(historic_rewards_earned_puvp)?,
+            total_earned_puvp,
             &reward_state.vp_contract,
             denom.to_string(),
             &user_reward_state,
         )?;
-        let earned_amount = earned_rewards.amount;
         let existing_amount = user_reward_state
             .pending_denom_rewards
             .get(&denom)
             .cloned()
             .unwrap_or_default();
-        pending_rewards.insert(denom, earned_amount + existing_amount);
+        pending_rewards.insert(denom, earned_rewards.amount + existing_amount);
     }
 
     let pending_rewards_response = PendingRewardsResponse {
@@ -557,69 +435,4 @@ fn query_pending_rewards(deps: Deps, env: Env, addr: String) -> StdResult<Pendin
         pending_rewards,
     };
     Ok(pending_rewards_response)
-}
-
-/// Returns the appropriate CosmosMsg for transferring the reward token.
-fn get_transfer_msg(recipient: Addr, amount: Uint128, denom: Denom) -> StdResult<CosmosMsg> {
-    match denom {
-        Denom::Native(denom) => Ok(BankMsg::Send {
-            to_address: recipient.into_string(),
-            amount: coins(amount.u128(), denom),
-        }
-        .into()),
-        Denom::Cw20(addr) => {
-            let cw20_msg = to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
-                recipient: recipient.into_string(),
-                amount,
-            })?;
-            Ok(WasmMsg::Execute {
-                contract_addr: addr.into_string(),
-                msg: cw20_msg,
-                funds: vec![],
-            }
-            .into())
-        }
-    }
-}
-
-pub(crate) fn scale_factor() -> Uint256 {
-    Uint256::from(10u8).pow(39)
-}
-
-/// Calculate the duration from start to end. If the end is at or before the
-/// start, return 0.
-pub fn get_start_end_diff(end: &Expiration, start: &Expiration) -> StdResult<u64> {
-    match (end, start) {
-        (Expiration::AtHeight(end), Expiration::AtHeight(start)) => {
-            if end > start {
-                Ok(end - start)
-            } else {
-                Ok(0)
-            }
-        }
-        (Expiration::AtTime(end), Expiration::AtTime(start)) => {
-            if end > start {
-                Ok(end.seconds() - start.seconds())
-            } else {
-                Ok(0)
-            }
-        }
-        (Expiration::Never {}, Expiration::Never {}) => Ok(0),
-        _ => Err(StdError::generic_err(format!(
-            "incompatible expirations: got end {:?}, start {:?}",
-            end, start
-        ))),
-    }
-}
-
-fn validate_voting_power_contract(
-    deps: &DepsMut,
-    vp_contract: String,
-) -> Result<Addr, ContractError> {
-    let vp_contract = deps.api.addr_validate(&vp_contract)?;
-    let _: TotalPowerAtHeightResponse = deps.querier.query_wasm_smart(
-        &vp_contract,
-        &VotingQueryMsg::TotalPowerAtHeight { height: None },
-    )?;
-    Ok(vp_contract)
 }

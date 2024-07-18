@@ -5,7 +5,7 @@ use cw_storage_plus::Map;
 use cw_utils::Duration;
 use std::{cmp::min, collections::HashMap};
 
-use crate::{contract::get_start_end_diff, msg::RewardEmissionRate, ContractError};
+use crate::{helpers::get_start_end_diff, msg::RewardEmissionRate, ContractError};
 
 /// map user address to their unique reward state
 pub const USER_REWARD_STATES: Map<Addr, UserRewardState> = Map::new("u_r_s");
@@ -21,7 +21,7 @@ pub struct UserRewardState {
     /// map denom to the user's pending rewards
     pub pending_denom_rewards: HashMap<String, Uint128>,
     /// map denom string to the user's earned rewards per unit voting power that
-    /// have already been accounted for (claimed).
+    /// have already been accounted for (added to pending and maybe claimed).
     pub accounted_denom_rewards_puvp: HashMap<String, Uint256>,
 }
 
@@ -226,19 +226,20 @@ impl DenomRewardState {
 
     /// Returns the latest time when rewards were distributed. Works by
     /// comparing `current_block` with the distribution end time:
-    /// - If the end is `Never`, then no rewards are being distributed, thus we
-    /// return `Never`.
+    /// - If the end is `Never`, then no rewards are currently being
+    ///   distributed, so return the last update.
     /// - If the end is `AtHeight(h)` or `AtTime(t)`, we compare the current
-    /// block height or time with `h` or `t` respectively.
+    ///   block height or time with `h` or `t` respectively.
     /// - If current block respective value is before the end, rewards are still
-    /// being distributed. We therefore return the current block `height` or
-    /// `time`, as this block is the most recent time rewards were distributed.
+    ///   being distributed. We therefore return the current block `height` or
+    ///   `time`, as this block is the most recent time rewards were
+    ///   distributed.
     /// - If current block respective value is after the end, rewards are no
-    /// longer being distributed. We therefore return the end `height` or
-    /// `time`, as that was the last date where rewards were distributed.
+    ///   longer being distributed. We therefore return the end `height` or
+    ///   `time`, as that was the last date where rewards were distributed.
     pub fn get_latest_reward_distribution_time(&self, current_block: &BlockInfo) -> Expiration {
         match self.active_epoch_config.ends_at {
-            Expiration::Never {} => Expiration::Never {},
+            Expiration::Never {} => self.last_update,
             Expiration::AtHeight(h) => Expiration::AtHeight(min(current_block.height, h)),
             Expiration::AtTime(t) => Expiration::AtTime(min(current_block.time, t)),
         }
