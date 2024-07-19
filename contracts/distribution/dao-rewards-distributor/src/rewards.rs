@@ -18,19 +18,18 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr, denom: String)
         .unwrap_or_default();
     let mut denom_reward_state = DENOM_REWARD_STATES.load(deps.storage, denom.clone())?;
 
-    // first we go over the historic epochs and sum the historic rewards earned
-    let total_historic_puvp = denom_reward_state.get_historic_rewards_earned_puvp_sum();
-
-    // we update the active epoch earned puvp value up to the current block
+    // first update the active epoch earned puvp value up to the current block
     denom_reward_state.active_epoch.total_earned_puvp =
         get_active_total_earned_puvp(deps.as_ref(), &env.block, &denom_reward_state)?;
     denom_reward_state.bump_last_update(&env.block);
 
-    // the total applicable puvp is the sum of all historic puvp and the active epoch puvp
+    // then calculate the total applicable puvp, which is the sum of historical
+    // rewards earned puvp and the active epoch total earned puvp we just
+    // updated above based on the current block
     let total_applicable_puvp = denom_reward_state
         .active_epoch
         .total_earned_puvp
-        .checked_add(total_historic_puvp)?;
+        .checked_add(denom_reward_state.historical_earned_puvp)?;
 
     let earned_rewards = get_accrued_rewards_since_last_user_action(
         deps.as_ref(),

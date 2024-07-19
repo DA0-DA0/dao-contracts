@@ -38,4 +38,7 @@ pub enum ContractError {
 
     #[error("Denom already registered")]
     DenomAlreadyRegistered {},
+
+    #[error("Denom not registered")]
+    DenomNotRegistered {},
 }

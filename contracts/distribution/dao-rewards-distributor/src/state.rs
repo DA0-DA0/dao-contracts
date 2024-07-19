@@ -1,11 +1,16 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, Addr, BlockInfo, StdError, StdResult, Timestamp, Uint128, Uint256};
+use cosmwasm_std::{
+    ensure, Addr, BlockInfo, Deps, StdError, StdResult, Timestamp, Uint128, Uint256,
+};
 use cw20::{Denom, Expiration};
 use cw_storage_plus::Map;
 use cw_utils::Duration;
 use std::{cmp::min, collections::HashMap};
 
-use crate::{helpers::get_start_end_diff, msg::RewardEmissionRate, ContractError};
+use crate::{
+    helpers::get_start_end_diff, msg::RewardEmissionRate, rewards::get_active_total_earned_puvp,
+    ContractError,
+};
 
 /// map user address to their unique reward state
 pub const USER_REWARD_STATES: Map<Addr, UserRewardState> = Map::new("u_r_s");
@@ -78,52 +83,54 @@ pub struct DenomRewardState {
     pub funded_amount: Uint128,
     /// optional destination address for reward clawbacks
     pub withdraw_destination: Addr,
-    /// historic denom distribution epochs
-    pub historic_epochs: Vec<Epoch>,
+    /// historical rewards earned per unit voting power from past epochs due to
+    /// changes in the emission rate. each time emission rate is changed, this
+    /// value is increased by the `active_epoch`'s rewards earned puvp.
+    pub historical_earned_puvp: Uint256,
 }
 
 impl DenomRewardState {
-    /// Sum all historical total_earned_puvp values.
-    pub fn get_historic_rewards_earned_puvp_sum(&self) -> Uint256 {
-        self.historic_epochs
-            .iter()
-            .fold(Uint256::zero(), |acc, epoch| acc + epoch.total_earned_puvp)
-    }
-
     /// Finish current epoch early and start a new one with a new emission rate.
     pub fn transition_epoch(
         &mut self,
+        deps: Deps,
         new_emission_rate: RewardEmissionRate,
         current_block: &BlockInfo,
     ) -> StdResult<()> {
+        // if the new emission rate is the same as the active one, do nothing
+        if self.active_epoch.emission_rate == new_emission_rate {
+            return Ok(());
+        }
+
         let current_block_expiration = match self.active_epoch.emission_rate.duration {
             Duration::Height(_) => Expiration::AtHeight(current_block.height),
             Duration::Time(_) => Expiration::AtTime(current_block.time),
         };
 
-        // 1. finish current epoch by changing the end to now
-        let mut curr_epoch = self.active_epoch.clone();
-        curr_epoch.ends_at = current_block_expiration;
-        curr_epoch.finish_block = Some(current_block.to_owned());
+        // 1. finish current epoch by updating rewards and setting end to now
+        self.active_epoch.total_earned_puvp =
+            get_active_total_earned_puvp(deps, current_block, &self)?;
+        self.active_epoch.ends_at = current_block_expiration;
+        self.active_epoch.finish_block = Some(current_block.to_owned());
+        self.bump_last_update(&current_block);
 
-        // TODO: remove println
-        println!("transition_epoch: {:?}", curr_epoch);
-        // 2. push current epoch to historic configs
-        self.historic_epochs.push(curr_epoch.clone());
+        // 2. add current epoch rewards earned to historical rewards
+        // TODO: what to do on overflow?
+        self.historical_earned_puvp = self
+            .historical_earned_puvp
+            .checked_add(self.active_epoch.total_earned_puvp)?;
 
-        // 3. deduct the distributed rewards amount from total funded amount,
-        // as those rewards are no longer available for distribution
-        let curr_epoch_earned_rewards = match curr_epoch.emission_rate.amount.is_zero() {
+        // 3. deduct the distributed rewards amount from total funded amount, as
+        // those rewards are no longer distributed in the new epoch
+        let active_epoch_earned_rewards = match self.active_epoch.emission_rate.amount.is_zero() {
             true => Uint128::zero(),
-            false => curr_epoch.get_total_rewards()?,
+            false => self.active_epoch.get_total_rewards()?,
         };
-        self.funded_amount = self.funded_amount.checked_sub(curr_epoch_earned_rewards)?;
+        self.funded_amount = self
+            .funded_amount
+            .checked_sub(active_epoch_earned_rewards)?;
 
         // 4. start new epoch
-        // TODO: remove println
-        println!("fund amount: {:?}", self.funded_amount);
-        // TODO: remove println
-        println!("new_emission_rate: {:?}", new_emission_rate);
 
         // we get the duration of the funded period and add it to the current
         // block height. if the sum overflows, we return u64::MAX, as it

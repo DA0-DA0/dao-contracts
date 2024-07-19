@@ -78,7 +78,7 @@ Updating the denom reward emission rate archives the active reward epoch and sta
 First, the currently active epoch is evaluated. We find the amount of tokens that were earned to this point per unit of voting power and save that in the current epoch as its total earned rewards per unit of voting power.
 We then bump the last update with that of the current block, and transition into the new epoch.
 
-Active reward epoch is moved into the `historic_epochs`. This is a list of previously active reward emission schedules, along with their finalized amounts.
+The final (partial) amount of rewards distributed during the active reward epoch are added to `historical_earned_puvp` to ensure they can still be claimed. This historical value contains all rewards distributed during past epochs.
 
 ### Shutting down denom distribution
 

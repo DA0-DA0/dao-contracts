@@ -81,14 +81,12 @@ fn execute_update_reward_rate(
     // only the owner can update the reward rate
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
-    let mut reward_state = DENOM_REWARD_STATES.load(deps.storage, denom.clone())?;
-    reward_state.active_epoch.total_earned_puvp =
-        get_active_total_earned_puvp(deps.as_ref(), &env.block, &reward_state)?;
-    reward_state.bump_last_update(&env.block);
+    let mut reward_state = DENOM_REWARD_STATES
+        .load(deps.storage, denom.clone())
+        .map_err(|_| ContractError::DenomNotRegistered {})?;
 
     // transition the epoch to the new emission rate and save
-    reward_state.transition_epoch(new_emission_rate, &env.block)?;
-
+    reward_state.transition_epoch(deps.as_ref(), new_emission_rate, &env.block)?;
     DENOM_REWARD_STATES.save(deps.storage, denom.clone(), &reward_state)?;
 
     Ok(Response::new().add_attribute("action", "update_reward_rate"))
@@ -136,7 +134,7 @@ fn execute_register_reward_denom(
         hook_caller: hook_caller.clone(),
         funded_amount: Uint128::zero(),
         withdraw_destination,
-        historic_epochs: vec![],
+        historical_earned_puvp: Uint256::zero(),
     };
     let str_denom = reward_state.to_str_denom();
 
@@ -397,15 +395,13 @@ fn query_pending_rewards(deps: Deps, env: Env, addr: String) -> StdResult<Pendin
 
     // we iterate over every registered denom and calculate the pending rewards for the user
     for (denom, reward_state) in reward_states {
-        // first we go over the historic epochs and sum rewards earned puvp
-        let historic_rewards_earned_puvp = reward_state.get_historic_rewards_earned_puvp_sum();
-
-        // then we get the active epoch earned puvp value
+        // first we get the active epoch earned puvp value
         let active_total_earned_puvp =
             get_active_total_earned_puvp(deps, &env.block, &reward_state)?;
 
+        // then we add that to the historical rewards earned puvp
         let total_earned_puvp =
-            active_total_earned_puvp.checked_add(historic_rewards_earned_puvp)?;
+            active_total_earned_puvp.checked_add(reward_state.historical_earned_puvp)?;
 
         let earned_rewards = get_accrued_rewards_since_last_user_action(
             deps,
