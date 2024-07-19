@@ -1,4 +1,4 @@
-use cosmwasm_std::{coin, coins, Addr, Coin};
+use cosmwasm_std::{coin, coins};
 use cw_denom::UncheckedDenom;
 use cw_orch::{contract::interface_traits::CwOrchQuery, mock::MockBech32};
 

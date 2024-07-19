@@ -16,12 +16,7 @@ use abstract_cw20::{msg::Cw20ExecuteMsgFns, Cw20ExecuteMsg as AbsCw20ExecuteMsg}
 use abstract_cw20_base::msg::QueryMsgFns;
 use cosmwasm_std::{coin, to_json_binary, Addr, CosmosMsg, Decimal, Uint128, WasmMsg};
 use cw_denom::UncheckedDenom;
-use cw_orch::{
-    contract::interface_traits::{CwOrchExecute, CwOrchInstantiate, CwOrchUpload},
-    environment::IndexResponse,
-    mock::{cw_multi_test::AppResponse, MockBech32},
-    prelude::*,
-};
+use cw_orch::{contract::interface_traits::CwOrchExecute, mock::MockBech32, prelude::*};
 
 #[test]
 fn create_default_submission() {
@@ -72,13 +67,13 @@ fn create_submission_no_required_deposit() {
     );
 
     // Valid submission.
-    native_submission_helper(
+    let result = native_submission_helper(
         adapter.clone(),
         mock.sender.clone(),
         recipient.clone(),
         None,
-    )
-    .unwrap();
+    );
+    assert!(result.is_ok());
 
     assert_eq!(
         SubmissionResponse {
