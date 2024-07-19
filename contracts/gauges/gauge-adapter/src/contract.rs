@@ -9,11 +9,11 @@ use cw20::Cw20ReceiveMsg;
 use cw_denom::UncheckedDenom;
 use cw_utils::{one_coin, PaymentError};
 
-use crate::error::ContractError;
-use crate::msg::{
-    AdapterQueryMsg, AssetUnchecked, ExecuteMsg, InstantiateMsg, MigrateMsg, ReceiveMsg,
+use crate::{
+    error::ContractError,
+    msg::{AdapterQueryMsg, AssetUnchecked, ExecuteMsg, InstantiateMsg, MigrateMsg, ReceiveMsg},
+    state::{Config, Submission, CONFIG, SUBMISSIONS},
 };
-use crate::state::{Config, Submission, CONFIG, SUBMISSIONS};
 
 // Version info for migration info.
 const CONTRACT_NAME: &str = "crates.io:marketing-gauge-adapter";

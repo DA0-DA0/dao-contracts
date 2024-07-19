@@ -9,9 +9,6 @@ use crate::{
     ContractError,
 };
 
-use super::suite::GaugeAdapter;
-use crate::msg::InstantiateMsg as GaugeOrchInstantiateMsg;
-
 use abstract_cw20::{msg::Cw20ExecuteMsgFns, Cw20ExecuteMsg as AbsCw20ExecuteMsg};
 use abstract_cw20_base::msg::QueryMsgFns;
 use cosmwasm_std::{coin, to_json_binary, Addr, CosmosMsg, Decimal, Uint128, WasmMsg};

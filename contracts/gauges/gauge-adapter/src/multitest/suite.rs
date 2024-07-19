@@ -70,25 +70,23 @@ pub fn native_submission_helper(
     native_tokens: Option<Coin>,
 ) -> Result<AppResponse, CwEnvError> {
     if let Some(assets) = native_tokens.clone() {
-        let res = adapter.call_as(&sender).execute(
+        adapter.call_as(&sender).execute(
             &crate::msg::ExecuteMsg::CreateSubmission {
                 name: "DAOers".to_string(),
                 url: "https://daodao.zone".to_string(),
                 address: recipient.to_string(),
             },
             Some(&[assets]),
-        );
-        res
+        )
     } else {
-        let res = adapter.call_as(&sender).execute(
+        adapter.call_as(&sender).execute(
             &crate::msg::ExecuteMsg::CreateSubmission {
                 name: "DAOers".to_string(),
                 url: "https://daodao.zone".to_string(),
                 address: recipient.to_string(),
             },
             None,
-        );
-        res
+        )
     }
 }
 
