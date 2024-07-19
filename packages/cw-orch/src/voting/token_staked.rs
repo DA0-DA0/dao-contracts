@@ -1,6 +1,4 @@
-use cw_orch::interface;
-#[cfg(not(target_arch = "wasm32"))]
-use cw_orch::prelude::*;
+use cw_orch::{interface, prelude::*};
 
 use dao_voting_token_staked::contract::{execute, instantiate, migrate, query, reply};
 use dao_voting_token_staked::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -8,7 +6,6 @@ use dao_voting_token_staked::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, Query
 #[interface(InstantiateMsg, ExecuteMsg, QueryMsg, MigrateMsg)]
 pub struct DaoVotingTokenStaked;
 
-#[cfg(not(target_arch = "wasm32"))]
 impl<Chain> Uploadable for DaoVotingTokenStaked<Chain> {
     /// Return the path to the wasm file corresponding to the contract
     fn wasm(_chain: &ChainInfoOwned) -> WasmPath {

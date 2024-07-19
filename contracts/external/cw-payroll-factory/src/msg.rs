@@ -37,7 +37,7 @@ pub enum ReceiveMsg {
 }
 
 #[cw_serde]
-#[derive(QueryResponses,cw_orch::QueryFns)]
+#[derive(QueryResponses, cw_orch::QueryFns)]
 pub enum QueryMsg {
     /// Returns list of all vesting payment contracts
     #[returns(Vec<crate::state::VestingContract>)]

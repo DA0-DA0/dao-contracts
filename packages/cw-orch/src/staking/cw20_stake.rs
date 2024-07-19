@@ -1,6 +1,4 @@
-use cw_orch::interface;
-#[cfg(not(target_arch = "wasm32"))]
-use cw_orch::prelude::*;
+use cw_orch::{interface, prelude::*};
 
 use cw20_stake::contract::{execute, instantiate, migrate, query};
 use cw20_stake::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -8,7 +6,6 @@ use cw20_stake::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 #[interface(InstantiateMsg, ExecuteMsg, QueryMsg, MigrateMsg)]
 pub struct Cw20Stake;
 
-#[cfg(not(target_arch = "wasm32"))]
 impl<Chain> Uploadable for Cw20Stake<Chain> {
     /// Return the path to the wasm file corresponding to the contract
     fn wasm(_chain: &ChainInfoOwned) -> WasmPath {
