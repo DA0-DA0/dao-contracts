@@ -33,30 +33,46 @@ pub enum ExecuteMsg {
     NftStakeChangeHook(NftStakeChangedHookMsg),
     /// Called when tokens are staked or unstaked.
     StakeChangeHook(StakeChangedHookMsg),
-    /// Claims rewards for the sender.
-    Claim { denom: String },
+    /// registers a new reward denom
+    RegisterDenom(RegisterDenomMsg),
+    /// updates the config for a registered denom
+    UpdateDenom {
+        /// denom to update
+        denom: String,
+        /// reward emission rate
+        emission_rate: Option<RewardEmissionRate>,
+        /// address to query the voting power
+        vp_contract: Option<String>,
+        /// address that will update the reward split when the voting power
+        /// distribution changes
+        hook_caller: Option<String>,
+        /// destination address for reward clawbacks. defaults to owner
+        withdraw_destination: Option<String>,
+    },
     /// Used to fund this contract with cw20 tokens.
     Receive(Cw20ReceiveMsg),
     /// Used to fund this contract with native tokens.
     Fund {},
-    /// shuts down the rewards distributor. withdraws all future staking rewards
-    /// back to the treasury. members can claim whatever they earned until this point.
+    /// Claims rewards for the sender.
+    Claim { denom: String },
+    /// shuts down the rewards distributor for a denom. withdraws all future
+    /// staking rewards back to the treasury. members can claim whatever they
+    /// earned until this point.
     Shutdown { denom: String },
-    /// registers a new reward denom
-    RegisterRewardDenom(RegisterRewardDenomMsg),
-    /// updates the reward emission rate for a registered denom
-    UpdateRewardEmissionRate {
-        denom: String,
-        emission_rate: RewardEmissionRate,
-    },
 }
 
 #[cw_serde]
-pub struct RegisterRewardDenomMsg {
+pub struct RegisterDenomMsg {
+    /// denom to register
     pub denom: UncheckedDenom,
+    /// reward emission rate
     pub emission_rate: RewardEmissionRate,
+    /// address to query the voting power
     pub vp_contract: String,
+    /// address that will update the reward split when the voting power
+    /// distribution changes
     pub hook_caller: String,
+    /// destination address for reward clawbacks. defaults to owner
     pub withdraw_destination: Option<String>,
 }
 

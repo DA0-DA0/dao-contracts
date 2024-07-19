@@ -14,11 +14,11 @@ use std::collections::HashMap;
 use crate::helpers::{get_duration_scalar, get_transfer_msg, validate_voting_power_contract};
 use crate::hooks::{
     execute_membership_changed, execute_nft_stake_changed, execute_stake_changed,
-    subscribe_denom_to_hook,
+    subscribe_denom_to_hook, unsubscribe_denom_from_hook,
 };
 use crate::msg::{
-    ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, ReceiveMsg,
-    RegisterRewardDenomMsg, RewardEmissionRate, RewardsStateResponse,
+    ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, ReceiveMsg, RegisterDenomMsg,
+    RewardEmissionRate, RewardsStateResponse,
 };
 use crate::rewards::{
     get_accrued_rewards_since_last_user_action, get_active_total_earned_puvp, update_rewards,
@@ -55,50 +55,38 @@ pub fn execute(
         ExecuteMsg::StakeChangeHook(msg) => execute_stake_changed(deps, env, info, msg),
         ExecuteMsg::NftStakeChangeHook(msg) => execute_nft_stake_changed(deps, env, info, msg),
         ExecuteMsg::MemberChangedHook(msg) => execute_membership_changed(deps, env, info, msg),
-        ExecuteMsg::Claim { denom } => execute_claim(deps, env, info, denom),
-        ExecuteMsg::Fund {} => execute_fund_native(deps, env, info),
-        ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
         ExecuteMsg::UpdateOwnership(action) => execute_update_owner(deps, info, env, action),
-        ExecuteMsg::Shutdown { denom } => execute_shutdown(deps, info, env, denom),
-        ExecuteMsg::RegisterRewardDenom(register_msg) => {
-            execute_register_reward_denom(deps, info, register_msg)
-        }
-        ExecuteMsg::UpdateRewardEmissionRate {
+        ExecuteMsg::RegisterDenom(register_msg) => execute_register_denom(deps, info, register_msg),
+        ExecuteMsg::UpdateDenom {
             denom,
             emission_rate,
-        } => execute_update_reward_rate(deps, env, info, denom, emission_rate),
+            vp_contract,
+            hook_caller,
+            withdraw_destination,
+        } => execute_update_denom(
+            deps,
+            env,
+            info,
+            denom,
+            emission_rate,
+            vp_contract,
+            hook_caller,
+            withdraw_destination,
+        ),
+        ExecuteMsg::Fund {} => execute_fund_native(deps, env, info),
+        ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
+        ExecuteMsg::Claim { denom } => execute_claim(deps, env, info, denom),
+        ExecuteMsg::Shutdown { denom } => execute_shutdown(deps, info, env, denom),
     }
-}
-
-/// updates the reward emission rate for a registered denom
-fn execute_update_reward_rate(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    denom: String,
-    new_emission_rate: RewardEmissionRate,
-) -> Result<Response, ContractError> {
-    // only the owner can update the reward rate
-    cw_ownable::assert_owner(deps.storage, &info.sender)?;
-
-    let mut reward_state = DENOM_REWARD_STATES
-        .load(deps.storage, denom.clone())
-        .map_err(|_| ContractError::DenomNotRegistered {})?;
-
-    // transition the epoch to the new emission rate and save
-    reward_state.transition_epoch(deps.as_ref(), new_emission_rate, &env.block)?;
-    DENOM_REWARD_STATES.save(deps.storage, denom.clone(), &reward_state)?;
-
-    Ok(Response::new().add_attribute("action", "update_reward_rate"))
 }
 
 /// registers a new denom for rewards distribution.
 /// only the owner can register a new denom.
 /// a denom can only be registered once; update if you need to change something.
-fn execute_register_reward_denom(
+fn execute_register_denom(
     deps: DepsMut,
     info: MessageInfo,
-    msg: RegisterRewardDenomMsg,
+    msg: RegisterDenomMsg,
 ) -> Result<Response, ContractError> {
     // only the owner can register a new denom
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
@@ -149,15 +137,64 @@ fn execute_register_reward_denom(
     )?;
 
     // update the registered hooks to include the new denom
-    subscribe_denom_to_hook(deps, str_denom, hook_caller.clone())?;
+    subscribe_denom_to_hook(deps.storage, str_denom, hook_caller.clone())?;
 
     Ok(Response::default().add_attribute("action", "register_reward_denom"))
 }
 
-/// shutdown the rewards distributor contract.
-/// can only be called by the admin and only during the distribution period.
-/// this will clawback all (undistributed) future rewards to the admin.
-/// updates the period finish expiration to the current block.
+/// updates the config for a registered denom
+#[allow(clippy::too_many_arguments)]
+fn execute_update_denom(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    denom: String,
+    emission_rate: Option<RewardEmissionRate>,
+    vp_contract: Option<String>,
+    hook_caller: Option<String>,
+    withdraw_destination: Option<String>,
+) -> Result<Response, ContractError> {
+    // only the owner can update a denom config
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    let mut reward_state = DENOM_REWARD_STATES
+        .load(deps.storage, denom.clone())
+        .map_err(|_| ContractError::DenomNotRegistered {})?;
+
+    if let Some(emission_rate) = emission_rate {
+        // transition the epoch to the new emission rate
+        reward_state.transition_epoch(deps.as_ref(), emission_rate, &env.block)?;
+    }
+
+    if let Some(vp_contract) = vp_contract {
+        reward_state.vp_contract = validate_voting_power_contract(&deps, vp_contract)?;
+    }
+
+    if let Some(hook_caller) = hook_caller {
+        // remove existing from registered hooks
+        unsubscribe_denom_from_hook(deps.storage, &denom, reward_state.hook_caller)?;
+
+        reward_state.hook_caller = deps.api.addr_validate(&hook_caller)?;
+
+        // add new to registered hooks
+        subscribe_denom_to_hook(deps.storage, &denom, reward_state.hook_caller.clone())?;
+    }
+
+    if let Some(withdraw_destination) = withdraw_destination {
+        reward_state.withdraw_destination = deps.api.addr_validate(&withdraw_destination)?;
+    }
+
+    DENOM_REWARD_STATES.save(deps.storage, denom.clone(), &reward_state)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "update_denom")
+        .add_attribute("denom", denom))
+}
+
+/// shutdown the rewards distribution for a specific denom. can only be called
+/// by the admin and only during the distribution period. this will clawback all
+/// (undistributed) future rewards to the admin. updates the period finish
+/// expiration to the current block.
 fn execute_shutdown(
     deps: DepsMut,
     info: MessageInfo,
@@ -188,12 +225,10 @@ fn execute_shutdown(
 
     // get the fraction of what part of rewards duration is in the past
     // and sub from 1 to get the remaining rewards
-    let remaining_reward_duration_fraction = Decimal::one()
-        .checked_sub(Decimal::from_ratio(
-            passed_scalar_units_since_start,
-            reward_duration_scalar,
-        ))
-        .map_err(|e| ContractError::Std(e.into()))?;
+    let remaining_reward_duration_fraction = Decimal::one().checked_sub(Decimal::from_ratio(
+        passed_scalar_units_since_start,
+        reward_duration_scalar,
+    ))?;
 
     // to get the clawback msg
     let clawback_msg = get_transfer_msg(

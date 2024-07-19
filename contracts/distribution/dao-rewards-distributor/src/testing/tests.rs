@@ -7,6 +7,7 @@ use cw4::Member;
 use cw_multi_test::Executor;
 use cw_utils::Duration;
 
+use crate::testing::native_setup::setup_native_token_test;
 use crate::{
     msg::ExecuteMsg,
     testing::{ADDR1, ADDR2, ADDR3, DENOM},
@@ -59,7 +60,7 @@ fn test_native_dao_rewards_update_reward_rate() {
 
     // double the rewards rate
     // now there will be 10_000_000 tokens distributed over 100_000 blocks
-    suite.update_reward_emission_rate(DENOM, Duration::Height(10), 1000);
+    suite.update_reward_emission_rate(DENOM, Duration::Height(10), 1_000);
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
@@ -1306,4 +1307,38 @@ fn test_update_owner() {
 
     let owner = suite.get_owner().to_string();
     assert_eq!(owner, new_owner);
+}
+
+#[test]
+fn test_update_vp_contract() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    let new_vp_contract = setup_native_token_test(suite.app.borrow_mut());
+
+    suite.update_vp_contract(DENOM, new_vp_contract.as_str());
+
+    let denom = suite.get_denom_reward_state(DENOM);
+    assert_eq!(denom.vp_contract, new_vp_contract);
+}
+
+#[test]
+fn test_update_hook_caller() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    let new_hook_caller = "new_hook_caller";
+    suite.update_hook_caller(DENOM, new_hook_caller);
+
+    let denom = suite.get_denom_reward_state(DENOM);
+    assert_eq!(denom.hook_caller, new_hook_caller);
+}
+
+#[test]
+fn update_withdraw_destination() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    let new_withdraw_destination = "new_withdraw_destination";
+    suite.update_withdraw_destination(DENOM, new_withdraw_destination);
+
+    let denom = suite.get_denom_reward_state(DENOM);
+    assert_eq!(denom.withdraw_destination, new_withdraw_destination);
 }

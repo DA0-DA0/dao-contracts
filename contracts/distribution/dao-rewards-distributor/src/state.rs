@@ -81,7 +81,7 @@ pub struct DenomRewardState {
     pub hook_caller: Addr,
     /// total amount of rewards funded
     pub funded_amount: Uint128,
-    /// optional destination address for reward clawbacks
+    /// destination address for reward clawbacks
     pub withdraw_destination: Addr,
     /// historical rewards earned per unit voting power from past epochs due to
     /// changes in the emission rate. each time emission rate is changed, this
@@ -109,10 +109,10 @@ impl DenomRewardState {
 
         // 1. finish current epoch by updating rewards and setting end to now
         self.active_epoch.total_earned_puvp =
-            get_active_total_earned_puvp(deps, current_block, &self)?;
+            get_active_total_earned_puvp(deps, current_block, self)?;
         self.active_epoch.ends_at = current_block_expiration;
         self.active_epoch.finish_block = Some(current_block.to_owned());
-        self.bump_last_update(&current_block);
+        self.bump_last_update(current_block);
 
         // 2. add current epoch rewards earned to historical rewards
         // TODO: what to do on overflow?

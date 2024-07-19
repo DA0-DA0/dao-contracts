@@ -61,20 +61,66 @@
         "additionalProperties": false
       },
       {
-        "description": "Claims rewards for the sender.",
+        "description": "registers a new reward denom",
         "type": "object",
         "required": [
-          "claim"
+          "register_denom"
         ],
         "properties": {
-          "claim": {
+          "register_denom": {
+            "$ref": "#/definitions/RegisterDenomMsg"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "updates the config for a registered denom",
+        "type": "object",
+        "required": [
+          "update_denom"
+        ],
+        "properties": {
+          "update_denom": {
             "type": "object",
             "required": [
               "denom"
             ],
             "properties": {
               "denom": {
+                "description": "denom to update",
                 "type": "string"
+              },
+              "emission_rate": {
+                "description": "reward emission rate",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/RewardEmissionRate"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "hook_caller": {
+                "description": "address that will update the reward split when the voting power distribution changes",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "vp_contract": {
+                "description": "address to query the voting power",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "withdraw_destination": {
+                "description": "destination address for reward clawbacks. defaults to owner",
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -110,13 +156,13 @@
         "additionalProperties": false
       },
       {
-        "description": "shuts down the rewards distributor. withdraws all future staking rewards back to the treasury. members can claim whatever they earned until this point.",
+        "description": "Claims rewards for the sender.",
         "type": "object",
         "required": [
-          "shutdown"
+          "claim"
         ],
         "properties": {
-          "shutdown": {
+          "claim": {
             "type": "object",
             "required": [
               "denom"
@@ -132,37 +178,20 @@
         "additionalProperties": false
       },
       {
-        "description": "registers a new reward denom",
+        "description": "shuts down the rewards distributor for a denom. withdraws all future staking rewards back to the treasury. members can claim whatever they earned until this point.",
         "type": "object",
         "required": [
-          "register_reward_denom"
+          "shutdown"
         ],
         "properties": {
-          "register_reward_denom": {
-            "$ref": "#/definitions/RegisterRewardDenomMsg"
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "updates the reward emission rate for a registered denom",
-        "type": "object",
-        "required": [
-          "update_reward_emission_rate"
-        ],
-        "properties": {
-          "update_reward_emission_rate": {
+          "shutdown": {
             "type": "object",
             "required": [
-              "denom",
-              "emission_rate"
+              "denom"
             ],
             "properties": {
               "denom": {
                 "type": "string"
-              },
-              "emission_rate": {
-                "$ref": "#/definitions/RewardEmissionRate"
               }
             },
             "additionalProperties": false
@@ -449,7 +478,7 @@
           }
         ]
       },
-      "RegisterRewardDenomMsg": {
+      "RegisterDenomMsg": {
         "type": "object",
         "required": [
           "denom",
@@ -459,18 +488,31 @@
         ],
         "properties": {
           "denom": {
-            "$ref": "#/definitions/UncheckedDenom"
+            "description": "denom to register",
+            "allOf": [
+              {
+                "$ref": "#/definitions/UncheckedDenom"
+              }
+            ]
           },
           "emission_rate": {
-            "$ref": "#/definitions/RewardEmissionRate"
+            "description": "reward emission rate",
+            "allOf": [
+              {
+                "$ref": "#/definitions/RewardEmissionRate"
+              }
+            ]
           },
           "hook_caller": {
+            "description": "address that will update the reward split when the voting power distribution changes",
             "type": "string"
           },
           "vp_contract": {
+            "description": "address to query the voting power",
             "type": "string"
           },
           "withdraw_destination": {
+            "description": "destination address for reward clawbacks. defaults to owner",
             "type": [
               "string",
               "null"
@@ -715,7 +757,7 @@
         "active_epoch",
         "denom",
         "funded_amount",
-        "historic_epochs",
+        "historical_earned_puvp",
         "hook_caller",
         "last_update",
         "vp_contract",
@@ -746,12 +788,13 @@
             }
           ]
         },
-        "historic_epochs": {
-          "description": "historic denom distribution epochs",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Epoch"
-          }
+        "historical_earned_puvp": {
+          "description": "historical rewards earned per unit voting power from past epochs due to changes in the emission rate. each time emission rate is changed, this value is increased by the `active_epoch`'s rewards earned puvp.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint256"
+            }
+          ]
         },
         "hook_caller": {
           "description": "address that will update the reward split when the voting power distribution changes",
@@ -778,7 +821,7 @@
           ]
         },
         "withdraw_destination": {
-          "description": "optional destination address for reward clawbacks",
+          "description": "destination address for reward clawbacks",
           "allOf": [
             {
               "$ref": "#/definitions/Addr"
@@ -1283,7 +1326,7 @@
             "active_epoch",
             "denom",
             "funded_amount",
-            "historic_epochs",
+            "historical_earned_puvp",
             "hook_caller",
             "last_update",
             "vp_contract",
@@ -1314,12 +1357,13 @@
                 }
               ]
             },
-            "historic_epochs": {
-              "description": "historic denom distribution epochs",
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Epoch"
-              }
+            "historical_earned_puvp": {
+              "description": "historical rewards earned per unit voting power from past epochs due to changes in the emission rate. each time emission rate is changed, this value is increased by the `active_epoch`'s rewards earned puvp.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint256"
+                }
+              ]
             },
             "hook_caller": {
               "description": "address that will update the reward split when the voting power distribution changes",
@@ -1346,7 +1390,7 @@
               ]
             },
             "withdraw_destination": {
-              "description": "optional destination address for reward clawbacks",
+              "description": "destination address for reward clawbacks",
               "allOf": [
                 {
                   "$ref": "#/definitions/Addr"

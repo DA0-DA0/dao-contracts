@@ -11,7 +11,7 @@ use cw_utils::Duration;
 
 use crate::{
     msg::{
-        ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, RegisterRewardDenomMsg,
+        ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, RegisterDenomMsg,
         RewardEmissionRate, RewardsStateResponse,
     },
     state::DenomRewardState,
@@ -383,7 +383,7 @@ impl Suite {
             .unwrap()
     }
 
-    pub fn _get_denom_reward_state(&mut self, denom: &str) -> DenomRewardState {
+    pub fn get_denom_reward_state(&mut self, denom: &str) -> DenomRewardState {
         let resp: DenomRewardState = self
             .app
             .wrap()
@@ -394,8 +394,17 @@ impl Suite {
                 },
             )
             .unwrap();
-        // println!("[{} REWARD STATE] {:?}", denom, resp);
         resp
+    }
+
+    pub fn get_owner(&mut self) -> Addr {
+        let ownable_response: cw_ownable::Ownership<Addr> = self
+            .app
+            .borrow_mut()
+            .wrap()
+            .query_wasm_smart(self.distribution_contract.clone(), &QueryMsg::Ownership {})
+            .unwrap();
+        ownable_response.owner.unwrap()
     }
 }
 
@@ -436,16 +445,6 @@ impl Suite {
             Duration::Time(t) => t,
         };
         assert_eq!(units, expected);
-    }
-
-    pub fn get_owner(&mut self) -> Addr {
-        let ownable_response: cw_ownable::Ownership<Addr> = self
-            .app
-            .borrow_mut()
-            .wrap()
-            .query_wasm_smart(self.distribution_contract.clone(), &QueryMsg::Ownership {})
-            .unwrap();
-        ownable_response.owner.unwrap()
     }
 
     pub fn assert_pending_rewards(&mut self, address: &str, _denom: &str, expected: u128) {
@@ -510,7 +509,7 @@ impl Suite {
     }
 
     pub fn register_reward_denom(&mut self, reward_config: RewardsConfig, hook_caller: &str) {
-        let register_reward_denom_msg = ExecuteMsg::RegisterRewardDenom(RegisterRewardDenomMsg {
+        let register_reward_denom_msg = ExecuteMsg::RegisterDenom(RegisterDenomMsg {
             denom: reward_config.denom.clone(),
             emission_rate: RewardEmissionRate {
                 amount: Uint128::new(reward_config.amount),
@@ -686,12 +685,75 @@ impl Suite {
         epoch_duration: Duration,
         epoch_rewards: u128,
     ) {
-        let msg = ExecuteMsg::UpdateRewardEmissionRate {
+        let msg: ExecuteMsg = ExecuteMsg::UpdateDenom {
             denom: denom.to_string(),
-            emission_rate: RewardEmissionRate {
+            emission_rate: Some(RewardEmissionRate {
                 amount: Uint128::new(epoch_rewards),
                 duration: epoch_duration,
-            },
+            }),
+            vp_contract: None,
+            hook_caller: None,
+            withdraw_destination: None,
+        };
+
+        let _resp = self
+            .app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+    }
+
+    pub fn update_vp_contract(&mut self, denom: &str, vp_contract: &str) {
+        let msg: ExecuteMsg = ExecuteMsg::UpdateDenom {
+            denom: denom.to_string(),
+            emission_rate: None,
+            vp_contract: Some(vp_contract.to_string()),
+            hook_caller: None,
+            withdraw_destination: None,
+        };
+
+        let _resp = self
+            .app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+    }
+
+    pub fn update_hook_caller(&mut self, denom: &str, hook_caller: &str) {
+        let msg: ExecuteMsg = ExecuteMsg::UpdateDenom {
+            denom: denom.to_string(),
+            emission_rate: None,
+            vp_contract: None,
+            hook_caller: Some(hook_caller.to_string()),
+            withdraw_destination: None,
+        };
+
+        let _resp = self
+            .app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+    }
+
+    pub fn update_withdraw_destination(&mut self, denom: &str, withdraw_destination: &str) {
+        let msg: ExecuteMsg = ExecuteMsg::UpdateDenom {
+            denom: denom.to_string(),
+            emission_rate: None,
+            vp_contract: None,
+            hook_caller: None,
+            withdraw_destination: Some(withdraw_destination.to_string()),
         };
 
         let _resp = self

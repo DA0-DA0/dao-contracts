@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{OverflowError, StdError};
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
@@ -11,6 +11,9 @@ pub enum ContractError {
 
     #[error(transparent)]
     Cw20Error(#[from] cw20_base::ContractError),
+
+    #[error(transparent)]
+    Overflow(#[from] OverflowError),
 
     #[error("Invalid Cw20")]
     InvalidCw20 {},

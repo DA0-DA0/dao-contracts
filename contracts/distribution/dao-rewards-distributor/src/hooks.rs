@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{Addr, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Storage};
 use cw4::MemberChangedHookMsg;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 
@@ -6,15 +6,36 @@ use crate::{rewards::update_rewards, state::REGISTERED_HOOK_DENOMS, ContractErro
 
 /// Register a hook caller contract for a given denom.
 pub(crate) fn subscribe_denom_to_hook(
-    deps: DepsMut,
-    denom: String,
+    storage: &mut dyn Storage,
+    denom: impl Into<String>,
     hook: Addr,
 ) -> Result<(), ContractError> {
-    REGISTERED_HOOK_DENOMS.update(deps.storage, hook, |denoms| -> StdResult<_> {
+    REGISTERED_HOOK_DENOMS.update(storage, hook, |denoms| -> StdResult<_> {
         let mut denoms = denoms.unwrap_or_default();
-        denoms.push(denom.to_string());
+        denoms.push(denom.into());
         Ok(denoms)
     })?;
+    Ok(())
+}
+
+/// Unregister a hook caller contract for a given denom.
+pub(crate) fn unsubscribe_denom_from_hook(
+    storage: &mut dyn Storage,
+    denom: &str,
+    hook: Addr,
+) -> Result<(), ContractError> {
+    let mut denoms = REGISTERED_HOOK_DENOMS
+        .may_load(storage, hook.clone())?
+        .unwrap_or_default();
+
+    denoms.retain(|d| d != denom);
+
+    if denoms.is_empty() {
+        REGISTERED_HOOK_DENOMS.remove(storage, hook);
+    } else {
+        REGISTERED_HOOK_DENOMS.save(storage, hook, &denoms)?;
+    }
+
     Ok(())
 }
 
