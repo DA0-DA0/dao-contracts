@@ -7,7 +7,7 @@ use crate::{
         AdapterQueryMsg, AllOptionsResponse, AllSubmissionsResponse, AssetUnchecked,
         CheckOptionResponse,
     },
-    multitest::suite::{native_submission_helper, setup_gauge_adapter, SuiteBuilder},
+    multitest::suite::{native_submission_helper, setup_gauge_adapter},
 };
 
 #[test]

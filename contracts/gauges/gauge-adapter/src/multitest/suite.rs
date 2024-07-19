@@ -44,6 +44,24 @@ pub fn setup_gauge_adapter(
     adapter
 }
 
+pub fn setup_cw20_reward_gauge_adapter(
+    mock: MockBech32,
+    required_deposit: Option<AssetUnchecked>,
+) -> (GaugeAdapter<MockBech32>, Cw20Base<MockBech32>) {
+    let adapter = GaugeAdapter::new("gauge_adapter", mock.clone());
+    adapter.upload().unwrap();
+    let cw20 = cw20_helper(mock.clone());
+
+    let instantiate = InstantiateMsg {
+        admin: mock.sender_addr().to_string(),
+        required_deposit,
+        reward: AssetUnchecked::new_cw20(&cw20.addr_str().unwrap(), 1_000_000),
+        community_pool: mock.addr_make("community_pool").to_string(),
+    };
+    adapter.instantiate(&instantiate, None, None).unwrap();
+    (adapter, cw20)
+}
+
 //
 pub fn native_submission_helper(
     adapter: GaugeAdapter<MockBech32>,
