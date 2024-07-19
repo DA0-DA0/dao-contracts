@@ -9,7 +9,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 #[derive(cw_orch::ExecuteFns)]
 pub enum ExecuteMsg {
-    #[fn_name("proposal_execute")]
+    #[cw_orch(fn_name("proposal_execute"))]
     Execute { msgs: Vec<CosmosMsg> },
 }
 
