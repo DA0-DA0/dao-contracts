@@ -223,7 +223,7 @@ fn test_update_config() -> cw_orch::anyhow::Result<()> {
     gov.upload()?;
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
-        root: mock.sender().to_string(),
+        root: mock.sender_addr().to_string(),
     };
 
     let gov_instantiate = InstantiateMsg {
@@ -290,7 +290,7 @@ fn test_swap_governance(swaps: Vec<(u32, u32)>) {
     gov.upload().unwrap();
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
-        root: mock.sender().to_string(),
+        root: mock.sender_addr().to_string(),
     };
 
     let gov_instantiate = InstantiateMsg {
@@ -436,7 +436,7 @@ fn test_removed_modules_can_not_execute() {
     gov.upload().unwrap();
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
-        root: mock.sender().to_string(),
+        root: mock.sender_addr().to_string(),
     };
 
     let gov_instantiate = InstantiateMsg {
@@ -555,7 +555,7 @@ fn test_module_already_disabled() {
     gov.upload().unwrap();
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
-        root: mock.sender().to_string(),
+        root: mock.sender_addr().to_string(),
     };
 
     let gov_instantiate = InstantiateMsg {
@@ -632,7 +632,7 @@ fn test_swap_voting_module() {
     gov.upload().unwrap();
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
-        root: mock.sender().to_string(),
+        root: mock.sender_addr().to_string(),
     };
 
     let gov_instantiate = InstantiateMsg {
@@ -704,7 +704,7 @@ fn test_permissions() {
     gov.upload().unwrap();
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
-        root: mock.sender().to_string(),
+        root: mock.sender_addr().to_string(),
     };
 
     let gov_instantiate = InstantiateMsg {
@@ -791,7 +791,7 @@ fn do_standard_instantiate(
     cw20.upload().unwrap();
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
-        root: mock.sender().to_string(),
+        root: mock.sender_addr().to_string(),
     };
     let voting_instantiate = dao_voting_cw20_balance::msg::InstantiateMsg {
         token_info: dao_voting_cw20_balance::msg::TokenInfo::New {
@@ -801,7 +801,7 @@ fn do_standard_instantiate(
             symbol: "DAO".to_string(),
             decimals: 6,
             initial_balances: vec![cw20::Cw20Coin {
-                address: mock.sender().to_string(),
+                address: mock.sender_addr().to_string(),
                 amount: Uint128::from(2u64),
             }],
             marketing: None,
@@ -1168,7 +1168,7 @@ fn test_passthrough_voting_queries() {
     let (gov, _, mock, _) = do_standard_instantiate(true, false);
 
     assert_eq!(
-        gov.voting_power_at_height(mock.sender().to_string(), None)
+        gov.voting_power_at_height(mock.sender_addr().to_string(), None)
             .unwrap(),
         VotingPowerAtHeightResponse {
             power: Uint128::from(2u64),
@@ -1234,7 +1234,7 @@ fn test_list_items() {
     gov.upload().unwrap();
     cw20.upload().unwrap();
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
-        root: mock.sender().to_string(),
+        root: mock.sender_addr().to_string(),
     };
     let voting_instantiate = dao_voting_cw20_balance::msg::InstantiateMsg {
         token_info: dao_voting_cw20_balance::msg::TokenInfo::New {
@@ -1244,7 +1244,7 @@ fn test_list_items() {
             symbol: "DAO".to_string(),
             decimals: 6,
             initial_balances: vec![cw20::Cw20Coin {
-                address: mock.sender().to_string(),
+                address: mock.sender_addr().to_string(),
                 amount: Uint128::from(2u64),
             }],
             marketing: None,
@@ -1335,7 +1335,7 @@ fn test_instantiate_with_items() {
     cw20.upload().unwrap();
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
-        root: mock.sender().to_string(),
+        root: mock.sender_addr().to_string(),
     };
     let voting_instantiate = dao_voting_cw20_balance::msg::InstantiateMsg {
         token_info: dao_voting_cw20_balance::msg::TokenInfo::New {
@@ -1345,7 +1345,7 @@ fn test_instantiate_with_items() {
             symbol: "DAO".to_string(),
             decimals: 6,
             initial_balances: vec![cw20::Cw20Coin {
-                address: mock.sender().to_string(),
+                address: mock.sender_addr().to_string(),
                 amount: Uint128::from(2u64),
             }],
             marketing: None,
@@ -1578,7 +1578,7 @@ fn test_cw721_receive() {
             &cw721_base::msg::InstantiateMsg {
                 name: "ekez".to_string(),
                 symbol: "ekez".to_string(),
-                minter: mock.sender().to_string(),
+                minter: mock.sender_addr().to_string(),
             },
             None,
             None,
@@ -1592,7 +1592,7 @@ fn test_cw721_receive() {
             &cw721_base::msg::InstantiateMsg {
                 name: "ekez".to_string(),
                 symbol: "ekez".to_string(),
-                minter: mock.sender().to_string(),
+                minter: mock.sender_addr().to_string(),
             },
             None,
             None,
@@ -1603,7 +1603,7 @@ fn test_cw721_receive() {
         .execute(
             &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::Mint {
                 token_id: "ekez".to_string(),
-                owner: mock.sender().to_string(),
+                owner: mock.sender_addr().to_string(),
                 token_uri: None,
                 extension: None,
             },
@@ -1678,7 +1678,7 @@ fn test_cw721_receive_no_auto_add() {
             &cw721_base::msg::InstantiateMsg {
                 name: "ekez".to_string(),
                 symbol: "ekez".to_string(),
-                minter: mock.sender().to_string(),
+                minter: mock.sender_addr().to_string(),
             },
             None,
             None,
@@ -1692,7 +1692,7 @@ fn test_cw721_receive_no_auto_add() {
             &cw721_base::msg::InstantiateMsg {
                 name: "ekez".to_string(),
                 symbol: "ekez".to_string(),
-                minter: mock.sender().to_string(),
+                minter: mock.sender_addr().to_string(),
             },
             None,
             None,
@@ -1899,7 +1899,7 @@ fn test_migrate_from_compatible() {
     cw20.upload().unwrap();
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
-        root: mock.sender().to_string(),
+        root: mock.sender_addr().to_string(),
     };
     let voting_instantiate = dao_voting_cw20_balance::msg::InstantiateMsg {
         token_info: dao_voting_cw20_balance::msg::TokenInfo::New {
@@ -1909,7 +1909,7 @@ fn test_migrate_from_compatible() {
             symbol: "DAO".to_string(),
             decimals: 6,
             initial_balances: vec![cw20::Cw20Coin {
-                address: mock.sender().to_string(),
+                address: mock.sender_addr().to_string(),
                 amount: Uint128::from(2u64),
             }],
             marketing: None,
@@ -1942,7 +1942,7 @@ fn test_migrate_from_compatible() {
         initial_items: None,
     };
 
-    gov.instantiate(&gov_instantiate, Some(&mock.sender()), None)
+    gov.instantiate(&gov_instantiate, Some(&mock.sender_addr()), None)
         .unwrap();
 
     let state = gov.dump_state().unwrap();
@@ -1973,7 +1973,7 @@ fn test_migrate_from_beta() {
     cw20.upload().unwrap();
 
     let proposal_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
-        root: mock.sender().to_string(),
+        root: mock.sender_addr().to_string(),
     };
     let voting_instantiate = dao_voting_cw20_balance::msg::InstantiateMsg {
         token_info: dao_voting_cw20_balance::msg::TokenInfo::New {
@@ -1983,7 +1983,7 @@ fn test_migrate_from_beta() {
             symbol: "DAO".to_string(),
             decimals: 6,
             initial_balances: vec![cw20::Cw20Coin {
-                address: mock.sender().to_string(),
+                address: mock.sender_addr().to_string(),
                 amount: Uint128::from(2u64),
             }],
             marketing: None,
@@ -2022,7 +2022,7 @@ fn test_migrate_from_beta() {
     };
 
     v1_gov
-        .instantiate(&v1_core_instantiate, Some(&mock.sender()), None)
+        .instantiate(&v1_core_instantiate, Some(&mock.sender_addr()), None)
         .unwrap();
 
     gov.set_address(&v1_gov.address().unwrap());
@@ -2154,7 +2154,7 @@ fn test_module_prefixes() {
     gov.upload().unwrap();
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
-        root: mock.sender().to_string(),
+        root: mock.sender_addr().to_string(),
     };
 
     let gov_instantiate = InstantiateMsg {
@@ -2233,7 +2233,7 @@ fn test_add_remove_subdaos() {
     let (gov, _proposal, mock, _) = do_standard_instantiate(false, false);
 
     test_unauthorized(
-        &gov.call_as(&mock.sender()),
+        &gov.call_as(&mock.sender_addr()),
         ExecuteMsg::UpdateSubDaos {
             to_add: vec![],
             to_remove: vec![],
