@@ -293,9 +293,8 @@ mod tests {
     use cosmwasm_std::{
         coins,
         testing::{mock_dependencies, mock_env, mock_info},
-        BankMsg, CosmosMsg, Decimal, Uint128, WasmMsg,
+        BankMsg, CosmosMsg, Decimal, Uint128,
     };
-    use cw20::Cw20ExecuteMsg;
     use cw_denom::CheckedDenom;
 
     use crate::{msg::AssetUnchecked, state::Asset};
