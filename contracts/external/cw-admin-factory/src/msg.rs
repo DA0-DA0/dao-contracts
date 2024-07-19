@@ -9,6 +9,7 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
+#[derive(cw_orch::ExecuteFns)]
 pub enum ExecuteMsg {
     /// Instantiates the target contract with the provided instantiate message and code id and
     /// updates the contract's admin to be itself.
@@ -20,7 +21,7 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
-#[derive(QueryResponses)]
+#[derive(QueryResponses, cw_orch::QueryFns)]
 pub enum QueryMsg {
     #[returns(AdminResponse)]
     Admin {},
