@@ -9,11 +9,11 @@ use cw20::Cw20ReceiveMsg;
 use cw_denom::UncheckedDenom;
 use cw_utils::{one_coin, PaymentError};
 
-use crate::error::ContractError;
-use crate::msg::{
-    AdapterQueryMsg, AssetUnchecked, ExecuteMsg, InstantiateMsg, MigrateMsg, ReceiveMsg,
+use crate::{
+    error::ContractError,
+    msg::{AdapterQueryMsg, AssetUnchecked, ExecuteMsg, InstantiateMsg, MigrateMsg, ReceiveMsg},
+    state::{Config, Submission, CONFIG, SUBMISSIONS},
 };
-use crate::state::{Config, Submission, CONFIG, SUBMISSIONS};
 
 // Version info for migration info.
 const CONTRACT_NAME: &str = "crates.io:marketing-gauge-adapter";
@@ -293,9 +293,8 @@ mod tests {
     use cosmwasm_std::{
         coins,
         testing::{mock_dependencies, mock_env, mock_info},
-        BankMsg, CosmosMsg, Decimal, Uint128, WasmMsg,
+        BankMsg, CosmosMsg, Decimal, Uint128,
     };
-    use cw20::Cw20ExecuteMsg;
     use cw_denom::CheckedDenom;
 
     use crate::{msg::AssetUnchecked, state::Asset};
@@ -305,7 +304,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
             admin: "admin".to_owned(),
-            required_deposit: Some(AssetUnchecked::new_cw20("wynd", 10_000_000)),
+            required_deposit: Some(AssetUnchecked::new_native("wynd", 10_000_000)),
             community_pool: "community".to_owned(),
             reward: AssetUnchecked::new_native("ujuno", 150_000_000_000),
         };
@@ -323,7 +322,7 @@ mod tests {
         assert_eq!(
             config.required_deposit,
             Some(Asset {
-                denom: CheckedDenom::Cw20(Addr::unchecked("wynd")),
+                denom: CheckedDenom::Native(String::from("wynd")),
                 amount: Uint128::new(10_000_000)
             })
         );
@@ -372,7 +371,7 @@ mod tests {
         let reward = Uint128::new(150_000_000_000);
         let msg = InstantiateMsg {
             admin: "admin".to_owned(),
-            required_deposit: Some(AssetUnchecked::new_cw20("wynd", 10_000_000)),
+            required_deposit: Some(AssetUnchecked::new_native("wynd", 10_000_000)),
             community_pool: "community".to_owned(),
             reward: AssetUnchecked::new_native("ujuno", reward.into()),
         };
@@ -408,69 +407,6 @@ mod tests {
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: "juno1y0us8xvsvfvqkk9c6nt5cfyu5au5tww23dmh40".to_string(),
                     amount: coins((reward * Decimal::percent(26)).u128(), "ujuno")
-                }),
-            ]
-        );
-    }
-
-    #[test]
-    fn sample_gauge_msgs_cw20() {
-        let mut deps = mock_dependencies();
-
-        let reward = Uint128::new(150_000_000_000);
-        let msg = InstantiateMsg {
-            admin: "admin".to_owned(),
-            required_deposit: Some(AssetUnchecked::new_cw20("wynd", 10_000_000)),
-            community_pool: "community".to_owned(),
-            reward: AssetUnchecked::new_cw20("wynd", reward.into()),
-        };
-        instantiate(deps.as_mut(), mock_env(), mock_info("user", &[]), msg).unwrap();
-
-        let selected = vec![
-            (
-                "juno1t8ehvswxjfn3ejzkjtntcyrqwvmvuknzy3ajxy".to_string(),
-                Decimal::percent(41),
-            ),
-            (
-                "juno196ax4vc0lwpxndu9dyhvca7jhxp70rmcl99tyh".to_string(),
-                Decimal::percent(33),
-            ),
-            (
-                "juno1y0us8xvsvfvqkk9c6nt5cfyu5au5tww23dmh40".to_string(),
-                Decimal::percent(26),
-            ),
-        ];
-        let res = query::sample_gauge_msgs(deps.as_ref(), selected).unwrap();
-        assert_eq!(res.execute.len(), 3);
-        assert_eq!(
-            res.execute,
-            [
-                CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: "wynd".to_owned(),
-                    msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
-                        recipient: "juno1t8ehvswxjfn3ejzkjtntcyrqwvmvuknzy3ajxy".to_string(),
-                        amount: reward * Decimal::percent(41)
-                    })
-                    .unwrap(),
-                    funds: vec![]
-                }),
-                CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: "wynd".to_owned(),
-                    msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
-                        recipient: "juno196ax4vc0lwpxndu9dyhvca7jhxp70rmcl99tyh".to_string(),
-                        amount: reward * Decimal::percent(33)
-                    })
-                    .unwrap(),
-                    funds: vec![]
-                }),
-                CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: "wynd".to_owned(),
-                    msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
-                        recipient: "juno1y0us8xvsvfvqkk9c6nt5cfyu5au5tww23dmh40".to_string(),
-                        amount: reward * Decimal::percent(26)
-                    })
-                    .unwrap(),
-                    funds: vec![]
                 }),
             ]
         );

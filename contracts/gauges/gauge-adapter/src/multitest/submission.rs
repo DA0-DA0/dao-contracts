@@ -3,13 +3,15 @@ use crate::{
         AdapterQueryMsg, AdapterQueryMsgFns, AllSubmissionsResponse, AssetUnchecked, ExecuteMsg,
         ExecuteMsgFns, ReceiveMsg, SubmissionResponse,
     },
-    multitest::suite::{cw20_helper, native_submission_helper, setup_gauge_adapter},
+    multitest::suite::{
+        cw20_helper, native_submission_helper, setup_cw20_reward_gauge_adapter, setup_gauge_adapter,
+    },
     ContractError,
 };
 
-use abstract_cw20::msg::Cw20ExecuteMsgFns;
+use abstract_cw20::{msg::Cw20ExecuteMsgFns, Cw20ExecuteMsg as AbsCw20ExecuteMsg};
 use abstract_cw20_base::msg::QueryMsgFns;
-use cosmwasm_std::{coin, to_json_binary, Addr, Uint128};
+use cosmwasm_std::{coin, to_json_binary, Addr, CosmosMsg, Decimal, Uint128, WasmMsg};
 use cw_denom::UncheckedDenom;
 use cw_orch::{contract::interface_traits::CwOrchExecute, mock::MockBech32, prelude::*};
 
@@ -45,10 +47,7 @@ fn create_submission_no_required_deposit() {
     mock.add_balance(&mock.sender, vec![coin(1_000, "juno")])
         .unwrap();
 
-    // let res = mock.query_balance(&mock.sender, "juno").unwrap();
-    // println!("{:#?}", res);
-
-    // // Fails send funds along with the tx.
+    // Fails send funds along with the tx.
     let err = native_submission_helper(
         adapter.clone(),
         mock.sender.clone(),
@@ -524,5 +523,64 @@ fn return_deposits_required_cw20_deposit() {
             .unwrap()
             .balance,
         Uint128::zero(),
+    );
+}
+
+#[test]
+fn sample_gauge_msgs_cw20() {
+    let mock = MockBech32::new("mock");
+    let addr_1 = mock.addr_make("addr1");
+    let addr_2 = mock.addr_make("addr2");
+    let addr_3 = mock.addr_make("addr3");
+    let reward = Uint128::new(1_000_000);
+    let (adapter, cw20) = setup_cw20_reward_gauge_adapter(mock.clone(), None);
+
+    adapter
+        .create_submission(addr_1.to_string(), "name".into(), "https://test.url".into())
+        .unwrap();
+    adapter
+        .create_submission(addr_2.to_string(), "name".into(), "https://test.url".into())
+        .unwrap();
+
+    let selected = vec![
+        (addr_1.to_string(), Decimal::percent(41)),
+        (addr_2.to_string(), Decimal::percent(33)),
+        (addr_3.to_string(), Decimal::percent(26)),
+    ];
+
+    let res: crate::msg::SampleGaugeMsgsResponse =
+        adapter.sample_gauge_msgs(selected.clone()).unwrap();
+    assert_eq!(res.execute.len(), 3);
+    assert_eq!(
+        res.execute,
+        [
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: cw20.addr_str().unwrap(),
+                msg: to_json_binary(&AbsCw20ExecuteMsg::Transfer {
+                    recipient: addr_1.to_string(),
+                    amount: reward * Decimal::percent(41)
+                })
+                .unwrap(),
+                funds: vec![]
+            }),
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: cw20.addr_str().unwrap(),
+                msg: to_json_binary(&AbsCw20ExecuteMsg::Transfer {
+                    recipient: addr_2.to_string(),
+                    amount: reward * Decimal::percent(33)
+                })
+                .unwrap(),
+                funds: vec![]
+            }),
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: cw20.addr_str().unwrap(),
+                msg: to_json_binary(&AbsCw20ExecuteMsg::Transfer {
+                    recipient: addr_3.to_string(),
+                    amount: reward * Decimal::percent(26)
+                })
+                .unwrap(),
+                funds: vec![]
+            }),
+        ]
     );
 }
