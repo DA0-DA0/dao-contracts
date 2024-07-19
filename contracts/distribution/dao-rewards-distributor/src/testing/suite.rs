@@ -48,6 +48,7 @@ pub struct SuiteBuilder {
     pub _instantiate: InstantiateMsg,
     pub dao_type: DaoType,
     pub rewards_config: RewardsConfig,
+    pub cw4_members: Vec<Member>,
 }
 
 impl SuiteBuilder {
@@ -63,11 +64,30 @@ impl SuiteBuilder {
                 duration: Duration::Height(10),
                 destination: None,
             },
+            cw4_members: vec![
+                Member {
+                    addr: ADDR1.to_string(),
+                    weight: 2,
+                },
+                Member {
+                    addr: ADDR2.to_string(),
+                    weight: 1,
+                },
+                Member {
+                    addr: ADDR3.to_string(),
+                    weight: 1,
+                },
+            ],
         }
     }
 
     pub fn with_rewards_config(mut self, rewards_config: RewardsConfig) -> Self {
         self.rewards_config = rewards_config;
+        self
+    }
+
+    pub fn with_cw4_members(mut self, cw4_members: Vec<Member>) -> Self {
+        self.cw4_members = cw4_members;
         self
     }
 
@@ -100,23 +120,8 @@ impl SuiteBuilder {
 
         match self.dao_type {
             DaoType::CW4 => {
-                let members = vec![
-                    Member {
-                        addr: ADDR1.to_string(),
-                        weight: 2,
-                    },
-                    Member {
-                        addr: ADDR2.to_string(),
-                        weight: 1,
-                    },
-                    Member {
-                        addr: ADDR3.to_string(),
-                        weight: 1,
-                    },
-                ];
-
                 let (voting_power_addr, dao_voting_addr) =
-                    setup_cw4_test(suite_built.app.borrow_mut(), members);
+                    setup_cw4_test(suite_built.app.borrow_mut(), self.cw4_members);
                 suite_built.voting_power_addr = voting_power_addr.clone();
                 suite_built.staking_addr = dao_voting_addr.clone();
             }
@@ -471,12 +476,12 @@ impl Suite {
         );
     }
 
-    pub fn assert_native_balance(&mut self, address: &str, denom: &str, expected: u128) {
+    pub fn assert_native_balance(&self, address: &str, denom: &str, expected: u128) {
         let balance = self.get_balance_native(address, denom);
         assert_eq!(balance, expected);
     }
 
-    pub fn assert_cw20_balance(&mut self, address: &str, expected: u128) {
+    pub fn assert_cw20_balance(&self, address: &str, expected: u128) {
         let balance = self.get_balance_cw20(self.reward_denom.clone(), address);
         assert_eq!(balance, expected);
     }

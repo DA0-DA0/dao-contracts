@@ -458,6 +458,138 @@ fn test_native_dao_rewards_time_based() {
     suite.stake_native_tokens(ADDR2, addr2_balance);
 }
 
+// all of the `+1` corrections highlight rounding
+#[test]
+fn test_native_dao_rewards_time_based_with_rounding() {
+    // 100udenom/100sec = 1udenom/1sec reward emission rate
+    // given funding of 100_000_000udenom, we have a reward duration of 100_000_000sec
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::CW4)
+        .with_rewards_config(RewardsConfig {
+            amount: 100,
+            denom: UncheckedDenom::Native(DENOM.to_string()),
+            duration: Duration::Time(100),
+            destination: None,
+        })
+        .with_cw4_members(vec![
+            Member {
+                addr: ADDR1.to_string(),
+                weight: 140,
+            },
+            Member {
+                addr: ADDR2.to_string(),
+                weight: 40,
+            },
+            Member {
+                addr: ADDR3.to_string(),
+                weight: 20,
+            },
+        ])
+        .build();
+
+    suite.assert_amount(100);
+    suite.assert_duration(100);
+    suite.assert_ends_at(Expiration::AtTime(Timestamp::from_seconds(100_000_000)));
+
+    // skip 1 interval
+    suite.skip_seconds(100);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 70);
+    suite.assert_pending_rewards(ADDR2, DENOM, 20);
+    suite.assert_pending_rewards(ADDR3, DENOM, 10);
+
+    // change voting power of one of the members and claim
+    suite.update_members(
+        vec![Member {
+            addr: ADDR2.to_string(),
+            weight: 60,
+        }],
+        vec![],
+    );
+    suite.claim_rewards(ADDR2, DENOM);
+    suite.assert_native_balance(ADDR2, DENOM, 20);
+    suite.assert_pending_rewards(ADDR2, DENOM, 0);
+
+    // skip 1 interval
+    suite.skip_seconds(100);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 70 + 63);
+    suite.assert_pending_rewards(ADDR2, DENOM, 27);
+    suite.assert_pending_rewards(ADDR3, DENOM, 10 + 9);
+
+    // increase reward rate and claim
+    suite.update_reward_emission_rate(DENOM, Duration::Time(100), 150);
+    suite.claim_rewards(ADDR3, DENOM);
+    suite.assert_native_balance(ADDR3, DENOM, 10 + 9);
+    suite.assert_pending_rewards(ADDR3, DENOM, 0);
+
+    // skip 1 interval
+    suite.skip_seconds(100);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 70 + 63 + 95 + 1);
+    suite.assert_pending_rewards(ADDR2, DENOM, 27 + 40 + 1);
+    suite.assert_pending_rewards(ADDR3, DENOM, 13);
+
+    // claim rewards
+    suite.claim_rewards(ADDR1, DENOM);
+    suite.assert_native_balance(ADDR1, DENOM, 70 + 63 + 95 + 1);
+    suite.assert_pending_rewards(ADDR1, DENOM, 0);
+
+    // skip 3 intervals
+    suite.skip_seconds(300);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 3 * 95 + 1);
+    suite.assert_pending_rewards(ADDR2, DENOM, 27 + 4 * 40 + 1 + 1 + 1);
+    suite.assert_pending_rewards(ADDR3, DENOM, 4 * 13 + 1 + 1);
+
+    // change voting power for all
+    suite.update_members(
+        vec![
+            Member {
+                addr: ADDR1.to_string(),
+                weight: 100,
+            },
+            Member {
+                addr: ADDR2.to_string(),
+                weight: 80,
+            },
+            Member {
+                addr: ADDR3.to_string(),
+                weight: 40,
+            },
+        ],
+        vec![],
+    );
+
+    suite.claim_rewards(ADDR2, DENOM);
+    suite.assert_native_balance(ADDR2, DENOM, 20 + 27 + 4 * 40 + 1 + 1 + 1);
+    suite.assert_pending_rewards(ADDR2, DENOM, 0);
+
+    // skip 1 interval
+    suite.skip_seconds(100);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 3 * 95 + 1 + 68);
+    suite.assert_pending_rewards(ADDR2, DENOM, 54);
+    suite.assert_pending_rewards(ADDR3, DENOM, 4 * 13 + 1 + 1 + 27);
+
+    // claim all
+    suite.claim_rewards(ADDR1, DENOM);
+    suite.claim_rewards(ADDR2, DENOM);
+    suite.claim_rewards(ADDR3, DENOM);
+    suite.assert_native_balance(ADDR1, DENOM, 70 + 63 + 95 + 1 + 3 * 95 + 1 + 68);
+    suite.assert_native_balance(ADDR2, DENOM, 20 + 27 + 4 * 40 + 1 + 1 + 1 + 54);
+    suite.assert_native_balance(ADDR3, DENOM, 10 + 9 + 4 * 13 + 1 + 1 + 27);
+    suite.assert_pending_rewards(ADDR1, DENOM, 0);
+    suite.assert_pending_rewards(ADDR2, DENOM, 0);
+    suite.assert_pending_rewards(ADDR3, DENOM, 0);
+
+    // TODO: fix this rug of 3 udenom by the distribution contract
+    suite.assert_native_balance(
+        suite.distribution_contract.as_str(),
+        DENOM,
+        100_000_000 - (100 * 2 + 150 * 5) + 3,
+    );
+}
+
 #[test]
 fn test_native_dao_rewards() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
