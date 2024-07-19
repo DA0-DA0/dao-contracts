@@ -22,13 +22,13 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr, denom: String)
     let total_historic_puvp = denom_reward_state.get_historic_rewards_earned_puvp_sum();
 
     // we update the active epoch earned puvp value up to the current block
-    denom_reward_state.active_epoch_config.total_earned_puvp =
+    denom_reward_state.active_epoch.total_earned_puvp =
         get_active_total_earned_puvp(deps.as_ref(), &env.block, &denom_reward_state)?;
     denom_reward_state.bump_last_update(&env.block);
 
     // the total applicable puvp is the sum of all historic puvp and the active epoch puvp
     let total_applicable_puvp = denom_reward_state
-        .active_epoch_config
+        .active_epoch
         .total_earned_puvp
         .checked_add(total_historic_puvp)?;
 
@@ -77,7 +77,7 @@ pub fn get_active_total_earned_puvp(
     block: &BlockInfo,
     reward_state: &DenomRewardState,
 ) -> StdResult<Uint256> {
-    let curr = reward_state.active_epoch_config.total_earned_puvp;
+    let curr = reward_state.active_epoch.total_earned_puvp;
 
     let prev_total_power = get_prev_block_total_vp(deps, block, &reward_state.vp_contract)?;
 
@@ -95,13 +95,13 @@ pub fn get_active_total_earned_puvp(
         // count intervals of the rewards emission that have passed since the
         // last update which need to be distributed
         let complete_distribution_periods = new_reward_distribution_duration.checked_div(
-            get_duration_scalar(&reward_state.active_epoch_config.emission_rate.duration).into(),
+            get_duration_scalar(&reward_state.active_epoch.emission_rate.duration).into(),
         )?;
         // It is impossible for this to overflow as total rewards can never
         // exceed max value of Uint128 as total tokens in existence cannot
         // exceed Uint128 (because the bank module Coin type uses Uint128).
         let new_rewards_distributed = reward_state
-            .active_epoch_config
+            .active_epoch
             .emission_rate
             .amount
             .full_mul(complete_distribution_periods)

@@ -712,21 +712,21 @@
       "description": "the state of a denom's reward distribution",
       "type": "object",
       "required": [
-        "active_epoch_config",
+        "active_epoch",
         "denom",
         "funded_amount",
-        "historic_epoch_configs",
+        "historic_epochs",
         "hook_caller",
         "last_update",
         "vp_contract",
         "withdraw_destination"
       ],
       "properties": {
-        "active_epoch_config": {
-          "description": "current denom distribution epoch configuration",
+        "active_epoch": {
+          "description": "current denom distribution epoch state",
           "allOf": [
             {
-              "$ref": "#/definitions/EpochConfig"
+              "$ref": "#/definitions/Epoch"
             }
           ]
         },
@@ -746,11 +746,11 @@
             }
           ]
         },
-        "historic_epoch_configs": {
+        "historic_epochs": {
           "description": "historic denom distribution epochs",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/EpochConfig"
+            "$ref": "#/definitions/Epoch"
           }
         },
         "hook_caller": {
@@ -881,7 +881,7 @@
             }
           ]
         },
-        "EpochConfig": {
+        "Epoch": {
           "type": "object",
           "required": [
             "emission_rate",
@@ -1280,21 +1280,21 @@
           "description": "the state of a denom's reward distribution",
           "type": "object",
           "required": [
-            "active_epoch_config",
+            "active_epoch",
             "denom",
             "funded_amount",
-            "historic_epoch_configs",
+            "historic_epochs",
             "hook_caller",
             "last_update",
             "vp_contract",
             "withdraw_destination"
           ],
           "properties": {
-            "active_epoch_config": {
-              "description": "current denom distribution epoch configuration",
+            "active_epoch": {
+              "description": "current denom distribution epoch state",
               "allOf": [
                 {
-                  "$ref": "#/definitions/EpochConfig"
+                  "$ref": "#/definitions/Epoch"
                 }
               ]
             },
@@ -1314,11 +1314,11 @@
                 }
               ]
             },
-            "historic_epoch_configs": {
+            "historic_epochs": {
               "description": "historic denom distribution epochs",
               "type": "array",
               "items": {
-                "$ref": "#/definitions/EpochConfig"
+                "$ref": "#/definitions/Epoch"
               }
             },
             "hook_caller": {
@@ -1390,7 +1390,7 @@
             }
           ]
         },
-        "EpochConfig": {
+        "Epoch": {
           "type": "object",
           "required": [
             "emission_rate",

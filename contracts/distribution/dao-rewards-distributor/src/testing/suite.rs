@@ -322,14 +322,12 @@ impl Suite {
     pub fn get_time_until_rewards_expiration(&mut self) -> u64 {
         let rewards_state_response = self.get_rewards_state_response();
         let current_block = self.app.block_info();
-        let (expiration_unit, current_unit) = match rewards_state_response.rewards[0]
-            .active_epoch_config
-            .ends_at
-        {
-            cw20::Expiration::AtHeight(h) => (h, current_block.height),
-            cw20::Expiration::AtTime(t) => (t.seconds(), current_block.time.seconds()),
-            cw20::Expiration::Never {} => return 0,
-        };
+        let (expiration_unit, current_unit) =
+            match rewards_state_response.rewards[0].active_epoch.ends_at {
+                cw20::Expiration::AtHeight(h) => (h, current_block.height),
+                cw20::Expiration::AtTime(t) => (t.seconds(), current_block.time.seconds()),
+                cw20::Expiration::Never {} => return 0,
+            };
 
         if expiration_unit > current_unit {
             expiration_unit - current_unit
@@ -406,26 +404,21 @@ impl Suite {
     pub fn assert_ends_at(&mut self, expected: Expiration) {
         let rewards_state_response = self.get_rewards_state_response();
         assert_eq!(
-            rewards_state_response.rewards[0]
-                .active_epoch_config
-                .ends_at,
+            rewards_state_response.rewards[0].active_epoch.ends_at,
             expected
         );
     }
 
     pub fn assert_started_at(&mut self, expected: Expiration) {
         let denom_configs = self.get_rewards_state_response();
-        assert_eq!(
-            denom_configs.rewards[0].active_epoch_config.started_at,
-            expected
-        );
+        assert_eq!(denom_configs.rewards[0].active_epoch.started_at, expected);
     }
 
     pub fn assert_amount(&mut self, expected: u128) {
         let rewards_state_response = self.get_rewards_state_response();
         assert_eq!(
             rewards_state_response.rewards[0]
-                .active_epoch_config
+                .active_epoch
                 .emission_rate
                 .amount,
             Uint128::new(expected)
@@ -435,7 +428,7 @@ impl Suite {
     pub fn assert_duration(&mut self, expected: u64) {
         let rewards_state_response = self.get_rewards_state_response();
         let units = match rewards_state_response.rewards[0]
-            .active_epoch_config
+            .active_epoch
             .emission_rate
             .duration
         {
