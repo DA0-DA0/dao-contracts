@@ -567,6 +567,9 @@ where
                 to_json_binary(&self.proposal_module.load(deps.storage)?)
             }
             QueryMsg::Dao {} => to_json_binary(&self.dao.load(deps.storage)?),
+            QueryMsg::Info {} => to_json_binary(&dao_interface::proposal::InfoResponse {
+                info: cw2::get_contract_version(deps.storage)?,
+            }),
             QueryMsg::Config {} => to_json_binary(&self.config.load(deps.storage)?),
             QueryMsg::DepositInfo { proposal_id } => {
                 let (deposit_info, proposer) = self.deposits.load(deps.storage, proposal_id)?;

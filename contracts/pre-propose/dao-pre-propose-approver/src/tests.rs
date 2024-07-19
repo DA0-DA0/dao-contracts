@@ -3,6 +3,7 @@ use cw2::ContractVersion;
 use cw20::Cw20Coin;
 use cw_denom::UncheckedDenom;
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor};
+use dao_interface::proposal::InfoResponse;
 use dao_voting::pre_propose::{PreProposeSubmissionPolicy, PreProposeSubmissionPolicyError};
 use dps::query::{ProposalListResponse, ProposalResponse};
 
@@ -300,6 +301,15 @@ fn setup_default_test(
         approver_core_addr,
         get_dao(app, pre_propose_approver.clone())
     );
+    assert_eq!(
+        InfoResponse {
+            info: ContractVersion {
+                contract: "crates.io:dao-pre-propose-approver".to_string(),
+                version: env!("CARGO_PKG_VERSION").to_string()
+            }
+        },
+        get_info(app, pre_propose_approver.clone())
+    );
 
     DefaultTestSetup {
         core_addr,
@@ -415,6 +425,12 @@ fn get_config(app: &App, module: Addr) -> Config {
 fn get_dao(app: &App, module: Addr) -> Addr {
     app.wrap()
         .query_wasm_smart(module, &QueryMsg::Dao {})
+        .unwrap()
+}
+
+fn get_info(app: &App, module: Addr) -> InfoResponse {
+    app.wrap()
+        .query_wasm_smart(module, &QueryMsg::Info {})
         .unwrap()
 }
 
