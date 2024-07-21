@@ -6,10 +6,10 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20ReceiveMsg, UncheckedDenom};
+use cw_storage_plus::Bound;
 use cw_utils::{must_pay, one_coin, Duration, Expiration};
 use dao_interface::voting::InfoResponse;
 
-use std::collections::HashMap;
 use std::ops::Add;
 
 use crate::helpers::{get_duration_scalar, get_transfer_msg, validate_voting_power_contract};
@@ -18,8 +18,8 @@ use crate::hooks::{
     subscribe_denom_to_hook, unsubscribe_denom_from_hook,
 };
 use crate::msg::{
-    ExecuteMsg, InstantiateMsg, MigrateMsg, PendingRewardsResponse, QueryMsg, ReceiveCw20Msg,
-    RegisterMsg, RewardsStateResponse,
+    DenomPendingRewards, DenomsResponse, ExecuteMsg, InstantiateMsg, MigrateMsg,
+    PendingRewardsResponse, QueryMsg, ReceiveCw20Msg, RegisterMsg,
 };
 use crate::rewards::{
     get_accrued_rewards_since_last_user_action, get_active_total_earned_puvp, update_rewards,
@@ -31,6 +31,9 @@ use crate::ContractError;
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+pub const DEFAULT_LIMIT: u32 = 10;
+pub const MAX_LIMIT: u32 = 50;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -444,14 +447,24 @@ fn execute_update_owner(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Info {} => Ok(to_json_binary(&query_info(deps)?)?),
-        QueryMsg::RewardsState {} => Ok(to_json_binary(&query_rewards_state(deps, env)?)?),
-        QueryMsg::PendingRewards { address } => {
-            Ok(to_json_binary(&query_pending_rewards(deps, env, address)?)?)
-        }
         QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
-        QueryMsg::DenomRewardState { denom } => {
+        QueryMsg::PendingRewards {
+            address,
+            start_after,
+            limit,
+        } => Ok(to_json_binary(&query_pending_rewards(
+            deps,
+            env,
+            address,
+            start_after,
+            limit,
+        )?)?),
+        QueryMsg::Denom { denom } => {
             let state = DENOM_REWARD_STATES.load(deps.storage, denom)?;
             Ok(to_json_binary(&state)?)
+        }
+        QueryMsg::Denoms { start_after, limit } => {
+            Ok(to_json_binary(&query_denoms(deps, start_after, limit)?)?)
         }
     }
 }
@@ -461,30 +474,34 @@ fn query_info(deps: Deps) -> StdResult<InfoResponse> {
     Ok(InfoResponse { info })
 }
 
-fn query_rewards_state(deps: Deps, _env: Env) -> StdResult<RewardsStateResponse> {
-    let rewards = DENOM_REWARD_STATES
-        .range(deps.storage, None, None, Order::Ascending)
-        .map(|item| item.map(|(_, v)| v))
-        .collect::<StdResult<Vec<_>>>()?;
-    Ok(RewardsStateResponse { rewards })
-}
-
 /// returns the pending rewards for a given address that are ready to be claimed.
-fn query_pending_rewards(deps: Deps, env: Env, addr: String) -> StdResult<PendingRewardsResponse> {
+fn query_pending_rewards(
+    deps: Deps,
+    env: Env,
+    addr: String,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<PendingRewardsResponse> {
     let addr = deps.api.addr_validate(&addr)?;
+
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(Bound::<String>::exclusive);
+
     // user may not have interacted with the contract before this query so we
     // potentially return the default user reward state
     let user_reward_state = USER_REWARD_STATES
         .load(deps.storage, addr.clone())
         .unwrap_or_default();
-    let reward_states = DENOM_REWARD_STATES
-        .range(deps.storage, None, None, Order::Ascending)
+
+    let denoms = DENOM_REWARD_STATES
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
         .collect::<StdResult<Vec<_>>>()?;
 
-    let mut pending_rewards: HashMap<String, Uint128> = HashMap::new();
+    let mut pending_rewards: Vec<DenomPendingRewards> = vec![];
 
     // we iterate over every registered denom and calculate the pending rewards for the user
-    for (denom, reward_state) in reward_states {
+    for (denom, reward_state) in denoms {
         // first we get the active epoch earned puvp value
         let active_total_earned_puvp =
             get_active_total_earned_puvp(deps, &env.block, &reward_state)?;
@@ -507,14 +524,32 @@ fn query_pending_rewards(deps: Deps, env: Env, addr: String) -> StdResult<Pendin
             .get(&denom)
             .cloned()
             .unwrap_or_default();
-        pending_rewards.insert(denom, earned_rewards.amount + existing_amount);
+
+        pending_rewards.push(DenomPendingRewards {
+            denom: reward_state.denom,
+            pending_rewards: earned_rewards.amount + existing_amount,
+        });
     }
 
-    let pending_rewards_response = PendingRewardsResponse {
-        address: addr.to_string(),
-        pending_rewards,
-    };
+    let pending_rewards_response = PendingRewardsResponse { pending_rewards };
     Ok(pending_rewards_response)
+}
+
+fn query_denoms(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<DenomsResponse> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(Bound::<String>::exclusive);
+
+    let rewards = DENOM_REWARD_STATES
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|item| item.map(|(_, v)| v))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(DenomsResponse { denoms: rewards })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

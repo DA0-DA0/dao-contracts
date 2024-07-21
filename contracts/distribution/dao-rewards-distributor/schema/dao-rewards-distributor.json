@@ -680,13 +680,13 @@
         "additionalProperties": false
       },
       {
-        "description": "Returns the state of all the registered reward distributions.",
+        "description": "Returns information about the ownership of this contract.",
         "type": "object",
         "required": [
-          "rewards_state"
+          "ownership"
         ],
         "properties": {
-          "rewards_state": {
+          "ownership": {
             "type": "object",
             "additionalProperties": false
           }
@@ -708,22 +708,22 @@
             "properties": {
               "address": {
                 "type": "string"
+              },
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "Returns information about the ownership of this contract.",
-        "type": "object",
-        "required": [
-          "ownership"
-        ],
-        "properties": {
-          "ownership": {
-            "type": "object",
             "additionalProperties": false
           }
         },
@@ -733,10 +733,10 @@
         "description": "Returns the state of the given denom reward distribution.",
         "type": "object",
         "required": [
-          "denom_reward_state"
+          "denom"
         ],
         "properties": {
-          "denom_reward_state": {
+          "denom": {
             "type": "object",
             "required": [
               "denom"
@@ -744,6 +744,36 @@
             "properties": {
               "denom": {
                 "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Returns the state of all the registered reward distributions.",
+        "type": "object",
+        "required": [
+          "denoms"
+        ],
+        "properties": {
+          "denoms": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -761,7 +791,7 @@
   },
   "sudo": null,
   "responses": {
-    "denom_reward_state": {
+    "denom": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "DenomRewardState",
       "description": "the state of a denom's reward distribution",
@@ -871,6 +901,315 @@
               "additionalProperties": false
             }
           ]
+        },
+        "Duration": {
+          "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "height"
+              ],
+              "properties": {
+                "height": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "Time in seconds",
+              "type": "object",
+              "required": [
+                "time"
+              ],
+              "properties": {
+                "time": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "Epoch": {
+          "type": "object",
+          "required": [
+            "emission_rate",
+            "ends_at",
+            "last_updated_total_earned_puvp",
+            "started_at",
+            "total_earned_puvp"
+          ],
+          "properties": {
+            "emission_rate": {
+              "description": "reward emission rate",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/RewardEmissionRate"
+                }
+              ]
+            },
+            "ends_at": {
+              "description": "the time when all funded rewards are allocated to users and thus the distribution period ends.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expiration"
+                }
+              ]
+            },
+            "last_updated_total_earned_puvp": {
+              "description": "time when total_earned_puvp was last updated",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expiration"
+                }
+              ]
+            },
+            "started_at": {
+              "description": "the time when the current reward distribution period started. period finishes iff it reaches its end.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expiration"
+                }
+              ]
+            },
+            "total_earned_puvp": {
+              "description": "total rewards earned per unit voting power from started_at to last_updated_total_earned_puvp",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint256"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "Expiration": {
+          "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
+          "oneOf": [
+            {
+              "description": "AtHeight will expire when `env.block.height` >= height",
+              "type": "object",
+              "required": [
+                "at_height"
+              ],
+              "properties": {
+                "at_height": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "AtTime will expire when `env.block.time` >= time",
+              "type": "object",
+              "required": [
+                "at_time"
+              ],
+              "properties": {
+                "at_time": {
+                  "$ref": "#/definitions/Timestamp"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "Never will never expire. Used to express the empty variant",
+              "type": "object",
+              "required": [
+                "never"
+              ],
+              "properties": {
+                "never": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "RewardEmissionRate": {
+          "description": "defines how many tokens (amount) should be distributed per amount of time (duration). e.g. 5udenom per hour.",
+          "type": "object",
+          "required": [
+            "amount",
+            "duration"
+          ],
+          "properties": {
+            "amount": {
+              "description": "amount of tokens to distribute per amount of time",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                }
+              ]
+            },
+            "duration": {
+              "description": "duration of time to distribute amount",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Duration"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint256": {
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances out of primitive uint types or `new` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::from(258u128); let b = Uint256::new([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "denoms": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DenomsResponse",
+      "type": "object",
+      "required": [
+        "denoms"
+      ],
+      "properties": {
+        "denoms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DenomRewardState"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Denom": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "native"
+              ],
+              "properties": {
+                "native": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "cw20"
+              ],
+              "properties": {
+                "cw20": {
+                  "$ref": "#/definitions/Addr"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "DenomRewardState": {
+          "description": "the state of a denom's reward distribution",
+          "type": "object",
+          "required": [
+            "active_epoch",
+            "continuous",
+            "denom",
+            "funded_amount",
+            "historical_earned_puvp",
+            "hook_caller",
+            "vp_contract",
+            "withdraw_destination"
+          ],
+          "properties": {
+            "active_epoch": {
+              "description": "current denom distribution epoch state",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Epoch"
+                }
+              ]
+            },
+            "continuous": {
+              "description": "whether or not reward distribution is continuous: whether rewards should be paused once all funding has been distributed, or if future funding after distribution finishes should be applied to the past.",
+              "type": "boolean"
+            },
+            "denom": {
+              "description": "validated denom (native or cw20)",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Denom"
+                }
+              ]
+            },
+            "funded_amount": {
+              "description": "total amount of rewards funded that will be distributed in the active epoch.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                }
+              ]
+            },
+            "historical_earned_puvp": {
+              "description": "historical rewards earned per unit voting power from past epochs due to changes in the emission rate. each time emission rate is changed, this value is increased by the `active_epoch`'s rewards earned puvp.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint256"
+                }
+              ]
+            },
+            "hook_caller": {
+              "description": "address that will update the reward split when the voting power distribution changes",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                }
+              ]
+            },
+            "vp_contract": {
+              "description": "address to query the voting power",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                }
+              ]
+            },
+            "withdraw_destination": {
+              "description": "destination address for reward clawbacks",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
         },
         "Duration": {
           "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
@@ -1201,40 +1540,13 @@
       "title": "PendingRewardsResponse",
       "type": "object",
       "required": [
-        "address",
         "pending_rewards"
       ],
       "properties": {
-        "address": {
-          "type": "string"
-        },
         "pending_rewards": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/Uint128"
-          }
-        }
-      },
-      "additionalProperties": false,
-      "definitions": {
-        "Uint128": {
-          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
-          "type": "string"
-        }
-      }
-    },
-    "rewards_state": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "RewardsStateResponse",
-      "type": "object",
-      "required": [
-        "rewards"
-      ],
-      "properties": {
-        "rewards": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/DenomRewardState"
+            "$ref": "#/definitions/DenomPendingRewards"
           }
         }
       },
@@ -1272,262 +1584,24 @@
             }
           ]
         },
-        "DenomRewardState": {
-          "description": "the state of a denom's reward distribution",
+        "DenomPendingRewards": {
           "type": "object",
           "required": [
-            "active_epoch",
-            "continuous",
             "denom",
-            "funded_amount",
-            "historical_earned_puvp",
-            "hook_caller",
-            "vp_contract",
-            "withdraw_destination"
+            "pending_rewards"
           ],
           "properties": {
-            "active_epoch": {
-              "description": "current denom distribution epoch state",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Epoch"
-                }
-              ]
-            },
-            "continuous": {
-              "description": "whether or not reward distribution is continuous: whether rewards should be paused once all funding has been distributed, or if future funding after distribution finishes should be applied to the past.",
-              "type": "boolean"
-            },
             "denom": {
-              "description": "validated denom (native or cw20)",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Denom"
-                }
-              ]
+              "$ref": "#/definitions/Denom"
             },
-            "funded_amount": {
-              "description": "total amount of rewards funded that will be distributed in the active epoch.",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Uint128"
-                }
-              ]
-            },
-            "historical_earned_puvp": {
-              "description": "historical rewards earned per unit voting power from past epochs due to changes in the emission rate. each time emission rate is changed, this value is increased by the `active_epoch`'s rewards earned puvp.",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Uint256"
-                }
-              ]
-            },
-            "hook_caller": {
-              "description": "address that will update the reward split when the voting power distribution changes",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Addr"
-                }
-              ]
-            },
-            "vp_contract": {
-              "description": "address to query the voting power",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Addr"
-                }
-              ]
-            },
-            "withdraw_destination": {
-              "description": "destination address for reward clawbacks",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Addr"
-                }
-              ]
+            "pending_rewards": {
+              "$ref": "#/definitions/Uint128"
             }
           },
           "additionalProperties": false
-        },
-        "Duration": {
-          "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
-          "oneOf": [
-            {
-              "type": "object",
-              "required": [
-                "height"
-              ],
-              "properties": {
-                "height": {
-                  "type": "integer",
-                  "format": "uint64",
-                  "minimum": 0.0
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "description": "Time in seconds",
-              "type": "object",
-              "required": [
-                "time"
-              ],
-              "properties": {
-                "time": {
-                  "type": "integer",
-                  "format": "uint64",
-                  "minimum": 0.0
-                }
-              },
-              "additionalProperties": false
-            }
-          ]
-        },
-        "Epoch": {
-          "type": "object",
-          "required": [
-            "emission_rate",
-            "ends_at",
-            "last_updated_total_earned_puvp",
-            "started_at",
-            "total_earned_puvp"
-          ],
-          "properties": {
-            "emission_rate": {
-              "description": "reward emission rate",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/RewardEmissionRate"
-                }
-              ]
-            },
-            "ends_at": {
-              "description": "the time when all funded rewards are allocated to users and thus the distribution period ends.",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expiration"
-                }
-              ]
-            },
-            "last_updated_total_earned_puvp": {
-              "description": "time when total_earned_puvp was last updated",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expiration"
-                }
-              ]
-            },
-            "started_at": {
-              "description": "the time when the current reward distribution period started. period finishes iff it reaches its end.",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expiration"
-                }
-              ]
-            },
-            "total_earned_puvp": {
-              "description": "total rewards earned per unit voting power from started_at to last_updated_total_earned_puvp",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Uint256"
-                }
-              ]
-            }
-          },
-          "additionalProperties": false
-        },
-        "Expiration": {
-          "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
-          "oneOf": [
-            {
-              "description": "AtHeight will expire when `env.block.height` >= height",
-              "type": "object",
-              "required": [
-                "at_height"
-              ],
-              "properties": {
-                "at_height": {
-                  "type": "integer",
-                  "format": "uint64",
-                  "minimum": 0.0
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "description": "AtTime will expire when `env.block.time` >= time",
-              "type": "object",
-              "required": [
-                "at_time"
-              ],
-              "properties": {
-                "at_time": {
-                  "$ref": "#/definitions/Timestamp"
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "description": "Never will never expire. Used to express the empty variant",
-              "type": "object",
-              "required": [
-                "never"
-              ],
-              "properties": {
-                "never": {
-                  "type": "object",
-                  "additionalProperties": false
-                }
-              },
-              "additionalProperties": false
-            }
-          ]
-        },
-        "RewardEmissionRate": {
-          "description": "defines how many tokens (amount) should be distributed per amount of time (duration). e.g. 5udenom per hour.",
-          "type": "object",
-          "required": [
-            "amount",
-            "duration"
-          ],
-          "properties": {
-            "amount": {
-              "description": "amount of tokens to distribute per amount of time",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Uint128"
-                }
-              ]
-            },
-            "duration": {
-              "description": "duration of time to distribute amount",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Duration"
-                }
-              ]
-            }
-          },
-          "additionalProperties": false
-        },
-        "Timestamp": {
-          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Uint64"
-            }
-          ]
         },
         "Uint128": {
           "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
-          "type": "string"
-        },
-        "Uint256": {
-          "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances out of primitive uint types or `new` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::from(258u128); let b = Uint256::new([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); ```",
-          "type": "string"
-        },
-        "Uint64": {
-          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
           "type": "string"
         }
       }

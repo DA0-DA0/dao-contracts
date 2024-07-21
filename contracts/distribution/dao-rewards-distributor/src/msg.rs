@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
-use cw20::{Cw20ReceiveMsg, UncheckedDenom};
+use cw20::{Cw20ReceiveMsg, Denom, UncheckedDenom};
 use cw4::MemberChangedHookMsg;
 use cw_ownable::cw_ownable_execute;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
@@ -98,27 +96,39 @@ pub enum QueryMsg {
     /// Returns contract version info
     #[returns(InfoResponse)]
     Info {},
-    /// Returns the state of all the registered reward distributions.
-    #[returns(RewardsStateResponse)]
-    RewardsState {},
-    /// Returns the pending rewards for the given address.
-    #[returns(PendingRewardsResponse)]
-    PendingRewards { address: String },
     /// Returns information about the ownership of this contract.
     #[returns(::cw_ownable::Ownership<::cosmwasm_std::Addr>)]
     Ownership {},
+    /// Returns the pending rewards for the given address.
+    #[returns(PendingRewardsResponse)]
+    PendingRewards {
+        address: String,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
     /// Returns the state of the given denom reward distribution.
     #[returns(DenomRewardState)]
-    DenomRewardState { denom: String },
+    Denom { denom: String },
+    /// Returns the state of all the registered reward distributions.
+    #[returns(DenomsResponse)]
+    Denoms {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
 }
 
 #[cw_serde]
-pub struct RewardsStateResponse {
-    pub rewards: Vec<DenomRewardState>,
+pub struct DenomsResponse {
+    pub denoms: Vec<DenomRewardState>,
 }
 
 #[cw_serde]
 pub struct PendingRewardsResponse {
-    pub address: String,
-    pub pending_rewards: HashMap<String, Uint128>,
+    pub pending_rewards: Vec<DenomPendingRewards>,
+}
+
+#[cw_serde]
+pub struct DenomPendingRewards {
+    pub denom: Denom,
+    pub pending_rewards: Uint128,
 }

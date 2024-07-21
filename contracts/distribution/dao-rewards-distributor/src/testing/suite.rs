@@ -2,7 +2,7 @@ use std::borrow::BorrowMut;
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{coin, coins, to_json_binary, Addr, Coin, Empty, Timestamp, Uint128};
-use cw20::{Cw20Coin, Expiration, UncheckedDenom};
+use cw20::{Cw20Coin, Denom, Expiration, UncheckedDenom};
 use cw4::{Member, MemberListResponse};
 use cw_multi_test::{App, BankSudo, Executor, SudoMsg};
 use cw_ownable::Action;
@@ -11,8 +11,8 @@ use dao_interface::voting::InfoResponse;
 
 use crate::{
     msg::{
-        ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, ReceiveCw20Msg, RegisterMsg,
-        RewardsStateResponse,
+        DenomsResponse, ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg,
+        ReceiveCw20Msg, RegisterMsg,
     },
     state::{DenomRewardState, RewardEmissionRate},
     testing::cw20_setup::instantiate_cw20,
@@ -330,10 +330,10 @@ pub struct Suite {
 // SUITE QUERIES
 impl Suite {
     pub fn get_time_until_rewards_expiration(&mut self) -> u64 {
-        let rewards_state_response = self.get_rewards_state_response();
+        let rewards_state_response = self.get_denoms();
         let current_block = self.app.block_info();
         let (expiration_unit, current_unit) =
-            match rewards_state_response.rewards[0].active_epoch.ends_at {
+            match rewards_state_response.denoms[0].active_epoch.ends_at {
                 cw20::Expiration::AtHeight(h) => (h, current_block.height),
                 cw20::Expiration::AtTime(t) => (t.seconds(), current_block.time.seconds()),
                 cw20::Expiration::Never {} => return 0,
@@ -375,23 +375,26 @@ impl Suite {
         result.balance.u128()
     }
 
-    pub fn get_rewards_state_response(&mut self) -> RewardsStateResponse {
+    pub fn get_denoms(&mut self) -> DenomsResponse {
         self.app
             .wrap()
             .query_wasm_smart(
                 self.distribution_contract.clone(),
-                &QueryMsg::RewardsState {},
+                &QueryMsg::Denoms {
+                    start_after: None,
+                    limit: None,
+                },
             )
             .unwrap()
     }
 
-    pub fn get_denom_reward_state(&mut self, denom: &str) -> DenomRewardState {
+    pub fn get_denom(&mut self, denom: &str) -> DenomRewardState {
         let resp: DenomRewardState = self
             .app
             .wrap()
             .query_wasm_smart(
                 self.distribution_contract.clone(),
-                &QueryMsg::DenomRewardState {
+                &QueryMsg::Denom {
                     denom: denom.to_string(),
                 },
             )
@@ -421,22 +424,22 @@ impl Suite {
 // SUITE ASSERTIONS
 impl Suite {
     pub fn assert_ends_at(&mut self, expected: Expiration) {
-        let rewards_state_response = self.get_rewards_state_response();
+        let rewards_state_response = self.get_denoms();
         assert_eq!(
-            rewards_state_response.rewards[0].active_epoch.ends_at,
+            rewards_state_response.denoms[0].active_epoch.ends_at,
             expected
         );
     }
 
     pub fn assert_started_at(&mut self, expected: Expiration) {
-        let denom_configs = self.get_rewards_state_response();
-        assert_eq!(denom_configs.rewards[0].active_epoch.started_at, expected);
+        let denom_configs = self.get_denoms();
+        assert_eq!(denom_configs.denoms[0].active_epoch.started_at, expected);
     }
 
     pub fn assert_amount(&mut self, expected: u128) {
-        let rewards_state_response = self.get_rewards_state_response();
+        let rewards_state_response = self.get_denoms();
         assert_eq!(
-            rewards_state_response.rewards[0]
+            rewards_state_response.denoms[0]
                 .active_epoch
                 .emission_rate
                 .amount,
@@ -445,8 +448,8 @@ impl Suite {
     }
 
     pub fn assert_duration(&mut self, expected: u64) {
-        let rewards_state_response = self.get_rewards_state_response();
-        let units = match rewards_state_response.rewards[0]
+        let rewards_state_response = self.get_denoms();
+        let units = match rewards_state_response.denoms[0]
             .active_epoch
             .emission_rate
             .duration
@@ -466,11 +469,21 @@ impl Suite {
                 self.distribution_contract.clone(),
                 &QueryMsg::PendingRewards {
                     address: address.to_string(),
+                    start_after: None,
+                    limit: None,
                 },
             )
             .unwrap();
 
-        let pending = res.pending_rewards.get(denom).unwrap();
+        let pending = res
+            .pending_rewards
+            .iter()
+            .find(|p| match &p.denom {
+                Denom::Cw20(addr) => addr.as_str() == denom,
+                Denom::Native(d) => d == denom,
+            })
+            .unwrap()
+            .pending_rewards;
 
         assert_eq!(
             pending,

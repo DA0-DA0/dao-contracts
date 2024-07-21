@@ -1835,7 +1835,7 @@ fn test_fund_native_on_register() {
         Some(alt_coin.amount),
     );
 
-    let denom = suite.get_denom_reward_state(ALT_DENOM);
+    let denom = suite.get_denom(ALT_DENOM);
     assert_eq!(denom.funded_amount, alt_coin.amount);
     assert_eq!(
         denom.active_epoch,
@@ -1958,12 +1958,12 @@ fn test_update_continuous() {
 
     suite.update_continuous(DENOM, true);
 
-    let denom = suite.get_denom_reward_state(DENOM);
+    let denom = suite.get_denom(DENOM);
     assert!(denom.continuous);
 
     suite.update_continuous(DENOM, false);
 
-    let denom = suite.get_denom_reward_state(DENOM);
+    let denom = suite.get_denom(DENOM);
     assert!(!denom.continuous);
 }
 
@@ -1986,7 +1986,7 @@ fn test_update_vp_contract() {
 
     suite.update_vp_contract(DENOM, new_vp_contract.as_str());
 
-    let denom = suite.get_denom_reward_state(DENOM);
+    let denom = suite.get_denom(DENOM);
     assert_eq!(denom.vp_contract, new_vp_contract);
 }
 
@@ -1997,7 +1997,7 @@ fn test_update_hook_caller() {
     let new_hook_caller = "new_hook_caller";
     suite.update_hook_caller(DENOM, new_hook_caller);
 
-    let denom = suite.get_denom_reward_state(DENOM);
+    let denom = suite.get_denom(DENOM);
     assert_eq!(denom.hook_caller, new_hook_caller);
 }
 
@@ -2008,7 +2008,7 @@ fn test_update_withdraw_destination() {
     let new_withdraw_destination = "new_withdraw_destination";
     suite.update_withdraw_destination(DENOM, new_withdraw_destination);
 
-    let denom = suite.get_denom_reward_state(DENOM);
+    let denom = suite.get_denom(DENOM);
     assert_eq!(denom.withdraw_destination, new_withdraw_destination);
 }
 
