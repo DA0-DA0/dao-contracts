@@ -100,16 +100,13 @@ impl DenomRewardState {
             return Ok(());
         }
 
-        let current_block_expiration = match self.active_epoch.emission_rate.duration {
-            Duration::Height(_) => Expiration::AtHeight(current_block.height),
-            Duration::Time(_) => Expiration::AtTime(current_block.time),
-        };
-
         // 1. finish current epoch by updating rewards and setting end to now
         self.active_epoch.total_earned_puvp =
             get_active_total_earned_puvp(deps, current_block, self)?;
-        self.active_epoch.ends_at = current_block_expiration;
-        self.bump_last_update(current_block);
+        self.active_epoch.ends_at = match self.active_epoch.emission_rate.duration {
+            Duration::Height(_) => Expiration::AtHeight(current_block.height),
+            Duration::Time(_) => Expiration::AtTime(current_block.time),
+        };
 
         // 2. add current epoch rewards earned to historical rewards
         // TODO: what to do on overflow?
@@ -133,7 +130,7 @@ impl DenomRewardState {
         // block height. if the sum overflows, we return u64::MAX, as it
         // suggests that the period is infinite or so long that it doesn't
         // matter.
-        let new_epoch_end_scalar =
+        let new_ends_at =
             match new_emission_rate.get_funded_period_duration(self.funded_amount)? {
                 Duration::Height(h) => {
                     if current_block.height.checked_add(h).is_some() {
@@ -151,13 +148,20 @@ impl DenomRewardState {
                 }
             };
 
+        let new_started_at = match new_emission_rate.duration {
+            Duration::Height(_) => Expiration::AtHeight(current_block.height),
+            Duration::Time(_) => Expiration::AtTime(current_block.time),
+        };
+
         self.active_epoch = Epoch {
             emission_rate: new_emission_rate.clone(),
-            started_at: current_block_expiration,
-            ends_at: new_epoch_end_scalar,
+            started_at: new_started_at,
+            ends_at: new_ends_at,
             // start the new active epoch with zero rewards earned
             total_earned_puvp: Uint256::zero(),
         };
+
+        self.bump_last_update(current_block);
 
         Ok(())
     }

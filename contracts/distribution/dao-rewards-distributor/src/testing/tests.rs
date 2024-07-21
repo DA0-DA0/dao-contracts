@@ -176,7 +176,180 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.claim_rewards(ADDR3, DENOM);
     let addr1_pending = 0;
     let addr3_pending = 0;
-    suite.skip_blocks(10_000); // skips from 1060000 to 1070000, and the end is 1062500, so this allocates only 1_000_000 tokens instead of 4_000_000
+    suite.skip_blocks(10_000); // skips from 1,060,000 to 1,070,000, and the end is 1,062,500, so this allocates only 1_000_000 tokens instead of 4_000_000
+
+    suite.assert_pending_rewards(ADDR1, DENOM, addr1_pending + 1_000_000 * 2 / 4);
+    suite.assert_pending_rewards(ADDR2, DENOM, 4_000_000 / 4 + 1_000_000 / 4);
+    suite.assert_pending_rewards(ADDR3, DENOM, addr3_pending + 1_000_000 / 4);
+
+    suite.claim_rewards(ADDR2, DENOM);
+
+    // TODO: there's a few denoms remaining here, ensure such cases are handled properly
+    let remaining_rewards = suite.get_balance_native(suite.distribution_contract.clone(), DENOM);
+    println!("Remaining rewards: {}", remaining_rewards);
+}
+
+#[test]
+fn test_native_dao_rewards_reward_rate_switch_unit() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
+        .with_rewards_config(RewardsConfig {
+            amount: 1_000,
+            denom: UncheckedDenom::Native(DENOM.to_string()),
+            duration: Duration::Height(10),
+            destination: None,
+        })
+        .build();
+
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000));
+    suite.assert_duration(10);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 10_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 5_000_000);
+
+    // ADDR1 claims rewards
+    suite.claim_rewards(ADDR1, DENOM);
+    suite.assert_pending_rewards(ADDR1, DENOM, 0);
+
+    // set the rewards rate to time-based rewards
+    suite.update_reward_emission_rate(DENOM, Duration::Time(10), 500);
+
+    // skip 1/10th of the time
+    suite.skip_seconds(100_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 6_250_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 6_250_000);
+
+    // double the rewards rate
+    // now there will be 10_000_000 tokens distributed over 100_000 seconds
+    suite.update_reward_emission_rate(DENOM, Duration::Time(10), 1_000);
+
+    // skip 1/10th of the time
+    suite.skip_seconds(100_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 7_500_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 8_750_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 8_750_000);
+
+    // skip 2/10ths of the time
+    suite.skip_seconds(200_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 17_500_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 13_750_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 13_750_000);
+
+    // set the rewards rate to 0, pausing the rewards distribution
+    suite.update_reward_emission_rate(DENOM, Duration::Height(10000000000), 0);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    // assert no pending rewards changed
+    suite.assert_pending_rewards(ADDR1, DENOM, 17_500_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 13_750_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 13_750_000);
+
+    // assert ADDR1 pre-claim balance
+    suite.assert_native_balance(ADDR1, DENOM, 10_000_000);
+    // ADDR1 claims their rewards
+    suite.claim_rewards(ADDR1, DENOM);
+    // assert ADDR1 post-claim balance to be pre-claim + pending
+    suite.assert_native_balance(ADDR1, DENOM, 10_000_000 + 17_500_000);
+    // assert ADDR1 is now entitled to 0 pending rewards
+    suite.assert_pending_rewards(ADDR1, DENOM, 0);
+
+    // user 2 unstakes their stake
+    suite.unstake_native_tokens(ADDR2, 50);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    // only the ADDR1 pending rewards should have changed
+    suite.assert_pending_rewards(ADDR1, DENOM, 0);
+    suite.assert_pending_rewards(ADDR2, DENOM, 13_750_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 13_750_000);
+
+    // ADDR2 claims their rewards (has 50 to begin with as they unstaked)
+    suite.assert_native_balance(ADDR2, DENOM, 50);
+    suite.claim_rewards(ADDR2, DENOM);
+    // assert ADDR2 post-claim balance to be pre-claim + pending and has 0 pending rewards
+    suite.assert_native_balance(ADDR2, DENOM, 13_750_000 + 50);
+    suite.assert_pending_rewards(ADDR2, DENOM, 0);
+
+    // update the reward rate back to 1_000 / 10blocks
+    // this should now distribute 10_000_000 tokens over 100_000 blocks
+    // between ADDR1 (2/3rds) and ADDR3 (1/3rd)
+    suite.update_reward_emission_rate(DENOM, Duration::Height(10), 1000);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    // assert that rewards are being distributed at the expected rate
+    suite.assert_pending_rewards(ADDR1, DENOM, 6_666_666);
+    suite.assert_pending_rewards(ADDR2, DENOM, 0);
+    suite.assert_pending_rewards(ADDR3, DENOM, 13_750_000 + 3_333_333);
+
+    // ADDR3 claims their rewards
+    suite.assert_native_balance(ADDR3, DENOM, 0);
+    suite.claim_rewards(ADDR3, DENOM);
+    suite.assert_pending_rewards(ADDR3, DENOM, 0);
+    suite.assert_native_balance(ADDR3, DENOM, 13_750_000 + 3_333_333);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 6_666_666 + 6_666_666 + 1);
+    suite.assert_pending_rewards(ADDR2, DENOM, 0);
+    suite.assert_pending_rewards(ADDR3, DENOM, 3_333_333);
+
+    // claim everything so that there are 0 pending rewards
+    suite.claim_rewards(ADDR3, DENOM);
+    suite.claim_rewards(ADDR1, DENOM);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 0);
+    suite.assert_pending_rewards(ADDR2, DENOM, 0);
+    suite.assert_pending_rewards(ADDR3, DENOM, 0);
+
+    // update the rewards rate to 40_000_000 per 100_000 seconds.
+    // split is still 2/3rds to ADDR1 and 1/3rd to ADDR3
+    suite.update_reward_emission_rate(DENOM, Duration::Time(10), 4000);
+    suite.assert_ends_at(Expiration::AtTime(Timestamp::from_seconds(462_500)));
+
+    suite.skip_seconds(50_000); // allocates 20_000_000 tokens
+
+    let addr1_pending = 20_000_000 * 2 / 3;
+    let addr3_pending = 20_000_000 / 3;
+    suite.assert_pending_rewards(ADDR1, DENOM, addr1_pending);
+    suite.assert_pending_rewards(ADDR2, DENOM, 0);
+    suite.assert_pending_rewards(ADDR3, DENOM, addr3_pending);
+
+    // ADDR2 wakes up to the increased staking rate and stakes 50 tokens
+    // this brings new split to: [ADDR1: 50%, ADDR2: 25%, ADDR3: 25%]
+    suite.stake_native_tokens(ADDR2, 50);
+
+    suite.skip_seconds(10_000); // allocates 4_000_000 tokens
+
+    suite.assert_pending_rewards(ADDR1, DENOM, addr1_pending + 4_000_000 * 2 / 4);
+    suite.assert_pending_rewards(ADDR2, DENOM, 4_000_000 / 4);
+    suite.assert_pending_rewards(ADDR3, DENOM, addr3_pending + 4_000_000 / 4);
+
+    suite.claim_rewards(ADDR1, DENOM);
+    suite.claim_rewards(ADDR3, DENOM);
+    let addr1_pending = 0;
+    let addr3_pending = 0;
+    suite.skip_seconds(10_000); // skips from 460,000 to 470,000, and the end is 462,500, so this allocates only 1_000_000 tokens instead of 4_000_000
 
     suite.assert_pending_rewards(ADDR1, DENOM, addr1_pending + 1_000_000 * 2 / 4);
     suite.assert_pending_rewards(ADDR2, DENOM, 4_000_000 / 4 + 1_000_000 / 4);
