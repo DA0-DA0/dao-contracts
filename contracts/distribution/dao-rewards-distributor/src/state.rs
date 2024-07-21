@@ -130,23 +130,22 @@ impl DenomRewardState {
         // block height. if the sum overflows, we return u64::MAX, as it
         // suggests that the period is infinite or so long that it doesn't
         // matter.
-        let new_ends_at =
-            match new_emission_rate.get_funded_period_duration(self.funded_amount)? {
-                Duration::Height(h) => {
-                    if current_block.height.checked_add(h).is_some() {
-                        Expiration::AtHeight(current_block.height + h)
-                    } else {
-                        Expiration::AtHeight(u64::MAX)
-                    }
+        let new_ends_at = match new_emission_rate.get_funded_period_duration(self.funded_amount)? {
+            Duration::Height(h) => {
+                if current_block.height.checked_add(h).is_some() {
+                    Expiration::AtHeight(current_block.height + h)
+                } else {
+                    Expiration::AtHeight(u64::MAX)
                 }
-                Duration::Time(t) => {
-                    if current_block.time.seconds().checked_add(t).is_some() {
-                        Expiration::AtTime(current_block.time.plus_seconds(t))
-                    } else {
-                        Expiration::AtTime(Timestamp::from_seconds(u64::MAX))
-                    }
+            }
+            Duration::Time(t) => {
+                if current_block.time.seconds().checked_add(t).is_some() {
+                    Expiration::AtTime(current_block.time.plus_seconds(t))
+                } else {
+                    Expiration::AtTime(Timestamp::from_seconds(u64::MAX))
                 }
-            };
+            }
+        };
 
         let new_started_at = match new_emission_rate.duration {
             Duration::Height(_) => Expiration::AtHeight(current_block.height),
@@ -173,27 +172,6 @@ impl DenomRewardState {
             Duration::Height(_) => Expiration::AtHeight(current_block.height),
             Duration::Time(_) => Expiration::AtTime(current_block.time),
         };
-    }
-
-    /// tries to update the last funding date.
-    /// if distribution expiration is in the future, nothing changes.
-    /// if distribution expiration is in the past, or had never been set,
-    /// funding date becomes the current block.
-    pub fn bump_funding_date(&mut self, current_block: &BlockInfo) {
-        let reset_start = if let Expiration::Never {} = self.active_epoch.started_at {
-            true
-        } else {
-            self.active_epoch.ends_at.is_expired(current_block)
-        };
-
-        // if its never been set before, or if current distribution is expired,
-        // we set the funding date to the current date
-        if reset_start {
-            self.active_epoch.started_at = match self.active_epoch.emission_rate.duration {
-                Duration::Height(_) => Expiration::AtHeight(current_block.height),
-                Duration::Time(_) => Expiration::AtTime(current_block.time),
-            };
-        }
     }
 
     pub fn to_str_denom(&self) -> String {

@@ -279,7 +279,29 @@ fn execute_fund(
     let funded_period_value = get_duration_scalar(&funded_period_duration);
 
     denom_reward_state.bump_last_update(&env.block);
-    denom_reward_state.bump_funding_date(&env.block);
+
+    // distribution is inactive if it hasn't yet started (i.e. never been
+    // funded) or if it's expired (i.e. all funds have been distributed)
+    let distribution_inactive =
+        if let Expiration::Never {} = denom_reward_state.active_epoch.started_at {
+            true
+        } else {
+            denom_reward_state
+                .active_epoch
+                .ends_at
+                .is_expired(&env.block)
+        };
+
+    // if distribution is inactive, update the distribution start to the current
+    // block so that the new funds start being distributed from now instead of
+    // from the past
+    if distribution_inactive {
+        denom_reward_state.active_epoch.started_at =
+            match denom_reward_state.active_epoch.emission_rate.duration {
+                Duration::Height(_) => Expiration::AtHeight(env.block.height),
+                Duration::Time(_) => Expiration::AtTime(env.block.time),
+            };
+    }
 
     // the duration of rewards period is extended in different ways,
     // depending on the current expiration state and current block
