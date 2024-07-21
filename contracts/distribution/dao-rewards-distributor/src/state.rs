@@ -43,8 +43,6 @@ pub struct Epoch {
     /// total rewards earned per unit voting power from started_at to
     /// last_update
     pub total_earned_puvp: Uint256,
-    /// finish block set when epoch is over
-    pub finish_block: Option<BlockInfo>,
 }
 
 impl Epoch {
@@ -111,7 +109,6 @@ impl DenomRewardState {
         self.active_epoch.total_earned_puvp =
             get_active_total_earned_puvp(deps, current_block, self)?;
         self.active_epoch.ends_at = current_block_expiration;
-        self.active_epoch.finish_block = Some(current_block.to_owned());
         self.bump_last_update(current_block);
 
         // 2. add current epoch rewards earned to historical rewards
@@ -160,7 +157,6 @@ impl DenomRewardState {
             ends_at: new_epoch_end_scalar,
             // start the new active epoch with zero rewards earned
             total_earned_puvp: Uint256::zero(),
-            finish_block: None,
         };
 
         Ok(())

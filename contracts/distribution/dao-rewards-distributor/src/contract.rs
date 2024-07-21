@@ -115,7 +115,6 @@ fn execute_register_denom(
             ends_at: Expiration::Never {},
             emission_rate: msg.emission_rate,
             total_earned_puvp: Uint256::zero(),
-            finish_block: None,
         },
         last_update: Expiration::Never {},
         vp_contract,
