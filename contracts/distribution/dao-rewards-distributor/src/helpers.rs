@@ -74,8 +74,8 @@ pub(crate) fn scale_factor() -> Uint256 {
 }
 
 /// Calculate the duration from start to end. If the end is at or before the
-/// start, return 0.
-pub fn get_start_end_diff(end: &Expiration, start: &Expiration) -> StdResult<u64> {
+/// start, return 0. The first argument is end, and the second is start.
+pub fn get_exp_diff(end: &Expiration, start: &Expiration) -> StdResult<u64> {
     match (end, start) {
         (Expiration::AtHeight(end), Expiration::AtHeight(start)) => {
             if end > start {

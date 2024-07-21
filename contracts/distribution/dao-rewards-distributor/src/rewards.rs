@@ -2,8 +2,8 @@ use cosmwasm_std::{coin, Addr, BlockInfo, Coin, Deps, DepsMut, Env, StdResult, U
 
 use crate::{
     helpers::{
-        get_duration_scalar, get_prev_block_total_vp, get_start_end_diff,
-        get_voting_power_at_block, scale_factor,
+        get_duration_scalar, get_exp_diff, get_prev_block_total_vp, get_voting_power_at_block,
+        scale_factor,
     },
     state::{DenomRewardState, UserRewardState, DENOM_REWARD_STATES, USER_REWARD_STATES},
 };
@@ -86,7 +86,7 @@ pub fn get_active_total_earned_puvp(
     // rewards were distributed. this will be 0 if the rewards were updated at
     // or after the last time rewards were distributed.
     let new_reward_distribution_duration: Uint128 =
-        get_start_end_diff(&last_time_rewards_distributed, &reward_state.last_update)?.into();
+        get_exp_diff(&last_time_rewards_distributed, &reward_state.last_update)?.into();
 
     if prev_total_power.is_zero() {
         Ok(curr)
@@ -113,7 +113,7 @@ pub fn get_active_total_earned_puvp(
     }
 }
 
-// get a user's rewards not yet accounted for in their reward states.
+// get a user's rewards not yet accounted for in their reward state.
 pub fn get_accrued_rewards_since_last_user_action(
     deps: Deps,
     env: &Env,

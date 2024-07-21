@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_json, to_json_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Order,
-    Response, StdResult, Uint128, Uint256,
+    ensure, from_json, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response,
+    StdResult, Uint128, Uint256,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::Cw20ReceiveMsg;
@@ -76,7 +76,7 @@ pub fn execute(
         ExecuteMsg::Fund {} => execute_fund_native(deps, env, info),
         ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
         ExecuteMsg::Claim { denom } => execute_claim(deps, env, info, denom),
-        ExecuteMsg::Shutdown { denom } => execute_shutdown(deps, info, env, denom),
+        ExecuteMsg::Withdraw { denom } => execute_withdraw(deps, info, env, denom),
     }
 }
 
@@ -191,62 +191,52 @@ fn execute_update_denom(
         .add_attribute("denom", denom))
 }
 
-/// shutdown the rewards distribution for a specific denom. can only be called
-/// by the admin and only during the distribution period. this will clawback all
-/// (undistributed) future rewards to the admin. updates the period finish
+/// withdraws the undistributed rewards for a denom. members can claim whatever
+/// they earned until this point. this is effectively an inverse to fund and
+/// does not affect any already-distributed rewards. can only be called by the
+/// admin and only during the distribution period. updates the period finish
 /// expiration to the current block.
-fn execute_shutdown(
+fn execute_withdraw(
     deps: DepsMut,
     info: MessageInfo,
     env: Env,
     denom: String,
 ) -> Result<Response, ContractError> {
-    // only the owner can initiate a shutdown
+    // only the owner can initiate a withdraw
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     let mut reward_state = DENOM_REWARD_STATES.load(deps.storage, denom.to_string())?;
 
-    // shutdown is only possible during the distribution period
+    // withdraw is only possible during the distribution period
     ensure!(
         !reward_state.active_epoch.ends_at.is_expired(&env.block),
-        ContractError::ShutdownError("Reward period already finished".to_string())
+        ContractError::RewardsAlreadyDistributed {}
     );
 
-    // we get the start and end scalar values in u64 (seconds/blocks)
-    let started_at = reward_state.get_started_at_scalar()?;
-    let ends_at = reward_state.get_ends_at_scalar()?;
-    let reward_duration_scalar = ends_at - started_at;
-
-    // find the % of reward_duration that remains from current block
-    let passed_scalar_units_since_start = match reward_state.active_epoch.emission_rate.duration {
-        Duration::Height(_) => env.block.height - started_at,
-        Duration::Time(_) => env.block.time.seconds() - started_at,
-    };
-
-    // get the fraction of what part of rewards duration is in the past
-    // and sub from 1 to get the remaining rewards
-    let remaining_reward_duration_fraction = Decimal::one().checked_sub(Decimal::from_ratio(
-        passed_scalar_units_since_start,
-        reward_duration_scalar,
-    ))?;
-
-    // to get the clawback msg
-    let clawback_msg = get_transfer_msg(
-        reward_state.withdraw_destination.clone(),
-        reward_state.funded_amount * remaining_reward_duration_fraction,
-        reward_state.denom.clone(),
-    )?;
-
-    // shutdown completes the rewards
+    // withdraw completes the epoch
     reward_state.active_epoch.ends_at = match reward_state.active_epoch.emission_rate.duration {
         Duration::Height(_) => Expiration::AtHeight(env.block.height),
         Duration::Time(_) => Expiration::AtTime(env.block.time),
     };
 
+    // get total rewards distributed based on newly updated ends_at
+    let rewards_distributed = reward_state.active_epoch.get_total_rewards()?;
+
+    let clawback_amount = reward_state.funded_amount - rewards_distributed;
+
+    // remove withdrawn funds from amount funded since they are no longer funded
+    reward_state.funded_amount = rewards_distributed;
+
+    let clawback_msg = get_transfer_msg(
+        reward_state.withdraw_destination.clone(),
+        clawback_amount,
+        reward_state.denom.clone(),
+    )?;
+
     DENOM_REWARD_STATES.save(deps.storage, denom.to_string(), &reward_state)?;
 
     Ok(Response::new()
-        .add_attribute("action", "shutdown")
+        .add_attribute("action", "withdraw")
         .add_message(clawback_msg))
 }
 

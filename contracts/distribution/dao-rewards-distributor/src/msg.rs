@@ -55,10 +55,10 @@ pub enum ExecuteMsg {
     Fund {},
     /// Claims rewards for the sender.
     Claim { denom: String },
-    /// shuts down the rewards distributor for a denom. withdraws all future
-    /// staking rewards back to the treasury. members can claim whatever they
-    /// earned until this point.
-    Shutdown { denom: String },
+    /// withdraws the undistributed rewards for a denom. members can claim
+    /// whatever they earned until this point. this is effectively an inverse to
+    /// fund and does not affect any already-distributed rewards.
+    Withdraw { denom: String },
 }
 
 #[cw_serde]

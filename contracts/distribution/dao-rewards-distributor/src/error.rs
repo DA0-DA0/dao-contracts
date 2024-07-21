@@ -36,8 +36,8 @@ pub enum ContractError {
     #[error("Reward duration can not be zero")]
     ZeroRewardDuration {},
 
-    #[error("Rewards distributor shutdown error: {0}")]
-    ShutdownError(String),
+    #[error("All rewards have already been distributed")]
+    RewardsAlreadyDistributed {},
 
     #[error("Denom already registered")]
     DenomAlreadyRegistered {},

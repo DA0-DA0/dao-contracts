@@ -8,6 +8,7 @@ use cw_multi_test::Executor;
 use cw_utils::Duration;
 
 use crate::testing::native_setup::setup_native_token_test;
+use crate::ContractError;
 use crate::{
     msg::ExecuteMsg,
     testing::{ADDR1, ADDR2, ADDR3, DENOM},
@@ -664,9 +665,9 @@ fn test_cw4_dao_rewards() {
     suite.skip_blocks(100_000);
 
     // now that ADDR2 is no longer a member, ADDR1 and ADDR3 will split the rewards
-    suite.assert_pending_rewards(ADDR1, DENOM, 11_666_666);
+    suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000 + 6_666_666);
     suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
-    suite.assert_pending_rewards(ADDR3, DENOM, 5_833_333);
+    suite.assert_pending_rewards(ADDR3, DENOM, 3_333_333 + 2_500_000);
 
     // reintroduce the 2nd member with double the vp
     let add_member_2 = Member {
@@ -681,12 +682,12 @@ fn test_cw4_dao_rewards() {
 
     // ADDR1 claims rewards
     suite.claim_rewards(ADDR1, DENOM);
-    suite.assert_native_balance(ADDR1, DENOM, 11_666_666);
+    suite.assert_native_balance(ADDR1, DENOM, 5_000_000 + 6_666_666);
 
     // assert pending rewards are still the same (other than ADDR1)
     suite.assert_pending_rewards(ADDR1, DENOM, 0);
     suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
-    suite.assert_pending_rewards(ADDR3, DENOM, 5_833_333);
+    suite.assert_pending_rewards(ADDR3, DENOM, 3_333_333 + 2_500_000);
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
@@ -851,18 +852,18 @@ fn test_fund_invalid_cw20_denom() {
 }
 
 #[test]
-#[should_panic(expected = "Reward period already finished")]
-fn test_shutdown_finished_rewards_period() {
+#[should_panic(expected = "All rewards have already been distributed")]
+fn test_withdraw_finished_rewards_period() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
     // skip to expiration
     suite.skip_blocks(2_000_000);
 
-    suite.shutdown_denom_distribution(DENOM);
+    suite.withdraw_denom_funds(DENOM);
 }
 
 #[test]
-fn test_shutdown_alternative_destination_address() {
+fn test_withdraw_alternative_destination_address() {
     let subdao_addr = "some_subdao_maybe".to_string();
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
         .with_withdraw_destination(Some(subdao_addr.to_string()))
@@ -887,25 +888,25 @@ fn test_shutdown_alternative_destination_address() {
     let distribution_contract = suite.distribution_contract.to_string();
 
     suite.assert_native_balance(subdao_addr.as_str(), DENOM, 0);
-    let pre_shutdown_distributor_balance =
+    let pre_withdraw_distributor_balance =
         suite.get_balance_native(distribution_contract.clone(), DENOM);
 
-    suite.shutdown_denom_distribution(DENOM);
+    suite.withdraw_denom_funds(DENOM);
 
-    let post_shutdown_distributor_balance =
+    let post_withdraw_distributor_balance =
         suite.get_balance_native(distribution_contract.clone(), DENOM);
-    let post_shutdown_subdao_balance = suite.get_balance_native(subdao_addr.to_string(), DENOM);
+    let post_withdraw_subdao_balance = suite.get_balance_native(subdao_addr.to_string(), DENOM);
 
-    // after shutdown the balance of the subdao should be the same
-    // as pre-shutdown-distributor-bal minus post-shutdown-distributor-bal
+    // after withdraw the balance of the subdao should be the same
+    // as pre-withdraw-distributor-bal minus post-withdraw-distributor-bal
     assert_eq!(
-        pre_shutdown_distributor_balance - post_shutdown_distributor_balance,
-        post_shutdown_subdao_balance
+        pre_withdraw_distributor_balance - post_withdraw_distributor_balance,
+        post_withdraw_subdao_balance
     );
 }
 
 #[test]
-fn test_shutdown_block_based() {
+fn test_withdraw_block_based() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
     // skip 1/10th of the time
@@ -926,29 +927,39 @@ fn test_shutdown_block_based() {
 
     let distribution_contract = suite.distribution_contract.to_string();
 
-    let pre_shutdown_distributor_balance =
+    let pre_withdraw_distributor_balance =
         suite.get_balance_native(distribution_contract.clone(), DENOM);
 
     suite.assert_native_balance(suite.owner.clone().unwrap().as_str(), DENOM, 0);
-    suite.shutdown_denom_distribution(DENOM);
+    suite.withdraw_denom_funds(DENOM);
 
-    let post_shutdown_distributor_balance =
+    let post_withdraw_distributor_balance =
         suite.get_balance_native(distribution_contract.clone(), DENOM);
-    let post_shutdown_owner_balance = suite.get_balance_native(suite.owner.clone().unwrap(), DENOM);
+    let post_withdraw_owner_balance = suite.get_balance_native(suite.owner.clone().unwrap(), DENOM);
 
-    // after shutdown the balance of the owner should be the same
-    // as pre-shutdown-distributor-bal minus post-shutdown-distributor-bal
+    // after withdraw the balance of the owner should be the same
+    // as pre-withdraw-distributor-bal minus post-withdraw-distributor-bal
     assert_eq!(
-        pre_shutdown_distributor_balance - post_shutdown_distributor_balance,
-        post_shutdown_owner_balance
+        pre_withdraw_distributor_balance - post_withdraw_distributor_balance,
+        post_withdraw_owner_balance
     );
+
+    assert_eq!(pre_withdraw_distributor_balance, 92_500_000);
+    assert_eq!(post_withdraw_distributor_balance, 12_500_000);
+    assert_eq!(post_withdraw_owner_balance, 80_000_000);
 
     suite.skip_blocks(100_000);
 
+    // ensure cannot withdraw again
+    assert_eq!(
+        suite.withdraw_denom_funds_error(DENOM),
+        ContractError::RewardsAlreadyDistributed {}
+    );
+
     // we assert that pending rewards did not change
-    // suite.assert_pending_rewards(ADDR1, DENOM, 6_666_666);
-    // suite.assert_pending_rewards(ADDR2, DENOM, 0);
-    // suite.assert_pending_rewards(ADDR3, DENOM, 5_833_333);
+    suite.assert_pending_rewards(ADDR1, DENOM, 6_666_666);
+    suite.assert_pending_rewards(ADDR2, DENOM, 0);
+    suite.assert_pending_rewards(ADDR3, DENOM, 3_333_333 + 2_500_000);
 
     // user 1 can claim their rewards
     suite.claim_rewards(ADDR1, DENOM);
@@ -961,14 +972,14 @@ fn test_shutdown_block_based() {
     suite.assert_native_balance(ADDR3, DENOM, 50);
     suite.claim_rewards(ADDR3, DENOM);
     // suite.assert_pending_rewards(ADDR3, DENOM, 0);
-    suite.assert_native_balance(ADDR3, DENOM, 5_833_333 + 50);
+    suite.assert_native_balance(ADDR3, DENOM, 3_333_333 + 2_500_000 + 50);
 
     // TODO: fix this rug of 1 udenom by the distribution contract
     suite.assert_native_balance(&distribution_contract, DENOM, 1);
 }
 
 #[test]
-fn test_shutdown_time_based() {
+fn test_withdraw_time_based() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
         .with_rewards_config(RewardsConfig {
             amount: 1_000,
@@ -996,29 +1007,39 @@ fn test_shutdown_time_based() {
 
     let distribution_contract = suite.distribution_contract.to_string();
 
-    let pre_shutdown_distributor_balance =
+    let pre_withdraw_distributor_balance =
         suite.get_balance_native(distribution_contract.clone(), DENOM);
 
     suite.assert_native_balance(suite.owner.clone().unwrap().as_str(), DENOM, 0);
-    suite.shutdown_denom_distribution(DENOM);
+    suite.withdraw_denom_funds(DENOM);
 
-    let post_shutdown_distributor_balance =
+    let post_withdraw_distributor_balance =
         suite.get_balance_native(distribution_contract.clone(), DENOM);
-    let post_shutdown_owner_balance = suite.get_balance_native(suite.owner.clone().unwrap(), DENOM);
+    let post_withdraw_owner_balance = suite.get_balance_native(suite.owner.clone().unwrap(), DENOM);
 
-    // after shutdown the balance of the owner should be the same
-    // as pre-shutdown-distributor-bal minus post-shutdown-distributor-bal
+    // after withdraw the balance of the owner should be the same
+    // as pre-withdraw-distributor-bal minus post-withdraw-distributor-bal
     assert_eq!(
-        pre_shutdown_distributor_balance - post_shutdown_distributor_balance,
-        post_shutdown_owner_balance
+        pre_withdraw_distributor_balance - post_withdraw_distributor_balance,
+        post_withdraw_owner_balance
     );
 
+    assert_eq!(pre_withdraw_distributor_balance, 92_500_000);
+    assert_eq!(post_withdraw_distributor_balance, 12_500_000);
+    assert_eq!(post_withdraw_owner_balance, 80_000_000);
+
     suite.skip_seconds(100_000);
+
+    // ensure cannot withdraw again
+    assert_eq!(
+        suite.withdraw_denom_funds_error(DENOM),
+        ContractError::RewardsAlreadyDistributed {}
+    );
 
     // we assert that pending rewards did not change
     suite.assert_pending_rewards(ADDR1, DENOM, 6_666_666);
     suite.assert_pending_rewards(ADDR2, DENOM, 0);
-    suite.assert_pending_rewards(ADDR3, DENOM, 5_833_333);
+    suite.assert_pending_rewards(ADDR3, DENOM, 3_333_333 + 2_500_000);
 
     // user 1 can claim their rewards
     suite.claim_rewards(ADDR1, DENOM);
@@ -1031,15 +1052,95 @@ fn test_shutdown_time_based() {
     suite.assert_native_balance(ADDR3, DENOM, 50);
     suite.claim_rewards(ADDR3, DENOM);
     suite.assert_pending_rewards(ADDR3, DENOM, 0);
-    suite.assert_native_balance(ADDR3, DENOM, 5_833_333 + 50);
+    suite.assert_native_balance(ADDR3, DENOM, 3_333_333 + 2_500_000 + 50);
 
     // TODO: fix this rug of 1 udenom by the distribution contract
     suite.assert_native_balance(&distribution_contract, DENOM, 1);
 }
 
 #[test]
+fn test_withdraw_and_restart() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
+        .with_rewards_config(RewardsConfig {
+            amount: 1_000,
+            denom: UncheckedDenom::Native(DENOM.to_string()),
+            duration: Duration::Time(10),
+            destination: None,
+        })
+        .build();
+
+    // skip 1/10th of the time
+    suite.skip_seconds(100_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000);
+
+    // users claim their rewards
+    suite.claim_rewards(ADDR1, DENOM);
+    suite.claim_rewards(ADDR2, DENOM);
+    suite.claim_rewards(ADDR3, DENOM);
+
+    // skip 1/10th of the time
+    suite.skip_seconds(100_000);
+
+    let distribution_contract = suite.distribution_contract.to_string();
+
+    let pre_withdraw_distributor_balance =
+        suite.get_balance_native(distribution_contract.clone(), DENOM);
+
+    suite.assert_native_balance(suite.owner.clone().unwrap().as_str(), DENOM, 0);
+    suite.withdraw_denom_funds(DENOM);
+
+    let post_withdraw_distributor_balance =
+        suite.get_balance_native(distribution_contract.clone(), DENOM);
+    let post_withdraw_owner_balance = suite.get_balance_native(suite.owner.clone().unwrap(), DENOM);
+
+    // after withdraw the balance of the owner should be the same
+    // as pre-withdraw-distributor-bal minus post-withdraw-distributor-bal
+    assert_eq!(
+        pre_withdraw_distributor_balance - post_withdraw_distributor_balance,
+        post_withdraw_owner_balance
+    );
+
+    assert_eq!(pre_withdraw_distributor_balance, 90_000_000);
+    assert_eq!(post_withdraw_distributor_balance, 10_000_000);
+    assert_eq!(post_withdraw_owner_balance, 80_000_000);
+
+    // skip 1/10th of the time
+    suite.skip_seconds(100_000);
+
+    // ensure cannot withdraw again
+    assert_eq!(
+        suite.withdraw_denom_funds_error(DENOM),
+        ContractError::RewardsAlreadyDistributed {}
+    );
+
+    // we assert that pending rewards did not change
+    suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000);
+    suite.claim_rewards(ADDR1, DENOM);
+    suite.claim_rewards(ADDR2, DENOM);
+    suite.claim_rewards(ADDR3, DENOM);
+
+    // fund again
+    suite.fund_distributor_native(coin(100_000_000, DENOM));
+
+    // skip 1/10th of the time
+    suite.skip_seconds(100_000);
+
+    // check that pending rewards restarted from the funding date. since we
+    // skipped 1/10th the time after the funding occurred, everyone should
+    // have 10% of the new amount pending
+    suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000);
+}
+
+#[test]
 #[should_panic(expected = "Caller is not the contract's current owner")]
-fn test_shudown_unauthorized() {
+fn test_withdraw_unauthorized() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
     // skip 1/10th of the time
@@ -1051,7 +1152,7 @@ fn test_shudown_unauthorized() {
         .execute_contract(
             Addr::unchecked(ADDR1),
             suite.distribution_contract.clone(),
-            &ExecuteMsg::Shutdown {
+            &ExecuteMsg::Withdraw {
                 denom: DENOM.to_string(),
             },
             &[],
@@ -1061,12 +1162,12 @@ fn test_shudown_unauthorized() {
 
 #[test]
 #[should_panic]
-fn test_shutdown_unregistered_denom() {
+fn test_withdraw_unregistered_denom() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
     suite.skip_blocks(100_000);
 
-    suite.shutdown_denom_distribution("not-the-denom");
+    suite.withdraw_denom_funds("not-the-denom");
 }
 
 #[test]

@@ -16,6 +16,7 @@ use crate::{
     },
     state::DenomRewardState,
     testing::cw20_setup::instantiate_cw20,
+    ContractError,
 };
 
 use super::{
@@ -489,8 +490,8 @@ impl Suite {
 
 // SUITE ACTIONS
 impl Suite {
-    pub fn shutdown_denom_distribution(&mut self, denom: &str) {
-        let msg = ExecuteMsg::Shutdown {
+    pub fn withdraw_denom_funds(&mut self, denom: &str) {
+        let msg = ExecuteMsg::Withdraw {
             denom: denom.to_string(),
         };
         self.app
@@ -501,6 +502,22 @@ impl Suite {
                 &[],
             )
             .unwrap();
+    }
+
+    pub fn withdraw_denom_funds_error(&mut self, denom: &str) -> ContractError {
+        let msg = ExecuteMsg::Withdraw {
+            denom: denom.to_string(),
+        };
+        self.app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap()
     }
 
     pub fn register_hook(&mut self, addr: Addr) {
