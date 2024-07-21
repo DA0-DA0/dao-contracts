@@ -10,6 +10,7 @@ use cw_utils::{one_coin, Duration, Expiration};
 use dao_interface::voting::InfoResponse;
 
 use std::collections::HashMap;
+use std::ops::Add;
 
 use crate::helpers::{get_duration_scalar, get_transfer_msg, validate_voting_power_contract};
 use crate::hooks::{
@@ -270,16 +271,6 @@ fn execute_fund(
     mut denom_reward_state: DenomRewardState,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    // we derive the period for which the rewards are funded
-    // by looking at the existing reward emission rate and the funded amount
-    let funded_period_duration = denom_reward_state
-        .active_epoch
-        .emission_rate
-        .get_funded_period_duration(amount)?;
-    let funded_period_value = get_duration_scalar(&funded_period_duration);
-
-    denom_reward_state.bump_last_update(&env.block);
-
     // distribution is inactive if it hasn't yet started (i.e. never been
     // funded) or if it's expired (i.e. all funds have been distributed)
     let distribution_inactive =
@@ -294,44 +285,28 @@ fn execute_fund(
 
     // if distribution is inactive, update the distribution start to the current
     // block so that the new funds start being distributed from now instead of
-    // from the past
+    // from the past, and reset funded_amount to the new amount since we're
+    // effectively starting a new distribution. otherwise, just add the new
+    // amount to the existing funded_amount
     if distribution_inactive {
+        denom_reward_state.funded_amount = amount;
         denom_reward_state.active_epoch.started_at =
             match denom_reward_state.active_epoch.emission_rate.duration {
                 Duration::Height(_) => Expiration::AtHeight(env.block.height),
                 Duration::Time(_) => Expiration::AtTime(env.block.time),
             };
+    } else {
+        denom_reward_state.funded_amount += amount;
     }
 
-    // the duration of rewards period is extended in different ways,
-    // depending on the current expiration state and current block
-    denom_reward_state.active_epoch.ends_at = match denom_reward_state.active_epoch.ends_at {
-        // if this is the first funding of the denom, the new expiration is the
-        // funded period duration from the current block
-        Expiration::Never {} => funded_period_duration.after(&env.block),
-        // otherwise we add the duration units to the existing expiration
-        Expiration::AtHeight(h) => {
-            if h <= env.block.height {
-                // expiration is the funded duration after current block
-                Expiration::AtHeight(env.block.height + funded_period_value)
-            } else {
-                // if the previous expiration had not yet expired, we extend
-                // the current rewards period by the newly funded duration
-                Expiration::AtHeight(h + funded_period_value)
-            }
-        }
-        Expiration::AtTime(t) => {
-            if t <= env.block.time {
-                // expiration is the funded duration after current block time
-                Expiration::AtTime(env.block.time.plus_seconds(funded_period_value))
-            } else {
-                // if the previous expiration had not yet expired, we extend
-                // the current rewards period by the newly funded duration
-                Expiration::AtTime(t.plus_seconds(funded_period_value))
-            }
-        }
-    };
-    denom_reward_state.funded_amount += amount;
+    denom_reward_state.active_epoch.ends_at = denom_reward_state.active_epoch.started_at.add(
+        denom_reward_state
+            .active_epoch
+            .emission_rate
+            .get_funded_period_duration(denom_reward_state.funded_amount)?,
+    )?;
+
+    denom_reward_state.bump_last_update(&env.block);
 
     DENOM_REWARD_STATES.save(
         deps.storage,

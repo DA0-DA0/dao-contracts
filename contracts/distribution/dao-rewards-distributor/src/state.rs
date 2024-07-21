@@ -77,7 +77,8 @@ pub struct DenomRewardState {
     /// address that will update the reward split when the voting power
     /// distribution changes
     pub hook_caller: Addr,
-    /// total amount of rewards funded
+    /// total amount of rewards funded that will be distributed in the active
+    /// epoch.
     pub funded_amount: Uint128,
     /// destination address for reward clawbacks
     pub withdraw_destination: Addr,
