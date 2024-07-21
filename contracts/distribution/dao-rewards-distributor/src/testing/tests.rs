@@ -2,10 +2,12 @@ use std::borrow::BorrowMut;
 
 use cosmwasm_std::{coin, coins, to_json_binary, Addr, Timestamp};
 use cosmwasm_std::{Uint128, Uint256};
+use cw2::ContractVersion;
 use cw20::{Cw20Coin, Expiration, UncheckedDenom};
 use cw4::Member;
 use cw_multi_test::Executor;
 use cw_utils::Duration;
+use dao_interface::voting::InfoResponse;
 
 use crate::msg::RegisterMsg;
 use crate::state::{Epoch, RewardEmissionRate};
@@ -120,6 +122,9 @@ fn test_native_dao_rewards_update_reward_rate() {
     // update the reward rate back to 1_000 / 10blocks
     // this should now distribute 10_000_000 tokens over 100_000 blocks
     // between ADDR1 (2/3rds) and ADDR3 (1/3rd)
+    suite.update_reward_emission_rate(DENOM, Duration::Height(10), 1000);
+
+    // update with the same rate does nothing
     suite.update_reward_emission_rate(DENOM, Duration::Height(10), 1000);
 
     // skip 1/10th of the time
@@ -2005,4 +2010,21 @@ fn test_update_withdraw_destination() {
 
     let denom = suite.get_denom_reward_state(DENOM);
     assert_eq!(denom.withdraw_destination, new_withdraw_destination);
+}
+
+#[test]
+fn test_query_info() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    let info = suite.get_info();
+
+    assert_eq!(
+        info,
+        InfoResponse {
+            info: ContractVersion {
+                contract: env!("CARGO_PKG_NAME").to_string(),
+                version: env!("CARGO_PKG_VERSION").to_string(),
+            }
+        }
+    );
 }

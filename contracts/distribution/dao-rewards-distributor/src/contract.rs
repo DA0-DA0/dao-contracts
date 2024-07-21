@@ -18,8 +18,8 @@ use crate::hooks::{
     subscribe_denom_to_hook, unsubscribe_denom_from_hook,
 };
 use crate::msg::{
-    ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, ReceiveCw20Msg, RegisterMsg,
-    RewardsStateResponse,
+    ExecuteMsg, InstantiateMsg, MigrateMsg, PendingRewardsResponse, QueryMsg, ReceiveCw20Msg,
+    RegisterMsg, RewardsStateResponse,
 };
 use crate::rewards::{
     get_accrued_rewards_since_last_user_action, get_active_total_earned_puvp, update_rewards,
@@ -515,4 +515,10 @@ fn query_pending_rewards(deps: Deps, env: Env, addr: String) -> StdResult<Pendin
         pending_rewards,
     };
     Ok(pending_rewards_response)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    Ok(Response::default())
 }

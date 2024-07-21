@@ -1,14 +1,13 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    ensure, Addr, BlockInfo, Decimal, Deps, StdError, StdResult, Timestamp, Uint128, Uint256,
-    Uint64,
+    Addr, BlockInfo, Decimal, Deps, StdError, StdResult, Timestamp, Uint128, Uint256, Uint64,
 };
 use cw20::{Denom, Expiration};
 use cw_storage_plus::Map;
 use cw_utils::Duration;
 use std::{cmp::min, collections::HashMap};
 
-use crate::{helpers::get_exp_diff, rewards::get_active_total_earned_puvp, ContractError};
+use crate::{helpers::get_exp_diff, rewards::get_active_total_earned_puvp};
 
 /// map user address to their unique reward state
 pub const USER_REWARD_STATES: Map<Addr, UserRewardState> = Map::new("u_r_s");
@@ -127,9 +126,10 @@ impl Epoch {
                     Expiration::AtTime(std::cmp::min(current_block.time, ends_at_time));
                 Ok(())
             }
-            _ => Err(StdError::generic_err(
-                "Mismatched emission_rate and ends_at block/time units",
-            )),
+            _ => Err(StdError::generic_err(format!(
+                "incompatible emission_rate.duration ({:?}) and ends_at ({:?}) values",
+                self.emission_rate.duration, self.ends_at
+            ))),
         }
     }
 }
@@ -187,25 +187,6 @@ impl DenomRewardState {
             Expiration::Never {} => self.active_epoch.last_updated_total_earned_puvp,
             Expiration::AtHeight(h) => Expiration::AtHeight(min(current_block.height, h)),
             Expiration::AtTime(t) => Expiration::AtTime(min(current_block.time, t)),
-        }
-    }
-
-    /// Returns `ContractError::RewardPeriodNotFinished` if the period finish
-    /// expiration is of either `AtHeight` or `AtTime` variant and is earlier
-    /// than the current block height or time respectively.
-    pub fn validate_period_finish_expiration_if_set(
-        &self,
-        current_block: &BlockInfo,
-    ) -> Result<(), ContractError> {
-        match self.active_epoch.ends_at {
-            Expiration::AtHeight(_) | Expiration::AtTime(_) => {
-                ensure!(
-                    self.active_epoch.ends_at.is_expired(current_block),
-                    ContractError::RewardPeriodNotFinished {}
-                );
-                Ok(())
-            }
-            Expiration::Never {} => Ok(()),
         }
     }
 

@@ -5,8 +5,9 @@ use cosmwasm_std::{coin, coins, to_json_binary, Addr, Coin, Empty, Timestamp, Ui
 use cw20::{Cw20Coin, Expiration, UncheckedDenom};
 use cw4::{Member, MemberListResponse};
 use cw_multi_test::{App, BankSudo, Executor, SudoMsg};
-use cw_ownable::{Action, Ownership};
+use cw_ownable::Action;
 use cw_utils::Duration;
+use dao_interface::voting::InfoResponse;
 
 use crate::{
     msg::{
@@ -374,14 +375,6 @@ impl Suite {
         result.balance.u128()
     }
 
-    #[allow(dead_code)]
-    pub fn get_ownership<T: Into<String>>(&mut self, address: T) -> Ownership<Addr> {
-        self.app
-            .wrap()
-            .query_wasm_smart(address, &QueryMsg::Ownership {})
-            .unwrap()
-    }
-
     pub fn get_rewards_state_response(&mut self) -> RewardsStateResponse {
         self.app
             .wrap()
@@ -414,6 +407,14 @@ impl Suite {
             .query_wasm_smart(self.distribution_contract.clone(), &QueryMsg::Ownership {})
             .unwrap();
         ownable_response.owner.unwrap()
+    }
+
+    pub fn get_info(&mut self) -> InfoResponse {
+        self.app
+            .borrow_mut()
+            .wrap()
+            .query_wasm_smart(self.distribution_contract.clone(), &QueryMsg::Info {})
+            .unwrap()
     }
 }
 
