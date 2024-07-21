@@ -67,6 +67,12 @@ cd packages/dao-dao-macros
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
 
+cd packages/dao-pre-propose-base
+cargo publish
+cd "$START_DIR"
+
+sleep 120
+
 cd packages/dao-voting
 cargo publish
 cd "$START_DIR"
@@ -75,13 +81,12 @@ cd packages/dao-hooks
 cargo publish
 cd "$START_DIR"
 
-sleep 120
-
-cd packages/dao-pre-propose-base
+cd packages/cw-tokenfactory-types
 cargo publish
 cd "$START_DIR"
 
-Test contracts
+
+# Test contracts
 cd contracts/test/dao-proposal-sudo
 cargo publish
 cd "$START_DIR"
@@ -187,25 +192,35 @@ cd contracts/voting/dao-voting-token-staked
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
 
-cd contracts/dao-dao-core
+cd contracts/voting/dao-voting-onft-staked
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
 
-cd contracts/external/cw-admin-factory
+cd contracts/dao-dao-core
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
 
 sleep 120
 
-# TODO re-enable when ready
-# cd contracts/external/cw-fund-distributor
-# cargo hack publish --no-dev-deps --allow-dirty
-# cd "$START_DIR"
+cd contracts/external/cw-admin-factory
+cargo hack publish --no-dev-deps --allow-dirty
+cd "$START_DIR"
+
+cd contracts/distribution/cw-fund-distributor
+cargo hack publish --no-dev-deps --allow-dirty
+cd "$START_DIR"
+
+cd contracts/distribution/dao-rewards-distributor
+cargo hack publish --no-dev-deps --allow-dirty
+cd "$START_DIR"
+
+cd contracts/external/btsg-ft-factory
+cargo hack publish --no-dev-deps --allow-dirty
+cd "$START_DIR"
 
 cd contracts/external/dao-migrator
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
-
 
 cd packages/dao-testing
 cargo publish
