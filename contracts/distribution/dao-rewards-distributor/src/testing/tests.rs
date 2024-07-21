@@ -152,6 +152,7 @@ fn test_native_dao_rewards_update_reward_rate() {
     // update the rewards rate to 40_000_000 per 100_000 blocks.
     // split is still 2/3rds to ADDR1 and 1/3rd to ADDR3
     suite.update_reward_emission_rate(DENOM, Duration::Height(10), 4000);
+    suite.assert_ends_at(Expiration::AtHeight(1_062_500));
 
     suite.skip_blocks(50_000); // allocates 20_000_000 tokens
 
@@ -175,11 +176,11 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.claim_rewards(ADDR3, DENOM);
     let addr1_pending = 0;
     let addr3_pending = 0;
-    suite.skip_blocks(10_000); // allocates 4_000_000 tokens
+    suite.skip_blocks(10_000); // skips from 1060000 to 1070000, and the end is 1062500, so this allocates only 1_000_000 tokens instead of 4_000_000
 
-    suite.assert_pending_rewards(ADDR1, DENOM, addr1_pending + 4_000_000 * 2 / 4);
-    suite.assert_pending_rewards(ADDR2, DENOM, 2 * 4_000_000 / 4);
-    suite.assert_pending_rewards(ADDR3, DENOM, addr3_pending + 4_000_000 / 4);
+    suite.assert_pending_rewards(ADDR1, DENOM, addr1_pending + 1_000_000 * 2 / 4);
+    suite.assert_pending_rewards(ADDR2, DENOM, 4_000_000 / 4 + 1_000_000 / 4);
+    suite.assert_pending_rewards(ADDR3, DENOM, addr3_pending + 1_000_000 / 4);
 
     suite.claim_rewards(ADDR2, DENOM);
 
