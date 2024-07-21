@@ -138,7 +138,7 @@ pub enum QueryMsg {
     /// Returns contract version info
     #[returns(InfoResponse)]
     Info {},
-    /// Returns the state of the registered reward distributions.
+    /// Returns the state of all the registered reward distributions.
     #[returns(RewardsStateResponse)]
     RewardsState {},
     /// Returns the pending rewards for the given address.
@@ -147,6 +147,7 @@ pub enum QueryMsg {
     /// Returns information about the ownership of this contract.
     #[returns(::cw_ownable::Ownership<::cosmwasm_std::Addr>)]
     Ownership {},
+    /// Returns the state of the given denom reward distribution.
     #[returns(DenomRewardState)]
     DenomRewardState { denom: String },
 }
