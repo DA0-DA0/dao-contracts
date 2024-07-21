@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Decimal, StdError, StdResult, Uint128, Uint64};
+use cosmwasm_std::Uint128;
 use cw20::{Cw20ReceiveMsg, UncheckedDenom};
 use cw4::MemberChangedHookMsg;
 use cw_ownable::cw_ownable_execute;
-use cw_utils::Duration;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 use dao_interface::voting::InfoResponse;
 
@@ -14,7 +13,7 @@ use dao_interface::voting::InfoResponse;
 pub use cw_controllers::ClaimsResponse;
 pub use cw_ownable::Ownership;
 
-use crate::state::DenomRewardState;
+use crate::state::{DenomRewardState, RewardEmissionRate};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -34,9 +33,9 @@ pub enum ExecuteMsg {
     /// Called when tokens are staked or unstaked.
     StakeChangeHook(StakeChangedHookMsg),
     /// registers a new reward denom
-    RegisterDenom(RegisterDenomMsg),
+    Register(RegisterMsg),
     /// updates the config for a registered denom
-    UpdateDenom {
+    Update {
         /// denom to update
         denom: String,
         /// reward emission rate
@@ -66,7 +65,7 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
-pub struct RegisterDenomMsg {
+pub struct RegisterMsg {
     /// denom to register
     pub denom: UncheckedDenom,
     /// reward emission rate
@@ -82,53 +81,6 @@ pub struct RegisterDenomMsg {
     pub hook_caller: String,
     /// destination address for reward clawbacks. defaults to owner
     pub withdraw_destination: Option<String>,
-}
-
-/// defines how many tokens (amount) should be distributed per amount of time
-/// (duration). e.g. 5udenom per hour.
-#[cw_serde]
-pub struct RewardEmissionRate {
-    /// amount of tokens to distribute per amount of time
-    pub amount: Uint128,
-    /// duration of time to distribute amount
-    pub duration: Duration,
-}
-
-impl RewardEmissionRate {
-    // find the duration of the funded period given funded amount. e.g. if the
-    // funded amount is twice the emission rate amount, the funded period should
-    // be twice the emission rate duration, since the funded amount takes two
-    // emission cycles to be distributed.
-    pub fn get_funded_period_duration(&self, funded_amount: Uint128) -> StdResult<Duration> {
-        // if amount being distributed is 0 (rewards are paused), we return the max duration
-        if self.amount.is_zero() {
-            return match self.duration {
-                Duration::Height(_) => Ok(Duration::Height(u64::MAX)),
-                Duration::Time(_) => Ok(Duration::Time(u64::MAX)),
-            };
-        }
-
-        let amount_to_emission_rate_ratio = Decimal::from_ratio(funded_amount, self.amount);
-
-        let funded_duration = match self.duration {
-            Duration::Height(h) => {
-                let duration_height = Uint128::from(h)
-                    .checked_mul_floor(amount_to_emission_rate_ratio)
-                    .map_err(|e| StdError::generic_err(e.to_string()))?;
-                let duration = Uint64::try_from(duration_height)?.u64();
-                Duration::Height(duration)
-            }
-            Duration::Time(t) => {
-                let duration_time = Uint128::from(t)
-                    .checked_mul_floor(amount_to_emission_rate_ratio)
-                    .map_err(|e| StdError::generic_err(e.to_string()))?;
-                let duration = Uint64::try_from(duration_time)?.u64();
-                Duration::Time(duration)
-            }
-        };
-
-        Ok(funded_duration)
-    }
 }
 
 #[cw_serde]
@@ -151,7 +103,7 @@ pub enum QueryMsg {
     RewardsState {},
     /// Returns the pending rewards for the given address.
     #[returns(PendingRewardsResponse)]
-    GetPendingRewards { address: String },
+    PendingRewards { address: String },
     /// Returns information about the ownership of this contract.
     #[returns(::cw_ownable::Ownership<::cosmwasm_std::Addr>)]
     Ownership {},

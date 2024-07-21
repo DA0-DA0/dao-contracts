@@ -1,12 +1,12 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_json, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response,
-    StdResult, Uint128, Uint256,
+    ensure, from_json, to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Order,
+    Response, StdResult, Uint128, Uint256,
 };
 use cw2::{get_contract_version, set_contract_version};
-use cw20::Cw20ReceiveMsg;
-use cw_utils::{one_coin, Duration, Expiration};
+use cw20::{Cw20ReceiveMsg, UncheckedDenom};
+use cw_utils::{must_pay, one_coin, Duration, Expiration};
 use dao_interface::voting::InfoResponse;
 
 use std::collections::HashMap;
@@ -18,13 +18,15 @@ use crate::hooks::{
     subscribe_denom_to_hook, unsubscribe_denom_from_hook,
 };
 use crate::msg::{
-    ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, ReceiveCw20Msg, RegisterDenomMsg,
-    RewardEmissionRate, RewardsStateResponse,
+    ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, ReceiveCw20Msg, RegisterMsg,
+    RewardsStateResponse,
 };
 use crate::rewards::{
     get_accrued_rewards_since_last_user_action, get_active_total_earned_puvp, update_rewards,
 };
-use crate::state::{DenomRewardState, Epoch, DENOM_REWARD_STATES, USER_REWARD_STATES};
+use crate::state::{
+    DenomRewardState, Epoch, RewardEmissionRate, DENOM_REWARD_STATES, USER_REWARD_STATES,
+};
 use crate::ContractError;
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -57,15 +59,18 @@ pub fn execute(
         ExecuteMsg::NftStakeChangeHook(msg) => execute_nft_stake_changed(deps, env, info, msg),
         ExecuteMsg::MemberChangedHook(msg) => execute_membership_changed(deps, env, info, msg),
         ExecuteMsg::UpdateOwnership(action) => execute_update_owner(deps, info, env, action),
-        ExecuteMsg::RegisterDenom(register_msg) => execute_register_denom(deps, info, register_msg),
-        ExecuteMsg::UpdateDenom {
+        ExecuteMsg::Receive(msg) => execute_receive_cw20(deps, env, info, msg),
+        ExecuteMsg::Register(register_msg) => {
+            execute_register_native(deps, env, info, register_msg)
+        }
+        ExecuteMsg::Update {
             denom,
             emission_rate,
             continuous,
             vp_contract,
             hook_caller,
             withdraw_destination,
-        } => execute_update_denom(
+        } => execute_update(
             deps,
             env,
             info,
@@ -77,22 +82,63 @@ pub fn execute(
             withdraw_destination,
         ),
         ExecuteMsg::Fund {} => execute_fund_native(deps, env, info),
-        ExecuteMsg::Receive(msg) => execute_receive_cw20(deps, env, info, msg),
         ExecuteMsg::Claim { denom } => execute_claim(deps, env, info, denom),
         ExecuteMsg::Withdraw { denom } => execute_withdraw(deps, info, env, denom),
     }
 }
 
-/// registers a new denom for rewards distribution.
-/// only the owner can register a new denom.
-/// a denom can only be registered once; update if you need to change something.
-fn execute_register_denom(
+fn execute_receive_cw20(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
-    msg: RegisterDenomMsg,
+    wrapper: Cw20ReceiveMsg,
+) -> Result<Response, ContractError> {
+    // verify msg
+    let msg: ReceiveCw20Msg = from_json(&wrapper.msg)?;
+
+    match msg {
+        ReceiveCw20Msg::Fund {} => {
+            let reward_denom_state =
+                DENOM_REWARD_STATES.load(deps.storage, info.sender.to_string())?;
+            execute_fund(deps, env, reward_denom_state, wrapper.amount)
+        }
+    }
+}
+
+/// registers a new native denom for rewards distribution.
+fn execute_register_native(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: RegisterMsg,
+) -> Result<Response, ContractError> {
+    let mut amount: Option<Uint128> = None;
+
+    // if native funds provided, ensure they are for this native denom. if other
+    // native funds present, return error. if no funds, do nothing and leave
+    // registered denom with no funding, to be funded later.
+    if !info.funds.is_empty() {
+        match &msg.denom {
+            UncheckedDenom::Native(denom) => amount = Some(must_pay(&info, denom)?),
+            UncheckedDenom::Cw20(_) => return Err(ContractError::NoFundsOnCw20Register {}),
+        }
+    }
+
+    execute_register(deps, env, info.sender, msg, amount)
+}
+
+/// registers a new denom for rewards distribution. only the owner can register
+/// a new denom. a denom can only be registered once. if funds provided, will
+/// start distributing rewards immediately.
+fn execute_register(
+    deps: DepsMut,
+    env: Env,
+    sender: Addr,
+    msg: RegisterMsg,
+    funds: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     // only the owner can register a new denom
-    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+    cw_ownable::assert_owner(deps.storage, &sender)?;
 
     // Reward duration must be greater than 0 seconds/blocks
     if get_duration_scalar(&msg.emission_rate.duration) == 0 {
@@ -107,7 +153,7 @@ fn execute_register_denom(
         // if withdraw destination is specified, we validate it
         Some(addr) => deps.api.addr_validate(&addr)?,
         // otherwise default to the owner
-        None => info.sender,
+        None => sender,
     };
 
     // Initialize the reward state
@@ -135,19 +181,30 @@ fn execute_register_denom(
         str_denom.to_string(),
         |existing| match existing {
             Some(_) => Err(ContractError::DenomAlreadyRegistered {}),
-            None => Ok(reward_state),
+            None => Ok(reward_state.clone()),
         },
     )?;
 
     // update the registered hooks to include the new denom
-    subscribe_denom_to_hook(deps.storage, str_denom, hook_caller.clone())?;
+    subscribe_denom_to_hook(deps.storage, str_denom.clone(), hook_caller.clone())?;
 
-    Ok(Response::default().add_attribute("action", "register_reward_denom"))
+    let mut response = Response::new()
+        .add_attribute("action", "register_denom")
+        .add_attribute("denom", &str_denom);
+
+    // if funds provided, begin distributing rewards. if no funds, do nothing
+    // and leave registered denom with no funding, to be funded later.
+    if let Some(funds) = funds {
+        execute_fund(deps, env, reward_state, funds)?;
+        response = response.add_attribute("funded_amount", funds);
+    }
+
+    Ok(response)
 }
 
 /// updates the config for a registered denom
 #[allow(clippy::too_many_arguments)]
-fn execute_update_denom(
+fn execute_update(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -245,20 +302,10 @@ fn execute_withdraw(
 
     Ok(Response::new()
         .add_attribute("action", "withdraw")
+        .add_attribute("denom", denom)
+        .add_attribute("amount_withdrawn", clawback_amount)
+        .add_attribute("amount_distributed", rewards_distributed)
         .add_message(clawback_msg))
-}
-
-fn execute_receive_cw20(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    wrapper: Cw20ReceiveMsg,
-) -> Result<Response, ContractError> {
-    // verify msg
-    let _msg: ReceiveCw20Msg = from_json(&wrapper.msg)?;
-
-    let reward_denom_state = DENOM_REWARD_STATES.load(deps.storage, info.sender.to_string())?;
-    execute_fund(deps, env, reward_denom_state, wrapper.amount)
 }
 
 fn execute_fund_native(
@@ -336,7 +383,7 @@ fn execute_fund(
         &denom_reward_state,
     )?;
 
-    Ok(Response::default()
+    Ok(Response::new()
         .add_attribute("action", "fund")
         .add_attribute("fund_denom", denom_reward_state.to_str_denom())
         .add_attribute("fund_amount", amount))
@@ -390,7 +437,7 @@ fn execute_update_owner(
     // Note, this is a two step process, the new owner must accept this ownership transfer.
     // First the owner specifies the new owner, then the new owner must accept.
     let ownership = cw_ownable::update_ownership(deps, &env.block, &info.sender, action)?;
-    Ok(Response::default().add_attributes(ownership.into_attributes()))
+    Ok(Response::new().add_attributes(ownership.into_attributes()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -398,7 +445,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Info {} => Ok(to_json_binary(&query_info(deps)?)?),
         QueryMsg::RewardsState {} => Ok(to_json_binary(&query_rewards_state(deps, env)?)?),
-        QueryMsg::GetPendingRewards { address } => {
+        QueryMsg::PendingRewards { address } => {
             Ok(to_json_binary(&query_pending_rewards(deps, env, address)?)?)
         }
         QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),

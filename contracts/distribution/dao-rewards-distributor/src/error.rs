@@ -1,4 +1,5 @@
 use cosmwasm_std::{OverflowError, StdError};
+use cw_utils::PaymentError;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
@@ -15,11 +16,17 @@ pub enum ContractError {
     #[error(transparent)]
     Overflow(#[from] OverflowError),
 
+    #[error(transparent)]
+    Payment(#[from] PaymentError),
+
     #[error("Invalid Cw20")]
     InvalidCw20 {},
 
     #[error("Invalid funds")]
     InvalidFunds {},
+
+    #[error("You cannot send native funds when registering a CW20")]
+    NoFundsOnCw20Register {},
 
     #[error("Staking change hook sender is not staking contract")]
     InvalidHookSender {},

@@ -3,7 +3,6 @@ use std::borrow::BorrowMut;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{coin, coins, to_json_binary, Addr, Coin, Empty, Timestamp, Uint128};
 use cw20::{Cw20Coin, Expiration, UncheckedDenom};
-use cw20_stake::msg::ReceiveMsg;
 use cw4::{Member, MemberListResponse};
 use cw_multi_test::{App, BankSudo, Executor, SudoMsg};
 use cw_ownable::{Action, Ownership};
@@ -11,10 +10,10 @@ use cw_utils::Duration;
 
 use crate::{
     msg::{
-        ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, RegisterDenomMsg,
-        RewardEmissionRate, RewardsStateResponse,
+        ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, ReceiveCw20Msg, RegisterMsg,
+        RewardsStateResponse,
     },
-    state::DenomRewardState,
+    state::{DenomRewardState, RewardEmissionRate},
     testing::cw20_setup::instantiate_cw20,
     ContractError,
 };
@@ -253,6 +252,7 @@ impl SuiteBuilder {
                 suite_built.register_reward_denom(
                     self.rewards_config.clone(),
                     suite_built.voting_power_addr.to_string().as_ref(),
+                    None,
                 );
                 match self.rewards_config.denom {
                     UncheckedDenom::Native(_) => {
@@ -290,6 +290,7 @@ impl SuiteBuilder {
                 suite_built.register_reward_denom(
                     self.rewards_config.clone(),
                     suite_built.staking_addr.to_string().as_ref(),
+                    None,
                 );
                 match &self.rewards_config.denom {
                     UncheckedDenom::Native(_) => {
@@ -455,20 +456,20 @@ impl Suite {
         assert_eq!(units, expected);
     }
 
-    pub fn assert_pending_rewards(&mut self, address: &str, _denom: &str, expected: u128) {
+    pub fn assert_pending_rewards(&mut self, address: &str, denom: &str, expected: u128) {
         let res: PendingRewardsResponse = self
             .app
             .borrow_mut()
             .wrap()
             .query_wasm_smart(
                 self.distribution_contract.clone(),
-                &QueryMsg::GetPendingRewards {
+                &QueryMsg::PendingRewards {
                     address: address.to_string(),
                 },
             )
             .unwrap();
 
-        let pending = res.pending_rewards.get(self.reward_denom.as_str()).unwrap();
+        let pending = res.pending_rewards.get(denom).unwrap();
 
         assert_eq!(
             pending,
@@ -532,8 +533,13 @@ impl Suite {
             .unwrap();
     }
 
-    pub fn register_reward_denom(&mut self, reward_config: RewardsConfig, hook_caller: &str) {
-        let register_reward_denom_msg = ExecuteMsg::RegisterDenom(RegisterDenomMsg {
+    pub fn register_reward_denom(
+        &mut self,
+        reward_config: RewardsConfig,
+        hook_caller: &str,
+        funds: Option<Uint128>,
+    ) {
+        let register_reward_denom_msg = ExecuteMsg::Register(RegisterMsg {
             denom: reward_config.denom.clone(),
             emission_rate: RewardEmissionRate {
                 amount: Uint128::new(reward_config.amount),
@@ -545,13 +551,23 @@ impl Suite {
             withdraw_destination: reward_config.destination,
         });
 
+        // include funds if provided
+        let send_funds = if let Some(funds) = funds {
+            match reward_config.denom {
+                UncheckedDenom::Native(denom) => vec![coin(funds.u128(), denom)],
+                UncheckedDenom::Cw20(_) => vec![],
+            }
+        } else {
+            vec![]
+        };
+
         self.app
             .borrow_mut()
             .execute_contract(
                 self.owner.clone().unwrap(),
                 self.distribution_contract.clone(),
                 &register_reward_denom_msg,
-                &[],
+                &send_funds,
             )
             .unwrap();
     }
@@ -569,11 +585,7 @@ impl Suite {
             .unwrap();
     }
 
-    pub fn mint_cw20_coin(&mut self, coin: Cw20Coin, dest: &str, name: &str) -> Addr {
-        let _msg = cw20::Cw20ExecuteMsg::Mint {
-            recipient: dest.to_string(),
-            amount: coin.amount,
-        };
+    pub fn mint_cw20_coin(&mut self, coin: Cw20Coin, name: &str) -> Addr {
         cw20_setup::instantiate_cw20(self.app.borrow_mut(), name, vec![coin])
     }
 
@@ -594,7 +606,7 @@ impl Suite {
     pub fn fund_distributor_cw20(&mut self, coin: Cw20Coin) {
         // println!("[FUNDING EVENT] cw20 funding: {}", coin);
 
-        let fund_sub_msg = to_json_binary(&ReceiveMsg::Fund {}).unwrap();
+        let fund_sub_msg = to_json_binary(&ReceiveCw20Msg::Fund {}).unwrap();
         self.app
             .execute_contract(
                 Addr::unchecked(OWNER),
@@ -710,7 +722,7 @@ impl Suite {
         epoch_duration: Duration,
         epoch_rewards: u128,
     ) {
-        let msg: ExecuteMsg = ExecuteMsg::UpdateDenom {
+        let msg: ExecuteMsg = ExecuteMsg::Update {
             denom: denom.to_string(),
             emission_rate: Some(RewardEmissionRate {
                 amount: Uint128::new(epoch_rewards),
@@ -734,7 +746,7 @@ impl Suite {
     }
 
     pub fn update_continuous(&mut self, denom: &str, continuous: bool) {
-        let msg: ExecuteMsg = ExecuteMsg::UpdateDenom {
+        let msg: ExecuteMsg = ExecuteMsg::Update {
             denom: denom.to_string(),
             emission_rate: None,
             continuous: Some(continuous),
@@ -755,7 +767,7 @@ impl Suite {
     }
 
     pub fn update_vp_contract(&mut self, denom: &str, vp_contract: &str) {
-        let msg: ExecuteMsg = ExecuteMsg::UpdateDenom {
+        let msg: ExecuteMsg = ExecuteMsg::Update {
             denom: denom.to_string(),
             emission_rate: None,
             continuous: None,
@@ -776,7 +788,7 @@ impl Suite {
     }
 
     pub fn update_hook_caller(&mut self, denom: &str, hook_caller: &str) {
-        let msg: ExecuteMsg = ExecuteMsg::UpdateDenom {
+        let msg: ExecuteMsg = ExecuteMsg::Update {
             denom: denom.to_string(),
             emission_rate: None,
             continuous: None,
@@ -797,7 +809,7 @@ impl Suite {
     }
 
     pub fn update_withdraw_destination(&mut self, denom: &str, withdraw_destination: &str) {
-        let msg: ExecuteMsg = ExecuteMsg::UpdateDenom {
+        let msg: ExecuteMsg = ExecuteMsg::Update {
             denom: denom.to_string(),
             emission_rate: None,
             continuous: None,

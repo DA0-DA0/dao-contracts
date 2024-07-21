@@ -1,16 +1,14 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    ensure, Addr, BlockInfo, Deps, StdError, StdResult, Timestamp, Uint128, Uint256,
+    ensure, Addr, BlockInfo, Decimal, Deps, StdError, StdResult, Timestamp, Uint128, Uint256,
+    Uint64,
 };
 use cw20::{Denom, Expiration};
 use cw_storage_plus::Map;
 use cw_utils::Duration;
 use std::{cmp::min, collections::HashMap};
 
-use crate::{
-    helpers::get_exp_diff, msg::RewardEmissionRate, rewards::get_active_total_earned_puvp,
-    ContractError,
-};
+use crate::{helpers::get_exp_diff, rewards::get_active_total_earned_puvp, ContractError};
 
 /// map user address to their unique reward state
 pub const USER_REWARD_STATES: Map<Addr, UserRewardState> = Map::new("u_r_s");
@@ -29,6 +27,53 @@ pub struct UserRewardState {
     /// map denom string to the user's earned rewards per unit voting power that
     /// have already been accounted for (added to pending and maybe claimed).
     pub accounted_denom_rewards_puvp: HashMap<String, Uint256>,
+}
+
+/// defines how many tokens (amount) should be distributed per amount of time
+/// (duration). e.g. 5udenom per hour.
+#[cw_serde]
+pub struct RewardEmissionRate {
+    /// amount of tokens to distribute per amount of time
+    pub amount: Uint128,
+    /// duration of time to distribute amount
+    pub duration: Duration,
+}
+
+impl RewardEmissionRate {
+    // find the duration of the funded period given funded amount. e.g. if the
+    // funded amount is twice the emission rate amount, the funded period should
+    // be twice the emission rate duration, since the funded amount takes two
+    // emission cycles to be distributed.
+    pub fn get_funded_period_duration(&self, funded_amount: Uint128) -> StdResult<Duration> {
+        // if amount being distributed is 0 (rewards are paused), we return the max duration
+        if self.amount.is_zero() {
+            return match self.duration {
+                Duration::Height(_) => Ok(Duration::Height(u64::MAX)),
+                Duration::Time(_) => Ok(Duration::Time(u64::MAX)),
+            };
+        }
+
+        let amount_to_emission_rate_ratio = Decimal::from_ratio(funded_amount, self.amount);
+
+        let funded_duration = match self.duration {
+            Duration::Height(h) => {
+                let duration_height = Uint128::from(h)
+                    .checked_mul_floor(amount_to_emission_rate_ratio)
+                    .map_err(|e| StdError::generic_err(e.to_string()))?;
+                let duration = Uint64::try_from(duration_height)?.u64();
+                Duration::Height(duration)
+            }
+            Duration::Time(t) => {
+                let duration_time = Uint128::from(t)
+                    .checked_mul_floor(amount_to_emission_rate_ratio)
+                    .map_err(|e| StdError::generic_err(e.to_string()))?;
+                let duration = Uint64::try_from(duration_time)?.u64();
+                Duration::Time(duration)
+            }
+        };
+
+        Ok(funded_duration)
+    }
 }
 
 #[cw_serde]
@@ -117,6 +162,53 @@ pub struct DenomRewardState {
 }
 
 impl DenomRewardState {
+    pub fn to_str_denom(&self) -> String {
+        match &self.denom {
+            Denom::Native(denom) => denom.to_string(),
+            Denom::Cw20(address) => address.to_string(),
+        }
+    }
+
+    /// Returns the latest time when rewards were distributed. Works by
+    /// comparing `current_block` with the distribution end time:
+    /// - If the end is `Never`, then no rewards are currently being
+    ///   distributed, so return the last update.
+    /// - If the end is `AtHeight(h)` or `AtTime(t)`, we compare the current
+    ///   block height or time with `h` or `t` respectively.
+    /// - If current block respective value is before the end, rewards are still
+    ///   being distributed. We therefore return the current block `height` or
+    ///   `time`, as this block is the most recent time rewards were
+    ///   distributed.
+    /// - If current block respective value is after the end, rewards are no
+    ///   longer being distributed. We therefore return the end `height` or
+    ///   `time`, as that was the last date where rewards were distributed.
+    pub fn get_latest_reward_distribution_time(&self, current_block: &BlockInfo) -> Expiration {
+        match self.active_epoch.ends_at {
+            Expiration::Never {} => self.active_epoch.last_updated_total_earned_puvp,
+            Expiration::AtHeight(h) => Expiration::AtHeight(min(current_block.height, h)),
+            Expiration::AtTime(t) => Expiration::AtTime(min(current_block.time, t)),
+        }
+    }
+
+    /// Returns `ContractError::RewardPeriodNotFinished` if the period finish
+    /// expiration is of either `AtHeight` or `AtTime` variant and is earlier
+    /// than the current block height or time respectively.
+    pub fn validate_period_finish_expiration_if_set(
+        &self,
+        current_block: &BlockInfo,
+    ) -> Result<(), ContractError> {
+        match self.active_epoch.ends_at {
+            Expiration::AtHeight(_) | Expiration::AtTime(_) => {
+                ensure!(
+                    self.active_epoch.ends_at.is_expired(current_block),
+                    ContractError::RewardPeriodNotFinished {}
+                );
+                Ok(())
+            }
+            Expiration::Never {} => Ok(()),
+        }
+    }
+
     /// Finish current epoch early and start a new one with a new emission rate.
     pub fn transition_epoch(
         &mut self,
@@ -191,54 +283,5 @@ impl DenomRewardState {
         };
 
         Ok(())
-    }
-}
-
-impl DenomRewardState {
-    pub fn to_str_denom(&self) -> String {
-        match &self.denom {
-            Denom::Native(denom) => denom.to_string(),
-            Denom::Cw20(address) => address.to_string(),
-        }
-    }
-
-    /// Returns the latest time when rewards were distributed. Works by
-    /// comparing `current_block` with the distribution end time:
-    /// - If the end is `Never`, then no rewards are currently being
-    ///   distributed, so return the last update.
-    /// - If the end is `AtHeight(h)` or `AtTime(t)`, we compare the current
-    ///   block height or time with `h` or `t` respectively.
-    /// - If current block respective value is before the end, rewards are still
-    ///   being distributed. We therefore return the current block `height` or
-    ///   `time`, as this block is the most recent time rewards were
-    ///   distributed.
-    /// - If current block respective value is after the end, rewards are no
-    ///   longer being distributed. We therefore return the end `height` or
-    ///   `time`, as that was the last date where rewards were distributed.
-    pub fn get_latest_reward_distribution_time(&self, current_block: &BlockInfo) -> Expiration {
-        match self.active_epoch.ends_at {
-            Expiration::Never {} => self.active_epoch.last_updated_total_earned_puvp,
-            Expiration::AtHeight(h) => Expiration::AtHeight(min(current_block.height, h)),
-            Expiration::AtTime(t) => Expiration::AtTime(min(current_block.time, t)),
-        }
-    }
-
-    /// Returns `ContractError::RewardPeriodNotFinished` if the period finish
-    /// expiration is of either `AtHeight` or `AtTime` variant and is earlier
-    /// than the current block height or time respectively.
-    pub fn validate_period_finish_expiration_if_set(
-        &self,
-        current_block: &BlockInfo,
-    ) -> Result<(), ContractError> {
-        match self.active_epoch.ends_at {
-            Expiration::AtHeight(_) | Expiration::AtTime(_) => {
-                ensure!(
-                    self.active_epoch.ends_at.is_expired(current_block),
-                    ContractError::RewardPeriodNotFinished {}
-                );
-                Ok(())
-            }
-            Expiration::Never {} => Ok(()),
-        }
     }
 }
