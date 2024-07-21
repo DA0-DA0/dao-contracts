@@ -43,6 +43,7 @@ pub struct RewardsConfig {
     pub denom: UncheckedDenom,
     pub duration: Duration,
     pub destination: Option<String>,
+    pub continuous: bool,
 }
 
 pub struct SuiteBuilder {
@@ -64,6 +65,7 @@ impl SuiteBuilder {
                 denom: UncheckedDenom::Native(DENOM.to_string()),
                 duration: Duration::Height(10),
                 destination: None,
+                continuous: true,
             },
             cw4_members: vec![
                 Member {
@@ -537,6 +539,7 @@ impl Suite {
                 amount: Uint128::new(reward_config.amount),
                 duration: reward_config.duration,
             },
+            continuous: reward_config.continuous,
             hook_caller: hook_caller.to_string(),
             vp_contract: self.voting_power_addr.to_string(),
             withdraw_destination: reward_config.destination,
@@ -713,6 +716,28 @@ impl Suite {
                 amount: Uint128::new(epoch_rewards),
                 duration: epoch_duration,
             }),
+            continuous: None,
+            vp_contract: None,
+            hook_caller: None,
+            withdraw_destination: None,
+        };
+
+        let _resp = self
+            .app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+    }
+
+    pub fn update_continuous(&mut self, denom: &str, continuous: bool) {
+        let msg: ExecuteMsg = ExecuteMsg::UpdateDenom {
+            denom: denom.to_string(),
+            emission_rate: None,
+            continuous: Some(continuous),
             vp_contract: None,
             hook_caller: None,
             withdraw_destination: None,
@@ -733,6 +758,7 @@ impl Suite {
         let msg: ExecuteMsg = ExecuteMsg::UpdateDenom {
             denom: denom.to_string(),
             emission_rate: None,
+            continuous: None,
             vp_contract: Some(vp_contract.to_string()),
             hook_caller: None,
             withdraw_destination: None,
@@ -753,6 +779,7 @@ impl Suite {
         let msg: ExecuteMsg = ExecuteMsg::UpdateDenom {
             denom: denom.to_string(),
             emission_rate: None,
+            continuous: None,
             vp_contract: None,
             hook_caller: Some(hook_caller.to_string()),
             withdraw_destination: None,
@@ -773,6 +800,7 @@ impl Suite {
         let msg: ExecuteMsg = ExecuteMsg::UpdateDenom {
             denom: denom.to_string(),
             emission_rate: None,
+            continuous: None,
             vp_contract: None,
             hook_caller: None,
             withdraw_destination: Some(withdraw_destination.to_string()),

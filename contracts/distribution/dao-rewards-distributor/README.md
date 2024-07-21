@@ -54,8 +54,7 @@ Currently, a single denom can only have one active distribution configuration.
 
 ### Funding the denom to be distributed
 
-Anyone can fund a denom to be distributed as long as that denom
-is registered.
+Anyone can fund a denom to be distributed as long as that denom is registered.
 
 If a denom is not registered and someone attempts to fund it, an error will be thrown.
 

@@ -86,6 +86,13 @@
               "denom"
             ],
             "properties": {
+              "continuous": {
+                "description": "whether or not reward distribution is continuous: whether rewards should be paused once all funding has been distributed, or if future funding after distribution finishes should be applied to the past.",
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
               "denom": {
                 "description": "denom to update",
                 "type": "string"
@@ -481,12 +488,17 @@
       "RegisterDenomMsg": {
         "type": "object",
         "required": [
+          "continuous",
           "denom",
           "emission_rate",
           "hook_caller",
           "vp_contract"
         ],
         "properties": {
+          "continuous": {
+            "description": "whether or not reward distribution is continuous: whether rewards should be paused once all funding has been distributed, or if future funding after distribution finishes should be applied to the past.",
+            "type": "boolean"
+          },
           "denom": {
             "description": "denom to register",
             "allOf": [
@@ -756,11 +768,11 @@
       "type": "object",
       "required": [
         "active_epoch",
+        "continuous",
         "denom",
         "funded_amount",
         "historical_earned_puvp",
         "hook_caller",
-        "last_update",
         "vp_contract",
         "withdraw_destination"
       ],
@@ -773,6 +785,10 @@
             }
           ]
         },
+        "continuous": {
+          "description": "whether or not reward distribution is continuous: whether rewards should be paused once all funding has been distributed, or if future funding after distribution finishes should be applied to the past.",
+          "type": "boolean"
+        },
         "denom": {
           "description": "validated denom (native or cw20)",
           "allOf": [
@@ -782,7 +798,7 @@
           ]
         },
         "funded_amount": {
-          "description": "total amount of rewards funded",
+          "description": "total amount of rewards funded that will be distributed in the active epoch.",
           "allOf": [
             {
               "$ref": "#/definitions/Uint128"
@@ -802,14 +818,6 @@
           "allOf": [
             {
               "$ref": "#/definitions/Addr"
-            }
-          ]
-        },
-        "last_update": {
-          "description": "time when total_earned_puvp was last updated for this denom",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expiration"
             }
           ]
         },
@@ -903,6 +911,7 @@
           "required": [
             "emission_rate",
             "ends_at",
+            "last_updated_total_earned_puvp",
             "started_at",
             "total_earned_puvp"
           ],
@@ -923,6 +932,14 @@
                 }
               ]
             },
+            "last_updated_total_earned_puvp": {
+              "description": "time when total_earned_puvp was last updated",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expiration"
+                }
+              ]
+            },
             "started_at": {
               "description": "the time when the current reward distribution period started. period finishes iff it reaches its end.",
               "allOf": [
@@ -932,7 +949,7 @@
               ]
             },
             "total_earned_puvp": {
-              "description": "total rewards earned per unit voting power from started_at to last_update",
+              "description": "total rewards earned per unit voting power from started_at to last_updated_total_earned_puvp",
               "allOf": [
                 {
                   "$ref": "#/definitions/Uint256"
@@ -1260,11 +1277,11 @@
           "type": "object",
           "required": [
             "active_epoch",
+            "continuous",
             "denom",
             "funded_amount",
             "historical_earned_puvp",
             "hook_caller",
-            "last_update",
             "vp_contract",
             "withdraw_destination"
           ],
@@ -1277,6 +1294,10 @@
                 }
               ]
             },
+            "continuous": {
+              "description": "whether or not reward distribution is continuous: whether rewards should be paused once all funding has been distributed, or if future funding after distribution finishes should be applied to the past.",
+              "type": "boolean"
+            },
             "denom": {
               "description": "validated denom (native or cw20)",
               "allOf": [
@@ -1286,7 +1307,7 @@
               ]
             },
             "funded_amount": {
-              "description": "total amount of rewards funded",
+              "description": "total amount of rewards funded that will be distributed in the active epoch.",
               "allOf": [
                 {
                   "$ref": "#/definitions/Uint128"
@@ -1306,14 +1327,6 @@
               "allOf": [
                 {
                   "$ref": "#/definitions/Addr"
-                }
-              ]
-            },
-            "last_update": {
-              "description": "time when total_earned_puvp was last updated for this denom",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expiration"
                 }
               ]
             },
@@ -1375,6 +1388,7 @@
           "required": [
             "emission_rate",
             "ends_at",
+            "last_updated_total_earned_puvp",
             "started_at",
             "total_earned_puvp"
           ],
@@ -1395,6 +1409,14 @@
                 }
               ]
             },
+            "last_updated_total_earned_puvp": {
+              "description": "time when total_earned_puvp was last updated",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expiration"
+                }
+              ]
+            },
             "started_at": {
               "description": "the time when the current reward distribution period started. period finishes iff it reaches its end.",
               "allOf": [
@@ -1404,7 +1426,7 @@
               ]
             },
             "total_earned_puvp": {
-              "description": "total rewards earned per unit voting power from started_at to last_update",
+              "description": "total rewards earned per unit voting power from started_at to last_updated_total_earned_puvp",
               "allOf": [
                 {
                   "$ref": "#/definitions/Uint256"

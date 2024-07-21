@@ -197,6 +197,7 @@ fn test_native_dao_rewards_reward_rate_switch_unit() {
             denom: UncheckedDenom::Native(DENOM.to_string()),
             duration: Duration::Height(10),
             destination: None,
+            continuous: true,
         })
         .build();
 
@@ -526,6 +527,7 @@ fn test_native_dao_cw20_rewards_time_based() {
             denom: UncheckedDenom::Cw20(DENOM.to_string()),
             duration: Duration::Time(10),
             destination: None,
+            continuous: true,
         })
         .build();
 
@@ -583,6 +585,7 @@ fn test_native_dao_rewards_time_based() {
             denom: UncheckedDenom::Native(DENOM.to_string()),
             duration: Duration::Time(10),
             destination: None,
+            continuous: true,
         })
         .build();
 
@@ -644,6 +647,7 @@ fn test_native_dao_rewards_time_based_with_rounding() {
             denom: UncheckedDenom::Native(DENOM.to_string()),
             duration: Duration::Time(100),
             destination: None,
+            continuous: true,
         })
         .with_cw4_members(vec![
             Member {
@@ -964,6 +968,7 @@ fn test_fund_multiple_denoms() {
             denom: cw20::UncheckedDenom::Native(ALT_DENOM.to_string()),
             duration: Duration::Height(100),
             destination: None,
+            continuous: true,
         },
         &hook_caller,
     );
@@ -1160,6 +1165,7 @@ fn test_withdraw_time_based() {
             denom: UncheckedDenom::Native(DENOM.to_string()),
             duration: Duration::Time(10),
             destination: None,
+            continuous: true,
         })
         .build();
 
@@ -1233,13 +1239,92 @@ fn test_withdraw_time_based() {
 }
 
 #[test]
-fn test_withdraw_and_restart() {
+fn test_withdraw_and_restart_with_continuous() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
         .with_rewards_config(RewardsConfig {
             amount: 1_000,
             denom: UncheckedDenom::Native(DENOM.to_string()),
             duration: Duration::Time(10),
             destination: None,
+            continuous: true,
+        })
+        .build();
+
+    // skip 1/10th of the time
+    suite.skip_seconds(100_000);
+
+    suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000);
+
+    // users claim their rewards
+    suite.claim_rewards(ADDR1, DENOM);
+    suite.claim_rewards(ADDR2, DENOM);
+    suite.claim_rewards(ADDR3, DENOM);
+
+    // skip 1/10th of the time
+    suite.skip_seconds(100_000);
+
+    let distribution_contract = suite.distribution_contract.to_string();
+
+    let pre_withdraw_distributor_balance =
+        suite.get_balance_native(distribution_contract.clone(), DENOM);
+
+    suite.assert_native_balance(suite.owner.clone().unwrap().as_str(), DENOM, 0);
+    suite.withdraw_denom_funds(DENOM);
+
+    let post_withdraw_distributor_balance =
+        suite.get_balance_native(distribution_contract.clone(), DENOM);
+    let post_withdraw_owner_balance = suite.get_balance_native(suite.owner.clone().unwrap(), DENOM);
+
+    // after withdraw the balance of the owner should be the same
+    // as pre-withdraw-distributor-bal minus post-withdraw-distributor-bal
+    assert_eq!(
+        pre_withdraw_distributor_balance - post_withdraw_distributor_balance,
+        post_withdraw_owner_balance
+    );
+
+    assert_eq!(pre_withdraw_distributor_balance, 90_000_000);
+    assert_eq!(post_withdraw_distributor_balance, 10_000_000);
+    assert_eq!(post_withdraw_owner_balance, 80_000_000);
+
+    // skip 1/10th of the time
+    suite.skip_seconds(100_000);
+
+    // ensure cannot withdraw again
+    assert_eq!(
+        suite.withdraw_denom_funds_error(DENOM),
+        ContractError::RewardsAlreadyDistributed {}
+    );
+
+    // we assert that pending rewards did not change
+    suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000);
+    suite.claim_rewards(ADDR1, DENOM);
+    suite.claim_rewards(ADDR2, DENOM);
+    suite.claim_rewards(ADDR3, DENOM);
+
+    // fund again
+    suite.fund_distributor_native(coin(100_000_000, DENOM));
+
+    // check that pending rewards did not restart. since we skipped 1/10th the
+    // time after the withdraw occurred, everyone should already have 10% of the
+    // new amount pending.
+    suite.assert_pending_rewards(ADDR1, DENOM, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, DENOM, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, DENOM, 2_500_000);
+}
+
+#[test]
+fn test_withdraw_and_restart_not_continuous() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
+        .with_rewards_config(RewardsConfig {
+            amount: 1_000,
+            denom: UncheckedDenom::Native(DENOM.to_string()),
+            duration: Duration::Time(10),
+            destination: None,
+            continuous: false,
         })
         .build();
 
@@ -1355,6 +1440,7 @@ fn test_register_duplicate_denom() {
         denom: cw20::UncheckedDenom::Native(DENOM.to_string()),
         duration: Duration::Height(100),
         destination: None,
+        continuous: true,
     };
     suite.register_reward_denom(reward_config, &hook_caller);
 }
@@ -1401,8 +1487,16 @@ fn test_fund_unauthorized() {
 }
 
 #[test]
-fn test_fund_native_block_based_post_expiration() {
-    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+fn test_fund_native_block_based_post_expiration_not_continuous() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
+        .with_rewards_config(RewardsConfig {
+            amount: 1_000,
+            denom: UncheckedDenom::Native(DENOM.to_string()),
+            duration: Duration::Height(10),
+            destination: None,
+            continuous: false,
+        })
+        .build();
 
     let started_at = Expiration::AtHeight(0);
     let funded_blocks = 1_000_000;
@@ -1453,13 +1547,14 @@ fn test_fund_native_block_based_post_expiration() {
 }
 
 #[test]
-fn test_fund_cw20_time_based_post_expiration() {
+fn test_fund_cw20_time_based_post_expiration_not_continuous() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::CW20)
         .with_rewards_config(RewardsConfig {
             amount: 1_000,
             denom: UncheckedDenom::Cw20(DENOM.to_string()),
             duration: Duration::Time(10),
             destination: None,
+            continuous: false,
         })
         .build();
 
@@ -1527,6 +1622,7 @@ fn test_fund_cw20_time_based_pre_expiration() {
             denom: UncheckedDenom::Cw20(DENOM.to_string()),
             duration: Duration::Time(10),
             destination: None,
+            continuous: true,
         })
         .build();
 
@@ -1703,6 +1799,21 @@ fn test_native_dao_rewards_entry_edge_case() {
 
     suite.stake_native_tokens(ADDR1, addr1_balance);
     suite.stake_native_tokens(ADDR2, addr2_balance);
+}
+
+#[test]
+fn test_update_continuous() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    suite.update_continuous(DENOM, true);
+
+    let denom = suite.get_denom_reward_state(DENOM);
+    assert!(denom.continuous);
+
+    suite.update_continuous(DENOM, false);
+
+    let denom = suite.get_denom_reward_state(DENOM);
+    assert!(!denom.continuous);
 }
 
 #[test]

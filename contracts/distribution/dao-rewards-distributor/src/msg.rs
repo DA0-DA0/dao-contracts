@@ -41,6 +41,10 @@ pub enum ExecuteMsg {
         denom: String,
         /// reward emission rate
         emission_rate: Option<RewardEmissionRate>,
+        /// whether or not reward distribution is continuous: whether rewards
+        /// should be paused once all funding has been distributed, or if future
+        /// funding after distribution finishes should be applied to the past.
+        continuous: Option<bool>,
         /// address to query the voting power
         vp_contract: Option<String>,
         /// address that will update the reward split when the voting power
@@ -67,6 +71,10 @@ pub struct RegisterDenomMsg {
     pub denom: UncheckedDenom,
     /// reward emission rate
     pub emission_rate: RewardEmissionRate,
+    /// whether or not reward distribution is continuous: whether rewards should
+    /// be paused once all funding has been distributed, or if future funding
+    /// after distribution finishes should be applied to the past.
+    pub continuous: bool,
     /// address to query the voting power
     pub vp_contract: String,
     /// address that will update the reward split when the voting power
@@ -127,7 +135,7 @@ impl RewardEmissionRate {
 pub enum MigrateMsg {}
 
 #[cw_serde]
-pub enum ReceiveMsg {
+pub enum ReceiveCw20Msg {
     /// Used to fund this contract with cw20 tokens.
     Fund {},
 }

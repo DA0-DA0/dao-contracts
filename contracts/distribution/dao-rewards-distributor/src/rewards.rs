@@ -21,7 +21,9 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr, denom: String)
     // first update the active epoch earned puvp value up to the current block
     denom_reward_state.active_epoch.total_earned_puvp =
         get_active_total_earned_puvp(deps.as_ref(), &env.block, &denom_reward_state)?;
-    denom_reward_state.bump_last_update(&env.block);
+    denom_reward_state
+        .active_epoch
+        .bump_last_updated(&env.block)?;
 
     // then calculate the total applicable puvp, which is the sum of historical
     // rewards earned puvp and the active epoch total earned puvp we just
@@ -85,8 +87,11 @@ pub fn get_active_total_earned_puvp(
     // get the duration from the last time rewards were updated to the last time
     // rewards were distributed. this will be 0 if the rewards were updated at
     // or after the last time rewards were distributed.
-    let new_reward_distribution_duration: Uint128 =
-        get_exp_diff(&last_time_rewards_distributed, &reward_state.last_update)?.into();
+    let new_reward_distribution_duration: Uint128 = get_exp_diff(
+        &last_time_rewards_distributed,
+        &reward_state.active_epoch.last_updated_total_earned_puvp,
+    )?
+    .into();
 
     if prev_total_power.is_zero() {
         Ok(curr)

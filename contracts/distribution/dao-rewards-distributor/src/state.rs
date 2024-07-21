@@ -20,6 +20,7 @@ pub const DENOM_REWARD_STATES: Map<String, DenomRewardState> = Map::new("d_r_s")
 
 /// map registered hooks to list of denoms they're registered for
 pub const REGISTERED_HOOK_DENOMS: Map<Addr, Vec<String>> = Map::new("r_h_d");
+
 #[cw_serde]
 #[derive(Default)]
 pub struct UserRewardState {
@@ -41,8 +42,10 @@ pub struct Epoch {
     /// distribution period ends.
     pub ends_at: Expiration,
     /// total rewards earned per unit voting power from started_at to
-    /// last_update
+    /// last_updated_total_earned_puvp
     pub total_earned_puvp: Uint256,
+    /// time when total_earned_puvp was last updated
+    pub last_updated_total_earned_puvp: Expiration,
 }
 
 impl Epoch {
@@ -61,6 +64,29 @@ impl Epoch {
             .checked_multiply_ratio(epoch_duration, emission_rate_duration_scalar)
             .map_err(|e| StdError::generic_err(e.to_string()))
     }
+
+    /// bump the last_updated_total_earned_puvp field to the minimum of the
+    /// current block and ends_at since rewards cannot be distributed after
+    /// ends_at. this is necessary in the case that a future funding backfills
+    /// rewards after they've finished distributing. in order to compute over
+    /// the missed space, last_updated can never be greater than ends_at.
+    pub fn bump_last_updated(&mut self, current_block: &BlockInfo) -> StdResult<()> {
+        match (self.emission_rate.duration, self.ends_at) {
+            (Duration::Height(_), Expiration::AtHeight(ends_at_height)) => {
+                self.last_updated_total_earned_puvp =
+                    Expiration::AtHeight(std::cmp::min(current_block.height, ends_at_height));
+                Ok(())
+            }
+            (Duration::Time(_), Expiration::AtTime(ends_at_time)) => {
+                self.last_updated_total_earned_puvp =
+                    Expiration::AtTime(std::cmp::min(current_block.time, ends_at_time));
+                Ok(())
+            }
+            _ => Err(StdError::generic_err(
+                "Mismatched emission_rate and ends_at block/time units",
+            )),
+        }
+    }
 }
 
 /// the state of a denom's reward distribution
@@ -70,8 +96,10 @@ pub struct DenomRewardState {
     pub denom: Denom,
     /// current denom distribution epoch state
     pub active_epoch: Epoch,
-    /// time when total_earned_puvp was last updated for this denom
-    pub last_update: Expiration,
+    /// whether or not reward distribution is continuous: whether rewards should
+    /// be paused once all funding has been distributed, or if future funding
+    /// after distribution finishes should be applied to the past.
+    pub continuous: bool,
     /// address to query the voting power
     pub vp_contract: Addr,
     /// address that will update the reward split when the voting power
@@ -159,22 +187,14 @@ impl DenomRewardState {
             ends_at: new_ends_at,
             // start the new active epoch with zero rewards earned
             total_earned_puvp: Uint256::zero(),
+            last_updated_total_earned_puvp: new_started_at,
         };
-
-        self.bump_last_update(current_block);
 
         Ok(())
     }
 }
 
 impl DenomRewardState {
-    pub fn bump_last_update(&mut self, current_block: &BlockInfo) {
-        self.last_update = match self.active_epoch.emission_rate.duration {
-            Duration::Height(_) => Expiration::AtHeight(current_block.height),
-            Duration::Time(_) => Expiration::AtTime(current_block.time),
-        };
-    }
-
     pub fn to_str_denom(&self) -> String {
         match &self.denom {
             Denom::Native(denom) => denom.to_string(),
@@ -197,7 +217,7 @@ impl DenomRewardState {
     ///   `time`, as that was the last date where rewards were distributed.
     pub fn get_latest_reward_distribution_time(&self, current_block: &BlockInfo) -> Expiration {
         match self.active_epoch.ends_at {
-            Expiration::Never {} => self.last_update,
+            Expiration::Never {} => self.active_epoch.last_updated_total_earned_puvp,
             Expiration::AtHeight(h) => Expiration::AtHeight(min(current_block.height, h)),
             Expiration::AtTime(t) => Expiration::AtTime(min(current_block.time, t)),
         }

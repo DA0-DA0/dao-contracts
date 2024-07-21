@@ -18,7 +18,7 @@ use crate::hooks::{
     subscribe_denom_to_hook, unsubscribe_denom_from_hook,
 };
 use crate::msg::{
-    ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, ReceiveMsg, RegisterDenomMsg,
+    ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, ReceiveCw20Msg, RegisterDenomMsg,
     RewardEmissionRate, RewardsStateResponse,
 };
 use crate::rewards::{
@@ -61,6 +61,7 @@ pub fn execute(
         ExecuteMsg::UpdateDenom {
             denom,
             emission_rate,
+            continuous,
             vp_contract,
             hook_caller,
             withdraw_destination,
@@ -70,12 +71,13 @@ pub fn execute(
             info,
             denom,
             emission_rate,
+            continuous,
             vp_contract,
             hook_caller,
             withdraw_destination,
         ),
         ExecuteMsg::Fund {} => execute_fund_native(deps, env, info),
-        ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
+        ExecuteMsg::Receive(msg) => execute_receive_cw20(deps, env, info, msg),
         ExecuteMsg::Claim { denom } => execute_claim(deps, env, info, denom),
         ExecuteMsg::Withdraw { denom } => execute_withdraw(deps, info, env, denom),
     }
@@ -116,8 +118,9 @@ fn execute_register_denom(
             ends_at: Expiration::Never {},
             emission_rate: msg.emission_rate,
             total_earned_puvp: Uint256::zero(),
+            last_updated_total_earned_puvp: Expiration::Never {},
         },
-        last_update: Expiration::Never {},
+        continuous: msg.continuous,
         vp_contract,
         hook_caller: hook_caller.clone(),
         funded_amount: Uint128::zero(),
@@ -150,6 +153,7 @@ fn execute_update_denom(
     info: MessageInfo,
     denom: String,
     emission_rate: Option<RewardEmissionRate>,
+    continuous: Option<bool>,
     vp_contract: Option<String>,
     hook_caller: Option<String>,
     withdraw_destination: Option<String>,
@@ -164,6 +168,10 @@ fn execute_update_denom(
     if let Some(emission_rate) = emission_rate {
         // transition the epoch to the new emission rate
         reward_state.transition_epoch(deps.as_ref(), emission_rate, &env.block)?;
+    }
+
+    if let Some(continuous) = continuous {
+        reward_state.continuous = continuous;
     }
 
     if let Some(vp_contract) = vp_contract {
@@ -213,7 +221,7 @@ fn execute_withdraw(
         ContractError::RewardsAlreadyDistributed {}
     );
 
-    // withdraw completes the epoch
+    // withdraw ends the epoch early
     reward_state.active_epoch.ends_at = match reward_state.active_epoch.emission_rate.duration {
         Duration::Height(_) => Expiration::AtHeight(env.block.height),
         Duration::Time(_) => Expiration::AtTime(env.block.time),
@@ -240,14 +248,14 @@ fn execute_withdraw(
         .add_message(clawback_msg))
 }
 
-fn execute_receive(
+fn execute_receive_cw20(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     wrapper: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     // verify msg
-    let _msg: ReceiveMsg = from_json(&wrapper.msg)?;
+    let _msg: ReceiveCw20Msg = from_json(&wrapper.msg)?;
 
     let reward_denom_state = DENOM_REWARD_STATES.load(deps.storage, info.sender.to_string())?;
     execute_fund(deps, env, reward_denom_state, wrapper.amount)
@@ -271,24 +279,28 @@ fn execute_fund(
     mut denom_reward_state: DenomRewardState,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    // distribution is inactive if it hasn't yet started (i.e. never been
-    // funded) or if it's expired (i.e. all funds have been distributed)
-    let distribution_inactive =
+    // restart the distribution from the current block if it hasn't yet started
+    // (i.e. never been funded), or if it's expired (i.e. all funds have been
+    // distributed) and not continuous. if it is continuous, treat it as if it
+    // weren't expired by simply adding the new funds and recomputing the end
+    // date, keeping start date the same, effectively backfilling rewards.
+    let restart_distribution =
         if let Expiration::Never {} = denom_reward_state.active_epoch.started_at {
             true
         } else {
-            denom_reward_state
-                .active_epoch
-                .ends_at
-                .is_expired(&env.block)
+            !denom_reward_state.continuous
+                && denom_reward_state
+                    .active_epoch
+                    .ends_at
+                    .is_expired(&env.block)
         };
 
-    // if distribution is inactive, update the distribution start to the current
-    // block so that the new funds start being distributed from now instead of
-    // from the past, and reset funded_amount to the new amount since we're
-    // effectively starting a new distribution. otherwise, just add the new
-    // amount to the existing funded_amount
-    if distribution_inactive {
+    // if necessary, restart the distribution from the current block so that the
+    // new funds start being distributed from now instead of from the past, and
+    // reset funded_amount to the new amount since we're effectively starting a
+    // new distribution. otherwise, just add the new amount to the existing
+    // funded_amount
+    if restart_distribution {
         denom_reward_state.funded_amount = amount;
         denom_reward_state.active_epoch.started_at =
             match denom_reward_state.active_epoch.emission_rate.duration {
@@ -306,7 +318,17 @@ fn execute_fund(
             .get_funded_period_duration(denom_reward_state.funded_amount)?,
     )?;
 
-    denom_reward_state.bump_last_update(&env.block);
+    // if continuous, meaning rewards should have been distributed in the past
+    // that were not due to lack of sufficient funding, ensure the total rewards
+    // earned puvp is up to date.
+    if !restart_distribution && denom_reward_state.continuous {
+        denom_reward_state.active_epoch.total_earned_puvp =
+            get_active_total_earned_puvp(deps.as_ref(), &env.block, &denom_reward_state)?;
+    }
+
+    denom_reward_state
+        .active_epoch
+        .bump_last_updated(&env.block)?;
 
     DENOM_REWARD_STATES.save(
         deps.storage,
