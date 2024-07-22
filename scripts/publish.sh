@@ -67,10 +67,6 @@ cd packages/dao-dao-macros
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
 
-cd packages/dao-pre-propose-base
-cargo publish
-cd "$START_DIR"
-
 sleep 120
 
 cd packages/dao-voting
@@ -81,10 +77,15 @@ cd packages/dao-hooks
 cargo publish
 cd "$START_DIR"
 
+sleep 120
+
 cd packages/cw-tokenfactory-types
 cargo publish
 cd "$START_DIR"
 
+cd packages/dao-pre-propose-base
+cargo publish
+cd "$START_DIR"
 
 # Test contracts
 cd contracts/test/dao-proposal-sudo
@@ -206,9 +207,10 @@ cd contracts/external/cw-admin-factory
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
 
-cd contracts/distribution/cw-fund-distributor
-cargo hack publish --no-dev-deps --allow-dirty
-cd "$START_DIR"
+# TODO: uncomment once cleaned up and audited
+# cd contracts/distribution/cw-fund-distributor
+# cargo hack publish --no-dev-deps --allow-dirty
+# cd "$START_DIR"
 
 cd contracts/distribution/dao-rewards-distributor
 cargo hack publish --no-dev-deps --allow-dirty
