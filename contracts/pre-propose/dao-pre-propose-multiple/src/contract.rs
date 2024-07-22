@@ -6,7 +6,10 @@ use cw2::set_contract_version;
 
 use dao_pre_propose_base::{
     error::PreProposeError,
-    msg::{ExecuteMsg as ExecuteBase, InstantiateMsg as InstantiateBase, QueryMsg as QueryBase},
+    msg::{
+        ExecuteMsg as ExecuteBase, InstantiateMsg as InstantiateBase, MigrateMsg as MigrateBase,
+        QueryMsg as QueryBase,
+    },
     state::PreProposeContract,
 };
 use dao_voting::{
@@ -30,6 +33,7 @@ pub enum ProposeMessage {
 pub type InstantiateMsg = InstantiateBase<Empty>;
 pub type ExecuteMsg = ExecuteBase<ProposeMessage, Empty>;
 pub type QueryMsg = QueryBase<Empty>;
+pub type MigrateMsg = MigrateBase<Empty>;
 
 /// Internal version of the propose message that includes the
 /// `proposer` field. The module will fill this in based on the sender
@@ -39,7 +43,7 @@ enum ProposeMessageInternal {
     Propose(ProposeMsg),
 }
 
-type PrePropose = PreProposeContract<Empty, Empty, Empty, ProposeMessageInternal>;
+type PrePropose = PreProposeContract<Empty, Empty, Empty, Empty, ProposeMessageInternal>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -126,4 +130,9 @@ pub fn execute(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     PrePropose::default().query(deps, env, msg)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, PreProposeError> {
+    PrePropose::default().migrate(deps, msg)
 }
