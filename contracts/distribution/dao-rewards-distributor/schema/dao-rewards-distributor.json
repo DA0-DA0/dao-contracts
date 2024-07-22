@@ -8,7 +8,7 @@
     "type": "object",
     "properties": {
       "owner": {
-        "description": "The owner of the contract. Is able to fund the contract and update the reward duration.",
+        "description": "The owner of the contract. Is able to fund the contract and update the reward duration. If not provided, the instantiator is used.",
         "type": [
           "string",
           "null"

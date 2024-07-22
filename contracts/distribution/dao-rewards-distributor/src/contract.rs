@@ -37,18 +37,21 @@ pub const MAX_LIMIT: u32 = 50;
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // Intialize the contract owner
-    cw_ownable::initialize_owner(deps.storage, deps.api, msg.owner.as_deref())?;
+    // Intialize the contract owner, defaulting to instantiator.
+    let owner = deps
+        .api
+        .addr_validate(&msg.owner.unwrap_or_else(|| info.sender.to_string()))?;
+    cw_ownable::initialize_owner(deps.storage, deps.api, Some(owner.as_str()))?;
 
     // initialize count
     COUNT.save(deps.storage, &0)?;
 
-    Ok(Response::new().add_attribute("owner", msg.owner.unwrap_or_else(|| "None".to_string())))
+    Ok(Response::new().add_attribute("owner", owner))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

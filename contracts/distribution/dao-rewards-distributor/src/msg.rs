@@ -15,8 +15,8 @@ use crate::state::{DistributionState, EmissionRate};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    /// The owner of the contract. Is able to fund the contract and update
-    /// the reward duration.
+    /// The owner of the contract. Is able to fund the contract and update the
+    /// reward duration. If not provided, the instantiator is used.
     pub owner: Option<String>,
 }
 
