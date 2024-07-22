@@ -30,7 +30,7 @@ serde = { workspace = true }
 thiserror = { workspace = true }
 semver = { workspace = true }
 
-# v2.4.0 packages for state migration
+# v2.4.1 packages for state migration
 cw-denom-v241 = { workspace = true }
 dao-pre-propose-base-v241 = { workspace = true }
 dao-voting-v241 = { workspace = true }
