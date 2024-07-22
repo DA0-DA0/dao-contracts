@@ -94,7 +94,7 @@ fn test_native_dao_rewards_update_reward_rate() {
 
     // set the rewards rate to half of the current one
     // now there will be 5_000_000 tokens distributed over 100_000 blocks
-    suite.update_emission_rate(1, Duration::Height(10), 500);
+    suite.update_emission_rate(1, Duration::Height(10), 500, true);
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
@@ -105,7 +105,7 @@ fn test_native_dao_rewards_update_reward_rate() {
 
     // double the rewards rate
     // now there will be 10_000_000 tokens distributed over 100_000 blocks
-    suite.update_emission_rate(1, Duration::Height(10), 1_000);
+    suite.update_emission_rate(1, Duration::Height(10), 1_000, true);
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
@@ -162,10 +162,10 @@ fn test_native_dao_rewards_update_reward_rate() {
     // update the reward rate back to 1_000 / 10blocks
     // this should now distribute 10_000_000 tokens over 100_000 blocks
     // between ADDR1 (2/3rds) and ADDR3 (1/3rd)
-    suite.update_emission_rate(1, Duration::Height(10), 1000);
+    suite.update_emission_rate(1, Duration::Height(10), 1000, true);
 
     // update with the same rate does nothing
-    suite.update_emission_rate(1, Duration::Height(10), 1000);
+    suite.update_emission_rate(1, Duration::Height(10), 1000, true);
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
@@ -198,7 +198,7 @@ fn test_native_dao_rewards_update_reward_rate() {
 
     // update the rewards rate to 40_000_000 per 100_000 blocks.
     // split is still 2/3rds to ADDR1 and 1/3rd to ADDR3
-    suite.update_emission_rate(1, Duration::Height(10), 4000);
+    suite.update_emission_rate(1, Duration::Height(10), 4000, true);
     suite.assert_ends_at(Expiration::AtHeight(1_062_500));
 
     suite.skip_blocks(50_000); // allocates 20_000_000 tokens
@@ -271,7 +271,7 @@ fn test_native_dao_rewards_reward_rate_switch_unit() {
     suite.assert_pending_rewards(ADDR1, 1, 0);
 
     // set the rewards rate to time-based rewards
-    suite.update_emission_rate(1, Duration::Time(10), 500);
+    suite.update_emission_rate(1, Duration::Time(10), 500, true);
 
     // skip 1/10th of the time
     suite.skip_seconds(100_000);
@@ -282,7 +282,7 @@ fn test_native_dao_rewards_reward_rate_switch_unit() {
 
     // double the rewards rate
     // now there will be 10_000_000 tokens distributed over 100_000 seconds
-    suite.update_emission_rate(1, Duration::Time(10), 1_000);
+    suite.update_emission_rate(1, Duration::Time(10), 1_000, true);
 
     // skip 1/10th of the time
     suite.skip_seconds(100_000);
@@ -339,7 +339,7 @@ fn test_native_dao_rewards_reward_rate_switch_unit() {
     // update the reward rate back to 1_000 / 10blocks
     // this should now distribute 10_000_000 tokens over 100_000 blocks
     // between ADDR1 (2/3rds) and ADDR3 (1/3rd)
-    suite.update_emission_rate(1, Duration::Height(10), 1000);
+    suite.update_emission_rate(1, Duration::Height(10), 1000, true);
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
@@ -372,7 +372,7 @@ fn test_native_dao_rewards_reward_rate_switch_unit() {
 
     // update the rewards rate to 40_000_000 per 100_000 seconds.
     // split is still 2/3rds to ADDR1 and 1/3rd to ADDR3
-    suite.update_emission_rate(1, Duration::Time(10), 4000);
+    suite.update_emission_rate(1, Duration::Time(10), 4000, true);
     suite.assert_ends_at(Expiration::AtTime(Timestamp::from_seconds(462_500)));
 
     suite.skip_seconds(50_000); // allocates 20_000_000 tokens
@@ -745,7 +745,7 @@ fn test_native_dao_rewards_time_based_with_rounding() {
     suite.assert_pending_rewards(ADDR3, 1, 10 + 9);
 
     // increase reward rate and claim
-    suite.update_emission_rate(1, Duration::Time(100), 150);
+    suite.update_emission_rate(1, Duration::Time(100), 150, true);
     suite.claim_rewards(ADDR3, 1);
     suite.assert_native_balance(ADDR3, DENOM, 10 + 9);
     suite.assert_pending_rewards(ADDR3, 1, 0);
@@ -833,7 +833,6 @@ fn test_immediate_emission() {
     let execute_create_msg = ExecuteMsg::Create(CreateMsg {
         denom: cw20::UncheckedDenom::Native(ALT_DENOM.to_string()),
         emission_rate: EmissionRate::Immediate {},
-        continuous: true,
         hook_caller: suite.staking_addr.to_string(),
         vp_contract: suite.voting_power_addr.to_string(),
         withdraw_destination: None,
@@ -922,7 +921,6 @@ fn test_immediate_emission_fails_if_no_voting_power() {
     let execute_create_msg = ExecuteMsg::Create(CreateMsg {
         denom: cw20::UncheckedDenom::Native(ALT_DENOM.to_string()),
         emission_rate: EmissionRate::Immediate {},
-        continuous: true,
         hook_caller: suite.staking_addr.to_string(),
         vp_contract: suite.voting_power_addr.to_string(),
         withdraw_destination: None,
@@ -1009,7 +1007,7 @@ fn test_transition_to_immediate() {
     suite.assert_pending_rewards(ADDR1, 1, 100_000_000);
 
     // change back to linear emission
-    suite.update_emission_rate(1, Duration::Height(10), 1000);
+    suite.update_emission_rate(1, Duration::Height(10), 1000, true);
 
     // fund with 100M again
     suite.mint_native(coin(100_000_000, DENOM), OWNER);
@@ -2086,6 +2084,7 @@ fn test_fund_native_on_create() {
             emission_rate: EmissionRate::Linear {
                 amount: Uint128::new(1000),
                 duration: Duration::Height(100),
+                continuous: true,
             },
             started_at: Expiration::AtHeight(0),
             ends_at: Expiration::AtHeight(10_000_000),
@@ -2113,8 +2112,8 @@ fn test_fund_native_with_other_denom() {
         emission_rate: EmissionRate::Linear {
             amount: Uint128::new(1000),
             duration: Duration::Height(100),
+            continuous: true,
         },
-        continuous: true,
         hook_caller: suite.staking_addr.to_string(),
         vp_contract: suite.voting_power_addr.to_string(),
         withdraw_destination: None,
@@ -2145,8 +2144,8 @@ fn test_fund_native_multiple_denoms() {
         emission_rate: EmissionRate::Linear {
             amount: Uint128::new(1000),
             duration: Duration::Height(100),
+            continuous: true,
         },
-        continuous: true,
         hook_caller: suite.staking_addr.to_string(),
         vp_contract: suite.voting_power_addr.to_string(),
         withdraw_destination: None,
@@ -2186,8 +2185,8 @@ fn test_fund_native_on_create_cw20() {
         emission_rate: EmissionRate::Linear {
             amount: Uint128::new(1000),
             duration: Duration::Height(100),
+            continuous: true,
         },
-        continuous: true,
         hook_caller: suite.staking_addr.to_string(),
         vp_contract: suite.voting_power_addr.to_string(),
         withdraw_destination: None,
@@ -2209,15 +2208,21 @@ fn test_fund_native_on_create_cw20() {
 fn test_update_continuous() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
-    suite.update_continuous(1, true);
+    suite.update_emission_rate(1, Duration::Height(100), 1000, true);
 
     let distribution = suite.get_distribution(1);
-    assert!(distribution.continuous);
+    match distribution.active_epoch.emission_rate {
+        EmissionRate::Linear { continuous, .. } => assert!(continuous),
+        _ => panic!("Invalid emission rate"),
+    }
 
-    suite.update_continuous(1, false);
+    suite.update_emission_rate(1, Duration::Height(100), 1000, false);
 
     let distribution = suite.get_distribution(1);
-    assert!(!distribution.continuous);
+    match distribution.active_epoch.emission_rate {
+        EmissionRate::Linear { continuous, .. } => assert!(!continuous),
+        _ => panic!("Invalid emission rate"),
+    }
 }
 
 #[test]
@@ -2270,28 +2275,28 @@ fn test_update_withdraw_destination() {
 fn test_update_404() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
-    suite.update_continuous(3, false);
+    suite.update_emission_rate(3, Duration::Height(100), 1000, false);
 }
 
 #[test]
 #[should_panic(expected = "Invalid emission rate: amount cannot be zero")]
 fn test_validate_emission_rate_amount() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
-    suite.update_emission_rate(1, Duration::Time(100), 0);
+    suite.update_emission_rate(1, Duration::Time(100), 0, true);
 }
 
 #[test]
 #[should_panic(expected = "Invalid emission rate: duration cannot be zero")]
 fn test_validate_emission_rate_duration_height() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
-    suite.update_emission_rate(1, Duration::Height(0), 100);
+    suite.update_emission_rate(1, Duration::Height(0), 100, true);
 }
 
 #[test]
 #[should_panic(expected = "Invalid emission rate: duration cannot be zero")]
 fn test_validate_emission_rate_duration_time() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
-    suite.update_emission_rate(1, Duration::Time(0), 100);
+    suite.update_emission_rate(1, Duration::Time(0), 100, true);
 }
 
 #[test]

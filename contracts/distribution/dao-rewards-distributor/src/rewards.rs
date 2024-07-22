@@ -87,7 +87,9 @@ pub fn get_active_total_earned_puvp(
         EmissionRate::Paused {} => Ok(Uint256::zero()),
         // this is updated manually during funding, so just return it here.
         EmissionRate::Immediate {} => Ok(distribution.active_epoch.total_earned_puvp),
-        EmissionRate::Linear { amount, duration } => {
+        EmissionRate::Linear {
+            amount, duration, ..
+        } => {
             let curr = distribution.active_epoch.total_earned_puvp;
 
             let last_time_rewards_distributed =

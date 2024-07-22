@@ -86,13 +86,6 @@
               "id"
             ],
             "properties": {
-              "continuous": {
-                "description": "whether or not reward distribution is continuous: whether rewards should be paused once all funding has been distributed, or if future funding after distribution finishes should be applied to the past.",
-                "type": [
-                  "boolean",
-                  "null"
-                ]
-              },
               "emission_rate": {
                 "description": "reward emission rate",
                 "anyOf": [
@@ -288,17 +281,12 @@
       "CreateMsg": {
         "type": "object",
         "required": [
-          "continuous",
           "denom",
           "emission_rate",
           "hook_caller",
           "vp_contract"
         ],
         "properties": {
-          "continuous": {
-            "description": "whether or not reward distribution is continuous: whether rewards should be paused once all funding has been distributed, or if future funding after distribution finishes should be applied to the past.",
-            "type": "boolean"
-          },
           "denom": {
             "description": "denom to distribute",
             "allOf": [
@@ -430,6 +418,7 @@
                 "type": "object",
                 "required": [
                   "amount",
+                  "continuous",
                   "duration"
                 ],
                 "properties": {
@@ -440,6 +429,10 @@
                         "$ref": "#/definitions/Uint128"
                       }
                     ]
+                  },
+                  "continuous": {
+                    "description": "whether or not reward distribution is continuous: whether rewards should be paused once all funding has been distributed, or if future funding after distribution finishes should be applied to the past.",
+                    "type": "boolean"
                   },
                   "duration": {
                     "description": "duration of time to distribute amount",
@@ -866,7 +859,6 @@
       "type": "object",
       "required": [
         "active_epoch",
-        "continuous",
         "denom",
         "funded_amount",
         "historical_earned_puvp",
@@ -883,10 +875,6 @@
               "$ref": "#/definitions/Epoch"
             }
           ]
-        },
-        "continuous": {
-          "description": "whether or not reward distribution is continuous: whether rewards should be paused once all funding has been distributed, or if future funding after distribution finishes should be applied to the past.",
-          "type": "boolean"
         },
         "denom": {
           "description": "validated denom (native or cw20)",
@@ -1053,6 +1041,7 @@
                   "type": "object",
                   "required": [
                     "amount",
+                    "continuous",
                     "duration"
                   ],
                   "properties": {
@@ -1063,6 +1052,10 @@
                           "$ref": "#/definitions/Uint128"
                         }
                       ]
+                    },
+                    "continuous": {
+                      "description": "whether or not reward distribution is continuous: whether rewards should be paused once all funding has been distributed, or if future funding after distribution finishes should be applied to the past.",
+                      "type": "boolean"
                     },
                     "duration": {
                       "description": "duration of time to distribute amount",
@@ -1256,7 +1249,6 @@
           "type": "object",
           "required": [
             "active_epoch",
-            "continuous",
             "denom",
             "funded_amount",
             "historical_earned_puvp",
@@ -1273,10 +1265,6 @@
                   "$ref": "#/definitions/Epoch"
                 }
               ]
-            },
-            "continuous": {
-              "description": "whether or not reward distribution is continuous: whether rewards should be paused once all funding has been distributed, or if future funding after distribution finishes should be applied to the past.",
-              "type": "boolean"
             },
             "denom": {
               "description": "validated denom (native or cw20)",
@@ -1411,6 +1399,7 @@
                   "type": "object",
                   "required": [
                     "amount",
+                    "continuous",
                     "duration"
                   ],
                   "properties": {
@@ -1421,6 +1410,10 @@
                           "$ref": "#/definitions/Uint128"
                         }
                       ]
+                    },
+                    "continuous": {
+                      "description": "whether or not reward distribution is continuous: whether rewards should be paused once all funding has been distributed, or if future funding after distribution finishes should be applied to the past.",
+                      "type": "boolean"
                     },
                     "duration": {
                       "description": "duration of time to distribute amount",

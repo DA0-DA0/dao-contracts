@@ -52,6 +52,10 @@ pub enum EmissionRate {
         amount: Uint128,
         /// duration of time to distribute amount
         duration: Duration,
+        /// whether or not reward distribution is continuous: whether rewards
+        /// should be paused once all funding has been distributed, or if future
+        /// funding after distribution finishes should be applied to the past.
+        continuous: bool,
     },
 }
 
@@ -61,7 +65,9 @@ impl EmissionRate {
         match self {
             EmissionRate::Paused {} => Ok(()),
             EmissionRate::Immediate {} => Ok(()),
-            EmissionRate::Linear { amount, duration } => {
+            EmissionRate::Linear {
+                amount, duration, ..
+            } => {
                 if *amount == Uint128::zero() {
                     return Err(ContractError::InvalidEmissionRateFieldZero {
                         field: "amount".to_string(),
@@ -91,7 +97,9 @@ impl EmissionRate {
             // if rewards are immediate, return no duration
             EmissionRate::Immediate {} => Ok(None),
             // if rewards are linear, calculate based on funded amount
-            EmissionRate::Linear { amount, duration } => {
+            EmissionRate::Linear {
+                amount, duration, ..
+            } => {
                 let amount_to_emission_rate_ratio = Decimal::from_ratio(funded_amount, *amount);
 
                 let funded_duration = match duration {
@@ -175,10 +183,6 @@ pub struct DistributionState {
     pub denom: Denom,
     /// current distribution epoch state
     pub active_epoch: Epoch,
-    /// whether or not reward distribution is continuous: whether rewards should
-    /// be paused once all funding has been distributed, or if future funding
-    /// after distribution finishes should be applied to the past.
-    pub continuous: bool,
     /// address to query the voting power
     pub vp_contract: Addr,
     /// address that will update the reward split when the voting power
@@ -234,7 +238,9 @@ impl DistributionState {
         match self.active_epoch.emission_rate {
             EmissionRate::Paused {} => Ok(Uint128::zero()),
             EmissionRate::Immediate {} => Ok(self.funded_amount),
-            EmissionRate::Linear { amount, duration } => {
+            EmissionRate::Linear {
+                amount, duration, ..
+            } => {
                 let epoch_duration =
                     get_exp_diff(&self.active_epoch.ends_at, &self.active_epoch.started_at)?;
 

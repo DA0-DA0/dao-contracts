@@ -68,7 +68,6 @@ pub fn execute(
         ExecuteMsg::Update {
             id,
             emission_rate,
-            continuous,
             vp_contract,
             hook_caller,
             withdraw_destination,
@@ -78,7 +77,6 @@ pub fn execute(
             info,
             id,
             emission_rate,
-            continuous,
             vp_contract,
             hook_caller,
             withdraw_destination,
@@ -161,7 +159,6 @@ fn execute_create(
             total_earned_puvp: Uint256::zero(),
             last_updated_total_earned_puvp: Expiration::Never {},
         },
-        continuous: msg.continuous,
         vp_contract,
         hook_caller: hook_caller.clone(),
         funded_amount: Uint128::zero(),
@@ -212,7 +209,6 @@ fn execute_update(
     info: MessageInfo,
     id: u64,
     emission_rate: Option<EmissionRate>,
-    continuous: Option<bool>,
     vp_contract: Option<String>,
     hook_caller: Option<String>,
     withdraw_destination: Option<String>,
@@ -231,10 +227,6 @@ fn execute_update(
 
         // transition the epoch to the new emission rate
         distribution.transition_epoch(deps.as_ref(), emission_rate, &env.block)?;
-    }
-
-    if let Some(continuous) = continuous {
-        distribution.continuous = continuous;
     }
 
     if let Some(vp_contract) = vp_contract {
@@ -289,6 +281,14 @@ fn execute_fund(
     mut distribution: DistributionState,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
+    // will only be true if emission rate is linear and continuous is true
+    let continuous =
+        if let EmissionRate::Linear { continuous, .. } = distribution.active_epoch.emission_rate {
+            continuous
+        } else {
+            false
+        };
+
     // restart the distribution from the current block if it hasn't yet started
     // (i.e. never been funded), or if it's expired (i.e. all funds have been
     // distributed) and not continuous. if it is continuous, treat it as if it
@@ -297,7 +297,7 @@ fn execute_fund(
     let restart_distribution = if distribution.funded_amount.is_zero() {
         true
     } else {
-        !distribution.continuous && distribution.active_epoch.ends_at.is_expired(&env.block)
+        !continuous && distribution.active_epoch.ends_at.is_expired(&env.block)
     };
 
     // if necessary, restart the distribution from the current block so that the
@@ -341,7 +341,7 @@ fn execute_fund(
     // if continuous, meaning rewards should have been distributed in the past
     // but were not due to lack of sufficient funding, ensure the total rewards
     // earned puvp is up to date.
-    } else if !restart_distribution && distribution.continuous {
+    } else if !restart_distribution && continuous {
         distribution.active_epoch.total_earned_puvp =
             get_active_total_earned_puvp(deps.as_ref(), &env.block, &distribution)?;
     }

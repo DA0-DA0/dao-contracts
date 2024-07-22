@@ -550,8 +550,8 @@ impl Suite {
             emission_rate: EmissionRate::Linear {
                 amount: Uint128::new(reward_config.amount),
                 duration: reward_config.duration,
+                continuous: reward_config.continuous,
             },
-            continuous: reward_config.continuous,
             hook_caller: hook_caller.to_string(),
             vp_contract: self.voting_power_addr.to_string(),
             withdraw_destination: reward_config.destination,
@@ -714,14 +714,20 @@ impl Suite {
         unstake_tokenfactory_tokens(self.app.borrow_mut(), &self.staking_addr, address, amount)
     }
 
-    pub fn update_emission_rate(&mut self, id: u64, epoch_duration: Duration, epoch_rewards: u128) {
+    pub fn update_emission_rate(
+        &mut self,
+        id: u64,
+        epoch_duration: Duration,
+        epoch_rewards: u128,
+        continuous: bool,
+    ) {
         let msg: ExecuteMsg = ExecuteMsg::Update {
             id,
             emission_rate: Some(EmissionRate::Linear {
                 amount: Uint128::new(epoch_rewards),
                 duration: epoch_duration,
+                continuous,
             }),
-            continuous: None,
             vp_contract: None,
             hook_caller: None,
             withdraw_destination: None,
@@ -742,7 +748,6 @@ impl Suite {
         let msg: ExecuteMsg = ExecuteMsg::Update {
             id,
             emission_rate: Some(EmissionRate::Immediate {}),
-            continuous: None,
             vp_contract: None,
             hook_caller: None,
             withdraw_destination: None,
@@ -763,28 +768,6 @@ impl Suite {
         let msg: ExecuteMsg = ExecuteMsg::Update {
             id,
             emission_rate: Some(EmissionRate::Paused {}),
-            continuous: None,
-            vp_contract: None,
-            hook_caller: None,
-            withdraw_destination: None,
-        };
-
-        let _resp = self
-            .app
-            .execute_contract(
-                Addr::unchecked(OWNER),
-                self.distribution_contract.clone(),
-                &msg,
-                &[],
-            )
-            .unwrap();
-    }
-
-    pub fn update_continuous(&mut self, id: u64, continuous: bool) {
-        let msg: ExecuteMsg = ExecuteMsg::Update {
-            id,
-            emission_rate: None,
-            continuous: Some(continuous),
             vp_contract: None,
             hook_caller: None,
             withdraw_destination: None,
@@ -805,7 +788,6 @@ impl Suite {
         let msg: ExecuteMsg = ExecuteMsg::Update {
             id,
             emission_rate: None,
-            continuous: None,
             vp_contract: Some(vp_contract.to_string()),
             hook_caller: None,
             withdraw_destination: None,
@@ -826,7 +808,6 @@ impl Suite {
         let msg: ExecuteMsg = ExecuteMsg::Update {
             id,
             emission_rate: None,
-            continuous: None,
             vp_contract: None,
             hook_caller: Some(hook_caller.to_string()),
             withdraw_destination: None,
@@ -847,7 +828,6 @@ impl Suite {
         let msg: ExecuteMsg = ExecuteMsg::Update {
             id,
             emission_rate: None,
-            continuous: None,
             vp_contract: None,
             hook_caller: None,
             withdraw_destination: Some(withdraw_destination.to_string()),

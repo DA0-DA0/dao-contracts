@@ -38,10 +38,6 @@ pub enum ExecuteMsg {
         id: u64,
         /// reward emission rate
         emission_rate: Option<EmissionRate>,
-        /// whether or not reward distribution is continuous: whether rewards
-        /// should be paused once all funding has been distributed, or if future
-        /// funding after distribution finishes should be applied to the past.
-        continuous: Option<bool>,
         /// address to query the voting power
         vp_contract: Option<String>,
         /// address that will update the reward split when the voting power
@@ -68,10 +64,6 @@ pub struct CreateMsg {
     pub denom: UncheckedDenom,
     /// reward emission rate
     pub emission_rate: EmissionRate,
-    /// whether or not reward distribution is continuous: whether rewards should
-    /// be paused once all funding has been distributed, or if future funding
-    /// after distribution finishes should be applied to the past.
-    pub continuous: bool,
     /// address to query the voting power
     pub vp_contract: String,
     /// address that will update the reward split when the voting power
