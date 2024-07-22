@@ -615,8 +615,9 @@ where
     ) -> Result<Response, PreProposeError> {
         match msg {
             MigrateMsg::FromUnderV250 { policy } => {
-                // all contracts >= v2.0.0 and < v2.5.0 have the same config
-                let required_str = ">=2.0.0, <2.5.0";
+                // all contracts >= v2.4.1 and < v2.5.0 have the same config
+                let required_str = ">=2.4.1, <2.5.0";
+
                 // ensure acceptable version
                 let requirement = VersionReq::parse(required_str).unwrap();
                 let ContractVersion { version, .. } = get_contract_version(deps.storage)?;
