@@ -54,4 +54,7 @@ pub enum PreProposeError {
 
     #[error("Unsupported")]
     Unsupported {},
+
+    #[error("Cannot migrate contract version {actual}. Requires: {required}")]
+    CannotMigrateVersion { required: String, actual: String },
 }

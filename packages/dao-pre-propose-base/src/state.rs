@@ -16,7 +16,7 @@ pub struct Config {
     pub submission_policy: PreProposeSubmissionPolicy,
 }
 
-pub struct PreProposeContract<InstantiateExt, ExecuteExt, QueryExt, ProposalMessage> {
+pub struct PreProposeContract<InstantiateExt, ExecuteExt, QueryExt, MigrateExt, ProposalMessage> {
     /// The proposal module that this module is associated with.
     pub proposal_module: Item<'static, Addr>,
     /// The DAO (dao-dao-core module) that this module is associated
@@ -35,11 +35,12 @@ pub struct PreProposeContract<InstantiateExt, ExecuteExt, QueryExt, ProposalMess
     instantiate_type: PhantomData<InstantiateExt>,
     execute_type: PhantomData<ExecuteExt>,
     query_type: PhantomData<QueryExt>,
+    migrate_type: PhantomData<MigrateExt>,
     proposal_type: PhantomData<ProposalMessage>,
 }
 
-impl<InstantiateExt, ExecuteExt, QueryExt, ProposalMessage>
-    PreProposeContract<InstantiateExt, ExecuteExt, QueryExt, ProposalMessage>
+impl<InstantiateExt, ExecuteExt, QueryExt, MigrateExt, ProposalMessage>
+    PreProposeContract<InstantiateExt, ExecuteExt, QueryExt, MigrateExt, ProposalMessage>
 {
     const fn new(
         proposal_key: &'static str,
@@ -57,13 +58,14 @@ impl<InstantiateExt, ExecuteExt, QueryExt, ProposalMessage>
             execute_type: PhantomData,
             instantiate_type: PhantomData,
             query_type: PhantomData,
+            migrate_type: PhantomData,
             proposal_type: PhantomData,
         }
     }
 }
 
-impl<InstantiateExt, ExecuteExt, QueryExt, ProposalMessage> Default
-    for PreProposeContract<InstantiateExt, ExecuteExt, QueryExt, ProposalMessage>
+impl<InstantiateExt, ExecuteExt, QueryExt, MigrateExt, ProposalMessage> Default
+    for PreProposeContract<InstantiateExt, ExecuteExt, QueryExt, MigrateExt, ProposalMessage>
 {
     fn default() -> Self {
         // Call into constant function here. Presumably, the compiler

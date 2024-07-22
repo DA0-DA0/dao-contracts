@@ -26,6 +26,7 @@ dao-voting = { workspace = true }
 [dev-dependencies]
 cw-multi-test = { workspace = true }
 cw-utils = { workspace = true }
+cw4 = { workspace = true }
 cw4-group = { workspace = true }
 cw20 = { workspace = true }
 cw20-base = { workspace = true }
@@ -38,3 +39,11 @@ cw-denom = { workspace = true }
 dao-interface = { workspace = true }
 dao-testing = { workspace = true }
 dao-hooks = { workspace = true }
+
+# v2.4.1 migration
+dao-dao-core-v241 = { workspace = true }
+dao-interface-v241 = { workspace = true }
+dao-pre-propose-multiple-v241 = { workspace = true }
+dao-proposal-multiple-v241  = { workspace = true }
+dao-voting-cw4-v241 = { workspace = true }
+dao-voting-v241 = { workspace = true }

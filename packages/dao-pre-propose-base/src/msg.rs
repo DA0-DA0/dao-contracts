@@ -1,5 +1,6 @@
 use cosmwasm_schema::{cw_serde, schemars::JsonSchema, QueryResponses};
 use cw_denom::UncheckedDenom;
+use dao_interface::proposal::InfoResponse;
 use dao_voting::{
     deposit::{CheckedDepositInfo, UncheckedDepositInfo},
     pre_propose::PreProposeSubmissionPolicy,
@@ -119,6 +120,9 @@ where
     /// with. Returns `Addr`.
     #[returns(cosmwasm_std::Addr)]
     Dao {},
+    /// Returns contract version info.
+    #[returns(InfoResponse)]
+    Info {},
     /// Gets the module's configuration.
     #[returns(crate::state::Config)]
     Config {},
@@ -144,4 +148,19 @@ pub struct DepositInfoResponse {
     pub deposit_info: Option<CheckedDepositInfo>,
     /// The address that created the proposal.
     pub proposer: cosmwasm_std::Addr,
+}
+
+#[cw_serde]
+pub enum MigrateMsg<MigrateExt>
+where
+    MigrateExt: JsonSchema,
+{
+    FromUnderV250 {
+        /// Optionally set a new submission policy with more granular controls.
+        /// If not set, the current policy will remain.
+        policy: Option<PreProposeSubmissionPolicy>,
+    },
+    Extension {
+        msg: MigrateExt,
+    },
 }
