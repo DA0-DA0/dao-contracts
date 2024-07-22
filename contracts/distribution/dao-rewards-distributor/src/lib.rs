@@ -2,8 +2,10 @@
 
 pub mod contract;
 mod error;
+pub mod helpers;
 pub mod hooks;
 pub mod msg;
+pub mod rewards;
 pub mod state;
 
 #[cfg(test)]
