@@ -42,4 +42,7 @@ pub enum ContractError {
 
     #[error("Unexpected duplicate distribution with ID {id}")]
     UnexpectedDuplicateDistributionId { id: u64 },
+
+    #[error("Invalid emission rate: {field} cannot be zero")]
+    InvalidEmissionRateFieldZero { field: String },
 }

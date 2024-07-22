@@ -14,7 +14,7 @@ use crate::{
         CreateMsg, DistributionsResponse, ExecuteMsg, FundMsg, InstantiateMsg,
         PendingRewardsResponse, QueryMsg, ReceiveCw20Msg,
     },
-    state::{DistributionState, RewardEmissionRate},
+    state::{DistributionState, EmissionRate},
     testing::cw20_setup::instantiate_cw20,
     ContractError,
 };
@@ -438,19 +438,24 @@ impl Suite {
 
     pub fn assert_amount(&mut self, expected: u128) {
         let distribution = &self.get_distributions().distributions[0];
-        assert_eq!(
-            distribution.active_epoch.emission_rate.amount,
-            Uint128::new(expected)
-        );
+        match distribution.active_epoch.emission_rate {
+            EmissionRate::Paused {} => panic!("expected non-paused emission rate"),
+            EmissionRate::Linear { amount, .. } => assert_eq!(amount, Uint128::new(expected)),
+        }
     }
 
     pub fn assert_duration(&mut self, expected: u64) {
         let distribution = &self.get_distributions().distributions[0];
-        let units = match distribution.active_epoch.emission_rate.duration {
-            Duration::Height(h) => h,
-            Duration::Time(t) => t,
-        };
-        assert_eq!(units, expected);
+        match distribution.active_epoch.emission_rate {
+            EmissionRate::Paused {} => panic!("expected non-paused emission rate"),
+            EmissionRate::Linear { duration, .. } => assert_eq!(
+                match duration {
+                    Duration::Height(h) => h,
+                    Duration::Time(t) => t,
+                },
+                expected
+            ),
+        }
     }
 
     pub fn assert_pending_rewards(&mut self, address: &str, id: u64, expected: u128) {
@@ -540,7 +545,7 @@ impl Suite {
     ) {
         let execute_create_msg = ExecuteMsg::Create(CreateMsg {
             denom: reward_config.denom.clone(),
-            emission_rate: RewardEmissionRate {
+            emission_rate: EmissionRate::Linear {
                 amount: Uint128::new(reward_config.amount),
                 duration: reward_config.duration,
             },
@@ -710,10 +715,31 @@ impl Suite {
     pub fn update_emission_rate(&mut self, id: u64, epoch_duration: Duration, epoch_rewards: u128) {
         let msg: ExecuteMsg = ExecuteMsg::Update {
             id,
-            emission_rate: Some(RewardEmissionRate {
+            emission_rate: Some(EmissionRate::Linear {
                 amount: Uint128::new(epoch_rewards),
                 duration: epoch_duration,
             }),
+            continuous: None,
+            vp_contract: None,
+            hook_caller: None,
+            withdraw_destination: None,
+        };
+
+        let _resp = self
+            .app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+    }
+
+    pub fn pause_emission(&mut self, id: u64) {
+        let msg: ExecuteMsg = ExecuteMsg::Update {
+            id,
+            emission_rate: Some(EmissionRate::Paused {}),
             continuous: None,
             vp_contract: None,
             hook_caller: None,

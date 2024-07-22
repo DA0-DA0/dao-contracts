@@ -24,9 +24,7 @@ use crate::msg::{
 use crate::rewards::{
     get_accrued_rewards_not_yet_accounted_for, get_active_total_earned_puvp, update_rewards,
 };
-use crate::state::{
-    DistributionState, Epoch, RewardEmissionRate, COUNT, DISTRIBUTIONS, USER_REWARDS,
-};
+use crate::state::{DistributionState, EmissionRate, Epoch, COUNT, DISTRIBUTIONS, USER_REWARDS};
 use crate::ContractError;
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -150,6 +148,8 @@ fn execute_create(
         None => info.sender.clone(),
     };
 
+    msg.emission_rate.validate()?;
+
     // Initialize the distribution state
     let distribution = DistributionState {
         id,
@@ -211,7 +211,7 @@ fn execute_update(
     env: Env,
     info: MessageInfo,
     id: u64,
-    emission_rate: Option<RewardEmissionRate>,
+    emission_rate: Option<EmissionRate>,
     continuous: Option<bool>,
     vp_contract: Option<String>,
     hook_caller: Option<String>,
@@ -227,6 +227,8 @@ fn execute_update(
         .map_err(|_| ContractError::DistributionNotFound { id })?;
 
     if let Some(emission_rate) = emission_rate {
+        emission_rate.validate()?;
+
         // transition the epoch to the new emission rate
         distribution.transition_epoch(deps.as_ref(), emission_rate, &env.block)?;
     }
@@ -305,21 +307,25 @@ fn execute_fund(
     // funded_amount
     if restart_distribution {
         distribution.funded_amount = amount;
-        distribution.active_epoch.started_at =
-            match distribution.active_epoch.emission_rate.duration {
+        distribution.active_epoch.started_at = match distribution.active_epoch.emission_rate {
+            EmissionRate::Paused {} => Expiration::Never {},
+            EmissionRate::Linear { duration, .. } => match duration {
                 Duration::Height(_) => Expiration::AtHeight(env.block.height),
                 Duration::Time(_) => Expiration::AtTime(env.block.time),
-            };
+            },
+        };
     } else {
         distribution.funded_amount += amount;
     }
 
-    distribution.active_epoch.ends_at = distribution.active_epoch.started_at.add(
-        distribution
-            .active_epoch
-            .emission_rate
-            .get_funded_period_duration(distribution.funded_amount)?,
-    )?;
+    let new_funded_duration = distribution
+        .active_epoch
+        .emission_rate
+        .get_funded_period_duration(distribution.funded_amount)?;
+    distribution.active_epoch.ends_at = match new_funded_duration {
+        Some(duration) => distribution.active_epoch.started_at.add(duration)?,
+        None => Expiration::Never {},
+    };
 
     // if continuous, meaning rewards should have been distributed in the past
     // that were not due to lack of sufficient funding, ensure the total rewards
@@ -329,7 +335,7 @@ fn execute_fund(
             get_active_total_earned_puvp(deps.as_ref(), &env.block, &distribution)?;
     }
 
-    distribution.active_epoch.bump_last_updated(&env.block)?;
+    distribution.active_epoch.bump_last_updated(&env.block);
 
     DISTRIBUTIONS.save(deps.storage, distribution.id, &distribution)?;
 
@@ -414,9 +420,10 @@ fn execute_withdraw(
     );
 
     // withdraw ends the epoch early
-    distribution.active_epoch.ends_at = match distribution.active_epoch.emission_rate.duration {
-        Duration::Height(_) => Expiration::AtHeight(env.block.height),
-        Duration::Time(_) => Expiration::AtTime(env.block.time),
+    distribution.active_epoch.ends_at = match distribution.active_epoch.started_at {
+        Expiration::Never {} => Expiration::Never {},
+        Expiration::AtHeight(_) => Expiration::AtHeight(env.block.height),
+        Expiration::AtTime(_) => Expiration::AtTime(env.block.time),
     };
 
     // get total rewards distributed based on newly updated ends_at

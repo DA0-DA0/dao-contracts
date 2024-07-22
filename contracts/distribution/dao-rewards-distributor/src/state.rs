@@ -7,7 +7,11 @@ use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
 use std::{cmp::min, collections::HashMap};
 
-use crate::{helpers::get_exp_diff, rewards::get_active_total_earned_puvp};
+use crate::{
+    helpers::{get_duration_scalar, get_exp_diff},
+    rewards::get_active_total_earned_puvp,
+    ContractError,
+};
 
 /// map user address to their unique reward state
 pub const USER_REWARDS: Map<Addr, UserRewardState> = Map::new("ur");
@@ -36,54 +40,80 @@ pub struct UserRewardState {
 /// defines how many tokens (amount) should be distributed per amount of time
 /// (duration). e.g. 5udenom per hour.
 #[cw_serde]
-pub struct RewardEmissionRate {
-    /// amount of tokens to distribute per amount of time
-    pub amount: Uint128,
-    /// duration of time to distribute amount
-    pub duration: Duration,
+pub enum EmissionRate {
+    /// rewards are paused
+    Paused {},
+    /// rewards are distributed at a constant rate
+    Linear {
+        /// amount of tokens to distribute per amount of time
+        amount: Uint128,
+        /// duration of time to distribute amount
+        duration: Duration,
+    },
 }
 
-impl RewardEmissionRate {
-    // find the duration of the funded period given funded amount. e.g. if the
-    // funded amount is twice the emission rate amount, the funded period should
-    // be twice the emission rate duration, since the funded amount takes two
-    // emission cycles to be distributed.
-    pub fn get_funded_period_duration(&self, funded_amount: Uint128) -> StdResult<Duration> {
-        // if amount being distributed is 0 (rewards are paused), we return the max duration
-        if self.amount.is_zero() {
-            return match self.duration {
-                Duration::Height(_) => Ok(Duration::Height(u64::MAX)),
-                Duration::Time(_) => Ok(Duration::Time(u64::MAX)),
-            };
+impl EmissionRate {
+    /// validate non-zero amount and duration, if not paused
+    pub fn validate(&self) -> Result<(), ContractError> {
+        match self {
+            EmissionRate::Paused {} => Ok(()),
+            EmissionRate::Linear { amount, duration } => {
+                if *amount == Uint128::zero() {
+                    return Err(ContractError::InvalidEmissionRateFieldZero {
+                        field: "amount".to_string(),
+                    });
+                }
+                if get_duration_scalar(duration) == 0 {
+                    return Err(ContractError::InvalidEmissionRateFieldZero {
+                        field: "duration".to_string(),
+                    });
+                }
+                Ok(())
+            }
         }
+    }
 
-        let amount_to_emission_rate_ratio = Decimal::from_ratio(funded_amount, self.amount);
+    /// find the duration of the funded period given funded amount. e.g. if the
+    /// funded amount is twice the emission rate amount, the funded period
+    /// should be twice the emission rate duration, since the funded amount
+    /// takes two emission cycles to be distributed.
+    pub fn get_funded_period_duration(
+        &self,
+        funded_amount: Uint128,
+    ) -> StdResult<Option<Duration>> {
+        match self {
+            // if rewards are paused, return the max duration
+            EmissionRate::Paused {} => Ok(None),
+            EmissionRate::Linear { amount, duration } => {
+                let amount_to_emission_rate_ratio = Decimal::from_ratio(funded_amount, *amount);
 
-        let funded_duration = match self.duration {
-            Duration::Height(h) => {
-                let duration_height = Uint128::from(h)
-                    .checked_mul_floor(amount_to_emission_rate_ratio)
-                    .map_err(|e| StdError::generic_err(e.to_string()))?;
-                let duration = Uint64::try_from(duration_height)?.u64();
-                Duration::Height(duration)
+                let funded_duration = match duration {
+                    Duration::Height(h) => {
+                        let duration_height = Uint128::from(*h)
+                            .checked_mul_floor(amount_to_emission_rate_ratio)
+                            .map_err(|e| StdError::generic_err(e.to_string()))?;
+                        let duration = Uint64::try_from(duration_height)?.u64();
+                        Duration::Height(duration)
+                    }
+                    Duration::Time(t) => {
+                        let duration_time = Uint128::from(*t)
+                            .checked_mul_floor(amount_to_emission_rate_ratio)
+                            .map_err(|e| StdError::generic_err(e.to_string()))?;
+                        let duration = Uint64::try_from(duration_time)?.u64();
+                        Duration::Time(duration)
+                    }
+                };
+
+                Ok(Some(funded_duration))
             }
-            Duration::Time(t) => {
-                let duration_time = Uint128::from(t)
-                    .checked_mul_floor(amount_to_emission_rate_ratio)
-                    .map_err(|e| StdError::generic_err(e.to_string()))?;
-                let duration = Uint64::try_from(duration_time)?.u64();
-                Duration::Time(duration)
-            }
-        };
-
-        Ok(funded_duration)
+        }
     }
 }
 
 #[cw_serde]
 pub struct Epoch {
     /// reward emission rate
-    pub emission_rate: RewardEmissionRate,
+    pub emission_rate: EmissionRate,
     /// the time when the current reward distribution period started. period
     /// finishes iff it reaches its end.
     pub started_at: Expiration,
@@ -101,40 +131,43 @@ impl Epoch {
     /// get the total rewards to be distributed based on the emission rate and
     /// duration from start to end
     pub fn get_total_rewards(&self) -> StdResult<Uint128> {
-        let epoch_duration = get_exp_diff(&self.ends_at, &self.started_at)?;
+        match self.emission_rate {
+            EmissionRate::Paused {} => Ok(Uint128::zero()),
+            EmissionRate::Linear { amount, duration } => {
+                let epoch_duration = get_exp_diff(&self.ends_at, &self.started_at)?;
 
-        let emission_rate_duration_scalar = match self.emission_rate.duration {
-            Duration::Height(h) => h,
-            Duration::Time(t) => t,
-        };
+                let emission_rate_duration_scalar = match duration {
+                    Duration::Height(h) => h,
+                    Duration::Time(t) => t,
+                };
 
-        self.emission_rate
-            .amount
-            .checked_multiply_ratio(epoch_duration, emission_rate_duration_scalar)
-            .map_err(|e| StdError::generic_err(e.to_string()))
+                amount
+                    .checked_multiply_ratio(epoch_duration, emission_rate_duration_scalar)
+                    .map_err(|e| StdError::generic_err(e.to_string()))
+            }
+        }
     }
 
     /// bump the last_updated_total_earned_puvp field to the minimum of the
     /// current block and ends_at since rewards cannot be distributed after
     /// ends_at. this is necessary in the case that a future funding backfills
     /// rewards after they've finished distributing. in order to compute over
-    /// the missed space, last_updated can never be greater than ends_at.
-    pub fn bump_last_updated(&mut self, current_block: &BlockInfo) -> StdResult<()> {
-        match (self.emission_rate.duration, self.ends_at) {
-            (Duration::Height(_), Expiration::AtHeight(ends_at_height)) => {
+    /// the missed space, last_updated can never be greater than ends_at. if
+    /// ends_at is never, the epoch must be paused, so it should never be
+    /// updated.
+    pub fn bump_last_updated(&mut self, current_block: &BlockInfo) {
+        match self.ends_at {
+            Expiration::Never {} => {
+                self.last_updated_total_earned_puvp = Expiration::Never {};
+            }
+            Expiration::AtHeight(ends_at_height) => {
                 self.last_updated_total_earned_puvp =
                     Expiration::AtHeight(std::cmp::min(current_block.height, ends_at_height));
-                Ok(())
             }
-            (Duration::Time(_), Expiration::AtTime(ends_at_time)) => {
+            Expiration::AtTime(ends_at_time) => {
                 self.last_updated_total_earned_puvp =
                     Expiration::AtTime(std::cmp::min(current_block.time, ends_at_time));
-                Ok(())
             }
-            _ => Err(StdError::generic_err(format!(
-                "incompatible emission_rate.duration ({:?}) and ends_at ({:?}) values",
-                self.emission_rate.duration, self.ends_at
-            ))),
         }
     }
 }
@@ -205,7 +238,7 @@ impl DistributionState {
     pub fn transition_epoch(
         &mut self,
         deps: Deps,
-        new_emission_rate: RewardEmissionRate,
+        new_emission_rate: EmissionRate,
         current_block: &BlockInfo,
     ) -> StdResult<()> {
         // if the new emission rate is the same as the active one, do nothing
@@ -216,9 +249,10 @@ impl DistributionState {
         // 1. finish current epoch by updating rewards and setting end to now
         self.active_epoch.total_earned_puvp =
             get_active_total_earned_puvp(deps, current_block, self)?;
-        self.active_epoch.ends_at = match self.active_epoch.emission_rate.duration {
-            Duration::Height(_) => Expiration::AtHeight(current_block.height),
-            Duration::Time(_) => Expiration::AtTime(current_block.time),
+        self.active_epoch.ends_at = match self.active_epoch.started_at {
+            Expiration::Never {} => Expiration::Never {},
+            Expiration::AtHeight(_) => Expiration::AtHeight(current_block.height),
+            Expiration::AtTime(_) => Expiration::AtTime(current_block.time),
         };
 
         // 2. add current epoch rewards earned to historical rewards
@@ -229,10 +263,7 @@ impl DistributionState {
 
         // 3. deduct the distributed rewards amount from total funded amount, as
         // those rewards are no longer distributed in the new epoch
-        let active_epoch_earned_rewards = match self.active_epoch.emission_rate.amount.is_zero() {
-            true => Uint128::zero(),
-            false => self.active_epoch.get_total_rewards()?,
-        };
+        let active_epoch_earned_rewards = self.active_epoch.get_total_rewards()?;
         self.funded_amount = self
             .funded_amount
             .checked_sub(active_epoch_earned_rewards)?;
@@ -244,25 +275,29 @@ impl DistributionState {
         // suggests that the period is infinite or so long that it doesn't
         // matter.
         let new_ends_at = match new_emission_rate.get_funded_period_duration(self.funded_amount)? {
-            Duration::Height(h) => {
+            Some(Duration::Height(h)) => {
                 if current_block.height.checked_add(h).is_some() {
                     Expiration::AtHeight(current_block.height + h)
                 } else {
                     Expiration::AtHeight(u64::MAX)
                 }
             }
-            Duration::Time(t) => {
+            Some(Duration::Time(t)) => {
                 if current_block.time.seconds().checked_add(t).is_some() {
                     Expiration::AtTime(current_block.time.plus_seconds(t))
                 } else {
                     Expiration::AtTime(Timestamp::from_seconds(u64::MAX))
                 }
             }
+            None => Expiration::Never {},
         };
 
-        let new_started_at = match new_emission_rate.duration {
-            Duration::Height(_) => Expiration::AtHeight(current_block.height),
-            Duration::Time(_) => Expiration::AtTime(current_block.time),
+        let new_started_at = match new_emission_rate {
+            EmissionRate::Paused {} => Expiration::Never {},
+            EmissionRate::Linear { duration, .. } => match duration {
+                Duration::Height(_) => Expiration::AtHeight(current_block.height),
+                Duration::Time(_) => Expiration::AtTime(current_block.time),
+            },
         };
 
         self.active_epoch = Epoch {

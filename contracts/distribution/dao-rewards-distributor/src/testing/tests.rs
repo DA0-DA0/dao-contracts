@@ -10,7 +10,7 @@ use cw_utils::Duration;
 use dao_interface::voting::InfoResponse;
 
 use crate::msg::{CreateMsg, FundMsg};
-use crate::state::{Epoch, RewardEmissionRate};
+use crate::state::{EmissionRate, Epoch};
 use crate::testing::native_setup::setup_native_token_test;
 use crate::ContractError;
 use crate::{
@@ -121,8 +121,8 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR2, 1, 13_750_000);
     suite.assert_pending_rewards(ADDR3, 1, 13_750_000);
 
-    // set the rewards rate to 0, pausing the rewards distribution
-    suite.update_emission_rate(1, Duration::Height(10000000000), 0);
+    // pause the rewards distribution
+    suite.pause_emission(1);
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
@@ -298,8 +298,8 @@ fn test_native_dao_rewards_reward_rate_switch_unit() {
     suite.assert_pending_rewards(ADDR2, 1, 13_750_000);
     suite.assert_pending_rewards(ADDR3, 1, 13_750_000);
 
-    // set the rewards rate to 0, pausing the rewards distribution
-    suite.update_emission_rate(1, Duration::Height(10000000000), 0);
+    // pause the rewards distribution
+    suite.pause_emission(1);
 
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
@@ -1876,7 +1876,7 @@ fn test_fund_native_on_create() {
     assert_eq!(
         distribution.active_epoch,
         Epoch {
-            emission_rate: RewardEmissionRate {
+            emission_rate: EmissionRate::Linear {
                 amount: Uint128::new(1000),
                 duration: Duration::Height(100),
             },
@@ -1903,7 +1903,7 @@ fn test_fund_native_with_other_denom() {
 
     let execute_create_msg = ExecuteMsg::Create(CreateMsg {
         denom: cw20::UncheckedDenom::Native(DENOM.to_string()),
-        emission_rate: RewardEmissionRate {
+        emission_rate: EmissionRate::Linear {
             amount: Uint128::new(1000),
             duration: Duration::Height(100),
         },
@@ -1935,7 +1935,7 @@ fn test_fund_native_multiple_denoms() {
 
     let execute_create_msg = ExecuteMsg::Create(CreateMsg {
         denom: cw20::UncheckedDenom::Native(DENOM.to_string()),
-        emission_rate: RewardEmissionRate {
+        emission_rate: EmissionRate::Linear {
             amount: Uint128::new(1000),
             duration: Duration::Height(100),
         },
@@ -1976,7 +1976,7 @@ fn test_fund_native_on_create_cw20() {
 
     let execute_create_msg = ExecuteMsg::Create(CreateMsg {
         denom: cw20::UncheckedDenom::Cw20(cw20_denom),
-        emission_rate: RewardEmissionRate {
+        emission_rate: EmissionRate::Linear {
             amount: Uint128::new(1000),
             duration: Duration::Height(100),
         },
@@ -2064,6 +2064,27 @@ fn test_update_404() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
     suite.update_continuous(3, false);
+}
+
+#[test]
+#[should_panic(expected = "Invalid emission rate: amount cannot be zero")]
+fn test_validate_emission_rate_amount() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+    suite.update_emission_rate(1, Duration::Time(100), 0);
+}
+
+#[test]
+#[should_panic(expected = "Invalid emission rate: duration cannot be zero")]
+fn test_validate_emission_rate_duration_height() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+    suite.update_emission_rate(1, Duration::Height(0), 100);
+}
+
+#[test]
+#[should_panic(expected = "Invalid emission rate: duration cannot be zero")]
+fn test_validate_emission_rate_duration_time() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+    suite.update_emission_rate(1, Duration::Time(0), 100);
 }
 
 #[test]

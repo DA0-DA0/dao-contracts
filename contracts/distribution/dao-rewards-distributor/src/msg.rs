@@ -11,7 +11,7 @@ use dao_interface::voting::InfoResponse;
 pub use cw_controllers::ClaimsResponse;
 pub use cw_ownable::Ownership;
 
-use crate::state::{DistributionState, RewardEmissionRate};
+use crate::state::{DistributionState, EmissionRate};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -37,7 +37,7 @@ pub enum ExecuteMsg {
         /// distribution ID to update
         id: u64,
         /// reward emission rate
-        emission_rate: Option<RewardEmissionRate>,
+        emission_rate: Option<EmissionRate>,
         /// whether or not reward distribution is continuous: whether rewards
         /// should be paused once all funding has been distributed, or if future
         /// funding after distribution finishes should be applied to the past.
@@ -67,7 +67,7 @@ pub struct CreateMsg {
     /// denom to distribute
     pub denom: UncheckedDenom,
     /// reward emission rate
-    pub emission_rate: RewardEmissionRate,
+    pub emission_rate: EmissionRate,
     /// whether or not reward distribution is continuous: whether rewards should
     /// be paused once all funding has been distributed, or if future funding
     /// after distribution finishes should be applied to the past.

@@ -97,7 +97,7 @@
                 "description": "reward emission rate",
                 "anyOf": [
                   {
-                    "$ref": "#/definitions/RewardEmissionRate"
+                    "$ref": "#/definitions/EmissionRate"
                   },
                   {
                     "type": "null"
@@ -311,7 +311,7 @@
             "description": "reward emission rate",
             "allOf": [
               {
-                "$ref": "#/definitions/RewardEmissionRate"
+                "$ref": "#/definitions/EmissionRate"
               }
             ]
           },
@@ -382,6 +382,61 @@
                 "type": "integer",
                 "format": "uint64",
                 "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "EmissionRate": {
+        "description": "defines how many tokens (amount) should be distributed per amount of time (duration). e.g. 5udenom per hour.",
+        "oneOf": [
+          {
+            "description": "rewards are paused",
+            "type": "object",
+            "required": [
+              "paused"
+            ],
+            "properties": {
+              "paused": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "rewards are distributed at a constant rate",
+            "type": "object",
+            "required": [
+              "linear"
+            ],
+            "properties": {
+              "linear": {
+                "type": "object",
+                "required": [
+                  "amount",
+                  "duration"
+                ],
+                "properties": {
+                  "amount": {
+                    "description": "amount of tokens to distribute per amount of time",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Uint128"
+                      }
+                    ]
+                  },
+                  "duration": {
+                    "description": "duration of time to distribute amount",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Duration"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -552,33 +607,6 @@
             "additionalProperties": false
           }
         ]
-      },
-      "RewardEmissionRate": {
-        "description": "defines how many tokens (amount) should be distributed per amount of time (duration). e.g. 5udenom per hour.",
-        "type": "object",
-        "required": [
-          "amount",
-          "duration"
-        ],
-        "properties": {
-          "amount": {
-            "description": "amount of tokens to distribute per amount of time",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Uint128"
-              }
-            ]
-          },
-          "duration": {
-            "description": "duration of time to distribute amount",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Duration"
-              }
-            ]
-          }
-        },
-        "additionalProperties": false
       },
       "StakeChangedHookMsg": {
         "description": "An enum representing staking hooks.",
@@ -969,6 +997,61 @@
             }
           ]
         },
+        "EmissionRate": {
+          "description": "defines how many tokens (amount) should be distributed per amount of time (duration). e.g. 5udenom per hour.",
+          "oneOf": [
+            {
+              "description": "rewards are paused",
+              "type": "object",
+              "required": [
+                "paused"
+              ],
+              "properties": {
+                "paused": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "rewards are distributed at a constant rate",
+              "type": "object",
+              "required": [
+                "linear"
+              ],
+              "properties": {
+                "linear": {
+                  "type": "object",
+                  "required": [
+                    "amount",
+                    "duration"
+                  ],
+                  "properties": {
+                    "amount": {
+                      "description": "amount of tokens to distribute per amount of time",
+                      "allOf": [
+                        {
+                          "$ref": "#/definitions/Uint128"
+                        }
+                      ]
+                    },
+                    "duration": {
+                      "description": "duration of time to distribute amount",
+                      "allOf": [
+                        {
+                          "$ref": "#/definitions/Duration"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
         "Epoch": {
           "type": "object",
           "required": [
@@ -983,7 +1066,7 @@
               "description": "reward emission rate",
               "allOf": [
                 {
-                  "$ref": "#/definitions/RewardEmissionRate"
+                  "$ref": "#/definitions/EmissionRate"
                 }
               ]
             },
@@ -1068,33 +1151,6 @@
               "additionalProperties": false
             }
           ]
-        },
-        "RewardEmissionRate": {
-          "description": "defines how many tokens (amount) should be distributed per amount of time (duration). e.g. 5udenom per hour.",
-          "type": "object",
-          "required": [
-            "amount",
-            "duration"
-          ],
-          "properties": {
-            "amount": {
-              "description": "amount of tokens to distribute per amount of time",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Uint128"
-                }
-              ]
-            },
-            "duration": {
-              "description": "duration of time to distribute amount",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Duration"
-                }
-              ]
-            }
-          },
-          "additionalProperties": false
         },
         "Timestamp": {
           "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
@@ -1285,6 +1341,61 @@
             }
           ]
         },
+        "EmissionRate": {
+          "description": "defines how many tokens (amount) should be distributed per amount of time (duration). e.g. 5udenom per hour.",
+          "oneOf": [
+            {
+              "description": "rewards are paused",
+              "type": "object",
+              "required": [
+                "paused"
+              ],
+              "properties": {
+                "paused": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "rewards are distributed at a constant rate",
+              "type": "object",
+              "required": [
+                "linear"
+              ],
+              "properties": {
+                "linear": {
+                  "type": "object",
+                  "required": [
+                    "amount",
+                    "duration"
+                  ],
+                  "properties": {
+                    "amount": {
+                      "description": "amount of tokens to distribute per amount of time",
+                      "allOf": [
+                        {
+                          "$ref": "#/definitions/Uint128"
+                        }
+                      ]
+                    },
+                    "duration": {
+                      "description": "duration of time to distribute amount",
+                      "allOf": [
+                        {
+                          "$ref": "#/definitions/Duration"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
         "Epoch": {
           "type": "object",
           "required": [
@@ -1299,7 +1410,7 @@
               "description": "reward emission rate",
               "allOf": [
                 {
-                  "$ref": "#/definitions/RewardEmissionRate"
+                  "$ref": "#/definitions/EmissionRate"
                 }
               ]
             },
@@ -1384,33 +1495,6 @@
               "additionalProperties": false
             }
           ]
-        },
-        "RewardEmissionRate": {
-          "description": "defines how many tokens (amount) should be distributed per amount of time (duration). e.g. 5udenom per hour.",
-          "type": "object",
-          "required": [
-            "amount",
-            "duration"
-          ],
-          "properties": {
-            "amount": {
-              "description": "amount of tokens to distribute per amount of time",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Uint128"
-                }
-              ]
-            },
-            "duration": {
-              "description": "duration of time to distribute amount",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Duration"
-                }
-              ]
-            }
-          },
-          "additionalProperties": false
         },
         "Timestamp": {
           "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",

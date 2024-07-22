@@ -5,7 +5,7 @@ use crate::{
         get_duration_scalar, get_exp_diff, get_prev_block_total_vp, get_voting_power_at_block,
         scale_factor,
     },
-    state::{DistributionState, UserRewardState, DISTRIBUTIONS, USER_REWARDS},
+    state::{DistributionState, EmissionRate, UserRewardState, DISTRIBUTIONS, USER_REWARDS},
     ContractError,
 };
 
@@ -31,7 +31,7 @@ pub fn update_rewards(
     // first update the active epoch earned puvp value up to the current block
     distribution.active_epoch.total_earned_puvp =
         get_active_total_earned_puvp(deps.as_ref(), &env.block, &distribution)?;
-    distribution.active_epoch.bump_last_updated(&env.block)?;
+    distribution.active_epoch.bump_last_updated(&env.block);
 
     // then calculate the total applicable puvp, which is the sum of historical
     // rewards earned puvp and the active epoch total earned puvp we just
@@ -83,51 +83,55 @@ pub fn get_active_total_earned_puvp(
     block: &BlockInfo,
     distribution: &DistributionState,
 ) -> StdResult<Uint256> {
-    let curr = distribution.active_epoch.total_earned_puvp;
+    match distribution.active_epoch.emission_rate {
+        EmissionRate::Paused {} => Ok(Uint256::zero()),
+        EmissionRate::Linear { amount, duration } => {
+            let curr = distribution.active_epoch.total_earned_puvp;
 
-    let last_time_rewards_distributed = distribution.get_latest_reward_distribution_time(block);
+            let last_time_rewards_distributed =
+                distribution.get_latest_reward_distribution_time(block);
 
-    // get the duration from the last time rewards were updated to the last time
-    // rewards were distributed. this will be 0 if the rewards were updated at
-    // or after the last time rewards were distributed.
-    let new_reward_distribution_duration: Uint128 = get_exp_diff(
-        &last_time_rewards_distributed,
-        &distribution.active_epoch.last_updated_total_earned_puvp,
-    )?
-    .into();
+            // get the duration from the last time rewards were updated to the
+            // last time rewards were distributed. this will be 0 if the rewards
+            // were updated at or after the last time rewards were distributed.
+            let new_reward_distribution_duration: Uint128 = get_exp_diff(
+                &last_time_rewards_distributed,
+                &distribution.active_epoch.last_updated_total_earned_puvp,
+            )?
+            .into();
 
-    // no need to query total voting power and do math if distribution is
-    // already up to date.
-    if new_reward_distribution_duration.is_zero() {
-        return Ok(curr);
-    }
+            // no need to query total voting power and do math if distribution
+            // is already up to date.
+            if new_reward_distribution_duration.is_zero() {
+                return Ok(curr);
+            }
 
-    let prev_total_power = get_prev_block_total_vp(deps, block, &distribution.vp_contract)?;
+            let prev_total_power = get_prev_block_total_vp(deps, block, &distribution.vp_contract)?;
 
-    // if no voting power is registered, no one should receive rewards.
-    if prev_total_power.is_zero() {
-        Ok(curr)
-    } else {
-        // count intervals of the rewards emission that have passed since the
-        // last update which need to be distributed
-        let complete_distribution_periods = new_reward_distribution_duration.checked_div(
-            get_duration_scalar(&distribution.active_epoch.emission_rate.duration).into(),
-        )?;
+            // if no voting power is registered, no one should receive rewards.
+            if prev_total_power.is_zero() {
+                Ok(curr)
+            } else {
+                // count intervals of the rewards emission that have passed
+                // since the last update which need to be distributed
+                let complete_distribution_periods = new_reward_distribution_duration
+                    .checked_div(get_duration_scalar(&duration).into())?;
 
-        // It is impossible for this to overflow as total rewards can never
-        // exceed max value of Uint128 as total tokens in existence cannot
-        // exceed Uint128 (because the bank module Coin type uses Uint128).
-        let new_rewards_distributed = distribution
-            .active_epoch
-            .emission_rate
-            .amount
-            .full_mul(complete_distribution_periods)
-            .checked_mul(scale_factor())?;
+                // It is impossible for this to overflow as total rewards can
+                // never exceed max value of Uint128 as total tokens in
+                // existence cannot exceed Uint128 (because the bank module Coin
+                // type uses Uint128).
+                let new_rewards_distributed = amount
+                    .full_mul(complete_distribution_periods)
+                    .checked_mul(scale_factor())?;
 
-        // the new rewards per unit voting power that have been distributed
-        // since the last update
-        let new_rewards_puvp = new_rewards_distributed.checked_div(prev_total_power.into())?;
-        Ok(curr.checked_add(new_rewards_puvp)?)
+                // the new rewards per unit voting power that have been
+                // distributed since the last update
+                let new_rewards_puvp =
+                    new_rewards_distributed.checked_div(prev_total_power.into())?;
+                Ok(curr.checked_add(new_rewards_puvp)?)
+            }
+        }
     }
 }
 
