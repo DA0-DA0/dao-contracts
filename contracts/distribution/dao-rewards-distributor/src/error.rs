@@ -1,4 +1,4 @@
-use cosmwasm_std::{OverflowError, StdError};
+use cosmwasm_std::{DivideByZeroError, OverflowError, StdError};
 use cw_utils::PaymentError;
 use thiserror::Error;
 
@@ -15,6 +15,9 @@ pub enum ContractError {
 
     #[error(transparent)]
     Overflow(#[from] OverflowError),
+
+    #[error(transparent)]
+    DivideByZero(#[from] DivideByZeroError),
 
     #[error(transparent)]
     Payment(#[from] PaymentError),
@@ -45,4 +48,7 @@ pub enum ContractError {
 
     #[error("Invalid emission rate: {field} cannot be zero")]
     InvalidEmissionRateFieldZero { field: String },
+
+    #[error("There is no voting power registered, so no one will receive these funds")]
+    NoVotingPowerNoRewards {},
 }

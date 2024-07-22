@@ -294,7 +294,7 @@ fn execute_fund(
     // distributed) and not continuous. if it is continuous, treat it as if it
     // weren't expired by simply adding the new funds and recomputing the end
     // date, keeping start date the same, effectively backfilling rewards.
-    let restart_distribution = if let Expiration::Never {} = distribution.active_epoch.started_at {
+    let restart_distribution = if distribution.funded_amount.is_zero() {
         true
     } else {
         !distribution.continuous && distribution.active_epoch.ends_at.is_expired(&env.block)
@@ -309,6 +309,7 @@ fn execute_fund(
         distribution.funded_amount = amount;
         distribution.active_epoch.started_at = match distribution.active_epoch.emission_rate {
             EmissionRate::Paused {} => Expiration::Never {},
+            EmissionRate::Immediate {} => Expiration::Never {},
             EmissionRate::Linear { duration, .. } => match duration {
                 Duration::Height(_) => Expiration::AtHeight(env.block.height),
                 Duration::Time(_) => Expiration::AtTime(env.block.time),
@@ -327,10 +328,20 @@ fn execute_fund(
         None => Expiration::Never {},
     };
 
+    // if immediate distribution, update total_earned_puvp instantly since we
+    // need to know the delta in funding_amount to calculate the new
+    // total_earned_puvp.
+    if (distribution.active_epoch.emission_rate == EmissionRate::Immediate {}) {
+        distribution.update_immediate_emission_total_earned_puvp(
+            deps.as_ref(),
+            &env.block,
+            amount,
+        )?;
+
     // if continuous, meaning rewards should have been distributed in the past
-    // that were not due to lack of sufficient funding, ensure the total rewards
+    // but were not due to lack of sufficient funding, ensure the total rewards
     // earned puvp is up to date.
-    if !restart_distribution && distribution.continuous {
+    } else if !restart_distribution && distribution.continuous {
         distribution.active_epoch.total_earned_puvp =
             get_active_total_earned_puvp(deps.as_ref(), &env.block, &distribution)?;
     }
@@ -427,7 +438,7 @@ fn execute_withdraw(
     };
 
     // get total rewards distributed based on newly updated ends_at
-    let rewards_distributed = distribution.active_epoch.get_total_rewards()?;
+    let rewards_distributed = distribution.get_total_rewards()?;
 
     let clawback_amount = distribution.funded_amount - rewards_distributed;
 

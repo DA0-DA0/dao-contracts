@@ -1,6 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    Addr, BlockInfo, Decimal, Deps, StdError, StdResult, Timestamp, Uint128, Uint256, Uint64,
+    ensure, Addr, BlockInfo, Decimal, Deps, StdError, StdResult, Timestamp, Uint128, Uint256,
+    Uint64,
 };
 use cw20::{Denom, Expiration};
 use cw_storage_plus::{Item, Map};
@@ -8,7 +9,7 @@ use cw_utils::Duration;
 use std::{cmp::min, collections::HashMap};
 
 use crate::{
-    helpers::{get_duration_scalar, get_exp_diff},
+    helpers::{get_duration_scalar, get_exp_diff, get_prev_block_total_vp, scale_factor},
     rewards::get_active_total_earned_puvp,
     ContractError,
 };
@@ -43,6 +44,8 @@ pub struct UserRewardState {
 pub enum EmissionRate {
     /// rewards are paused
     Paused {},
+    /// rewards are distributed immediately
+    Immediate {},
     /// rewards are distributed at a constant rate
     Linear {
         /// amount of tokens to distribute per amount of time
@@ -53,10 +56,11 @@ pub enum EmissionRate {
 }
 
 impl EmissionRate {
-    /// validate non-zero amount and duration, if not paused
+    /// validate non-zero amount and duration if necessary
     pub fn validate(&self) -> Result<(), ContractError> {
         match self {
             EmissionRate::Paused {} => Ok(()),
+            EmissionRate::Immediate {} => Ok(()),
             EmissionRate::Linear { amount, duration } => {
                 if *amount == Uint128::zero() {
                     return Err(ContractError::InvalidEmissionRateFieldZero {
@@ -82,8 +86,11 @@ impl EmissionRate {
         funded_amount: Uint128,
     ) -> StdResult<Option<Duration>> {
         match self {
-            // if rewards are paused, return the max duration
+            // if rewards are paused, return no duration
             EmissionRate::Paused {} => Ok(None),
+            // if rewards are immediate, return no duration
+            EmissionRate::Immediate {} => Ok(None),
+            // if rewards are linear, calculate based on funded amount
             EmissionRate::Linear { amount, duration } => {
                 let amount_to_emission_rate_ratio = Decimal::from_ratio(funded_amount, *amount);
 
@@ -128,26 +135,6 @@ pub struct Epoch {
 }
 
 impl Epoch {
-    /// get the total rewards to be distributed based on the emission rate and
-    /// duration from start to end
-    pub fn get_total_rewards(&self) -> StdResult<Uint128> {
-        match self.emission_rate {
-            EmissionRate::Paused {} => Ok(Uint128::zero()),
-            EmissionRate::Linear { amount, duration } => {
-                let epoch_duration = get_exp_diff(&self.ends_at, &self.started_at)?;
-
-                let emission_rate_duration_scalar = match duration {
-                    Duration::Height(h) => h,
-                    Duration::Time(t) => t,
-                };
-
-                amount
-                    .checked_multiply_ratio(epoch_duration, emission_rate_duration_scalar)
-                    .map_err(|e| StdError::generic_err(e.to_string()))
-            }
-        }
-    }
-
     /// bump the last_updated_total_earned_puvp field to the minimum of the
     /// current block and ends_at since rewards cannot be distributed after
     /// ends_at. this is necessary in the case that a future funding backfills
@@ -158,7 +145,14 @@ impl Epoch {
     pub fn bump_last_updated(&mut self, current_block: &BlockInfo) {
         match self.ends_at {
             Expiration::Never {} => {
-                self.last_updated_total_earned_puvp = Expiration::Never {};
+                self.last_updated_total_earned_puvp =
+                    // for immediate emission, there is no ends_at. always
+                    // update to current block height.
+                    if (self.emission_rate == EmissionRate::Immediate {}) {
+                        Expiration::AtHeight(current_block.height)
+                    } else {
+                        Expiration::Never {}
+                    };
             }
             Expiration::AtHeight(ends_at_height) => {
                 self.last_updated_total_earned_puvp =
@@ -234,13 +228,35 @@ impl DistributionState {
         }
     }
 
+    /// get the total rewards to be distributed based on the active epoch's
+    /// emission rate
+    pub fn get_total_rewards(&self) -> StdResult<Uint128> {
+        match self.active_epoch.emission_rate {
+            EmissionRate::Paused {} => Ok(Uint128::zero()),
+            EmissionRate::Immediate {} => Ok(self.funded_amount),
+            EmissionRate::Linear { amount, duration } => {
+                let epoch_duration =
+                    get_exp_diff(&self.active_epoch.ends_at, &self.active_epoch.started_at)?;
+
+                let emission_rate_duration_scalar = match duration {
+                    Duration::Height(h) => h,
+                    Duration::Time(t) => t,
+                };
+
+                amount
+                    .checked_multiply_ratio(epoch_duration, emission_rate_duration_scalar)
+                    .map_err(|e| StdError::generic_err(e.to_string()))
+            }
+        }
+    }
+
     /// Finish current epoch early and start a new one with a new emission rate.
     pub fn transition_epoch(
         &mut self,
         deps: Deps,
         new_emission_rate: EmissionRate,
         current_block: &BlockInfo,
-    ) -> StdResult<()> {
+    ) -> Result<(), ContractError> {
         // if the new emission rate is the same as the active one, do nothing
         if self.active_epoch.emission_rate == new_emission_rate {
             return Ok(());
@@ -263,7 +279,7 @@ impl DistributionState {
 
         // 3. deduct the distributed rewards amount from total funded amount, as
         // those rewards are no longer distributed in the new epoch
-        let active_epoch_earned_rewards = self.active_epoch.get_total_rewards()?;
+        let active_epoch_earned_rewards = self.get_total_rewards()?;
         self.funded_amount = self
             .funded_amount
             .checked_sub(active_epoch_earned_rewards)?;
@@ -289,11 +305,15 @@ impl DistributionState {
                     Expiration::AtTime(Timestamp::from_seconds(u64::MAX))
                 }
             }
+            // if there is no funded period duration, but the emission rate is
+            // immediate, set ends_at to the current block height to match
+            // started_at below, since funds are distributed immediately
             None => Expiration::Never {},
         };
 
         let new_started_at = match new_emission_rate {
             EmissionRate::Paused {} => Expiration::Never {},
+            EmissionRate::Immediate {} => Expiration::Never {},
             EmissionRate::Linear { duration, .. } => match duration {
                 Duration::Height(_) => Expiration::AtHeight(current_block.height),
                 Duration::Time(_) => Expiration::AtTime(current_block.time),
@@ -309,6 +329,57 @@ impl DistributionState {
             last_updated_total_earned_puvp: new_started_at,
         };
 
+        // if new emission rate is immediate, update total_earned_puvp with
+        // remaining funded_amount right away
+        if (self.active_epoch.emission_rate == EmissionRate::Immediate {}) {
+            self.update_immediate_emission_total_earned_puvp(
+                deps,
+                current_block,
+                self.funded_amount,
+            )?;
+        }
+
         Ok(())
+    }
+
+    /// Update the total_earned_puvp field in the active epoch for immediate
+    /// emission. This logic normally lives in get_active_total_earned_puvp, but
+    /// we need only need to execute this right when funding, and we need to
+    /// know the delta in funded amount, which is not accessible anywhere other
+    /// than when being funded or transitioning to a new emission rate.
+    pub fn update_immediate_emission_total_earned_puvp(
+        &mut self,
+        deps: Deps,
+        block: &BlockInfo,
+        funded_amount_delta: Uint128,
+    ) -> Result<(), ContractError> {
+        // should never happen
+        ensure!(
+            self.active_epoch.emission_rate == EmissionRate::Immediate {},
+            ContractError::Std(StdError::generic_err(format!(
+                "expected immediate emission, got {:?}",
+                self.active_epoch.emission_rate
+            )))
+        );
+
+        let curr = self.active_epoch.total_earned_puvp;
+
+        let prev_total_power = get_prev_block_total_vp(deps, block, &self.vp_contract)?;
+
+        // if no voting power is registered, error since rewards can't be
+        // distributed.
+        if prev_total_power.is_zero() {
+            Err(ContractError::NoVotingPowerNoRewards {})
+        } else {
+            // the new rewards per unit voting power based on the funded amount
+            let new_rewards_puvp = Uint256::from(funded_amount_delta)
+                // this can never overflow since funded_amount is a Uint128
+                .checked_mul(scale_factor())?
+                .checked_div(prev_total_power.into())?;
+
+            self.active_epoch.total_earned_puvp = curr.checked_add(new_rewards_puvp)?;
+
+            Ok(())
+        }
     }
 }

@@ -15,7 +15,7 @@ use crate::testing::native_setup::setup_native_token_test;
 use crate::ContractError;
 use crate::{
     msg::ExecuteMsg,
-    testing::{ADDR1, ADDR2, ADDR3, DENOM},
+    testing::{ADDR1, ADDR2, ADDR3, ADDR4, DENOM},
 };
 
 use super::{
@@ -816,6 +816,213 @@ fn test_native_dao_rewards_time_based_with_rounding() {
         DENOM,
         100_000_000 - (100 * 2 + 150 * 5) + 3,
     );
+}
+
+#[test]
+fn test_immediate_emission() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    // skip 2 blocks since the contract depends on the previous block's total
+    // voting power, and voting power takes 1 block to take effect. so if voting
+    // power is staked on block 0, it takes effect on block 1, so immediate
+    // distribution is only effective on block 2.
+    suite.skip_blocks(2);
+
+    suite.mint_native(coin(500_000_000, ALT_DENOM), OWNER);
+
+    let execute_create_msg = ExecuteMsg::Create(CreateMsg {
+        denom: cw20::UncheckedDenom::Native(ALT_DENOM.to_string()),
+        emission_rate: EmissionRate::Immediate {},
+        continuous: true,
+        hook_caller: suite.staking_addr.to_string(),
+        vp_contract: suite.voting_power_addr.to_string(),
+        withdraw_destination: None,
+    });
+
+    // create distribution
+    suite
+        .app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            suite.distribution_contract.clone(),
+            &execute_create_msg,
+            &coins(100_000_000, ALT_DENOM),
+        )
+        .unwrap();
+
+    // users immediately have access to rewards
+    suite.assert_pending_rewards(ADDR1, 2, 50_000_000);
+    suite.assert_pending_rewards(ADDR2, 2, 25_000_000);
+    suite.assert_pending_rewards(ADDR3, 2, 25_000_000);
+
+    // another fund immediately adds to the pending rewards
+    suite.fund_native(2, coin(100_000_000, ALT_DENOM));
+
+    // users immediately have access to new rewards
+    suite.assert_pending_rewards(ADDR1, 2, 2 * 50_000_000);
+    suite.assert_pending_rewards(ADDR2, 2, 2 * 25_000_000);
+    suite.assert_pending_rewards(ADDR3, 2, 2 * 25_000_000);
+
+    // a new user stakes tokens
+    suite.mint_native(coin(200, DENOM), ADDR4);
+    suite.stake_native_tokens(ADDR4, 200);
+
+    // skip 2 blocks so stake takes effect
+    suite.skip_blocks(2);
+
+    // another fund takes into account new voting power
+    suite.fund_native(2, coin(100_000_000, ALT_DENOM));
+
+    suite.assert_pending_rewards(ADDR1, 2, 2 * 50_000_000 + 25_000_000);
+    suite.assert_pending_rewards(ADDR2, 2, 2 * 25_000_000 + 12_500_000);
+    suite.assert_pending_rewards(ADDR3, 2, 2 * 25_000_000 + 12_500_000);
+    suite.assert_pending_rewards(ADDR4, 2, 50_000_000);
+
+    suite.claim_rewards(ADDR1, 2);
+    suite.claim_rewards(ADDR2, 2);
+    suite.claim_rewards(ADDR3, 2);
+    suite.claim_rewards(ADDR4, 2);
+
+    suite.unstake_native_tokens(ADDR1, 100);
+    suite.unstake_native_tokens(ADDR2, 50);
+    suite.unstake_native_tokens(ADDR3, 50);
+
+    // skip 2 blocks so stake takes effect
+    suite.skip_blocks(2);
+
+    // another fund takes into account new voting power
+    suite.fund_native(2, coin(100_000_000, ALT_DENOM));
+
+    suite.assert_pending_rewards(ADDR1, 2, 0);
+    suite.assert_pending_rewards(ADDR2, 2, 0);
+    suite.assert_pending_rewards(ADDR3, 2, 0);
+    suite.assert_pending_rewards(ADDR4, 2, 100_000_000);
+}
+
+#[test]
+#[should_panic(
+    expected = "There is no voting power registered, so no one will receive these funds"
+)]
+fn test_immediate_emission_fails_if_no_voting_power() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    // all users unstake
+    suite.unstake_native_tokens(ADDR1, 100);
+    suite.unstake_native_tokens(ADDR2, 50);
+    suite.unstake_native_tokens(ADDR3, 50);
+
+    // skip 2 blocks since the contract depends on the previous block's total
+    // voting power, and voting power takes 1 block to take effect. so if voting
+    // power is staked on block 0, it takes effect on block 1, so immediate
+    // distribution is only effective on block 2.
+    suite.skip_blocks(2);
+
+    suite.mint_native(coin(200_000_000, ALT_DENOM), OWNER);
+
+    let execute_create_msg = ExecuteMsg::Create(CreateMsg {
+        denom: cw20::UncheckedDenom::Native(ALT_DENOM.to_string()),
+        emission_rate: EmissionRate::Immediate {},
+        continuous: true,
+        hook_caller: suite.staking_addr.to_string(),
+        vp_contract: suite.voting_power_addr.to_string(),
+        withdraw_destination: None,
+    });
+
+    // create and fund distribution
+    suite
+        .app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            suite.distribution_contract.clone(),
+            &execute_create_msg,
+            &coins(100_000_000, ALT_DENOM),
+        )
+        .unwrap();
+}
+
+#[test]
+fn test_transition_to_immediate() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000));
+    suite.assert_duration(10);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    suite.assert_pending_rewards(ADDR1, 1, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, 1, 2_500_000);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    suite.assert_pending_rewards(ADDR1, 1, 10_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 5_000_000);
+    suite.assert_pending_rewards(ADDR3, 1, 5_000_000);
+
+    // ADDR1 claims rewards
+    suite.claim_rewards(ADDR1, 1);
+    suite.assert_native_balance(ADDR1, DENOM, 10_000_000);
+    suite.assert_pending_rewards(ADDR1, 1, 0);
+
+    // ADDR2 unstakes their stake
+    suite.unstake_native_tokens(ADDR2, 50);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    // because ADDR2 is not staking, ADDR1 and ADDR3 receive the rewards. ADDR2
+    // should have the same amount of pending rewards as before.
+    suite.assert_pending_rewards(ADDR1, 1, 6_666_666);
+    suite.assert_pending_rewards(ADDR2, 1, 5_000_000);
+    suite.assert_pending_rewards(ADDR3, 1, 5_000_000 + 3_333_333);
+
+    // ADDR2 claims their rewards
+    suite.claim_rewards(ADDR2, 1);
+    suite.assert_pending_rewards(ADDR2, 1, 0);
+
+    // switching to immediate emission instantly distributes the remaining 70M
+    suite.set_immediate_emission(1);
+
+    // ADDR1 and ADDR3 split the rewards, and ADDR2 gets none
+    suite.assert_pending_rewards(ADDR1, 1, 6_666_666 + 46_666_666 + 1);
+    suite.assert_pending_rewards(ADDR2, 1, 0);
+    suite.assert_pending_rewards(ADDR3, 1, 5_000_000 + 3_333_333 + 23_333_333);
+
+    // claim all rewards
+    suite.claim_rewards(ADDR1, 1);
+    suite.claim_rewards(ADDR3, 1);
+
+    // ADDR3 unstakes their stake, leaving only ADDR1 staked
+    suite.unstake_native_tokens(ADDR3, 50);
+
+    // skip 2 blocks so unstake takes effect
+    suite.skip_blocks(2);
+
+    // another fund immediately adds to the pending rewards
+    suite.mint_native(coin(100_000_000, DENOM), OWNER);
+    suite.fund_native(1, coin(100_000_000, DENOM));
+
+    // ADDR1 gets all
+    suite.assert_pending_rewards(ADDR1, 1, 100_000_000);
+
+    // change back to linear emission
+    suite.update_emission_rate(1, Duration::Height(10), 1000);
+
+    // fund with 100M again
+    suite.mint_native(coin(100_000_000, DENOM), OWNER);
+    suite.fund_native(1, coin(100_000_000, DENOM));
+
+    // ADDR1 has same pending as before
+    suite.assert_pending_rewards(ADDR1, 1, 100_000_000);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    // ADDR1 has new linearly distributed rewards
+    suite.assert_pending_rewards(ADDR1, 1, 100_000_000 + 10_000_000);
 }
 
 #[test]

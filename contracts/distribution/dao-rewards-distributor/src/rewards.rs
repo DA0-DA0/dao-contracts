@@ -22,6 +22,7 @@ pub fn update_rewards(
         .map_err(|_| ContractError::DistributionNotFound {
             id: distribution_id,
         })?;
+
     // user may not have a reward state set yet if that is their first time
     // claiming, so we default to an empty state
     let mut user_reward_state = USER_REWARDS
@@ -76,8 +77,7 @@ pub fn update_rewards(
     Ok(())
 }
 
-/// Calculate the total rewards earned per unit voting power in the active epoch
-/// since the last update.
+/// Calculate the total rewards per unit voting power in the active epoch.
 pub fn get_active_total_earned_puvp(
     deps: Deps,
     block: &BlockInfo,
@@ -85,6 +85,8 @@ pub fn get_active_total_earned_puvp(
 ) -> StdResult<Uint256> {
     match distribution.active_epoch.emission_rate {
         EmissionRate::Paused {} => Ok(Uint256::zero()),
+        // this is updated manually during funding, so just return it here.
+        EmissionRate::Immediate {} => Ok(distribution.active_epoch.total_earned_puvp),
         EmissionRate::Linear { amount, duration } => {
             let curr = distribution.active_epoch.total_earned_puvp;
 

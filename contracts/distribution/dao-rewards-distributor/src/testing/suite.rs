@@ -440,6 +440,7 @@ impl Suite {
         let distribution = &self.get_distributions().distributions[0];
         match distribution.active_epoch.emission_rate {
             EmissionRate::Paused {} => panic!("expected non-paused emission rate"),
+            EmissionRate::Immediate {} => panic!("expected non-immediate emission rate"),
             EmissionRate::Linear { amount, .. } => assert_eq!(amount, Uint128::new(expected)),
         }
     }
@@ -448,6 +449,7 @@ impl Suite {
         let distribution = &self.get_distributions().distributions[0];
         match distribution.active_epoch.emission_rate {
             EmissionRate::Paused {} => panic!("expected non-paused emission rate"),
+            EmissionRate::Immediate {} => panic!("expected non-immediate emission rate"),
             EmissionRate::Linear { duration, .. } => assert_eq!(
                 match duration {
                     Duration::Height(h) => h,
@@ -719,6 +721,27 @@ impl Suite {
                 amount: Uint128::new(epoch_rewards),
                 duration: epoch_duration,
             }),
+            continuous: None,
+            vp_contract: None,
+            hook_caller: None,
+            withdraw_destination: None,
+        };
+
+        let _resp = self
+            .app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+    }
+
+    pub fn set_immediate_emission(&mut self, id: u64) {
+        let msg: ExecuteMsg = ExecuteMsg::Update {
+            id,
+            emission_rate: Some(EmissionRate::Immediate {}),
             continuous: None,
             vp_contract: None,
             hook_caller: None,

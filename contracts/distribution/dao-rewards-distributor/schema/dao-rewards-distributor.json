@@ -406,6 +406,20 @@
             "additionalProperties": false
           },
           {
+            "description": "rewards are distributed immediately",
+            "type": "object",
+            "required": [
+              "immediate"
+            ],
+            "properties": {
+              "immediate": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
             "description": "rewards are distributed at a constant rate",
             "type": "object",
             "required": [
@@ -1015,6 +1029,20 @@
               "additionalProperties": false
             },
             {
+              "description": "rewards are distributed immediately",
+              "type": "object",
+              "required": [
+                "immediate"
+              ],
+              "properties": {
+                "immediate": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
               "description": "rewards are distributed at a constant rate",
               "type": "object",
               "required": [
@@ -1352,6 +1380,20 @@
               ],
               "properties": {
                 "paused": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "rewards are distributed immediately",
+              "type": "object",
+              "required": [
+                "immediate"
+              ],
+              "properties": {
+                "immediate": {
                   "type": "object",
                   "additionalProperties": false
                 }
