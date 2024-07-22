@@ -19,36 +19,27 @@ pub enum ContractError {
     #[error(transparent)]
     Payment(#[from] PaymentError),
 
-    #[error("Invalid Cw20")]
+    #[error("Invalid CW20")]
     InvalidCw20 {},
 
     #[error("Invalid funds")]
     InvalidFunds {},
 
-    #[error("You cannot send native funds when registering a CW20")]
-    NoFundsOnCw20Register {},
+    #[error("You cannot send native funds when creating a CW20 distribution")]
+    NoFundsOnCw20Create {},
 
-    #[error("Staking change hook sender is not staking contract")]
+    #[error("Voting power changed hook sender incorrect")]
     InvalidHookSender {},
 
     #[error("No rewards claimable")]
     NoRewardsClaimable {},
 
-    #[error("Reward period not finished")]
-    RewardPeriodNotFinished {},
-
-    #[error("Reward rate less then one per block")]
-    RewardRateLessThenOnePerBlock {},
-
-    #[error("Reward duration can not be zero")]
-    ZeroRewardDuration {},
-
     #[error("All rewards have already been distributed")]
     RewardsAlreadyDistributed {},
 
-    #[error("Denom already registered")]
-    DenomAlreadyRegistered {},
+    #[error("Distribution not found with ID {id}")]
+    DistributionNotFound { id: u64 },
 
-    #[error("Denom not registered")]
-    DenomNotRegistered {},
+    #[error("Unexpected duplicate distribution with ID {id}")]
+    UnexpectedDuplicateDistributionId { id: u64 },
 }

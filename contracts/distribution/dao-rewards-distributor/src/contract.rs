@@ -1,31 +1,31 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_json, to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Order,
-    Response, StdResult, Uint128, Uint256,
+    ensure, from_json, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response,
+    StdResult, Uint128, Uint256,
 };
 use cw2::{get_contract_version, set_contract_version};
-use cw20::{Cw20ReceiveMsg, UncheckedDenom};
+use cw20::{Cw20ReceiveMsg, Denom};
 use cw_storage_plus::Bound;
-use cw_utils::{must_pay, one_coin, Duration, Expiration};
+use cw_utils::{must_pay, nonpayable, Duration, Expiration};
 use dao_interface::voting::InfoResponse;
 
 use std::ops::Add;
 
-use crate::helpers::{get_duration_scalar, get_transfer_msg, validate_voting_power_contract};
+use crate::helpers::{get_transfer_msg, validate_voting_power_contract};
 use crate::hooks::{
     execute_membership_changed, execute_nft_stake_changed, execute_stake_changed,
-    subscribe_denom_to_hook, unsubscribe_denom_from_hook,
+    subscribe_distribution_to_hook, unsubscribe_distribution_from_hook,
 };
 use crate::msg::{
-    DenomPendingRewards, DenomsResponse, ExecuteMsg, InstantiateMsg, MigrateMsg,
-    PendingRewardsResponse, QueryMsg, ReceiveCw20Msg, RegisterMsg,
+    CreateMsg, DistributionPendingRewards, DistributionsResponse, ExecuteMsg, FundMsg,
+    InstantiateMsg, MigrateMsg, PendingRewardsResponse, QueryMsg, ReceiveCw20Msg,
 };
 use crate::rewards::{
-    get_accrued_rewards_since_last_user_action, get_active_total_earned_puvp, update_rewards,
+    get_accrued_rewards_not_yet_accounted_for, get_active_total_earned_puvp, update_rewards,
 };
 use crate::state::{
-    DenomRewardState, Epoch, RewardEmissionRate, DENOM_REWARD_STATES, USER_REWARD_STATES,
+    DistributionState, Epoch, RewardEmissionRate, COUNT, DISTRIBUTIONS, USER_REWARDS,
 };
 use crate::ContractError;
 
@@ -47,6 +47,9 @@ pub fn instantiate(
     // Intialize the contract owner
     cw_ownable::initialize_owner(deps.storage, deps.api, msg.owner.as_deref())?;
 
+    // initialize count
+    COUNT.save(deps.storage, &0)?;
+
     Ok(Response::new().add_attribute("owner", msg.owner.unwrap_or_else(|| "None".to_string())))
 }
 
@@ -63,11 +66,9 @@ pub fn execute(
         ExecuteMsg::MemberChangedHook(msg) => execute_membership_changed(deps, env, info, msg),
         ExecuteMsg::UpdateOwnership(action) => execute_update_owner(deps, info, env, action),
         ExecuteMsg::Receive(msg) => execute_receive_cw20(deps, env, info, msg),
-        ExecuteMsg::Register(register_msg) => {
-            execute_register_native(deps, env, info, register_msg)
-        }
+        ExecuteMsg::Create(create_msg) => execute_create(deps, env, info, create_msg),
         ExecuteMsg::Update {
-            denom,
+            id,
             emission_rate,
             continuous,
             vp_contract,
@@ -77,16 +78,16 @@ pub fn execute(
             deps,
             env,
             info,
-            denom,
+            id,
             emission_rate,
             continuous,
             vp_contract,
             hook_caller,
             withdraw_destination,
         ),
-        ExecuteMsg::Fund {} => execute_fund_native(deps, env, info),
-        ExecuteMsg::Claim { denom } => execute_claim(deps, env, info, denom),
-        ExecuteMsg::Withdraw { denom } => execute_withdraw(deps, info, env, denom),
+        ExecuteMsg::Fund(FundMsg { id }) => execute_fund_native(deps, env, info, id),
+        ExecuteMsg::Claim { id } => execute_claim(deps, env, info, id),
+        ExecuteMsg::Withdraw { id } => execute_withdraw(deps, info, env, id),
     }
 }
 
@@ -96,57 +97,47 @@ fn execute_receive_cw20(
     info: MessageInfo,
     wrapper: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     // verify msg
     let msg: ReceiveCw20Msg = from_json(&wrapper.msg)?;
 
     match msg {
-        ReceiveCw20Msg::Fund {} => {
-            let reward_denom_state =
-                DENOM_REWARD_STATES.load(deps.storage, info.sender.to_string())?;
-            execute_fund(deps, env, reward_denom_state, wrapper.amount)
+        ReceiveCw20Msg::Fund(FundMsg { id }) => {
+            let distribution = DISTRIBUTIONS
+                .load(deps.storage, id)
+                .map_err(|_| ContractError::DistributionNotFound { id })?;
+
+            match &distribution.denom {
+                Denom::Native(_) => return Err(ContractError::InvalidFunds {}),
+                Denom::Cw20(addr) => {
+                    // ensure funding is coming from the cw20 we are currently
+                    // distributing
+                    if addr != info.sender {
+                        return Err(ContractError::InvalidCw20 {});
+                    }
+                }
+            };
+
+            execute_fund(deps, env, distribution, wrapper.amount)
         }
     }
 }
 
-/// registers a new native denom for rewards distribution.
-fn execute_register_native(
+/// creates a new rewards distribution. only the owner can do this. if funds
+/// provided when creating a native token distribution, will start distributing
+/// rewards immediately.
+fn execute_create(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: RegisterMsg,
+    msg: CreateMsg,
 ) -> Result<Response, ContractError> {
-    let mut amount: Option<Uint128> = None;
+    // only the owner can create a new distribution
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
-    // if native funds provided, ensure they are for this native denom. if other
-    // native funds present, return error. if no funds, do nothing and leave
-    // registered denom with no funding, to be funded later.
-    if !info.funds.is_empty() {
-        match &msg.denom {
-            UncheckedDenom::Native(denom) => amount = Some(must_pay(&info, denom)?),
-            UncheckedDenom::Cw20(_) => return Err(ContractError::NoFundsOnCw20Register {}),
-        }
-    }
-
-    execute_register(deps, env, info.sender, msg, amount)
-}
-
-/// registers a new denom for rewards distribution. only the owner can register
-/// a new denom. a denom can only be registered once. if funds provided, will
-/// start distributing rewards immediately.
-fn execute_register(
-    deps: DepsMut,
-    env: Env,
-    sender: Addr,
-    msg: RegisterMsg,
-    funds: Option<Uint128>,
-) -> Result<Response, ContractError> {
-    // only the owner can register a new denom
-    cw_ownable::assert_owner(deps.storage, &sender)?;
-
-    // Reward duration must be greater than 0 seconds/blocks
-    if get_duration_scalar(&msg.emission_rate.duration) == 0 {
-        return Err(ContractError::ZeroRewardDuration {});
-    }
+    // update count and use as the new distribution's ID
+    let id = COUNT.update(deps.storage, |count| -> StdResult<u64> { Ok(count + 1) })?;
 
     let checked_denom = msg.denom.into_checked(deps.as_ref())?;
     let hook_caller = deps.api.addr_validate(&msg.hook_caller)?;
@@ -156,11 +147,12 @@ fn execute_register(
         // if withdraw destination is specified, we validate it
         Some(addr) => deps.api.addr_validate(&addr)?,
         // otherwise default to the owner
-        None => sender,
+        None => info.sender.clone(),
     };
 
-    // Initialize the reward state
-    let reward_state = DenomRewardState {
+    // Initialize the distribution state
+    let distribution = DistributionState {
+        id,
         denom: checked_denom,
         active_epoch: Epoch {
             started_at: Expiration::Never {},
@@ -176,157 +168,123 @@ fn execute_register(
         withdraw_destination,
         historical_earned_puvp: Uint256::zero(),
     };
-    let str_denom = reward_state.to_str_denom();
 
-    // store the new reward denom state or error if it already exists
-    DENOM_REWARD_STATES.update(
-        deps.storage,
-        str_denom.to_string(),
-        |existing| match existing {
-            Some(_) => Err(ContractError::DenomAlreadyRegistered {}),
-            None => Ok(reward_state.clone()),
-        },
-    )?;
+    // store the new distribution state, erroring if it already exists. this
+    // should never happen, but just in case.
+    DISTRIBUTIONS.update(deps.storage, id, |existing| match existing {
+        Some(_) => Err(ContractError::UnexpectedDuplicateDistributionId { id }),
+        None => Ok(distribution.clone()),
+    })?;
 
-    // update the registered hooks to include the new denom
-    subscribe_denom_to_hook(deps.storage, str_denom.clone(), hook_caller.clone())?;
+    // update the registered hooks to include the new distribution
+    subscribe_distribution_to_hook(deps.storage, id, hook_caller.clone())?;
 
     let mut response = Response::new()
-        .add_attribute("action", "register_denom")
-        .add_attribute("denom", &str_denom);
+        .add_attribute("action", "create")
+        .add_attribute("id", id.to_string())
+        .add_attribute("denom", distribution.get_denom_string());
 
-    // if funds provided, begin distributing rewards. if no funds, do nothing
-    // and leave registered denom with no funding, to be funded later.
-    if let Some(funds) = funds {
-        execute_fund(deps, env, reward_state, funds)?;
-        response = response.add_attribute("funded_amount", funds);
+    // if native funds provided, ensure they are for this denom. if other native
+    // funds present, return error. if no funds, do nothing and leave registered
+    // denom with no funding, to be funded later.
+    if !info.funds.is_empty() {
+        match &distribution.denom {
+            Denom::Native(denom) => {
+                // ensures there is exactly 1 coin passed that matches the denom
+                let amount = must_pay(&info, denom)?;
+
+                execute_fund(deps, env, distribution, amount)?;
+
+                response = response.add_attribute("amount_funded", amount);
+            }
+            Denom::Cw20(_) => return Err(ContractError::NoFundsOnCw20Create {}),
+        }
     }
 
     Ok(response)
 }
 
-/// updates the config for a registered denom
+/// updates the config for a distribution
 #[allow(clippy::too_many_arguments)]
 fn execute_update(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    denom: String,
+    id: u64,
     emission_rate: Option<RewardEmissionRate>,
     continuous: Option<bool>,
     vp_contract: Option<String>,
     hook_caller: Option<String>,
     withdraw_destination: Option<String>,
 ) -> Result<Response, ContractError> {
-    // only the owner can update a denom config
+    nonpayable(&info)?;
+
+    // only the owner can update a distribution
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
-    let mut reward_state = DENOM_REWARD_STATES
-        .load(deps.storage, denom.clone())
-        .map_err(|_| ContractError::DenomNotRegistered {})?;
+    let mut distribution = DISTRIBUTIONS
+        .load(deps.storage, id)
+        .map_err(|_| ContractError::DistributionNotFound { id })?;
 
     if let Some(emission_rate) = emission_rate {
         // transition the epoch to the new emission rate
-        reward_state.transition_epoch(deps.as_ref(), emission_rate, &env.block)?;
+        distribution.transition_epoch(deps.as_ref(), emission_rate, &env.block)?;
     }
 
     if let Some(continuous) = continuous {
-        reward_state.continuous = continuous;
+        distribution.continuous = continuous;
     }
 
     if let Some(vp_contract) = vp_contract {
-        reward_state.vp_contract = validate_voting_power_contract(&deps, vp_contract)?;
+        distribution.vp_contract = validate_voting_power_contract(&deps, vp_contract)?;
     }
 
     if let Some(hook_caller) = hook_caller {
         // remove existing from registered hooks
-        unsubscribe_denom_from_hook(deps.storage, &denom, reward_state.hook_caller)?;
+        unsubscribe_distribution_from_hook(deps.storage, id, distribution.hook_caller)?;
 
-        reward_state.hook_caller = deps.api.addr_validate(&hook_caller)?;
+        distribution.hook_caller = deps.api.addr_validate(&hook_caller)?;
 
         // add new to registered hooks
-        subscribe_denom_to_hook(deps.storage, &denom, reward_state.hook_caller.clone())?;
+        subscribe_distribution_to_hook(deps.storage, id, distribution.hook_caller.clone())?;
     }
 
     if let Some(withdraw_destination) = withdraw_destination {
-        reward_state.withdraw_destination = deps.api.addr_validate(&withdraw_destination)?;
+        distribution.withdraw_destination = deps.api.addr_validate(&withdraw_destination)?;
     }
 
-    DENOM_REWARD_STATES.save(deps.storage, denom.clone(), &reward_state)?;
+    DISTRIBUTIONS.save(deps.storage, id, &distribution)?;
 
     Ok(Response::new()
-        .add_attribute("action", "update_denom")
-        .add_attribute("denom", denom))
-}
-
-/// withdraws the undistributed rewards for a denom. members can claim whatever
-/// they earned until this point. this is effectively an inverse to fund and
-/// does not affect any already-distributed rewards. can only be called by the
-/// admin and only during the distribution period. updates the period finish
-/// expiration to the current block.
-fn execute_withdraw(
-    deps: DepsMut,
-    info: MessageInfo,
-    env: Env,
-    denom: String,
-) -> Result<Response, ContractError> {
-    // only the owner can initiate a withdraw
-    cw_ownable::assert_owner(deps.storage, &info.sender)?;
-
-    let mut reward_state = DENOM_REWARD_STATES.load(deps.storage, denom.to_string())?;
-
-    // withdraw is only possible during the distribution period
-    ensure!(
-        !reward_state.active_epoch.ends_at.is_expired(&env.block),
-        ContractError::RewardsAlreadyDistributed {}
-    );
-
-    // withdraw ends the epoch early
-    reward_state.active_epoch.ends_at = match reward_state.active_epoch.emission_rate.duration {
-        Duration::Height(_) => Expiration::AtHeight(env.block.height),
-        Duration::Time(_) => Expiration::AtTime(env.block.time),
-    };
-
-    // get total rewards distributed based on newly updated ends_at
-    let rewards_distributed = reward_state.active_epoch.get_total_rewards()?;
-
-    let clawback_amount = reward_state.funded_amount - rewards_distributed;
-
-    // remove withdrawn funds from amount funded since they are no longer funded
-    reward_state.funded_amount = rewards_distributed;
-
-    let clawback_msg = get_transfer_msg(
-        reward_state.withdraw_destination.clone(),
-        clawback_amount,
-        reward_state.denom.clone(),
-    )?;
-
-    DENOM_REWARD_STATES.save(deps.storage, denom.to_string(), &reward_state)?;
-
-    Ok(Response::new()
-        .add_attribute("action", "withdraw")
-        .add_attribute("denom", denom)
-        .add_attribute("amount_withdrawn", clawback_amount)
-        .add_attribute("amount_distributed", rewards_distributed)
-        .add_message(clawback_msg))
+        .add_attribute("action", "update")
+        .add_attribute("id", id.to_string())
+        .add_attribute("denom", distribution.get_denom_string()))
 }
 
 fn execute_fund_native(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
+    id: u64,
 ) -> Result<Response, ContractError> {
-    let fund_coin = one_coin(&info).map_err(|_| ContractError::InvalidFunds {})?;
+    let distribution = DISTRIBUTIONS
+        .load(deps.storage, id)
+        .map_err(|_| ContractError::DistributionNotFound { id })?;
 
-    let reward_denom_state = DENOM_REWARD_STATES.load(deps.storage, fund_coin.denom.clone())?;
+    let amount = match &distribution.denom {
+        Denom::Native(denom) => {
+            must_pay(&info, denom).map_err(|_| ContractError::InvalidFunds {})?
+        }
+        Denom::Cw20(_) => return Err(ContractError::InvalidFunds {}),
+    };
 
-    execute_fund(deps, env, reward_denom_state, fund_coin.amount)
+    execute_fund(deps, env, distribution, amount)
 }
 
 fn execute_fund(
     deps: DepsMut,
     env: Env,
-    mut denom_reward_state: DenomRewardState,
+    mut distribution: DistributionState,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     // restart the distribution from the current block if it hasn't yet started
@@ -334,16 +292,11 @@ fn execute_fund(
     // distributed) and not continuous. if it is continuous, treat it as if it
     // weren't expired by simply adding the new funds and recomputing the end
     // date, keeping start date the same, effectively backfilling rewards.
-    let restart_distribution =
-        if let Expiration::Never {} = denom_reward_state.active_epoch.started_at {
-            true
-        } else {
-            !denom_reward_state.continuous
-                && denom_reward_state
-                    .active_epoch
-                    .ends_at
-                    .is_expired(&env.block)
-        };
+    let restart_distribution = if let Expiration::Never {} = distribution.active_epoch.started_at {
+        true
+    } else {
+        !distribution.continuous && distribution.active_epoch.ends_at.is_expired(&env.block)
+    };
 
     // if necessary, restart the distribution from the current block so that the
     // new funds start being distributed from now instead of from the past, and
@@ -351,66 +304,64 @@ fn execute_fund(
     // new distribution. otherwise, just add the new amount to the existing
     // funded_amount
     if restart_distribution {
-        denom_reward_state.funded_amount = amount;
-        denom_reward_state.active_epoch.started_at =
-            match denom_reward_state.active_epoch.emission_rate.duration {
+        distribution.funded_amount = amount;
+        distribution.active_epoch.started_at =
+            match distribution.active_epoch.emission_rate.duration {
                 Duration::Height(_) => Expiration::AtHeight(env.block.height),
                 Duration::Time(_) => Expiration::AtTime(env.block.time),
             };
     } else {
-        denom_reward_state.funded_amount += amount;
+        distribution.funded_amount += amount;
     }
 
-    denom_reward_state.active_epoch.ends_at = denom_reward_state.active_epoch.started_at.add(
-        denom_reward_state
+    distribution.active_epoch.ends_at = distribution.active_epoch.started_at.add(
+        distribution
             .active_epoch
             .emission_rate
-            .get_funded_period_duration(denom_reward_state.funded_amount)?,
+            .get_funded_period_duration(distribution.funded_amount)?,
     )?;
 
     // if continuous, meaning rewards should have been distributed in the past
     // that were not due to lack of sufficient funding, ensure the total rewards
     // earned puvp is up to date.
-    if !restart_distribution && denom_reward_state.continuous {
-        denom_reward_state.active_epoch.total_earned_puvp =
-            get_active_total_earned_puvp(deps.as_ref(), &env.block, &denom_reward_state)?;
+    if !restart_distribution && distribution.continuous {
+        distribution.active_epoch.total_earned_puvp =
+            get_active_total_earned_puvp(deps.as_ref(), &env.block, &distribution)?;
     }
 
-    denom_reward_state
-        .active_epoch
-        .bump_last_updated(&env.block)?;
+    distribution.active_epoch.bump_last_updated(&env.block)?;
 
-    DENOM_REWARD_STATES.save(
-        deps.storage,
-        denom_reward_state.to_str_denom(),
-        &denom_reward_state,
-    )?;
+    DISTRIBUTIONS.save(deps.storage, distribution.id, &distribution)?;
 
     Ok(Response::new()
         .add_attribute("action", "fund")
-        .add_attribute("fund_denom", denom_reward_state.to_str_denom())
-        .add_attribute("fund_amount", amount))
+        .add_attribute("id", distribution.id.to_string())
+        .add_attribute("denom", distribution.get_denom_string())
+        .add_attribute("amount_funded", amount))
 }
 
 fn execute_claim(
     mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    denom: String,
+    id: u64,
 ) -> Result<Response, ContractError> {
-    // update the rewards information for the sender. this updates the denom reward state
-    // and the user reward state, so we operate on the correct state.
-    update_rewards(&mut deps, &env, &info.sender, denom.to_string())?;
+    nonpayable(&info)?;
 
-    // load the updated states. previous `update_rewards` call ensures that these states exist.
-    let denom_reward_state = DENOM_REWARD_STATES.load(deps.storage, denom.to_string())?;
-    let mut user_reward_state = USER_REWARD_STATES.load(deps.storage, info.sender.clone())?;
+    // update the distribution for the sender. this updates the distribution
+    // state and the user reward state.
+    update_rewards(&mut deps, &env, &info.sender, id)?;
 
-    // updating the map returns the previous value if it existed.
-    // we set the value to zero and get the amount of pending rewards until this point.
+    // load the updated states. previous `update_rewards` call ensures that
+    // these states exist.
+    let distribution = DISTRIBUTIONS.load(deps.storage, id)?;
+    let mut user_reward_state = USER_REWARDS.load(deps.storage, info.sender.clone())?;
+
+    // updating the map returns the previous value if it existed. we set the
+    // value to zero and get the amount of pending rewards until this point.
     let claim_amount = user_reward_state
-        .pending_denom_rewards
-        .insert(denom.to_string(), Uint128::zero())
+        .pending_rewards
+        .insert(id, Uint128::zero())
         .unwrap_or_default();
 
     // if there are no rewards to claim, error out
@@ -418,16 +369,79 @@ fn execute_claim(
         return Err(ContractError::NoRewardsClaimable {});
     }
 
-    // otherwise reflect the updated user reward state and transfer out the claimed rewards
-    USER_REWARD_STATES.save(deps.storage, info.sender.clone(), &user_reward_state)?;
+    // otherwise reflect the updated user reward state and transfer out the
+    // claimed rewards
+    USER_REWARDS.save(deps.storage, info.sender.clone(), &user_reward_state)?;
+
+    let denom_str = distribution.get_denom_string();
 
     Ok(Response::new()
         .add_message(get_transfer_msg(
             info.sender.clone(),
             claim_amount,
-            denom_reward_state.denom,
+            distribution.denom,
         )?)
-        .add_attribute("action", "claim"))
+        .add_attribute("action", "claim")
+        .add_attribute("id", id.to_string())
+        .add_attribute("denom", denom_str)
+        .add_attribute("amount_claimed", claim_amount))
+}
+
+/// withdraws the undistributed rewards for a distribution. members can claim
+/// whatever they earned until this point. this is effectively an inverse to
+/// fund and does not affect any already-distributed rewards. can only be called
+/// by the admin and only during the distribution period. updates the period
+/// finish expiration to the current block.
+fn execute_withdraw(
+    deps: DepsMut,
+    info: MessageInfo,
+    env: Env,
+    id: u64,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
+    // only the owner can initiate a withdraw
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    let mut distribution = DISTRIBUTIONS
+        .load(deps.storage, id)
+        .map_err(|_| ContractError::DistributionNotFound { id })?;
+
+    // withdraw is only possible during the distribution period
+    ensure!(
+        !distribution.active_epoch.ends_at.is_expired(&env.block),
+        ContractError::RewardsAlreadyDistributed {}
+    );
+
+    // withdraw ends the epoch early
+    distribution.active_epoch.ends_at = match distribution.active_epoch.emission_rate.duration {
+        Duration::Height(_) => Expiration::AtHeight(env.block.height),
+        Duration::Time(_) => Expiration::AtTime(env.block.time),
+    };
+
+    // get total rewards distributed based on newly updated ends_at
+    let rewards_distributed = distribution.active_epoch.get_total_rewards()?;
+
+    let clawback_amount = distribution.funded_amount - rewards_distributed;
+
+    // remove withdrawn funds from amount funded since they are no longer funded
+    distribution.funded_amount = rewards_distributed;
+
+    let clawback_msg = get_transfer_msg(
+        distribution.withdraw_destination.clone(),
+        clawback_amount,
+        distribution.denom.clone(),
+    )?;
+
+    DISTRIBUTIONS.save(deps.storage, id, &distribution)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "withdraw")
+        .add_attribute("id", id.to_string())
+        .add_attribute("denom", distribution.get_denom_string())
+        .add_attribute("amount_withdrawn", clawback_amount)
+        .add_attribute("amount_distributed", rewards_distributed)
+        .add_message(clawback_msg))
 }
 
 fn execute_update_owner(
@@ -436,9 +450,11 @@ fn execute_update_owner(
     env: Env,
     action: cw_ownable::Action,
 ) -> Result<Response, ContractError> {
-    // Update the current contract owner.
-    // Note, this is a two step process, the new owner must accept this ownership transfer.
-    // First the owner specifies the new owner, then the new owner must accept.
+    nonpayable(&info)?;
+
+    // Update the current contract owner. Note, this is a two step process, the
+    // new owner must accept this ownership transfer. First the owner specifies
+    // the new owner, then the new owner must accept.
     let ownership = cw_ownable::update_ownership(deps, &env.block, &info.sender, action)?;
     Ok(Response::new().add_attributes(ownership.into_attributes()))
 }
@@ -459,13 +475,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?)?),
-        QueryMsg::Denom { denom } => {
-            let state = DENOM_REWARD_STATES.load(deps.storage, denom)?;
+        QueryMsg::Distribution { id } => {
+            let state = DISTRIBUTIONS.load(deps.storage, id)?;
             Ok(to_json_binary(&state)?)
         }
-        QueryMsg::Denoms { start_after, limit } => {
-            Ok(to_json_binary(&query_denoms(deps, start_after, limit)?)?)
-        }
+        QueryMsg::Distributions { start_after, limit } => Ok(to_json_binary(
+            &query_distributions(deps, start_after, limit)?,
+        )?),
     }
 }
 
@@ -474,82 +490,83 @@ fn query_info(deps: Deps) -> StdResult<InfoResponse> {
     Ok(InfoResponse { info })
 }
 
-/// returns the pending rewards for a given address that are ready to be claimed.
+/// returns the pending rewards for a given address that are ready to be
+/// claimed.
 fn query_pending_rewards(
     deps: Deps,
     env: Env,
     addr: String,
-    start_after: Option<String>,
+    start_after: Option<u64>,
     limit: Option<u32>,
 ) -> StdResult<PendingRewardsResponse> {
     let addr = deps.api.addr_validate(&addr)?;
 
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start = start_after.map(Bound::<String>::exclusive);
+    let start = start_after.map(Bound::<u64>::exclusive);
 
     // user may not have interacted with the contract before this query so we
     // potentially return the default user reward state
-    let user_reward_state = USER_REWARD_STATES
+    let user_reward_state = USER_REWARDS
         .load(deps.storage, addr.clone())
         .unwrap_or_default();
 
-    let denoms = DENOM_REWARD_STATES
+    let distributions = DISTRIBUTIONS
         .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .collect::<StdResult<Vec<_>>>()?;
 
-    let mut pending_rewards: Vec<DenomPendingRewards> = vec![];
+    let mut pending_rewards: Vec<DistributionPendingRewards> = vec![];
 
-    // we iterate over every registered denom and calculate the pending rewards for the user
-    for (denom, reward_state) in denoms {
+    // iterate over all distributions and calculate pending rewards for the user
+    for (id, distribution) in distributions {
         // first we get the active epoch earned puvp value
         let active_total_earned_puvp =
-            get_active_total_earned_puvp(deps, &env.block, &reward_state)?;
+            get_active_total_earned_puvp(deps, &env.block, &distribution)?;
 
         // then we add that to the historical rewards earned puvp
         let total_earned_puvp =
-            active_total_earned_puvp.checked_add(reward_state.historical_earned_puvp)?;
+            active_total_earned_puvp.checked_add(distribution.historical_earned_puvp)?;
 
-        let earned_rewards = get_accrued_rewards_since_last_user_action(
+        let existing_amount = user_reward_state
+            .pending_rewards
+            .get(&id)
+            .cloned()
+            .unwrap_or_default();
+
+        let unaccounted_for_rewards = get_accrued_rewards_not_yet_accounted_for(
             deps,
             &env,
             &addr,
             total_earned_puvp,
-            &reward_state.vp_contract,
-            denom.to_string(),
+            &distribution,
             &user_reward_state,
         )?;
-        let existing_amount = user_reward_state
-            .pending_denom_rewards
-            .get(&denom)
-            .cloned()
-            .unwrap_or_default();
 
-        pending_rewards.push(DenomPendingRewards {
-            denom: reward_state.denom,
-            pending_rewards: earned_rewards.amount + existing_amount,
+        pending_rewards.push(DistributionPendingRewards {
+            id,
+            denom: distribution.denom,
+            pending_rewards: unaccounted_for_rewards + existing_amount,
         });
     }
 
-    let pending_rewards_response = PendingRewardsResponse { pending_rewards };
-    Ok(pending_rewards_response)
+    Ok(PendingRewardsResponse { pending_rewards })
 }
 
-fn query_denoms(
+fn query_distributions(
     deps: Deps,
-    start_after: Option<String>,
+    start_after: Option<u64>,
     limit: Option<u32>,
-) -> StdResult<DenomsResponse> {
+) -> StdResult<DistributionsResponse> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start = start_after.map(Bound::<String>::exclusive);
+    let start = start_after.map(Bound::<u64>::exclusive);
 
-    let rewards = DENOM_REWARD_STATES
+    let distributions = DISTRIBUTIONS
         .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|item| item.map(|(_, v)| v))
         .collect::<StdResult<Vec<_>>>()?;
 
-    Ok(DenomsResponse { denoms: rewards })
+    Ok(DistributionsResponse { distributions })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -11,7 +11,7 @@ use dao_interface::voting::InfoResponse;
 pub use cw_controllers::ClaimsResponse;
 pub use cw_ownable::Ownership;
 
-use crate::state::{DenomRewardState, RewardEmissionRate};
+use crate::state::{DistributionState, RewardEmissionRate};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -30,12 +30,12 @@ pub enum ExecuteMsg {
     NftStakeChangeHook(NftStakeChangedHookMsg),
     /// Called when tokens are staked or unstaked.
     StakeChangeHook(StakeChangedHookMsg),
-    /// registers a new reward denom
-    Register(RegisterMsg),
-    /// updates the config for a registered denom
+    /// registers a new distribution
+    Create(CreateMsg),
+    /// updates the config for a distribution
     Update {
-        /// denom to update
-        denom: String,
+        /// distribution ID to update
+        id: u64,
         /// reward emission rate
         emission_rate: Option<RewardEmissionRate>,
         /// whether or not reward distribution is continuous: whether rewards
@@ -53,18 +53,18 @@ pub enum ExecuteMsg {
     /// Used to fund this contract with cw20 tokens.
     Receive(Cw20ReceiveMsg),
     /// Used to fund this contract with native tokens.
-    Fund {},
+    Fund(FundMsg),
     /// Claims rewards for the sender.
-    Claim { denom: String },
-    /// withdraws the undistributed rewards for a denom. members can claim
-    /// whatever they earned until this point. this is effectively an inverse to
-    /// fund and does not affect any already-distributed rewards.
-    Withdraw { denom: String },
+    Claim { id: u64 },
+    /// withdraws the undistributed rewards for a distribution. members can
+    /// claim whatever they earned until this point. this is effectively an
+    /// inverse to fund and does not affect any already-distributed rewards.
+    Withdraw { id: u64 },
 }
 
 #[cw_serde]
-pub struct RegisterMsg {
-    /// denom to register
+pub struct CreateMsg {
+    /// denom to distribute
     pub denom: UncheckedDenom,
     /// reward emission rate
     pub emission_rate: RewardEmissionRate,
@@ -82,12 +82,15 @@ pub struct RegisterMsg {
 }
 
 #[cw_serde]
-pub enum MigrateMsg {}
+pub struct FundMsg {
+    /// distribution ID to fund
+    pub id: u64,
+}
 
 #[cw_serde]
 pub enum ReceiveCw20Msg {
     /// Used to fund this contract with cw20 tokens.
-    Fund {},
+    Fund(FundMsg),
 }
 
 #[cw_serde]
@@ -103,32 +106,39 @@ pub enum QueryMsg {
     #[returns(PendingRewardsResponse)]
     PendingRewards {
         address: String,
-        start_after: Option<String>,
+        start_after: Option<u64>,
         limit: Option<u32>,
     },
-    /// Returns the state of the given denom reward distribution.
-    #[returns(DenomRewardState)]
-    Denom { denom: String },
-    /// Returns the state of all the registered reward distributions.
-    #[returns(DenomsResponse)]
-    Denoms {
-        start_after: Option<String>,
+    /// Returns the state of the given distribution.
+    #[returns(DistributionState)]
+    Distribution { id: u64 },
+    /// Returns the state of all the distributions.
+    #[returns(DistributionsResponse)]
+    Distributions {
+        start_after: Option<u64>,
         limit: Option<u32>,
     },
 }
 
 #[cw_serde]
-pub struct DenomsResponse {
-    pub denoms: Vec<DenomRewardState>,
+pub struct DistributionsResponse {
+    pub distributions: Vec<DistributionState>,
 }
 
 #[cw_serde]
 pub struct PendingRewardsResponse {
-    pub pending_rewards: Vec<DenomPendingRewards>,
+    pub pending_rewards: Vec<DistributionPendingRewards>,
 }
 
 #[cw_serde]
-pub struct DenomPendingRewards {
+pub struct DistributionPendingRewards {
+    /// distribution ID
+    pub id: u64,
+    /// denomination of the pending rewards
     pub denom: Denom,
+    /// amount of pending rewards in the denom being distributed
     pub pending_rewards: Uint128,
 }
+
+#[cw_serde]
+pub enum MigrateMsg {}

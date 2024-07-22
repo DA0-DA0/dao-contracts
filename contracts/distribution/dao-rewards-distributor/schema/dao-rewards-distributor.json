@@ -61,20 +61,20 @@
         "additionalProperties": false
       },
       {
-        "description": "registers a new reward denom",
+        "description": "registers a new distribution",
         "type": "object",
         "required": [
-          "register"
+          "create"
         ],
         "properties": {
-          "register": {
-            "$ref": "#/definitions/RegisterMsg"
+          "create": {
+            "$ref": "#/definitions/CreateMsg"
           }
         },
         "additionalProperties": false
       },
       {
-        "description": "updates the config for a registered denom",
+        "description": "updates the config for a distribution",
         "type": "object",
         "required": [
           "update"
@@ -83,7 +83,7 @@
           "update": {
             "type": "object",
             "required": [
-              "denom"
+              "id"
             ],
             "properties": {
               "continuous": {
@@ -92,10 +92,6 @@
                   "boolean",
                   "null"
                 ]
-              },
-              "denom": {
-                "description": "denom to update",
-                "type": "string"
               },
               "emission_rate": {
                 "description": "reward emission rate",
@@ -114,6 +110,12 @@
                   "string",
                   "null"
                 ]
+              },
+              "id": {
+                "description": "distribution ID to update",
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
               },
               "vp_contract": {
                 "description": "address to query the voting power",
@@ -156,8 +158,7 @@
         ],
         "properties": {
           "fund": {
-            "type": "object",
-            "additionalProperties": false
+            "$ref": "#/definitions/FundMsg"
           }
         },
         "additionalProperties": false
@@ -172,11 +173,13 @@
           "claim": {
             "type": "object",
             "required": [
-              "denom"
+              "id"
             ],
             "properties": {
-              "denom": {
-                "type": "string"
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
               }
             },
             "additionalProperties": false
@@ -185,7 +188,7 @@
         "additionalProperties": false
       },
       {
-        "description": "withdraws the undistributed rewards for a denom. members can claim whatever they earned until this point. this is effectively an inverse to fund and does not affect any already-distributed rewards.",
+        "description": "withdraws the undistributed rewards for a distribution. members can claim whatever they earned until this point. this is effectively an inverse to fund and does not affect any already-distributed rewards.",
         "type": "object",
         "required": [
           "withdraw"
@@ -194,11 +197,13 @@
           "withdraw": {
             "type": "object",
             "required": [
-              "denom"
+              "id"
             ],
             "properties": {
-              "denom": {
-                "type": "string"
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
               }
             },
             "additionalProperties": false
@@ -279,6 +284,54 @@
       "Binary": {
         "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
         "type": "string"
+      },
+      "CreateMsg": {
+        "type": "object",
+        "required": [
+          "continuous",
+          "denom",
+          "emission_rate",
+          "hook_caller",
+          "vp_contract"
+        ],
+        "properties": {
+          "continuous": {
+            "description": "whether or not reward distribution is continuous: whether rewards should be paused once all funding has been distributed, or if future funding after distribution finishes should be applied to the past.",
+            "type": "boolean"
+          },
+          "denom": {
+            "description": "denom to distribute",
+            "allOf": [
+              {
+                "$ref": "#/definitions/UncheckedDenom"
+              }
+            ]
+          },
+          "emission_rate": {
+            "description": "reward emission rate",
+            "allOf": [
+              {
+                "$ref": "#/definitions/RewardEmissionRate"
+              }
+            ]
+          },
+          "hook_caller": {
+            "description": "address that will update the reward split when the voting power distribution changes",
+            "type": "string"
+          },
+          "vp_contract": {
+            "description": "address to query the voting power",
+            "type": "string"
+          },
+          "withdraw_destination": {
+            "description": "destination address for reward clawbacks. defaults to owner",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
       },
       "Cw20ReceiveMsg": {
         "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
@@ -382,6 +435,21 @@
           }
         ]
       },
+      "FundMsg": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "description": "distribution ID to fund",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      },
       "MemberChangedHookMsg": {
         "description": "MemberChangedHookMsg should be de/serialized under `MemberChangedHook()` variant in a ExecuteMsg. This contains a list of all diffs on the given transaction.",
         "type": "object",
@@ -484,54 +552,6 @@
             "additionalProperties": false
           }
         ]
-      },
-      "RegisterMsg": {
-        "type": "object",
-        "required": [
-          "continuous",
-          "denom",
-          "emission_rate",
-          "hook_caller",
-          "vp_contract"
-        ],
-        "properties": {
-          "continuous": {
-            "description": "whether or not reward distribution is continuous: whether rewards should be paused once all funding has been distributed, or if future funding after distribution finishes should be applied to the past.",
-            "type": "boolean"
-          },
-          "denom": {
-            "description": "denom to register",
-            "allOf": [
-              {
-                "$ref": "#/definitions/UncheckedDenom"
-              }
-            ]
-          },
-          "emission_rate": {
-            "description": "reward emission rate",
-            "allOf": [
-              {
-                "$ref": "#/definitions/RewardEmissionRate"
-              }
-            ]
-          },
-          "hook_caller": {
-            "description": "address that will update the reward split when the voting power distribution changes",
-            "type": "string"
-          },
-          "vp_contract": {
-            "description": "address to query the voting power",
-            "type": "string"
-          },
-          "withdraw_destination": {
-            "description": "destination address for reward clawbacks. defaults to owner",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "additionalProperties": false
       },
       "RewardEmissionRate": {
         "description": "defines how many tokens (amount) should be distributed per amount of time (duration). e.g. 5udenom per hour.",
@@ -719,9 +739,11 @@
               },
               "start_after": {
                 "type": [
-                  "string",
+                  "integer",
                   "null"
-                ]
+                ],
+                "format": "uint64",
+                "minimum": 0.0
               }
             },
             "additionalProperties": false
@@ -730,20 +752,22 @@
         "additionalProperties": false
       },
       {
-        "description": "Returns the state of the given denom reward distribution.",
+        "description": "Returns the state of the given distribution.",
         "type": "object",
         "required": [
-          "denom"
+          "distribution"
         ],
         "properties": {
-          "denom": {
+          "distribution": {
             "type": "object",
             "required": [
-              "denom"
+              "id"
             ],
             "properties": {
-              "denom": {
-                "type": "string"
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
               }
             },
             "additionalProperties": false
@@ -752,13 +776,13 @@
         "additionalProperties": false
       },
       {
-        "description": "Returns the state of all the registered reward distributions.",
+        "description": "Returns the state of all the distributions.",
         "type": "object",
         "required": [
-          "denoms"
+          "distributions"
         ],
         "properties": {
-          "denoms": {
+          "distributions": {
             "type": "object",
             "properties": {
               "limit": {
@@ -771,9 +795,11 @@
               },
               "start_after": {
                 "type": [
-                  "string",
+                  "integer",
                   "null"
-                ]
+                ],
+                "format": "uint64",
+                "minimum": 0.0
               }
             },
             "additionalProperties": false
@@ -791,10 +817,10 @@
   },
   "sudo": null,
   "responses": {
-    "denom": {
+    "distribution": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "DenomRewardState",
-      "description": "the state of a denom's reward distribution",
+      "title": "DistributionState",
+      "description": "the state of a reward distribution",
       "type": "object",
       "required": [
         "active_epoch",
@@ -803,12 +829,13 @@
         "funded_amount",
         "historical_earned_puvp",
         "hook_caller",
+        "id",
         "vp_contract",
         "withdraw_destination"
       ],
       "properties": {
         "active_epoch": {
-          "description": "current denom distribution epoch state",
+          "description": "current distribution epoch state",
           "allOf": [
             {
               "$ref": "#/definitions/Epoch"
@@ -850,6 +877,12 @@
               "$ref": "#/definitions/Addr"
             }
           ]
+        },
+        "id": {
+          "description": "distribution ID",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
         },
         "vp_contract": {
           "description": "address to query the voting power",
@@ -1085,18 +1118,18 @@
         }
       }
     },
-    "denoms": {
+    "distributions": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "DenomsResponse",
+      "title": "DistributionsResponse",
       "type": "object",
       "required": [
-        "denoms"
+        "distributions"
       ],
       "properties": {
-        "denoms": {
+        "distributions": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/DenomRewardState"
+            "$ref": "#/definitions/DistributionState"
           }
         }
       },
@@ -1134,8 +1167,8 @@
             }
           ]
         },
-        "DenomRewardState": {
-          "description": "the state of a denom's reward distribution",
+        "DistributionState": {
+          "description": "the state of a reward distribution",
           "type": "object",
           "required": [
             "active_epoch",
@@ -1144,12 +1177,13 @@
             "funded_amount",
             "historical_earned_puvp",
             "hook_caller",
+            "id",
             "vp_contract",
             "withdraw_destination"
           ],
           "properties": {
             "active_epoch": {
-              "description": "current denom distribution epoch state",
+              "description": "current distribution epoch state",
               "allOf": [
                 {
                   "$ref": "#/definitions/Epoch"
@@ -1191,6 +1225,12 @@
                   "$ref": "#/definitions/Addr"
                 }
               ]
+            },
+            "id": {
+              "description": "distribution ID",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
             },
             "vp_contract": {
               "description": "address to query the voting power",
@@ -1546,7 +1586,7 @@
         "pending_rewards": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/DenomPendingRewards"
+            "$ref": "#/definitions/DistributionPendingRewards"
           }
         }
       },
@@ -1584,18 +1624,35 @@
             }
           ]
         },
-        "DenomPendingRewards": {
+        "DistributionPendingRewards": {
           "type": "object",
           "required": [
             "denom",
+            "id",
             "pending_rewards"
           ],
           "properties": {
             "denom": {
-              "$ref": "#/definitions/Denom"
+              "description": "denomination of the pending rewards",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Denom"
+                }
+              ]
+            },
+            "id": {
+              "description": "distribution ID",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
             },
             "pending_rewards": {
-              "$ref": "#/definitions/Uint128"
+              "description": "amount of pending rewards in the denom being distributed",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                }
+              ]
             }
           },
           "additionalProperties": false

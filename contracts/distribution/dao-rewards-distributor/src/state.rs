@@ -3,29 +3,34 @@ use cosmwasm_std::{
     Addr, BlockInfo, Decimal, Deps, StdError, StdResult, Timestamp, Uint128, Uint256, Uint64,
 };
 use cw20::{Denom, Expiration};
-use cw_storage_plus::Map;
+use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
 use std::{cmp::min, collections::HashMap};
 
 use crate::{helpers::get_exp_diff, rewards::get_active_total_earned_puvp};
 
 /// map user address to their unique reward state
-pub const USER_REWARD_STATES: Map<Addr, UserRewardState> = Map::new("u_r_s");
+pub const USER_REWARDS: Map<Addr, UserRewardState> = Map::new("ur");
 
-/// map denom string to the state of its reward distribution
-pub const DENOM_REWARD_STATES: Map<String, DenomRewardState> = Map::new("d_r_s");
+/// map distribution ID to the its distribution state
+pub const DISTRIBUTIONS: Map<u64, DistributionState> = Map::new("d");
 
-/// map registered hooks to list of denoms they're registered for
-pub const REGISTERED_HOOK_DENOMS: Map<Addr, Vec<String>> = Map::new("r_h_d");
+/// map registered hooks to list of distribution IDs they're registered for
+pub const REGISTERED_HOOKS: Map<Addr, Vec<u64>> = Map::new("rh");
+
+/// The number of distributions that have been created.
+pub const COUNT: Item<u64> = Item::new("count");
 
 #[cw_serde]
 #[derive(Default)]
 pub struct UserRewardState {
-    /// map denom to the user's pending rewards
-    pub pending_denom_rewards: HashMap<String, Uint128>,
-    /// map denom string to the user's earned rewards per unit voting power that
-    /// have already been accounted for (added to pending and maybe claimed).
-    pub accounted_denom_rewards_puvp: HashMap<String, Uint256>,
+    /// map distribution ID to the user's pending rewards that have been
+    /// accounted for but not yet claimed.
+    pub pending_rewards: HashMap<u64, Uint128>,
+    /// map distribution ID to the user's earned rewards per unit voting power
+    /// that have already been accounted for (added to pending and maybe
+    /// claimed).
+    pub accounted_for_rewards_puvp: HashMap<u64, Uint256>,
 }
 
 /// defines how many tokens (amount) should be distributed per amount of time
@@ -134,12 +139,14 @@ impl Epoch {
     }
 }
 
-/// the state of a denom's reward distribution
+/// the state of a reward distribution
 #[cw_serde]
-pub struct DenomRewardState {
+pub struct DistributionState {
+    /// distribution ID
+    pub id: u64,
     /// validated denom (native or cw20)
     pub denom: Denom,
-    /// current denom distribution epoch state
+    /// current distribution epoch state
     pub active_epoch: Epoch,
     /// whether or not reward distribution is continuous: whether rewards should
     /// be paused once all funding has been distributed, or if future funding
@@ -161,8 +168,8 @@ pub struct DenomRewardState {
     pub historical_earned_puvp: Uint256,
 }
 
-impl DenomRewardState {
-    pub fn to_str_denom(&self) -> String {
+impl DistributionState {
+    pub fn get_denom_string(&self) -> String {
         match &self.denom {
             Denom::Native(denom) => denom.to_string(),
             Denom::Cw20(address) => address.to_string(),
@@ -185,8 +192,12 @@ impl DenomRewardState {
     pub fn get_latest_reward_distribution_time(&self, current_block: &BlockInfo) -> Expiration {
         match self.active_epoch.ends_at {
             Expiration::Never {} => self.active_epoch.last_updated_total_earned_puvp,
-            Expiration::AtHeight(h) => Expiration::AtHeight(min(current_block.height, h)),
-            Expiration::AtTime(t) => Expiration::AtTime(min(current_block.time, t)),
+            Expiration::AtHeight(ends_at_height) => {
+                Expiration::AtHeight(min(current_block.height, ends_at_height))
+            }
+            Expiration::AtTime(ends_at_time) => {
+                Expiration::AtTime(min(current_block.time, ends_at_time))
+            }
         }
     }
 
