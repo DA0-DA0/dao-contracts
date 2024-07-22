@@ -52,9 +52,11 @@ pub enum EmissionRate {
         amount: Uint128,
         /// duration of time to distribute amount
         duration: Duration,
-        /// whether or not reward distribution is continuous: whether rewards
-        /// should be paused once all funding has been distributed, or if future
-        /// funding after distribution finishes should be applied to the past.
+        /// whether or not reward distribution is continuous: whether future
+        /// funding after distribution finishes should be applied to the past,
+        /// or rewards are paused once all funding has been distributed. all
+        /// continuously backfilled rewards are distributed based on the current
+        /// voting power.
         continuous: bool,
     },
 }
@@ -153,14 +155,7 @@ impl Epoch {
     pub fn bump_last_updated(&mut self, current_block: &BlockInfo) {
         match self.ends_at {
             Expiration::Never {} => {
-                self.last_updated_total_earned_puvp =
-                    // for immediate emission, there is no ends_at. always
-                    // update to current block height.
-                    if (self.emission_rate == EmissionRate::Immediate {}) {
-                        Expiration::AtHeight(current_block.height)
-                    } else {
-                        Expiration::Never {}
-                    };
+                self.last_updated_total_earned_puvp = Expiration::Never {};
             }
             Expiration::AtHeight(ends_at_height) => {
                 self.last_updated_total_earned_puvp =

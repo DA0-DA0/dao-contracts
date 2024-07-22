@@ -1075,6 +1075,52 @@ fn test_native_dao_rewards() {
 }
 
 #[test]
+fn test_continuous_backfill_latest_voting_power() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000));
+    suite.assert_duration(10);
+
+    // skip all of the time
+    suite.skip_blocks(1_000_000);
+
+    suite.assert_pending_rewards(ADDR1, 1, 50_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 25_000_000);
+    suite.assert_pending_rewards(ADDR3, 1, 25_000_000);
+
+    suite.claim_rewards(ADDR1, 1);
+    suite.claim_rewards(ADDR2, 1);
+    suite.claim_rewards(ADDR3, 1);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    // change voting powers (1 = 200, 2 = 50, 3 = 50)
+    suite.stake_native_tokens(ADDR1, 100);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    // change voting powers again (1 = 50, 2 = 100, 3 = 100)
+    suite.unstake_native_tokens(ADDR1, 150);
+    suite.stake_native_tokens(ADDR2, 50);
+    suite.stake_native_tokens(ADDR3, 50);
+
+    // skip 1/10th of the time
+    suite.skip_blocks(100_000);
+
+    // fund with 100M
+    suite.fund_native(1, coin(100_000_000, DENOM));
+
+    // since this is continuous, rewards should backfill based on the latest
+    // voting powers. we skipped 30% of the time, so 30M should be distributed
+    suite.assert_pending_rewards(ADDR1, 1, 6_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 12_000_000);
+    suite.assert_pending_rewards(ADDR3, 1, 12_000_000);
+}
+
+#[test]
 fn test_cw4_dao_rewards() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::CW4).build();
 
