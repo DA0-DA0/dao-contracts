@@ -1,6 +1,4 @@
-use cw_orch::interface;
-#[cfg(not(target_arch = "wasm32"))]
-use cw_orch::prelude::*;
+use cw_orch::{interface, prelude::*};
 
 use dao_test_custom_factory::contract::{execute, instantiate, query, reply};
 use dao_test_custom_factory::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -8,7 +6,6 @@ use dao_test_custom_factory::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 #[interface(InstantiateMsg, ExecuteMsg, QueryMsg, Empty)]
 pub struct DaoTestCustomFactory;
 
-#[cfg(not(target_arch = "wasm32"))]
 impl<Chain> Uploadable for DaoTestCustomFactory<Chain> {
     /// Return the path to the wasm file corresponding to the contract
     fn wasm(_chain: &ChainInfoOwned) -> WasmPath {
