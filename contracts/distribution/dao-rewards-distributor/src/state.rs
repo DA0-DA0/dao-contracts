@@ -273,10 +273,12 @@ impl DistributionState {
         };
 
         // 2. add current epoch rewards earned to historical rewards
-        // TODO: what to do on overflow?
         self.historical_earned_puvp = self
             .historical_earned_puvp
-            .checked_add(self.active_epoch.total_earned_puvp)?;
+            .checked_add(self.active_epoch.total_earned_puvp)
+            .map_err(|err| ContractError::DistributionHistoryTooLarge {
+                err: err.to_string(),
+            })?;
 
         // 3. deduct the distributed rewards amount from total funded amount, as
         // those rewards are no longer distributed in the new epoch

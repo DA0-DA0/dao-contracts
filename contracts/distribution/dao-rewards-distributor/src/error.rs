@@ -51,4 +51,7 @@ pub enum ContractError {
 
     #[error("There is no voting power registered, so no one will receive these funds")]
     NoVotingPowerNoRewards {},
+
+    #[error("Cannot update emission rate because this distribution has accumulated the maximum rewards. Start a new distribution with the new emission rate instead. (Overflow: {err})")]
+    DistributionHistoryTooLarge { err: String },
 }
