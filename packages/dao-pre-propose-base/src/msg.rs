@@ -148,3 +148,18 @@ pub struct DepositInfoResponse {
     /// The address that created the proposal.
     pub proposer: cosmwasm_std::Addr,
 }
+
+#[cw_serde]
+pub enum MigrateMsg<MigrateExt>
+where
+    MigrateExt: JsonSchema,
+{
+    FromUnderV250 {
+        /// Optionally set a new submission policy with more granular controls.
+        /// If not set, the current policy will remain.
+        policy: Option<PreProposeSubmissionPolicy>,
+    },
+    Extension {
+        msg: MigrateExt,
+    },
+}

@@ -2275,7 +2275,139 @@
       }
     }
   },
-  "migrate": null,
+  "migrate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "MigrateMsg",
+    "oneOf": [
+      {
+        "type": "object",
+        "required": [
+          "from_under_v250"
+        ],
+        "properties": {
+          "from_under_v250": {
+            "type": "object",
+            "properties": {
+              "policy": {
+                "description": "Optionally set a new submission policy with more granular controls. If not set, the current policy will remain.",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/PreProposeSubmissionPolicy"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "extension"
+        ],
+        "properties": {
+          "extension": {
+            "type": "object",
+            "required": [
+              "msg"
+            ],
+            "properties": {
+              "msg": {
+                "$ref": "#/definitions/Empty"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "Empty": {
+        "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
+        "type": "object"
+      },
+      "PreProposeSubmissionPolicy": {
+        "description": "The policy configured in a pre-propose module that determines who can submit proposals. This is the preferred way to restrict proposal creation (as opposed to the ProposalCreationPolicy above) since pre-propose modules support other features, such as proposal deposits.",
+        "oneOf": [
+          {
+            "description": "Anyone may create proposals, except for those in the denylist.",
+            "type": "object",
+            "required": [
+              "anyone"
+            ],
+            "properties": {
+              "anyone": {
+                "type": "object",
+                "properties": {
+                  "denylist": {
+                    "description": "Addresses that may not create proposals.",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Specific people may create proposals.",
+            "type": "object",
+            "required": [
+              "specific"
+            ],
+            "properties": {
+              "specific": {
+                "type": "object",
+                "required": [
+                  "dao_members"
+                ],
+                "properties": {
+                  "allowlist": {
+                    "description": "Addresses that may create proposals.",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "dao_members": {
+                    "description": "Whether or not DAO members may create proposals.",
+                    "type": "boolean"
+                  },
+                  "denylist": {
+                    "description": "Addresses that may not create proposals, overriding other settings.",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
   "sudo": null,
   "responses": {
     "can_propose": {
