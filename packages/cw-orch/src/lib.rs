@@ -1,6 +1,8 @@
 #[cfg(not(target_arch = "wasm32"))]
 mod core;
 #[cfg(not(target_arch = "wasm32"))]
+mod distribution;
+#[cfg(not(target_arch = "wasm32"))]
 mod external;
 #[cfg(not(target_arch = "wasm32"))]
 mod pre_propose;
@@ -15,6 +17,8 @@ mod voting;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use core::*;
+#[cfg(not(target_arch = "wasm32"))]
+pub use distribution::*;
 #[cfg(not(target_arch = "wasm32"))]
 pub use external::*;
 #[cfg(not(target_arch = "wasm32"))]

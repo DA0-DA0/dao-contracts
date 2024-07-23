@@ -1,15 +1,17 @@
 use cosmwasm_schema::schemars::JsonSchema;
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
-    SubMsg, WasmMsg,
+    to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdError,
+    StdResult, SubMsg, WasmMsg,
 };
 
-use cw2::set_contract_version;
+use semver::{Version, VersionReq};
 
-use cw_denom::UncheckedDenom;
+use cw2::{get_contract_version, set_contract_version, ContractVersion};
+
+use cw_denom::{CheckedDenom, UncheckedDenom};
 use dao_interface::voting::{Query as CwCoreQuery, VotingPowerAtHeightResponse};
 use dao_voting::{
-    deposit::{DepositRefundPolicy, UncheckedDepositInfo},
+    deposit::{CheckedDepositInfo, DepositRefundPolicy, UncheckedDepositInfo},
     pre_propose::{PreProposeSubmissionPolicy, PreProposeSubmissionPolicyError},
     status::Status,
 };
@@ -17,18 +19,23 @@ use serde::Serialize;
 
 use crate::{
     error::PreProposeError,
-    msg::{DepositInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{DepositInfoResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     state::{Config, PreProposeContract},
 };
+
+use cw_denom_v241::CheckedDenom as CheckedDenomV241;
+use dao_pre_propose_base_v241::state::PreProposeContract as PreProposeContractV241;
+use dao_voting_v241::deposit::DepositRefundPolicy as DepositRefundPolicyV241;
 
 const CONTRACT_NAME: &str = "crates.io::dao-pre-propose-base";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-impl<InstantiateExt, ExecuteExt, QueryExt, ProposalMessage>
-    PreProposeContract<InstantiateExt, ExecuteExt, QueryExt, ProposalMessage>
+impl<InstantiateExt, ExecuteExt, QueryExt, MigrateExt, ProposalMessage>
+    PreProposeContract<InstantiateExt, ExecuteExt, QueryExt, MigrateExt, ProposalMessage>
 where
     ProposalMessage: Serialize,
     QueryExt: JsonSchema,
+    MigrateExt: JsonSchema,
 {
     pub fn instantiate(
         &self,
@@ -567,6 +574,9 @@ where
                 to_json_binary(&self.proposal_module.load(deps.storage)?)
             }
             QueryMsg::Dao {} => to_json_binary(&self.dao.load(deps.storage)?),
+            QueryMsg::Info {} => to_json_binary(&dao_interface::proposal::InfoResponse {
+                info: cw2::get_contract_version(deps.storage)?,
+            }),
             QueryMsg::Config {} => to_json_binary(&self.config.load(deps.storage)?),
             QueryMsg::DepositInfo { proposal_id } => {
                 let (deposit_info, proposer) = self.deposits.load(deps.storage, proposal_id)?;
@@ -595,6 +605,82 @@ where
                 to_json_binary(&self.proposal_submitted_hooks.query_hooks(deps)?)
             }
             QueryMsg::QueryExtension { .. } => Ok(Binary::default()),
+        }
+    }
+
+    pub fn migrate(
+        &self,
+        deps: DepsMut,
+        msg: MigrateMsg<MigrateExt>,
+    ) -> Result<Response, PreProposeError> {
+        match msg {
+            MigrateMsg::FromUnderV250 { policy } => {
+                // all contracts >= v2.4.1 and < v2.5.0 have the same config
+                let required_str = ">=2.4.1, <2.5.0";
+
+                // ensure acceptable version
+                let requirement = VersionReq::parse(required_str).unwrap();
+                let ContractVersion { version, .. } = get_contract_version(deps.storage)?;
+                let sem_version = Version::parse(&version).unwrap();
+
+                if !requirement.matches(&sem_version) {
+                    return Err(PreProposeError::CannotMigrateVersion {
+                        required: required_str.to_string(),
+                        actual: version.clone(),
+                    });
+                }
+
+                let old_contract = PreProposeContractV241::<Empty, Empty, Empty, Empty>::default();
+                let old_config = old_contract.config.load(deps.storage)?;
+
+                // if provided a policy to update with, use it
+                let submission_policy = if let Some(submission_policy) = policy {
+                    submission_policy
+
+                    // otherwise convert old `open_proposal_submission` flag
+                    // into new policy enum
+                } else if old_config.open_proposal_submission {
+                    PreProposeSubmissionPolicy::Anyone { denylist: None }
+                } else {
+                    PreProposeSubmissionPolicy::Specific {
+                        dao_members: true,
+                        allowlist: None,
+                        denylist: None,
+                    }
+                };
+
+                let deposit_info: Option<CheckedDepositInfo> =
+                    old_config.deposit_info.map(|old| CheckedDepositInfo {
+                        denom: match old.denom {
+                            CheckedDenomV241::Cw20(address) => CheckedDenom::Cw20(address),
+                            CheckedDenomV241::Native(denom) => CheckedDenom::Native(denom),
+                        },
+                        amount: old.amount,
+                        refund_policy: match old.refund_policy {
+                            DepositRefundPolicyV241::Always => DepositRefundPolicy::Always,
+                            DepositRefundPolicyV241::Never => DepositRefundPolicy::Never,
+                            DepositRefundPolicyV241::OnlyPassed => DepositRefundPolicy::OnlyPassed,
+                        },
+                    });
+
+                self.config.save(
+                    deps.storage,
+                    &Config {
+                        deposit_info,
+                        submission_policy,
+                    },
+                )?;
+
+                set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+                Ok(Response::default()
+                    .add_attribute("action", "migrate")
+                    .add_attribute("from", version)
+                    .add_attribute("to", CONTRACT_VERSION))
+            }
+            MigrateMsg::Extension { .. } => Err(PreProposeError::Std(StdError::generic_err(
+                "not implemented",
+            ))),
         }
     }
 }

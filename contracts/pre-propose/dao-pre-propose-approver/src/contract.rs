@@ -15,8 +15,8 @@ use dao_voting::pre_propose::PreProposeSubmissionPolicy;
 use dao_voting::status::Status;
 
 use crate::msg::{
-    BaseInstantiateMsg, ExecuteExt, ExecuteMsg, InstantiateMsg, ProposeMessageInternal, QueryExt,
-    QueryMsg,
+    BaseInstantiateMsg, ExecuteExt, ExecuteMsg, InstantiateMsg, MigrateMsg, ProposeMessageInternal,
+    QueryExt, QueryMsg,
 };
 use crate::state::{
     PRE_PROPOSE_APPROVAL_CONTRACT, PRE_PROPOSE_ID_TO_PROPOSAL_ID, PROPOSAL_ID_TO_PRE_PROPOSE_ID,
@@ -25,7 +25,7 @@ use crate::state::{
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-pre-propose-approver";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-type PrePropose = PreProposeContract<Empty, ExecuteExt, QueryExt, ApproverProposeMessage>;
+type PrePropose = PreProposeContract<Empty, ExecuteExt, QueryExt, Empty, ApproverProposeMessage>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -255,4 +255,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         },
         _ => PrePropose::default().query(deps, env, msg),
     }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, PreProposeError> {
+    let res = PrePropose::default().migrate(deps.branch(), msg);
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    res
 }
