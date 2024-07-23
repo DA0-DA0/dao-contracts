@@ -1,7 +1,7 @@
 use cw_orch::{interface, prelude::*};
 
-use cw_payroll_factory::contract::{execute, instantiate, query, reply};
-use cw_payroll_factory::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use btsg_ft_factory::contract::{execute, instantiate, query, reply};
+use btsg_ft_factory::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 #[interface(InstantiateMsg, ExecuteMsg, QueryMsg, Empty)]
 pub struct DaoExternalFantokenFactory;

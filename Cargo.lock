@@ -705,26 +705,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "btsg-ft-factory"
-version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?rev=1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-orch 0.24.1",
- "cw-storage-plus 1.2.0",
- "cw2 1.1.2",
- "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?rev=1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb)",
- "osmosis-std-derive",
- "prost 0.12.3",
- "prost-derive 0.12.3",
- "prost-types 0.12.3",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
 name = "bumpalo"
 version = "3.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1416,7 +1396,7 @@ dependencies = [
 [[package]]
 name = "cw-fund-distributor"
 version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#11ec0bf00317a6af2b0e686589ec5bf00bf69888"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -2401,7 +2381,7 @@ dependencies = [
 [[package]]
 name = "cw20-stake-external-rewards"
 version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#11ec0bf00317a6af2b0e686589ec5bf00bf69888"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -2442,7 +2422,7 @@ dependencies = [
 [[package]]
 name = "cw20-stake-reward-distributor"
 version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#11ec0bf00317a6af2b0e686589ec5bf00bf69888"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -2658,7 +2638,7 @@ dependencies = [
 [[package]]
 name = "cw721-controllers"
 version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#11ec0bf00317a6af2b0e686589ec5bf00bf69888"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -2755,7 +2735,7 @@ dependencies = [
 [[package]]
 name = "dao-cw-orch"
 version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#11ec0bf00317a6af2b0e686589ec5bf00bf69888"
 dependencies = [
  "btsg-ft-factory 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "cosmwasm-std",
@@ -3058,21 +3038,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dao-interface"
-version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?rev=1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-orch 0.24.1",
- "cw-utils 1.0.3",
- "cw2 1.1.2",
- "cw20 1.1.2",
- "cw721 0.18.0",
- "osmosis-std",
-]
-
-[[package]]
 name = "dao-migrator"
 version = "2.5.0"
 dependencies = [
@@ -3194,7 +3159,7 @@ dependencies = [
 [[package]]
 name = "dao-pre-propose-approval-single"
 version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#11ec0bf00317a6af2b0e686589ec5bf00bf69888"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -3236,7 +3201,7 @@ dependencies = [
 [[package]]
 name = "dao-pre-propose-approver"
 version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#11ec0bf00317a6af2b0e686589ec5bf00bf69888"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -3380,7 +3345,7 @@ dependencies = [
 [[package]]
 name = "dao-pre-propose-multiple"
 version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#11ec0bf00317a6af2b0e686589ec5bf00bf69888"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -3437,7 +3402,7 @@ dependencies = [
 [[package]]
 name = "dao-pre-propose-single"
 version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#11ec0bf00317a6af2b0e686589ec5bf00bf69888"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -3472,7 +3437,7 @@ dependencies = [
 [[package]]
 name = "dao-proposal-condorcet"
 version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#11ec0bf00317a6af2b0e686589ec5bf00bf69888"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -3512,7 +3477,7 @@ dependencies = [
 [[package]]
 name = "dao-proposal-hook-counter"
 version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#11ec0bf00317a6af2b0e686589ec5bf00bf69888"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -3586,7 +3551,7 @@ dependencies = [
 [[package]]
 name = "dao-proposal-multiple"
 version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#11ec0bf00317a6af2b0e686589ec5bf00bf69888"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -3751,7 +3716,7 @@ dependencies = [
 [[package]]
 name = "dao-proposal-sudo"
 version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#11ec0bf00317a6af2b0e686589ec5bf00bf69888"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -3797,7 +3762,7 @@ dependencies = [
 [[package]]
 name = "dao-rewards-distributor"
 version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#11ec0bf00317a6af2b0e686589ec5bf00bf69888"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -3840,7 +3805,7 @@ dependencies = [
 [[package]]
 name = "dao-test-custom-factory"
 version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#11ec0bf00317a6af2b0e686589ec5bf00bf69888"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -4001,7 +3966,7 @@ dependencies = [
 [[package]]
 name = "dao-voting-cw20-balance"
 version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#11ec0bf00317a6af2b0e686589ec5bf00bf69888"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -4138,7 +4103,7 @@ dependencies = [
 [[package]]
 name = "dao-voting-cw721-roles"
 version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#11ec0bf00317a6af2b0e686589ec5bf00bf69888"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -4191,7 +4156,7 @@ dependencies = [
 [[package]]
 name = "dao-voting-cw721-staked"
 version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#11ec0bf00317a6af2b0e686589ec5bf00bf69888"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -4274,7 +4239,7 @@ dependencies = [
 [[package]]
 name = "dao-voting-token-staked"
 version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#11ec0bf00317a6af2b0e686589ec5bf00bf69888"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -6347,7 +6312,7 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 name = "scripts"
 version = "2.5.0"
 dependencies = [
- "btsg-ft-factory 2.5.0 (git+https://github.com/hard-nett/dao-contracts?rev=1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb)",
+ "btsg-ft-factory 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "cw-admin-factory 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "cw-orch 0.24.1",
  "cw-payroll-factory 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
