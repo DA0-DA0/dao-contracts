@@ -10,7 +10,7 @@ impl<Chain> Uploadable for DaoExternalTokenSwap<Chain> {
     /// Return the path to the wasm file corresponding to the contract
     fn wasm(_chain: &ChainInfoOwned) -> WasmPath {
         artifacts_dir_from_workspace!()
-            .find_wasm_path("cw_tokenswap")
+            .find_wasm_path("cw_token_swap")
             .unwrap()
     }
     /// Returns a CosmWasm contract wrapper
