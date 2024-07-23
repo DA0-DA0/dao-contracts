@@ -139,14 +139,14 @@ stake-cw20-v03 = { package = "stake-cw20", version = "0.2.6" }
 voting-v1 = { package = "dao-voting", version = "0.1.0" }
 
 # v2.4.1 dependencies. used for state migrations.
-cw-denom-v241 = { package = "cw-denom", version = "2.4.1" }
-dao-dao-core-v241 = { package = "dao-dao-core", version = "2.4.1" }
-dao-interface-v241 = { package = "dao-interface", version = "2.4.1" }
-dao-pre-propose-base-v241 = { package = "dao-pre-propose-base", version = "2.4.1" }
-dao-pre-propose-approval-single-v241 = { package = "dao-pre-propose-approval-single", version = "2.4.1" }
-dao-pre-propose-multiple-v241 = { package = "dao-pre-propose-multiple", version = "2.4.1" }
-dao-pre-propose-single-v241 = { package = "dao-pre-propose-single", version = "2.4.1" }
-dao-proposal-multiple-v241 = { package = "dao-proposal-multiple", version = "2.4.1" }
-dao-proposal-single-v241 = { package = "dao-proposal-single", version = "2.4.1" }
-dao-voting-cw4-v241 = { package = "dao-voting-cw4", version = "2.4.1" }
-dao-voting-v241 = { package = "dao-voting", version = "2.4.1" }
+cw-denom-v241 = { package = "cw-denom", version = "=2.4.1" }
+dao-dao-core-v241 = { package = "dao-dao-core", version = "=2.4.1" }
+dao-interface-v241 = { package = "dao-interface", version = "=2.4.1" }
+dao-pre-propose-base-v241 = { package = "dao-pre-propose-base", version = "=2.4.1" }
+dao-pre-propose-approval-single-v241 = { package = "dao-pre-propose-approval-single", version = "=2.4.1" }
+dao-pre-propose-multiple-v241 = { package = "dao-pre-propose-multiple", version = "=2.4.1" }
+dao-pre-propose-single-v241 = { package = "dao-pre-propose-single", version = "=2.4.1" }
+dao-proposal-multiple-v241 = { package = "dao-proposal-multiple", version = "=2.4.1" }
+dao-proposal-single-v241 = { package = "dao-proposal-single", version = "=2.4.1" }
+dao-voting-cw4-v241 = { package = "dao-voting-cw4", version = "=2.4.1" }
+dao-voting-v241 = { package = "dao-voting", version = "=2.4.1" }
