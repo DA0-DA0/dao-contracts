@@ -283,8 +283,7 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for FantokenFactorySuite<Cha
         // ########### Instantiate ##############
         suite
             .factory
-            .instantiate(&btsg_ft_factory::msg::InstantiateMsg {}, None, None)?;
-
+            .instantiate(&btsg_ft_factory::msg::InstantiateMsg {}, None, None);
         Ok(suite)
     }
 }
