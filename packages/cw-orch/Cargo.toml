@@ -12,6 +12,7 @@ default = []
 wasm_test = []
 
 [dependencies]
+btsg-ft-factory = { path = "../../contracts/external/btsg-ft-factory" }
 cosmwasm-std.workspace = true
 cw-orch.workspace = true
 cw20-stake.workspace = true

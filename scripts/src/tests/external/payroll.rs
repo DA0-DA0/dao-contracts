@@ -1,7 +1,7 @@
 use cw_orch::{anyhow, prelude::*};
 
 use crate::{
-    dao::PayrollSuite,
+    external::PayrollSuite,
     tests::{ADMIN, PREFIX},
 };
 
