@@ -1,17 +1,21 @@
 # cw-fund-distributor
 
-This contract is meant to facilitate fund distribution 
+This contract is meant to facilitate fund distribution
 proportional to the amount of voting power members have
 at a given block height.
 
 Possible use cases may involve:
+
 - Dissolving a DAO and distributing its treasury to members prior to shutting down
 - Distributing funds among DAO members
 - Funding subDAOs
 
+> **WARNING:** THIS CONTRACT IS NOT AUDITED AND IS _EXPERIMENTAL_. USE AT YOUR
+> OWN RISK.
+
 ## Funding Period
 
-Contract is instantiated with a `funding_period` - a time duration that should suffice 
+Contract is instantiated with a `funding_period` - a time duration that should suffice
 to move the funds to be distributed into the distributor contract.
 
 Funding the contract can only happen during this period.
@@ -32,6 +36,6 @@ it is possible to redistribute the unclaimed funds.
 Only the `cw_admin` can call the method.
 
 The redistribution method finds all the claims that have been performed
-and subtracts the amounts from the initially funded balance. The respective 
+and subtracts the amounts from the initially funded balance. The respective
 allocation ratios for each DAO member remain the same; any previous claims
 are cleared.

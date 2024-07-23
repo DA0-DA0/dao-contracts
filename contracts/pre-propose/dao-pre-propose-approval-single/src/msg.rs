@@ -1,7 +1,8 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{CosmosMsg, Empty};
 use dao_pre_propose_base::msg::{
-    ExecuteMsg as ExecuteBase, InstantiateMsg as InstantiateBase, QueryMsg as QueryBase,
+    ExecuteMsg as ExecuteBase, InstantiateMsg as InstantiateBase, MigrateMsg as MigrateBase,
+    QueryMsg as QueryBase,
 };
 use dao_voting::{proposal::SingleChoiceProposeMsg as ProposeMsg, voting::SingleChoiceAutoVote};
 
@@ -87,6 +88,7 @@ pub enum QueryExt {
 pub type InstantiateMsg = InstantiateBase<InstantiateExt>;
 pub type ExecuteMsg = ExecuteBase<ProposeMessage, ExecuteExt>;
 pub type QueryMsg = QueryBase<QueryExt>;
+pub type MigrateMsg = MigrateBase<Empty>;
 
 /// Internal version of the propose message that includes the
 /// `proposer` field. The module will fill this in based on the sender

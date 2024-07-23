@@ -12,7 +12,7 @@ use crate::{
     state::{Config, PreProposeContract},
 };
 
-type Contract = PreProposeContract<Empty, Empty, Empty, Empty>;
+type Contract = PreProposeContract<Empty, Empty, Empty, Empty, Empty>;
 
 #[test]
 fn test_completed_hook_status_invariant() {

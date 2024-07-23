@@ -52,3 +52,4 @@ dao-test-custom-factory = { workspace = true }
 dao-testing = { workspace = true, features = ["test-tube"] }
 osmosis-test-tube = { workspace = true }
 prost = { workspace = true }
+prost-derive = { workspace = true }

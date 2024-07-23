@@ -60,14 +60,14 @@ workspace-optimize:
             --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
             --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
             --platform linux/arm64 \
-            cosmwasm/workspace-optimizer-arm64:0.14.0; \
+            cosmwasm/workspace-optimizer-arm64:0.16.0; \
     elif [[ $(uname -m) == 'aarch64' ]]; then docker run --rm -v "$(pwd)":/code \
             --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
             --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
             --platform linux/arm64 \
-            cosmwasm/workspace-optimizer-arm64:0.14.0; \
+            cosmwasm/workspace-optimizer-arm64:0.16.0; \
     elif [[ $(uname -m) == 'x86_64' ]]; then docker run --rm -v "$(pwd)":/code \
             --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
             --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
             --platform linux/amd64 \
-            cosmwasm/workspace-optimizer:0.14.0; fi
+            cosmwasm/workspace-optimizer:0.16.0; fi

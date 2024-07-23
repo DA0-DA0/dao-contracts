@@ -39,6 +39,7 @@ pub struct InstantiateMsg {
 #[derive(cw_orch::ExecuteFns)]
 pub enum ExecuteMsg {
     /// Stakes tokens with the contract to get voting power in the DAO
+    #[cw_orch(payable)]
     Stake {},
     /// Unstakes tokens so that they begin unbonding
     Unstake { amount: Uint128 },

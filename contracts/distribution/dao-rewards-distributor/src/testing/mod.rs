@@ -7,9 +7,10 @@ pub mod tests;
 pub const DENOM: &str = "ujuno";
 pub const ALT_DENOM: &str = "unotjuno";
 pub const OWNER: &str = "owner";
-pub const ADDR1: &str = "addr0001";
-pub const ADDR2: &str = "addr0002";
-pub const ADDR3: &str = "addr0003";
+pub const ADDR1: &str = "addr1";
+pub const ADDR2: &str = "addr2";
+pub const ADDR3: &str = "addr3";
+pub const ADDR4: &str = "addr4";
 
 pub fn contract_rewards() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
