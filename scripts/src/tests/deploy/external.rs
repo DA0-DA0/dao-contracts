@@ -1,4 +1,4 @@
-use crate::dao::*;
+use crate::external::*;
 use cw_orch::prelude::*;
 use cw_tokenfactory_issuer::msg::InstantiateMsg as TokenfactoryIssuerInit;
 
@@ -104,8 +104,8 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for TokenSwapSuite<Chain> {
     }
 
     fn load_from(chain: Chain) -> Result<Self, Self::Error> {
-        let payroll = Self::new(chain.clone());
-        Ok(payroll)
+        let tokenswap = Self::new(chain.clone());
+        Ok(tokenswap)
     }
 
     fn deploy_on(chain: Chain, _data: Self::DeployData) -> Result<Self, Self::Error> {
@@ -173,8 +173,8 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for VestingSuite<Chain> {
     }
 
     fn load_from(chain: Chain) -> Result<Self, Self::Error> {
-        let factory = Self::new(chain.clone());
-        Ok(factory)
+        let vesting = Self::new(chain.clone());
+        Ok(vesting)
     }
 
     fn deploy_on(chain: Chain, _data: Self::DeployData) -> Result<Self, Self::Error> {
@@ -216,6 +216,7 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for Cw721RolesSuite<Chain> {
         Ok(suite)
     }
 }
+
 // dao-migrator
 impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for DaoMigrationSuite<Chain> {
     // We don't have a custom error type
@@ -223,9 +224,9 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for DaoMigrationSuite<Chain>
     type DeployData = Addr;
 
     fn store_on(chain: Chain) -> Result<Self, Self::Error> {
-        let roles = DaoMigrationSuite::new(chain.clone());
-        roles.upload()?;
-        Ok(roles)
+        let migrator = DaoMigrationSuite::new(chain.clone());
+        migrator.upload()?;
+        Ok(migrator)
     }
 
     fn deployed_state_file_path() -> Option<String> {
@@ -237,13 +238,48 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for DaoMigrationSuite<Chain>
     }
 
     fn load_from(chain: Chain) -> Result<Self, Self::Error> {
-        let roles = Self::new(chain.clone());
-        Ok(roles)
+        let migrator = Self::new(chain.clone());
+        Ok(migrator)
     }
 
     fn deploy_on(chain: Chain, _data: Self::DeployData) -> Result<Self, Self::Error> {
         // ########### Upload ##############
         let suite: DaoMigrationSuite<Chain> = DaoMigrationSuite::store_on(chain.clone()).unwrap();
+        // ########### Instantiate ##############
+
+        Ok(suite)
+    }
+}
+
+// bitsong
+impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for FantokenFactorySuite<Chain> {
+    // We don't have a custom error type
+    type Error = CwOrchError;
+    type DeployData = Addr;
+
+    fn store_on(chain: Chain) -> Result<Self, Self::Error> {
+        let factory = FantokenFactorySuite::new(chain.clone());
+        factory.upload()?;
+        Ok(factory)
+    }
+
+    fn deployed_state_file_path() -> Option<String> {
+        None
+    }
+
+    fn get_contracts_mut(&mut self) -> Vec<Box<&mut dyn ContractInstance<Chain>>> {
+        vec![Box::new(&mut self.factory)]
+    }
+
+    fn load_from(chain: Chain) -> Result<Self, Self::Error> {
+        let factory = Self::new(chain.clone());
+        Ok(factory)
+    }
+
+    fn deploy_on(chain: Chain, _data: Self::DeployData) -> Result<Self, Self::Error> {
+        // ########### Upload ##############
+        let suite: FantokenFactorySuite<Chain> =
+            FantokenFactorySuite::store_on(chain.clone()).unwrap();
         // ########### Instantiate ##############
 
         Ok(suite)

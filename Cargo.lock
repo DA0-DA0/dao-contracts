@@ -665,6 +665,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
+ "cw-orch 0.24.1",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
@@ -2697,6 +2698,7 @@ dependencies = [
 name = "dao-cw-orch"
 version = "2.5.0"
 dependencies = [
+ "btsg-ft-factory 2.5.0",
  "cosmwasm-std",
  "cw-admin-factory 2.5.0",
  "cw-fund-distributor 2.5.0",

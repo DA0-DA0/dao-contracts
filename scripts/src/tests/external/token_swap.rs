@@ -2,7 +2,7 @@ use cw_orch::{anyhow, prelude::*};
 use cw_token_swap::msg::{Counterparty, InstantiateMsg, TokenInfo};
 
 use crate::{
-    dao::TokenSwapSuite,
+    external::TokenSwapSuite,
     tests::{ADMIN, DAO1, DENOM, PREFIX},
 };
 #[test]
