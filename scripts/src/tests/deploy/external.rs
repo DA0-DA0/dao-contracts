@@ -1,4 +1,5 @@
 use crate::external::*;
+use btsg_ft_factory::msg::InstantiateMsg;
 use cw_orch::prelude::*;
 use cw_tokenfactory_issuer::msg::InstantiateMsg as TokenfactoryIssuerInit;
 
@@ -252,38 +253,36 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for DaoMigrationSuite<Chain>
 }
 
 // bitsong fantoken factory
-impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for FantokenFactorySuite<Chain> {
-    // We don't have a custom error type
-    type Error = CwOrchError;
-    type DeployData = Addr;
+// impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for FantokenFactorySuite<Chain> {
+//     // We don't have a custom error type
+//     type Error = CwOrchError;
+//     type DeployData = Addr;
 
-    fn store_on(chain: Chain) -> Result<Self, Self::Error> {
-        let factory = FantokenFactorySuite::new(chain.clone());
-        factory.upload()?;
-        Ok(factory)
-    }
+//     fn store_on(chain: Chain) -> Result<Self, Self::Error> {
+//         let factory = FantokenFactorySuite::new(chain.clone());
+//         factory.upload()?;
+//         Ok(factory)
+//     }
 
-    fn deployed_state_file_path() -> Option<String> {
-        None
-    }
+//     fn deployed_state_file_path() -> Option<String> {
+//         None
+//     }
 
-    fn get_contracts_mut(&mut self) -> Vec<Box<&mut dyn ContractInstance<Chain>>> {
-        vec![Box::new(&mut self.factory)]
-    }
+//     fn get_contracts_mut(&mut self) -> Vec<Box<&mut dyn ContractInstance<Chain>>> {
+//         vec![Box::new(&mut self.factory)]
+//     }
 
-    fn load_from(chain: Chain) -> Result<Self, Self::Error> {
-        let factory = Self::new(chain.clone());
-        Ok(factory)
-    }
+//     fn load_from(chain: Chain) -> Result<Self, Self::Error> {
+//         let factory = Self::new(chain.clone());
+//         Ok(factory)
+//     }
 
-    fn deploy_on(chain: Chain, _data: Self::DeployData) -> Result<Self, Self::Error> {
-        // ########### Upload ##############
-        let suite: FantokenFactorySuite<Chain> =
-            FantokenFactorySuite::store_on(chain.clone()).unwrap();
-        // ########### Instantiate ##############
-        suite
-            .factory
-            .instantiate(&btsg_ft_factory::msg::InstantiateMsg {}, None, None);
-        Ok(suite)
-    }
-}
+//     fn deploy_on(chain: Chain, _data: Self::DeployData) -> Result<Self, Self::Error> {
+//         // ########### Upload ##############
+//         let suite: FantokenFactorySuite<Chain> =
+//             FantokenFactorySuite::store_on(chain.clone()).unwrap();
+//         // ########### Instantiate ##############
+//         suite.factory.instantiate(&InstantiateMsg {}, None, None);
+//         Ok(suite)
+//     }
+// }

@@ -705,26 +705,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "btsg-ft-factory"
-version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?rev=1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-orch 0.24.1",
- "cw-storage-plus 1.2.0",
- "cw2 1.1.2",
- "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?rev=1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb)",
- "osmosis-std-derive",
- "prost 0.12.3",
- "prost-derive 0.12.3",
- "prost-types 0.12.3",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
 name = "bumpalo"
 version = "3.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3049,21 +3029,6 @@ dependencies = [
 name = "dao-interface"
 version = "2.5.0"
 source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#a43d59936f4e7d548b889de9ba2ab093d2743bac"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-orch 0.24.1",
- "cw-utils 1.0.3",
- "cw2 1.1.2",
- "cw20 1.1.2",
- "cw721 0.18.0",
- "osmosis-std",
-]
-
-[[package]]
-name = "dao-interface"
-version = "2.5.0"
-source = "git+https://github.com/hard-nett/dao-contracts?rev=1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb#1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -6360,7 +6325,7 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 name = "scripts"
 version = "2.5.0"
 dependencies = [
- "btsg-ft-factory 2.5.0 (git+https://github.com/hard-nett/dao-contracts?rev=1b1849e1aa41d8cb6a2b6b05db6dae032719b9bb)",
+ "btsg-ft-factory 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "cw-admin-factory 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "cw-orch 0.24.1",
  "cw-payroll-factory 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
