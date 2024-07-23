@@ -312,6 +312,7 @@ dependencies = [
  "dao-voting-token-staked",
  "osmosis-std-derive",
  "prost 0.12.3",
+ "prost-derive 0.12.3",
  "prost-types 0.12.3",
  "schemars",
  "serde",
@@ -1089,6 +1090,7 @@ dependencies = [
  "osmosis-std",
  "osmosis-test-tube",
  "prost 0.12.3",
+ "prost-derive 0.12.3",
  "schemars",
  "serde",
  "serde_json",
@@ -1105,6 +1107,7 @@ dependencies = [
  "osmosis-std",
  "osmosis-std-derive",
  "prost 0.12.3",
+ "prost-derive 0.12.3",
  "prost-types 0.12.3",
  "schemars",
  "serde",
@@ -2482,6 +2485,7 @@ dependencies = [
  "omniflix-std",
  "osmosis-test-tube",
  "prost 0.12.3",
+ "prost-derive 0.12.3",
  "serde",
  "thiserror",
 ]
@@ -3770,7 +3774,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "146c289cda302b98a28d40c8b3b90498d6e526dd24ac2ecea73e4e491685b94a"
 dependencies = [
  "bytes",
- "prost-derive 0.12.6",
+ "prost-derive 0.12.3",
 ]
 
 [[package]]
@@ -3788,12 +3792,12 @@ dependencies = [
 
 [[package]]
 name = "prost-derive"
-version = "0.12.6"
+version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81bddcdb20abf9501610992b6759a4c888aef7d1a7247ef75e2404275ac24af1"
+checksum = "efb6c9a1dd1def8e2124d17e83a20af56f1570d6c2d2bd9e266ccb768df3840e"
 dependencies = [
  "anyhow",
- "itertools 0.12.1",
+ "itertools 0.10.5",
  "proc-macro2",
  "quote",
  "syn 2.0.72",
