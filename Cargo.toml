@@ -61,8 +61,8 @@ osmosis-std = "0.20.1"
 osmosis-std-derive = "0.20.1"
 osmosis-test-tube = "20.1.1"
 proc-macro2 = "1.0"
-prost = { version = "0.12.3", features = ["prost-derive"] }
-prost-types = { version = "0.12.3", default-features = false }
+prost = { version = "=0.12.3", features = ["prost-derive"] }
+prost-types = { version = "=0.12.3", default-features = false }
 quote = "1.0"
 rand = "0.8"
 schemars = "0.8"

@@ -311,8 +311,8 @@ dependencies = [
  "dao-voting 2.5.0",
  "dao-voting-token-staked",
  "osmosis-std-derive",
- "prost 0.12.6",
- "prost-types 0.12.6",
+ "prost 0.12.3",
+ "prost-types 0.12.3",
  "schemars",
  "serde",
  "thiserror",
@@ -896,7 +896,7 @@ dependencies = [
  "cw-utils 1.0.3",
  "derivative",
  "itertools 0.12.1",
- "prost 0.12.6",
+ "prost 0.12.3",
  "schemars",
  "serde",
  "sha2 0.10.8",
@@ -1088,7 +1088,7 @@ dependencies = [
  "dao-interface 2.5.0",
  "osmosis-std",
  "osmosis-test-tube",
- "prost 0.12.6",
+ "prost 0.12.3",
  "schemars",
  "serde",
  "serde_json",
@@ -1104,8 +1104,8 @@ dependencies = [
  "dao-interface 2.5.0",
  "osmosis-std",
  "osmosis-std-derive",
- "prost 0.12.6",
- "prost-types 0.12.6",
+ "prost 0.12.3",
+ "prost-types 0.12.3",
  "schemars",
  "serde",
  "serde-cw-value",
@@ -2481,7 +2481,7 @@ dependencies = [
  "dao-voting 2.5.0",
  "omniflix-std",
  "osmosis-test-tube",
- "prost 0.12.6",
+ "prost 0.12.3",
  "serde",
  "thiserror",
 ]
@@ -3464,8 +3464,8 @@ dependencies = [
  "chrono",
  "cosmwasm-std",
  "omniflix-std-derive",
- "prost 0.12.6",
- "prost-types 0.12.6",
+ "prost 0.12.3",
+ "prost-types 0.12.3",
  "schemars",
  "serde",
  "serde-cw-value",
@@ -3765,9 +3765,9 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.12.6"
+version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "deb1435c188b76130da55f17a466d252ff7b1418b2ad3e037d127b94e3411f29"
+checksum = "146c289cda302b98a28d40c8b3b90498d6e526dd24ac2ecea73e4e491685b94a"
 dependencies = [
  "bytes",
  "prost-derive 0.12.6",
@@ -3810,11 +3810,11 @@ dependencies = [
 
 [[package]]
 name = "prost-types"
-version = "0.12.6"
+version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9091c90b0a32608e984ff2fa4091273cbdd755d54935c51d520887f4a1dbd5b0"
+checksum = "193898f59edcf43c26227dcd4c8427f00d99d61e95dcde58dabd49fa291d470e"
 dependencies = [
- "prost 0.12.6",
+ "prost 0.12.3",
 ]
 
 [[package]]
