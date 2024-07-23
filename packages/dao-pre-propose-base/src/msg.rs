@@ -24,6 +24,7 @@ pub struct InstantiateMsg<InstantiateExt> {
 pub enum ExecuteMsg<ProposalMessage, ExecuteExt> {
     /// Creates a new proposal in the pre-propose module. MSG will be
     /// serialized and used as the proposal creation message.
+    #[cw_orch(payable)]
     Propose { msg: ProposalMessage },
 
     /// Updates the configuration of this module. This will completely

@@ -22,6 +22,7 @@ pub struct InstantiateMsg {
 
 #[cw_ownable_execute]
 #[cw_serde]
+#[derive(cw_orch::ExecuteFns)]
 pub enum ExecuteMsg {
     /// Called when a member is added or removed
     /// to a cw4-groups or cw721-roles contract.
@@ -49,6 +50,7 @@ pub enum ExecuteMsg {
     /// Used to fund this contract with cw20 tokens.
     Receive(Cw20ReceiveMsg),
     /// Used to fund this contract with native tokens.
+    #[cw_orch(payable)]
     Fund(FundMsg),
     /// Claims rewards for the sender.
     Claim { id: u64 },
@@ -86,7 +88,7 @@ pub enum ReceiveCw20Msg {
 }
 
 #[cw_serde]
-#[derive(QueryResponses)]
+#[derive(QueryResponses, cw_orch::QueryFns)]
 pub enum QueryMsg {
     /// Returns contract version info
     #[returns(InfoResponse)]

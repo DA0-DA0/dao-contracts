@@ -16,6 +16,7 @@ pub enum ExecuteMsg {
     /// Instantiates a new vesting contract that is funded by a cw20 token.
     Receive(Cw20ReceiveMsg),
     /// Instantiates a new vesting contract that is funded by a native token.
+    #[cw_orch(payable)]
     InstantiateNativePayrollContract {
         instantiate_msg: PayrollInstantiateMsg,
         label: String,
