@@ -32,3 +32,4 @@ cw-tokenfactory-issuer  = { git = "https://github.com/hard-nett/dao-contracts", 
 cw-vesting              = { git = "https://github.com/hard-nett/dao-contracts", branch = "feat/external-cw-orch" }
 cw721-roles             = { git = "https://github.com/hard-nett/dao-contracts", branch = "feat/external-cw-orch" }
 dao-migrator            = { git = "https://github.com/hard-nett/dao-contracts", branch = "feat/external-cw-orch" }
+btsg-ft-factory         = { git = "https://github.com/hard-nett/dao-contracts", branch = "feat/external-cw-orch" }

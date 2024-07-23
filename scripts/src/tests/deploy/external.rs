@@ -251,7 +251,7 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for DaoMigrationSuite<Chain>
     }
 }
 
-// bitsong
+// bitsong fantoken factory
 impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for FantokenFactorySuite<Chain> {
     // We don't have a custom error type
     type Error = CwOrchError;
@@ -281,6 +281,9 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for FantokenFactorySuite<Cha
         let suite: FantokenFactorySuite<Chain> =
             FantokenFactorySuite::store_on(chain.clone()).unwrap();
         // ########### Instantiate ##############
+        suite
+            .factory
+            .instantiate(&btsg_ft_factory::msg::InstantiateMsg {}, None, None)?;
 
         Ok(suite)
     }
