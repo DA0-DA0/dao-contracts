@@ -19,7 +19,7 @@ dependencies = [
  "hex",
  "itertools 0.12.1",
  "log",
- "prost 0.12.6",
+ "prost 0.12.3",
  "schemars",
  "serde",
  "serde_json",
@@ -305,6 +305,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "android-tzdata"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e999941b234f3131b00bc13c22d06e8c5ff726d1b6318ac7eb276997bbb4fef0"
+
+[[package]]
+name = "android_system_properties"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "819e7219dbd41043ac279b19830f2efc897156490d7fd6ea916720117ee66311"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "anyhow"
 version = "1.0.86"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -315,6 +330,17 @@ name = "assert_matches"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b34d609dfbaf33d6889b2b7106d3ca345eacad44200913df5ba02bfd31d2ba9"
+
+[[package]]
+name = "async-recursion"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b43422f69d8ff38f95f1b2bb76517c91589a924d1559a0e935d7c8ce0274c11"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.72",
+]
 
 [[package]]
 name = "async-stream"
@@ -335,7 +361,7 @@ checksum = "16e62a023e7c117e27523144c5d2459f4397fcc3cab0085af8e2224f643a0193"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.71",
+ "syn 2.0.72",
 ]
 
 [[package]]
@@ -346,7 +372,7 @@ checksum = "6e0c28dcc82d7c8ead5cb13beb15405b57b8546e93215673ff8ca0349a028107"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.71",
+ "syn 2.0.72",
 ]
 
 [[package]]
@@ -416,6 +442,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "base16"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d27c3610c36aee21ce8ac510e6224498de4228ad772a171ed65643a24693a5a8"
+
+[[package]]
 name = "base16ct"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -438,6 +470,12 @@ name = "base64"
 version = "0.21.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
+
+[[package]]
+name = "base64"
+version = "0.22.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "base64ct"
@@ -476,7 +514,7 @@ dependencies = [
  "regex",
  "rustc-hash",
  "shlex",
- "syn 2.0.71",
+ "syn 2.0.72",
  "which",
 ]
 
@@ -486,7 +524,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b30ed1d6f8437a487a266c8293aeb95b61a23261273e3e02912cdb8b68bf798b"
 dependencies = [
- "bs58",
+ "bs58 0.4.0",
  "hmac",
  "k256 0.11.6",
  "once_cell",
@@ -496,6 +534,50 @@ dependencies = [
  "sha2 0.10.8",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "bip32"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa13fae8b6255872fd86f7faf4b41168661d7d78609f7bfe6771b85c6739a15b"
+dependencies = [
+ "bs58 0.5.1",
+ "hmac",
+ "k256 0.13.1",
+ "rand_core 0.6.4",
+ "ripemd",
+ "sha2 0.10.8",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
+name = "bitcoin"
+version = "0.30.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1945a5048598e4189e239d3f809b19bdad4845c4b2ba400d304d2dcf26d2c462"
+dependencies = [
+ "bech32 0.9.1",
+ "bitcoin-private",
+ "bitcoin_hashes",
+ "hex_lit",
+ "secp256k1",
+]
+
+[[package]]
+name = "bitcoin-private"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73290177011694f38ec25e165d0387ab7ea749a4b81cd4c80dae5988229f7a57"
+
+[[package]]
+name = "bitcoin_hashes"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d7066118b13d4b20b23645932dfb3a81ce7e29f95726c2036fa33cd7b092501"
+dependencies = [
+ "bitcoin-private",
 ]
 
 [[package]]
@@ -541,16 +623,16 @@ dependencies = [
  "anyhow",
  "cosm-orc",
  "cosmwasm-std",
- "cw-admin-factory",
+ "cw-admin-factory 2.5.0",
  "cw-utils 1.0.3",
  "cw20 1.1.2",
  "cw20-stake 2.5.0",
- "dao-dao-core",
- "dao-interface",
- "dao-pre-propose-single",
- "dao-proposal-single",
+ "dao-dao-core 2.5.0",
+ "dao-interface 2.5.0",
+ "dao-pre-propose-single 2.5.0",
+ "dao-proposal-single 2.5.0",
  "dao-voting 2.5.0",
- "dao-voting-cw20-staked",
+ "dao-voting-cw20-staked 2.5.0",
  "env_logger",
  "serde",
  "serde_json",
@@ -564,6 +646,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "771fe0050b883fcc3ea2359b1a96bcfbc090b7116eae7c3c512c7a083fdf23d3"
 dependencies = [
  "sha2 0.9.9",
+]
+
+[[package]]
+name = "bs58"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf88ba1141d185c399bee5288d850d63b8369520c1eafc32a0430b5b6c287bf4"
+dependencies = [
+ "sha2 0.10.8",
 ]
 
 [[package]]
@@ -614,7 +705,12 @@ version = "0.4.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a21f936df1771bf62b77f047b726c4625ff2e8aa607c01ec06e5a05bd8463401"
 dependencies = [
+ "android-tzdata",
+ "iana-time-zone",
+ "js-sys",
  "num-traits",
+ "wasm-bindgen",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -747,12 +843,24 @@ dependencies = [
 
 [[package]]
 name = "cosmos-sdk-proto"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32560304ab4c365791fd307282f76637213d8083c1a98490c35159cd67852237"
+dependencies = [
+ "prost 0.12.3",
+ "prost-types 0.12.3",
+ "tendermint-proto 0.34.1",
+ "tonic 0.10.2",
+]
+
+[[package]]
+name = "cosmos-sdk-proto"
 version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82e23f6ab56d5f031cde05b8b82a5fefd3a1a223595c79e32317a97189e612bc"
 dependencies = [
- "prost 0.12.6",
- "prost-types 0.12.6",
+ "prost 0.12.3",
+ "prost-types 0.12.3",
  "tendermint-proto 0.35.0",
 ]
 
@@ -762,7 +870,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3903590099dcf1ea580d9353034c9ba1dbf55d1389a5bd2ade98535c3445d1f9"
 dependencies = [
- "bip32",
+ "bip32 0.4.0",
  "cosmos-sdk-proto 0.14.0",
  "ecdsa 0.14.8",
  "eyre",
@@ -783,7 +891,7 @@ version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6fa07096219b1817432b8f1e47c22e928c64bbfd231fc08f0a98f0e7ddd602b7"
 dependencies = [
- "bip32",
+ "bip32 0.4.0",
  "cosmos-sdk-proto 0.15.0",
  "ecdsa 0.14.8",
  "eyre",
@@ -796,6 +904,28 @@ dependencies = [
  "tendermint 0.26.0",
  "tendermint-rpc 0.26.0",
  "thiserror",
+]
+
+[[package]]
+name = "cosmrs"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47126f5364df9387b9d8559dcef62e99010e1d4098f39eb3f7ee4b5c254e40ea"
+dependencies = [
+ "bip32 0.5.2",
+ "cosmos-sdk-proto 0.20.0",
+ "ecdsa 0.16.9",
+ "eyre",
+ "k256 0.13.1",
+ "rand_core 0.6.4",
+ "serde",
+ "serde_json",
+ "signature 2.2.0",
+ "subtle-encoding",
+ "tendermint 0.34.1",
+ "tendermint-rpc 0.34.1",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]
@@ -887,6 +1017,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "crc32fast"
+version = "1.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a97769d94ddab943e4510d138150169a2758b5ef3eb191a9ee688de3e23ef7b3"
+dependencies = [
+ "cfg-if",
+]
+
+[[package]]
 name = "crypto-bigint"
 version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -926,7 +1065,7 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1a816186fa68d9e426e3cb4ae4dff1fcd8e4a2c34b781bf7a822574a0d0aac8"
 dependencies = [
- "sct",
+ "sct 0.6.1",
 ]
 
 [[package]]
@@ -939,6 +1078,46 @@ dependencies = [
  "digest 0.9.0",
  "rand_core 0.5.1",
  "subtle",
+ "zeroize",
+]
+
+[[package]]
+name = "curve25519-dalek"
+version = "4.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97fb8b7c4503de7d6ae7b42ab72a5a59857b4c937ec27a3d4539dba95b5ab2be"
+dependencies = [
+ "cfg-if",
+ "cpufeatures",
+ "curve25519-dalek-derive",
+ "digest 0.10.7",
+ "fiat-crypto",
+ "rustc_version",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
+name = "curve25519-dalek-derive"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f46882e17999c6cc590af592290432be3bce0428cb0d5f8b6715e4dc7b383eb3"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.72",
+]
+
+[[package]]
+name = "curve25519-dalek-ng"
+version = "4.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c359b7249347e46fb28804470d071c921156ad62b3eef5d34e2ba867533dec8"
+dependencies = [
+ "byteorder",
+ "digest 0.9.0",
+ "rand_core 0.6.4",
+ "subtle-ng",
  "zeroize",
 ]
 
@@ -963,8 +1142,22 @@ dependencies = [
  "cw-utils 1.0.3",
  "cw2 1.1.2",
  "cw20-base 1.1.2",
- "dao-dao-core",
- "dao-interface",
+ "dao-dao-core 2.5.0",
+ "dao-interface 2.5.0",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-admin-factory"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch 0.24.1",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
  "thiserror",
 ]
 
@@ -1080,6 +1273,29 @@ dependencies = [
 
 [[package]]
 name = "cw-denom"
+version = "2.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "decaa8be7ffa8090dc62d8bb8ee97cd3f41f815a41ba08de1d40cacef6c3cb4b"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw20 1.1.2",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-denom"
+version = "2.4.2"
+source = "git+https://github.com/Kayanski/dao-contracts?branch=development#8c945acdb0746ec84d15cfebeadcfe32122f85a2"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw20 1.1.2",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-denom"
 version = "2.5.0"
 dependencies = [
  "cosmwasm-schema",
@@ -1087,6 +1303,17 @@ dependencies = [
  "cw-multi-test",
  "cw20 1.1.2",
  "cw20-base 1.1.2",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-denom"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw20 1.1.2",
  "thiserror",
 ]
 
@@ -1104,15 +1331,79 @@ dependencies = [
  "cw20 1.1.2",
  "cw20-base 1.1.2",
  "cw20-stake 2.5.0",
- "dao-dao-core",
- "dao-interface",
- "dao-voting-cw20-staked",
+ "dao-dao-core 2.5.0",
+ "dao-interface 2.5.0",
+ "dao-voting-cw20-staked 2.5.0",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-fund-distributor"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch 0.24.1",
+ "cw-paginate-storage 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20 1.1.2",
+ "cw20-stake 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting-cw20-staked 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-hooks"
+version = "2.2.0"
+source = "git+https://github.com/DA0-DA0/dao-contracts?branch=main#7f89ad1604e8022f202aef729853b0c8c7196988"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 1.2.0",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-hooks"
+version = "2.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "097ee97b99ecc90372eac3bcaf698d940a15f806f2ba1e1e901c729f6523e16e"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 1.2.0",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-hooks"
+version = "2.4.2"
+source = "git+https://github.com/Kayanski/dao-contracts?branch=development#8c945acdb0746ec84d15cfebeadcfe32122f85a2"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 1.2.0",
  "thiserror",
 ]
 
 [[package]]
 name = "cw-hooks"
 version = "2.5.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 1.2.0",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-hooks"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1133,7 +1424,7 @@ dependencies = [
  "cw-utils 1.0.3",
  "derivative",
  "itertools 0.12.1",
- "prost 0.12.6",
+ "prost 0.12.3",
  "schemars",
  "serde",
  "sha2 0.10.8",
@@ -1168,11 +1459,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c81cb500eb2f9be31a0f90c7ce66572ee4a790ffbae1c6b42ff2e3f9faf3479"
 dependencies = [
  "anyhow",
+ "cosmrs 0.15.0",
  "cosmwasm-std",
  "cw-orch-contract-derive",
  "cw-orch-core",
+ "cw-orch-daemon",
  "cw-orch-fns-derive 0.22.0",
  "cw-orch-mock 0.23.2",
+ "cw-orch-networks",
  "cw-orch-traits 0.23.1",
  "cw-utils 1.0.3",
  "hex",
@@ -1180,6 +1474,7 @@ dependencies = [
  "schemars",
  "serde",
  "thiserror",
+ "tokio",
 ]
 
 [[package]]
@@ -1190,7 +1485,7 @@ checksum = "5bc8ba75692fc7bd30e91c78fad2dc208a738e4e6ea26b232f9352c320e35543"
 dependencies = [
  "convert_case",
  "quote",
- "syn 2.0.71",
+ "syn 2.0.72",
 ]
 
 [[package]]
@@ -1211,6 +1506,48 @@ dependencies = [
  "serde_json",
  "sha2 0.10.8",
  "thiserror",
+]
+
+[[package]]
+name = "cw-orch-daemon"
+version = "0.24.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc0c68ddca4a9bd05d88896fbc5cc835e5fa4128748d5a53397d9c661a123219"
+dependencies = [
+ "anyhow",
+ "async-recursion",
+ "base16",
+ "base64 0.22.1",
+ "bitcoin",
+ "chrono",
+ "cosmrs 0.15.0",
+ "cosmwasm-std",
+ "cw-orch-core",
+ "cw-orch-networks",
+ "cw-orch-traits 0.23.1",
+ "dirs",
+ "ed25519-dalek 2.1.1",
+ "eyre",
+ "file-lock",
+ "flate2",
+ "hex",
+ "hkd32",
+ "lazy_static",
+ "log",
+ "once_cell",
+ "prost 0.12.3",
+ "prost-types 0.12.3",
+ "rand_core 0.6.4",
+ "reqwest",
+ "ring 0.17.8",
+ "ripemd",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sha2 0.10.8",
+ "thiserror",
+ "tokio",
+ "tonic 0.10.2",
 ]
 
 [[package]]
@@ -1268,14 +1605,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-orch-networks"
+version = "0.23.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1137fddcfc791814c80f995f10f0fe1b623924b17ba9e3cb496e106ed65b702a"
+dependencies = [
+ "cw-orch-core",
+ "serde",
+]
+
+[[package]]
 name = "cw-orch-traits"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5959ce29e9d8a52594b47933a0a2736ea94dd9bf5e29b220cbdbe2b097f07c3a"
 dependencies = [
  "cw-orch-core",
- "prost 0.12.6",
- "prost-types 0.12.6",
+ "prost 0.12.3",
+ "prost-types 0.12.3",
 ]
 
 [[package]]
@@ -1285,8 +1632,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c05bb98fc8d7d51c632ae217f5040edb91695351977778d6cb7ea3c3d4efa890"
 dependencies = [
  "cw-orch-core",
- "prost 0.12.6",
- "prost-types 0.12.6",
+ "prost 0.12.3",
+ "prost-types 0.12.3",
 ]
 
 [[package]]
@@ -1338,23 +1685,51 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-paginate-storage"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-std",
+ "cw-storage-plus 1.2.0",
+ "serde",
+]
+
+[[package]]
 name = "cw-payroll-factory"
 version = "2.5.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-denom",
+ "cw-denom 2.5.0",
  "cw-multi-test",
  "cw-orch 0.24.1",
  "cw-ownable",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw-vesting",
+ "cw-vesting 2.5.0",
  "cw2 1.1.2",
  "cw20 1.1.2",
  "cw20-base 1.1.2",
  "thiserror",
  "wynd-utils",
+]
+
+[[package]]
+name = "cw-payroll-factory"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-denom 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-orch 0.24.1",
+ "cw-ownable",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw-vesting 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw2 1.1.2",
+ "cw20 1.1.2",
+ "thiserror",
 ]
 
 [[package]]
@@ -1388,7 +1763,17 @@ version = "2.5.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-wormhole",
+ "cw-wormhole 2.5.0",
+]
+
+[[package]]
+name = "cw-stake-tracker"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-wormhole 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
 ]
 
 [[package]]
@@ -1452,6 +1837,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-token-swap"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch 0.24.1",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20 1.1.2",
+ "thiserror",
+]
+
+[[package]]
 name = "cw-tokenfactory-issuer"
 version = "2.5.0"
 dependencies = [
@@ -1461,15 +1861,36 @@ dependencies = [
  "cw-orch 0.24.1",
  "cw-ownable",
  "cw-storage-plus 1.2.0",
- "cw-tokenfactory-types",
+ "cw-tokenfactory-types 2.5.0",
  "cw2 1.1.2",
- "dao-interface",
+ "dao-interface 2.5.0",
  "osmosis-std",
  "osmosis-test-tube",
- "prost 0.12.6",
+ "prost 0.12.3",
  "schemars",
  "serde",
  "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-tokenfactory-issuer"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch 0.24.1",
+ "cw-ownable",
+ "cw-storage-plus 1.2.0",
+ "cw-tokenfactory-types 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw2 1.1.2",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "osmosis-std",
+ "prost 0.12.3",
+ "prost-derive 0.12.3",
+ "schemars",
+ "serde",
  "thiserror",
 ]
 
@@ -1479,11 +1900,29 @@ version = "2.5.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "dao-interface",
+ "dao-interface 2.5.0",
  "osmosis-std",
  "osmosis-std-derive",
- "prost 0.12.6",
- "prost-types 0.12.6",
+ "prost 0.12.3",
+ "prost-types 0.12.3",
+ "schemars",
+ "serde",
+ "serde-cw-value",
+]
+
+[[package]]
+name = "cw-tokenfactory-types"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "osmosis-std",
+ "osmosis-std-derive",
+ "prost 0.12.3",
+ "prost-derive 0.12.3",
+ "prost-types 0.12.3",
  "schemars",
  "serde",
  "serde-cw-value",
@@ -1550,14 +1989,14 @@ dependencies = [
  "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-denom",
+ "cw-denom 2.5.0",
  "cw-multi-test",
  "cw-orch 0.24.1",
  "cw-ownable",
- "cw-stake-tracker",
+ "cw-stake-tracker 2.5.0",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
- "cw-wormhole",
+ "cw-wormhole 2.5.0",
  "cw2 1.1.2",
  "cw20 1.1.2",
  "cw20-base 1.1.2",
@@ -1568,8 +2007,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-vesting"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-denom 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-orch 0.24.1",
+ "cw-ownable",
+ "cw-stake-tracker 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw-wormhole 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw2 1.1.2",
+ "cw20 1.1.2",
+ "serde",
+ "thiserror",
+ "wynd-utils",
+]
+
+[[package]]
 name = "cw-wormhole"
 version = "2.5.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 1.2.0",
+ "serde",
+]
+
+[[package]]
+name = "cw-wormhole"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1649,6 +2120,19 @@ checksum = "4cb782b8f110819a4eb5dbbcfed25ffba49ec16bbe32b4ad8da50a5ce68fec05"
 dependencies = [
  "cosmwasm-std",
  "cw-utils 0.13.4",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw20"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a45a8794a5dd33b66af34caee52a7beceb690856adcc1682b6e3db88b2cdee62"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-utils 0.16.0",
  "schemars",
  "serde",
 ]
@@ -1761,7 +2245,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-controllers 1.1.2",
- "cw-hooks",
+ "cw-hooks 2.5.0",
  "cw-multi-test",
  "cw-orch 0.24.1",
  "cw-ownable",
@@ -1773,8 +2257,32 @@ dependencies = [
  "cw20 1.1.2",
  "cw20-base 1.1.2",
  "cw20-stake 0.2.6",
- "dao-hooks",
+ "dao-hooks 2.5.0",
  "dao-voting 2.5.0",
+ "thiserror",
+]
+
+[[package]]
+name = "cw20-stake"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-controllers 1.1.2",
+ "cw-hooks 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-orch 0.24.1",
+ "cw-ownable",
+ "cw-paginate-storage 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 0.13.4",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20 1.1.2",
+ "cw20-base 1.1.2",
+ "cw20-stake 0.2.6",
+ "dao-hooks 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "thiserror",
 ]
 
@@ -1796,7 +2304,29 @@ dependencies = [
  "cw20 1.1.2",
  "cw20-base 1.1.2",
  "cw20-stake 2.5.0",
- "dao-hooks",
+ "dao-hooks 2.5.0",
+ "stake-cw20-external-rewards",
+ "thiserror",
+]
+
+[[package]]
+name = "cw20-stake-external-rewards"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-controllers 1.1.2",
+ "cw-orch 0.24.1",
+ "cw-ownable",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20 0.13.4",
+ "cw20 1.1.2",
+ "cw20-base 1.1.2",
+ "cw20-stake 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-hooks 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "stake-cw20-external-rewards",
  "thiserror",
 ]
@@ -1816,6 +2346,25 @@ dependencies = [
  "cw20 1.1.2",
  "cw20-base 1.1.2",
  "cw20-stake 2.5.0",
+ "stake-cw20-reward-distributor",
+ "thiserror",
+]
+
+[[package]]
+name = "cw20-stake-reward-distributor"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch 0.24.1",
+ "cw-ownable",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20 1.1.2",
+ "cw20-base 1.1.2",
+ "cw20-stake 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "stake-cw20-reward-distributor",
  "thiserror",
 ]
@@ -2018,6 +2567,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw721-controllers"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "thiserror",
+]
+
+[[package]]
 name = "cw721-roles"
 version = "2.5.0"
 dependencies = [
@@ -2033,9 +2594,30 @@ dependencies = [
  "cw4 1.1.2",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
- "dao-cw721-extensions",
+ "dao-cw721-extensions 2.5.0",
  "dao-testing",
- "dao-voting-cw721-staked",
+ "dao-voting-cw721-staked 2.5.0",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw721-roles"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-controllers 1.1.2",
+ "cw-orch 0.24.1",
+ "cw-ownable",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw4 1.1.2",
+ "cw721 0.18.0",
+ "cw721-base 0.18.0",
+ "dao-cw721-extensions 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "serde",
  "thiserror",
 ]
@@ -2045,42 +2627,95 @@ name = "dao-cw-orch"
 version = "2.5.0"
 dependencies = [
  "cosmwasm-std",
- "cw-admin-factory",
+ "cw-admin-factory 2.5.0",
  "cw-orch 0.22.2",
- "cw-payroll-factory",
- "cw-token-swap",
- "cw-tokenfactory-issuer",
- "cw-vesting",
+ "cw-payroll-factory 2.5.0",
+ "cw-token-swap 2.5.0",
+ "cw-tokenfactory-issuer 2.5.0",
+ "cw-vesting 2.5.0",
  "cw20-stake 2.5.0",
- "cw20-stake-external-rewards",
- "cw20-stake-reward-distributor",
+ "cw20-stake-external-rewards 2.5.0",
+ "cw20-stake-reward-distributor 2.5.0",
  "cw721-base 0.18.0",
- "cw721-roles",
- "dao-dao-core",
- "dao-interface",
- "dao-migrator",
- "dao-pre-propose-approval-single",
- "dao-pre-propose-approver",
- "dao-pre-propose-multiple",
- "dao-pre-propose-single",
- "dao-proposal-condorcet",
- "dao-proposal-hook-counter",
- "dao-proposal-multiple",
- "dao-proposal-single",
- "dao-proposal-sudo",
- "dao-test-custom-factory",
- "dao-voting-cw20-balance",
- "dao-voting-cw20-staked",
- "dao-voting-cw4",
- "dao-voting-cw721-roles",
- "dao-voting-cw721-staked",
- "dao-voting-token-staked",
+ "cw721-roles 2.5.0",
+ "dao-dao-core 2.5.0",
+ "dao-interface 2.5.0",
+ "dao-migrator 2.5.0",
+ "dao-pre-propose-approval-single 2.5.0",
+ "dao-pre-propose-approver 2.5.0",
+ "dao-pre-propose-multiple 2.5.0",
+ "dao-pre-propose-single 2.5.0",
+ "dao-proposal-condorcet 2.5.0",
+ "dao-proposal-hook-counter 2.5.0",
+ "dao-proposal-multiple 2.5.0",
+ "dao-proposal-single 2.5.0",
+ "dao-proposal-sudo 2.5.0",
+ "dao-test-custom-factory 2.5.0",
+ "dao-voting-cw20-balance 2.5.0",
+ "dao-voting-cw20-staked 2.5.0",
+ "dao-voting-cw4 2.5.0",
+ "dao-voting-cw721-roles 2.5.0",
+ "dao-voting-cw721-staked 2.5.0",
+ "dao-voting-token-staked 2.5.0",
+ "serde",
+]
+
+[[package]]
+name = "dao-cw-orch"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-std",
+ "cw-admin-factory 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-fund-distributor 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-orch 0.24.1",
+ "cw-payroll-factory 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-token-swap 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-tokenfactory-issuer 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-vesting 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw20-stake 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw20-stake-external-rewards 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw20-stake-reward-distributor 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw721-base 0.18.0",
+ "cw721-roles 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-dao-core 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-migrator 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-pre-propose-approval-single 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-pre-propose-approver 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-pre-propose-multiple 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-pre-propose-single 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-proposal-condorcet 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-proposal-hook-counter 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-proposal-multiple 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-proposal-single 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-proposal-sudo 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-rewards-distributor 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-test-custom-factory 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting-cw20-balance 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting-cw20-staked 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting-cw4 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting-cw721-roles 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting-cw721-staked 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting-token-staked 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "serde",
 ]
 
 [[package]]
 name = "dao-cw721-extensions"
 version = "2.5.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-controllers 1.1.2",
+ "cw-orch 0.24.1",
+ "cw4 1.1.2",
+]
+
+[[package]]
+name = "dao-cw721-extensions"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -2109,12 +2744,54 @@ dependencies = [
  "cw20-base 1.1.2",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
- "dao-cw-orch",
- "dao-dao-macros",
- "dao-interface",
- "dao-proposal-sudo",
- "dao-voting-cw20-balance",
+ "dao-cw-orch 2.5.0",
+ "dao-dao-macros 2.5.0",
+ "dao-interface 2.5.0",
+ "dao-proposal-sudo 2.5.0",
+ "dao-voting-cw20-balance 2.5.0",
  "thiserror",
+]
+
+[[package]]
+name = "dao-dao-core"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-core",
+ "cw-paginate-storage 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20 1.1.2",
+ "cw721 0.18.0",
+ "dao-dao-macros 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-dao-macros"
+version = "2.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37c3f39b7aaf9d913d0de8c8742c151011da00662acdbe95c33a5f7bad1b835a"
+dependencies = [
+ "cosmwasm-schema",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "dao-dao-macros"
+version = "2.4.2"
+source = "git+https://github.com/Kayanski/dao-contracts?branch=development#8c945acdb0746ec84d15cfebeadcfe32122f85a2"
+dependencies = [
+ "cosmwasm-schema",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -2123,12 +2800,36 @@ version = "2.5.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-hooks",
- "dao-interface",
+ "cw-hooks 2.5.0",
+ "dao-interface 2.5.0",
  "dao-voting 2.5.0",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "dao-dao-macros"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "dao-hooks"
+version = "2.4.2"
+source = "git+https://github.com/Kayanski/dao-contracts?branch=development#8c945acdb0746ec84d15cfebeadcfe32122f85a2"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-hooks 2.4.2 (git+https://github.com/Kayanski/dao-contracts?branch=development)",
+ "cw4 1.1.2",
+ "dao-pre-propose-base 2.4.2",
+ "dao-voting 2.4.2",
 ]
 
 [[package]]
@@ -2137,15 +2838,87 @@ version = "2.5.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-hooks",
+ "cw-hooks 2.5.0",
  "cw4 1.1.2",
- "dao-pre-propose-base",
+ "dao-pre-propose-base 2.5.0",
  "dao-voting 2.5.0",
+]
+
+[[package]]
+name = "dao-hooks"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-hooks 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw4 1.1.2",
+ "dao-pre-propose-base 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+]
+
+[[package]]
+name = "dao-interface"
+version = "2.2.0"
+source = "git+https://github.com/DA0-DA0/dao-contracts?branch=main#7f89ad1604e8022f202aef729853b0c8c7196988"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-hooks 2.2.0",
+ "cw-utils 0.16.0",
+ "cw2 0.16.0",
+ "cw20 0.16.0",
+ "cw721 0.16.0",
+]
+
+[[package]]
+name = "dao-interface"
+version = "2.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e546da3e3d9c3b9f607c40256561f0424715d0aef840df9d37669b55d8590e1a"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20 1.1.2",
+ "cw721 0.18.0",
+ "osmosis-std",
+]
+
+[[package]]
+name = "dao-interface"
+version = "2.4.2"
+source = "git+https://github.com/Kayanski/dao-contracts?branch=development#8c945acdb0746ec84d15cfebeadcfe32122f85a2"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch 0.22.2",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20 1.1.2",
+ "cw721 0.18.0",
+ "osmosis-std",
 ]
 
 [[package]]
 name = "dao-interface"
 version = "2.5.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch 0.24.1",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20 1.1.2",
+ "cw721 0.18.0",
+ "osmosis-std",
+]
+
+[[package]]
+name = "dao-interface"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -2181,14 +2954,47 @@ dependencies = [
  "cw20-staked-balance-voting",
  "cw4 0.13.4",
  "cw4-voting",
- "dao-dao-core",
- "dao-interface",
- "dao-proposal-single",
+ "dao-dao-core 2.5.0",
+ "dao-interface 2.5.0",
+ "dao-proposal-single 2.5.0",
  "dao-testing",
  "dao-voting 0.1.0",
  "dao-voting 2.5.0",
- "dao-voting-cw20-staked",
- "dao-voting-cw4",
+ "dao-voting-cw20-staked 2.5.0",
+ "dao-voting-cw4 2.5.0",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-migrator"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-core",
+ "cw-core-interface 0.1.0 (git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0)",
+ "cw-orch 0.24.1",
+ "cw-proposal-single",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 0.13.4",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20 0.13.4",
+ "cw20 1.1.2",
+ "cw20-base 1.1.2",
+ "cw20-stake 0.2.6",
+ "cw20-stake 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw20-staked-balance-voting",
+ "cw4 0.13.4",
+ "cw4-voting",
+ "dao-dao-core 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-proposal-single 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting 0.1.0",
+ "dao-voting 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting-cw20-staked 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting-cw4 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "thiserror",
 ]
 
@@ -2198,7 +3004,7 @@ version = "2.5.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-denom",
+ "cw-denom 2.5.0",
  "cw-multi-test",
  "cw-paginate-storage 2.5.0",
  "cw-storage-plus 1.2.0",
@@ -2207,15 +3013,31 @@ dependencies = [
  "cw20 1.1.2",
  "cw20-base 1.1.2",
  "cw4-group 1.1.2",
- "dao-dao-core",
- "dao-hooks",
- "dao-interface",
- "dao-pre-propose-base",
- "dao-proposal-single",
+ "dao-dao-core 2.5.0",
+ "dao-hooks 2.5.0",
+ "dao-interface 2.5.0",
+ "dao-pre-propose-base 2.5.0",
+ "dao-proposal-single 2.5.0",
  "dao-testing",
  "dao-voting 2.5.0",
- "dao-voting-cw20-staked",
- "dao-voting-cw4",
+ "dao-voting-cw20-staked 2.5.0",
+ "dao-voting-cw4 2.5.0",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-pre-propose-approval-single"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-paginate-storage 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-storage-plus 1.2.0",
+ "cw2 1.1.2",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-pre-propose-base 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "thiserror",
 ]
 
@@ -2225,7 +3047,7 @@ version = "2.5.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-denom",
+ "cw-denom 2.5.0",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
@@ -2233,16 +3055,70 @@ dependencies = [
  "cw20 1.1.2",
  "cw20-base 1.1.2",
  "cw4-group 1.1.2",
- "dao-dao-core",
- "dao-hooks",
- "dao-interface",
- "dao-pre-propose-approval-single",
- "dao-pre-propose-base",
- "dao-proposal-single",
+ "dao-dao-core 2.5.0",
+ "dao-hooks 2.5.0",
+ "dao-interface 2.5.0",
+ "dao-pre-propose-approval-single 2.5.0",
+ "dao-pre-propose-base 2.5.0",
+ "dao-proposal-single 2.5.0",
  "dao-testing",
  "dao-voting 2.5.0",
- "dao-voting-cw20-staked",
- "dao-voting-cw4",
+ "dao-voting-cw20-staked 2.5.0",
+ "dao-voting-cw4 2.5.0",
+]
+
+[[package]]
+name = "dao-pre-propose-approver"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-pre-propose-approval-single 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-pre-propose-base 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+]
+
+[[package]]
+name = "dao-pre-propose-base"
+version = "2.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd285523d7dea35a0dd76f0a5f20c190935922a7b58fe0ec753eb407e68d718b"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-denom 2.4.1",
+ "cw-hooks 2.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "dao-interface 2.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "dao-voting 2.4.1",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-pre-propose-base"
+version = "2.4.2"
+source = "git+https://github.com/Kayanski/dao-contracts?branch=development#8c945acdb0746ec84d15cfebeadcfe32122f85a2"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-denom 2.4.2",
+ "cw-hooks 2.4.2 (git+https://github.com/Kayanski/dao-contracts?branch=development)",
+ "cw-orch 0.22.2",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "dao-interface 2.4.2 (git+https://github.com/Kayanski/dao-contracts?branch=development)",
+ "dao-voting 2.4.2",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]
@@ -2251,15 +3127,38 @@ version = "2.5.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-denom",
- "cw-hooks",
+ "cw-denom 2.5.0",
+ "cw-hooks 2.5.0",
  "cw-multi-test",
  "cw-orch 0.24.1",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
- "dao-interface",
+ "dao-interface 2.5.0",
  "dao-voting 2.5.0",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-pre-propose-base"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-denom 2.4.1",
+ "cw-denom 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-hooks 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-orch 0.24.1",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-pre-propose-base 2.4.1",
+ "dao-voting 2.4.1",
+ "dao-voting 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "semver",
  "serde",
  "thiserror",
 ]
@@ -2270,22 +3169,34 @@ version = "2.5.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-denom",
+ "cw-denom 2.5.0",
  "cw-multi-test",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
  "cw20 1.1.2",
  "cw20-base 1.1.2",
  "cw4-group 1.1.2",
- "dao-dao-core",
- "dao-hooks",
- "dao-interface",
- "dao-pre-propose-base",
- "dao-proposal-multiple",
+ "dao-dao-core 2.5.0",
+ "dao-hooks 2.5.0",
+ "dao-interface 2.5.0",
+ "dao-pre-propose-base 2.5.0",
+ "dao-proposal-multiple 2.5.0",
  "dao-testing",
  "dao-voting 2.5.0",
- "dao-voting-cw20-staked",
- "dao-voting-cw4",
+ "dao-voting-cw20-staked 2.5.0",
+ "dao-voting-cw4 2.5.0",
+]
+
+[[package]]
+name = "dao-pre-propose-multiple"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw2 1.1.2",
+ "dao-pre-propose-base 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
 ]
 
 [[package]]
@@ -2294,23 +3205,35 @@ version = "2.5.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-denom",
- "cw-hooks",
+ "cw-denom 2.5.0",
+ "cw-hooks 2.5.0",
  "cw-multi-test",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
  "cw20 1.1.2",
  "cw20-base 1.1.2",
  "cw4-group 1.1.2",
- "dao-dao-core",
- "dao-hooks",
- "dao-interface",
- "dao-pre-propose-base",
- "dao-proposal-single",
+ "dao-dao-core 2.5.0",
+ "dao-hooks 2.5.0",
+ "dao-interface 2.5.0",
+ "dao-pre-propose-base 2.5.0",
+ "dao-proposal-single 2.5.0",
  "dao-testing",
  "dao-voting 2.5.0",
- "dao-voting-cw20-staked",
- "dao-voting-cw4",
+ "dao-voting-cw20-staked 2.5.0",
+ "dao-voting-cw4 2.5.0",
+]
+
+[[package]]
+name = "dao-pre-propose-single"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw2 1.1.2",
+ "dao-pre-propose-base 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
 ]
 
 [[package]]
@@ -2327,12 +3250,29 @@ dependencies = [
  "cw2 1.1.2",
  "cw4 1.1.2",
  "cw4-group 1.1.2",
- "dao-dao-core",
- "dao-dao-macros",
- "dao-interface",
+ "dao-dao-core 2.5.0",
+ "dao-dao-macros 2.5.0",
+ "dao-interface 2.5.0",
  "dao-testing",
  "dao-voting 2.5.0",
- "dao-voting-cw4",
+ "dao-voting-cw4 2.5.0",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-proposal-condorcet"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch 0.24.1",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "dao-dao-macros 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "thiserror",
 ]
 
@@ -2342,7 +3282,7 @@ version = "2.5.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-hooks",
+ "cw-hooks 2.5.0",
  "cw-multi-test",
  "cw-orch 0.24.1",
  "cw-storage-plus 1.2.0",
@@ -2350,12 +3290,26 @@ dependencies = [
  "cw2 1.1.2",
  "cw20 1.1.2",
  "cw20-base 1.1.2",
- "dao-dao-core",
- "dao-hooks",
- "dao-interface",
- "dao-proposal-single",
+ "dao-dao-core 2.5.0",
+ "dao-hooks 2.5.0",
+ "dao-interface 2.5.0",
+ "dao-proposal-single 2.5.0",
  "dao-voting 2.5.0",
- "dao-voting-cw20-balance",
+ "dao-voting-cw20-balance 2.5.0",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-proposal-hook-counter"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch 0.24.1",
+ "cw-storage-plus 1.2.0",
+ "cw2 1.1.2",
+ "dao-hooks 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "thiserror",
 ]
 
@@ -2366,8 +3320,8 @@ dependencies = [
  "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-denom",
- "cw-hooks",
+ "cw-denom 2.5.0",
+ "cw-hooks 2.5.0",
  "cw-multi-test",
  "cw-orch 0.24.1",
  "cw-storage-plus 1.2.0",
@@ -2379,20 +3333,67 @@ dependencies = [
  "cw4 1.1.2",
  "cw4-group 1.1.2",
  "cw721-base 0.18.0",
- "dao-dao-macros",
- "dao-hooks",
- "dao-interface",
- "dao-pre-propose-base",
- "dao-pre-propose-multiple",
+ "dao-dao-macros 2.5.0",
+ "dao-hooks 2.5.0",
+ "dao-interface 2.5.0",
+ "dao-pre-propose-base 2.5.0",
+ "dao-pre-propose-multiple 2.5.0",
  "dao-testing",
  "dao-voting 0.1.0",
  "dao-voting 2.5.0",
- "dao-voting-cw20-balance",
- "dao-voting-cw20-staked",
- "dao-voting-cw4",
- "dao-voting-cw721-staked",
- "dao-voting-token-staked",
+ "dao-voting-cw20-balance 2.5.0",
+ "dao-voting-cw20-staked 2.5.0",
+ "dao-voting-cw4 2.5.0",
+ "dao-voting-cw721-staked 2.5.0",
+ "dao-voting-token-staked 2.5.0",
  "rand",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-proposal-multiple"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-hooks 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-orch 0.24.1",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20 1.1.2",
+ "dao-dao-macros 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-hooks 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-pre-propose-base 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-pre-propose-multiple 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting 0.1.0",
+ "dao-voting 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-proposal-single"
+version = "2.4.2"
+source = "git+https://github.com/Kayanski/dao-contracts?branch=development#8c945acdb0746ec84d15cfebeadcfe32122f85a2"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-hooks 2.4.2 (git+https://github.com/Kayanski/dao-contracts?branch=development)",
+ "cw-orch 0.22.2",
+ "cw-proposal-single",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 0.13.4",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20 1.1.2",
+ "dao-dao-macros 2.4.2 (git+https://github.com/Kayanski/dao-contracts?branch=development)",
+ "dao-hooks 2.4.2",
+ "dao-interface 2.4.2 (git+https://github.com/Kayanski/dao-contracts?branch=development)",
+ "dao-pre-propose-base 2.4.2",
+ "dao-voting 0.1.0",
+ "dao-voting 2.4.2",
  "thiserror",
 ]
 
@@ -2404,8 +3405,8 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-core",
- "cw-denom",
- "cw-hooks",
+ "cw-denom 2.5.0",
+ "cw-hooks 2.5.0",
  "cw-multi-test",
  "cw-orch 0.24.1",
  "cw-proposal-single",
@@ -2419,20 +3420,59 @@ dependencies = [
  "cw4 1.1.2",
  "cw4-group 1.1.2",
  "cw721-base 0.18.0",
- "dao-dao-core",
- "dao-dao-macros",
- "dao-hooks",
- "dao-interface",
- "dao-pre-propose-base",
- "dao-pre-propose-single",
+ "dao-dao-core 2.5.0",
+ "dao-dao-macros 2.5.0",
+ "dao-hooks 2.5.0",
+ "dao-interface 2.5.0",
+ "dao-pre-propose-base 2.5.0",
+ "dao-pre-propose-single 2.5.0",
  "dao-testing",
  "dao-voting 0.1.0",
  "dao-voting 2.5.0",
- "dao-voting-cw20-balance",
- "dao-voting-cw20-staked",
- "dao-voting-cw4",
- "dao-voting-cw721-staked",
- "dao-voting-token-staked",
+ "dao-voting-cw20-balance 2.5.0",
+ "dao-voting-cw20-staked 2.5.0",
+ "dao-voting-cw4 2.5.0",
+ "dao-voting-cw721-staked 2.5.0",
+ "dao-voting-token-staked 2.5.0",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-proposal-single"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-hooks 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-orch 0.24.1",
+ "cw-proposal-single",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 0.13.4",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20 1.1.2",
+ "dao-dao-macros 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-hooks 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-pre-propose-base 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting 0.1.0",
+ "dao-voting 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-proposal-sudo"
+version = "2.4.2"
+source = "git+https://github.com/Kayanski/dao-contracts?branch=development#8c945acdb0746ec84d15cfebeadcfe32122f85a2"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch 0.22.2",
+ "cw-storage-plus 1.2.0",
+ "cw2 1.1.2",
+ "dao-dao-macros 2.4.2 (git+https://github.com/Kayanski/dao-contracts?branch=development)",
+ "dao-interface 2.4.2 (git+https://github.com/Kayanski/dao-contracts?branch=development)",
  "thiserror",
 ]
 
@@ -2446,8 +3486,23 @@ dependencies = [
  "cw-orch 0.24.1",
  "cw-storage-plus 1.2.0",
  "cw2 1.1.2",
- "dao-dao-macros",
- "dao-interface",
+ "dao-dao-macros 2.5.0",
+ "dao-interface 2.5.0",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-proposal-sudo"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch 0.24.1",
+ "cw-storage-plus 1.2.0",
+ "cw2 1.1.2",
+ "dao-dao-macros 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "thiserror",
 ]
 
@@ -2470,14 +3525,36 @@ dependencies = [
  "cw4 1.1.2",
  "cw4-group 1.1.2",
  "cw721-base 0.18.0",
- "dao-hooks",
- "dao-interface",
+ "dao-hooks 2.5.0",
+ "dao-interface 2.5.0",
  "dao-testing",
  "dao-voting 2.5.0",
- "dao-voting-cw20-staked",
- "dao-voting-cw4",
- "dao-voting-cw721-staked",
- "dao-voting-token-staked",
+ "dao-voting-cw20-staked 2.5.0",
+ "dao-voting-cw4 2.5.0",
+ "dao-voting-cw721-staked 2.5.0",
+ "dao-voting-token-staked 2.5.0",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-rewards-distributor"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-controllers 1.1.2",
+ "cw-orch 0.24.1",
+ "cw-ownable",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20 1.1.2",
+ "cw20-base 1.1.2",
+ "cw4 1.1.2",
+ "dao-hooks 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "thiserror",
 ]
 
@@ -2491,14 +3568,35 @@ dependencies = [
  "cw-orch 0.24.1",
  "cw-ownable",
  "cw-storage-plus 1.2.0",
- "cw-tokenfactory-issuer",
+ "cw-tokenfactory-issuer 2.5.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
- "dao-dao-macros",
- "dao-interface",
+ "dao-dao-macros 2.5.0",
+ "dao-interface 2.5.0",
  "dao-voting 2.5.0",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-test-custom-factory"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch 0.24.1",
+ "cw-ownable",
+ "cw-storage-plus 1.2.0",
+ "cw-tokenfactory-issuer 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw721 0.18.0",
+ "cw721-base 0.18.0",
+ "dao-dao-macros 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "thiserror",
 ]
 
@@ -2509,12 +3607,12 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-core",
- "cw-hooks",
+ "cw-hooks 2.5.0",
  "cw-multi-test",
  "cw-proposal-single",
- "cw-tokenfactory-issuer",
+ "cw-tokenfactory-issuer 2.5.0",
  "cw-utils 1.0.3",
- "cw-vesting",
+ "cw-vesting 2.5.0",
  "cw2 1.1.2",
  "cw20 1.1.2",
  "cw20-base 1.1.2",
@@ -2522,23 +3620,23 @@ dependencies = [
  "cw4 1.1.2",
  "cw4-group 1.1.2",
  "cw721-base 0.18.0",
- "cw721-roles",
- "dao-dao-core",
- "dao-interface",
- "dao-pre-propose-multiple",
- "dao-pre-propose-single",
- "dao-proposal-condorcet",
- "dao-proposal-single",
- "dao-test-custom-factory",
+ "cw721-roles 2.5.0",
+ "dao-dao-core 2.5.0",
+ "dao-interface 2.5.0",
+ "dao-pre-propose-multiple 2.5.0",
+ "dao-pre-propose-single 2.5.0",
+ "dao-proposal-condorcet 2.5.0",
+ "dao-proposal-single 2.5.0",
+ "dao-test-custom-factory 2.5.0",
  "dao-voting 0.1.0",
  "dao-voting 2.5.0",
- "dao-voting-cw20-balance",
- "dao-voting-cw20-staked",
- "dao-voting-cw4",
- "dao-voting-cw721-roles",
- "dao-voting-cw721-staked",
+ "dao-voting-cw20-balance 2.5.0",
+ "dao-voting-cw20-staked 2.5.0",
+ "dao-voting-cw4 2.5.0",
+ "dao-voting-cw721-roles 2.5.0",
+ "dao-voting-cw721-staked 2.5.0",
  "dao-voting-onft-staked",
- "dao-voting-token-staked",
+ "dao-voting-token-staked 2.5.0",
  "osmosis-std",
  "osmosis-test-tube",
  "rand",
@@ -2561,16 +3659,65 @@ dependencies = [
 
 [[package]]
 name = "dao-voting"
+version = "2.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "945898e8e168eada7ed06fa713d679e541673ee0dd8c70aee8d1f224ccd031a0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-denom 2.4.1",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw20 1.1.2",
+ "dao-dao-macros 2.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "dao-interface 2.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-voting"
+version = "2.4.2"
+source = "git+https://github.com/Kayanski/dao-contracts?branch=development#8c945acdb0746ec84d15cfebeadcfe32122f85a2"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-denom 2.4.2",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw20 1.1.2",
+ "dao-dao-macros 2.4.2 (git+https://github.com/Kayanski/dao-contracts?branch=development)",
+ "dao-interface 2.4.2 (git+https://github.com/Kayanski/dao-contracts?branch=development)",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-voting"
 version = "2.5.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-denom",
+ "cw-denom 2.5.0",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw20 1.1.2",
- "dao-dao-macros",
- "dao-interface",
+ "dao-dao-macros 2.5.0",
+ "dao-interface 2.5.0",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-voting"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-denom 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw20 1.1.2",
+ "dao-dao-macros 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "thiserror",
 ]
 
@@ -2587,8 +3734,26 @@ dependencies = [
  "cw2 1.1.2",
  "cw20 1.1.2",
  "cw20-base 1.1.2",
- "dao-dao-macros",
- "dao-interface",
+ "dao-dao-macros 2.5.0",
+ "dao-interface 2.5.0",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-voting-cw20-balance"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch 0.24.1",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20 1.1.2",
+ "cw20-base 1.1.2",
+ "dao-dao-macros 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "thiserror",
 ]
 
@@ -2606,9 +3771,29 @@ dependencies = [
  "cw20 1.1.2",
  "cw20-base 1.1.2",
  "cw20-stake 2.5.0",
- "dao-dao-macros",
- "dao-interface",
+ "dao-dao-macros 2.5.0",
+ "dao-interface 2.5.0",
  "dao-voting 2.5.0",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-voting-cw20-staked"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch 0.24.1",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20 1.1.2",
+ "cw20-base 1.1.2",
+ "cw20-stake 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-dao-macros 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "thiserror",
 ]
 
@@ -2625,8 +3810,26 @@ dependencies = [
  "cw2 1.1.2",
  "cw4 1.1.2",
  "cw4-group 1.1.2",
- "dao-dao-macros",
- "dao-interface",
+ "dao-dao-macros 2.5.0",
+ "dao-interface 2.5.0",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-voting-cw4"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch 0.24.1",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw4 1.1.2",
+ "cw4-group 1.1.2",
+ "dao-dao-macros 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "thiserror",
 ]
 
@@ -2646,12 +3849,34 @@ dependencies = [
  "cw4 1.1.2",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
- "cw721-controllers",
- "cw721-roles",
- "dao-cw721-extensions",
- "dao-dao-macros",
- "dao-interface",
+ "cw721-controllers 2.5.0",
+ "cw721-roles 2.5.0",
+ "dao-cw721-extensions 2.5.0",
+ "dao-dao-macros 2.5.0",
+ "dao-interface 2.5.0",
  "dao-testing",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-voting-cw721-roles"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch 0.24.1",
+ "cw-ownable",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw4 1.1.2",
+ "cw721 0.18.0",
+ "cw721-base 0.18.0",
+ "cw721-controllers 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-cw721-extensions 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-dao-macros 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "thiserror",
 ]
 
@@ -2663,7 +3888,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-controllers 1.1.2",
- "cw-hooks",
+ "cw-hooks 2.5.0",
  "cw-multi-test",
  "cw-orch 0.24.1",
  "cw-storage-plus 1.2.0",
@@ -2671,18 +3896,41 @@ dependencies = [
  "cw2 1.1.2",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
- "cw721-controllers",
- "dao-dao-macros",
- "dao-hooks",
- "dao-interface",
- "dao-proposal-hook-counter",
- "dao-proposal-single",
- "dao-test-custom-factory",
+ "cw721-controllers 2.5.0",
+ "dao-dao-macros 2.5.0",
+ "dao-hooks 2.5.0",
+ "dao-interface 2.5.0",
+ "dao-proposal-hook-counter 2.5.0",
+ "dao-proposal-single 2.5.0",
+ "dao-test-custom-factory 2.5.0",
  "dao-testing",
  "dao-voting 2.5.0",
  "osmosis-std",
  "osmosis-test-tube",
  "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-voting-cw721-staked"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-controllers 1.1.2",
+ "cw-hooks 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-orch 0.24.1",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw721 0.18.0",
+ "cw721-base 0.18.0",
+ "cw721-controllers 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-dao-macros 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-hooks 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "thiserror",
 ]
 
@@ -2694,23 +3942,23 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-controllers 1.1.2",
- "cw-hooks",
+ "cw-hooks 2.5.0",
  "cw-multi-test",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
- "cw721-controllers",
- "dao-dao-macros",
- "dao-hooks",
- "dao-interface",
- "dao-proposal-hook-counter",
- "dao-proposal-single",
- "dao-test-custom-factory",
+ "cw721-controllers 2.5.0",
+ "dao-dao-macros 2.5.0",
+ "dao-hooks 2.5.0",
+ "dao-interface 2.5.0",
+ "dao-proposal-hook-counter 2.5.0",
+ "dao-proposal-single 2.5.0",
+ "dao-test-custom-factory 2.5.0",
  "dao-testing",
  "dao-voting 2.5.0",
  "omniflix-std",
  "osmosis-test-tube",
- "prost 0.12.6",
+ "prost 0.12.3",
  "serde",
  "thiserror",
 ]
@@ -2723,25 +3971,47 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-controllers 1.1.2",
- "cw-hooks",
+ "cw-hooks 2.5.0",
  "cw-multi-test",
  "cw-orch 0.24.1",
  "cw-ownable",
  "cw-storage-plus 1.2.0",
- "cw-tokenfactory-issuer",
+ "cw-tokenfactory-issuer 2.5.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
- "dao-dao-macros",
- "dao-hooks",
- "dao-interface",
- "dao-proposal-hook-counter",
- "dao-proposal-single",
- "dao-test-custom-factory",
+ "dao-dao-macros 2.5.0",
+ "dao-hooks 2.5.0",
+ "dao-interface 2.5.0",
+ "dao-proposal-hook-counter 2.5.0",
+ "dao-proposal-single 2.5.0",
+ "dao-test-custom-factory 2.5.0",
  "dao-testing",
  "dao-voting 2.5.0",
  "osmosis-std",
  "osmosis-test-tube",
  "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "dao-voting-token-staked"
+version = "2.5.0"
+source = "git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch#74e36a06709b8c005b00b0f455792e92ea3a87af"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-controllers 1.1.2",
+ "cw-hooks 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-orch 0.24.1",
+ "cw-ownable",
+ "cw-storage-plus 1.2.0",
+ "cw-tokenfactory-issuer 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "dao-dao-macros 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-hooks 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-voting 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
  "thiserror",
 ]
 
@@ -2825,6 +4095,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0688c2a7f92e427f44895cd63841bff7b29f8d7a1648b9e7e07a4a365b2e1257"
 
 [[package]]
+name = "dotenv"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
+
+[[package]]
 name = "dyn-clone"
 version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2866,14 +4142,52 @@ dependencies = [
 ]
 
 [[package]]
+name = "ed25519"
+version = "2.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "115531babc129696a58c64a4fef0a8bf9e9698629fb97e9e40767d235cfbcd53"
+dependencies = [
+ "pkcs8 0.10.2",
+ "serde",
+ "signature 2.2.0",
+]
+
+[[package]]
+name = "ed25519-consensus"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c8465edc8ee7436ffea81d21a019b16676ee3db267aa8d5a8d729581ecf998b"
+dependencies = [
+ "curve25519-dalek-ng",
+ "hex",
+ "rand_core 0.6.4",
+ "sha2 0.9.9",
+ "zeroize",
+]
+
+[[package]]
 name = "ed25519-dalek"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c762bae6dcaf24c4c84667b8579785430908723d5c889f469d76a41d59cc7a9d"
 dependencies = [
- "curve25519-dalek",
- "ed25519",
+ "curve25519-dalek 3.2.0",
+ "ed25519 1.5.3",
  "sha2 0.9.9",
+ "zeroize",
+]
+
+[[package]]
+name = "ed25519-dalek"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a3daa8e81a3963a60642bcc1f90a670680bd4a77535faa384e9d1c79d620871"
+dependencies = [
+ "curve25519-dalek 4.1.3",
+ "ed25519 2.2.3",
+ "serde",
+ "sha2 0.10.8",
+ "subtle",
  "zeroize",
 ]
 
@@ -2883,7 +4197,7 @@ version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c24f403d068ad0b359e577a77f92392118be3f3c927538f2bb544a5ecd828c6"
 dependencies = [
- "curve25519-dalek",
+ "curve25519-dalek 3.2.0",
  "hashbrown 0.12.3",
  "hex",
  "rand_core 0.6.4",
@@ -2938,6 +4252,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "encoding_rs"
+version = "0.8.34"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b45de904aa0b010bce2ab45264d0631681847fa7b6f2eaa7dab7619943bc4f59"
+dependencies = [
+ "cfg-if",
+]
+
+[[package]]
 name = "env_logger"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2986,6 +4309,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fastrand"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9fc0510504f03c51ada170672ac806f1f105a88aa97a5281117e1ddc3368e51a"
+
+[[package]]
 name = "ff"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3006,6 +4335,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "fiat-crypto"
+version = "0.2.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "28dea519a9695b9977216879a3ebfddf92f1c08c05d984f8996aecd6ecdc811d"
+
+[[package]]
+name = "file-lock"
+version = "2.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "040b48f80a749da50292d0f47a1e2d5bf1d772f52836c07f64bfccc62ba6e664"
+dependencies = [
+ "cc",
+ "libc",
+]
+
+[[package]]
+name = "flate2"
+version = "1.0.30"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f54427cfd1c7829e2a139fcefea601bf088ebca651d2bf53ebc600eac295dae"
+dependencies = [
+ "crc32fast",
+ "miniz_oxide",
+]
+
+[[package]]
 name = "flex-error"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3020,6 +4375,21 @@ name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
+
+[[package]]
+name = "foreign-types"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6f339eb8adc052cd2ca78910fda869aefa38d22d5cb648e6485e4d3fc06f3b1"
+dependencies = [
+ "foreign-types-shared",
+]
+
+[[package]]
+name = "foreign-types-shared"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 
 [[package]]
 name = "form_urlencoded"
@@ -3092,7 +4462,7 @@ checksum = "87750cf4b7a4c0625b1529e4c543c2182106e4dedc60a2a6455e00d212c489ac"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.71",
+ "syn 2.0.72",
 ]
 
 [[package]]
@@ -3254,6 +4624,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
+name = "hex_lit"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3011d1213f159867b13cfd6ac92d2cd5f1345762c63be3554e84092d85a50bbd"
+
+[[package]]
+name = "hkd32"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e013a4f0b8772418eee1fc462e74017aba13c364a7b61bd3df1ddcbfe47b065"
+dependencies = [
+ "hmac",
+ "once_cell",
+ "pbkdf2",
+ "rand_core 0.6.4",
+ "sha2 0.10.8",
+ "subtle-encoding",
+ "zeroize",
+]
+
+[[package]]
 name = "hmac"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3346,10 +4737,10 @@ dependencies = [
  "headers",
  "http",
  "hyper",
- "hyper-rustls",
- "rustls-native-certs",
+ "hyper-rustls 0.22.1",
+ "rustls-native-certs 0.5.0",
  "tokio",
- "tokio-rustls",
+ "tokio-rustls 0.22.0",
  "tower-service",
  "webpki",
 ]
@@ -3364,12 +4755,26 @@ dependencies = [
  "futures-util",
  "hyper",
  "log",
- "rustls",
- "rustls-native-certs",
+ "rustls 0.19.1",
+ "rustls-native-certs 0.5.0",
  "tokio",
- "tokio-rustls",
+ "tokio-rustls 0.22.0",
  "webpki",
  "webpki-roots",
+]
+
+[[package]]
+name = "hyper-rustls"
+version = "0.24.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec3efd23720e2049821a693cbc7e65ea87c72f1c58ff2f9522ff332b1491e590"
+dependencies = [
+ "futures-util",
+ "http",
+ "hyper",
+ "rustls 0.21.12",
+ "tokio",
+ "tokio-rustls 0.24.1",
 ]
 
 [[package]]
@@ -3382,6 +4787,42 @@ dependencies = [
  "pin-project-lite",
  "tokio",
  "tokio-io-timeout",
+]
+
+[[package]]
+name = "hyper-tls"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6183ddfa99b85da61a140bea0efc93fdf56ceaa041b37d553518030827f9905"
+dependencies = [
+ "bytes",
+ "hyper",
+ "native-tls",
+ "tokio",
+ "tokio-native-tls",
+]
+
+[[package]]
+name = "iana-time-zone"
+version = "0.1.60"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e7ffbb5a1b541ea2561f8c41c087286cc091e21e556a4f09a8f6cbf17b69b141"
+dependencies = [
+ "android_system_properties",
+ "core-foundation-sys",
+ "iana-time-zone-haiku",
+ "js-sys",
+ "wasm-bindgen",
+ "windows-core",
+]
+
+[[package]]
+name = "iana-time-zone-haiku"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f31827a206f56af32e590ba56d5d2d085f558508192593743f16b2306495269f"
+dependencies = [
+ "cc",
 ]
 
 [[package]]
@@ -3444,21 +4885,21 @@ dependencies = [
  "cosmos-sdk-proto 0.19.0",
  "cosmwasm-std",
  "cw-utils 1.0.3",
- "cw-vesting",
+ "cw-vesting 2.5.0",
  "cw20 1.1.2",
  "cw20-base 1.1.2",
  "cw20-stake 2.5.0",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
- "cw721-roles",
- "dao-dao-core",
- "dao-interface",
- "dao-pre-propose-single",
- "dao-proposal-single",
- "dao-test-custom-factory",
+ "cw721-roles 2.5.0",
+ "dao-dao-core 2.5.0",
+ "dao-interface 2.5.0",
+ "dao-pre-propose-single 2.5.0",
+ "dao-proposal-single 2.5.0",
+ "dao-test-custom-factory 2.5.0",
  "dao-voting 2.5.0",
- "dao-voting-cw20-staked",
- "dao-voting-cw721-staked",
+ "dao-voting-cw20-staked 2.5.0",
+ "dao-voting-cw721-staked 2.5.0",
  "env_logger",
  "once_cell",
  "rand",
@@ -3466,6 +4907,12 @@ dependencies = [
  "serde_json",
  "test-context",
 ]
+
+[[package]]
+name = "ipnet"
+version = "2.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f518f335dce6725a761382244631d86cf0ccb2863413590b31338feb467f9c3"
 
 [[package]]
 name = "is-terminal"
@@ -3483,6 +4930,15 @@ name = "itertools"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
 dependencies = [
  "either",
 ]
@@ -3578,9 +5034,9 @@ checksum = "97b3888a4aecf77e811145cadf6eef5901f4782c53886191b2f693f24761847c"
 
 [[package]]
 name = "libloading"
-version = "0.8.4"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e310b3a6b5907f99202fcdb4960ff45b93735d7c7d96b760fcff8db2dc0e103d"
+checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
  "windows-targets 0.52.6",
@@ -3607,6 +5063,16 @@ name = "linux-raw-sys"
 version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78b3ae25bc7c8c38cec158d1f2757ee79e9b3740fbc7ccf0e59e4b08d793fa89"
+
+[[package]]
+name = "lock_api"
+version = "0.4.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07af8b9cdd281b7915f413fa73f29ebd5d55d0d3f0155584dade1ff18cea1b17"
+dependencies = [
+ "autocfg",
+ "scopeguard",
+]
 
 [[package]]
 name = "log"
@@ -3649,13 +5115,31 @@ dependencies = [
 
 [[package]]
 name = "mio"
-version = "0.8.11"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4a650543ca06a924e8b371db273b2756685faae30f8487da1b56505a8f78b0c"
+checksum = "4569e456d394deccd22ce1c1913e6ea0e54519f577285001215d33557431afe4"
 dependencies = [
+ "hermit-abi",
  "libc",
  "wasi",
- "windows-sys 0.48.0",
+ "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "native-tls"
+version = "0.2.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8614eb2c83d59d1c8cc974dd3f920198647674a0a035e1af1fa58707e317466"
+dependencies = [
+ "libc",
+ "log",
+ "openssl",
+ "openssl-probe",
+ "openssl-sys",
+ "schannel",
+ "security-framework",
+ "security-framework-sys",
+ "tempfile",
 ]
 
 [[package]]
@@ -3687,7 +5171,7 @@ checksum = "ed3955f1a9c7c0c15e092f9c887db08b1fc683305fdf6eb6684f22555355e202"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.71",
+ "syn 2.0.72",
 ]
 
 [[package]]
@@ -3697,16 +5181,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
-]
-
-[[package]]
-name = "num_cpus"
-version = "1.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4161fcb6d602d4d2081af7c3a45852d875a03dd337a6bfdd6e06407b61342a43"
-dependencies = [
- "hermit-abi",
- "libc",
 ]
 
 [[package]]
@@ -3736,8 +5210,8 @@ dependencies = [
  "chrono",
  "cosmwasm-std",
  "omniflix-std-derive",
- "prost 0.12.6",
- "prost-types 0.12.6",
+ "prost 0.12.3",
+ "prost-types 0.12.3",
  "schemars",
  "serde",
  "serde-cw-value",
@@ -3769,10 +5243,48 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 
 [[package]]
+name = "openssl"
+version = "0.10.66"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9529f4786b70a3e8c61e11179af17ab6188ad8d0ded78c5529441ed39d4bd9c1"
+dependencies = [
+ "bitflags 2.6.0",
+ "cfg-if",
+ "foreign-types",
+ "libc",
+ "once_cell",
+ "openssl-macros",
+ "openssl-sys",
+]
+
+[[package]]
+name = "openssl-macros"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a948666b637a0f465e8564c73e89d4dde00d72d4d473cc972f390fc3dcee7d9c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.72",
+]
+
+[[package]]
 name = "openssl-probe"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
+
+[[package]]
+name = "openssl-sys"
+version = "0.9.103"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f9e8deee91df40a943c71b917e5874b951d32a802526c85721ce3b776c929d6"
+dependencies = [
+ "cc",
+ "libc",
+ "pkg-config",
+ "vcpkg",
+]
 
 [[package]]
 name = "option-ext"
@@ -3838,6 +5350,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "parking_lot"
+version = "0.12.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1bf18183cf54e8d6059647fc3063646a1801cf30896933ec2311622cc4b9a27"
+dependencies = [
+ "lock_api",
+ "parking_lot_core",
+]
+
+[[package]]
+name = "parking_lot_core"
+version = "0.9.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e401f977ab385c9e4e3ab30627d6f26d00e2c73eef317493c4ec6d468726cf8"
+dependencies = [
+ "cfg-if",
+ "libc",
+ "redox_syscall",
+ "smallvec",
+ "windows-targets 0.52.6",
+]
+
+[[package]]
 name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3870,8 +5405,18 @@ version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07c0b841ea54f523f7aa556956fbd293bcbe06f2e67d2eb732b7278aaf1d166a"
 dependencies = [
- "peg-macros",
- "peg-runtime",
+ "peg-macros 0.7.0",
+ "peg-runtime 0.7.0",
+]
+
+[[package]]
+name = "peg"
+version = "0.8.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "295283b02df346d1ef66052a757869b2876ac29a6bb0ac3f5f7cd44aebe40e8f"
+dependencies = [
+ "peg-macros 0.8.4",
+ "peg-runtime 0.8.3",
 ]
 
 [[package]]
@@ -3880,7 +5425,18 @@ version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5aa52829b8decbef693af90202711348ab001456803ba2a98eb4ec8fb70844c"
 dependencies = [
- "peg-runtime",
+ "peg-runtime 0.7.0",
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
+name = "peg-macros"
+version = "0.8.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bdad6a1d9cf116a059582ce415d5f5566aabcd4008646779dab7fdc2a9a9d426"
+dependencies = [
+ "peg-runtime 0.8.3",
  "proc-macro2",
  "quote",
 ]
@@ -3890,6 +5446,12 @@ name = "peg-runtime"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c719dcf55f09a3a7e764c6649ab594c18a177e3599c467983cdf644bfc0a4088"
+
+[[package]]
+name = "peg-runtime"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3aeb8f54c078314c2065ee649a7241f46b9d8e418e1a9581ba0546657d7aa3a"
 
 [[package]]
 name = "percent-encoding"
@@ -3928,7 +5490,7 @@ dependencies = [
  "pest_meta",
  "proc-macro2",
  "quote",
- "syn 2.0.71",
+ "syn 2.0.72",
 ]
 
 [[package]]
@@ -3959,7 +5521,7 @@ checksum = "2f38a4412a78282e09a2cf38d195ea5420d15ba0602cb375210efbc877243965"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.71",
+ "syn 2.0.72",
 ]
 
 [[package]]
@@ -3995,10 +5557,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "pkg-config"
+version = "0.3.30"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d231b230927b5e4ad203db57bbcbee2802f6bce620b1e4a9024a07d94e2907ec"
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
+
+[[package]]
+name = "pretty_env_logger"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "865724d4dbe39d9f3dd3b52b88d859d66bcb2d6a0acfd5ea68a65fb66d4bdc1c"
+dependencies = [
+ "env_logger",
+ "log",
+]
 
 [[package]]
 name = "prettyplease"
@@ -4007,7 +5585,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f12335488a2f3b0a83b14edad48dca9879ce89b2edd10e80237e4e852dd645e"
 dependencies = [
  "proc-macro2",
- "syn 2.0.71",
+ "syn 2.0.72",
 ]
 
 [[package]]
@@ -4043,12 +5621,12 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.12.6"
+version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "deb1435c188b76130da55f17a466d252ff7b1418b2ad3e037d127b94e3411f29"
+checksum = "146c289cda302b98a28d40c8b3b90498d6e526dd24ac2ecea73e4e491685b94a"
 dependencies = [
  "bytes",
- "prost-derive 0.12.6",
+ "prost-derive 0.12.3",
 ]
 
 [[package]]
@@ -4066,15 +5644,15 @@ dependencies = [
 
 [[package]]
 name = "prost-derive"
-version = "0.12.6"
+version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81bddcdb20abf9501610992b6759a4c888aef7d1a7247ef75e2404275ac24af1"
+checksum = "efb6c9a1dd1def8e2124d17e83a20af56f1570d6c2d2bd9e266ccb768df3840e"
 dependencies = [
  "anyhow",
- "itertools 0.12.1",
+ "itertools 0.11.0",
  "proc-macro2",
  "quote",
- "syn 2.0.71",
+ "syn 2.0.72",
 ]
 
 [[package]]
@@ -4088,11 +5666,11 @@ dependencies = [
 
 [[package]]
 name = "prost-types"
-version = "0.12.6"
+version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9091c90b0a32608e984ff2fa4091273cbdd755d54935c51d520887f4a1dbd5b0"
+checksum = "193898f59edcf43c26227dcd4c8427f00d99d61e95dcde58dabd49fa291d470e"
 dependencies = [
- "prost 0.12.6",
+ "prost 0.12.3",
 ]
 
 [[package]]
@@ -4141,6 +5719,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_syscall"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a908a6e00f1fdd0dfd9c0eb08ce85126f6d8bbda50017e74bc4a4b7d4a926a4"
+dependencies = [
+ "bitflags 2.6.0",
+]
+
+[[package]]
 name = "redox_users"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4181,6 +5768,50 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a66a03ae7c801facd77a29370b4faec201768915ac14a721ba36f20bc9c209b"
 
 [[package]]
+name = "reqwest"
+version = "0.11.27"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd67538700a17451e7cba03ac727fb961abb7607553461627b97de0b89cf4a62"
+dependencies = [
+ "base64 0.21.7",
+ "bytes",
+ "encoding_rs",
+ "futures-core",
+ "futures-util",
+ "h2",
+ "http",
+ "http-body",
+ "hyper",
+ "hyper-rustls 0.24.2",
+ "hyper-tls",
+ "ipnet",
+ "js-sys",
+ "log",
+ "mime",
+ "native-tls",
+ "once_cell",
+ "percent-encoding",
+ "pin-project-lite",
+ "rustls 0.21.12",
+ "rustls-native-certs 0.6.3",
+ "rustls-pemfile",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "sync_wrapper",
+ "system-configuration",
+ "tokio",
+ "tokio-native-tls",
+ "tokio-rustls 0.24.1",
+ "tower-service",
+ "url",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "winreg",
+]
+
+[[package]]
 name = "rfc6979"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4210,10 +5841,25 @@ dependencies = [
  "cc",
  "libc",
  "once_cell",
- "spin",
- "untrusted",
+ "spin 0.5.2",
+ "untrusted 0.7.1",
  "web-sys",
  "winapi",
+]
+
+[[package]]
+name = "ring"
+version = "0.17.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c17fa4cb658e3583423e915b9f3acc01cceaee1860e33d59ebae66adc3a2dc0d"
+dependencies = [
+ "cc",
+ "cfg-if",
+ "getrandom",
+ "libc",
+ "spin 0.9.8",
+ "untrusted 0.9.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -4270,6 +5916,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
+name = "rustc_version"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bfa0f585226d2e68097d4f95d113b15b83a82e819ab25717ec0590d9584ef366"
+dependencies = [
+ "semver",
+]
+
+[[package]]
 name = "rustix"
 version = "0.38.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4290,9 +5945,21 @@ checksum = "35edb675feee39aec9c99fa5ff985081995a06d594114ae14cbe797ad7b7a6d7"
 dependencies = [
  "base64 0.13.1",
  "log",
- "ring",
- "sct",
+ "ring 0.16.20",
+ "sct 0.6.1",
  "webpki",
+]
+
+[[package]]
+name = "rustls"
+version = "0.21.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f56a14d1f48b391359b22f731fd4bd7e43c97f3c50eee276f3aa09c94784d3e"
+dependencies = [
+ "log",
+ "ring 0.17.8",
+ "rustls-webpki",
+ "sct 0.7.1",
 ]
 
 [[package]]
@@ -4302,9 +5969,40 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a07b7c1885bd8ed3831c289b7870b13ef46fe0e856d288c30d9cc17d75a2092"
 dependencies = [
  "openssl-probe",
- "rustls",
+ "rustls 0.19.1",
  "schannel",
  "security-framework",
+]
+
+[[package]]
+name = "rustls-native-certs"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9aace74cb666635c918e9c12bc0d348266037aa8eb599b5cba565709a8dff00"
+dependencies = [
+ "openssl-probe",
+ "rustls-pemfile",
+ "schannel",
+ "security-framework",
+]
+
+[[package]]
+name = "rustls-pemfile"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c74cae0a4cf6ccbbf5f359f08efdf8ee7e1dc532573bf0db71968cb56b1448c"
+dependencies = [
+ "base64 0.21.7",
+]
+
+[[package]]
+name = "rustls-webpki"
+version = "0.101.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b6275d1ee7a1cd780b64aca7726599a1dbc893b1e64144529e55c3c2f745765"
+dependencies = [
+ "ring 0.17.8",
+ "untrusted 0.9.0",
 ]
 
 [[package]]
@@ -4358,7 +6056,35 @@ dependencies = [
  "proc-macro2",
  "quote",
  "serde_derive_internals",
- "syn 2.0.71",
+ "syn 2.0.72",
+]
+
+[[package]]
+name = "scopeguard"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
+
+[[package]]
+name = "scripts"
+version = "2.5.0"
+dependencies = [
+ "cw-admin-factory 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-orch 0.24.1",
+ "cw-payroll-factory 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-token-swap 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-tokenfactory-issuer 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw-vesting 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "cw721-roles 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-cw-orch 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-interface 2.2.0",
+ "dao-interface 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-migrator 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dao-proposal-single 2.4.2",
+ "dao-proposal-sudo 2.4.2",
+ "dao-voting 2.5.0 (git+https://github.com/hard-nett/dao-contracts?branch=feat/external-cw-orch)",
+ "dotenv",
+ "pretty_env_logger",
 ]
 
 [[package]]
@@ -4367,8 +6093,18 @@ version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b362b83898e0e69f38515b82ee15aa80636befe47c3b6d3d89a911e78fc228ce"
 dependencies = [
- "ring",
- "untrusted",
+ "ring 0.16.20",
+ "untrusted 0.7.1",
+]
+
+[[package]]
+name = "sct"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da046153aa2352493d6cb7da4b6e5c0c057d8a1d0a9aa8560baffdd945acd414"
+dependencies = [
+ "ring 0.17.8",
+ "untrusted 0.9.0",
 ]
 
 [[package]]
@@ -4397,6 +6133,25 @@ dependencies = [
  "pkcs8 0.10.2",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "secp256k1"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25996b82292a7a57ed3508f052cfff8640d38d32018784acd714758b43da9c8f"
+dependencies = [
+ "bitcoin_hashes",
+ "secp256k1-sys",
+]
+
+[[package]]
+name = "secp256k1-sys"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70a129b9e9efbfb223753b9163c4ab3b13cff7fd9c7f010fbac25ab4099fa07e"
+dependencies = [
+ "cc",
 ]
 
 [[package]]
@@ -4472,7 +6227,7 @@ checksum = "e0cd7e117be63d3c3678776753929474f3b04a43a080c744d6b0ae2a8c28e222"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.71",
+ "syn 2.0.72",
 ]
 
 [[package]]
@@ -4483,7 +6238,7 @@ checksum = "18d26a20a969b9e3fdf2fc2d9f21eda6c40e2de84c9408bb5d3b05d499aae711"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.71",
+ "syn 2.0.72",
 ]
 
 [[package]]
@@ -4505,7 +6260,19 @@ checksum = "6c64451ba24fc7a6a2d60fc75dd9c83c90903b19028d4eff35e88fc1e86564e9"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.71",
+ "syn 2.0.72",
+]
+
+[[package]]
+name = "serde_urlencoded"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3491c14715ca2294c4d6a88f15e84739788c1d030eed8c110436aafdaa2f3fd"
+dependencies = [
+ "form_urlencoded",
+ "itoa",
+ "ryu",
+ "serde",
 ]
 
 [[package]]
@@ -4573,6 +6340,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
+name = "signal-hook-registry"
+version = "1.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9e9e0b4211b72e7b8b6e85c807d36c212bdb33ea8587f7569562a84df5465b1"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "signature"
 version = "1.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4602,6 +6378,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "smallvec"
+version = "1.13.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
+
+[[package]]
 name = "socket2"
 version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4616,6 +6398,12 @@ name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
+
+[[package]]
+name = "spin"
+version = "0.9.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
 
 [[package]]
 name = "spki"
@@ -4717,6 +6505,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "subtle-ng"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "734676eb262c623cec13c3155096e08d1f8f29adce39ba17948b18dad1e54142"
+
+[[package]]
 name = "syn"
 version = "1.0.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4729,9 +6523,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.71"
+version = "2.0.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b146dcf730474b4bcd16c311627b31ede9ab149045db4d6088b3becaea046462"
+checksum = "dc4b9b9bf2add8093d3f2c0204471e951b2285580335de42f9d2534f3ae7a8af"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4745,6 +6539,39 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2047c6ded9c721764247e62cd3b03c09ffc529b2ba5b10ec482ae507a4a70160"
 
 [[package]]
+name = "system-configuration"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba3a3adc5c275d719af8cb4272ea1c4a6d668a777f37e115f6d11ddbc1c8e0e7"
+dependencies = [
+ "bitflags 1.3.2",
+ "core-foundation",
+ "system-configuration-sys",
+]
+
+[[package]]
+name = "system-configuration-sys"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a75fb188eb626b924683e3b95e3a48e63551fcfb51949de2f06a9d91dbee93c9"
+dependencies = [
+ "core-foundation-sys",
+ "libc",
+]
+
+[[package]]
+name = "tempfile"
+version = "3.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85b77fafb263dd9d05cbeac119526425676db3784113aa9295c88498cbf8bff1"
+dependencies = [
+ "cfg-if",
+ "fastrand",
+ "rustix",
+ "windows-sys 0.52.0",
+]
+
+[[package]]
 name = "tendermint"
 version = "0.23.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4752,8 +6579,8 @@ checksum = "467f82178deeebcd357e1273a0c0b77b9a8a0313ef7c07074baebe99d87851f4"
 dependencies = [
  "async-trait",
  "bytes",
- "ed25519",
- "ed25519-dalek",
+ "ed25519 1.5.3",
+ "ed25519-dalek 1.0.1",
  "flex-error",
  "futures",
  "k256 0.11.6",
@@ -4783,8 +6610,8 @@ checksum = "baa1d2d0ec1b531ba7d196f0dbee5e78ed2a82bfba928e88dff64aeec0b26073"
 dependencies = [
  "async-trait",
  "bytes",
- "ed25519",
- "ed25519-dalek",
+ "ed25519 1.5.3",
+ "ed25519-dalek 1.0.1",
  "flex-error",
  "futures",
  "k256 0.11.6",
@@ -4802,6 +6629,37 @@ dependencies = [
  "subtle",
  "subtle-encoding",
  "tendermint-proto 0.26.0",
+ "time",
+ "zeroize",
+]
+
+[[package]]
+name = "tendermint"
+version = "0.34.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15ab8f0a25d0d2ad49ac615da054d6a76aa6603ff95f7d18bafdd34450a1a04b"
+dependencies = [
+ "bytes",
+ "digest 0.10.7",
+ "ed25519 2.2.3",
+ "ed25519-consensus",
+ "flex-error",
+ "futures",
+ "k256 0.13.1",
+ "num-traits",
+ "once_cell",
+ "prost 0.12.3",
+ "prost-types 0.12.3",
+ "ripemd",
+ "serde",
+ "serde_bytes",
+ "serde_json",
+ "serde_repr",
+ "sha2 0.10.8",
+ "signature 2.2.0",
+ "subtle",
+ "subtle-encoding",
+ "tendermint-proto 0.34.1",
  "time",
  "zeroize",
 ]
@@ -4830,6 +6688,20 @@ dependencies = [
  "serde",
  "serde_json",
  "tendermint 0.26.0",
+ "toml",
+ "url",
+]
+
+[[package]]
+name = "tendermint-config"
+version = "0.34.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1a02da769166e2052cd537b1a97c78017632c2d9e19266367b27e73910434fc"
+dependencies = [
+ "flex-error",
+ "serde",
+ "serde_json",
+ "tendermint 0.34.1",
  "toml",
  "url",
 ]
@@ -4890,6 +6762,24 @@ dependencies = [
 
 [[package]]
 name = "tendermint-proto"
+version = "0.34.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b797dd3d2beaaee91d2f065e7bdf239dc8d80bba4a183a288bc1279dd5a69a1e"
+dependencies = [
+ "bytes",
+ "flex-error",
+ "num-derive 0.3.3",
+ "num-traits",
+ "prost 0.12.3",
+ "prost-types 0.12.3",
+ "serde",
+ "serde_bytes",
+ "subtle-encoding",
+ "time",
+]
+
+[[package]]
+name = "tendermint-proto"
 version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff525d5540a9fc535c38dc0d92a98da3ee36fcdfbda99cecb9f3cce5cd4d41d7"
@@ -4898,8 +6788,8 @@ dependencies = [
  "flex-error",
  "num-derive 0.4.2",
  "num-traits",
- "prost 0.12.6",
- "prost-types 0.12.6",
+ "prost 0.12.3",
+ "prost-types 0.12.3",
  "serde",
  "serde_bytes",
  "subtle-encoding",
@@ -4920,8 +6810,8 @@ dependencies = [
  "http",
  "hyper",
  "hyper-proxy",
- "hyper-rustls",
- "peg",
+ "hyper-rustls 0.22.1",
+ "peg 0.7.0",
  "pin-project",
  "serde",
  "serde_bytes",
@@ -4935,7 +6825,7 @@ dependencies = [
  "tokio",
  "tracing",
  "url",
- "uuid",
+ "uuid 0.8.2",
  "walkdir",
 ]
 
@@ -4953,8 +6843,8 @@ dependencies = [
  "http",
  "hyper",
  "hyper-proxy",
- "hyper-rustls",
- "peg",
+ "hyper-rustls 0.22.1",
+ "peg 0.7.0",
  "pin-project",
  "serde",
  "serde_bytes",
@@ -4969,7 +6859,40 @@ dependencies = [
  "tokio",
  "tracing",
  "url",
- "uuid",
+ "uuid 0.8.2",
+ "walkdir",
+]
+
+[[package]]
+name = "tendermint-rpc"
+version = "0.34.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71afae8bb5f6b14ed48d4e1316a643b6c2c3cbad114f510be77b4ed20b7b3e42"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "flex-error",
+ "futures",
+ "getrandom",
+ "peg 0.8.4",
+ "pin-project",
+ "rand",
+ "reqwest",
+ "semver",
+ "serde",
+ "serde_bytes",
+ "serde_json",
+ "subtle",
+ "subtle-encoding",
+ "tendermint 0.34.1",
+ "tendermint-config 0.34.1",
+ "tendermint-proto 0.34.1",
+ "thiserror",
+ "time",
+ "tokio",
+ "tracing",
+ "url",
+ "uuid 1.10.0",
  "walkdir",
 ]
 
@@ -5000,7 +6923,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d506c7664333e246f564949bee4ed39062aa0f11918e6f5a95f553cdad65c274"
 dependencies = [
  "quote",
- "syn 2.0.71",
+ "syn 2.0.72",
 ]
 
 [[package]]
@@ -5036,7 +6959,7 @@ checksum = "a4558b58466b9ad7ca0f102865eccc95938dca1a74a856f2b57b6629050da261"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.71",
+ "syn 2.0.72",
 ]
 
 [[package]]
@@ -5073,19 +6996,20 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.38.1"
+version = "1.39.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb2caba9f80616f438e09748d5acda951967e1ea58508ef53d9c6402485a46df"
+checksum = "d040ac2b29ab03b09d4129c2f5bbd012a3ac2f79d38ff506a4bf8dd34b0eac8a"
 dependencies = [
  "backtrace",
  "bytes",
  "libc",
  "mio",
- "num_cpus",
+ "parking_lot",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "tokio-macros",
- "windows-sys 0.48.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -5100,13 +7024,23 @@ dependencies = [
 
 [[package]]
 name = "tokio-macros"
-version = "2.3.0"
+version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f5ae998a069d4b5aba8ee9dad856af7d520c3699e6159b185c2acd48155d39a"
+checksum = "693d596312e88961bc67d7f1f97af8a70227d9f90c31bba5806eec004978d752"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.71",
+ "syn 2.0.72",
+]
+
+[[package]]
+name = "tokio-native-tls"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbae76ab933c85776efabc971569dd6119c580d8f5d448769dec1764bf796ef2"
+dependencies = [
+ "native-tls",
+ "tokio",
 ]
 
 [[package]]
@@ -5115,9 +7049,19 @@ version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc6844de72e57df1980054b38be3a9f4702aba4858be64dd700181a8a6d0e1b6"
 dependencies = [
- "rustls",
+ "rustls 0.19.1",
  "tokio",
  "webpki",
+]
+
+[[package]]
+name = "tokio-rustls"
+version = "0.24.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c28327cf380ac148141087fbfb9de9d7bd4e84ab5d2c28fbc911d753de8a7081"
+dependencies = [
+ "rustls 0.21.12",
+ "tokio",
 ]
 
 [[package]]
@@ -5214,6 +7158,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "tonic"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d560933a0de61cf715926b9cac824d4c883c2c43142f787595e48280c40a1d0e"
+dependencies = [
+ "async-stream",
+ "async-trait",
+ "axum",
+ "base64 0.21.7",
+ "bytes",
+ "h2",
+ "http",
+ "http-body",
+ "hyper",
+ "hyper-timeout",
+ "percent-encoding",
+ "pin-project",
+ "prost 0.12.3",
+ "rustls 0.21.12",
+ "rustls-native-certs 0.6.3",
+ "rustls-pemfile",
+ "tokio",
+ "tokio-rustls 0.24.1",
+ "tokio-stream",
+ "tower",
+ "tower-layer",
+ "tower-service",
+ "tracing",
+]
+
+[[package]]
 name = "tower"
 version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5264,7 +7239,7 @@ checksum = "34704c8d6ebcbc939824180af020566b01a7c01f80641264eba0999f6c2b6be7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.71",
+ "syn 2.0.72",
 ]
 
 [[package]]
@@ -5344,6 +7319,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
 
 [[package]]
+name = "untrusted"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
+
+[[package]]
 name = "url"
 version = "2.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5359,6 +7340,18 @@ name = "uuid"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
+
+[[package]]
+name = "uuid"
+version = "1.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "81dfa00651efa65069b0b6b651f4aaa31ba9e3c3ce0137aaad053604ee7e0314"
+
+[[package]]
+name = "vcpkg"
+version = "0.2.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
 name = "version_check"
@@ -5424,8 +7417,20 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
- "syn 2.0.71",
+ "syn 2.0.72",
  "wasm-bindgen-shared",
+]
+
+[[package]]
+name = "wasm-bindgen-futures"
+version = "0.4.42"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76bc14366121efc8dbb487ab05bcc9d346b3b5ec0eaa76e46594cabbe51762c0"
+dependencies = [
+ "cfg-if",
+ "js-sys",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]
@@ -5446,7 +7451,7 @@ checksum = "e94f17b526d0a461a191c78ea52bbce64071ed5c04c9ffe424dcb38f74171bb7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.71",
+ "syn 2.0.72",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
@@ -5473,8 +7478,8 @@ version = "0.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8e38c0608262c46d4a56202ebabdeb094cef7e560ca7a226c6bf055188aa4ea"
 dependencies = [
- "ring",
- "untrusted",
+ "ring 0.16.20",
+ "untrusted 0.7.1",
 ]
 
 [[package]]
@@ -5528,6 +7533,15 @@ name = "winapi-x86_64-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
+
+[[package]]
+name = "windows-core"
+version = "0.52.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33ab640c8d7e35bf8ba19b884ba838ceb4fba93a4e8c65a9059d08afcfc683d9"
+dependencies = [
+ "windows-targets 0.52.6",
+]
 
 [[package]]
 name = "windows-sys"
@@ -5669,6 +7683,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 
 [[package]]
+name = "winreg"
+version = "0.50.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "524e57b2c537c0f9b1e69f1965311ec12182b4122e45035b1508cd24d2adadb1"
+dependencies = [
+ "cfg-if",
+ "windows-sys 0.48.0",
+]
+
+[[package]]
 name = "wynd-utils"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5706,5 +7730,5 @@ checksum = "ce36e65b0d2999d2aafac989fb249189a141aee1f53c612c1f37d72631959f69"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.71",
+ "syn 2.0.72",
 ]
