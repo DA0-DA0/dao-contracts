@@ -24,9 +24,9 @@ pub struct FantokenFactorySuite<Chain> {
     pub factory: DaoExternalFantokenFactory<Chain>,
 }
 
-impl<Chain: CwEnv> DaoExternalFantokenFactory<Chain> {
-    pub fn new(chain: Chain) -> DaoExternalFantokenFactory<Chain> {
-        DaoExternalFantokenFactory::<Chain> {
+impl<Chain: CwEnv> FantokenFactorySuite<Chain> {
+    pub fn new(chain: Chain) -> FantokenFactorySuite<Chain> {
+        FantokenFactorySuite::<Chain> {
             factory: DaoExternalFantokenFactory::new("btsg_ft_factory", chain.clone()),
         }
     }
