@@ -1,9 +1,5 @@
 use cw_orch::prelude::*;
-use dao_cw_orch::{
-    DaoDaoCore, DaoExternalAdminFactory, DaoExternalCw721Roles, DaoExternalCwVesting,
-    DaoExternalMigrator, DaoExternalPayrollFactory, DaoExternalTokenSwap,
-    DaoExternalTokenfactoryIssuer, DaoProposalSingle, DaoProposalSudo,
-};
+use dao_cw_orch::{DaoDaoCore, DaoProposalSingle, DaoProposalSudo};
 
 // minimal dao
 pub struct DaoDao<Chain> {

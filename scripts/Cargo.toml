@@ -6,30 +6,24 @@ repository.workspace = true
 version.workspace = true
 
 [dependencies]
-cw-orch = { workspace = true, features = ["daemon"] }
-dao-cw-orch = { git = "https://github.com/hard-nett/dao-contracts", branch = "feat/external-cw-orch" }
-
+cw-orch      = { workspace = true, features = ["daemon"] }
+dao-cw-orch  = { path = "../packages/cw-orch", version = "2.5.0"  }
 # scripts specific
 dotenv = { version = "0.15.0" }
 pretty_env_logger = { version = "0.5.0" }
 
 # cw-orch enabled DAO DAO deps
 [dev-dependencies]
-dao-interface-master = { package = "dao-interface", git = "https://github.com/DA0-DA0/dao-contracts", branch = "main" }
-dao-proposal-sudo = { git = "https://github.com/Kayanski/dao-contracts", branch = "development", features = [
-    "library",
-] }
-dao-proposal-single = { git = "https://github.com/Kayanski/dao-contracts", branch = "development", features = [
-    "library",
-] }
-
-dao-interface           = { git = "https://github.com/hard-nett/dao-contracts", branch = "feat/external-cw-orch" }
-dao-voting              = { git = "https://github.com/hard-nett/dao-contracts", branch = "feat/external-cw-orch" }
-cw-payroll-factory      = { git = "https://github.com/hard-nett/dao-contracts", branch = "feat/external-cw-orch" }
-cw-token-swap           = { git = "https://github.com/hard-nett/dao-contracts", branch = "feat/external-cw-orch" }
-cw-admin-factory        = { git = "https://github.com/hard-nett/dao-contracts", branch = "feat/external-cw-orch" }
-cw-tokenfactory-issuer  = { git = "https://github.com/hard-nett/dao-contracts", branch = "feat/external-cw-orch" }
-cw-vesting              = { git = "https://github.com/hard-nett/dao-contracts", branch = "feat/external-cw-orch" }
-cw721-roles             = { git = "https://github.com/hard-nett/dao-contracts", branch = "feat/external-cw-orch" }
-dao-migrator            = { git = "https://github.com/hard-nett/dao-contracts", branch = "feat/external-cw-orch" }
-btsg-ft-factory         = { git = "https://github.com/hard-nett/dao-contracts", branch = "feat/external-cw-orch" }
+dao-interface-master    = { package = "dao-interface", git = "https://github.com/DA0-DA0/dao-contracts", branch = "main" }
+dao-proposal-sudo       = { workspace = true, features = ["library"] }
+dao-proposal-single     = { workspace = true, features = ["library"] }
+dao-interface           = { workspace = true }
+dao-voting              = { workspace = true }
+cw-payroll-factory      = { workspace = true }
+cw-token-swap           = { workspace = true }
+cw-admin-factory        = { workspace = true }
+cw-tokenfactory-issuer  = { workspace = true }
+cw-vesting              = { workspace = true }
+cw721-roles             = { workspace = true }
+dao-migrator            = { workspace = true }
+btsg-ft-factory         = { workspace = true }
