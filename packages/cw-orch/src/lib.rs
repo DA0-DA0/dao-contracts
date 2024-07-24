@@ -5,6 +5,8 @@ mod distribution;
 #[cfg(not(target_arch = "wasm32"))]
 mod external;
 #[cfg(not(target_arch = "wasm32"))]
+mod gauges;
+#[cfg(not(target_arch = "wasm32"))]
 mod pre_propose;
 #[cfg(not(target_arch = "wasm32"))]
 mod proposal;
@@ -21,6 +23,8 @@ pub use core::*;
 pub use distribution::*;
 #[cfg(not(target_arch = "wasm32"))]
 pub use external::*;
+#[cfg(not(target_arch = "wasm32"))]
+pub use gauges::*;
 #[cfg(not(target_arch = "wasm32"))]
 pub use pre_propose::*;
 #[cfg(not(target_arch = "wasm32"))]

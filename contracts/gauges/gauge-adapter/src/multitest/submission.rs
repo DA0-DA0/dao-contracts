@@ -536,10 +536,10 @@ fn sample_gauge_msgs_cw20() {
     let (adapter, cw20) = setup_cw20_reward_gauge_adapter(mock.clone(), None);
 
     adapter
-        .create_submission(addr_1.to_string(), "name".into(), "https://test.url".into())
+        .create_submission(addr_1.to_string(), "name", "https://test.url")
         .unwrap();
     adapter
-        .create_submission(addr_2.to_string(), "name".into(), "https://test.url".into())
+        .create_submission(addr_2.to_string(), "name", "https://test.url")
         .unwrap();
 
     let selected = vec![

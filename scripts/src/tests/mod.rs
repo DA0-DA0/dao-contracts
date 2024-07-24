@@ -1,5 +1,6 @@
 mod deploy;
 mod external;
+mod gauges;
 
 pub(crate) const PREFIX: &str = "mock";
 pub(crate) const ADMIN: &str = "admin";

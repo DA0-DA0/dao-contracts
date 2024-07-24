@@ -1,1 +1,2 @@
 mod external;
+mod gauges;

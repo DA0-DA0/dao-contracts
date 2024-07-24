@@ -82,6 +82,7 @@ test-context = "0.1"
 thiserror = { version = "1.0" }
 wynd-utils = "0.4"
 cw-orch = "0.24.1"
+cw-orch-core = "1.2.2"
 tokio = "=1.38.1"
 
 # One commit ahead of version 0.3.0. Allows initialization with an
@@ -131,6 +132,8 @@ dao-voting-cw721-roles = { path = "./contracts/voting/dao-voting-cw721-roles", v
 dao-voting-cw721-staked = { path = "./contracts/voting/dao-voting-cw721-staked", version = "2.5.0" }
 dao-voting-onft-staked = { path = "./contracts/voting/dao-voting-onft-staked", version = "2.5.0" }
 dao-voting-token-staked = { path = "./contracts/voting/dao-voting-token-staked", version = "2.5.0" }
+gauge-adapter = { path = "./contracts/gauges/gauge-adapter", version = "2.5.0" }
+gauge-orchestrator = { path = "./contracts/gauges/gauge", version = "2.5.0" }
 
 # v1 dependencies. used for state migrations.
 cw-core-v1 = { package = "cw-core", version = "0.1.0" }
