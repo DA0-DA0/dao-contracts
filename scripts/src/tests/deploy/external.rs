@@ -29,7 +29,7 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for AdminFactorySuite<Chain>
 
     fn deploy_on(chain: Chain, _data: Self::DeployData) -> Result<Self, Self::Error> {
         // ########### Upload ##############
-        let suite: AdminFactorySuite<Chain> = AdminFactorySuite::store_on(chain.clone()).unwrap();
+        let suite: AdminFactorySuite<Chain> = AdminFactorySuite::store_on(chain.clone())?;
         suite.factory.instantiate(
             &cw_admin_factory::msg::InstantiateMsg { admin: None },
             None,
@@ -67,12 +67,12 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for PayrollSuite<Chain> {
 
     fn deploy_on(chain: Chain, _data: Self::DeployData) -> Result<Self, Self::Error> {
         // ########### Upload ##############
-        let suite: PayrollSuite<Chain> = PayrollSuite::store_on(chain.clone()).unwrap();
+        let suite: PayrollSuite<Chain> = PayrollSuite::store_on(chain.clone())?;
         // ########### Instantiate ##############
         let _init = suite.payroll.instantiate(
             &cw_payroll_factory::msg::InstantiateMsg {
                 owner: Some(chain.sender_addr().to_string()),
-                vesting_code_id: suite.vesting.code_id().unwrap(),
+                vesting_code_id: suite.vesting.code_id()?,
             },
             None,
             None,
@@ -110,7 +110,7 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for TokenSwapSuite<Chain> {
 
     fn deploy_on(chain: Chain, _data: Self::DeployData) -> Result<Self, Self::Error> {
         // ########### Upload ##############
-        let suite: TokenSwapSuite<Chain> = TokenSwapSuite::store_on(chain.clone()).unwrap();
+        let suite: TokenSwapSuite<Chain> = TokenSwapSuite::store_on(chain.clone())?;
         Ok(suite)
     }
 }
@@ -142,7 +142,7 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for TokenFactorySuite<Chain>
 
     fn deploy_on(chain: Chain, _data: Self::DeployData) -> Result<Self, Self::Error> {
         // ########### Upload ##############
-        let suite: TokenFactorySuite<Chain> = TokenFactorySuite::store_on(chain.clone()).unwrap();
+        let suite: TokenFactorySuite<Chain> = TokenFactorySuite::store_on(chain.clone())?;
         Ok(suite)
     }
 }
@@ -174,7 +174,7 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for VestingSuite<Chain> {
 
     fn deploy_on(chain: Chain, _data: Self::DeployData) -> Result<Self, Self::Error> {
         // ########### Upload ##############
-        let suite: VestingSuite<Chain> = VestingSuite::store_on(chain.clone()).unwrap();
+        let suite: VestingSuite<Chain> = VestingSuite::store_on(chain.clone())?;
         Ok(suite)
     }
 }
@@ -206,7 +206,7 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for Cw721RolesSuite<Chain> {
 
     fn deploy_on(chain: Chain, _data: Self::DeployData) -> Result<Self, Self::Error> {
         // ########### Upload ##############
-        let suite: Cw721RolesSuite<Chain> = Cw721RolesSuite::store_on(chain.clone()).unwrap();
+        let suite: Cw721RolesSuite<Chain> = Cw721RolesSuite::store_on(chain.clone())?;
         // ########### Instantiate ##############
         Ok(suite)
     }
@@ -239,7 +239,7 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for DaoMigrationSuite<Chain>
 
     fn deploy_on(chain: Chain, _data: Self::DeployData) -> Result<Self, Self::Error> {
         // ########### Upload ##############
-        let suite: DaoMigrationSuite<Chain> = DaoMigrationSuite::store_on(chain.clone()).unwrap();
+        let suite: DaoMigrationSuite<Chain> = DaoMigrationSuite::store_on(chain.clone())?;
         // ########### Instantiate ##############
 
         Ok(suite)
@@ -274,7 +274,7 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for FantokenFactorySuite<Cha
     fn deploy_on(chain: Chain, _data: Self::DeployData) -> Result<Self, Self::Error> {
         // ########### Upload ##############
         let suite: FantokenFactorySuite<Chain> =
-            FantokenFactorySuite::store_on(chain.clone()).unwrap();
+            FantokenFactorySuite::store_on(chain.clone())?;
         // ########### Instantiate ##############
         suite.factory.instantiate(&InstantiateMsg {}, None, None)?;
         Ok(suite)
