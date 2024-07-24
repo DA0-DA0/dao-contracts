@@ -1234,7 +1234,7 @@ dependencies = [
  "cw-orch-core",
  "cw-orch-fns-derive 0.22.0",
  "cw-orch-mock 0.23.2",
- "cw-orch-traits 0.23.3",
+ "cw-orch-traits 0.23.1",
  "cw-utils 1.0.3",
  "hex",
  "log",
