@@ -1,5 +1,5 @@
-mod external;
 mod deploy;
+mod external;
 
 pub(crate) const PREFIX: &str = "mock";
 pub(crate) const ADMIN: &str = "admin";
