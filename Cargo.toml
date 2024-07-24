@@ -1,5 +1,5 @@
 [workspace]
-exclude = ["ci/configs/", "wasmvm/libwasmvm"]
+exclude = ["ci/configs/", "wasmvm/libwasmvm", "scripts"]
 members = [
   "contracts/dao-dao-core",
   "contracts/distribution/*",
@@ -11,7 +11,6 @@ members = [
   "contracts/voting/*",
   "packages/*",
   "ci/*",
-  "scripts"
 ]
 resolver = "2"
 
