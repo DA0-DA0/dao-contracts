@@ -6,7 +6,6 @@ repository = "https://github.com/DA0-DA0/dao-contracts"
 version = "2.5.0"
 
 [dependencies]
-cw-orch = { version = "0.24.1", features = ["daemon"] }
 dao-cw-orch = { path = "../packages/cw-orch", version = "2.5.0" }
 # scripts specific
 dotenv = { version = "0.15.0" }
