@@ -143,6 +143,13 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for TokenFactorySuite<Chain>
     fn deploy_on(chain: Chain, _data: Self::DeployData) -> Result<Self, Self::Error> {
         // ########### Upload ##############
         let suite: TokenFactorySuite<Chain> = TokenFactorySuite::store_on(chain.clone())?;
+
+        // ########### Instantiate ##############
+        // let init = TokenfactoryIssuerInit::NewToken {
+        //     subdenom: "DAOTOKEN".into(),
+        // };
+        // suite.tokenfactory.instantiate(&init, None, None)?;
+
         Ok(suite)
     }
 }
@@ -273,8 +280,7 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for FantokenFactorySuite<Cha
 
     fn deploy_on(chain: Chain, _data: Self::DeployData) -> Result<Self, Self::Error> {
         // ########### Upload ##############
-        let suite: FantokenFactorySuite<Chain> =
-            FantokenFactorySuite::store_on(chain.clone())?;
+        let suite: FantokenFactorySuite<Chain> = FantokenFactorySuite::store_on(chain.clone())?;
         // ########### Instantiate ##############
         suite.factory.instantiate(&InstantiateMsg {}, None, None)?;
         Ok(suite)
