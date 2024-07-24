@@ -1,7 +1,6 @@
 use crate::external::*;
 use btsg_ft_factory::msg::InstantiateMsg;
 use cw_orch::prelude::*;
-use cw_tokenfactory_issuer::msg::InstantiateMsg as TokenfactoryIssuerInit;
 
 // admin factory
 impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for AdminFactorySuite<Chain> {
