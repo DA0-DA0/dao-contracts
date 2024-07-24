@@ -9,7 +9,7 @@ use crate::{
 fn test_payroll() -> anyhow::Result<()> {
     let mock = MockBech32::new(PREFIX);
     let admin = mock.addr_make(ADMIN);
-    let app = PayrollSuite::deploy_on(mock.clone(), admin.clone())?;
+    let _app = PayrollSuite::deploy_on(mock.clone(), admin.clone())?;
     mock.next_block().unwrap();
     Ok(())
 }
