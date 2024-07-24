@@ -1340,17 +1340,6 @@ dependencies = [
 
 [[package]]
 name = "cw-hooks"
-version = "2.2.0"
-source = "git+https://github.com/DA0-DA0/dao-contracts?branch=main#7f89ad1604e8022f202aef729853b0c8c7196988"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 1.2.0",
- "thiserror",
-]
-
-[[package]]
-name = "cw-hooks"
 version = "2.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "097ee97b99ecc90372eac3bcaf698d940a15f806f2ba1e1e901c729f6523e16e"
@@ -1975,19 +1964,6 @@ dependencies = [
 
 [[package]]
 name = "cw20"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a45a8794a5dd33b66af34caee52a7beceb690856adcc1682b6e3db88b2cdee62"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-utils 0.16.0",
- "schemars",
- "serde",
-]
-
-[[package]]
-name = "cw20"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "526e39bb20534e25a1cd0386727f0038f4da294e5e535729ba3ef54055246abd"
@@ -2523,20 +2499,6 @@ dependencies = [
  "cw4 1.1.2",
  "dao-pre-propose-base 2.5.0",
  "dao-voting 2.5.0",
-]
-
-[[package]]
-name = "dao-interface"
-version = "2.2.0"
-source = "git+https://github.com/DA0-DA0/dao-contracts?branch=main#7f89ad1604e8022f202aef729853b0c8c7196988"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-hooks 2.2.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "cw721 0.16.0",
 ]
 
 [[package]]
@@ -5401,7 +5363,6 @@ dependencies = [
  "cw-vesting",
  "cw721-roles",
  "dao-cw-orch",
- "dao-interface 2.2.0",
  "dao-interface 2.5.0",
  "dao-migrator",
  "dao-proposal-single 2.5.0",
