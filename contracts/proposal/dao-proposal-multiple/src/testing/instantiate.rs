@@ -12,8 +12,11 @@ use dao_testing::contracts::{
 use dao_voting::{
     deposit::{DepositRefundPolicy, UncheckedDepositInfo, VotingModuleTokenType},
     multiple_choice::VotingStrategy,
-    pre_propose::PreProposeInfo,
-    threshold::{ActiveThreshold, ActiveThreshold::AbsoluteCount, PercentageThreshold},
+    pre_propose::{PreProposeInfo, PreProposeSubmissionPolicy},
+    threshold::{
+        ActiveThreshold::{self, AbsoluteCount},
+        PercentageThreshold,
+    },
 };
 use dao_voting_cw4::msg::GroupContract;
 
@@ -29,12 +32,23 @@ fn get_pre_propose_info(
     open_proposal_submission: bool,
 ) -> PreProposeInfo {
     let pre_propose_contract = app.store_code(pre_propose_multiple_contract());
+
+    let submission_policy = if open_proposal_submission {
+        PreProposeSubmissionPolicy::Anyone { denylist: None }
+    } else {
+        PreProposeSubmissionPolicy::Specific {
+            dao_members: true,
+            allowlist: None,
+            denylist: None,
+        }
+    };
+
     PreProposeInfo::ModuleMayPropose {
         info: ModuleInstantiateInfo {
             code_id: pre_propose_contract,
             msg: to_json_binary(&cppm::InstantiateMsg {
                 deposit_info,
-                open_proposal_submission,
+                submission_policy,
                 extension: Empty::default(),
             })
             .unwrap(),

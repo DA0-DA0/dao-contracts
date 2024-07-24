@@ -19,7 +19,7 @@ use dao_interface::{
 use dao_testing::{ShouldExecute, TestSingleChoiceVote};
 use dao_voting::{
     deposit::{CheckedDepositInfo, UncheckedDepositInfo, VotingModuleTokenType},
-    pre_propose::{PreProposeInfo, ProposalCreationPolicy},
+    pre_propose::{PreProposeInfo, PreProposeSubmissionPolicy, ProposalCreationPolicy},
     proposal::{SingleChoiceProposeMsg as ProposeMsg, MAX_PROPOSAL_SIZE},
     reply::{
         failed_pre_propose_module_hook_id, mask_proposal_execution_proposal_id,
@@ -3955,7 +3955,11 @@ fn test_update_pre_propose_module() {
                                 amount: Uint128::new(1),
                                 refund_policy: dao_voting::deposit::DepositRefundPolicy::OnlyPassed,
                             }),
-                            open_proposal_submission: false,
+                            submission_policy: PreProposeSubmissionPolicy::Specific {
+                                dao_members: true,
+                                allowlist: None,
+                                denylist: None,
+                            },
                             extension: Empty::default(),
                         })
                         .unwrap(),
@@ -4006,7 +4010,11 @@ fn test_update_pre_propose_module() {
                 amount: Uint128::new(1),
                 refund_policy: dao_voting::deposit::DepositRefundPolicy::OnlyPassed,
             }),
-            open_proposal_submission: false,
+            submission_policy: PreProposeSubmissionPolicy::Specific {
+                dao_members: true,
+                allowlist: None,
+                denylist: None
+            },
         }
     );
 

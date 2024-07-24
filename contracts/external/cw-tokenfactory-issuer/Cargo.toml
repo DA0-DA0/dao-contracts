@@ -44,12 +44,14 @@ kujira_tokenfactory = ["cw-tokenfactory-types/kujira_tokenfactory"]
 cosmwasm-schema = { workspace = true }
 cosmwasm-std = { workspace = true }
 cw2 = { workspace = true }
+cw-orch = { workspace = true }
 cw-ownable = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-tokenfactory-types = { workspace = true, default-features = false }
 dao-interface = { workspace = true }
 osmosis-std = { workspace = true }
 prost = { workspace = true }
+prost-derive = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true, default-features = false, features = ["derive"] }
 thiserror = { workspace = true }

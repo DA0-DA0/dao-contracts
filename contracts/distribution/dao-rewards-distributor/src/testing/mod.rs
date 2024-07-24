@@ -7,9 +7,10 @@ pub mod tests;
 pub const DENOM: &str = "ujuno";
 pub const ALT_DENOM: &str = "unotjuno";
 pub const OWNER: &str = "owner";
-pub const ADDR1: &str = "addr0001";
-pub const ADDR2: &str = "addr0002";
-pub const ADDR3: &str = "addr0003";
+pub const ADDR1: &str = "addr1";
+pub const ADDR2: &str = "addr2";
+pub const ADDR3: &str = "addr3";
+pub const ADDR4: &str = "addr4";
 
 pub fn contract_rewards() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -219,7 +220,7 @@ mod cw721_setup {
 
     use cosmwasm_std::{to_json_binary, Addr, Binary, Empty};
     use cw_multi_test::{App, Executor};
-    use dao_testing::contracts::{cw721_base_contract, voting_cw721_staked_contract};
+    use dao_testing::contracts::{cw721_base_contract, cw721_staked_voting_contract};
     use dao_voting_cw721_staked::state::Config;
 
     use super::OWNER;
@@ -255,7 +256,7 @@ mod cw721_setup {
 
     pub fn setup_cw721_test(app: &mut App, initial_nfts: Vec<Binary>) -> (Addr, Addr) {
         let cw721_code_id = app.store_code(cw721_base_contract());
-        let vp_code_id = app.store_code(voting_cw721_staked_contract());
+        let vp_code_id = app.store_code(cw721_staked_voting_contract());
 
         let msg = dao_voting_cw721_staked::msg::InstantiateMsg {
             nft_contract: dao_voting_cw721_staked::msg::NftContract::New {

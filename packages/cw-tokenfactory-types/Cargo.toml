@@ -23,6 +23,7 @@ dao-interface = { workspace = true }
 osmosis-std = { workspace = true }
 osmosis-std-derive = { workspace = true }
 prost = { workspace = true }
+prost-derive = { workspace = true }
 prost-types = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }

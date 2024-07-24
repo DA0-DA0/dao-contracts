@@ -11,6 +11,8 @@ version = { workspace = true }
 # use test tube feature to enable test-tube integration tests, for example
 # cargo test --features "test-tube"
 test-tube = []
+# when writing tests you may wish to enable test-tube as a default feature
+# default = ["test-tube"]
 
 # This crate depends on multi-test and rand. These are not features in
 # wasm builds of cosmwasm. Despite this crate only being used as a dev
@@ -34,6 +36,7 @@ rand = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
+cw-admin-factory = { workspace = true }
 cw-core-v1 = { workspace = true, features = ["library"] }
 cw-hooks = { workspace = true }
 cw-proposal-single-v1 = { workspace = true }
@@ -55,6 +58,7 @@ dao-voting-cw20-staked = { workspace = true }
 dao-voting-cw4 = { workspace = true }
 dao-voting-cw721-staked = { workspace = true }
 dao-voting-cw721-roles = { workspace = true }
+dao-voting-onft-staked = { workspace = true }
 dao-voting-token-staked = { workspace = true }
 voting-v1 = { workspace = true }
 stake-cw20-v03 = { workspace = true }

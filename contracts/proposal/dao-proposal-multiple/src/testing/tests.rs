@@ -9,6 +9,7 @@ use cw_utils::Duration;
 use dao_interface::state::ProposalModule;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_voting::multiple_choice::MultipleChoiceAutoVote;
+use dao_voting::pre_propose::PreProposeSubmissionPolicy;
 use dao_voting::veto::{VetoConfig, VetoError};
 use dao_voting::{
     deposit::{
@@ -96,12 +97,23 @@ pub fn get_pre_propose_info(
     open_proposal_submission: bool,
 ) -> PreProposeInfo {
     let pre_propose_contract = app.store_code(pre_propose_multiple_contract());
+
+    let submission_policy = if open_proposal_submission {
+        PreProposeSubmissionPolicy::Anyone { denylist: None }
+    } else {
+        PreProposeSubmissionPolicy::Specific {
+            dao_members: true,
+            allowlist: None,
+            denylist: None,
+        }
+    };
+
     PreProposeInfo::ModuleMayPropose {
         info: ModuleInstantiateInfo {
             code_id: pre_propose_contract,
             msg: to_json_binary(&cppm::InstantiateMsg {
                 deposit_info,
-                open_proposal_submission,
+                submission_policy,
                 extension: Empty::default(),
             })
             .unwrap(),

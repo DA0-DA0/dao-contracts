@@ -28,6 +28,13 @@ dao-interface = { workspace = true }
 dao-voting = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
+cw-orch = {workspace = true}
+semver = { workspace = true }
+
+# v2.4.1 packages for state migration
+cw-denom-v241 = { workspace = true }
+dao-pre-propose-base-v241 = { workspace = true }
+dao-voting-v241 = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }

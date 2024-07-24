@@ -1,30 +1,28 @@
-use std::collections::HashMap;
-
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{StdError, StdResult, Uint128, Uint256};
-use cw20::{Cw20ReceiveMsg, UncheckedDenom};
+use cosmwasm_std::Uint128;
+use cw20::{Cw20ReceiveMsg, Denom, UncheckedDenom};
 use cw4::MemberChangedHookMsg;
 use cw_ownable::cw_ownable_execute;
-use cw_utils::Duration;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 use dao_interface::voting::InfoResponse;
-
-use crate::{state::DenomRewardState, ContractError};
 
 // so that consumers don't need a cw_ownable or cw_controllers dependency
 // to consume this contract's queries.
 pub use cw_controllers::ClaimsResponse;
 pub use cw_ownable::Ownership;
 
+use crate::state::{DistributionState, EmissionRate};
+
 #[cw_serde]
 pub struct InstantiateMsg {
-    /// The owner of the contract. Is able to fund the contract and update
-    /// the reward duration.
+    /// The owner of the contract. Is able to fund the contract and update the
+    /// reward duration. If not provided, the instantiator is used.
     pub owner: Option<String>,
 }
 
 #[cw_ownable_execute]
 #[cw_serde]
+#[derive(cw_orch::ExecuteFns)]
 pub enum ExecuteMsg {
     /// Called when a member is added or removed
     /// to a cw4-groups or cw721-roles contract.
@@ -33,109 +31,108 @@ pub enum ExecuteMsg {
     NftStakeChangeHook(NftStakeChangedHookMsg),
     /// Called when tokens are staked or unstaked.
     StakeChangeHook(StakeChangedHookMsg),
-    /// Claims rewards for the sender.
-    Claim { denom: String },
+    /// registers a new distribution
+    Create(CreateMsg),
+    /// updates the config for a distribution
+    Update {
+        /// distribution ID to update
+        id: u64,
+        /// reward emission rate
+        emission_rate: Option<EmissionRate>,
+        /// address to query the voting power
+        vp_contract: Option<String>,
+        /// address that will update the reward split when the voting power
+        /// distribution changes
+        hook_caller: Option<String>,
+        /// destination address for reward clawbacks. defaults to owner
+        withdraw_destination: Option<String>,
+    },
     /// Used to fund this contract with cw20 tokens.
     Receive(Cw20ReceiveMsg),
     /// Used to fund this contract with native tokens.
-    Fund {},
-    /// shuts down the rewards distributor. withdraws all future staking rewards
-    /// back to the treasury. members can claim whatever they earned until this point.
-    Shutdown { denom: String },
-    /// registers a new reward denom
-    RegisterRewardDenom {
-        denom: UncheckedDenom,
-        emission_rate: RewardEmissionRate,
-        vp_contract: String,
-        hook_caller: String,
-        withdraw_destination: Option<String>,
-    },
-}
-
-/// defines how many tokens (amount) should be distributed per amount of time
-/// (duration). e.g. 5udenom per hour.
-#[cw_serde]
-pub struct RewardEmissionRate {
-    pub amount: Uint128,
-    pub duration: Duration,
-}
-
-impl RewardEmissionRate {
-    pub fn validate_emission_time_window(&self) -> Result<(), ContractError> {
-        // Reward duration must be greater than 0
-        if let Duration::Height(0) | Duration::Time(0) = self.duration {
-            return Err(ContractError::ZeroRewardDuration {});
-        }
-        Ok(())
-    }
-
-    // find the duration of the funded period given emission config and funded amount
-    pub fn get_funded_period_duration(&self, funded_amount: Uint128) -> StdResult<Duration> {
-        let funded_amount_u256 = Uint256::from(funded_amount);
-        let amount_u256 = Uint256::from(self.amount);
-        let amount_to_emission_rate_ratio = funded_amount_u256.checked_div(amount_u256)?;
-
-        let ratio_str = amount_to_emission_rate_ratio.to_string();
-        let ratio = ratio_str
-            .parse::<u64>()
-            .map_err(|e| StdError::generic_err(e.to_string()))?;
-
-        let funded_period_duration = match self.duration {
-            Duration::Height(h) => {
-                let duration_height = match ratio.checked_mul(h) {
-                    Some(duration) => duration,
-                    None => return Err(StdError::generic_err("overflow")),
-                };
-                Duration::Height(duration_height)
-            }
-            Duration::Time(t) => {
-                let duration_time = match ratio.checked_mul(t) {
-                    Some(duration) => duration,
-                    None => return Err(StdError::generic_err("overflow")),
-                };
-                Duration::Time(duration_time)
-            }
-        };
-
-        Ok(funded_period_duration)
-    }
+    #[cw_orch(payable)]
+    Fund(FundMsg),
+    /// Claims rewards for the sender.
+    Claim { id: u64 },
+    /// withdraws the undistributed rewards for a distribution. members can
+    /// claim whatever they earned until this point. this is effectively an
+    /// inverse to fund and does not affect any already-distributed rewards.
+    Withdraw { id: u64 },
 }
 
 #[cw_serde]
-pub enum MigrateMsg {}
+pub struct CreateMsg {
+    /// denom to distribute
+    pub denom: UncheckedDenom,
+    /// reward emission rate
+    pub emission_rate: EmissionRate,
+    /// address to query the voting power
+    pub vp_contract: String,
+    /// address that will update the reward split when the voting power
+    /// distribution changes
+    pub hook_caller: String,
+    /// destination address for reward clawbacks. defaults to owner
+    pub withdraw_destination: Option<String>,
+}
 
 #[cw_serde]
-pub enum ReceiveMsg {
+pub struct FundMsg {
+    /// distribution ID to fund
+    pub id: u64,
+}
+
+#[cw_serde]
+pub enum ReceiveCw20Msg {
     /// Used to fund this contract with cw20 tokens.
-    Fund {},
+    Fund(FundMsg),
 }
 
 #[cw_serde]
-#[derive(QueryResponses)]
+#[derive(QueryResponses, cw_orch::QueryFns)]
 pub enum QueryMsg {
     /// Returns contract version info
     #[returns(InfoResponse)]
     Info {},
-    /// Returns the state of the registered reward distributions.
-    #[returns(RewardsStateResponse)]
-    RewardsState {},
-    /// Returns the pending rewards for the given address.
-    #[returns(PendingRewardsResponse)]
-    GetPendingRewards { address: String },
     /// Returns information about the ownership of this contract.
     #[returns(::cw_ownable::Ownership<::cosmwasm_std::Addr>)]
     Ownership {},
-    #[returns(DenomRewardState)]
-    DenomRewardState { denom: String },
+    /// Returns the pending rewards for the given address.
+    #[returns(PendingRewardsResponse)]
+    PendingRewards {
+        address: String,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
+    /// Returns the state of the given distribution.
+    #[returns(DistributionState)]
+    Distribution { id: u64 },
+    /// Returns the state of all the distributions.
+    #[returns(DistributionsResponse)]
+    Distributions {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
 }
 
 #[cw_serde]
-pub struct RewardsStateResponse {
-    pub rewards: Vec<DenomRewardState>,
+pub struct DistributionsResponse {
+    pub distributions: Vec<DistributionState>,
 }
 
 #[cw_serde]
 pub struct PendingRewardsResponse {
-    pub address: String,
-    pub pending_rewards: HashMap<String, Uint128>,
+    pub pending_rewards: Vec<DistributionPendingRewards>,
 }
+
+#[cw_serde]
+pub struct DistributionPendingRewards {
+    /// distribution ID
+    pub id: u64,
+    /// denomination of the pending rewards
+    pub denom: Denom,
+    /// amount of pending rewards in the denom being distributed
+    pub pending_rewards: Uint128,
+}
+
+#[cw_serde]
+pub enum MigrateMsg {}

@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-pre-propose-multiple",
-  "contract_version": "2.4.2",
+  "contract_version": "2.5.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -8,7 +8,7 @@
     "type": "object",
     "required": [
       "extension",
-      "open_proposal_submission"
+      "submission_policy"
     ],
     "properties": {
       "deposit_info": {
@@ -30,9 +30,13 @@
           }
         ]
       },
-      "open_proposal_submission": {
-        "description": "If false, only members (addresses with voting power) may create proposals in the DAO. Otherwise, any address may create a proposal so long as they pay the deposit.",
-        "type": "boolean"
+      "submission_policy": {
+        "description": "The policy dictating who is allowed to submit proposals.",
+        "allOf": [
+          {
+            "$ref": "#/definitions/PreProposeSubmissionPolicy"
+          }
+        ]
       }
     },
     "additionalProperties": false,
@@ -114,6 +118,80 @@
       "Empty": {
         "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
         "type": "object"
+      },
+      "PreProposeSubmissionPolicy": {
+        "description": "The policy configured in a pre-propose module that determines who can submit proposals. This is the preferred way to restrict proposal creation (as opposed to the ProposalCreationPolicy above) since pre-propose modules support other features, such as proposal deposits.",
+        "oneOf": [
+          {
+            "description": "Anyone may create proposals, except for those in the denylist.",
+            "type": "object",
+            "required": [
+              "anyone"
+            ],
+            "properties": {
+              "anyone": {
+                "type": "object",
+                "properties": {
+                  "denylist": {
+                    "description": "Addresses that may not create proposals.",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Specific people may create proposals.",
+            "type": "object",
+            "required": [
+              "specific"
+            ],
+            "properties": {
+              "specific": {
+                "type": "object",
+                "required": [
+                  "dao_members"
+                ],
+                "properties": {
+                  "allowlist": {
+                    "description": "Addresses that may create proposals.",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "dao_members": {
+                    "description": "Whether or not DAO members may create proposals.",
+                    "type": "boolean"
+                  },
+                  "denylist": {
+                    "description": "Addresses that may not create proposals, overriding other settings.",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
       },
       "Uint128": {
         "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
@@ -230,11 +308,9 @@
         "properties": {
           "update_config": {
             "type": "object",
-            "required": [
-              "open_proposal_submission"
-            ],
             "properties": {
               "deposit_info": {
+                "description": "If None, will remove the deposit. Backwards compatible.",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/UncheckedDepositInfo"
@@ -244,8 +320,79 @@
                   }
                 ]
               },
-              "open_proposal_submission": {
-                "type": "boolean"
+              "submission_policy": {
+                "description": "If None, will leave the submission policy in the config as-is.",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/PreProposeSubmissionPolicy"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Perform more granular submission policy updates to allow for atomic operations that don't override others.",
+        "type": "object",
+        "required": [
+          "update_submission_policy"
+        ],
+        "properties": {
+          "update_submission_policy": {
+            "type": "object",
+            "properties": {
+              "allowlist_add": {
+                "description": "If using specific policy, optionally add to the allowlist.",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "allowlist_remove": {
+                "description": "If using specific policy, optionally remove from the allowlist.",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "denylist_add": {
+                "description": "Optionally add to the denylist. Works for any submission policy.",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "denylist_remove": {
+                "description": "Optionally remove from denylist. Works for any submission policy.",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "set_dao_members": {
+                "description": "If using specific policy, optionally update the `dao_members` flag.",
+                "type": [
+                  "boolean",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -565,6 +712,10 @@
           }
         ]
       },
+      "Decimal": {
+        "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+        "type": "string"
+      },
       "DepositRefundPolicy": {
         "oneOf": [
           {
@@ -685,6 +836,31 @@
               }
             },
             "additionalProperties": false
+          },
+          {
+            "description": "This is translated to a [[MsgFundCommunityPool](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#LL69C1-L76C2). `depositor` is automatically filled with the current contract's address.",
+            "type": "object",
+            "required": [
+              "fund_community_pool"
+            ],
+            "properties": {
+              "fund_community_pool": {
+                "type": "object",
+                "required": [
+                  "amount"
+                ],
+                "properties": {
+                  "amount": {
+                    "description": "The amount to spend",
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/Coin"
+                    }
+                  }
+                }
+              }
+            },
+            "additionalProperties": false
           }
         ]
       },
@@ -768,6 +944,36 @@
                         "$ref": "#/definitions/VoteOption"
                       }
                     ]
+                  }
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "This maps directly to [MsgVoteWeighted](https://github.com/cosmos/cosmos-sdk/blob/v0.45.8/proto/cosmos/gov/v1beta1/tx.proto#L66-L78) in the Cosmos SDK with voter set to the contract address.",
+            "type": "object",
+            "required": [
+              "vote_weighted"
+            ],
+            "properties": {
+              "vote_weighted": {
+                "type": "object",
+                "required": [
+                  "options",
+                  "proposal_id"
+                ],
+                "properties": {
+                  "options": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/WeightedVoteOption"
+                    }
+                  },
+                  "proposal_id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
                   }
                 }
               }
@@ -1007,6 +1213,80 @@
           }
         },
         "additionalProperties": false
+      },
+      "PreProposeSubmissionPolicy": {
+        "description": "The policy configured in a pre-propose module that determines who can submit proposals. This is the preferred way to restrict proposal creation (as opposed to the ProposalCreationPolicy above) since pre-propose modules support other features, such as proposal deposits.",
+        "oneOf": [
+          {
+            "description": "Anyone may create proposals, except for those in the denylist.",
+            "type": "object",
+            "required": [
+              "anyone"
+            ],
+            "properties": {
+              "anyone": {
+                "type": "object",
+                "properties": {
+                  "denylist": {
+                    "description": "Addresses that may not create proposals.",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Specific people may create proposals.",
+            "type": "object",
+            "required": [
+              "specific"
+            ],
+            "properties": {
+              "specific": {
+                "type": "object",
+                "required": [
+                  "dao_members"
+                ],
+                "properties": {
+                  "allowlist": {
+                    "description": "Addresses that may create proposals.",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "dao_members": {
+                    "description": "Whether or not DAO members may create proposals.",
+                    "type": "boolean"
+                  },
+                  "denylist": {
+                    "description": "Addresses that may not create proposals, overriding other settings.",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
       },
       "ProposeMessage": {
         "oneOf": [
@@ -1400,6 +1680,60 @@
             "additionalProperties": false
           },
           {
+            "description": "Instantiates a new contracts from previously uploaded Wasm code using a predictable address derivation algorithm implemented in [`cosmwasm_std::instantiate2_address`].\n\nThis is translated to a [MsgInstantiateContract2](https://github.com/CosmWasm/wasmd/blob/v0.29.2/proto/cosmwasm/wasm/v1/tx.proto#L73-L96). `sender` is automatically filled with the current contract's address. `fix_msg` is automatically set to false.",
+            "type": "object",
+            "required": [
+              "instantiate2"
+            ],
+            "properties": {
+              "instantiate2": {
+                "type": "object",
+                "required": [
+                  "code_id",
+                  "funds",
+                  "label",
+                  "msg",
+                  "salt"
+                ],
+                "properties": {
+                  "admin": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "code_id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  },
+                  "funds": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/Coin"
+                    }
+                  },
+                  "label": {
+                    "description": "A human-readable label for the contract.\n\nValid values should: - not be empty - not be bigger than 128 bytes (or some chain-specific limit) - not start / end with whitespace",
+                    "type": "string"
+                  },
+                  "msg": {
+                    "description": "msg is the JSON-encoded InstantiateMsg struct (as raw Binary)",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Binary"
+                      }
+                    ]
+                  },
+                  "salt": {
+                    "$ref": "#/definitions/Binary"
+                  }
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          {
             "description": "Migrates a given contracts to use new wasm code. Passes a MigrateMsg to allow us to customize behavior.\n\nOnly the contract admin (as defined in wasmd), if any, is able to make this call.\n\nThis is translated to a [MsgMigrateContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L86-L96). `sender` is automatically filled with the current contract's address.",
             "type": "object",
             "required": [
@@ -1483,6 +1817,21 @@
             "additionalProperties": false
           }
         ]
+      },
+      "WeightedVoteOption": {
+        "type": "object",
+        "required": [
+          "option",
+          "weight"
+        ],
+        "properties": {
+          "option": {
+            "$ref": "#/definitions/VoteOption"
+          },
+          "weight": {
+            "$ref": "#/definitions/Decimal"
+          }
+        }
       }
     }
   },
@@ -1512,6 +1861,20 @@
         ],
         "properties": {
           "dao": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Returns contract version info.",
+        "type": "object",
+        "required": [
+          "info"
+        ],
+        "properties": {
+          "info": {
             "type": "object",
             "additionalProperties": false
           }
@@ -1549,6 +1912,28 @@
                 "type": "integer",
                 "format": "uint64",
                 "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Returns whether or not the address can submit proposals.",
+        "type": "object",
+        "required": [
+          "can_propose"
+        ],
+        "properties": {
+          "can_propose": {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "string"
               }
             },
             "additionalProperties": false
@@ -1600,15 +1985,152 @@
       }
     }
   },
-  "migrate": null,
+  "migrate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "MigrateMsg",
+    "oneOf": [
+      {
+        "type": "object",
+        "required": [
+          "from_under_v250"
+        ],
+        "properties": {
+          "from_under_v250": {
+            "type": "object",
+            "properties": {
+              "policy": {
+                "description": "Optionally set a new submission policy with more granular controls. If not set, the current policy will remain.",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/PreProposeSubmissionPolicy"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "extension"
+        ],
+        "properties": {
+          "extension": {
+            "type": "object",
+            "required": [
+              "msg"
+            ],
+            "properties": {
+              "msg": {
+                "$ref": "#/definitions/Empty"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "Empty": {
+        "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
+        "type": "object"
+      },
+      "PreProposeSubmissionPolicy": {
+        "description": "The policy configured in a pre-propose module that determines who can submit proposals. This is the preferred way to restrict proposal creation (as opposed to the ProposalCreationPolicy above) since pre-propose modules support other features, such as proposal deposits.",
+        "oneOf": [
+          {
+            "description": "Anyone may create proposals, except for those in the denylist.",
+            "type": "object",
+            "required": [
+              "anyone"
+            ],
+            "properties": {
+              "anyone": {
+                "type": "object",
+                "properties": {
+                  "denylist": {
+                    "description": "Addresses that may not create proposals.",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Specific people may create proposals.",
+            "type": "object",
+            "required": [
+              "specific"
+            ],
+            "properties": {
+              "specific": {
+                "type": "object",
+                "required": [
+                  "dao_members"
+                ],
+                "properties": {
+                  "allowlist": {
+                    "description": "Addresses that may create proposals.",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "dao_members": {
+                    "description": "Whether or not DAO members may create proposals.",
+                    "type": "boolean"
+                  },
+                  "denylist": {
+                    "description": "Addresses that may not create proposals, overriding other settings.",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
   "sudo": null,
   "responses": {
+    "can_propose": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Boolean",
+      "type": "boolean"
+    },
     "config": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Config",
       "type": "object",
       "required": [
-        "open_proposal_submission"
+        "submission_policy"
       ],
       "properties": {
         "deposit_info": {
@@ -1622,9 +2144,13 @@
             }
           ]
         },
-        "open_proposal_submission": {
-          "description": "If false, only members (addresses with voting power) may create proposals in the DAO. Otherwise, any address may create a proposal so long as they pay the deposit.",
-          "type": "boolean"
+        "submission_policy": {
+          "description": "The policy dictating who is allowed to submit proposals.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/PreProposeSubmissionPolicy"
+            }
+          ]
         }
       },
       "additionalProperties": false,
@@ -1722,6 +2248,80 @@
               "enum": [
                 "never"
               ]
+            }
+          ]
+        },
+        "PreProposeSubmissionPolicy": {
+          "description": "The policy configured in a pre-propose module that determines who can submit proposals. This is the preferred way to restrict proposal creation (as opposed to the ProposalCreationPolicy above) since pre-propose modules support other features, such as proposal deposits.",
+          "oneOf": [
+            {
+              "description": "Anyone may create proposals, except for those in the denylist.",
+              "type": "object",
+              "required": [
+                "anyone"
+              ],
+              "properties": {
+                "anyone": {
+                  "type": "object",
+                  "properties": {
+                    "denylist": {
+                      "description": "Addresses that may not create proposals.",
+                      "type": [
+                        "array",
+                        "null"
+                      ],
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "Specific people may create proposals.",
+              "type": "object",
+              "required": [
+                "specific"
+              ],
+              "properties": {
+                "specific": {
+                  "type": "object",
+                  "required": [
+                    "dao_members"
+                  ],
+                  "properties": {
+                    "allowlist": {
+                      "description": "Addresses that may create proposals.",
+                      "type": [
+                        "array",
+                        "null"
+                      ],
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "dao_members": {
+                      "description": "Whether or not DAO members may create proposals.",
+                      "type": "boolean"
+                    },
+                    "denylist": {
+                      "description": "Addresses that may not create proposals, overriding other settings.",
+                      "type": [
+                        "array",
+                        "null"
+                      ],
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
             }
           ]
         },
@@ -1866,6 +2466,40 @@
         "Uint128": {
           "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
           "type": "string"
+        }
+      }
+    },
+    "info": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "InfoResponse",
+      "type": "object",
+      "required": [
+        "info"
+      ],
+      "properties": {
+        "info": {
+          "$ref": "#/definitions/ContractVersion"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "ContractVersion": {
+          "type": "object",
+          "required": [
+            "contract",
+            "version"
+          ],
+          "properties": {
+            "contract": {
+              "description": "contract is the crate name of the implementing contract, eg. `crate:cw20-base` we will use other prefixes for other languages, and their standard global namespacing",
+              "type": "string"
+            },
+            "version": {
+              "description": "version is any string that this implementation knows. It may be simple counter \"1\", \"2\". or semantic version on release tags \"v0.7.0\", or some custom feature flag list. the only code that needs to understand the version parsing is code that knows how to migrate from the given contract (and is tied to it's implementation somehow)",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
         }
       }
     },

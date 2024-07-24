@@ -9,27 +9,26 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
-        components: llvm-tools-preview
-    - name: cargo install cargo-llvm-cov
-      run: cargo install cargo-llvm-cov
-    - name: cargo llvm-cov
-      run: cargo llvm-cov --workspace --lcov --output-path lcov.info
-    - name: Codecov
-      # You may pin to the exact commit or the version.
-      # uses: codecov/codecov-action@81cd2dc8148241f03f5839d295e000b8f761e378
-      uses: codecov/codecov-action@v3
-      with:
-        # Repository upload token - get it from codecov.io. Required only for private repositories
-        # token: # optional
-        # Specify whether the Codecov output should be verbose
-        verbose: true
-        fail_ci_if_error: true
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: llvm-tools-preview
+      - name: cargo install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov
+      - name: cargo llvm-cov
+        run: cargo llvm-cov --workspace --lcov --output-path lcov.info
+      - name: Codecov
+        # You may pin to the exact commit or the version.
+        # uses: codecov/codecov-action@81cd2dc8148241f03f5839d295e000b8f761e378
+        uses: codecov/codecov-action@v3
+        with:
+          # Repository upload token - get it from codecov.io.
+          token: ${{ secrets.CODECOV_TOKEN }}
+          # Specify whether the Codecov output should be verbose
+          verbose: true
+          fail_ci_if_error: true
