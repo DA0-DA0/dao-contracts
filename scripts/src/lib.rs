@@ -1,4 +1,4 @@
-#[allow(clippy::collapsible_if)]
+#[allow(dead_code)]
 fn main() {}
 
 mod dao;
