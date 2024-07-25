@@ -1,5 +1,9 @@
 mod deploy;
 mod external;
+mod voting;
+mod staking;
+mod distribution;
+mod propose;
 
 pub(crate) const PREFIX: &str = "mock";
 pub(crate) const ADMIN: &str = "admin";
