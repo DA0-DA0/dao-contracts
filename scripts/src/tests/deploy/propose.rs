@@ -1,7 +1,6 @@
 use crate::propose::*;
 use cw_orch::prelude::*;
 
-
 // pre-proposal suite
 impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for DaoPreProposeSuite<Chain> {
     // We don't have a custom error type
@@ -56,11 +55,16 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for DaoProposalSuite<Chain> 
     }
 
     fn get_contracts_mut(&mut self) -> Vec<Box<&mut dyn ContractInstance<Chain>>> {
-        vec![
+        let mut boxs = vec![];
+        let prop: Vec<Box<&mut dyn ContractInstance<Chain>>> = vec![
             Box::new(&mut self.prop_single),
             Box::new(&mut self.prop_multiple),
             Box::new(&mut self.prop_condocert),
-        ]
+        ];
+
+        boxs.extend(prop);
+        boxs.extend(self.pre_prop_suite.get_contracts_mut());
+        boxs
     }
 
     fn load_from(chain: Chain) -> Result<Self, Self::Error> {

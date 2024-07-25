@@ -1,5 +1,6 @@
-mod external;
 mod distribution;
-mod voting;
+mod dao;
+mod external;
 mod propose;
 mod staking;
+mod voting;
