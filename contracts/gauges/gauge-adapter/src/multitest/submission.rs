@@ -19,7 +19,6 @@ use cw_orch::{contract::interface_traits::CwOrchExecute, mock::MockBech32, prelu
 fn create_default_submission() {
     let mock = MockBech32::new("mock");
     let treasury = &mock.addr_make("community_pool");
-
     let adapter = setup_gauge_adapter(mock.clone(), None);
 
     // this one is created by default during instantiation
@@ -99,7 +98,6 @@ fn overwrite_existing_submission() {
         None,
     )
     .unwrap();
-
     assert_eq!(
         SubmissionResponse {
             sender: mock.sender.clone(),
@@ -147,7 +145,6 @@ fn create_submission_required_deposit() {
         .unwrap();
     mock.add_balance(&mock.sender.clone(), vec![coin(1_000, "juno")])
         .unwrap();
-
     // Fails if no funds sent.
     let err = native_submission_helper(
         adapter.clone(),
@@ -317,7 +314,6 @@ fn create_receive_required_deposit() {
             })
             .unwrap()
     );
-
     assert_eq!(
         2,
         adapter
@@ -373,7 +369,6 @@ fn return_deposits_required_native_deposit() {
     mock.add_balance(&mock.sender, vec![coin(1_000u128, "juno")])
         .unwrap();
     let recipient = mock.addr_make("recipient");
-
     // Valid submission.
     native_submission_helper(
         adapter.clone(),
@@ -448,7 +443,6 @@ fn return_deposits_required_native_deposit_multiple_deposits() {
         Some(coin(1_000u128, "juno")),
     )
     .unwrap();
-
     adapter.return_deposits().unwrap();
     assert_eq!(
         mock.query_balance(&mock.sender.clone(), "juno").unwrap(),
