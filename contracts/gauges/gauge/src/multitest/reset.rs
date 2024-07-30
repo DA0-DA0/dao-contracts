@@ -261,6 +261,8 @@ fn gauge_migrate_with_reset() {
                 last: None,
                 reset_each: RESET_EPOCH,
                 next: suite.current_time() + 100,
+                count: None,
+                total: None,
             }),
         }
     );

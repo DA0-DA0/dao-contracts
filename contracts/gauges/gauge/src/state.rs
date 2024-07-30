@@ -76,6 +76,10 @@ pub struct Reset {
     pub reset_each: u64,
     /// next time we can reset
     pub next: u64,
+    // count
+    pub count: Option<u64>,
+    // total
+    pub total: Option<u64>,
 }
 
 impl Gauge {
@@ -85,6 +89,20 @@ impl Gauge {
             .as_ref()
             .map(|r| r.last == Some(r.next))
             .unwrap_or_default()
+    }
+    pub fn will_reach_epoch_limit(&self) -> bool {
+        self.reset.as_ref().map_or(false, |r| {
+            if let Some(total) = r.total {
+                total == self.epoch + 1
+            } else {
+                false
+            }
+        })
+    }
+    pub fn increment_gauge_count(&self) -> StdResult<()> {
+        self.reset.clone()
+            .map(|mut c| c.count = c.count.map_or(Some(0), |o| Some(o + 1)));
+        Ok(())
     }
 }
 

@@ -103,6 +103,7 @@ pub fn execute(
 }
 
 mod execute {
+    use cosmwasm_std::CosmosMsg;
     use cw4::MemberDiff;
     use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 
@@ -389,6 +390,7 @@ mod execute {
             max_options_selected,
             max_available_percentage,
             reset_epoch,
+            total_epochs,
         }: GaugeConfig,
     ) -> Result<Addr, ContractError> {
         let adapter = deps.api.addr_validate(&adapter)?;
@@ -418,6 +420,8 @@ mod execute {
                 last: None,
                 reset_each: r,
                 next: env.block.time.plus_seconds(r).seconds(),
+                count: None,
+                total: total_epochs,
             }),
         };
         let last_id: GaugeId = fetch_last_id(deps.storage)?;
@@ -754,7 +758,8 @@ mod execute {
     }
 
     pub fn execute(deps: DepsMut, env: Env, gauge_id: u64) -> Result<Response, ContractError> {
-        let mut gauge = GAUGES.load(deps.storage, gauge_id)?;
+        let mut gauge = GAUGES.load(deps.storage, gauge_id.clone())?;
+        let mut msgs = vec![];
 
         if gauge.is_stopped {
             return Err(ContractError::GaugeStopped(gauge_id));
@@ -796,12 +801,22 @@ mod execute {
             &AdapterQueryMsg::SampleGaugeMsgs { selected },
         )?;
 
+        msgs.extend(execute_messages.execute);
+
+        if gauge.will_reach_epoch_limit() {
+            msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: env.contract.address.to_string(),
+                msg: to_json_binary(&ExecuteMsg::StopGauge { gauge: gauge_id })?,
+                funds: vec![],
+            }))
+        }
+        // increments epoch count
+        gauge.increment_gauge_count()?;
+
         let config = CONFIG.load(deps.storage)?;
         let execute_msg = WasmMsg::Execute {
             contract_addr: config.dao_core.to_string(),
-            msg: to_json_binary(&DaoExecuteMsg::ExecuteProposalHook {
-                msgs: execute_messages.execute,
-            })?,
+            msg: to_json_binary(&DaoExecuteMsg::ExecuteProposalHook { msgs })?,
             funds: vec![],
         };
 
@@ -1029,6 +1044,8 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
                     last: gauge.reset.map(|r| r.last).unwrap_or_default(),
                     reset_each: reset_config.reset_epoch,
                     next: reset_config.next_reset,
+                    count: None,
+                    total: None,
                 });
             }
             Ok(gauge)

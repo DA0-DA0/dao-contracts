@@ -39,6 +39,8 @@ pub struct GaugeConfig {
     pub max_available_percentage: Option<Decimal>,
     /// If set, the gauge can be reset periodically, every `reset_epoch` seconds.
     pub reset_epoch: Option<u64>,
+    /// if set, the gauge will disable itself after this many epochs
+    pub total_epochs: Option<u64>,
 }
 
 #[cw_serde]

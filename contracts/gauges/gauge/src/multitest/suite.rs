@@ -660,6 +660,7 @@ impl Suite {
             max_options_selected: 10,
             max_available_percentage: max_available_percentage.into(),
             reset_epoch: reset_epoch.into(),
+            total_epochs: None,
         })
     }
 
