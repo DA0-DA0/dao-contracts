@@ -93,7 +93,7 @@ impl Gauge {
     pub fn will_reach_epoch_limit(&self) -> bool {
         self.reset.as_ref().map_or(false, |r| {
             if let Some(total) = r.total {
-                total == self.epoch + 1
+                total == self.count.unwrap_or_default() + 1
             } else {
                 false
             }
