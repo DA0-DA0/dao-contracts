@@ -1,14 +1,14 @@
-use crate::external::*;
+use crate::DaoDistributionSuite;
 use cw_orch::prelude::*;
 
-// admin factory
-impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for DaoExternalSuite<Chain> {
+// distribution suite
+impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for DaoDistributionSuite<Chain> {
     // We don't have a custom error type
     type Error = CwOrchError;
     type DeployData = Addr;
 
     fn store_on(chain: Chain) -> Result<Self, Self::Error> {
-        let suite = DaoExternalSuite::new(chain.clone());
+        let suite = DaoDistributionSuite::new(chain.clone());
         suite.upload()?;
         Ok(suite)
     }
@@ -19,14 +19,8 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for DaoExternalSuite<Chain> 
 
     fn get_contracts_mut(&mut self) -> Vec<Box<&mut dyn ContractInstance<Chain>>> {
         vec![
-            Box::new(&mut self.admin_factory),
-            Box::new(&mut self.btsg_ft_factory),
-            Box::new(&mut self.payroll_factory),
-            Box::new(&mut self.cw_tokenswap),
-            Box::new(&mut self.cw_tokenfactory_issuer),
-            Box::new(&mut self.cw_vesting),
-            Box::new(&mut self.cw721_roles),
-            Box::new(&mut self.migrator),
+            Box::new(&mut self.fund_distr),
+            Box::new(&mut self.reward_distr),
         ]
     }
 
@@ -37,7 +31,7 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for DaoExternalSuite<Chain> 
 
     fn deploy_on(chain: Chain, _data: Self::DeployData) -> Result<Self, Self::Error> {
         // ########### Upload ##############
-        let suite: DaoExternalSuite<Chain> = DaoExternalSuite::store_on(chain.clone())?;
+        let suite: DaoDistributionSuite<Chain> = DaoDistributionSuite::store_on(chain.clone())?;
         Ok(suite)
     }
 }

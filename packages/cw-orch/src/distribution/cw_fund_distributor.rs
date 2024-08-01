@@ -4,9 +4,9 @@ use cw_fund_distributor::contract::{execute, instantiate, query};
 use cw_fund_distributor::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 #[interface(InstantiateMsg, ExecuteMsg, QueryMsg, Empty)]
-pub struct CwFundDistributor;
+pub struct DaoFundsDistributor;
 
-impl<Chain> Uploadable for CwFundDistributor<Chain> {
+impl<Chain> Uploadable for DaoFundsDistributor<Chain> {
     /// Return the path to the wasm file corresponding to the contract
     fn wasm(_chain: &ChainInfoOwned) -> WasmPath {
         artifacts_dir_from_workspace!()
