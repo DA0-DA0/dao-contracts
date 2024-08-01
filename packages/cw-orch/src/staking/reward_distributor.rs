@@ -4,9 +4,9 @@ use cw20_stake_reward_distributor::contract::{execute, instantiate, migrate, que
 use cw20_stake_reward_distributor::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
 #[interface(InstantiateMsg, ExecuteMsg, QueryMsg, MigrateMsg)]
-pub struct Cw20StakeRewardDistributor;
+pub struct DaoStakingCw20RewardDistributor;
 
-impl<Chain> Uploadable for Cw20StakeRewardDistributor<Chain> {
+impl<Chain> Uploadable for DaoStakingCw20RewardDistributor<Chain> {
     /// Return the path to the wasm file corresponding to the contract
     fn wasm(_chain: &ChainInfoOwned) -> WasmPath {
         artifacts_dir_from_workspace!()
