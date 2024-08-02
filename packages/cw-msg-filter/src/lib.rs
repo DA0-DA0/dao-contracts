@@ -37,11 +37,11 @@ pub struct MsgFilter {
     /// Specify msgs that will be allowed through the filter
     /// If set to `None` only `max_msg_count` and `spending_limits`
     /// will be used for validation
-    allowed_msgs: Option<Vec<AllowedMsg>>,
+    pub allowed_msgs: Option<Vec<AllowedMsg>>,
     /// The maximum number of messages that can be included.
-    max_msg_count: Option<u8>,
+    pub max_msg_count: Option<u8>,
     /// Global limitations on spending
-    spending_limits: Option<Vec<Coin>>,
+    pub spending_limits: Option<Vec<Coin>>,
 }
 
 #[cw_serde]
@@ -50,7 +50,7 @@ pub enum AllowedMsg {
     Exact(CosmosMsg),
     /// A generic smart contract message that only checks the method key
     /// being called, the contract address, and the funds used.
-    /// At least of the optional fields must be specified or an invalid
+    /// At least one of the optional fields must be specified or an invalid
     /// configuration error will be thrown.
     GenericWasmExecuteMsg {
         /// The smart contract this message is intended for
@@ -111,71 +111,8 @@ impl MsgFilter {
 
         // Check spending limits
         if let Some(limits) = &self.spending_limits {
-            // Calculate total spending for each denomination across all messages
-            let total_spend: HashMap<String, Uint128> = messages
-                .iter()
-                // Extract coins from each message
-                .flat_map(|msg| match msg {
-                    // Bank messages
-                    CosmosMsg::Bank(BankMsg::Send { amount, .. }) => amount.clone(),
-                    CosmosMsg::Bank(BankMsg::Burn { amount, .. }) => amount.clone(),
-                    // CosmosMsg::Bank(BankMsg::Mint { amount, .. }) => vec![amount.clone()],
-
-                    // Staking messages
-                    CosmosMsg::Staking(StakingMsg::Delegate { amount, .. }) => vec![amount.clone()],
-                    CosmosMsg::Staking(StakingMsg::Undelegate { amount, .. }) => {
-                        vec![amount.clone()]
-                    }
-                    CosmosMsg::Staking(StakingMsg::Redelegate { amount, .. }) => {
-                        vec![amount.clone()]
-                    }
-
-                    // Distribution messages
-                    CosmosMsg::Distribution(DistributionMsg::WithdrawDelegatorReward {
-                        ..
-                    }) => vec![], // No direct spending
-
-                    // IBC messages
-                    CosmosMsg::Ibc(IbcMsg::Transfer { amount, .. }) => vec![amount.clone()],
-
-                    // Wasm messages
-                    CosmosMsg::Wasm(WasmMsg::Execute { funds, .. }) => funds.clone(),
-                    CosmosMsg::Wasm(WasmMsg::Instantiate { funds, .. }) => funds.clone(),
-                    CosmosMsg::Wasm(WasmMsg::Migrate { .. }) => vec![], // No funds involved
-                    CosmosMsg::Wasm(WasmMsg::UpdateAdmin { .. }) => vec![], // No funds involved
-                    CosmosMsg::Wasm(WasmMsg::ClearAdmin { .. }) => vec![], // No funds involved
-
-                    // Stargate, Custom, and Gov messages
-                    CosmosMsg::Stargate { .. } => vec![], // We can't determine spending for Stargate messages generically
-                    CosmosMsg::Custom(_) => vec![], // We can't determine spending for Custom messages
-                    CosmosMsg::Gov(_) => vec![], // Gov messages don't directly involve coin transfers
-
-                    // Any messages
-                    // CosmosMsg::Any(_) => vec![], // We can't determine spending for Any messages
-
-                    // For any other message types, return an empty vector
-                    _ => vec![],
-                })
-                // Group coins by their denomination
-                .into_grouping_map_by(|coin| coin.denom.clone())
-                // Sum up amounts for each denomination
-                .fold(Uint128::zero(), |acc, _, coin| acc + coin.amount);
-
-            // Check each spending limit against the total spend
-            for limit in limits {
-                // If there's spending for this denomination
-                if let Some(&amount) = total_spend.get(&limit.denom) {
-                    // If the spent amount exceeds the limit
-                    if amount > limit.amount {
-                        // Return an error with details about the exceeded limit
-                        return Err(MsgFilterError::SpendingLimitExceeded {
-                            denom: limit.denom.clone(),
-                            limit: limit.amount,
-                            actual: amount,
-                        });
-                    }
-                }
-            }
+            let total_spend = Self::calculate_total_spend(messages);
+            self.check_spending_limits(&total_spend, limits)?;
         }
 
         Ok(())
@@ -204,7 +141,7 @@ impl MsgFilter {
     }
 
     /// Checks if a single message is allowed.
-    fn is_message_allowed(&self, msg: &CosmosMsg) -> Result<bool, MsgFilterError> {
+    pub fn is_message_allowed(&self, msg: &CosmosMsg) -> Result<bool, MsgFilterError> {
         if let Some(allowed_msgs) = &self.allowed_msgs {
             for allowed in allowed_msgs {
                 match allowed {
@@ -343,11 +280,90 @@ impl MsgFilter {
         }
     }
 
+    /// Calculate total spend from a list of Cosmos Msgs
+    pub fn calculate_total_spend(messages: &[CosmosMsg]) -> HashMap<String, Uint128> {
+        messages
+            .iter()
+            .flat_map(Self::extract_coins_from_msg)
+            .into_grouping_map_by(|coin| coin.denom.clone())
+            .fold(Uint128::zero(), |acc, _, coin| acc + coin.amount)
+    }
+
+    /// Get spent coins from a CosmosMsg
+    pub fn extract_coins_from_msg(msg: &CosmosMsg) -> Vec<Coin> {
+        match msg {
+            // Bank messages
+            CosmosMsg::Bank(BankMsg::Send { amount, .. }) => amount.clone(),
+            CosmosMsg::Bank(BankMsg::Burn { amount, .. }) => amount.clone(),
+            // CosmosMsg::Bank(BankMsg::Mint { amount, .. }) => vec![amount.clone()],
+
+            // Staking messages
+            CosmosMsg::Staking(StakingMsg::Delegate { amount, .. }) => vec![amount.clone()],
+            CosmosMsg::Staking(StakingMsg::Undelegate { amount, .. }) => {
+                vec![amount.clone()]
+            }
+            CosmosMsg::Staking(StakingMsg::Redelegate { amount, .. }) => {
+                vec![amount.clone()]
+            }
+
+            // Distribution messages
+            CosmosMsg::Distribution(DistributionMsg::WithdrawDelegatorReward { .. }) => vec![], // No direct spending
+
+            // IBC messages
+            CosmosMsg::Ibc(IbcMsg::Transfer { amount, .. }) => vec![amount.clone()],
+
+            // Wasm messages
+            CosmosMsg::Wasm(WasmMsg::Execute { funds, .. }) => funds.clone(),
+            CosmosMsg::Wasm(WasmMsg::Instantiate { funds, .. }) => funds.clone(),
+            CosmosMsg::Wasm(WasmMsg::Migrate { .. }) => vec![], // No funds involved
+            CosmosMsg::Wasm(WasmMsg::UpdateAdmin { .. }) => vec![], // No funds involved
+            CosmosMsg::Wasm(WasmMsg::ClearAdmin { .. }) => vec![], // No funds involved
+
+            // Stargate, Custom, and Gov messages
+            CosmosMsg::Stargate { .. } => vec![], // We can't determine spending for Stargate messages generically
+            CosmosMsg::Custom(_) => vec![],       // We can't determine spending for Custom messages
+            CosmosMsg::Gov(_) => vec![], // Gov messages don't directly involve coin transfers
+
+            // Any messages
+            // CosmosMsg::Any(_) => vec![], // We can't determine spending for Any messages
+
+            // For any other message types, return an empty vector
+            _ => vec![],
+        }
+    }
+
+    fn check_spending_limits(
+        &self,
+        total_spend: &HashMap<String, Uint128>,
+        limits: &[Coin],
+    ) -> Result<(), MsgFilterError> {
+        for limit in limits {
+            if let Some(&amount) = total_spend.get(&limit.denom) {
+                if amount > limit.amount {
+                    return Err(MsgFilterError::SpendingLimitExceeded {
+                        denom: limit.denom.clone(),
+                        limit: limit.amount,
+                        actual: amount,
+                    });
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn compare_funds(actual: &[Coin], limit: &[Coin]) -> bool {
+        // Create a HashMap from the actual coins for efficient lookup
+        // The key is the coin denomination, and the value is the coin amount
         let actual_map: HashMap<_, _> = actual.iter().map(|c| (&c.denom, c.amount)).collect();
+
+        // Check if all limit coins are satisfied by the actual coins
         limit.iter().all(|limit_coin| {
             actual_map
                 .get(&limit_coin.denom)
+                // If the denomination exists in actual_map:
+                //   Check if the actual amount is less than or equal to the limit amount
+                // If the denomination doesn't exist in actual_map:
+                //   Return true (no actual spending for this denomination, so it's within the limit)
                 .map_or(true, |&amount| amount <= limit_coin.amount)
         })
     }
