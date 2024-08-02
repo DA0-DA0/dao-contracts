@@ -17,7 +17,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-cw-msg-filter = "0.1.0"
+cw-msg-filter = "2.5.0"
 
 ```
 
