@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, BlockInfo, Deps, DepsMut, Env, StdResult, Uint128, Uint
 
 use crate::{
     helpers::{
-        get_prev_block_total_vp, get_voting_power_at_block, scale_factor, DurationExt,
+        get_total_voting_power_at_block, get_voting_power_at_block, scale_factor, DurationExt,
         ExpirationExt,
     },
     state::{DistributionState, EmissionRate, UserRewardState, DISTRIBUTIONS, USER_REWARDS},
@@ -107,10 +107,11 @@ pub fn get_active_total_earned_puvp(
                 return Ok(curr);
             }
 
-            let prev_total_power = get_prev_block_total_vp(deps, block, &distribution.vp_contract)?;
+            let total_power =
+                get_total_voting_power_at_block(deps, block, &distribution.vp_contract)?;
 
             // if no voting power is registered, no one should receive rewards.
-            if prev_total_power.is_zero() {
+            if total_power.is_zero() {
                 Ok(curr)
             } else {
                 // count intervals of the rewards emission that have passed
@@ -128,8 +129,7 @@ pub fn get_active_total_earned_puvp(
 
                 // the new rewards per unit voting power that have been
                 // distributed since the last update
-                let new_rewards_puvp =
-                    new_rewards_distributed.checked_div(prev_total_power.into())?;
+                let new_rewards_puvp = new_rewards_distributed.checked_div(total_power.into())?;
                 Ok(curr.checked_add(new_rewards_puvp)?)
             }
         }

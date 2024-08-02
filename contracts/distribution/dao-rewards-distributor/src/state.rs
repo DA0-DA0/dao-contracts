@@ -9,7 +9,7 @@ use cw_utils::Duration;
 use std::{cmp::min, collections::HashMap};
 
 use crate::{
-    helpers::{get_prev_block_total_vp, scale_factor, DurationExt, ExpirationExt},
+    helpers::{get_total_voting_power_at_block, scale_factor, DurationExt, ExpirationExt},
     rewards::get_active_total_earned_puvp,
     ContractError,
 };
@@ -366,18 +366,18 @@ impl DistributionState {
 
         let curr = self.active_epoch.total_earned_puvp;
 
-        let prev_total_power = get_prev_block_total_vp(deps, block, &self.vp_contract)?;
+        let total_power = get_total_voting_power_at_block(deps, block, &self.vp_contract)?;
 
         // if no voting power is registered, error since rewards can't be
         // distributed.
-        if prev_total_power.is_zero() {
+        if total_power.is_zero() {
             Err(ContractError::NoVotingPowerNoRewards {})
         } else {
             // the new rewards per unit voting power based on the funded amount
             let new_rewards_puvp = Uint256::from(funded_amount_delta)
                 // this can never overflow since funded_amount is a Uint128
                 .checked_mul(scale_factor())?
-                .checked_div(prev_total_power.into())?;
+                .checked_div(total_power.into())?;
 
             self.active_epoch.total_earned_puvp = curr.checked_add(new_rewards_puvp)?;
 

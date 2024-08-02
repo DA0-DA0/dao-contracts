@@ -10,13 +10,13 @@ use dao_interface::voting::{
 
 use crate::ContractError;
 
-pub fn get_prev_block_total_vp(
+pub fn get_total_voting_power_at_block(
     deps: Deps,
     block: &BlockInfo,
     contract_addr: &Addr,
 ) -> StdResult<Uint128> {
     let msg = VotingQueryMsg::TotalPowerAtHeight {
-        height: Some(block.height.checked_sub(1).unwrap_or_default()),
+        height: Some(block.height),
     };
     let resp: TotalPowerAtHeightResponse = deps.querier.query_wasm_smart(contract_addr, &msg)?;
     Ok(resp.power)
