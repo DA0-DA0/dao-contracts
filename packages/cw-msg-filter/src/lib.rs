@@ -2,8 +2,8 @@
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    to_json_binary, Addr, BankMsg, Coin, CosmosMsg, CustomQuery, Deps, DistributionMsg, GovMsg,
-    IbcMsg, QuerierWrapper, StakingMsg, StdError, StdResult, Uint128, WasmMsg,
+    BankMsg, Coin, CosmosMsg, DistributionMsg, GovMsg, IbcMsg, StakingMsg, StdError, Uint128,
+    WasmMsg,
 };
 use itertools::Itertools;
 use serde_json::Value;
@@ -357,8 +357,8 @@ impl MsgFilter {
 mod tests {
     use super::*;
     use cosmwasm_std::{
-        coin, coins, Addr, BankMsg, CosmosMsg, DistributionMsg, IbcMsg, IbcTimeout, StakingMsg,
-        Timestamp, Uint128, WasmMsg,
+        coin, coins, to_json_binary, BankMsg, CosmosMsg, IbcMsg, IbcTimeout, StakingMsg, Timestamp,
+        WasmMsg,
     };
 
     fn mock_bank_send_msg(to: &str, amount: u128, denom: &str) -> CosmosMsg {
