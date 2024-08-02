@@ -174,11 +174,6 @@ pub fn execute_confirm_stake(
 
     register_staked_nfts(deps.storage, env.block.height, &info.sender, &token_ids)?;
 
-    // remove preparations
-    for token_id in &token_ids {
-        PREPARED_ONFTS.remove(deps.storage, token_id.to_string());
-    }
-
     let hook_msgs = token_ids
         .iter()
         .map(|token_id| {
