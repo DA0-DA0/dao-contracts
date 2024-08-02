@@ -1632,7 +1632,7 @@ fn test_update_submission_policy() {
         Config {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Anyone {
-                denylist: vec![Addr::unchecked("someone"), Addr::unchecked("else")],
+                denylist: vec![Addr::unchecked("else"), Addr::unchecked("someone")],
             },
         }
     );
@@ -1809,7 +1809,7 @@ fn test_update_submission_policy() {
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
                 allowlist: vec![],
-                denylist: vec![Addr::unchecked("someone"), Addr::unchecked("else")],
+                denylist: vec![Addr::unchecked("else"), Addr::unchecked("someone")],
             },
         }
     );
@@ -1892,7 +1892,7 @@ fn test_update_submission_policy() {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
-                allowlist: vec![Addr::unchecked("someone"), Addr::unchecked("else")],
+                allowlist: vec![Addr::unchecked("else"), Addr::unchecked("someone")],
                 denylist: vec![],
             },
         }

@@ -19,6 +19,7 @@ use serde::Serialize;
 
 use crate::{
     error::PreProposeError,
+    helpers::add_and_remove_addresses,
     msg::{DepositInfoResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     state::{Config, PreProposeContract},
 };
@@ -257,28 +258,12 @@ where
                     ));
                 }
 
-                // Add to denylist.
-                if let Some(denylist_add) = denylist_add {
-                    // Validate addresses.
-                    let mut addrs = denylist_add
-                        .iter()
-                        .map(|addr| deps.api.addr_validate(addr))
-                        .collect::<StdResult<Vec<Addr>>>()?;
-
-                    denylist.append(&mut addrs);
-                    denylist.dedup();
-                }
-
-                // Remove from denylist.
-                if let Some(denylist_remove) = denylist_remove {
-                    // Validate addresses.
-                    let addrs = denylist_remove
-                        .iter()
-                        .map(|addr| deps.api.addr_validate(addr))
-                        .collect::<StdResult<Vec<Addr>>>()?;
-
-                    denylist.retain(|a| !addrs.contains(a));
-                }
+                add_and_remove_addresses(
+                    deps.as_ref(),
+                    &mut denylist,
+                    denylist_add,
+                    denylist_remove,
+                )?;
 
                 config.submission_policy = PreProposeSubmissionPolicy::Anyone { denylist };
             }
@@ -293,51 +278,18 @@ where
                     dao_members
                 };
 
-                // Add to allowlist.
-                if let Some(allowlist_add) = allowlist_add {
-                    // Validate addresses.
-                    let mut addrs = allowlist_add
-                        .iter()
-                        .map(|addr| deps.api.addr_validate(addr))
-                        .collect::<StdResult<Vec<Addr>>>()?;
-
-                    allowlist.append(&mut addrs);
-                    allowlist.dedup();
-                }
-
-                // Remove from allowlist.
-                if let Some(allowlist_remove) = allowlist_remove {
-                    // Validate addresses.
-                    let addrs = allowlist_remove
-                        .iter()
-                        .map(|addr| deps.api.addr_validate(addr))
-                        .collect::<StdResult<Vec<Addr>>>()?;
-
-                    allowlist.retain(|a| !addrs.contains(a));
-                }
-
-                // Add to denylist.
-                if let Some(denylist_add) = denylist_add {
-                    // Validate addresses.
-                    let mut addrs = denylist_add
-                        .iter()
-                        .map(|addr| deps.api.addr_validate(addr))
-                        .collect::<StdResult<Vec<Addr>>>()?;
-
-                    denylist.append(&mut addrs);
-                    denylist.dedup();
-                }
-
-                // Remove from denylist.
-                if let Some(denylist_remove) = denylist_remove {
-                    // Validate addresses.
-                    let addrs = denylist_remove
-                        .iter()
-                        .map(|addr| deps.api.addr_validate(addr))
-                        .collect::<StdResult<Vec<Addr>>>()?;
-
-                    denylist.retain(|a| !addrs.contains(a));
-                }
+                add_and_remove_addresses(
+                    deps.as_ref(),
+                    &mut allowlist,
+                    allowlist_add,
+                    allowlist_remove,
+                )?;
+                add_and_remove_addresses(
+                    deps.as_ref(),
+                    &mut denylist,
+                    denylist_add,
+                    denylist_remove,
+                )?;
 
                 config.submission_policy = PreProposeSubmissionPolicy::Specific {
                     dao_members,
