@@ -294,30 +294,60 @@ impl MsgFilter {
     /// These are too broad and could potentially allow unintended messages. Additionally, we can't
     /// easily track spending from these messages.
     pub fn matches_msg_type(msg_type: &MsgType, msg: &CosmosMsg) -> bool {
-        match (msg_type, msg) {
-            (MsgType::BankSend, CosmosMsg::Bank(BankMsg::Send { .. })) => true,
-            (MsgType::BankBurn, CosmosMsg::Bank(BankMsg::Burn { .. })) => true,
-            (MsgType::StakingDelegate, CosmosMsg::Staking(StakingMsg::Delegate { .. })) => true,
-            (MsgType::StakingUndelegate, CosmosMsg::Staking(StakingMsg::Undelegate { .. })) => true,
-            (MsgType::StakingRedelegate, CosmosMsg::Staking(StakingMsg::Redelegate { .. })) => true,
-            (
-                MsgType::DistributionSetWithdrawAddress,
-                CosmosMsg::Distribution(DistributionMsg::SetWithdrawAddress { .. }),
-            ) => true,
-            (
-                MsgType::DistributionWithdrawDelegatorReward,
-                CosmosMsg::Distribution(DistributionMsg::WithdrawDelegatorReward { .. }),
-            ) => true,
-            (MsgType::IbcTransfer, CosmosMsg::Ibc(IbcMsg::Transfer { .. })) => true,
-            (MsgType::IbcCloseChannel, CosmosMsg::Ibc(IbcMsg::CloseChannel { .. })) => true,
-            (MsgType::WasmExecute, CosmosMsg::Wasm(WasmMsg::Execute { .. })) => true,
-            (MsgType::WasmInstantiate, CosmosMsg::Wasm(WasmMsg::Instantiate { .. })) => true,
-            (MsgType::WasmMigrate, CosmosMsg::Wasm(WasmMsg::Migrate { .. })) => true,
-            (MsgType::WasmUpdateAdmin, CosmosMsg::Wasm(WasmMsg::UpdateAdmin { .. })) => true,
-            (MsgType::WasmClearAdmin, CosmosMsg::Wasm(WasmMsg::ClearAdmin { .. })) => true,
-            (MsgType::GovVote, CosmosMsg::Gov(GovMsg::Vote { .. })) => true,
-            _ => false,
-        }
+        matches!(
+            (msg_type, msg),
+            (MsgType::BankSend, CosmosMsg::Bank(BankMsg::Send { .. }))
+                | (MsgType::BankBurn, CosmosMsg::Bank(BankMsg::Burn { .. }))
+                | (
+                    MsgType::StakingDelegate,
+                    CosmosMsg::Staking(StakingMsg::Delegate { .. })
+                )
+                | (
+                    MsgType::StakingUndelegate,
+                    CosmosMsg::Staking(StakingMsg::Undelegate { .. })
+                )
+                | (
+                    MsgType::StakingRedelegate,
+                    CosmosMsg::Staking(StakingMsg::Redelegate { .. })
+                )
+                | (
+                    MsgType::DistributionSetWithdrawAddress,
+                    CosmosMsg::Distribution(DistributionMsg::SetWithdrawAddress { .. })
+                )
+                | (
+                    MsgType::DistributionWithdrawDelegatorReward,
+                    CosmosMsg::Distribution(DistributionMsg::WithdrawDelegatorReward { .. })
+                )
+                | (
+                    MsgType::IbcTransfer,
+                    CosmosMsg::Ibc(IbcMsg::Transfer { .. })
+                )
+                | (
+                    MsgType::IbcCloseChannel,
+                    CosmosMsg::Ibc(IbcMsg::CloseChannel { .. })
+                )
+                | (
+                    MsgType::WasmExecute,
+                    CosmosMsg::Wasm(WasmMsg::Execute { .. })
+                )
+                | (
+                    MsgType::WasmInstantiate,
+                    CosmosMsg::Wasm(WasmMsg::Instantiate { .. })
+                )
+                | (
+                    MsgType::WasmMigrate,
+                    CosmosMsg::Wasm(WasmMsg::Migrate { .. })
+                )
+                | (
+                    MsgType::WasmUpdateAdmin,
+                    CosmosMsg::Wasm(WasmMsg::UpdateAdmin { .. })
+                )
+                | (
+                    MsgType::WasmClearAdmin,
+                    CosmosMsg::Wasm(WasmMsg::ClearAdmin { .. })
+                )
+                | (MsgType::GovVote, CosmosMsg::Gov(GovMsg::Vote { .. }))
+        )
     }
 
     /// Calculate total spend from a list of Cosmos Msgs
@@ -823,7 +853,6 @@ mod tests {
         });
         assert!(!filter.is_message_allowed(&disallowed_msg).unwrap());
     }
-
 
     #[test]
     fn test_compare_funds() {
