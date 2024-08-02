@@ -37,8 +37,8 @@ pub fn get_voting_power_at_block(
 }
 
 /// returns underlying scalar value for a given duration.
-/// if the duration is in blocks, returns the block height.
-/// if the duration is in time, returns the time in seconds.
+/// if the duration is a block height, return the number of blocks.
+/// if the duration is a time, return the number of seconds.
 pub fn get_duration_scalar(duration: &Duration) -> u64 {
     match duration {
         Duration::Height(h) => *h,
@@ -73,9 +73,13 @@ pub(crate) fn scale_factor() -> Uint256 {
     Uint256::from(10u8).pow(39)
 }
 
-/// Calculate the duration from start to end. If the end is at or before the
-/// start, return 0. The first argument is end, and the second is start.
-pub fn get_exp_diff(end: &Expiration, start: &Expiration) -> StdResult<u64> {
+/// Calculate the duration scalar value from start to end. If the end is at or
+/// before the start, return 0. The first argument is end, and the second is
+/// start. If start and end are block heights, this returns the number of
+/// blocks. If they are times, this returns the number of seconds. If both are
+/// never, this returns 0. If start and end have different units, it errors as
+/// that should not be possible.
+pub fn get_exp_diff_scalar(end: &Expiration, start: &Expiration) -> StdResult<u64> {
     match (end, start) {
         (Expiration::AtHeight(end), Expiration::AtHeight(start)) => {
             if end > start {

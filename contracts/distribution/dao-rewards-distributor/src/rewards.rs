@@ -2,8 +2,8 @@ use cosmwasm_std::{Addr, BlockInfo, Deps, DepsMut, Env, StdResult, Uint128, Uint
 
 use crate::{
     helpers::{
-        get_duration_scalar, get_exp_diff, get_prev_block_total_vp, get_voting_power_at_block,
-        scale_factor,
+        get_duration_scalar, get_exp_diff_scalar, get_prev_block_total_vp,
+        get_voting_power_at_block, scale_factor,
     },
     state::{DistributionState, EmissionRate, UserRewardState, DISTRIBUTIONS, USER_REWARDS},
     ContractError,
@@ -98,7 +98,7 @@ pub fn get_active_total_earned_puvp(
             // get the duration from the last time rewards were updated to the
             // last time rewards were distributed. this will be 0 if the rewards
             // were updated at or after the last time rewards were distributed.
-            let new_reward_distribution_duration: Uint128 = get_exp_diff(
+            let new_reward_distribution_duration_scalar: Uint128 = get_exp_diff_scalar(
                 &last_time_rewards_distributed,
                 &distribution.active_epoch.last_updated_total_earned_puvp,
             )?
@@ -106,7 +106,7 @@ pub fn get_active_total_earned_puvp(
 
             // no need to query total voting power and do math if distribution
             // is already up to date.
-            if new_reward_distribution_duration.is_zero() {
+            if new_reward_distribution_duration_scalar.is_zero() {
                 return Ok(curr);
             }
 
@@ -118,7 +118,7 @@ pub fn get_active_total_earned_puvp(
             } else {
                 // count intervals of the rewards emission that have passed
                 // since the last update which need to be distributed
-                let complete_distribution_periods = new_reward_distribution_duration
+                let complete_distribution_periods = new_reward_distribution_duration_scalar
                     .checked_div(get_duration_scalar(&duration).into())?;
 
                 // It is impossible for this to overflow as total rewards can

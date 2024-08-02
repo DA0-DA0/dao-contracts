@@ -9,7 +9,7 @@ use cw_utils::Duration;
 use std::{cmp::min, collections::HashMap};
 
 use crate::{
-    helpers::{get_duration_scalar, get_exp_diff, get_prev_block_total_vp, scale_factor},
+    helpers::{get_duration_scalar, get_exp_diff_scalar, get_prev_block_total_vp, scale_factor},
     rewards::get_active_total_earned_puvp,
     ContractError,
 };
@@ -70,7 +70,7 @@ impl EmissionRate {
             EmissionRate::Linear {
                 amount, duration, ..
             } => {
-                if *amount == Uint128::zero() {
+                if amount.is_zero() {
                     return Err(ContractError::InvalidEmissionRateFieldZero {
                         field: "amount".to_string(),
                     });
@@ -236,16 +236,13 @@ impl DistributionState {
             EmissionRate::Linear {
                 amount, duration, ..
             } => {
-                let epoch_duration =
-                    get_exp_diff(&self.active_epoch.ends_at, &self.active_epoch.started_at)?;
+                let epoch_duration_scalar =
+                    get_exp_diff_scalar(&self.active_epoch.ends_at, &self.active_epoch.started_at)?;
 
-                let emission_rate_duration_scalar = match duration {
-                    Duration::Height(h) => h,
-                    Duration::Time(t) => t,
-                };
+                let emission_rate_duration_scalar = get_duration_scalar(&duration);
 
                 amount
-                    .checked_multiply_ratio(epoch_duration, emission_rate_duration_scalar)
+                    .checked_multiply_ratio(epoch_duration_scalar, emission_rate_duration_scalar)
                     .map_err(|e| StdError::generic_err(e.to_string()))
             }
         }
