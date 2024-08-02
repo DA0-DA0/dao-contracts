@@ -8,7 +8,7 @@ repository = { workspace = true }
 version = { workspace = true }
 
 [dependencies]
-cosmwasm-std = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["staking"] }
 cosmwasm-schema = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

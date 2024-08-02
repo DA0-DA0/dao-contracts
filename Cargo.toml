@@ -90,6 +90,7 @@ cw-admin-factory = { path = "./contracts/external/cw-admin-factory", version = "
 cw-denom = { path = "./packages/cw-denom", version = "2.5.0" }
 cw-fund-distributor = { path = "./contracts/distribution/cw-fund-distributor", version = "2.5.0" }
 cw-hooks = { path = "./packages/cw-hooks", version = "2.5.0" }
+cw-msg-filter = { path = "./packages/cw-msg-filter", version = "2.5.0" }
 cw-paginate-storage = { path = "./packages/cw-paginate-storage", version = "2.5.0" }
 cw-payroll-factory = { path = "./contracts/external/cw-payroll-factory", version = "2.5.0" }
 cw-stake-tracker = { path = "./packages/cw-stake-tracker", version = "2.5.0" }

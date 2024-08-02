@@ -72,11 +72,13 @@ match filter.filter_messages(&messages) {
 The main struct for configuring message filtering rules.
 
 #### Fields:
+
 - `allowed_msgs`: Optional `Vec<AllowedMsg>` specifying which messages are permitted.
 - `max_msg_count`: Optional `u8` setting the maximum number of messages allowed.
 - `spending_limits`: Optional `Vec<Coin>` specifying spending limits per denomination.
 
 #### Methods:
+
 - `validate_config(&self) -> Result<(), ConfigValidationError>`: Validates the configuration of the `MsgFilter`.
 - `check_messages(&self, messages: &[CosmosMsg]) -> Result<(), MsgFilterError>`: Checks if all messages are allowed according to the filter rules.
 - `filter_messages<'a>(&self, messages: &'a [CosmosMsg]) -> Result<Vec<&'a CosmosMsg>, MsgFilterError>`: Returns a list of messages that meet the filter criteria.
