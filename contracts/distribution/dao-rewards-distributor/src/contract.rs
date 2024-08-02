@@ -9,6 +9,7 @@ use cw20::{Cw20ReceiveMsg, Denom};
 use cw_storage_plus::Bound;
 use cw_utils::{must_pay, nonpayable, Duration, Expiration};
 use dao_interface::voting::InfoResponse;
+use semver::Version;
 
 use std::ops::Add;
 
@@ -27,8 +28,8 @@ use crate::rewards::{
 use crate::state::{DistributionState, EmissionRate, Epoch, COUNT, DISTRIBUTIONS, USER_REWARDS};
 use crate::ContractError;
 
-const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub(crate) const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
+pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub const DEFAULT_LIMIT: u32 = 10;
 pub const MAX_LIMIT: u32 = 50;
@@ -657,6 +658,27 @@ fn query_distributions(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let contract_version = get_contract_version(deps.storage)?;
+
+    if contract_version.contract != CONTRACT_NAME {
+        return Err(ContractError::MigrationErrorIncorrectContract {
+            expected: CONTRACT_NAME.to_string(),
+            actual: contract_version.contract,
+        });
+    }
+
+    let new_version: Version = CONTRACT_VERSION.parse()?;
+    let current_version: Version = contract_version.version.parse()?;
+
+    // only allow upgrades
+    if new_version <= current_version {
+        return Err(ContractError::MigrationErrorInvalidVersion {
+            new: new_version.to_string(),
+            current: current_version.to_string(),
+        });
+    }
+
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
     Ok(Response::default())
 }
