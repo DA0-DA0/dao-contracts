@@ -15,11 +15,26 @@ pub enum MsgFilterError {
     #[error(transparent)]
     Std(#[from] StdError),
 
+    #[error("Generic Wasm Execute Message has no criteria specified")]
+    EmptyGenericWasmExecuteMsg,
+
+    #[error("Invalid coin amount in funds: {denom}")]
+    InvalidCoinAmount { denom: String },
+
     #[error("Invalid GenericWasmExecuteMsg configuration")]
     InvalidConfiguration,
 
+    #[error("Invalid max_msg_count: {0}")]
+    InvalidMaxMsgCount(u8),
+
     #[error("Invalid message")]
     InvalidMsg {},
+
+    #[error("Invalid spending limit: {denom} amount must be positive")]
+    InvalidSpendingLimit { denom: String },
+
+    #[error("No filtering criteria specified")]
+    NoFilteringCriteria,
 
     #[error("Spending limit exceeded for {denom}. Limit: {limit}, Actual: {actual}")]
     SpendingLimitExceeded {
@@ -69,15 +84,12 @@ pub enum MsgType {
     BankSend,
     BankBurn,
     BankMint,
-    Custom,
     StakingDelegate,
     StakingUndelegate,
     StakingRedelegate,
     StakingWithdraw,
     DistributionSetWithdrawAddress,
     DistributionWithdrawDelegatorReward,
-    Stargate,
-    Any,
     IbcTransfer,
     IbcCloseChannel,
     WasmExecute,
@@ -89,6 +101,65 @@ pub enum MsgType {
 }
 
 impl MsgFilter {
+    /// Validates message filter configuration
+    pub fn validate_config(&self) -> Result<(), MsgFilterError> {
+        // Check if any filtering criteria is specified
+        if self.allowed_msgs.is_none()
+            && self.max_msg_count.is_none()
+            && self.spending_limits.is_none()
+        {
+            return Err(MsgFilterError::NoFilteringCriteria);
+        }
+
+        // Validate max_msg_count
+        if let Some(max_count) = self.max_msg_count {
+            if max_count == 0 {
+                return Err(MsgFilterError::InvalidMaxMsgCount(max_count));
+            }
+        }
+
+        // Validate spending_limits
+        if let Some(limits) = &self.spending_limits {
+            for coin in limits {
+                if coin.amount.is_zero() {
+                    return Err(MsgFilterError::InvalidSpendingLimit {
+                        denom: coin.denom.clone(),
+                    });
+                }
+            }
+        }
+
+        // Validate allowed_msgs
+        if let Some(allowed_msgs) = &self.allowed_msgs {
+            for msg in allowed_msgs {
+                match msg {
+                    AllowedMsg::Exact(_) => {} // No additional validation needed
+                    AllowedMsg::GenericWasmExecuteMsg {
+                        contract,
+                        key,
+                        funds,
+                    } => {
+                        if contract.is_none() && key.is_none() && funds.is_none() {
+                            return Err(MsgFilterError::EmptyGenericWasmExecuteMsg);
+                        }
+                        if let Some(funds) = funds {
+                            for coin in funds {
+                                if coin.amount.is_zero() {
+                                    return Err(MsgFilterError::InvalidCoinAmount {
+                                        denom: coin.denom.clone(),
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    AllowedMsg::Type(_) => {} // No additional validation needed
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// Check messages, throws an error if any of the messages are not allowed or count / spending
     /// limits have been exceeded.
     pub fn check_messages(&self, messages: &[CosmosMsg]) -> Result<(), MsgFilterError> {
@@ -112,13 +183,13 @@ impl MsgFilter {
         // Check spending limits
         if let Some(limits) = &self.spending_limits {
             let total_spend = Self::calculate_total_spend(messages);
-            self.check_spending_limits(&total_spend, limits)?;
+            check_spending_limits(&total_spend, limits)?;
         }
 
         Ok(())
     }
 
-    /// Returns a list of messages filtered for any messages that don't meet the criteria
+    /// Returns a list of messages filtering out any messages that don't meet the criteria
     pub fn filter_messages<'a>(
         &self,
         messages: &'a [CosmosMsg],
@@ -193,9 +264,8 @@ impl MsgFilter {
 
                             // Check if the funds are within the specified limit (if funds are specified)
                             // If funds is None, this always returns true
-                            let funds_within_limit = funds
-                                .as_ref()
-                                .map_or(true, |f| Self::compare_funds(msg_funds, f));
+                            let funds_within_limit =
+                                funds.as_ref().map_or(true, |f| compare_funds(msg_funds, f));
 
                             // The message is allowed if all specified conditions are met
                             if contract_matches && key_matches && funds_within_limit {
@@ -207,76 +277,46 @@ impl MsgFilter {
                         // 2. One of the specified conditions wasn't met
                         // In both cases, we continue to the next AllowedMsg in the list
                     }
-                    AllowedMsg::Type(msg_type) => match (msg_type, msg) {
-                        (MsgType::BankSend, CosmosMsg::Bank(BankMsg::Send { .. })) => {
-                            return Ok(true)
+                    AllowedMsg::Type(msg_type) => {
+                        if Self::matches_msg_type(msg_type, msg) {
+                            return Ok(true);
                         }
-                        (MsgType::BankBurn, CosmosMsg::Bank(BankMsg::Burn { .. })) => {
-                            return Ok(true)
-                        }
-                        // (MsgType::BankMint, CosmosMsg::Bank(BankMsg::Mint { .. })) => {
-                        //     return Ok(true)
-                        // }
-                        (MsgType::Custom, CosmosMsg::Custom(_)) => return Ok(true),
-                        (
-                            MsgType::StakingDelegate,
-                            CosmosMsg::Staking(StakingMsg::Delegate { .. }),
-                        ) => return Ok(true),
-                        (
-                            MsgType::StakingUndelegate,
-                            CosmosMsg::Staking(StakingMsg::Undelegate { .. }),
-                        ) => return Ok(true),
-                        (
-                            MsgType::StakingRedelegate,
-                            CosmosMsg::Staking(StakingMsg::Redelegate { .. }),
-                        ) => return Ok(true),
-                        // (
-                        //     MsgType::StakingWithdraw,
-                        //     CosmosMsg::Staking(StakingMsg::Withdraw { .. }),
-                        // ) => return Ok(true),
-                        (
-                            MsgType::DistributionSetWithdrawAddress,
-                            CosmosMsg::Distribution(DistributionMsg::SetWithdrawAddress { .. }),
-                        ) => return Ok(true),
-                        (
-                            MsgType::DistributionWithdrawDelegatorReward,
-                            CosmosMsg::Distribution(DistributionMsg::WithdrawDelegatorReward {
-                                ..
-                            }),
-                        ) => return Ok(true),
-                        (MsgType::Stargate, CosmosMsg::Stargate { .. }) => return Ok(true),
-                        // (MsgType::Any, CosmosMsg::Any(_)) => return Ok(true),
-                        (MsgType::IbcTransfer, CosmosMsg::Ibc(IbcMsg::Transfer { .. })) => {
-                            return Ok(true)
-                        }
-                        (MsgType::IbcCloseChannel, CosmosMsg::Ibc(IbcMsg::CloseChannel { .. })) => {
-                            return Ok(true)
-                        }
-                        (MsgType::WasmExecute, CosmosMsg::Wasm(WasmMsg::Execute { .. })) => {
-                            return Ok(true)
-                        }
-                        (
-                            MsgType::WasmInstantiate,
-                            CosmosMsg::Wasm(WasmMsg::Instantiate { .. }),
-                        ) => return Ok(true),
-                        (MsgType::WasmMigrate, CosmosMsg::Wasm(WasmMsg::Migrate { .. })) => {
-                            return Ok(true)
-                        }
-                        (
-                            MsgType::WasmUpdateAdmin,
-                            CosmosMsg::Wasm(WasmMsg::UpdateAdmin { .. }),
-                        ) => return Ok(true),
-                        (MsgType::WasmClearAdmin, CosmosMsg::Wasm(WasmMsg::ClearAdmin { .. })) => {
-                            return Ok(true)
-                        }
-                        (MsgType::GovVote, CosmosMsg::Gov(GovMsg::Vote { .. })) => return Ok(true),
-                        _ => continue,
-                    },
+                    }
                 }
             }
             Ok(false)
         } else {
             Ok(true)
+        }
+    }
+
+    /// Matches a message type. NOTE: We've removed the Custom, Stargate, and Any message types.
+    /// These are too broad and could potentially allow unintended messages. Additionally, we can't
+    /// easily track spending from these messages.
+    pub fn matches_msg_type(msg_type: &MsgType, msg: &CosmosMsg) -> bool {
+        match (msg_type, msg) {
+            (MsgType::BankSend, CosmosMsg::Bank(BankMsg::Send { .. })) => true,
+            (MsgType::BankBurn, CosmosMsg::Bank(BankMsg::Burn { .. })) => true,
+            (MsgType::StakingDelegate, CosmosMsg::Staking(StakingMsg::Delegate { .. })) => true,
+            (MsgType::StakingUndelegate, CosmosMsg::Staking(StakingMsg::Undelegate { .. })) => true,
+            (MsgType::StakingRedelegate, CosmosMsg::Staking(StakingMsg::Redelegate { .. })) => true,
+            (
+                MsgType::DistributionSetWithdrawAddress,
+                CosmosMsg::Distribution(DistributionMsg::SetWithdrawAddress { .. }),
+            ) => true,
+            (
+                MsgType::DistributionWithdrawDelegatorReward,
+                CosmosMsg::Distribution(DistributionMsg::WithdrawDelegatorReward { .. }),
+            ) => true,
+            (MsgType::IbcTransfer, CosmosMsg::Ibc(IbcMsg::Transfer { .. })) => true,
+            (MsgType::IbcCloseChannel, CosmosMsg::Ibc(IbcMsg::CloseChannel { .. })) => true,
+            (MsgType::WasmExecute, CosmosMsg::Wasm(WasmMsg::Execute { .. })) => true,
+            (MsgType::WasmInstantiate, CosmosMsg::Wasm(WasmMsg::Instantiate { .. })) => true,
+            (MsgType::WasmMigrate, CosmosMsg::Wasm(WasmMsg::Migrate { .. })) => true,
+            (MsgType::WasmUpdateAdmin, CosmosMsg::Wasm(WasmMsg::UpdateAdmin { .. })) => true,
+            (MsgType::WasmClearAdmin, CosmosMsg::Wasm(WasmMsg::ClearAdmin { .. })) => true,
+            (MsgType::GovVote, CosmosMsg::Gov(GovMsg::Vote { .. })) => true,
+            _ => false,
         }
     }
 
@@ -331,42 +371,49 @@ impl MsgFilter {
             _ => vec![],
         }
     }
+}
 
-    fn check_spending_limits(
-        &self,
-        total_spend: &HashMap<String, Uint128>,
-        limits: &[Coin],
-    ) -> Result<(), MsgFilterError> {
-        for limit in limits {
-            if let Some(&amount) = total_spend.get(&limit.denom) {
-                if amount > limit.amount {
-                    return Err(MsgFilterError::SpendingLimitExceeded {
-                        denom: limit.denom.clone(),
-                        limit: limit.amount,
-                        actual: amount,
-                    });
-                }
+fn check_spending_limits(
+    total_spend: &HashMap<String, Uint128>,
+    limits: &[Coin],
+) -> Result<(), MsgFilterError> {
+    for limit in limits {
+        if let Some(&amount) = total_spend.get(&limit.denom) {
+            if amount > limit.amount {
+                return Err(MsgFilterError::SpendingLimitExceeded {
+                    denom: limit.denom.clone(),
+                    limit: limit.amount,
+                    actual: amount,
+                });
             }
         }
-        Ok(())
+    }
+    Ok(())
+}
+
+fn compare_funds(actual: &[Coin], limit: &[Coin]) -> bool {
+    // Create HashMaps for both actual and limit coins
+    let actual_map: HashMap<_, _> = actual.iter().map(|c| (&c.denom, c.amount)).collect();
+    let limit_map: HashMap<_, _> = limit.iter().map(|c| (&c.denom, c.amount)).collect();
+
+    // Check if all limit coins are satisfied by the actual coins
+    for (denom, &limit_amount) in limit_map.iter() {
+        let actual_amount = actual_map.get(denom).cloned().unwrap_or(Uint128::zero());
+        if actual_amount > limit_amount || (limit_amount.is_zero() && !actual_amount.is_zero()) {
+            return false;
+        }
     }
 
-    fn compare_funds(actual: &[Coin], limit: &[Coin]) -> bool {
-        // Create a HashMap from the actual coins for efficient lookup
-        // The key is the coin denomination, and the value is the coin amount
-        let actual_map: HashMap<_, _> = actual.iter().map(|c| (&c.denom, c.amount)).collect();
-
-        // Check if all limit coins are satisfied by the actual coins
-        limit.iter().all(|limit_coin| {
-            actual_map
-                .get(&limit_coin.denom)
-                // If the denomination exists in actual_map:
-                //   Check if the actual amount is less than or equal to the limit amount
-                // If the denomination doesn't exist in actual_map:
-                //   Return true (no actual spending for this denomination, so it's within the limit)
-                .map_or(true, |&amount| amount <= limit_coin.amount)
-        })
+    // Check if there are any actual coins not present in the limit
+    for (denom, &actual_amount) in actual_map.iter() {
+        if !limit_map.contains_key(denom)
+            || (!actual_amount.is_zero() && limit_map[denom].is_zero())
+        {
+            return false;
+        }
     }
+
+    true
 }
 
 #[cfg(test)]
@@ -671,5 +718,156 @@ mod tests {
             result,
             Err(MsgFilterError::TooManyMsgs { count: 3, max: 2 })
         ));
+    }
+
+    #[test]
+    fn test_valid_config() {
+        let filter = MsgFilter {
+            allowed_msgs: Some(vec![AllowedMsg::Type(MsgType::BankSend)]),
+            max_msg_count: Some(5),
+            spending_limits: Some(coins(100, "utoken")),
+        };
+        assert!(filter.validate_config().is_ok());
+    }
+
+    #[test]
+    fn test_no_filtering_criteria() {
+        let filter = MsgFilter {
+            allowed_msgs: None,
+            max_msg_count: None,
+            spending_limits: None,
+        };
+        assert!(matches!(
+            filter.validate_config(),
+            Err(MsgFilterError::NoFilteringCriteria)
+        ));
+    }
+
+    #[test]
+    fn test_invalid_max_msg_count() {
+        let filter = MsgFilter {
+            allowed_msgs: None,
+            max_msg_count: Some(0),
+            spending_limits: None,
+        };
+        assert!(matches!(
+            filter.validate_config(),
+            Err(MsgFilterError::InvalidMaxMsgCount(0))
+        ));
+    }
+
+    #[test]
+    fn test_invalid_spending_limit() {
+        let filter = MsgFilter {
+            allowed_msgs: None,
+            max_msg_count: None,
+            spending_limits: Some(vec![coin(0, "utoken")]),
+        };
+        assert!(matches!(
+            filter.validate_config(),
+            Err(MsgFilterError::InvalidSpendingLimit { denom }) if denom == "utoken"
+        ));
+    }
+
+    #[test]
+    fn test_empty_generic_wasm_execute_msg() {
+        let filter = MsgFilter {
+            allowed_msgs: Some(vec![AllowedMsg::GenericWasmExecuteMsg {
+                contract: None,
+                key: None,
+                funds: None,
+            }]),
+            max_msg_count: None,
+            spending_limits: None,
+        };
+        assert!(matches!(
+            filter.validate_config(),
+            Err(MsgFilterError::EmptyGenericWasmExecuteMsg)
+        ));
+    }
+
+    #[test]
+    fn test_invalid_coin_amount_in_generic_wasm_execute_msg() {
+        let filter = MsgFilter {
+            allowed_msgs: Some(vec![AllowedMsg::GenericWasmExecuteMsg {
+                contract: Some("contract".to_string()),
+                key: None,
+                funds: Some(vec![coin(0, "utoken")]),
+            }]),
+            max_msg_count: None,
+            spending_limits: None,
+        };
+        assert!(matches!(
+            filter.validate_config(),
+            Err(MsgFilterError::InvalidCoinAmount { denom }) if denom == "utoken"
+        ));
+    }
+
+    #[test]
+    fn test_msg_type_filtering() {
+        let filter = MsgFilter {
+            allowed_msgs: Some(vec![AllowedMsg::Type(MsgType::BankSend)]),
+            max_msg_count: None,
+            spending_limits: None,
+        };
+
+        let allowed_msg = CosmosMsg::Bank(BankMsg::Send {
+            to_address: "recipient".to_string(),
+            amount: vec![coin(100, "utoken")],
+        });
+        assert!(filter.is_message_allowed(&allowed_msg).unwrap());
+
+        let disallowed_msg = CosmosMsg::Staking(StakingMsg::Delegate {
+            validator: "validator".to_string(),
+            amount: coin(100, "utoken"),
+        });
+        assert!(!filter.is_message_allowed(&disallowed_msg).unwrap());
+    }
+
+
+    #[test]
+    fn test_compare_funds() {
+        // Basic case
+        assert!(compare_funds(
+            &[coin(100, "utoken")],
+            &[coin(100, "utoken")]
+        ));
+        assert!(compare_funds(&[coin(50, "utoken")], &[coin(100, "utoken")]));
+        assert!(!compare_funds(
+            &[coin(150, "utoken")],
+            &[coin(100, "utoken")]
+        ));
+
+        // Multiple denominations
+        assert!(compare_funds(
+            &[coin(50, "utoken"), coin(30, "ustake")],
+            &[coin(100, "utoken"), coin(50, "ustake")]
+        ));
+        assert!(!compare_funds(
+            &[coin(150, "utoken"), coin(30, "ustake")],
+            &[coin(100, "utoken"), coin(50, "ustake")]
+        ));
+
+        // Denominations in actual not in limit
+        assert!(!compare_funds(
+            &[coin(50, "utoken"), coin(30, "ustake")],
+            &[coin(100, "utoken")]
+        ));
+
+        // Denominations in limit not in actual
+        assert!(compare_funds(
+            &[coin(50, "utoken")],
+            &[coin(100, "utoken"), coin(50, "ustake")]
+        ));
+
+        // Empty slices
+        assert!(compare_funds(&[], &[]));
+        assert!(compare_funds(&[], &[coin(100, "utoken")]));
+        assert!(!compare_funds(&[coin(100, "utoken")], &[]));
+
+        // Zero amounts
+        assert!(compare_funds(&[coin(0, "utoken")], &[coin(100, "utoken")]));
+        assert!(!compare_funds(&[coin(100, "utoken")], &[coin(0, "utoken")]));
+        assert!(compare_funds(&[coin(0, "utoken")], &[coin(0, "utoken")]));
     }
 }
