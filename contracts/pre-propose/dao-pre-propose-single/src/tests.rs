@@ -65,12 +65,12 @@ fn get_default_proposal_module_instantiate(
     let pre_propose_id = app.store_code(dao_pre_propose_single_contract());
 
     let submission_policy = if open_proposal_submission {
-        PreProposeSubmissionPolicy::Anyone { denylist: None }
+        PreProposeSubmissionPolicy::Anyone { denylist: vec![] }
     } else {
         PreProposeSubmissionPolicy::Specific {
             dao_members: true,
-            allowlist: None,
-            denylist: None,
+            allowlist: vec![],
+            denylist: vec![],
         }
     };
 
@@ -1002,7 +1002,7 @@ fn test_anyone_denylist() {
         pre_propose.clone(),
         core_addr.as_str(),
         None,
-        PreProposeSubmissionPolicy::Anyone { denylist: None },
+        PreProposeSubmissionPolicy::Anyone { denylist: vec![] },
     );
 
     let rando = "rando";
@@ -1023,7 +1023,7 @@ fn test_anyone_denylist() {
         core_addr.as_str(),
         None,
         PreProposeSubmissionPolicy::Anyone {
-            denylist: Some(vec![rando.to_string()]),
+            denylist: vec![Addr::unchecked(rando)],
         },
     );
 
@@ -1072,8 +1072,8 @@ fn test_specific_allowlist_denylist() {
         None,
         PreProposeSubmissionPolicy::Specific {
             dao_members: true,
-            allowlist: None,
-            denylist: None,
+            allowlist: vec![],
+            denylist: vec![],
         },
     );
 
@@ -1120,8 +1120,8 @@ fn test_specific_allowlist_denylist() {
         None,
         PreProposeSubmissionPolicy::Specific {
             dao_members: true,
-            allowlist: Some(vec![rando.to_string()]),
-            denylist: None,
+            allowlist: vec![Addr::unchecked(rando)],
+            denylist: vec![],
         },
     );
 
@@ -1142,8 +1142,8 @@ fn test_specific_allowlist_denylist() {
         None,
         PreProposeSubmissionPolicy::Specific {
             dao_members: true,
-            allowlist: Some(vec![rando.to_string()]),
-            denylist: Some(vec!["ekez".to_string()]),
+            allowlist: vec![Addr::unchecked(rando)],
+            denylist: vec![Addr::unchecked("ekez")],
         },
     );
 
@@ -1178,8 +1178,8 @@ fn test_specific_allowlist_denylist() {
         None,
         PreProposeSubmissionPolicy::Specific {
             dao_members: false,
-            allowlist: Some(vec![rando.to_string()]),
-            denylist: None,
+            allowlist: vec![Addr::unchecked(rando)],
+            denylist: vec![],
         },
     );
 
@@ -1281,8 +1281,8 @@ fn test_instantiate_with_zero_native_deposit() {
                         }),
                         submission_policy: PreProposeSubmissionPolicy::Specific {
                             dao_members: true,
-                            allowlist: None,
-                            denylist: None,
+                            allowlist: vec![],
+                            denylist: vec![],
                         },
                         extension: Empty::default(),
                     })
@@ -1348,8 +1348,8 @@ fn test_instantiate_with_zero_cw20_deposit() {
                         }),
                         submission_policy: PreProposeSubmissionPolicy::Specific {
                             dao_members: true,
-                            allowlist: None,
-                            denylist: None,
+                            allowlist: vec![],
+                            denylist: vec![],
                         },
                         extension: Empty::default(),
                     })
@@ -1398,8 +1398,8 @@ fn test_update_config() {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
-                allowlist: None,
-                denylist: None
+                allowlist: vec![],
+                denylist: vec![]
             },
         }
     );
@@ -1423,7 +1423,7 @@ fn test_update_config() {
             amount: Uint128::new(10),
             refund_policy: DepositRefundPolicy::Never,
         }),
-        PreProposeSubmissionPolicy::Anyone { denylist: None },
+        PreProposeSubmissionPolicy::Anyone { denylist: vec![] },
     );
 
     let config = get_config(&app, pre_propose.clone());
@@ -1435,7 +1435,7 @@ fn test_update_config() {
                 amount: Uint128::new(10),
                 refund_policy: DepositRefundPolicy::Never
             }),
-            submission_policy: PreProposeSubmissionPolicy::Anyone { denylist: None },
+            submission_policy: PreProposeSubmissionPolicy::Anyone { denylist: vec![] },
         }
     );
 
@@ -1486,7 +1486,7 @@ fn test_update_config() {
         pre_propose.clone(),
         proposal_single.as_str(),
         None,
-        PreProposeSubmissionPolicy::Anyone { denylist: None },
+        PreProposeSubmissionPolicy::Anyone { denylist: vec![] },
     );
     assert_eq!(err, PreProposeError::NotDao {});
 
@@ -1498,8 +1498,8 @@ fn test_update_config() {
         None,
         PreProposeSubmissionPolicy::Specific {
             dao_members: false,
-            allowlist: None,
-            denylist: None,
+            allowlist: vec![],
+            denylist: vec![],
         },
     );
     assert_eq!(
@@ -1515,8 +1515,8 @@ fn test_update_config() {
         None,
         PreProposeSubmissionPolicy::Specific {
             dao_members: false,
-            allowlist: Some(vec!["ekez".to_string()]),
-            denylist: Some(vec!["ekez".to_string()]),
+            allowlist: vec![Addr::unchecked("ekez")],
+            denylist: vec![Addr::unchecked("ekez")],
         },
     );
     assert_eq!(
@@ -1543,7 +1543,7 @@ fn test_update_config() {
         config,
         Config {
             deposit_info: None,
-            submission_policy: PreProposeSubmissionPolicy::Anyone { denylist: None },
+            submission_policy: PreProposeSubmissionPolicy::Anyone { denylist: vec![] },
         }
     );
 }
@@ -1562,7 +1562,7 @@ fn test_update_submission_policy() {
         config,
         Config {
             deposit_info: None,
-            submission_policy: PreProposeSubmissionPolicy::Anyone { denylist: None },
+            submission_policy: PreProposeSubmissionPolicy::Anyone { denylist: vec![] },
         }
     );
 
@@ -1606,7 +1606,7 @@ fn test_update_submission_policy() {
         Config {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Anyone {
-                denylist: Some(vec!["ekez".to_string()]),
+                denylist: vec![Addr::unchecked("ekez")],
             },
         }
     );
@@ -1632,7 +1632,7 @@ fn test_update_submission_policy() {
         Config {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Anyone {
-                denylist: Some(vec!["someone".to_string(), "else".to_string()]),
+                denylist: vec![Addr::unchecked("someone"), Addr::unchecked("else")],
             },
         }
     );
@@ -1657,7 +1657,7 @@ fn test_update_submission_policy() {
         config,
         Config {
             deposit_info: None,
-            submission_policy: PreProposeSubmissionPolicy::Anyone { denylist: None },
+            submission_policy: PreProposeSubmissionPolicy::Anyone { denylist: vec![] },
         }
     );
 
@@ -1737,8 +1737,8 @@ fn test_update_submission_policy() {
             deposit_info: None,
             submission_policy: Some(PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
-                allowlist: None,
-                denylist: None,
+                allowlist: vec![],
+                denylist: vec![],
             }),
         },
         &[],
@@ -1752,8 +1752,8 @@ fn test_update_submission_policy() {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
-                allowlist: None,
-                denylist: None,
+                allowlist: vec![],
+                denylist: vec![],
             },
         }
     );
@@ -1780,8 +1780,8 @@ fn test_update_submission_policy() {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
-                allowlist: None,
-                denylist: Some(vec!["ekez".to_string()]),
+                allowlist: vec![],
+                denylist: vec![Addr::unchecked("ekez")],
             },
         }
     );
@@ -1808,8 +1808,8 @@ fn test_update_submission_policy() {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
-                allowlist: None,
-                denylist: Some(vec!["someone".to_string(), "else".to_string()]),
+                allowlist: vec![],
+                denylist: vec![Addr::unchecked("someone"), Addr::unchecked("else")],
             },
         }
     );
@@ -1836,8 +1836,8 @@ fn test_update_submission_policy() {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
-                allowlist: None,
-                denylist: None
+                allowlist: vec![],
+                denylist: vec![]
             },
         }
     );
@@ -1864,8 +1864,8 @@ fn test_update_submission_policy() {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
-                allowlist: Some(vec!["ekez".to_string()]),
-                denylist: None,
+                allowlist: vec![Addr::unchecked("ekez")],
+                denylist: vec![],
             },
         }
     );
@@ -1892,8 +1892,8 @@ fn test_update_submission_policy() {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
-                allowlist: Some(vec!["someone".to_string(), "else".to_string()]),
-                denylist: None,
+                allowlist: vec![Addr::unchecked("someone"), Addr::unchecked("else")],
+                denylist: vec![],
             },
         }
     );
@@ -1920,8 +1920,8 @@ fn test_update_submission_policy() {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
-                allowlist: None,
-                denylist: None
+                allowlist: vec![],
+                denylist: vec![]
             },
         }
     );
@@ -1970,8 +1970,8 @@ fn test_update_submission_policy() {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: false,
-                allowlist: Some(vec!["ekez".to_string()]),
-                denylist: None
+                allowlist: vec![Addr::unchecked("ekez")],
+                denylist: vec![]
             },
         }
     );
@@ -2044,8 +2044,8 @@ fn test_withdraw() {
         }),
         PreProposeSubmissionPolicy::Specific {
             dao_members: true,
-            allowlist: None,
-            denylist: None,
+            allowlist: vec![],
+            denylist: vec![],
         },
     );
 
@@ -2092,8 +2092,8 @@ fn test_withdraw() {
         }),
         PreProposeSubmissionPolicy::Specific {
             dao_members: true,
-            allowlist: None,
-            denylist: None,
+            allowlist: vec![],
+            denylist: vec![],
         },
     );
 
@@ -2466,8 +2466,8 @@ fn test_migrate_from_v241() {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
-                allowlist: None,
-                denylist: None
+                allowlist: vec![],
+                denylist: vec![]
             }
         },
         config
@@ -2741,8 +2741,8 @@ fn test_migrate_from_v241_with_policy_update() {
                     msg: to_json_binary(&MigrateMsg::FromUnderV250 {
                         policy: Some(PreProposeSubmissionPolicy::Specific {
                             dao_members: false,
-                            allowlist: Some(vec!["noob".to_string()]),
-                            denylist: None,
+                            allowlist: vec![Addr::unchecked("noob")],
+                            denylist: vec![],
                         }),
                     })
                     .unwrap(),
@@ -2800,8 +2800,8 @@ fn test_migrate_from_v241_with_policy_update() {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: false,
-                allowlist: Some(vec!["noob".to_string()]),
-                denylist: None
+                allowlist: vec![Addr::unchecked("noob")],
+                denylist: vec![]
             }
         },
         config

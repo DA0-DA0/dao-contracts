@@ -246,7 +246,7 @@ where
         let mut config = self.config.load(deps.storage)?;
 
         match config.submission_policy {
-            PreProposeSubmissionPolicy::Anyone { denylist } => {
+            PreProposeSubmissionPolicy::Anyone { mut denylist } => {
                 // Error if other values that apply to Specific were set.
                 if set_dao_members.is_some()
                     || allowlist_add.is_some()
@@ -257,43 +257,35 @@ where
                     ));
                 }
 
-                let mut denylist = denylist.unwrap_or_default();
-
                 // Add to denylist.
-                if let Some(mut denylist_add) = denylist_add {
+                if let Some(denylist_add) = denylist_add {
                     // Validate addresses.
-                    denylist_add
+                    let mut addrs = denylist_add
                         .iter()
                         .map(|addr| deps.api.addr_validate(addr))
                         .collect::<StdResult<Vec<Addr>>>()?;
 
-                    denylist.append(&mut denylist_add);
+                    denylist.append(&mut addrs);
                     denylist.dedup();
                 }
 
                 // Remove from denylist.
                 if let Some(denylist_remove) = denylist_remove {
                     // Validate addresses.
-                    denylist_remove
+                    let addrs = denylist_remove
                         .iter()
                         .map(|addr| deps.api.addr_validate(addr))
                         .collect::<StdResult<Vec<Addr>>>()?;
 
-                    denylist.retain(|a| !denylist_remove.contains(a));
+                    denylist.retain(|a| !addrs.contains(a));
                 }
-
-                let denylist = if denylist.is_empty() {
-                    None
-                } else {
-                    Some(denylist)
-                };
 
                 config.submission_policy = PreProposeSubmissionPolicy::Anyone { denylist };
             }
             PreProposeSubmissionPolicy::Specific {
                 dao_members,
-                allowlist,
-                denylist,
+                mut allowlist,
+                mut denylist,
             } => {
                 let dao_members = if let Some(new_dao_members) = set_dao_members {
                     new_dao_members
@@ -301,66 +293,51 @@ where
                     dao_members
                 };
 
-                let mut allowlist = allowlist.unwrap_or_default();
-                let mut denylist = denylist.unwrap_or_default();
-
                 // Add to allowlist.
-                if let Some(mut allowlist_add) = allowlist_add {
+                if let Some(allowlist_add) = allowlist_add {
                     // Validate addresses.
-                    allowlist_add
+                    let mut addrs = allowlist_add
                         .iter()
                         .map(|addr| deps.api.addr_validate(addr))
                         .collect::<StdResult<Vec<Addr>>>()?;
 
-                    allowlist.append(&mut allowlist_add);
+                    allowlist.append(&mut addrs);
                     allowlist.dedup();
                 }
 
                 // Remove from allowlist.
                 if let Some(allowlist_remove) = allowlist_remove {
                     // Validate addresses.
-                    allowlist_remove
+                    let addrs = allowlist_remove
                         .iter()
                         .map(|addr| deps.api.addr_validate(addr))
                         .collect::<StdResult<Vec<Addr>>>()?;
 
-                    allowlist.retain(|a| !allowlist_remove.contains(a));
+                    allowlist.retain(|a| !addrs.contains(a));
                 }
 
                 // Add to denylist.
-                if let Some(mut denylist_add) = denylist_add {
+                if let Some(denylist_add) = denylist_add {
                     // Validate addresses.
-                    denylist_add
+                    let mut addrs = denylist_add
                         .iter()
                         .map(|addr| deps.api.addr_validate(addr))
                         .collect::<StdResult<Vec<Addr>>>()?;
 
-                    denylist.append(&mut denylist_add);
+                    denylist.append(&mut addrs);
                     denylist.dedup();
                 }
 
                 // Remove from denylist.
                 if let Some(denylist_remove) = denylist_remove {
                     // Validate addresses.
-                    denylist_remove
+                    let addrs = denylist_remove
                         .iter()
                         .map(|addr| deps.api.addr_validate(addr))
                         .collect::<StdResult<Vec<Addr>>>()?;
 
-                    denylist.retain(|a| !denylist_remove.contains(a));
+                    denylist.retain(|a| !addrs.contains(a));
                 }
-
-                // Replace empty vectors with None.
-                let allowlist = if allowlist.is_empty() {
-                    None
-                } else {
-                    Some(allowlist)
-                };
-                let denylist = if denylist.is_empty() {
-                    None
-                } else {
-                    Some(denylist)
-                };
 
                 config.submission_policy = PreProposeSubmissionPolicy::Specific {
                     dao_members,
@@ -527,7 +504,7 @@ where
 
         match config.submission_policy {
             PreProposeSubmissionPolicy::Anyone { denylist } => {
-                if !denylist.unwrap_or_default().contains(&who.to_string()) {
+                if !denylist.contains(&who) {
                     return Ok(());
                 }
             }
@@ -537,9 +514,9 @@ where
                 denylist,
             } => {
                 // denylist overrides all other settings
-                if !denylist.unwrap_or_default().contains(&who.to_string()) {
+                if !denylist.contains(&who) {
                     // if on the allowlist, return early
-                    if allowlist.unwrap_or_default().contains(&who.to_string()) {
+                    if allowlist.contains(&who) {
                         return Ok(());
                     }
 
@@ -640,12 +617,12 @@ where
                     // otherwise convert old `open_proposal_submission` flag
                     // into new policy enum
                 } else if old_config.open_proposal_submission {
-                    PreProposeSubmissionPolicy::Anyone { denylist: None }
+                    PreProposeSubmissionPolicy::Anyone { denylist: vec![] }
                 } else {
                     PreProposeSubmissionPolicy::Specific {
                         dao_members: true,
-                        allowlist: None,
-                        denylist: None,
+                        allowlist: vec![],
+                        denylist: vec![],
                     }
                 };
 
