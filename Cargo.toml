@@ -11,6 +11,7 @@ members = [
   "contracts/test/*",
   "contracts/voting/*",
   "packages/*",
+  "scripts",
   "ci/*",
 ]
 resolver = "2"
@@ -108,6 +109,7 @@ cw721-roles = { path = "./contracts/external/cw721-roles", version = "2.5.0" }
 dao-cw721-extensions = { path = "./packages/dao-cw721-extensions", version = "2.5.0" }
 dao-dao-core = { path = "./contracts/dao-dao-core", version = "2.5.0" }
 dao-dao-macros = { path = "./packages/dao-dao-macros", version = "2.5.0" }
+dao-gauge-adapter = { path = "./contracts/test/dao-gauge-adapter", version = "2.5.0" }
 dao-hooks = { path = "./packages/dao-hooks", version = "2.5.0" }
 dao-interface = { path = "./packages/dao-interface", version = "2.5.0" }
 dao-migrator = { path = "./contracts/external/dao-migrator", version = "2.5.0" }

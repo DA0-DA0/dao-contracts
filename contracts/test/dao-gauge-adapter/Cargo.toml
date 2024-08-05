@@ -1,0 +1,31 @@
+[package]
+name = "dao-gauge-adapter"
+authors = ["ekez <ekez@withoutdoing.com>"]
+description = "A gauge adapter with the minimal required logic to work with gauge orchestrator."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+thiserror = { workspace = true }
+dao-dao-macros = { workspace = true }
+dao-interface = { workspace = true }
+cw-orch = { workspace = true }
+gauge-orchestrator = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }

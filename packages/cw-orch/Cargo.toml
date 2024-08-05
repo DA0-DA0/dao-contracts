@@ -34,6 +34,7 @@ dao-pre-propose-multiple.workspace = true
 dao-pre-propose-single.workspace = true
 dao-proposal-condorcet.workspace = true
 dao-proposal-hook-counter.workspace = true
+dao-gauge-adapter.workspace = true
 dao-proposal-multiple.workspace = true
 dao-proposal-single.workspace = true
 dao-proposal-sudo.workspace = true

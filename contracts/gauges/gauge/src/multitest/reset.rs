@@ -49,9 +49,9 @@ fn basic_gauge_reset() {
         .unwrap();
     let proposal_modules = suite.query_proposal_modules().unwrap();
     let gauge_contract = proposal_modules[1].clone();
-
     let gauge_id = 0;
 
+    
     // vote for one of the options in gauge
     suite
         .place_vote(

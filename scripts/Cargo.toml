@@ -7,7 +7,12 @@ version = "2.5.0"
 
 [dependencies]
 cw-orch = { version = "0.24.1", features = ["daemon"] }
+cosmwasm-std = { workspace = true }
+cw-utils = { workspace = true }
+cw4-group = { workspace = true }
+cw4 = { workspace = true }
 dao-cw-orch = { path = "../packages/cw-orch", version = "2.5.0" }
+dao-hooks = { workspace = true }
 # scripts specific
 dotenv = { version = "0.15.0" }
 pretty_env_logger = { version = "0.5.0" }
@@ -22,11 +27,20 @@ dao-proposal-single = { path = "../contracts/proposal/dao-proposal-single", feat
 ] }
 dao-interface = { path = "../packages/dao-interface" }
 dao-voting = { path = "../packages/dao-voting" }
+
+# external contracts 
+btsg-ft-factory = { path = "../contracts/external/btsg-ft-factory" }
 cw-payroll-factory = { path = "../contracts/external/cw-payroll-factory" }
 cw-token-swap = { path = "../contracts/external/cw-token-swap" }
 cw-admin-factory = { path = "../contracts/external/cw-admin-factory" }
 cw-tokenfactory-issuer = { path = "../contracts/external/cw-tokenfactory-issuer" }
 cw-vesting = { path = "../contracts/external/cw-vesting" }
 cw721-roles = { path = "../contracts/external/cw721-roles" }
+
 dao-migrator = { path = "../contracts/external/dao-migrator" }
-btsg-ft-factory = { path = "../contracts/external/btsg-ft-factory" }
+dao-voting-cw4 = { path = "../contracts/voting/dao-voting-cw4" }
+
+# gauge contracts
+gauge-orchestrator = { path = "../contracts/gauges/gauge" }
+gauge-adapter = { path = "../contracts/gauges/gauge-adapter" }
+dao-gauge-adapter = { path = "../contracts/test/dao-gauge-adapter" }

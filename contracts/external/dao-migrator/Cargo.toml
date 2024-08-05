@@ -32,8 +32,8 @@ dao-voting             = { workspace = true }
 dao-proposal-single    = { workspace = true, features = ["library"] }
 dao-voting-cw4         = { workspace = true, features = ["library"] }
 cw20-stake             = { workspace = true, features = ["library"] }
-dao-voting-cw20-staked = { workspace = true, features = ["library"] }
 cw20-base              = { workspace = true, features = ["library"] }
+dao-voting-cw20-staked = { workspace = true, features = ["library"] }
 
 cw-utils-v1                   = { workspace = true }
 voting-v1                     = { workspace = true }

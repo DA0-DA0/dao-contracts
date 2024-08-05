@@ -10,6 +10,6 @@ fn test_distribution_suite() -> anyhow::Result<()> {
     let mock = MockBech32::new(PREFIX);
     let admin = mock.addr_make(ADMIN);
     let _app = DaoDistributionSuite::deploy_on(mock.clone(), admin.clone())?;
-    mock.next_block().unwrap();
+    mock.next_block()?;
     Ok(())
 }

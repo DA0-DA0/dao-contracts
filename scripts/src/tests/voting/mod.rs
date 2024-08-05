@@ -1,9 +1,9 @@
 use cw_orch::{anyhow, prelude::*};
-
 use crate::{
     tests::{ADMIN, PREFIX},
     DaoVotingSuite,
 };
+mod cw721_staked;
 
 #[test]
 fn test_voting_suite() -> anyhow::Result<()> {

@@ -110,7 +110,10 @@ mod execute {
     use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 
     use super::*;
-    use crate::state::{remove_tally, update_tallies, Reset, Vote};
+    use crate::{
+        msg::CreateGaugeReply,
+        state::{remove_tally, update_tallies, Reset, Vote},
+    };
     use std::collections::HashMap;
 
     pub fn member_changed(
@@ -378,7 +381,8 @@ mod execute {
 
         Ok(Response::new()
             .add_attribute("action", "create_gauge")
-            .add_attribute("adapter", adapter))
+            .add_attribute("gauge-id", adapter.id.to_string())
+            .add_attribute("adapter", adapter.addr))
     }
 
     pub fn attach_gauge(
@@ -394,7 +398,7 @@ mod execute {
             reset_epoch,
             total_epochs,
         }: GaugeConfig,
-    ) -> Result<Addr, ContractError> {
+    ) -> Result<CreateGaugeReply, ContractError> {
         let adapter = deps.api.addr_validate(&adapter)?;
         // gauge parameter validation
         ensure!(epoch_size > 60u64, ContractError::EpochSizeTooShort {});
@@ -440,7 +444,10 @@ mod execute {
             Ok::<_, ContractError>(())
         })?;
 
-        Ok(adapter)
+        Ok(CreateGaugeReply {
+            id: last_id,
+            addr: adapter.to_string(),
+        })
     }
 
     pub fn update_gauge(
@@ -465,7 +472,7 @@ mod execute {
         }
         if let Some(epoch_limit) = epoch_limit {
             let e = gauge.gauge_epoch()?;
-            ensure!(e < epoch_limit, ContractError::EpochLimitTooShort {  })
+            ensure!(e < epoch_limit, ContractError::EpochLimitTooShort {})
         }
         if let Some(min_percent_selected) = min_percent_selected {
             if min_percent_selected.is_zero() {

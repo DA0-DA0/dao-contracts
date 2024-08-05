@@ -44,6 +44,7 @@ pub struct GaugeConfig {
 }
 
 #[cw_serde]
+#[derive(cw_orch::ExecuteFns)]
 pub enum ExecuteMsg {
     /// Updates gauge voting power in Token DAOs when a user stakes or unstakes
     StakeChangeHook(StakeChangedHookMsg),
@@ -97,11 +98,12 @@ pub enum ExecuteMsg {
 pub struct CreateGaugeReply {
     /// Id of the gauge that was just created
     pub id: u64,
+    pub addr: String,
 }
 
 /// Queries the gauge exposes
 #[cw_serde]
-#[derive(QueryResponses)]
+#[derive(QueryResponses, cw_orch::QueryFns)]
 pub enum QueryMsg {
     #[returns(dao_interface::voting::InfoResponse)]
     Info {},

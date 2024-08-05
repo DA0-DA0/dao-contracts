@@ -3,6 +3,7 @@ use dao_cw_orch::DaoDaoCore;
 
 use crate::{
     DaoDistributionSuite, DaoExternalSuite, DaoProposalSuite, DaoStakingSuite, DaoVotingSuite,
+    GaugeSuite,
 };
 
 // full dao suite
@@ -12,6 +13,7 @@ pub struct DaoDao<Chain> {
     pub voting_suite: DaoVotingSuite<Chain>,
     pub staking_suite: DaoStakingSuite<Chain>,
     pub distribution_suite: DaoDistributionSuite<Chain>,
+    pub gauge_suite: GaugeSuite<Chain>,
     pub external_suite: DaoExternalSuite<Chain>,
 }
 
@@ -23,6 +25,7 @@ impl<Chain: CwEnv> DaoDao<Chain> {
             voting_suite: DaoVotingSuite::new(chain.clone()),
             staking_suite: DaoStakingSuite::new(chain.clone()),
             distribution_suite: DaoDistributionSuite::new(chain.clone()),
+            gauge_suite: GaugeSuite::new(chain.clone()),
             external_suite: DaoExternalSuite::new(chain.clone()),
         }
     }
@@ -33,6 +36,7 @@ impl<Chain: CwEnv> DaoDao<Chain> {
         self.voting_suite.upload()?;
         self.staking_suite.upload()?;
         self.distribution_suite.upload()?;
+        self.gauge_suite.upload()?;
         self.external_suite.upload()?;
         Ok(())
     }
