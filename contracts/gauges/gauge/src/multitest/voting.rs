@@ -48,6 +48,7 @@ fn add_option() {
             (1000, "ujuno"),
             None,
             None,
+            None,
         )
         .unwrap();
 
@@ -133,6 +134,7 @@ fn remove_option() {
             gauge_contract.clone(),
             &[voter1, voter2],
             (1000, "ujuno"),
+            None,
             None,
             None,
         )
@@ -282,6 +284,7 @@ fn vote_for_option() {
             (1000, "ujuno"),
             None,
             None,
+            None,
         )
         .unwrap();
 
@@ -423,6 +426,7 @@ fn remove_vote() {
             (1000, "ujuno"),
             None,
             None,
+            None,
         )
         .unwrap();
 
@@ -493,7 +497,7 @@ fn votes_stays_the_same_after_execution() {
 
     suite.next_block();
     let gauge_config = suite
-        .instantiate_adapter_and_return_config(&[voter1, voter2], reward_to_distribute, None, None)
+        .instantiate_adapter_and_return_config(&[voter1, voter2], reward_to_distribute, None, None,None)
         .unwrap();
     suite
         .propose_update_proposal_module(voter1.to_string(), vec![gauge_config])
@@ -616,7 +620,7 @@ fn vote_for_max_capped_option() {
             &[voter1, voter2],
             (1000, "ujuno"),
             Some(Decimal::percent(10)),
-            None,
+            None,None,
         )
         .unwrap();
 
@@ -730,6 +734,7 @@ fn membership_voting_power_change() {
             gauge_contract.clone(),
             &[voter1, voter2],
             (1000, "ujuno"),
+            None,
             None,
             None,
         )
@@ -911,6 +916,7 @@ fn token_staking_voting_power_change() {
             gauge_contract.clone(),
             &[voter1, voter2],
             (1000, "ujuno"),
+            None,
             None,
             None,
         )
@@ -1109,6 +1115,7 @@ fn nft_staking_voting_power_change() {
             gauge_contract.clone(),
             &[voter1, voter2],
             (1000, "ujuno"),
+            None,
             None,
             None,
         )

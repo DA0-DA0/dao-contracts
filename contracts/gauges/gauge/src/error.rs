@@ -51,6 +51,8 @@ pub enum ContractError {
 
     #[error("Epoch size must be bigger then 60 seconds")]
     EpochSizeTooShort {},
+    #[error("Epoch limit must be bigger then current epoch")]
+    EpochLimitTooShort {},
 
     #[error("Minimum percent selected parameter needs to be smaller then 1.0")]
     MinPercentSelectedTooBig {},

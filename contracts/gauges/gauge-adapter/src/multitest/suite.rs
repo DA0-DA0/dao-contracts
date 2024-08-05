@@ -4,7 +4,7 @@ use cw_orch::{interface, mock::cw_multi_test::AppResponse, prelude::*};
 use cw_orch_core::CwEnvError;
 
 use abstract_cw20::{Cw20Coin as AbsCw20Coin, MinterResponse};
-
+// use scripts::DaoDao;
 use crate::{
     contract::{execute, instantiate, migrate, query},
     msg::{AdapterQueryMsg as QueryMsg, AssetUnchecked, ExecuteMsg, InstantiateMsg, MigrateMsg},

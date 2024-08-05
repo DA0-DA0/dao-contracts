@@ -63,6 +63,7 @@ pub enum ExecuteMsg {
         min_percent_selected: Option<Decimal>,
         max_options_selected: Option<u32>,
         max_available_percentage: Option<Decimal>,
+        epoch_limit: Option<u64>,
     },
     /// Stops a given gauge, meaning it will not execute any more messages,
     /// Or receive any more updates on MemberChangedHook.

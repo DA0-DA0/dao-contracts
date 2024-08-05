@@ -25,6 +25,7 @@ fn create_gauge() {
             (1000, "ujuno"),
             None,
             None,
+            None,
         )
         .unwrap();
 
@@ -60,6 +61,7 @@ fn gauge_can_upgrade_from_self() {
             gauge_contract.clone(),
             &["option1", "option2"],
             (1000, "ujuno"),
+            None,
             None,
             None,
         )
@@ -100,6 +102,7 @@ fn gauge_migrate_with_next_epochs() {
             gauge_contract.clone(),
             &["option1", "option2"],
             (1000, "ujuno"),
+            None,
             None,
             None,
         )
@@ -186,7 +189,13 @@ fn execute_gauge() {
 
     suite.next_block();
     let gauge_config = suite
-        .instantiate_adapter_and_return_config(&[voter1, voter2], reward_to_distribute, None, None)
+        .instantiate_adapter_and_return_config(
+            &[voter1, voter2],
+            reward_to_distribute,
+            None,
+            None,
+            None,
+        )
         .unwrap();
     suite
         .propose_update_proposal_module(voter1.to_string(), vec![gauge_config])
@@ -289,6 +298,7 @@ fn query_last_execution() {
             (1000, "ujuno"),
             None,
             None,
+            None,
         )
         .unwrap();
     let gauge_id = 0;
@@ -381,7 +391,7 @@ fn execute_gauge_twice_same_epoch() {
 
     suite.next_block();
     let gauge_config = suite
-        .instantiate_adapter_and_return_config(&[voter1, voter2], (1000, "ujuno"), None, None) // reward per
+        .instantiate_adapter_and_return_config(&[voter1, voter2], (1000, "ujuno"), None, None, None) // reward per
         // epoch
         .unwrap();
     suite
@@ -492,7 +502,7 @@ fn execute_stopped_gauge() {
 
     suite.next_block();
     let gauge_config = suite
-        .instantiate_adapter_and_return_config(&[voter1, voter2], reward_to_distribute, None, None)
+        .instantiate_adapter_and_return_config(&[voter1, voter2], reward_to_distribute, None, None,None)
         .unwrap();
     suite
         .propose_update_proposal_module(voter1.to_string(), vec![gauge_config])
@@ -578,6 +588,7 @@ fn update_gauge() {
             (1000, "ujuno"),
             None,
             None,
+            None,
         )
         .unwrap();
 
@@ -586,6 +597,7 @@ fn update_gauge() {
             gauge_contract.clone(),
             &[voter1, voter2],
             (1000, "uusdc"),
+            None,
             None,
             None,
         )
@@ -625,6 +637,7 @@ fn update_gauge() {
     // update parameters on the first gauge
     let owner = suite.owner.clone();
     let new_epoch = EPOCH * 2;
+    let epoch_limit = 8u64;
     let new_min_percent = Some(Decimal::percent(10));
     let new_max_options = 15;
     let new_max_available_percentage = Some(Decimal::percent(5));
@@ -633,6 +646,7 @@ fn update_gauge() {
             &owner,
             gauge_contract.clone(),
             0,
+            epoch_limit,
             new_epoch,
             new_min_percent,
             new_max_options,
@@ -678,6 +692,7 @@ fn update_gauge() {
             gauge_contract.clone(),
             1,
             None,
+            epoch_limit,
             Some(Decimal::zero()),
             None,
             None,
@@ -722,6 +737,7 @@ fn update_gauge() {
             gauge_contract.clone(),
             0,
             new_epoch,
+            epoch_limit,
             new_min_percent,
             new_max_options,
             None,
@@ -735,6 +751,7 @@ fn update_gauge() {
             gauge_contract.clone(),
             0,
             50,
+            epoch_limit,
             new_min_percent,
             new_max_options,
             None,
@@ -748,6 +765,7 @@ fn update_gauge() {
             gauge_contract.clone(),
             0,
             new_epoch,
+            epoch_limit,
             Some(Decimal::one()),
             new_max_options,
             None,
@@ -764,6 +782,7 @@ fn update_gauge() {
             gauge_contract.clone(),
             0,
             new_epoch,
+            epoch_limit,
             new_min_percent,
             0,
             None,
@@ -780,6 +799,7 @@ fn update_gauge() {
             gauge_contract,
             1,
             None,
+            epoch_limit,
             Some(Decimal::zero()),
             None,
             Some(Decimal::percent(101)),

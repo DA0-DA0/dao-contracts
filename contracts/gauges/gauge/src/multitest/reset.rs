@@ -27,6 +27,7 @@ fn basic_gauge_reset() {
             reward_to_distribute,
             None,
             RESET_EPOCH,
+            None,
         )
         .unwrap();
     suite
@@ -179,6 +180,7 @@ fn gauge_migrate_with_reset() {
             (1000, "ujuno"),
             None,
             None,
+            None,
         )
         .unwrap();
 
@@ -261,7 +263,6 @@ fn gauge_migrate_with_reset() {
                 last: None,
                 reset_each: RESET_EPOCH,
                 next: suite.current_time() + 100,
-                count: None,
                 total: None,
             }),
         }
@@ -297,6 +298,7 @@ fn gauge_migrate_keeps_last_reset() {
             (1000, "ujuno"),
             None,
             Some(RESET_EPOCH),
+            None,
         )
         .unwrap();
     let gauge_id = 0;
@@ -348,6 +350,7 @@ fn partial_reset() {
             reward_to_distribute,
             None,
             RESET_EPOCH,
+            None,
         )
         .unwrap();
     suite

@@ -51,6 +51,8 @@ pub struct Gauge {
     pub adapter: Addr,
     /// Frequency (in seconds) the gauge executes messages, typically something like 7*86400
     pub epoch: u64,
+    /// Epoch count.
+    pub count: Option<u64>,
     /// Minimum percentage of votes needed by a given option to be in the selected set
     pub min_percent_selected: Option<Decimal>,
     /// Maximum number of Options to make the selected set. Needed even with
@@ -76,8 +78,6 @@ pub struct Reset {
     pub reset_each: u64,
     /// next time we can reset
     pub next: u64,
-    // count
-    pub count: Option<u64>,
     // total
     pub total: Option<u64>,
 }
@@ -99,10 +99,11 @@ impl Gauge {
             }
         })
     }
-    pub fn increment_gauge_count(&self) -> StdResult<()> {
-        self.reset.clone()
-            .map(|mut c| c.count = c.count.map_or(Some(0), |o| Some(o + 1)));
-        Ok(())
+    pub fn increment_gauge_count(&self) -> StdResult<Option<u64>> {
+        Ok(self.count.map_or(Some(0), |o| Some(o + 1)))
+    }
+    pub fn gauge_epoch(&self) -> StdResult<u64> {
+        Ok(self.count.map_or(Some(0), |o| Some(o)).unwrap_or_default())
     }
 }
 
@@ -469,6 +470,7 @@ mod tests {
                         next_epoch: env.block.time.seconds(),
                         last_executed_set: None,
                         reset: None,
+                        count: Some(0),
                     },
                 )
                 .unwrap();
@@ -596,6 +598,7 @@ mod tests {
                     next_epoch: env.block.time.seconds(),
                     last_executed_set: None,
                     reset: None,
+                    count: Some(0),
                 },
             )
             .unwrap();

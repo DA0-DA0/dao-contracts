@@ -72,6 +72,7 @@ pub fn execute(
         ExecuteMsg::CreateGauge(options) => execute::create_gauge(deps, env, info.sender, options),
         ExecuteMsg::UpdateGauge {
             gauge_id,
+            epoch_limit,
             epoch_size,
             min_percent_selected,
             max_options_selected,
@@ -81,6 +82,7 @@ pub fn execute(
             info.sender,
             gauge_id,
             epoch_size,
+            epoch_limit,
             min_percent_selected,
             max_options_selected,
             max_available_percentage,
@@ -410,6 +412,7 @@ mod execute {
             title,
             adapter: adapter.clone(),
             epoch: epoch_size,
+            count: Some(0),
             min_percent_selected,
             max_options_selected,
             max_available_percentage,
@@ -420,7 +423,6 @@ mod execute {
                 last: None,
                 reset_each: r,
                 next: env.block.time.plus_seconds(r).seconds(),
-                count: None,
                 total: total_epochs,
             }),
         };
@@ -445,6 +447,7 @@ mod execute {
         deps: DepsMut,
         sender: Addr,
         gauge_id: u64,
+        epoch_limit: Option<u64>,
         epoch_size: Option<u64>,
         min_percent_selected: Option<Decimal>,
         max_options_selected: Option<u32>,
@@ -459,6 +462,10 @@ mod execute {
         if let Some(epoch_size) = epoch_size {
             ensure!(epoch_size > 60u64, ContractError::EpochSizeTooShort {});
             gauge.epoch = epoch_size;
+        }
+        if let Some(epoch_limit) = epoch_limit {
+            let e = gauge.gauge_epoch()?;
+            ensure!(e < epoch_limit, ContractError::EpochLimitTooShort {  })
         }
         if let Some(min_percent_selected) = min_percent_selected {
             if min_percent_selected.is_zero() {
@@ -811,7 +818,7 @@ mod execute {
             }))
         }
         // increments epoch count
-        gauge.increment_gauge_count()?;
+        gauge.count = gauge.increment_gauge_count()?;
 
         let config = CONFIG.load(deps.storage)?;
         let execute_msg = WasmMsg::Execute {
@@ -1044,7 +1051,6 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
                     last: gauge.reset.map(|r| r.last).unwrap_or_default(),
                     reset_each: reset_config.reset_epoch,
                     next: reset_config.next_reset,
-                    count: None,
                     total: None,
                 });
             }
