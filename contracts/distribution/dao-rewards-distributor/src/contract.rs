@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     ensure, from_json, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response,
-    StdResult, Uint128, Uint256,
+    StdError, StdResult, Uint128, Uint256,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20ReceiveMsg, Denom};
@@ -542,7 +542,8 @@ fn query_pending_rewards(
     for (id, distribution) in distributions {
         // first we get the active epoch earned puvp value
         let active_total_earned_puvp =
-            get_active_total_earned_puvp(deps, &env.block, &distribution)?;
+            get_active_total_earned_puvp(deps, &env.block, &distribution)
+                .map_err(|e| StdError::generic_err(e.to_string()))?;
 
         // then we add that to the historical rewards earned puvp
         let total_earned_puvp =
