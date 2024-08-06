@@ -1,4 +1,4 @@
-use cosmwasm_std::{coin, coins, to_json_binary, Decimal, Uint128};
+use cosmwasm_std::{coin, coins, to_json_binary, Coins, Decimal, Uint128};
 use cw4::Member;
 use cw_orch::{anyhow, prelude::*};
 use dao_cw_orch::{DaoDaoCore, DaoGaugeAdapter, DaoProposalSingle, DaoVotingCw4};
@@ -52,10 +52,16 @@ impl<Chain: CwEnv> DaoDaoCw4Gauge<Chain> {
     }
 }
 impl DaoDaoCw4Gauge<MockBech32> {
+    pub fn upload_with_cw4_custom_voting_members(
+        &self,
+        members: Vec<Member>,
+    ) -> Result<(), CwOrchError> {
+        // upload contracts
+        self.upload()?;
+        Ok(())
+    }
     pub fn upload_with_cw4(&mut self, mock: MockBech32) -> Result<u64, CwOrchError> {
-        self.dao_core.upload()?;
-        self.prop_single.upload()?;
-        self.cw4_vote.upload()?;
+        self.upload()?;
         // also upload cw4 group
         let cw4 = mock
             .upload_custom(
@@ -67,10 +73,30 @@ impl DaoDaoCw4Gauge<MockBech32> {
                 )),
             )?
             .uploaded_code_id()?;
-
         self.cw4_group = Some(cw4);
-        self.gauge_suite.upload()?;
         Ok(cw4)
+    }
+    pub fn custom_gauge_setup(
+        &mut self,
+        mock: MockBech32,
+        dao_members: Vec<Coin>,
+        options: &[&str],
+    ) -> Result<(), CwOrchError> {
+        let init_members = self.custom_initial_members(mock.clone(), dao_members)?;
+        // create dao
+        let dao_modules = dao_cw4_voting_template(mock.clone(), self, init_members)?;
+        // set contracts to cw-orch state
+        self.set_dao_module_addrs(dao_modules[1].clone(), dao_modules[0].clone())?;
+        // create gauge adapter
+        let gauge_config = self.init_adapter(&options)?;
+        let adapter = Addr::unchecked(gauge_config.adapter.clone());
+        // create orchestrator & add to DAO
+        let gauge = self.add_gauge_to_dao(mock.clone(), vec![gauge_config])?;
+        // set gauges to cw-orch suite
+        self.set_gauge_suite_addrs(gauge.clone(), adapter)?;
+        mock.add_balance(&self.dao_core.address()?, coins(10000, "ujuno"))?;
+
+        Ok(())
     }
     pub fn default_gauge_setup(&mut self, mock: MockBech32) -> Result<(), CwOrchError> {
         let voter1 = mock.addr_make("voter1");
@@ -79,7 +105,7 @@ impl DaoDaoCw4Gauge<MockBech32> {
         let init_members = self.default_inital_members(mock.clone())?;
         // create dao
         let dao_modules = dao_cw4_voting_template(mock.clone(), self, init_members)?;
-        // may need to manually set contracts here
+        // set contracts to cw-orch state
         self.set_dao_module_addrs(dao_modules[1].clone(), dao_modules[0].clone())?;
         let dao_addr = self.dao_core.addr_str()?;
         // create gauge adapter
@@ -90,7 +116,7 @@ impl DaoDaoCw4Gauge<MockBech32> {
         let gauge = self.add_gauge_to_dao(mock.clone(), vec![gauge_config])?;
         // set gauges to cw-orch suite
         self.set_gauge_suite_addrs(gauge.clone(), adapter)?;
-        mock.add_balance(&self.dao_core.address()?, coins(1000, "ujuno"))?;
+        mock.add_balance(&self.dao_core.address()?, coins(10000, "ujuno"))?;
 
         Ok(())
     }
@@ -104,12 +130,33 @@ impl DaoDaoCw4Gauge<MockBech32> {
         self.gauge_suite.adapter.set_default_address(&adapter);
         Ok(())
     }
+
+    pub fn custom_initial_members(
+        &self,
+        mock: MockBech32,
+        members: Vec<Coin>,
+    ) -> anyhow::Result<Vec<Member>> {
+        let mut res: Vec<Member> = vec![];
+        for member in members {
+            res.push(Member {
+                addr: member.denom,
+                weight: member.amount.u128().try_into().unwrap(),
+            })
+        }
+
+        Ok(res)
+    }
     pub fn default_inital_members(&self, mock: MockBech32) -> anyhow::Result<Vec<Member>> {
         let mut res: Vec<Member> = vec![];
         let members = vec![
             coin(100, &mock.sender.to_string()),
             coin(100, mock.addr_make("voter1")),
             coin(100, mock.addr_make("voter2")),
+            coin(600, mock.addr_make("voter3")),
+            coin(120, mock.addr_make("voter4")),
+            coin(130, mock.addr_make("voter5")),
+            coin(140, mock.addr_make("voter6")),
+            coin(150, mock.addr_make("voter7")),
         ];
 
         for member in members {
@@ -1263,24 +1310,25 @@ mod tally {
     use super::*;
     //     use dao_voting_cw4::msg::QueryMsgFns;
 
-    fn defualt_voters(mock: MockBech32, number: Vec<u64>) -> anyhow::Result<Vec<Member>> {
+    fn defualt_voters(mock: MockBech32, number: Vec<u64>) -> anyhow::Result<Vec<MemberDiff>> {
         let mut voters = vec![];
 
         for n in 0..number.len() {
             let weight = n as u64;
-            let voter =
-                mock.addr_make_with_balance(format!("voter{}", n).as_str(), coins(1000, "ujuno"))?;
-            voters.push(Member {
-                addr: voter.to_string(),
-                weight,
+            let voter = mock
+                .addr_make_with_balance(format!("voter{}", n + 2).as_str(), coins(1000, "ujuno"))?;
+            voters.push(MemberDiff {
+                key: voter.to_string(),
+                old: None,
+                new: Some(weight),
             })
         }
         Ok(voters)
     }
-    fn members_to_addr(mock: MockBech32, members: Vec<Member>) -> anyhow::Result<Vec<Addr>> {
+    fn members_to_addr(mock: MockBech32, members: Vec<MemberDiff>) -> anyhow::Result<Vec<Addr>> {
         let mut addrs = vec![];
         for member in members {
-            let addr = mock.addr_make(&member.addr);
+            let addr = mock.addr_make(&member.key);
             addrs.push(addr)
         }
         Ok(addrs)
@@ -1290,97 +1338,83 @@ mod tally {
     fn test_multiple_options_one_gauge() -> anyhow::Result<()> {
         let mock = MockBech32::new(PREFIX);
         let mut dao = DaoDaoCw4Gauge::new(mock.clone());
-        let voter1 = mock.addr_make("voter1");
-        let voter2 = mock.addr_make("voter2");
         dao.upload_with_cw4(mock.clone())?;
         dao.default_gauge_setup(mock.clone())?;
-        let cw4 = dao.cw4_vote.group_contract()?;
-        let dao_addr = dao.dao_core.address()?;
+
+        let voter1 = mock.addr_make("voter3");
+        let voter2 = mock.addr_make("voter4");
+        let voter3 = mock.addr_make("voter5");
+        let voter4 = mock.addr_make("voter6");
+        let voter5 = mock.addr_make("voter7");
+
+        // create new gauge with more members
         let members = defualt_voters(mock.clone(), vec![600, 120, 130, 140, 150])?;
         let voters = members_to_addr(mock.clone(), members.clone())?;
-        let gauge_id = 1;
+        let cw4 = dao.cw4_vote.address()?;
         let gauge2 = dao.init_adapter(&["option1", "option2", "option3", "option4", "option5"])?;
         dao.add_adapter_to_gauge(gauge2)?;
+        let gauge_id = 1;
 
-        mock.call_as(&dao_addr).execute(
-            &cw4_group::msg::ExecuteMsg::UpdateMembers {
-                remove: vec![],
-                add: members,
-            },
+        mock.call_as(&cw4).execute(
+            &gauge_orchestrator::msg::ExecuteMsg::MemberChangedHook(MemberChangedHookMsg {
+                diffs: members,
+            }),
             &vec![],
-            &cw4,
+            &dao.gauge_suite.orchestrator.address()?,
         )?;
         mock.wait_blocks(1)?;
 
-        dao.cw4_vote
-            .voting_power_at_height(voters[0].to_string(), None)?
-            .power;
+        dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
+            gauge_id,
+            Some(
+                vec![GaugeVote {
+                    option: "option1".to_string(),
+                    weight: Decimal::one(),
+                }]
+                .into(),
+            ),
+        )?;
+        dao.gauge_suite.orchestrator.call_as(&voter2).place_votes(
+            gauge_id,
+            Some(
+                vec![GaugeVote {
+                    option: "option2".to_string(),
+                    weight: Decimal::one(),
+                }]
+                .into(),
+            ),
+        )?;
 
-        dao.gauge_suite
-            .orchestrator
-            .call_as(&voters[0].clone())
-            .place_votes(
-                gauge_id,
-                Some(
-                    vec![GaugeVote {
-                        option: "option1".to_string(),
-                        weight: Decimal::one(),
-                    }]
-                    .into(),
-                ),
-            )?;
-        dao.gauge_suite
-            .orchestrator
-            .call_as(&voters[1].clone())
-            .place_votes(
-                gauge_id,
-                Some(
-                    vec![GaugeVote {
-                        option: "option2".to_string(),
-                        weight: Decimal::one(),
-                    }]
-                    .into(),
-                ),
-            )?;
-        dao.gauge_suite
-            .orchestrator
-            .call_as(&voters[2].clone())
-            .place_votes(
-                gauge_id,
-                Some(
-                    vec![GaugeVote {
-                        option: "option3".to_string(),
-                        weight: Decimal::one(),
-                    }]
-                    .into(),
-                ),
-            )?;
-        dao.gauge_suite
-            .orchestrator
-            .call_as(&voters[3].clone())
-            .place_votes(
-                gauge_id,
-                Some(
-                    vec![GaugeVote {
-                        option: "option4".to_string(),
-                        weight: Decimal::one(),
-                    }]
-                    .into(),
-                ),
-            )?;
-        dao.gauge_suite
-            .orchestrator
-            .call_as(&voters[4].clone())
-            .place_votes(
-                gauge_id,
-                Some(
-                    vec![GaugeVote {
-                        option: "option5".to_string(),
-                        weight: Decimal::one(),
-                    }]
-                    .into(),
-                ),
-            )?;
+        dao.gauge_suite.orchestrator.call_as(&voter3).place_votes(
+            gauge_id,
+            Some(
+                vec![GaugeVote {
+                    option: "option3".to_string(),
+                    weight: Decimal::one(),
+                }]
+                .into(),
+            ),
+        )?;
+        dao.gauge_suite.orchestrator.call_as(&voter4).place_votes(
+            gauge_id,
+            Some(
+                vec![GaugeVote {
+                    option: "option4".to_string(),
+                    weight: Decimal::one(),
+                }]
+                .into(),
+            ),
+        )?;
+        dao.gauge_suite.orchestrator.call_as(&voter5).place_votes(
+            gauge_id,
+            Some(
+                vec![GaugeVote {
+                    option: "option5".to_string(),
+                    weight: Decimal::one(),
+                }]
+                .into(),
+            ),
+        )?;
 
         let selected = dao.gauge_suite.orchestrator.selected_set(gauge_id)?;
         assert_eq!(
@@ -1394,24 +1428,22 @@ mod tally {
             ]
         );
 
-        dao.gauge_suite
-            .orchestrator
-            .call_as(&voters[0].clone())
-            .place_votes(
-                gauge_id,
-                Some(
-                    vec![GaugeVote {
-                        option: "option2".to_string(),
-                        weight: Decimal::one(),
-                    }]
-                    .into(),
-                ),
-            )?;
+        dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
+            gauge_id,
+            Some(
+                vec![GaugeVote {
+                    option: "option2".to_string(),
+                    weight: Decimal::one(),
+                }]
+                .into(),
+            ),
+        )?;
+
         let selected = dao.gauge_suite.orchestrator.selected_set(gauge_id)?;
         assert_eq!(
             selected.votes,
             vec![
-                ("option2".to_owned(), Uint128::new(120)),
+                ("option2".to_owned(), Uint128::new(720)),
                 ("option5".to_owned(), Uint128::new(150)),
                 ("option4".to_owned(), Uint128::new(140)),
                 ("option3".to_owned(), Uint128::new(130)),
@@ -1420,1347 +1452,1374 @@ mod tally {
 
         Ok(())
     }
+    #[test]
+    fn test_multiple_options_two_gauges() -> anyhow::Result<()> {
+        let mock = MockBech32::new(PREFIX);
+        let mut dao = DaoDaoCw4Gauge::new(mock.clone());
+        dao.upload_with_cw4(mock.clone())?;
+        dao.default_gauge_setup(mock.clone())?;
+
+        let voter1 = mock.addr_make("voter3");
+        let voter2 = mock.addr_make("voter4");
+        let voter3 = mock.addr_make("voter5");
+        let voter4 = mock.addr_make("voter6");
+        let voter5 = mock.addr_make("voter7");
+
+        let gauge2 = dao.init_adapter_return_config(&["option1", "option2"])?;
+        dao.add_adapter_to_gauge(gauge2)?;
+        mock.wait_blocks(1)?;
+        let gauge3 = dao.init_adapter_return_config(&["option3", "option4", "option5"])?;
+        dao.add_adapter_to_gauge(gauge3)?;
+        mock.wait_blocks(1)?;
+
+        dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
+            1,
+            Some(
+                vec![GaugeVote {
+                    option: "option2".to_string(),
+                    weight: Decimal::one(),
+                }]
+                .into(),
+            ),
+        )?;
+        dao.gauge_suite.orchestrator.call_as(&voter2).place_votes(
+            1,
+            Some(
+                vec![GaugeVote {
+                    option: "option2".to_string(),
+                    weight: Decimal::one(),
+                }]
+                .into(),
+            ),
+        )?;
+        dao.gauge_suite.orchestrator.call_as(&voter3).place_votes(
+            2,
+            Some(
+                vec![GaugeVote {
+                    option: "option3".to_string(),
+                    weight: Decimal::one(),
+                }]
+                .into(),
+            ),
+        )?;
+        dao.gauge_suite.orchestrator.call_as(&voter4).place_votes(
+            2,
+            Some(
+                vec![GaugeVote {
+                    option: "option5".to_string(),
+                    weight: Decimal::one(),
+                }]
+                .into(),
+            ),
+        )?;
+        dao.gauge_suite.orchestrator.call_as(&voter5).place_votes(
+            2,
+            Some(
+                vec![GaugeVote {
+                    option: "option5".to_string(),
+                    weight: Decimal::one(),
+                }]
+                .into(),
+            ),
+        )?;
+
+        let selected = dao.gauge_suite.orchestrator.selected_set(1)?;
+        assert_eq!(
+            selected.votes,
+            vec![("option2".to_owned(), Uint128::new(720)),]
+        );
+        let selected = dao.gauge_suite.orchestrator.selected_set(2)?;
+        assert_eq!(
+            selected.votes,
+            vec![
+                ("option5".to_owned(), Uint128::new(290)),
+                ("option3".to_owned(), Uint128::new(130)),
+            ]
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_not_voted_options_are_not_selected() -> anyhow::Result<()> {
+        let mock = MockBech32::new(PREFIX);
+        let mut dao = DaoDaoCw4Gauge::new(mock.clone());
+        dao.upload_with_cw4(mock.clone())?;
+        dao.default_gauge_setup(mock.clone())?;
+
+        let voter1 = mock.addr_make("voter3");
+        let voter2 = mock.addr_make("voter4");
+        let voter3 = mock.addr_make("voter5");
+        let voter4 = mock.addr_make("voter6");
+        let voter5 = mock.addr_make("voter7");
+
+        let members = defualt_voters(mock.clone(), vec![600, 120])?;
+        let voters = members_to_addr(mock.clone(), members.clone())?;
+
+        let gauge =
+            dao.init_adapter_return_config(&["option1", "option2", "option3", "option4"])?;
+        dao.add_adapter_to_gauge(gauge)?;
+
+        dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
+            1,
+            Some(
+                vec![GaugeVote {
+                    option: "option1".to_string(),
+                    weight: Decimal::one(),
+                }]
+                .into(),
+            ),
+        )?;
+        dao.gauge_suite.orchestrator.call_as(&voter2).place_votes(
+            1,
+            Some(
+                vec![GaugeVote {
+                    option: "option2".to_string(),
+                    weight: Decimal::one(),
+                }]
+                .into(),
+            ),
+        )?;
+
+        let selected = dao.gauge_suite.orchestrator.selected_set(1)?;
+        assert_eq!(
+            selected.votes,
+            vec![
+                ("option1".to_owned(), Uint128::new(600)),
+                ("option2".to_owned(), Uint128::new(120)),
+            ]
+        );
+
+        // first voter changes vote to option2
+        dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
+            1,
+            Some(
+                vec![GaugeVote {
+                    option: "option2".to_string(),
+                    weight: Decimal::one(),
+                }]
+                .into(),
+            ),
+        )?;
+
+        let selected = dao.gauge_suite.orchestrator.selected_set(1)?;
+        assert_eq!(
+            selected.votes,
+            vec![("option2".to_owned(), Uint128::new(720)),]
+        );
+
+        Ok(())
+    }
+}
+
+mod voting {
+    //     use std::vec;
+
+    use cw4_group::msg::ExecuteMsg as Cw4ExecuteMsg;
+    use dao_hooks::nft_stake::NftStakeChangedHookMsg;
+    use dao_interface::CoreQueryMsgFns;
+    use gauge_orchestrator::msg::VoteInfo;
+
+    use crate::tests::gauges::helpers::{default_config, multi_vote, simple_vote};
+
+    use dao_gauge_adapter::contract::ExecuteMsgFns;
+
+    use super::*;
+
+    #[test]
+    fn test_add_option() -> anyhow::Result<()> {
+        let mock = MockBech32::new(PREFIX);
+        let mut dao = DaoDaoCw4Gauge::new(mock.clone());
+        dao.upload_with_cw4(mock.clone())?;
+        dao.default_gauge_setup(mock.clone())?;
+
+        let dao_addr = dao.dao_core.address()?;
+        let voter1 = mock.addr_make_with_balance("voter1", coins(1000, "ujuno"))?;
+        let voter2 = mock.addr_make_with_balance("voter2", coins(1000, "ujuno"))?;
+        let not_voter = mock.addr_make_with_balance("not-voter", coins(1000, "ujuno"))?;
+
+        // gauge returns list all options; it does query adapter at initialization
+        let options = dao.gauge_suite.orchestrator.list_options(0, None, None)?;
+        assert_eq!(options.options.len(), 3);
+
+        // add moe valid options to gauge adapter
+
+        dao.gauge_suite
+            .test_adapter
+            .call_as(&dao_addr)
+            .add_valid_option("addedoption1")?;
+        dao.gauge_suite
+            .test_adapter
+            .call_as(&dao_addr)
+            .add_valid_option("addedoption2")?;
+
+        // Voting members can add options
+        dao.gauge_suite
+            .orchestrator
+            .call_as(&voter1)
+            .add_option(0, "addedoption1")?;
+        dao.gauge_suite
+            .orchestrator
+            .call_as(&voter2)
+            .add_option(0, "addedoption2")?;
+
+        // added options are automatically voted for by creators
+        let options = dao.gauge_suite.orchestrator.list_options(0, None, None)?;
+        assert_eq!(
+            options.options,
+            vec![
+                ("addedoption1".to_owned(), Uint128::zero()),
+                ("addedoption2".to_owned(), Uint128::zero()),
+                (voter2.to_string(), Uint128::zero()),
+                (voter1.to_string(), Uint128::zero()),
+                (dao_addr.to_string(), Uint128::zero()),
+            ]
+        );
+
+        // add another valid option to gauge adapter
+        dao.gauge_suite
+            .test_adapter
+            .call_as(&dao_addr)
+            .add_valid_option("addedoption3")?;
+        // Non-voting members cannot add options
+        let err = dao
+            .gauge_suite
+            .orchestrator
+            .call_as(&not_voter)
+            .add_option(0, "addedoption3")
+            .unwrap_err();
+        assert_eq!(
+            ContractError::NoVotingPower(not_voter.to_string()),
+            err.downcast().unwrap()
+        );
+
+        Ok(())
+    }
+    #[test]
+    fn test_remove_option() -> anyhow::Result<()> {
+        let mock = MockBech32::new(PREFIX);
+        let mut dao = DaoDaoCw4Gauge::new(mock.clone());
+        dao.upload_with_cw4(mock.clone())?;
+        dao.default_gauge_setup(mock.clone())?;
+        let dao_addr = dao.dao_core.address()?;
+        let voter1 = mock.addr_make_with_balance("voter1", coins(1000, "ujuno"))?;
+        let voter2 = mock.addr_make_with_balance("voter2", coins(1000, "ujuno"))?;
+        let gauge_id = 0;
+
+        // gauge returns list all options; it does query adapter at initialization
+        let options = dao
+            .gauge_suite
+            .orchestrator
+            .list_options(gauge_id, None, None)?;
+        assert_eq!(options.options.len(), 3);
+
+        // add new valid options to the gauge adapter
+        dao.gauge_suite
+            .test_adapter
+            .call_as(&dao_addr)
+            .add_valid_option("addedoption1")?;
+        dao.gauge_suite
+            .test_adapter
+            .call_as(&dao_addr)
+            .add_valid_option("addedoption2")?;
+
+        // Voting members can add options
+        dao.gauge_suite
+            .orchestrator
+            .call_as(&voter1)
+            .add_option(gauge_id, "addedoption1")?;
+        dao.gauge_suite
+            .orchestrator
+            .call_as(&voter2)
+            .add_option(gauge_id, "addedoption2")?;
+
+        let options = dao
+            .gauge_suite
+            .orchestrator
+            .list_options(gauge_id, None, None)?;
+        assert_eq!(options.options.len(), 5);
+
+        // owner can remove an option that has been added already
+        dao.gauge_suite
+            .orchestrator
+            .call_as(&dao_addr)
+            .remove_option(gauge_id, "addedoption1")?;
+        // Anyone else cannot remove options
+        let err = dao
+            .gauge_suite
+            .orchestrator
+            .call_as(&voter1)
+            .remove_option(gauge_id, "addedoption2")
+            .unwrap_err();
+        assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
+        // one has been removed
+        let options = dao
+            .gauge_suite
+            .orchestrator
+            .list_options(gauge_id, None, None)?;
+        assert_eq!(options.options.len(), 4);
+
+        // invalidate added option
+        mock.call_as(&dao_addr).execute(
+            &AdapterExecuteMsg::InvalidateOption {
+                option: "addedoption2".into(),
+            },
+            &vec![],
+            &dao.gauge_suite.test_adapter.address()?,
+        )?;
+        // owner can remove an option that is no longer valid
+        dao.gauge_suite
+            .orchestrator
+            .call_as(&dao_addr)
+            .remove_option(gauge_id, "addedoption2")?;
+        // Both options are now removed
+        let options = dao
+            .gauge_suite
+            .orchestrator
+            .list_options(gauge_id, None, None)?;
+        assert_eq!(options.options.len(), 3);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_vote_for_option() -> anyhow::Result<()> {
+        let mock = MockBech32::new(PREFIX);
+        let mut dao = DaoDaoCw4Gauge::new(mock.clone());
+        dao.upload_with_cw4(mock.clone())?;
+        dao.default_gauge_setup(mock.clone())?;
+        let dao_addr = dao.dao_core.address()?;
+        let voter1 = mock.addr_make_with_balance("voter1", coins(1000, "ujuno"))?;
+        let voter2 = mock.addr_make_with_balance("voter2", coins(1000, "ujuno"))?;
+        let gauge_id = 0;
+        let adapter = dao.gauge_suite.test_adapter.address()?;
+
+        // vote for option from adapter (voting members are by default
+        // options in adapter in this test suite)
+        dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
+            gauge_id,
+            Some(vec![gauge_orchestrator::state::Vote {
+                option: voter1.to_string(),
+                weight: Decimal::percent(90),
+            }]),
+        )?;
+        assert_eq!(
+            VoteInfo {
+                voter: voter1.to_string(),
+                votes: vec![gauge_orchestrator::state::Vote {
+                    option: voter1.to_string(),
+                    weight: Decimal::percent(90),
+                }],
+                cast: Some(mock.block_info()?.time.seconds()),
+            },
+            dao.gauge_suite
+                .orchestrator
+                .vote(gauge_id, voter1.clone())?
+                .vote
+                .unwrap(),
+        );
+        // check tally is proper
+        let selected = dao.gauge_suite.orchestrator.selected_set(gauge_id)?;
+        assert_eq!(
+            selected.votes,
+            vec![(voter1.to_string(), Uint128::from(90u128))]
+        );
+        // add new valid options to the gauge adapter
+        mock.call_as(&dao_addr).execute(
+            &dao_gauge_adapter::contract::ExecuteMsg::AddValidOption {
+                option: "option1".into(),
+            },
+            &vec![],
+            &adapter.clone(),
+        )?;
+        mock.call_as(&dao_addr).execute(
+            &dao_gauge_adapter::contract::ExecuteMsg::AddValidOption {
+                option: "option2".into(),
+            },
+            &vec![],
+            &adapter.clone(),
+        )?;
+
+        // change vote for option added through gauge
+        dao.gauge_suite
+            .orchestrator
+            .call_as(&voter1)
+            .add_option(gauge_id, "option1")?;
+        dao.gauge_suite
+            .orchestrator
+            .call_as(&voter2)
+            .add_option(gauge_id, "option2")?;
+        // voter2 drops vote as well
+        dao.gauge_suite.orchestrator.call_as(&voter2).place_votes(
+            gauge_id,
+            Some(vec![
+                gauge_orchestrator::state::Vote {
+                    option: "option1".to_string(),
+                    weight: Decimal::percent(50),
+                },
+                gauge_orchestrator::state::Vote {
+                    option: "option2".to_string(),
+                    weight: Decimal::percent(50),
+                },
+            ]),
+        )?;
+        assert_eq!(
+            vec![
+                multi_vote(
+                    &voter2.to_string(),
+                    &[("option1", 50), ("option2", 50)],
+                    mock.block_info()?.time.seconds(),
+                ),
+                simple_vote(
+                    &voter1.to_string(),
+                    &voter1.to_string(),
+                    90,
+                    mock.block_info()?.time.seconds()
+                ),
+            ],
+            dao.gauge_suite
+                .orchestrator
+                .list_votes(gauge_id, None, None)?
+                .votes
+        );
+
+        // placing vote again overwrites previous ones
+        dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
+            gauge_id,
+            Some(vec![gauge_orchestrator::state::Vote {
+                option: "option1".to_string(),
+                weight: Decimal::percent(90),
+            }]),
+        )?;
+        dao.gauge_suite.orchestrator.call_as(&voter2).place_votes(
+            gauge_id,
+            Some(vec![gauge_orchestrator::state::Vote {
+                option: "option1".to_string(),
+                weight: Decimal::percent(90),
+            }]),
+        )?;
+        assert_eq!(
+            vec![
+                simple_vote(
+                    &voter2.to_string(),
+                    "option1",
+                    90,
+                    mock.block_info()?.time.seconds()
+                ),
+                simple_vote(
+                    &voter1.to_string(),
+                    "option1",
+                    90,
+                    mock.block_info()?.time.seconds()
+                ),
+            ],
+            dao.gauge_suite
+                .orchestrator
+                .list_votes(gauge_id, None, None)?
+                .votes,
+        );
+
+        // vote for non-existing option
+        let err = dao
+            .gauge_suite
+            .orchestrator
+            .call_as(&voter2)
+            .place_votes(
+                gauge_id,
+                Some(vec![gauge_orchestrator::state::Vote {
+                    option: "option420".to_string(),
+                    weight: Decimal::percent(90),
+                }]),
+            )
+            .unwrap_err();
+        assert_eq!(
+            ContractError::OptionDoesNotExists {
+                option: "option420".to_owned(),
+                gauge_id,
+            },
+            err.downcast().unwrap()
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_remove_vote() -> anyhow::Result<()> {
+        let mock = MockBech32::new(PREFIX);
+        let mut dao = DaoDaoCw4Gauge::new(mock.clone());
+        dao.upload_with_cw4(mock.clone())?;
+        dao.default_gauge_setup(mock.clone())?;
+        let dao_addr = dao.dao_core.address()?;
+        let voter1 = mock.addr_make_with_balance("voter1", coins(1000, "ujuno"))?;
+        let voter2 = mock.addr_make_with_balance("voter2", coins(1000, "ujuno"))?;
+        let gauge_id = 0;
+        let adapter = dao.gauge_suite.test_adapter.address()?;
+
+        // vote for option from adapter (voting members are by default
+        // options in adapter in this test suite)
+        dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
+            gauge_id,
+            Some(vec![gauge_orchestrator::state::Vote {
+                option: voter1.to_string(),
+                weight: Decimal::one(),
+            }]),
+        )?;
+        dao.gauge_suite.orchestrator.call_as(&voter2).place_votes(
+            gauge_id,
+            Some(vec![gauge_orchestrator::state::Vote {
+                option: voter1.to_string(),
+                weight: Decimal::one(),
+            }]),
+        )?;
+
+        assert_eq!(
+            vec![
+                simple_vote(
+                    &voter2.to_string(),
+                    &voter1.to_string(),
+                    100,
+                    mock.block_info()?.time.seconds()
+                ),
+                simple_vote(
+                    &voter1.to_string(),
+                    &voter1.to_string(),
+                    100,
+                    mock.block_info()?.time.seconds()
+                ),
+            ],
+            dao.gauge_suite
+                .orchestrator
+                .list_votes(gauge_id, None, None)?
+                .votes
+        );
+
+        // remove vote
+        dao.gauge_suite
+            .orchestrator
+            .call_as(&voter1)
+            .place_votes(gauge_id, None)?;
+        assert_eq!(
+            vec![simple_vote(
+                &voter2.to_string(),
+                &voter1.to_string(),
+                100,
+                mock.block_info()?.time.seconds()
+            )],
+            dao.gauge_suite
+                .orchestrator
+                .list_votes(gauge_id, None, None)?
+                .votes
+        );
+        assert_eq!(
+            None,
+            dao.gauge_suite
+                .orchestrator
+                .vote(gauge_id, voter1.to_string())?
+                .vote
+        );
+        assert_eq!(
+            Some(simple_vote(
+                &voter2.to_string(),
+                &voter1.to_string(),
+                100,
+                mock.block_info()?.time.seconds()
+            )),
+            dao.gauge_suite
+                .orchestrator
+                .vote(gauge_id, voter2.to_string())?
+                .vote
+        );
+
+        // remove nonexisting vote
+        let err = dao
+            .gauge_suite
+            .orchestrator
+            .call_as(&voter1)
+            .place_votes(gauge_id, None)
+            .unwrap_err();
+        assert_eq!(
+            ContractError::CannotRemoveNonexistingVote {},
+            err.downcast().unwrap()
+        );
+
+        Ok(())
+    }
+    #[test]
+    fn test_votes_stays_the_same_after_execution() -> anyhow::Result<()> {
+        let mock = MockBech32::new(PREFIX);
+        let mut dao = DaoDaoCw4Gauge::new(mock.clone());
+        dao.upload_with_cw4(mock.clone())?;
+        dao.default_gauge_setup(mock.clone())?;
+        let dao_addr = dao.dao_core.address()?;
+        let voter1 = mock.addr_make_with_balance("voter1", coins(1000, "ujuno"))?;
+        let voter2 = mock.addr_make_with_balance("voter2", coins(1000, "ujuno"))?;
+        let gauge_id = 0;
+        let adapter = dao.gauge_suite.test_adapter.address()?;
+
+        // vote for one of the options in gauge
+        dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
+            gauge_id,
+            Some(vec![gauge_orchestrator::state::Vote {
+                option: voter1.to_string(),
+                weight: Decimal::one(),
+            }]),
+        )?;
+        dao.gauge_suite.orchestrator.call_as(&voter2).place_votes(
+            gauge_id,
+            Some(vec![gauge_orchestrator::state::Vote {
+                option: voter1.to_string(),
+                weight: Decimal::one(),
+            }]),
+        )?;
+
+        // voter1 was option voted for with two 100 voting powers combined
+        let selected = dao.gauge_suite.orchestrator.selected_set(gauge_id)?;
+        assert_eq!(
+            selected.votes,
+            vec![(voter1.to_string(), Uint128::new(200))]
+        );
+        // before advancing specified epoch tally won't get sampled
+        mock.wait_seconds(EPOCH)?;
+        assert_eq!(
+            vec![
+                simple_vote(
+                    &voter2.to_string(),
+                    &voter1.to_string(),
+                    100,
+                    mock.block_info()?.time.seconds() - EPOCH
+                ),
+                simple_vote(
+                    &voter1.to_string(),
+                    &voter1.to_string(),
+                    100,
+                    mock.block_info()?.time.seconds() - EPOCH
+                )
+            ],
+            dao.gauge_suite
+                .orchestrator
+                .list_votes(gauge_id, None, None)?
+                .votes
+        );
+
+        mock.call_as(&dao_addr).execute(
+            &GaugeExecuteMsg::Execute { gauge: gauge_id },
+            &vec![],
+            &dao.gauge_suite.orchestrator.address()?,
+        )?;
+
+        assert_eq!(
+            vec![
+                simple_vote(
+                    &voter2.to_string(),
+                    &voter1.to_string(),
+                    100,
+                    mock.block_info()?.time.seconds() - EPOCH
+                ),
+                simple_vote(
+                    &voter1.to_string(),
+                    &voter1.to_string(),
+                    100,
+                    mock.block_info()?.time.seconds() - EPOCH
+                ),
+            ],
+            dao.gauge_suite
+                .orchestrator
+                .list_votes(gauge_id, None, None)?
+                .votes
+        );
+
+        assert_eq!(
+            Some(simple_vote(
+                &voter1.to_string(),
+                &voter1.to_string(),
+                100,
+                mock.block_info()?.time.seconds() - EPOCH
+            )),
+            dao.gauge_suite
+                .orchestrator
+                .vote(gauge_id, voter1.to_string())?
+                .vote
+        );
+        assert_eq!(
+            Some(simple_vote(
+                &voter2.to_string(),
+                &voter1.to_string(),
+                100,
+                mock.block_info()?.time.seconds() - EPOCH
+            )),
+            dao.gauge_suite
+                .orchestrator
+                .vote(gauge_id, voter2.to_string())?
+                .vote
+        );
+
+        Ok(())
+    }
+    #[test]
+    fn test_vote_for_max_capped_option() -> anyhow::Result<()> {
+        let mock = MockBech32::new(PREFIX);
+        let mut dao = DaoDaoCw4Gauge::new(mock.clone());
+        dao.upload_with_cw4(mock.clone())?;
+        dao.default_gauge_setup(mock.clone())?;
+        let dao_addr = dao.dao_core.address()?;
+        let voter1 = mock.addr_make_with_balance("voter1", coins(1000, "ujuno"))?;
+        let voter2 = mock.addr_make_with_balance("voter2", coins(1000, "ujuno"))?;
+
+        let mut gauge = dao.init_adapter_return_config(&[voter1.as_str(), voter2.as_str()])?;
+        gauge.max_available_percentage = Some(Decimal::percent(10));
+        dao.add_adapter_to_gauge(gauge)?;
+        let gauge_id = 1;
+
+        // wait until epoch passes
+        mock.wait_seconds(EPOCH)?;
+
+        // add more valid options to gauge adapter
+        mock.call_as(&dao_addr).execute(
+            &dao_gauge_adapter::contract::ExecuteMsg::AddValidOption {
+                option: "option1".into(),
+            },
+            &vec![],
+            &dao.gauge_suite.test_adapter.address()?,
+        )?;
+        mock.call_as(&dao_addr).execute(
+            &dao_gauge_adapter::contract::ExecuteMsg::AddValidOption {
+                option: "option2".into(),
+            },
+            &vec![],
+            &dao.gauge_suite.test_adapter.address()?,
+        )?;
+
+        // change vote for option added through gauge
+        dao.gauge_suite
+            .orchestrator
+            .call_as(&voter1)
+            .add_option(gauge_id, "option1")?;
+        dao.gauge_suite
+            .orchestrator
+            .call_as(&voter2)
+            .add_option(gauge_id, "option2")?;
+
+        // vote 100% voting power on 'voter1' option (100 weight)
+        dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
+            gauge_id,
+            Some(vec![gauge_orchestrator::state::Vote {
+                option: "option1".to_string(),
+                weight: Decimal::one(),
+            }]),
+        )?;
+
+        // vote 10% voting power on 'voter2' option (10 weight)
+        dao.gauge_suite.orchestrator.call_as(&voter2).place_votes(
+            gauge_id,
+            Some(vec![gauge_orchestrator::state::Vote {
+                option: "option2".to_string(),
+                weight: Decimal::percent(10),
+            }]),
+        )?;
+
+        assert_eq!(
+            vec![
+                multi_vote(
+                    &voter2.to_string(),
+                    &[("option2", 10)],
+                    mock.block_info()?.time.seconds(),
+                ),
+                multi_vote(
+                    &voter1.to_string(),
+                    &[("option1", 100)],
+                    mock.block_info()?.time.seconds(),
+                ),
+            ],
+            dao.gauge_suite
+                .orchestrator
+                .list_votes(gauge_id, None, None)?
+                .votes
+        );
+
+        let selected_set = dao.gauge_suite.orchestrator.selected_set(gauge_id)?.votes;
+        // Despite 'option1' having 100 voting power and option2 having 10 voting power,
+        // because of max vote cap set to 10% now 'option1' will have its power decreased to 10% * 110
+        // 'option2' stays at 10 voting power as it was below 10% of total votes
+        assert_eq!(
+            selected_set,
+            vec![
+                ("option1".to_owned(), Uint128::new(11)),
+                ("option2".to_owned(), Uint128::new(10))
+            ]
+        );
+
+        Ok(())
+    }
+    #[test]
+    fn test_membership_voting_power_change() -> anyhow::Result<()> {
+        let mock = MockBech32::new(PREFIX);
+        let voter1 = mock.addr_make_with_balance("voter1", coins(1000, "ujuno"))?;
+        let voter2 = mock.addr_make_with_balance("voter2", coins(1000, "ujuno"))?;
+        let mut dao = DaoDaoCw4Gauge::new(mock.clone());
+        dao.upload_with_cw4(mock.clone())?;
+        dao.custom_gauge_setup(
+            mock.clone(),
+            vec![coin(100, voter1.to_string()), coin(100, voter2.to_string())],
+            &[voter1.as_str(), voter2.as_str()],
+        )?;
+        let dao_addr = dao.dao_core.address()?;
+        let test_adapter = dao.gauge_suite.test_adapter.address()?;
+        let gauge_id = 0;
+
+        // vote for option from adapter (voting members are by default
+        // options in adapter in this test suite)
+        dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
+            gauge_id,
+            Some(vec![gauge_orchestrator::state::Vote {
+                option: voter1.to_string(),
+                weight: Decimal::percent(90),
+            }]),
+        )?;
+
+        assert_eq!(
+            Some(simple_vote(
+                &voter1.to_string(),
+                &voter1.to_string(),
+                90,
+                mock.block_info()?.time.seconds()
+            )),
+            dao.gauge_suite
+                .orchestrator
+                .vote(gauge_id, voter1.to_string())?
+                .vote
+        );
+        // check tally is proper
+        let selected_set = dao.gauge_suite.orchestrator.selected_set(gauge_id)?.votes;
+        assert_eq!(selected_set, vec![(voter1.to_string(), Uint128::new(90))]);
+        // add new valid options to the gauge adapter
+        mock.call_as(&dao_addr).execute(
+            &dao_gauge_adapter::contract::ExecuteMsg::AddValidOption {
+                option: "option1".into(),
+            },
+            &vec![],
+            &test_adapter.clone(),
+        )?;
+        mock.call_as(&dao_addr).execute(
+            &dao_gauge_adapter::contract::ExecuteMsg::AddValidOption {
+                option: "option2".into(),
+            },
+            &vec![],
+            &test_adapter.clone(),
+        )?;
+
+        // change vote for option added through gauge
+        dao.gauge_suite
+            .orchestrator
+            .call_as(&voter1)
+            .add_option(gauge_id, "option1")?;
+        dao.gauge_suite
+            .orchestrator
+            .call_as(&voter2)
+            .add_option(gauge_id, "option2")?;
+
+        // voter2 drops vote1
+        dao.gauge_suite.orchestrator.call_as(&voter2).place_votes(
+            gauge_id,
+            Some(vec![
+                gauge_orchestrator::state::Vote {
+                    option: "option1".to_string(),
+                    weight: Decimal::percent(50),
+                },
+                gauge_orchestrator::state::Vote {
+                    option: "option2".to_string(),
+                    weight: Decimal::percent(50),
+                },
+            ]),
+        )?;
+        assert_eq!(
+            vec![
+                multi_vote(
+                    &voter2.to_string(),
+                    &[("option1", 50), ("option2", 50)],
+                    mock.block_info()?.time.seconds(),
+                ),
+                simple_vote(
+                    &voter1.to_string(),
+                    &voter1.to_string(),
+                    90,
+                    mock.block_info()?.time.seconds()
+                ),
+            ],
+            dao.gauge_suite
+                .orchestrator
+                .list_votes(gauge_id, None, None)?
+                .votes
+        );
+
+        // execute after epoch passes
+        mock.wait_seconds(EPOCH)?;
+        mock.call_as(&dao_addr).execute(
+            &GaugeExecuteMsg::Execute { gauge: gauge_id },
+            &vec![],
+            &dao.gauge_suite.orchestrator.address()?,
+        )?;
+
+        // confirm gauge recieved vote
+        let pre_voter1_takeover_gauge_set =
+            dao.gauge_suite.orchestrator.selected_set(gauge_id)?.votes;
+
+        // voter1 option is least popular
+        assert_eq!(
+            pre_voter1_takeover_gauge_set,
+            vec![
+                (voter1.to_string(), Uint128::new(90)),
+                ("option2".to_string(), Uint128::new(50)), // both voters have same voting power
+                ("option1".to_string(), Uint128::new(50)),
+            ]
+        );
+
+        // Force update members, giving voter 1 more power
+        mock.call_as(&dao_addr).execute(
+            &Cw4ExecuteMsg::UpdateMembers {
+                remove: vec![],
+                add: vec![Member {
+                    addr: voter1.to_string(),
+                    weight: 1000,
+                }],
+            },
+            &vec![],
+            &dao.cw4_vote.group_contract()?,
+        )?;
+        mock.wait_blocks(1)?;
+
+        let current_gauge_set = dao.gauge_suite.orchestrator.selected_set(gauge_id)?.votes;
+
+        // Currect selected set should be different than before voter1 got power
+        assert_ne!(pre_voter1_takeover_gauge_set, current_gauge_set);
+
+        // Voter1 option is now most popular
+        assert_eq!(
+            current_gauge_set,
+            vec![
+                (voter1.to_string(), Uint128::new(90)),
+                ("option2".to_string(), Uint128::new(50)),
+                ("option1".to_string(), Uint128::new(50))
+            ]
+        );
+
+        // Execute after epoch passes
+        mock.wait_seconds(EPOCH)?;
+        mock.call_as(&dao_addr).execute(
+            &GaugeExecuteMsg::Execute { gauge: gauge_id },
+            &vec![],
+            &dao.gauge_suite.orchestrator.address()?,
+        )?;
+
+        // Force update members, kick out voter 1
+        mock.call_as(&dao_addr).execute(
+            &Cw4ExecuteMsg::UpdateMembers {
+                remove: vec![voter1.to_string()],
+                add: vec![],
+            },
+            &vec![],
+            &dao.cw4_vote.group_contract()?,
+        )?;
+        mock.wait_blocks(1)?;
+
+        // Execute after epoch passes
+        mock.wait_seconds(EPOCH)?;
+        mock.call_as(&dao_addr).execute(
+            &GaugeExecuteMsg::Execute { gauge: gauge_id },
+            &vec![],
+            &dao.gauge_suite.orchestrator.address()?,
+        )?;
+
+        let current_gauge_set = dao
+            .gauge_suite
+            .orchestrator
+            .last_executed_set(gauge_id)?
+            .votes;
+        // Voter1 option is now most popular
+        assert_eq!(
+            current_gauge_set,
+            Some(vec![
+                ("option2".to_string(), Uint128::new(50)),
+                ("option1".to_string(), Uint128::new(50))
+            ])
+        );
+
+        Ok(())
+    }
     //     #[test]
-    //     fn test_multiple_options_two_gauges() -> anyhow::Result<()> {
+    //     fn test_token_staking_voting_power_change() -> anyhow::Result<()> {
     //         let mock = MockBech32::new("mock");
     //         let mut dao = default_gauge_setup(mock.clone())?;
     //         let dao_addr = dao.dao_core.address()?;
+    //         let voter1 = mock.addr_make_with_balance("voter1", coins(1000, "ujuno"))?;
+    //         let voter2 = mock.addr_make_with_balance("voter2", coins(1000, "ujuno"))?;
     //         let cw4 = dao.cw4_vote.group_contract()?;
-
-    //         let members = defualt_voters(mock.clone(), vec![600, 120, 130, 140, 150])?;
-    //         let voters = members_to_addr(mock.clone(), members.clone())?;
+    //         let gauge = dao.gauge_suite.orchestrator.address()?;
+    //         // running this logic, we expect dao to have 3 proposal modules, this custom gauge being the third [2].
+    //         // todo: grab addr from events
+    //         let test_adapter = upload_and_init_custom_testing_gauge(&mut dao, mock.clone(), vec![])?;
+    //         let config = default_config(test_adapter.clone())?;
+    //         // create gauge and add to orchestrator
+    //         mock.call_as(&dao_addr).execute(
+    //             &gauge_orchestrator::msg::ExecuteMsg::CreateGauge(config),
+    //             &vec![],
+    //             &gauge.clone(),
+    //         )?;
 
     //         mock.call_as(&dao_addr).execute(
-    //             &cw4_group::msg::ExecuteMsg::UpdateMembers {
-    //                 remove: vec![],
-    //                 add: members,
+    //             &Cw4ExecuteMsg::AddHook {
+    //                 addr: gauge.to_string(),
     //             },
     //             &vec![],
-    //             &cw4,
-    //         )?;
-    //         mock.wait_blocks(1)?;
-    //         init_adapter_and_create_gauge(
-    //             &mut dao,
-    //             dao_addr.clone(),
-    //             coin(1000, "ujuno"),
-    //             &["option1", "option2"],
+    //             &cw4.clone(),
     //         )?;
 
-    //         init_adapter_and_create_gauge(
-    //             &mut dao,
-    //             dao_addr.clone(),
-    //             coin(1000, "ujuno"),
-    //             &["option3", "option4", "option5"],
+    //         // vote for option from adapter (voting members are by default
+    //         // options in adapter in this test suite)
+
+    //         dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
+    //             1,
+    //             Some(vec![gauge_orchestrator::state::Vote {
+    //                 option: voter1.to_string(),
+    //                 weight: Decimal::percent(90),
+    //             }]),
     //         )?;
 
-    //         place_gauge_vote(
-    //             mock.clone(),
-    //             voters[0].clone(),
-    //             dao.gauge_suite.orchestrator.address()?,
-    //             0,
-    //             vec![GaugeVote {
-    //                 option: "option2".to_string(),
-    //                 weight: Decimal::one(),
-    //             }],
-    //         )?;
-    //         place_gauge_vote(
-    //             mock.clone(),
-    //             voters[1].clone(),
-    //             dao.gauge_suite.orchestrator.address()?,
-    //             0,
-    //             vec![GaugeVote {
-    //                 option: "option2".to_string(),
-    //                 weight: Decimal::one(),
-    //             }],
-    //         )?;
-    //         place_gauge_vote(
-    //             mock.clone(),
-    //             voters[2].clone(),
-    //             dao.gauge_suite.orchestrator.address()?,
-    //             1,
-    //             vec![GaugeVote {
-    //                 option: "option3".to_string(),
-    //                 weight: Decimal::one(),
-    //             }],
-    //         )?;
-    //         place_gauge_vote(
-    //             mock.clone(),
-    //             voters[3].clone(),
-    //             dao.gauge_suite.orchestrator.address()?,
-    //             1,
-    //             vec![GaugeVote {
-    //                 option: "option4".to_string(),
-    //                 weight: Decimal::one(),
-    //             }],
-    //         )?;
-    //         place_gauge_vote(
-    //             mock.clone(),
-    //             voters[4].clone(),
-    //             dao.gauge_suite.orchestrator.address()?,
-    //             1,
-    //             vec![GaugeVote {
-    //                 option: "option5".to_string(),
-    //                 weight: Decimal::one(),
-    //             }],
-    //         )?;
-
-    //         let selected = dao.gauge_suite.orchestrator.selected_set(0)?;
     //         assert_eq!(
-    //             selected.votes,
-    //             vec![("option2".to_owned(), Uint128::new(720)),]
+    //             Some(simple_vote(
+    //                 &voter1.to_string(),
+    //                 &voter1.to_string(),
+    //                 90,
+    //                 mock.block_info()?.time.seconds()
+    //             )),
+    //             dao.gauge_suite
+    //                 .orchestrator
+    //                 .vote(1, voter1.to_string())?
+    //                 .vote
     //         );
-    //         let selected = dao.gauge_suite.orchestrator.selected_set(1)?;
+    //         // check tally is proper
+    //         let selected_set = dao.gauge_suite.orchestrator.selected_set(1)?.votes;
+    //         assert_eq!(selected_set, vec![(voter1.to_string(), Uint128::new(90))]);
+    //         // add new valid options to the gauge adapter
+    //         mock.call_as(&dao_addr).execute(
+    //             &dao_gauge_adapter::contract::ExecuteMsg::AddValidOption {
+    //                 option: "option1".into(),
+    //             },
+    //             &vec![],
+    //             &test_adapter.clone(),
+    //         )?;
+    //         mock.call_as(&dao_addr).execute(
+    //             &dao_gauge_adapter::contract::ExecuteMsg::AddValidOption {
+    //                 option: "option2".into(),
+    //             },
+    //             &vec![],
+    //             &test_adapter.clone(),
+    //         )?;
+
+    //         // change vote for option added through gauge
+    //         dao.gauge_suite
+    //             .orchestrator
+    //             .call_as(&voter1)
+    //             .add_option(0, "option1")?;
+    //         dao.gauge_suite
+    //             .orchestrator
+    //             .call_as(&voter2)
+    //             .add_option(0, "option2")?;
+
+    //         // voter2 drops vote1
+    //         dao.gauge_suite.orchestrator.call_as(&voter2).place_votes(
+    //             1,
+    //             Some(vec![
+    //                 gauge_orchestrator::state::Vote {
+    //                     option: "option1".to_string(),
+    //                     weight: Decimal::percent(50),
+    //                 },
+    //                 gauge_orchestrator::state::Vote {
+    //                     option: "option2".to_string(),
+    //                     weight: Decimal::percent(50),
+    //                 },
+    //             ]),
+    //         )?;
     //         assert_eq!(
-    //             selected.votes,
+    //             simple_vote(
+    //                 &voter1.to_string(),
+    //                 &voter1.to_string(),
+    //                 90,
+    //                 mock.block_info()?.time.seconds()
+    //             ),
+    //             multi_vote(
+    //                 &voter2.to_string(),
+    //                 &[("option1", 50), ("option2", 50)],
+    //                 mock.block_info()?.time.seconds(),
+    //             )
+    //         );
+
+    //         // execute after epoch passes
+    //         mock.wait_seconds(EPOCH)?;
+    //         mock.call_as(&dao_addr).execute(
+    //             &GaugeExecuteMsg::Execute { gauge: 1 },
+    //             &vec![],
+    //             &gauge.clone(),
+    //         )?;
+    //         mock.next_block()?;
+
+    //         // confirm gauge recieved vote
+    //         let selected_set = dao.gauge_suite.orchestrator.selected_set(1)?.votes;
+
+    //         // voter1 option is least popular
+    //         assert_eq!(
+    //             selected_set,
     //             vec![
-    //                 ("option5".to_owned(), Uint128::new(290)),
-    //                 ("option3".to_owned(), Uint128::new(130)),
+    //                 ("option2".to_string(), Uint128::new(100)),
+    //                 ("option1".to_string(), Uint128::new(100)),
+    //                 ("voter1".to_string(), Uint128::new(90))
+    //             ]
+    //         );
+
+    //         // Use hook caller to mock voter1 staking
+    //         dao.gauge_suite.orchestrator.stake_change_hook(
+    //             dao_hooks::stake::StakeChangedHookMsg::Stake {
+    //                 addr: voter1.clone(),
+    //                 amount: Uint128::new(900),
+    //             },
+    //         )?;
+
+    //         // Currect selected set should be different than before voter1 got power
+    //         let current_gauge_set = dao.gauge_suite.orchestrator.selected_set(1)?.votes;
+    //         assert_eq!(
+    //             current_gauge_set,
+    //             vec![
+    //                 ("voter1".to_string(), Uint128::new(900)),
+    //                 ("option2".to_string(), Uint128::new(100)),
+    //                 ("option1".to_string(), Uint128::new(100))
+    //             ]
+    //         );
+
+    //         // Execute after epoch passes
+    //         mock.wait_seconds(EPOCH)?;
+    //         mock.call_as(&dao_addr).execute(
+    //             &GaugeExecuteMsg::Execute { gauge: 1 },
+    //             &vec![],
+    //             &gauge.clone(),
+    //         )?;
+
+    //         // Mock voter 1 unstaking
+    //         dao.gauge_suite
+    //             .orchestrator
+    //             .call_as(&dao_addr)
+    //             .stake_change_hook(dao_hooks::stake::StakeChangedHookMsg::Stake {
+    //                 addr: voter1.clone(),
+    //                 amount: Uint128::new(1000),
+    //             })?;
+    //         mock.next_block()?;
+
+    //         // Currect selected set should be different than before voter1 got power
+    //         let current_gauge_set = dao.gauge_suite.orchestrator.selected_set(1)?.votes;
+    //         assert_eq!(
+    //             current_gauge_set,
+    //             vec![
+    //                 ("option2".to_string(), Uint128::new(100)),
+    //                 ("option1".to_string(), Uint128::new(100))
     //             ]
     //         );
 
     //         Ok(())
+    //     }
+    //     #[test]
+    //     fn test_nft_staking_voting_power_change() -> anyhow::Result<()> {
+    //         let mock = MockBech32::new("mock");
+    //         let mut dao = default_gauge_setup(mock.clone())?;
+    //         let dao_addr = dao.dao_core.address()?;
+    //         let voter1 = mock.addr_make_with_balance("voter1", coins(1000, "ujuno"))?;
+    //         let voter2 = mock.addr_make_with_balance("voter2", coins(1000, "ujuno"))?;
+    //         let cw4 = dao.cw4_vote.group_contract()?;
+    //         let gauge = dao.gauge_suite.orchestrator.address()?;
+    //         // running this logic, we expect dao to have 3 proposal modules, this custom gauge being the third [2].
+    //         // todo: grab addr from events
+    //         let test_adapter = upload_and_init_custom_testing_gauge(&mut dao, mock.clone(), vec![])?;
+    //         let config = default_config(test_adapter.clone())?;
+    //         // create gauge and add to orchestrator
+    //         mock.call_as(&dao_addr).execute(
+    //             &gauge_orchestrator::msg::ExecuteMsg::CreateGauge(config),
+    //             &vec![],
+    //             &gauge.clone(),
+    //         )?;
+
+    //         mock.call_as(&dao_addr).execute(
+    //             &Cw4ExecuteMsg::AddHook {
+    //                 addr: gauge.to_string(),
+    //             },
+    //             &vec![],
+    //             &cw4.clone(),
+    //         )?;
+
+    //         // vote for option from adapter (voting members are by default
+    //         // options in adapter in this test suite)
+
+    //         dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
+    //             1,
+    //             Some(vec![gauge_orchestrator::state::Vote {
+    //                 option: voter1.to_string(),
+    //                 weight: Decimal::percent(90),
+    //             }]),
+    //         )?;
+
+    //         assert_eq!(
+    //             Some(simple_vote(
+    //                 &voter1.to_string(),
+    //                 &voter1.to_string(),
+    //                 90,
+    //                 mock.block_info()?.time.seconds()
+    //             )),
+    //             dao.gauge_suite
+    //                 .orchestrator
+    //                 .vote(1, voter1.to_string())?
+    //                 .vote
+    //         );
+    //         // check tally is proper
+    //         let selected_set = dao.gauge_suite.orchestrator.selected_set(1)?.votes;
+    //         assert_eq!(selected_set, vec![(voter1.to_string(), Uint128::new(90))]);
+    //         // add new valid options to the gauge adapter
+    //         mock.call_as(&dao_addr).execute(
+    //             &dao_gauge_adapter::contract::ExecuteMsg::AddValidOption {
+    //                 option: "option1".into(),
+    //             },
+    //             &vec![],
+    //             &test_adapter.clone(),
+    //         )?;
+    //         mock.call_as(&dao_addr).execute(
+    //             &dao_gauge_adapter::contract::ExecuteMsg::AddValidOption {
+    //                 option: "option2".into(),
+    //             },
+    //             &vec![],
+    //             &test_adapter.clone(),
+    //         )?;
+
+    //         // change vote for option added through gauge
+    //         dao.gauge_suite
+    //             .orchestrator
+    //             .call_as(&voter1)
+    //             .add_option(0, "option1")?;
+    //         dao.gauge_suite
+    //             .orchestrator
+    //             .call_as(&voter2)
+    //             .add_option(0, "option2")?;
+
+    //         // voter2 drops vote1
+    //         dao.gauge_suite.orchestrator.call_as(&voter2).place_votes(
+    //             1,
+    //             Some(vec![
+    //                 gauge_orchestrator::state::Vote {
+    //                     option: "option1".to_string(),
+    //                     weight: Decimal::percent(50),
+    //                 },
+    //                 gauge_orchestrator::state::Vote {
+    //                     option: "option2".to_string(),
+    //                     weight: Decimal::percent(50),
+    //                 },
+    //             ]),
+    //         )?;
+    //         assert_eq!(
+    //             simple_vote(
+    //                 &voter1.to_string(),
+    //                 &voter1.to_string(),
+    //                 90,
+    //                 mock.block_info()?.time.seconds()
+    //             ),
+    //             multi_vote(
+    //                 &voter2.to_string(),
+    //                 &[("option1", 50), ("option2", 50)],
+    //                 mock.block_info()?.time.seconds(),
+    //             )
+    //         );
+
+    //         // execute after epoch passes
+    //         mock.wait_seconds(EPOCH)?;
+    //         mock.call_as(&dao_addr).execute(
+    //             &GaugeExecuteMsg::Execute { gauge: 1 },
+    //             &vec![],
+    //             &gauge.clone(),
+    //         )?;
+    //         mock.next_block()?;
+
+    //         // confirm gauge recieved vote
+    //         let selected_set = dao.gauge_suite.orchestrator.selected_set(1)?.votes;
+
+    //         // voter1 option is least popular
+    //         assert_eq!(
+    //             selected_set,
+    //             vec![
+    //                 ("option2".to_string(), Uint128::new(100)),
+    //                 ("option1".to_string(), Uint128::new(100)),
+    //                 ("voter1".to_string(), Uint128::new(90))
+    //             ]
+    //         );
+
+    //         // Use hook caller to mock voter1 staking
+    //         dao.gauge_suite
+    //             .orchestrator
+    //             .call_as(&dao_addr)
+    //             .nft_stake_change_hook(NftStakeChangedHookMsg::Stake {
+    //                 addr: voter1.clone(),
+    //                 token_id: "1".to_string(),
+    //             })?;
+
+    //         mock.next_block()?;
+
+    //         // Currect selected set should be different than before voter1 got power
+    //         let current_set = dao.gauge_suite.orchestrator.selected_set(1)?.votes;
+
+    //         // voter1 option is least popular
+    //         assert_eq!(current_set, selected_set);
+    //         assert_eq!(
+    //             current_set,
+    //             vec![
+    //                 ("voter1".to_string(), Uint128::new(2)),
+    //                 ("option2".to_string(), Uint128::new(1)),
+    //                 ("option1".to_string(), Uint128::new(1))
+    //             ]
+    //         );
+
+    //         // execute after epoch passes
+    //         mock.wait_seconds(EPOCH)?;
+    //         mock.call_as(&dao_addr).execute(
+    //             &GaugeExecuteMsg::Execute { gauge: 1 },
+    //             &vec![],
+    //             &gauge.clone(),
+    //         )?;
+    //         mock.next_block()?;
+
+    //         // Mock voter1 unstaking 2 nfts
+    //         dao.gauge_suite
+    //             .orchestrator
+    //             .call_as(&dao_addr)
+    //             .nft_stake_change_hook(NftStakeChangedHookMsg::Unstake {
+    //                 addr: voter1.clone(),
+    //                 token_ids: vec!["1".to_string(), "2".to_string()],
+    //             })?;
+    //         mock.next_block()?;
+
+    //         // execute after epoch passes
+    //         mock.wait_seconds(EPOCH)?;
+    //         mock.call_as(&dao_addr).execute(
+    //             &GaugeExecuteMsg::Execute { gauge: 1 },
+    //             &vec![],
+    //             &gauge.clone(),
+    //         )?;
+    //         mock.next_block()?;
+
+    //         // Currect selected set should be different than before voter1 got power
+    //         let current_gauge_set = dao.gauge_suite.orchestrator.selected_set(1)?.votes;
+    //         assert_eq!(
+    //             current_gauge_set,
+    //             vec![
+    //                 ("option2".to_string(), Uint128::new(100)),
+    //                 ("option1".to_string(), Uint128::new(100))
+    //             ]
+    //         );
+
+    //         Ok(())
+    //     }
+    //     // todo: test on ohnft nft hooks
+    //     // todo: test on bitsong fantoken hooks
+    //     // todo: test on omniflix nft hooks
 }
-
-//     #[test]
-//     fn test_not_voted_options_are_not_selected() -> anyhow::Result<()> {
-//         let mock = MockBech32::new("mock");
-//         let mut dao = default_gauge_setup(mock.clone())?;
-//         let dao_addr = dao.dao_core.address()?;
-
-//         let members = defualt_voters(mock.clone(), vec![600, 120])?;
-//         let voters = members_to_addr(mock.clone(), members.clone())?;
-
-//         init_adapter_and_create_gauge(
-//             &mut dao,
-//             dao_addr.clone(),
-//             coin(1000, "ujuno"),
-//             &["option1", "option2", "option3", "option4"],
-//         )?;
-
-//         place_gauge_vote(
-//             mock.clone(),
-//             voters[0].clone(),
-//             dao.gauge_suite.orchestrator.address()?,
-//             1,
-//             vec![GaugeVote {
-//                 option: "option1".to_string(),
-//                 weight: Decimal::one(),
-//             }],
-//         )?;
-//         place_gauge_vote(
-//             mock.clone(),
-//             voters[1].clone(),
-//             dao.gauge_suite.orchestrator.address()?,
-//             1,
-//             vec![GaugeVote {
-//                 option: "option2".to_string(),
-//                 weight: Decimal::one(),
-//             }],
-//         )?;
-
-//         let selected = dao.gauge_suite.orchestrator.selected_set(1)?;
-//         assert_eq!(
-//             selected.votes,
-//             vec![
-//                 ("option1".to_owned(), Uint128::new(600)),
-//                 ("option2".to_owned(), Uint128::new(120)),
-//             ]
-//         );
-
-//         // first voter changes vote to option2
-//         place_gauge_vote(
-//             mock.clone(),
-//             voters[0].clone(),
-//             dao.gauge_suite.orchestrator.address()?,
-//             0,
-//             vec![GaugeVote {
-//                 option: "option2".to_string(),
-//                 weight: Decimal::one(),
-//             }],
-//         )?;
-
-//         let selected = dao.gauge_suite.orchestrator.selected_set(1)?;
-//         assert_eq!(
-//             selected.votes,
-//             vec![("option2".to_owned(), Uint128::new(720)),]
-//         );
-
-//         Ok(())
-//     }
-// }
-// mod voting {
-//     use std::vec;
-
-//     use cw4_group::msg::ExecuteMsg as Cw4ExecuteMsg;
-//     use dao_hooks::nft_stake::NftStakeChangedHookMsg;
-//     use dao_interface::CoreQueryMsgFns;
-//     use gauge_orchestrator::msg::VoteInfo;
-
-//     use crate::tests::gauges::helpers::{
-//         default_config, multi_vote, simple_vote, upload_and_init_custom_testing_gauge,
-//     };
-
-//     use super::*;
-
-//     #[test]
-//     fn test_add_option() -> anyhow::Result<()> {
-//         let mock = MockBech32::new("mock");
-//         let dao = default_gauge_setup(mock.clone())?;
-//         let dao_addr = dao.dao_core.address()?;
-//         let voter1 = mock.addr_make_with_balance("voter1", coins(1000, "ujuno"))?;
-//         let voter2 = mock.addr_make_with_balance("voter2", coins(1000, "ujuno"))?;
-//         let not_voter = mock.addr_make_with_balance("not-voter", coins(1000, "ujuno"))?;
-
-//         // gauge returns list all options; it does query adapter at initialization
-//         let options = dao.gauge_suite.orchestrator.list_options(0, None, None)?;
-//         assert_eq!(options.options.len(), 3);
-
-//         // add more valid options to gauge adapter
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&dao_addr)
-//             .add_option(0, "addedoption1")?;
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&dao_addr)
-//             .add_option(0, "addedoption2")?;
-
-//         // Voting members can add options
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&voter1)
-//             .add_option(0, "addedoption3")?;
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&voter2)
-//             .add_option(0, "addedoption4")?;
-
-//         // added options are automatically voted for by creators
-//         let options = dao.gauge_suite.orchestrator.list_options(0, None, None)?;
-//         assert_eq!(options.options.len(), 7);
-//         // add another valid option to gauge adapter
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&dao_addr)
-//             .add_option(0, "addedoption5")?;
-//         // Non-voting members cannot add options
-//         let err = dao
-//             .gauge_suite
-//             .orchestrator
-//             .call_as(&not_voter)
-//             .add_option(0, "not-voter-option")
-//             .unwrap_err();
-//         assert_eq!(
-//             ContractError::NoVotingPower("random_voter".to_owned()),
-//             err.downcast().unwrap()
-//         );
-
-//         Ok(())
-//     }
-//     #[test]
-//     fn test_remove_option() -> anyhow::Result<()> {
-//         let mock = MockBech32::new("mock");
-//         let mut dao = default_gauge_setup(mock.clone())?;
-//         let dao_addr = dao.dao_core.address()?;
-//         let voter1 = mock.addr_make_with_balance("voter1", coins(1000, "ujuno"))?;
-
-//         // running this logic, we expect dao to have 3 proposal modules, this custom gauge being the third [2].
-//         // todo: grab addr from events
-//         upload_and_init_custom_testing_gauge(&mut dao, mock.clone(), vec![])?;
-//         let test_gauge = dao.dao_core.proposal_modules(None, None)?[2]
-//             .address
-//             .clone();
-//         dao.gauge_suite.orchestrator.set_address(&test_gauge);
-//         let config = default_config(test_gauge.clone())?;
-
-//         // create gauge on custom orchestrator
-//         mock.call_as(&dao_addr).execute(
-//             &gauge_orchestrator::msg::ExecuteMsg::CreateGauge(config),
-//             &vec![],
-//             &test_gauge,
-//         )?;
-
-//         // gauge returns list all options; it does query adapter at initialization
-//         let options = dao.gauge_suite.orchestrator.list_options(1, None, None)?;
-//         assert_eq!(options.options.len(), 3);
-
-//         // add new valid options to the gauge adapter
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&dao_addr)
-//             .add_option(0, "addedoption1")?;
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&voter1)
-//             .add_option(0, "addedoption2")?;
-
-//         let options = dao.gauge_suite.orchestrator.list_options(0, None, None)?;
-//         assert_eq!(options.options.len(), 5);
-
-//         // owner can remove an option that has been added already
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&dao_addr)
-//             .remove_option(0, "addedoption1")?;
-//         // Anyone else cannot remove options
-//         let err = dao
-//             .gauge_suite
-//             .orchestrator
-//             .call_as(&voter1)
-//             .remove_option(0, "addedoption2")
-//             .unwrap_err();
-//         assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
-//         // one has been removed
-//         let options = dao.gauge_suite.orchestrator.list_options(0, None, None)?;
-//         assert_eq!(options.options.len(), 4);
-
-//         // invalidate added option
-//         mock.call_as(&dao_addr).execute(
-//             &AdapterExecuteMsg::InvalidateOption {
-//                 option: "addedoption2".into(),
-//             },
-//             &vec![],
-//             &dao.gauge_suite.orchestrator.address()?,
-//         )?;
-//         // owner can remove an option that is no longer valid
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&dao_addr)
-//             .remove_option(0, "addedoption2")?;
-//         // Both options are now removed
-//         let options = dao.gauge_suite.orchestrator.list_options(0, None, None)?;
-//         assert_eq!(options.options.len(), 2);
-
-//         Ok(())
-//     }
-
-//     #[test]
-//     fn test_vote_for_option() -> anyhow::Result<()> {
-//         let mock = MockBech32::new("mock");
-//         let mut dao = default_gauge_setup(mock.clone())?;
-//         let dao_addr = dao.dao_core.address()?;
-//         let voter1 = mock.addr_make_with_balance("voter1", coins(1000, "ujuno"))?;
-//         let voter2 = mock.addr_make_with_balance("voter2", coins(1000, "ujuno"))?;
-//         let gauge = dao.gauge_suite.orchestrator.address()?;
-
-//         // running this logic, we expect dao to have 3 proposal modules, this custom gauge being the third [2].
-//         // todo: grab addr from events
-//         let test_adapter = upload_and_init_custom_testing_gauge(&mut dao, mock.clone(), vec![])?;
-//         let config = default_config(test_adapter.clone())?;
-//         // create gauge and add to orchestrator
-//         mock.call_as(&dao_addr).execute(
-//             &gauge_orchestrator::msg::ExecuteMsg::CreateGauge(config),
-//             &vec![],
-//             &gauge.clone(),
-//         )?;
-
-//         // vote for option from adapter (voting members are by default
-//         // options in adapter in this test suite)
-//         dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
-//             1,
-//             Some(vec![gauge_orchestrator::state::Vote {
-//                 option: voter1.to_string(),
-//                 weight: Decimal::percent(90),
-//             }]),
-//         )?;
-//         assert_eq!(
-//             VoteInfo {
-//                 voter: voter1.to_string(),
-//                 votes: vec![gauge_orchestrator::state::Vote {
-//                     option: voter1.to_string(),
-//                     weight: Decimal::percent(90),
-//                 }],
-//                 cast: Some(mock.block_info()?.time.seconds()),
-//             },
-//             dao.gauge_suite
-//                 .orchestrator
-//                 .vote(1, voter1.clone())?
-//                 .vote
-//                 .unwrap(),
-//         );
-//         // check tally is proper
-//         let selected = dao.gauge_suite.orchestrator.selected_set(1)?;
-//         assert_eq!(
-//             selected.votes,
-//             vec![(voter1.to_string(), Uint128::from(90u128))]
-//         );
-//         // add new valid options to the gauge adapter
-//         mock.call_as(&dao_addr).execute(
-//             &dao_gauge_adapter::contract::ExecuteMsg::AddValidOption {
-//                 option: "option1".into(),
-//             },
-//             &vec![],
-//             &test_adapter.clone(),
-//         )?;
-//         mock.call_as(&dao_addr).execute(
-//             &dao_gauge_adapter::contract::ExecuteMsg::AddValidOption {
-//                 option: "option2".into(),
-//             },
-//             &vec![],
-//             &test_adapter.clone(),
-//         )?;
-
-//         // change vote for option added through gauge
-//         dao.gauge_suite.orchestrator.add_option(1, "option1")?;
-//         dao.gauge_suite.orchestrator.add_option(1, "option2")?;
-//         // voter2 drops vote as well
-//         dao.gauge_suite.orchestrator.call_as(&voter2).place_votes(
-//             1,
-//             Some(vec![
-//                 gauge_orchestrator::state::Vote {
-//                     option: "option1".to_string(),
-//                     weight: Decimal::percent(50),
-//                 },
-//                 gauge_orchestrator::state::Vote {
-//                     option: "option2".to_string(),
-//                     weight: Decimal::percent(50),
-//                 },
-//             ]),
-//         )?;
-//         assert_eq!(
-//             simple_vote(
-//                 &voter1.to_string(),
-//                 &voter1.to_string(),
-//                 90,
-//                 mock.block_info()?.time.seconds()
-//             ),
-//             multi_vote(
-//                 &voter2.to_string(),
-//                 &[("option1", 50), ("option2", 50)],
-//                 mock.block_info()?.time.seconds(),
-//             )
-//         );
-
-//         // placing vote again overwrites previous ones
-//         dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
-//             1,
-//             Some(vec![gauge_orchestrator::state::Vote {
-//                 option: "option1".to_string(),
-//                 weight: Decimal::percent(90),
-//             }]),
-//         )?;
-//         dao.gauge_suite.orchestrator.call_as(&voter2).place_votes(
-//             1,
-//             Some(vec![gauge_orchestrator::state::Vote {
-//                 option: "option1".to_string(),
-//                 weight: Decimal::percent(90),
-//             }]),
-//         )?;
-//         assert_eq!(
-//             vec![
-//                 simple_vote(
-//                     &voter1.to_string(),
-//                     "option1",
-//                     90,
-//                     mock.block_info()?.time.seconds()
-//                 ),
-//                 simple_vote(
-//                     &voter2.to_string(),
-//                     "option1",
-//                     90,
-//                     mock.block_info()?.time.seconds()
-//                 ),
-//             ],
-//             dao.gauge_suite
-//                 .orchestrator
-//                 .list_votes(1, None, None)?
-//                 .votes,
-//         );
-
-//         // vote for non-existing option
-//         let err = dao
-//             .gauge_suite
-//             .orchestrator
-//             .call_as(&voter2)
-//             .place_votes(
-//                 1,
-//                 Some(vec![gauge_orchestrator::state::Vote {
-//                     option: "option420".to_string(),
-//                     weight: Decimal::percent(90),
-//                 }]),
-//             )
-//             .unwrap_err();
-//         assert_eq!(
-//             ContractError::OptionDoesNotExists {
-//                 option: "random option".to_owned(),
-//                 gauge_id: 1,
-//             },
-//             err.downcast().unwrap()
-//         );
-
-//         Ok(())
-//     }
-
-//     #[test]
-//     fn test_remove_vote() -> anyhow::Result<()> {
-//         let mock = MockBech32::new("mock");
-//         let dao = default_gauge_setup(mock.clone())?;
-//         let voter1 = mock.addr_make_with_balance("voter1", coins(1000, "ujuno"))?;
-//         let voter2 = mock.addr_make_with_balance("voter2", coins(1000, "ujuno"))?;
-
-//         // vote for option from adapter (voting members are by default
-//         // options in adapter in this test suite)
-//         dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
-//             0,
-//             Some(vec![gauge_orchestrator::state::Vote {
-//                 option: voter1.to_string(),
-//                 weight: Decimal::one(),
-//             }]),
-//         )?;
-//         dao.gauge_suite.orchestrator.call_as(&voter2).place_votes(
-//             0,
-//             Some(vec![gauge_orchestrator::state::Vote {
-//                 option: voter1.to_string(),
-//                 weight: Decimal::one(),
-//             }]),
-//         )?;
-
-//         assert_eq!(
-//             vec![
-//                 simple_vote(
-//                     &voter1.to_string(),
-//                     &voter1.to_string(),
-//                     100,
-//                     mock.block_info()?.time.seconds()
-//                 ),
-//                 simple_vote(
-//                     &voter2.to_string(),
-//                     &voter1.to_string(),
-//                     100,
-//                     mock.block_info()?.time.seconds()
-//                 ),
-//             ],
-//             dao.gauge_suite
-//                 .orchestrator
-//                 .list_votes(0, None, None)?
-//                 .votes
-//         );
-
-//         // remove vote
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&voter1)
-//             .place_votes(0, None)?;
-//         assert_eq!(
-//             vec![simple_vote(
-//                 &voter2.to_string(),
-//                 &voter1.to_string(),
-//                 100,
-//                 mock.block_info()?.time.seconds()
-//             )],
-//             dao.gauge_suite
-//                 .orchestrator
-//                 .list_votes(0, None, None)?
-//                 .votes
-//         );
-//         assert_eq!(
-//             None,
-//             dao.gauge_suite
-//                 .orchestrator
-//                 .vote(0, voter1.to_string())?
-//                 .vote
-//         );
-//         assert_eq!(
-//             Some(simple_vote(
-//                 &voter2.to_string(),
-//                 &voter1.to_string(),
-//                 100,
-//                 mock.block_info()?.time.seconds()
-//             )),
-//             dao.gauge_suite
-//                 .orchestrator
-//                 .vote(0, voter1.to_string())?
-//                 .vote
-//         );
-
-//         // remove nonexisting vote
-//         let err = dao
-//             .gauge_suite
-//             .orchestrator
-//             .call_as(&voter1)
-//             .place_votes(0, None)
-//             .unwrap_err();
-//         assert_eq!(
-//             ContractError::CannotRemoveNonexistingVote {},
-//             err.downcast().unwrap()
-//         );
-
-//         Ok(())
-//     }
-//     #[test]
-//     fn test_votes_stays_the_same_after_execution() -> anyhow::Result<()> {
-//         let mock = MockBech32::new("mock");
-//         let dao = default_gauge_setup(mock.clone())?;
-//         let dao_addr = dao.dao_core.address()?;
-//         let voter1 = mock.addr_make_with_balance("voter1", coins(1000, "ujuno"))?;
-//         let voter2 = mock.addr_make_with_balance("voter2", coins(1000, "ujuno"))?;
-//         let gauge = dao.gauge_suite.orchestrator.address()?;
-
-//         // vote for one of the options in gauge
-//         dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
-//             0,
-//             Some(vec![gauge_orchestrator::state::Vote {
-//                 option: voter1.to_string(),
-//                 weight: Decimal::one(),
-//             }]),
-//         )?;
-//         dao.gauge_suite.orchestrator.call_as(&voter2).place_votes(
-//             0,
-//             Some(vec![gauge_orchestrator::state::Vote {
-//                 option: voter1.to_string(),
-//                 weight: Decimal::one(),
-//             }]),
-//         )?;
-
-//         // voter1 was option voted for with two 100 voting powers combined
-//         let selected = dao.gauge_suite.orchestrator.selected_set(0)?;
-//         assert_eq!(
-//             selected.votes,
-//             vec![(voter1.to_string(), Uint128::new(200))]
-//         );
-//         // before advancing specified epoch tally won't get sampled
-//         mock.wait_seconds(EPOCH)?;
-//         assert_eq!(
-//             vec![
-//                 simple_vote(
-//                     &voter1.to_string(),
-//                     &voter1.to_string(),
-//                     100,
-//                     mock.block_info()?.time.seconds() - EPOCH
-//                 ),
-//                 simple_vote(
-//                     &voter2.to_string(),
-//                     &voter1.to_string(),
-//                     100,
-//                     mock.block_info()?.time.seconds() - EPOCH
-//                 )
-//             ],
-//             dao.gauge_suite
-//                 .orchestrator
-//                 .list_votes(0, None, None)?
-//                 .votes
-//         );
-
-//         mock.call_as(&dao_addr).execute(
-//             &GaugeExecuteMsg::Execute { gauge: 0 },
-//             &vec![],
-//             &gauge.clone(),
-//         )?;
-
-//         assert_eq!(
-//             vec![
-//                 simple_vote(
-//                     &voter1.to_string(),
-//                     &voter1.to_string(),
-//                     100,
-//                     mock.block_info()?.time.seconds() - EPOCH
-//                 ),
-//                 simple_vote(
-//                     &voter2.to_string(),
-//                     &voter1.to_string(),
-//                     100,
-//                     mock.block_info()?.time.seconds() - EPOCH
-//                 )
-//             ],
-//             dao.gauge_suite
-//                 .orchestrator
-//                 .list_votes(0, None, None)?
-//                 .votes
-//         );
-
-//         assert_eq!(
-//             Some(simple_vote(
-//                 &voter1.to_string(),
-//                 &voter1.to_string(),
-//                 100,
-//                 mock.block_info()?.time.seconds() - EPOCH
-//             )),
-//             dao.gauge_suite
-//                 .orchestrator
-//                 .vote(0, voter1.to_string())?
-//                 .vote
-//         );
-//         assert_eq!(
-//             Some(simple_vote(
-//                 &voter2.to_string(),
-//                 &voter1.to_string(),
-//                 100,
-//                 mock.block_info()?.time.seconds() - EPOCH
-//             )),
-//             dao.gauge_suite
-//                 .orchestrator
-//                 .vote(0, voter1.to_string())?
-//                 .vote
-//         );
-
-//         Ok(())
-//     }
-//     #[test]
-//     fn test_vote_for_max_capped_option() -> anyhow::Result<()> {
-//         let mock = MockBech32::new("mock");
-//         let mut dao = default_gauge_setup(mock.clone())?;
-//         let dao_addr = dao.dao_core.address()?;
-//         let voter1 = mock.addr_make_with_balance("voter1", coins(1000, "ujuno"))?;
-//         let voter2 = mock.addr_make_with_balance("voter2", coins(1000, "ujuno"))?;
-//         let gauge = dao.gauge_suite.orchestrator.address()?;
-//         // running this logic, we expect dao to have 3 proposal modules, this custom gauge being the third [2].
-//         // todo: grab addr from events
-//         let test_adapter = upload_and_init_custom_testing_gauge(&mut dao, mock.clone(), vec![])?;
-//         let config = default_config(test_adapter.clone())?;
-//         // create gauge and add to orchestrator
-//         mock.call_as(&dao_addr).execute(
-//             &gauge_orchestrator::msg::ExecuteMsg::CreateGauge(config),
-//             &vec![],
-//             &gauge.clone(),
-//         )?;
-
-//         // wait until epoch passes
-//         mock.wait_seconds(EPOCH)?;
-
-//         // add more valid options to gauge adapter
-//         mock.call_as(&dao_addr).execute(
-//             &dao_gauge_adapter::contract::ExecuteMsg::AddValidOption {
-//                 option: "option1".into(),
-//             },
-//             &vec![],
-//             &test_adapter.clone(),
-//         )?;
-//         mock.call_as(&dao_addr).execute(
-//             &dao_gauge_adapter::contract::ExecuteMsg::AddValidOption {
-//                 option: "option2".into(),
-//             },
-//             &vec![],
-//             &test_adapter.clone(),
-//         )?;
-
-//         // change vote for option added through gauge
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&voter1)
-//             .add_option(0, "option1")?;
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&voter2)
-//             .add_option(0, "option2")?;
-
-//         // vote 100% voting power on 'voter1' option (100 weight)
-//         dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
-//             0,
-//             Some(vec![gauge_orchestrator::state::Vote {
-//                 option: "option1".to_string(),
-//                 weight: Decimal::one(),
-//             }]),
-//         )?;
-
-//         // vote 10% voting power on 'voter2' option (10 weight)
-//         dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
-//             0,
-//             Some(vec![gauge_orchestrator::state::Vote {
-//                 option: "option1".to_string(),
-//                 weight: Decimal::percent(10),
-//             }]),
-//         )?;
-
-//         assert_eq!(
-//             vec![
-//                 multi_vote(
-//                     &voter1.to_string(),
-//                     &[("option1", 100)],
-//                     mock.block_info()?.time.seconds(),
-//                 ),
-//                 multi_vote(
-//                     &voter2.to_string(),
-//                     &[("option2", 10)],
-//                     mock.block_info()?.time.seconds(),
-//                 )
-//             ],
-//             dao.gauge_suite
-//                 .orchestrator
-//                 .list_votes(0, None, None)?
-//                 .votes
-//         );
-
-//         let selected_set = dao.gauge_suite.orchestrator.selected_set(0)?.votes;
-//         // Despite 'option1' having 100 voting power and option2 having 10 voting power,
-//         // because of max vote cap set to 10% now 'option1' will have its power decreased to 10% * 110
-//         // 'option2' stays at 10 voting power as it was below 10% of total votes
-//         assert_eq!(
-//             selected_set,
-//             vec![
-//                 ("option1".to_owned(), Uint128::new(11)),
-//                 ("option2".to_owned(), Uint128::new(10))
-//             ]
-//         );
-
-//         Ok(())
-//     }
-//     #[test]
-//     fn test_membership_voting_power_change() -> anyhow::Result<()> {
-//         let mock = MockBech32::new("mock");
-//         let mut dao = default_gauge_setup(mock.clone())?;
-//         let dao_addr = dao.dao_core.address()?;
-//         let voter1 = mock.addr_make_with_balance("voter1", coins(1000, "ujuno"))?;
-//         let voter2 = mock.addr_make_with_balance("voter2", coins(1000, "ujuno"))?;
-//         let cw4 = dao.cw4_vote.group_contract()?;
-//         let gauge = dao.gauge_suite.orchestrator.address()?;
-//         // running this logic, we expect dao to have 3 proposal modules, this custom gauge being the third [2].
-//         // todo: grab addr from events
-//         let test_adapter = upload_and_init_custom_testing_gauge(&mut dao, mock.clone(), vec![])?;
-//         let config = default_config(test_adapter.clone())?;
-//         // create gauge and add to orchestrator
-//         mock.call_as(&dao_addr).execute(
-//             &gauge_orchestrator::msg::ExecuteMsg::CreateGauge(config),
-//             &vec![],
-//             &gauge.clone(),
-//         )?;
-
-//         mock.call_as(&dao_addr).execute(
-//             &Cw4ExecuteMsg::AddHook {
-//                 addr: gauge.to_string(),
-//             },
-//             &vec![],
-//             &cw4.clone(),
-//         )?;
-
-//         // vote for option from adapter (voting members are by default
-//         // options in adapter in this test suite)
-
-//         dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
-//             1,
-//             Some(vec![gauge_orchestrator::state::Vote {
-//                 option: voter1.to_string(),
-//                 weight: Decimal::percent(90),
-//             }]),
-//         )?;
-
-//         assert_eq!(
-//             Some(simple_vote(
-//                 &voter1.to_string(),
-//                 &voter1.to_string(),
-//                 90,
-//                 mock.block_info()?.time.seconds()
-//             )),
-//             dao.gauge_suite
-//                 .orchestrator
-//                 .vote(1, voter1.to_string())?
-//                 .vote
-//         );
-//         // check tally is proper
-//         let selected_set = dao.gauge_suite.orchestrator.selected_set(1)?.votes;
-//         assert_eq!(selected_set, vec![(voter1.to_string(), Uint128::new(90))]);
-//         // add new valid options to the gauge adapter
-//         mock.call_as(&dao_addr).execute(
-//             &dao_gauge_adapter::contract::ExecuteMsg::AddValidOption {
-//                 option: "option1".into(),
-//             },
-//             &vec![],
-//             &test_adapter.clone(),
-//         )?;
-//         mock.call_as(&dao_addr).execute(
-//             &dao_gauge_adapter::contract::ExecuteMsg::AddValidOption {
-//                 option: "option2".into(),
-//             },
-//             &vec![],
-//             &test_adapter.clone(),
-//         )?;
-
-//         // change vote for option added through gauge
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&voter1)
-//             .add_option(0, "option1")?;
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&voter2)
-//             .add_option(0, "option2")?;
-
-//         // voter2 drops vote1
-//         dao.gauge_suite.orchestrator.call_as(&voter2).place_votes(
-//             1,
-//             Some(vec![
-//                 gauge_orchestrator::state::Vote {
-//                     option: "option1".to_string(),
-//                     weight: Decimal::percent(50),
-//                 },
-//                 gauge_orchestrator::state::Vote {
-//                     option: "option2".to_string(),
-//                     weight: Decimal::percent(50),
-//                 },
-//             ]),
-//         )?;
-//         assert_eq!(
-//             simple_vote(
-//                 &voter1.to_string(),
-//                 &voter1.to_string(),
-//                 90,
-//                 mock.block_info()?.time.seconds()
-//             ),
-//             multi_vote(
-//                 &voter2.to_string(),
-//                 &[("option1", 50), ("option2", 50)],
-//                 mock.block_info()?.time.seconds(),
-//             )
-//         );
-
-//         // execute after epoch passes
-//         mock.wait_seconds(EPOCH)?;
-//         mock.call_as(&dao_addr).execute(
-//             &GaugeExecuteMsg::Execute { gauge: 1 },
-//             &vec![],
-//             &gauge.clone(),
-//         )?;
-
-//         // confirm gauge recieved vote
-//         let selected_set = dao.gauge_suite.orchestrator.selected_set(1)?.votes;
-
-//         // voter1 option is least popular
-//         assert_eq!(
-//             selected_set,
-//             vec![
-//                 ("option2".to_string(), Uint128::new(100)),
-//                 ("option1".to_string(), Uint128::new(100)),
-//                 ("voter1".to_string(), Uint128::new(90))
-//             ]
-//         );
-
-//         // Force update members, giving voter 1 more power
-//         mock.call_as(&dao_addr).execute(
-//             &Cw4ExecuteMsg::UpdateMembers {
-//                 remove: vec![],
-//                 add: vec![Member {
-//                     addr: voter1.to_string(),
-//                     weight: 1000,
-//                 }],
-//             },
-//             &vec![],
-//             &cw4,
-//         )?;
-
-//         let current_gauge_set = dao.gauge_suite.orchestrator.last_executed_set(1)?.votes;
-//         // Voter1 option is now most popular
-//         assert_eq!(
-//             current_gauge_set,
-//             Some(vec![
-//                 ("voter1".to_string(), Uint128::new(900)),
-//                 ("option2".to_string(), Uint128::new(100)),
-//                 ("option1".to_string(), Uint128::new(100))
-//             ])
-//         );
-
-//         // Execute after epoch passes
-//         mock.wait_seconds(EPOCH)?;
-//         mock.call_as(&dao_addr).execute(
-//             &GaugeExecuteMsg::Execute { gauge: 1 },
-//             &vec![],
-//             &gauge.clone(),
-//         )?;
-
-//         // Force update members, kick out voter 1
-//         mock.call_as(&dao_addr).execute(
-//             &Cw4ExecuteMsg::UpdateMembers {
-//                 remove: vec![voter1.to_string()],
-//                 add: vec![],
-//             },
-//             &vec![],
-//             &cw4,
-//         )?;
-//         mock.wait_blocks(1)?;
-
-//         // Execute after epoch passes
-//         mock.wait_seconds(EPOCH)?;
-//         mock.call_as(&dao_addr).execute(
-//             &GaugeExecuteMsg::Execute { gauge: 1 },
-//             &vec![],
-//             &gauge.clone(),
-//         )?;
-
-//         let current_gauge_set = dao.gauge_suite.orchestrator.last_executed_set(1)?.votes;
-//         // Voter1 option is now most popular
-//         assert_eq!(
-//             current_gauge_set,
-//             Some(vec![
-//                 ("option2".to_string(), Uint128::new(100)),
-//                 ("option1".to_string(), Uint128::new(100))
-//             ])
-//         );
-
-//         Ok(())
-//     }
-//     #[test]
-//     fn test_token_staking_voting_power_change() -> anyhow::Result<()> {
-//         let mock = MockBech32::new("mock");
-//         let mut dao = default_gauge_setup(mock.clone())?;
-//         let dao_addr = dao.dao_core.address()?;
-//         let voter1 = mock.addr_make_with_balance("voter1", coins(1000, "ujuno"))?;
-//         let voter2 = mock.addr_make_with_balance("voter2", coins(1000, "ujuno"))?;
-//         let cw4 = dao.cw4_vote.group_contract()?;
-//         let gauge = dao.gauge_suite.orchestrator.address()?;
-//         // running this logic, we expect dao to have 3 proposal modules, this custom gauge being the third [2].
-//         // todo: grab addr from events
-//         let test_adapter = upload_and_init_custom_testing_gauge(&mut dao, mock.clone(), vec![])?;
-//         let config = default_config(test_adapter.clone())?;
-//         // create gauge and add to orchestrator
-//         mock.call_as(&dao_addr).execute(
-//             &gauge_orchestrator::msg::ExecuteMsg::CreateGauge(config),
-//             &vec![],
-//             &gauge.clone(),
-//         )?;
-
-//         mock.call_as(&dao_addr).execute(
-//             &Cw4ExecuteMsg::AddHook {
-//                 addr: gauge.to_string(),
-//             },
-//             &vec![],
-//             &cw4.clone(),
-//         )?;
-
-//         // vote for option from adapter (voting members are by default
-//         // options in adapter in this test suite)
-
-//         dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
-//             1,
-//             Some(vec![gauge_orchestrator::state::Vote {
-//                 option: voter1.to_string(),
-//                 weight: Decimal::percent(90),
-//             }]),
-//         )?;
-
-//         assert_eq!(
-//             Some(simple_vote(
-//                 &voter1.to_string(),
-//                 &voter1.to_string(),
-//                 90,
-//                 mock.block_info()?.time.seconds()
-//             )),
-//             dao.gauge_suite
-//                 .orchestrator
-//                 .vote(1, voter1.to_string())?
-//                 .vote
-//         );
-//         // check tally is proper
-//         let selected_set = dao.gauge_suite.orchestrator.selected_set(1)?.votes;
-//         assert_eq!(selected_set, vec![(voter1.to_string(), Uint128::new(90))]);
-//         // add new valid options to the gauge adapter
-//         mock.call_as(&dao_addr).execute(
-//             &dao_gauge_adapter::contract::ExecuteMsg::AddValidOption {
-//                 option: "option1".into(),
-//             },
-//             &vec![],
-//             &test_adapter.clone(),
-//         )?;
-//         mock.call_as(&dao_addr).execute(
-//             &dao_gauge_adapter::contract::ExecuteMsg::AddValidOption {
-//                 option: "option2".into(),
-//             },
-//             &vec![],
-//             &test_adapter.clone(),
-//         )?;
-
-//         // change vote for option added through gauge
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&voter1)
-//             .add_option(0, "option1")?;
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&voter2)
-//             .add_option(0, "option2")?;
-
-//         // voter2 drops vote1
-//         dao.gauge_suite.orchestrator.call_as(&voter2).place_votes(
-//             1,
-//             Some(vec![
-//                 gauge_orchestrator::state::Vote {
-//                     option: "option1".to_string(),
-//                     weight: Decimal::percent(50),
-//                 },
-//                 gauge_orchestrator::state::Vote {
-//                     option: "option2".to_string(),
-//                     weight: Decimal::percent(50),
-//                 },
-//             ]),
-//         )?;
-//         assert_eq!(
-//             simple_vote(
-//                 &voter1.to_string(),
-//                 &voter1.to_string(),
-//                 90,
-//                 mock.block_info()?.time.seconds()
-//             ),
-//             multi_vote(
-//                 &voter2.to_string(),
-//                 &[("option1", 50), ("option2", 50)],
-//                 mock.block_info()?.time.seconds(),
-//             )
-//         );
-
-//         // execute after epoch passes
-//         mock.wait_seconds(EPOCH)?;
-//         mock.call_as(&dao_addr).execute(
-//             &GaugeExecuteMsg::Execute { gauge: 1 },
-//             &vec![],
-//             &gauge.clone(),
-//         )?;
-//         mock.next_block()?;
-
-//         // confirm gauge recieved vote
-//         let selected_set = dao.gauge_suite.orchestrator.selected_set(1)?.votes;
-
-//         // voter1 option is least popular
-//         assert_eq!(
-//             selected_set,
-//             vec![
-//                 ("option2".to_string(), Uint128::new(100)),
-//                 ("option1".to_string(), Uint128::new(100)),
-//                 ("voter1".to_string(), Uint128::new(90))
-//             ]
-//         );
-
-//         // Use hook caller to mock voter1 staking
-//         dao.gauge_suite.orchestrator.stake_change_hook(
-//             dao_hooks::stake::StakeChangedHookMsg::Stake {
-//                 addr: voter1.clone(),
-//                 amount: Uint128::new(900),
-//             },
-//         )?;
-
-//         // Currect selected set should be different than before voter1 got power
-//         let current_gauge_set = dao.gauge_suite.orchestrator.selected_set(1)?.votes;
-//         assert_eq!(
-//             current_gauge_set,
-//             vec![
-//                 ("voter1".to_string(), Uint128::new(900)),
-//                 ("option2".to_string(), Uint128::new(100)),
-//                 ("option1".to_string(), Uint128::new(100))
-//             ]
-//         );
-
-//         // Execute after epoch passes
-//         mock.wait_seconds(EPOCH)?;
-//         mock.call_as(&dao_addr).execute(
-//             &GaugeExecuteMsg::Execute { gauge: 1 },
-//             &vec![],
-//             &gauge.clone(),
-//         )?;
-
-//         // Mock voter 1 unstaking
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&dao_addr)
-//             .stake_change_hook(dao_hooks::stake::StakeChangedHookMsg::Stake {
-//                 addr: voter1.clone(),
-//                 amount: Uint128::new(1000),
-//             })?;
-//         mock.next_block()?;
-
-//         // Currect selected set should be different than before voter1 got power
-//         let current_gauge_set = dao.gauge_suite.orchestrator.selected_set(1)?.votes;
-//         assert_eq!(
-//             current_gauge_set,
-//             vec![
-//                 ("option2".to_string(), Uint128::new(100)),
-//                 ("option1".to_string(), Uint128::new(100))
-//             ]
-//         );
-
-//         Ok(())
-//     }
-//     #[test]
-//     fn test_nft_staking_voting_power_change() -> anyhow::Result<()> {
-//         let mock = MockBech32::new("mock");
-//         let mut dao = default_gauge_setup(mock.clone())?;
-//         let dao_addr = dao.dao_core.address()?;
-//         let voter1 = mock.addr_make_with_balance("voter1", coins(1000, "ujuno"))?;
-//         let voter2 = mock.addr_make_with_balance("voter2", coins(1000, "ujuno"))?;
-//         let cw4 = dao.cw4_vote.group_contract()?;
-//         let gauge = dao.gauge_suite.orchestrator.address()?;
-//         // running this logic, we expect dao to have 3 proposal modules, this custom gauge being the third [2].
-//         // todo: grab addr from events
-//         let test_adapter = upload_and_init_custom_testing_gauge(&mut dao, mock.clone(), vec![])?;
-//         let config = default_config(test_adapter.clone())?;
-//         // create gauge and add to orchestrator
-//         mock.call_as(&dao_addr).execute(
-//             &gauge_orchestrator::msg::ExecuteMsg::CreateGauge(config),
-//             &vec![],
-//             &gauge.clone(),
-//         )?;
-
-//         mock.call_as(&dao_addr).execute(
-//             &Cw4ExecuteMsg::AddHook {
-//                 addr: gauge.to_string(),
-//             },
-//             &vec![],
-//             &cw4.clone(),
-//         )?;
-
-//         // vote for option from adapter (voting members are by default
-//         // options in adapter in this test suite)
-
-//         dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
-//             1,
-//             Some(vec![gauge_orchestrator::state::Vote {
-//                 option: voter1.to_string(),
-//                 weight: Decimal::percent(90),
-//             }]),
-//         )?;
-
-//         assert_eq!(
-//             Some(simple_vote(
-//                 &voter1.to_string(),
-//                 &voter1.to_string(),
-//                 90,
-//                 mock.block_info()?.time.seconds()
-//             )),
-//             dao.gauge_suite
-//                 .orchestrator
-//                 .vote(1, voter1.to_string())?
-//                 .vote
-//         );
-//         // check tally is proper
-//         let selected_set = dao.gauge_suite.orchestrator.selected_set(1)?.votes;
-//         assert_eq!(selected_set, vec![(voter1.to_string(), Uint128::new(90))]);
-//         // add new valid options to the gauge adapter
-//         mock.call_as(&dao_addr).execute(
-//             &dao_gauge_adapter::contract::ExecuteMsg::AddValidOption {
-//                 option: "option1".into(),
-//             },
-//             &vec![],
-//             &test_adapter.clone(),
-//         )?;
-//         mock.call_as(&dao_addr).execute(
-//             &dao_gauge_adapter::contract::ExecuteMsg::AddValidOption {
-//                 option: "option2".into(),
-//             },
-//             &vec![],
-//             &test_adapter.clone(),
-//         )?;
-
-//         // change vote for option added through gauge
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&voter1)
-//             .add_option(0, "option1")?;
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&voter2)
-//             .add_option(0, "option2")?;
-
-//         // voter2 drops vote1
-//         dao.gauge_suite.orchestrator.call_as(&voter2).place_votes(
-//             1,
-//             Some(vec![
-//                 gauge_orchestrator::state::Vote {
-//                     option: "option1".to_string(),
-//                     weight: Decimal::percent(50),
-//                 },
-//                 gauge_orchestrator::state::Vote {
-//                     option: "option2".to_string(),
-//                     weight: Decimal::percent(50),
-//                 },
-//             ]),
-//         )?;
-//         assert_eq!(
-//             simple_vote(
-//                 &voter1.to_string(),
-//                 &voter1.to_string(),
-//                 90,
-//                 mock.block_info()?.time.seconds()
-//             ),
-//             multi_vote(
-//                 &voter2.to_string(),
-//                 &[("option1", 50), ("option2", 50)],
-//                 mock.block_info()?.time.seconds(),
-//             )
-//         );
-
-//         // execute after epoch passes
-//         mock.wait_seconds(EPOCH)?;
-//         mock.call_as(&dao_addr).execute(
-//             &GaugeExecuteMsg::Execute { gauge: 1 },
-//             &vec![],
-//             &gauge.clone(),
-//         )?;
-//         mock.next_block()?;
-
-//         // confirm gauge recieved vote
-//         let selected_set = dao.gauge_suite.orchestrator.selected_set(1)?.votes;
-
-//         // voter1 option is least popular
-//         assert_eq!(
-//             selected_set,
-//             vec![
-//                 ("option2".to_string(), Uint128::new(100)),
-//                 ("option1".to_string(), Uint128::new(100)),
-//                 ("voter1".to_string(), Uint128::new(90))
-//             ]
-//         );
-
-//         // Use hook caller to mock voter1 staking
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&dao_addr)
-//             .nft_stake_change_hook(NftStakeChangedHookMsg::Stake {
-//                 addr: voter1.clone(),
-//                 token_id: "1".to_string(),
-//             })?;
-
-//         mock.next_block()?;
-
-//         // Currect selected set should be different than before voter1 got power
-//         let current_set = dao.gauge_suite.orchestrator.selected_set(1)?.votes;
-
-//         // voter1 option is least popular
-//         assert_eq!(current_set, selected_set);
-//         assert_eq!(
-//             current_set,
-//             vec![
-//                 ("voter1".to_string(), Uint128::new(2)),
-//                 ("option2".to_string(), Uint128::new(1)),
-//                 ("option1".to_string(), Uint128::new(1))
-//             ]
-//         );
-
-//         // execute after epoch passes
-//         mock.wait_seconds(EPOCH)?;
-//         mock.call_as(&dao_addr).execute(
-//             &GaugeExecuteMsg::Execute { gauge: 1 },
-//             &vec![],
-//             &gauge.clone(),
-//         )?;
-//         mock.next_block()?;
-
-//         // Mock voter1 unstaking 2 nfts
-//         dao.gauge_suite
-//             .orchestrator
-//             .call_as(&dao_addr)
-//             .nft_stake_change_hook(NftStakeChangedHookMsg::Unstake {
-//                 addr: voter1.clone(),
-//                 token_ids: vec!["1".to_string(), "2".to_string()],
-//             })?;
-//         mock.next_block()?;
-
-//         // execute after epoch passes
-//         mock.wait_seconds(EPOCH)?;
-//         mock.call_as(&dao_addr).execute(
-//             &GaugeExecuteMsg::Execute { gauge: 1 },
-//             &vec![],
-//             &gauge.clone(),
-//         )?;
-//         mock.next_block()?;
-
-//         // Currect selected set should be different than before voter1 got power
-//         let current_gauge_set = dao.gauge_suite.orchestrator.selected_set(1)?.votes;
-//         assert_eq!(
-//             current_gauge_set,
-//             vec![
-//                 ("option2".to_string(), Uint128::new(100)),
-//                 ("option1".to_string(), Uint128::new(100))
-//             ]
-//         );
-
-//         Ok(())
-//     }
-//     // todo: test on ohnft nft hooks
-//     // todo: test on bitsong fantoken hooks
-//     // todo: test on omniflix nft hooks
-// }
