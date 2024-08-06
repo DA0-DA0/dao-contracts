@@ -1,5 +1,4 @@
 use cw_orch::{anyhow, prelude::*};
-
 use crate::{
     propose::{DaoPreProposeSuite, DaoProposalSuite},
     tests::{ADMIN, PREFIX},
