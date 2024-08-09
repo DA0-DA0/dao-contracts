@@ -19,6 +19,13 @@ pretty_env_logger = { version = "0.5.0" }
 
 # cw-orch enabled DAO DAO deps
 [dev-dependencies]
+abstract-cw-plus-interface = "2.0.1"
+abstract-cw20 = "2.0.0"
+abstract-cw20-base = "2.0.0"
+cw-denom = { path = "../packages/cw-denom" }
+cw20 = { workspace = true }
+cw-orch-core = "1.2.0"
+
 dao-proposal-sudo = { path = "../contracts/test/dao-proposal-sudo", features = [
     "library",
 ] }

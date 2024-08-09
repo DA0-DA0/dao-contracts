@@ -1,20 +1,16 @@
-use cosmwasm_std::{to_json_binary, Event, Uint128};
-use cw4::Member;
 use cw_orch::{
     anyhow::{self},
     prelude::*,
 };
-use dao_interface::{msg::InstantiateMsg, state::ModuleInstantiateInfo};
-use dao_voting::{pre_propose::PreProposeInfo, threshold::Threshold};
-use dao_voting_cw4::msg::{GroupContract, InstantiateMsg as Cw4VotingInitMsg};
+use dao_voting_cw4::msg::InstantiateMsg as Cw4VotingInitMsg;
 use gauges::suite::DaoDaoCw4Gauge;
 
 use crate::DaoDao;
 
+mod daos;
 mod deploy;
 mod distribution;
 mod external;
-mod daos;
 mod gauges;
 mod propose;
 mod staking;

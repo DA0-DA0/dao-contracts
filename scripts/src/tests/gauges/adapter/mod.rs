@@ -1,11 +1,13 @@
 use abstract_cw_plus_interface::cw20_base::Cw20Base;
 use cosmwasm_std::{Addr, Coin, Uint128};
-use cw_orch::{interface, mock::cw_multi_test::AppResponse, prelude::*};
+use cw_orch::{anyhow, interface, mock::cw_multi_test::AppResponse, prelude::*};
 use cw_orch_core::CwEnvError;
+
+mod suite;
 
 use abstract_cw20::{Cw20Coin as AbsCw20Coin, MinterResponse};
 // use scripts::DaoDao;
-use crate::{
+use gauge_adapter::{
     contract::{execute, instantiate, migrate, query},
     msg::{AdapterQueryMsg as QueryMsg, AssetUnchecked, ExecuteMsg, InstantiateMsg, MigrateMsg},
 };
@@ -44,6 +46,35 @@ pub fn setup_gauge_adapter(
     adapter
 }
 
+impl GaugeAdapter<MockBech32> {
+    pub fn native_submission_helper(
+        &self,
+        sender: Addr,
+        recipient: Addr,
+        native_tokens: Option<Coin>,
+    ) -> anyhow::Result<AppResponse, CwEnvError> {
+        if let Some(assets) = native_tokens.clone() {
+            self.call_as(&sender).execute(
+                &gauge_adapter::msg::ExecuteMsg::CreateSubmission {
+                    name: "DAOers".to_string(),
+                    url: "https://daodao.zone".to_string(),
+                    address: recipient.to_string(),
+                },
+                Some(&[assets]),
+            )
+        } else {
+            self.call_as(&sender).execute(
+                &gauge_adapter::msg::ExecuteMsg::CreateSubmission {
+                    name: "DAOers".to_string(),
+                    url: "https://daodao.zone".to_string(),
+                    address: recipient.to_string(),
+                },
+                None,
+            )
+        }
+    }
+}
+
 pub fn setup_cw20_reward_gauge_adapter(
     mock: MockBech32,
     required_deposit: Option<AssetUnchecked>,
@@ -60,34 +91,6 @@ pub fn setup_cw20_reward_gauge_adapter(
     };
     adapter.instantiate(&instantiate, None, None).unwrap();
     (adapter, cw20)
-}
-
-//
-pub fn native_submission_helper(
-    adapter: GaugeAdapter<MockBech32>,
-    sender: Addr,
-    recipient: Addr,
-    native_tokens: Option<Coin>,
-) -> Result<AppResponse, CwEnvError> {
-    if let Some(assets) = native_tokens.clone() {
-        adapter.call_as(&sender).execute(
-            &crate::msg::ExecuteMsg::CreateSubmission {
-                name: "DAOers".to_string(),
-                url: "https://daodao.zone".to_string(),
-                address: recipient.to_string(),
-            },
-            Some(&[assets]),
-        )
-    } else {
-        adapter.call_as(&sender).execute(
-            &crate::msg::ExecuteMsg::CreateSubmission {
-                name: "DAOers".to_string(),
-                url: "https://daodao.zone".to_string(),
-                address: recipient.to_string(),
-            },
-            None,
-        )
-    }
 }
 
 pub fn cw20_helper(mock: MockBech32) -> Cw20Base<MockBech32> {
