@@ -2633,7 +2633,7 @@ mod voting {
         dao.upload_with_cw4(mock.clone())?;
         dao.custom_gauge_setup(
             mock.clone(),
-            vec![coin(1, voter1.to_string()), coin(1, voter2.to_string())],
+            vec![coin(1, voter1.to_string()), coin(2, voter2.to_string())],
             &[voter1.as_str(), voter2.as_str()],
         )?;
         let dao_addr = dao.dao_core.address()?;
@@ -2643,7 +2643,6 @@ mod voting {
 
         // vote for option from adapter (voting members are by default
         // options in adapter in this test suite)
-
         dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
             gauge_id,
             Some(vec![gauge_orchestrator::state::Vote {
@@ -2743,9 +2742,9 @@ mod voting {
         assert_eq!(
             selected_set,
             vec![
-                (voter1.to_string(), Uint128::new(2)),
                 ("option2".to_string(), Uint128::new(1)),
                 ("option1".to_string(), Uint128::new(1)),
+                (voter1.to_string(), Uint128::new(1)),
             ]
         );
 
@@ -2764,13 +2763,13 @@ mod voting {
         let current_set = dao.gauge_suite.orchestrator.selected_set(gauge_id)?.votes;
 
         // voter1 option is least popular
-        assert_eq!(current_set, selected_set);
+        assert_ne!(current_set, selected_set);
         assert_eq!(
             current_set,
             vec![
+                (voter1.to_string(), Uint128::new(2)),
                 ("option2".to_string(), Uint128::new(1)),
                 ("option1".to_string(), Uint128::new(1)),
-                (voter1.to_string(), Uint128::new(2)),
             ]
         );
 
@@ -2808,8 +2807,8 @@ mod voting {
         assert_eq!(
             current_gauge_set,
             vec![
-                ("option2".to_string(), Uint128::new(100)),
-                ("option1".to_string(), Uint128::new(100))
+                ("option2".to_string(), Uint128::new(1)),
+                ("option1".to_string(), Uint128::new(1))
             ]
         );
 
