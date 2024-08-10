@@ -25,7 +25,7 @@ thiserror = { workspace = true }
 dao-dao-macros = { workspace = true }
 dao-interface = { workspace = true }
 cw-orch = { workspace = true }
-gauge-orchestrator = { workspace = true }
+gauge-orchestrator = { path = "../../gauges/gauge" }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }

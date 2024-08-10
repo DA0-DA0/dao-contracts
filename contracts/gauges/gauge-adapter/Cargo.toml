@@ -38,5 +38,4 @@ anyhow = { workspace = true }
 cw-multi-test = { workspace = true }
 cw20 = { workspace = true }
 cw20-base = { workspace = true }
-cw-orch-core = { workspace = true }
 scripts = { path = "../../../scripts" }
