@@ -71,16 +71,16 @@ pub enum PreProposeSubmissionPolicy {
     /// Anyone may create proposals, except for those in the denylist.
     Anyone {
         /// Addresses that may not create proposals.
-        denylist: Option<Vec<String>>,
+        denylist: Vec<Addr>,
     },
     /// Specific people may create proposals.
     Specific {
         /// Whether or not DAO members may create proposals.
         dao_members: bool,
         /// Addresses that may create proposals.
-        allowlist: Option<Vec<String>>,
+        allowlist: Vec<Addr>,
         /// Addresses that may not create proposals, overriding other settings.
-        denylist: Option<Vec<String>>,
+        denylist: Vec<Addr>,
     },
 }
 
@@ -108,9 +108,6 @@ impl PreProposeSubmissionPolicy {
             denylist,
         } = self
         {
-            let allowlist = allowlist.as_deref().unwrap_or_default();
-            let denylist = denylist.as_deref().unwrap_or_default();
-
             // prevent allowlist and denylist from overlapping
             if denylist.iter().any(|a| allowlist.iter().any(|b| a == b)) {
                 return Err(PreProposeSubmissionPolicyError::DenylistAllowlistOverlap {});
