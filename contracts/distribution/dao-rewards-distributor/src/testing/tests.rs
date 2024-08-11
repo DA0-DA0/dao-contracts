@@ -2361,3 +2361,89 @@ fn test_query_info() {
         }
     );
 }
+
+#[test]
+fn test_rewards_not_lost_after_discontinuous_restart() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
+        .with_rewards_config(RewardsConfig {
+            amount: 3_000,
+            denom: UncheckedDenom::Native(DENOM.to_string()),
+            duration: Duration::Height(1),
+            destination: None,
+            continuous: false,
+        })
+        .build();
+
+    suite.assert_amount(3_000);
+    suite.assert_ends_at(Expiration::AtHeight(33_333));
+    suite.assert_duration(1);
+
+    // skip to end
+    suite.skip_blocks(33_333);
+
+    // check pending rewards
+    suite.assert_pending_rewards(ADDR1, 1, 49999500);
+    suite.assert_pending_rewards(ADDR2, 1, 24999750);
+    suite.assert_pending_rewards(ADDR3, 1, 24999750);
+
+    // before user claim rewards, someone funded
+    suite.fund_native(1, coin(1u128, DENOM));
+
+    // pending rewards should still exist
+    suite.assert_pending_rewards(ADDR1, 1, 49999500);
+    suite.assert_pending_rewards(ADDR2, 1, 24999750);
+    suite.assert_pending_rewards(ADDR3, 1, 24999750);
+}
+
+#[test]
+fn test_fund_while_paused() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::CW4).build();
+
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000));
+    suite.assert_duration(10);
+
+    // skip 1/10th
+    suite.skip_blocks(100_000);
+
+    // check pending rewards
+    suite.assert_pending_rewards(ADDR1, 1, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, 1, 2_500_000);
+
+    // pause
+    suite.pause_emission(1);
+
+    // pending rewards should still exist
+    suite.assert_pending_rewards(ADDR1, 1, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, 1, 2_500_000);
+
+    // fund during pause the amount that's already been distributed
+    suite.fund_native(1, coin(10_000_000, DENOM));
+
+    // restart
+    suite.update_emission_rate(1, Duration::Height(10), 1_000, true);
+
+    // expect it to last as long as it was initially going to
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000 + 100_000));
+
+    // skip 1/10th
+    suite.skip_blocks(100_000);
+
+    // check pending rewards
+    suite.assert_pending_rewards(ADDR1, 1, 2 * 5_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 2 * 2_500_000);
+    suite.assert_pending_rewards(ADDR3, 1, 2 * 2_500_000);
+
+    // pause and fund more
+    suite.pause_emission(1);
+    suite.fund_native(1, coin(100_000_000, DENOM));
+
+    // restart
+    suite.update_emission_rate(1, Duration::Height(10), 1_000, true);
+
+    // expect the start and end to adjust again
+    suite.assert_started_at(Expiration::AtHeight(200_000));
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000 + 100_000 + 1_000_000));
+}
