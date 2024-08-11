@@ -144,6 +144,8 @@ pub struct GaugeResponse {
     pub adapter: String,
     /// Frequency (in seconds) the gauge executes messages, typically something like 7*86400
     pub epoch_size: u64,
+    /// Total epoch duration
+    pub total_epochs: Option<u64>,
     /// Minimum percentage of votes needed by a given option to be in the selected set.
     /// If unset, there is no minimum percentage, just the `max_options_selected` limit.
     pub min_percent_selected: Option<Decimal>,

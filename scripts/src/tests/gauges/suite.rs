@@ -10,7 +10,10 @@ use dao_interface::{
     msg::ExecuteMsg as CoreExecuteMsg,
     state::{Admin, ModuleInstantiateInfo},
 };
-use gauge_orchestrator::msg::{ExecuteMsgFns as OrchExecuteMsgFns, GaugeConfig};
+use gauge_adapter::msg::AssetUnchecked;
+use gauge_orchestrator::msg::{
+    ExecuteMsg as GaugeExecuteMsg, ExecuteMsgFns as OrchExecuteMsgFns, GaugeConfig,
+};
 
 /// cw4 voting dao with gauges
 pub struct DaoDaoCw4Gauge<Chain> {
@@ -68,7 +71,7 @@ impl DaoDaoCw4Gauge<MockBech32> {
         // set contracts to cw-orch state
         self.set_dao_module_addrs(dao_modules[1].clone(), dao_modules[0].clone())?;
         // create gauge adapter
-        let gauge_config = self.init_adapter(&options)?;
+        let gauge_config = self.init_testing_adapter(&options)?;
         let adapter = Addr::unchecked(gauge_config.adapter.clone());
         // create orchestrator & add to DAO
         let gauge = self.add_gauge_to_dao(mock.clone(), vec![gauge_config])?;
@@ -90,7 +93,7 @@ impl DaoDaoCw4Gauge<MockBech32> {
         let dao_addr = self.dao_core.addr_str()?;
         // create gauge adapter
         let default_options = vec![voter1.as_str(), voter2.as_str(), &dao_addr];
-        let gauge_config = self.init_adapter(&default_options)?;
+        let gauge_config = self.init_testing_adapter(&default_options)?;
         let adapter = Addr::unchecked(gauge_config.adapter.clone());
         // create orchestrator & add to DAO
         let gauge = self.add_gauge_to_dao(mock.clone(), vec![gauge_config])?;
@@ -144,12 +147,35 @@ impl DaoDaoCw4Gauge<MockBech32> {
         Ok(res)
     }
 
-    pub fn init_adapter(&self, options: &[&str]) -> anyhow::Result<GaugeConfig> {
+    pub fn init_testing_adapter(&self, options: &[&str]) -> anyhow::Result<GaugeConfig> {
         // init adapter
         let adapter = self.gauge_suite.test_adapter.instantiate(
             &dao_gauge_adapter::contract::InstantiateMsg {
                 options: options.iter().map(|s| s.to_string()).collect(),
                 to_distribute: coin(1000, "ujuno"),
+            },
+            Some(&self.dao_core.address()?),
+            None,
+        )?;
+        Ok(GaugeConfig {
+            title: "default-gauge".to_owned(),
+            adapter: adapter.instantiated_contract_address()?.to_string(),
+            epoch_size: EPOCH,
+            min_percent_selected: Some(Decimal::percent(5)),
+            max_options_selected: 10,
+            max_available_percentage: None,
+            reset_epoch: None,
+            total_epochs: None,
+        })
+    }
+    pub fn init_minimal_adapter(&self, options: &[&str]) -> anyhow::Result<GaugeConfig> {
+        // init adapter
+        let adapter = self.gauge_suite.adapter.instantiate(
+            &gauge_adapter::msg::InstantiateMsg {
+                admin: self.dao_core.address()?.to_string(),
+                required_deposit: None,
+                community_pool: self.dao_core.address()?.to_string(),
+                reward: AssetUnchecked::new_native("ujuno", 1000u128),
             },
             Some(&self.dao_core.address()?),
             None,
@@ -222,7 +248,7 @@ impl DaoDaoCw4Gauge<MockBech32> {
 
     /// instantiate an adapter contract and return its configuration, including the contract addr.
     pub fn init_adapter_return_config(&self, options: &[&str]) -> anyhow::Result<GaugeConfig> {
-        let adapter = self.init_adapter(options)?;
+        let adapter = self.init_testing_adapter(options)?;
         Ok(adapter)
     }
     /// adds an adapter to the existing gauge orchestrator
@@ -232,6 +258,16 @@ impl DaoDaoCw4Gauge<MockBech32> {
             .orchestrator
             .call_as(&dao_addr)
             .create_gauge(adapter)?;
+        Ok(())
+    }
+
+    pub fn run_epoch(&self, mock: MockBech32, id: u64) -> anyhow::Result<()> {
+        let dao = self.dao_core.address()?;
+        mock.call_as(&dao).execute(
+            &GaugeExecuteMsg::Execute { gauge: id },
+            &vec![],
+            &self.gauge_suite.orchestrator.address()?,
+        )?;
         Ok(())
     }
 }

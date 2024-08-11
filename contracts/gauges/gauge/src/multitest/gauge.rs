@@ -43,6 +43,7 @@ fn create_gauge() {
             is_stopped: false,
             next_epoch: suite.current_time() + 7 * 86400,
             reset: None,
+            total_epochs: None
         }
     );
 }
@@ -84,6 +85,7 @@ fn gauge_can_upgrade_from_self() {
             is_stopped: false,
             next_epoch: suite.current_time() + 7 * 86400,
             reset: None,
+            total_epochs: None
         }
     );
 }
@@ -123,6 +125,7 @@ fn gauge_migrate_with_next_epochs() {
             is_stopped: false,
             next_epoch: suite.current_time() + 7 * 86400,
             reset: None,
+            total_epochs: None
         }
     );
 
@@ -156,6 +159,7 @@ fn gauge_migrate_with_next_epochs() {
             is_stopped: false,
             next_epoch: suite.current_time() + 14 * 86400,
             reset: None,
+            total_epochs: None
         }
     );
 
@@ -502,7 +506,13 @@ fn execute_stopped_gauge() {
 
     suite.next_block();
     let gauge_config = suite
-        .instantiate_adapter_and_return_config(&[voter1, voter2], reward_to_distribute, None, None,None)
+        .instantiate_adapter_and_return_config(
+            &[voter1, voter2],
+            reward_to_distribute,
+            None,
+            None,
+            None,
+        )
         .unwrap();
     suite
         .propose_update_proposal_module(voter1.to_string(), vec![gauge_config])
@@ -618,6 +628,7 @@ fn update_gauge() {
                 is_stopped: false,
                 next_epoch: suite.current_time() + 7 * 86400,
                 reset: None,
+                total_epochs: None
             },
             GaugeResponse {
                 id: 1,
@@ -630,6 +641,7 @@ fn update_gauge() {
                 is_stopped: false,
                 next_epoch: suite.current_time() + 7 * 86400,
                 reset: None,
+                total_epochs: None
             }
         ]
     );
@@ -646,8 +658,8 @@ fn update_gauge() {
             &owner,
             gauge_contract.clone(),
             0,
-            epoch_limit,
             new_epoch,
+            epoch_limit,
             new_min_percent,
             new_max_options,
             new_max_available_percentage,
@@ -669,6 +681,7 @@ fn update_gauge() {
                 is_stopped: false,
                 next_epoch: suite.current_time() + 7 * 86400,
                 reset: None,
+                total_epochs: None
             },
             GaugeResponse {
                 id: 1,
@@ -681,6 +694,7 @@ fn update_gauge() {
                 is_stopped: false,
                 next_epoch: suite.current_time() + 7 * 86400,
                 reset: None,
+                total_epochs: None
             }
         ]
     );
@@ -714,6 +728,7 @@ fn update_gauge() {
                 is_stopped: false,
                 next_epoch: suite.current_time() + 7 * 86400,
                 reset: None,
+                total_epochs: None
             },
             GaugeResponse {
                 id: 1,
@@ -726,6 +741,7 @@ fn update_gauge() {
                 is_stopped: false,
                 next_epoch: suite.current_time() + 7 * 86400,
                 reset: None,
+                total_epochs: None
             }
         ]
     );

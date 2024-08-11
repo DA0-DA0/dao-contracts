@@ -42,6 +42,7 @@ mod gauge {
                 is_stopped: false,
                 next_epoch: mock.block_info()?.time.seconds() + 7 * 86400,
                 reset: None,
+                total_epochs: None,
             }
         );
 
@@ -78,6 +79,7 @@ mod gauge {
                 is_stopped: false,
                 next_epoch: mock.block_info()?.time.seconds() + 7 * 86400,
                 reset: None,
+                total_epochs: None,
             }
         );
         Ok(())
@@ -116,6 +118,7 @@ mod gauge {
                 title: "default-gauge".to_owned(),
                 adapter: dao.gauge_suite.adapter.addr_str()?,
                 epoch_size: EPOCH,
+                total_epochs: None,
                 min_percent_selected: Some(Decimal::percent(5)),
                 max_options_selected: 10,
                 max_available_percentage: None,
@@ -527,7 +530,7 @@ mod gauge {
         mock.add_balance(&dao_addr, coins(1000, "ujuno"))?;
 
         // setup another gauge
-        let second_gauge_adapter = dao.init_adapter(&[
+        let second_gauge_adapter = dao.init_testing_adapter(&[
             &mock.addr_make("voter1").to_string(),
             &mock.addr_make("voter2").to_string(),
         ])?;
@@ -548,11 +551,13 @@ mod gauge {
                     is_stopped: false,
                     next_epoch: mock.block_info()?.time.seconds() + 7 * 86400,
                     reset: None,
+                    total_epochs: None,
                 },
                 GaugeResponse {
                     id: 1,
                     title: "default-gauge".to_owned(),
                     adapter: second_gauge_adapter.adapter.to_string(),
+                    total_epochs: None,
                     epoch_size: EPOCH,
                     min_percent_selected: Some(Decimal::percent(5)),
                     max_options_selected: 10,
@@ -592,6 +597,7 @@ mod gauge {
                     title: "default-gauge".to_owned(),
                     adapter: dao.gauge_suite.adapter.addr_str()?,
                     epoch_size: new_epoch,
+                    total_epochs: None,
                     min_percent_selected: new_min_percent,
                     max_options_selected: new_max_options,
                     max_available_percentage: new_max_available_percentage,
@@ -604,6 +610,7 @@ mod gauge {
                     title: "default-gauge".to_owned(),
                     adapter: second_gauge_adapter.adapter.to_string(),
                     epoch_size: EPOCH,
+                    total_epochs: None,
                     min_percent_selected: Some(Decimal::percent(5)),
                     max_options_selected: 10,
                     max_available_percentage: None,
@@ -628,6 +635,7 @@ mod gauge {
                 title: "default-gauge".to_owned(),
                 adapter: second_gauge_adapter.adapter.to_string(),
                 epoch_size: EPOCH,
+                total_epochs: None,
                 min_percent_selected: None,
                 max_options_selected: 10,
                 max_available_percentage: None,
@@ -889,6 +897,7 @@ mod reset {
                 title: "default-gauge".to_owned(),
                 adapter: dao.gauge_suite.adapter.addr_str()?,
                 epoch_size: EPOCH,
+                total_epochs: None,
                 min_percent_selected: Some(Decimal::percent(5)),
                 max_options_selected: 10,
                 max_available_percentage: None,
@@ -898,11 +907,103 @@ mod reset {
                     last: None,
                     reset_each: RESET_EPOCH,
                     next: mock.block_info()?.time.seconds() + 100,
-                    total: None,
                 })
             }
         );
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_epoch_limit() -> anyhow::Result<()> {
+        let mock = MockBech32::new(PREFIX);
+        let mut dao = DaoDaoCw4Gauge::new(mock.clone());
+        let voter1 = mock.addr_make("voter1");
+        let voter2 = mock.addr_make("voter2");
+        dao.upload_with_cw4(mock.clone())?;
+        dao.default_gauge_setup(mock.clone())?;
+        let mut second_gauge = dao.init_minimal_adapter(&[voter1.as_str(), voter2.as_str()])?;
+        // set # of epochs gauge will run to 3
+        second_gauge.total_epochs = Some(3);
+        dao.add_adapter_to_gauge(second_gauge)?;
+        let dao_addr = dao.dao_core.address()?;
+        let gauge_id = 1;
+
+        // vote
+        dao.gauge_suite.orchestrator.call_as(&voter1).place_votes(
+            gauge_id,
+            Some(
+                vec![GaugeVote {
+                    option: dao_addr.to_string(),
+                    weight: Decimal::one(),
+                }]
+                .into(),
+            ),
+        )?;
+        dao.gauge_suite.orchestrator.call_as(&voter2).place_votes(
+            gauge_id,
+            Some(
+                vec![GaugeVote {
+                    option: dao_addr.to_string(),
+                    weight: Decimal::one(),
+                }]
+                .into(),
+            ),
+        )?;
+
+        // check that vote was tallied
+        let selected = dao.gauge_suite.orchestrator.selected_set(gauge_id)?.votes;
+        assert_eq!(
+            selected,
+            vec![(dao_addr.to_string(), Uint128::new(200u128))]
+        );
+        // move forward in time
+        mock.wait_seconds(EPOCH)?;
+        // execute epoch 1
+        dao.run_epoch(mock.clone(), gauge_id)?;
+        let selected = dao.gauge_suite.orchestrator.selected_set(gauge_id)?.votes;
+        assert_eq!(
+            selected,
+            vec![(dao_addr.to_string(), Uint128::new(200u128))]
+        );
+        // move forward in time
+        mock.wait_seconds(EPOCH)?;
+        // execute epoch 2
+        dao.run_epoch(mock.clone(), gauge_id)?;
+        let selected = dao.gauge_suite.orchestrator.selected_set(gauge_id)?.votes;
+        assert_eq!(
+            selected,
+            vec![(dao_addr.to_string(), Uint128::new(200u128))]
+        );
+        // move forward in time
+        mock.wait_seconds(EPOCH)?;
+        // execute epoch 3
+        dao.run_epoch(mock.clone(), gauge_id)?;
+        let selected = dao.gauge_suite.orchestrator.selected_set(gauge_id)?.votes;
+        assert_eq!(
+            selected,
+            vec![(dao_addr.to_string(), Uint128::new(200u128))]
+        );
+
+        // move forward in time
+        mock.wait_seconds(EPOCH)?;
+        let res = dao.gauge_suite.orchestrator.gauge(gauge_id)?;
+        assert_eq!(res.is_stopped, true);
+
+        // try to execute epoch 4
+        mock.call_as(&dao_addr)
+            .execute(
+                &GaugeExecuteMsg::Execute { gauge: gauge_id },
+                &vec![],
+                &dao.gauge_suite.orchestrator.address()?,
+            )
+            .unwrap_err();
+
+        let selected = dao.gauge_suite.orchestrator.selected_set(gauge_id)?.votes;
+        assert_eq!(
+            selected,
+            vec![(dao_addr.to_string(), Uint128::new(200u128))]
+        );
         Ok(())
     }
     #[test]
@@ -1086,7 +1187,8 @@ mod tally {
         // create new gauge with more members
         let members = defualt_voters(mock.clone(), vec![600, 120, 130, 140, 150])?;
         let cw4 = dao.cw4_vote.address()?;
-        let gauge2 = dao.init_adapter(&["option1", "option2", "option3", "option4", "option5"])?;
+        let gauge2 =
+            dao.init_testing_adapter(&["option1", "option2", "option3", "option4", "option5"])?;
         dao.add_adapter_to_gauge(gauge2)?;
         let gauge_id = 1;
 

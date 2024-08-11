@@ -51,7 +51,6 @@ fn basic_gauge_reset() {
     let gauge_contract = proposal_modules[1].clone();
     let gauge_id = 0;
 
-    
     // vote for one of the options in gauge
     suite
         .place_vote(
@@ -199,6 +198,7 @@ fn gauge_migrate_with_reset() {
             is_stopped: false,
             next_epoch: suite.current_time() + 7 * 86400,
             reset: None,
+            total_epochs: None,
         }
     );
 
@@ -263,8 +263,8 @@ fn gauge_migrate_with_reset() {
                 last: None,
                 reset_each: RESET_EPOCH,
                 next: suite.current_time() + 100,
-                total: None,
             }),
+            total_epochs: None,
         }
     );
 }

@@ -616,7 +616,7 @@ impl Suite {
         to_distribute: (u128, &str),
         max_available_percentage: impl Into<Option<Decimal>>,
         reset_epoch: impl Into<Option<u64>>,
-        epoch_limit: impl Into<Option<u64>>
+        epoch_limit: impl Into<Option<u64>>,
     ) -> AnyResult<Addr> {
         let option = self.instantiate_adapter_and_return_config(
             options,

@@ -427,8 +427,8 @@ mod execute {
                 last: None,
                 reset_each: r,
                 next: env.block.time.plus_seconds(r).seconds(),
-                total: total_epochs,
             }),
+            total_epoch: total_epochs,
         };
         let last_id: GaugeId = fetch_last_id(deps.storage)?;
         GAUGES.save(deps.storage, last_id, &gauge)?;
@@ -817,6 +817,10 @@ mod execute {
 
         msgs.extend(execute_messages.execute);
 
+     
+        // increments epoch count
+        gauge.count = gauge.increment_gauge_count()?;
+
         if gauge.will_reach_epoch_limit() {
             msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: env.contract.address.to_string(),
@@ -824,8 +828,6 @@ mod execute {
                 funds: vec![],
             }))
         }
-        // increments epoch count
-        gauge.count = gauge.increment_gauge_count()?;
 
         let config = CONFIG.load(deps.storage)?;
         let execute_msg = WasmMsg::Execute {
@@ -903,6 +905,7 @@ mod query {
             is_stopped: gauge.is_stopped,
             next_epoch: gauge.next_epoch,
             reset: gauge.reset,
+            total_epochs: gauge.total_epoch,
         }
     }
 
@@ -1058,7 +1061,6 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
                     last: gauge.reset.map(|r| r.last).unwrap_or_default(),
                     reset_each: reset_config.reset_epoch,
                     next: reset_config.next_reset,
-                    total: None,
                 });
             }
             Ok(gauge)

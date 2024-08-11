@@ -53,6 +53,8 @@ pub struct Gauge {
     pub epoch: u64,
     /// Epoch count.
     pub count: Option<u64>,
+    /// total possible count for a gauge to run. will automatially disable itself when reaching this epoch count.
+    pub total_epoch: Option<u64>,
     /// Minimum percentage of votes needed by a given option to be in the selected set
     pub min_percent_selected: Option<Decimal>,
     /// Maximum number of Options to make the selected set. Needed even with
@@ -78,8 +80,6 @@ pub struct Reset {
     pub reset_each: u64,
     /// next time we can reset
     pub next: u64,
-    // total
-    pub total: Option<u64>,
 }
 
 impl Gauge {
@@ -91,13 +91,11 @@ impl Gauge {
             .unwrap_or_default()
     }
     pub fn will_reach_epoch_limit(&self) -> bool {
-        self.reset.as_ref().map_or(false, |r| {
-            if let Some(total) = r.total {
-                total == self.count.unwrap_or_default() + 1
-            } else {
-                false
-            }
-        })
+        if let Some(total) = self.total_epoch {
+            total == self.count.unwrap_or_default()
+        } else {
+            false
+        }
     }
     pub fn increment_gauge_count(&self) -> StdResult<Option<u64>> {
         Ok(self.count.map_or(Some(0), |o| Some(o + 1)))
@@ -471,6 +469,7 @@ mod tests {
                         last_executed_set: None,
                         reset: None,
                         count: Some(0),
+                        total_epoch: None,
                     },
                 )
                 .unwrap();
@@ -599,6 +598,7 @@ mod tests {
                     last_executed_set: None,
                     reset: None,
                     count: Some(0),
+                    total_epoch: None,
                 },
             )
             .unwrap();
