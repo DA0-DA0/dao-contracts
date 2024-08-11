@@ -146,9 +146,13 @@ pub fn execute_confirm_stake(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    token_ids: Vec<String>,
+    mut token_ids: Vec<String>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
+
+    // de-duplicate token IDs to prevent double-counting exploit
+    token_ids.sort();
+    token_ids.dedup();
 
     // verify sender prepared and transferred all the tokens
     let sender_prepared_all = token_ids

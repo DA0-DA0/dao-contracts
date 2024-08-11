@@ -62,6 +62,25 @@ fn test_stake_tokens() -> anyhow::Result<()> {
     assert_eq!(total, Uint128::new(1));
     assert_eq!(personal, Uint128::new(1));
 
+    // Registering duplicate token IDs does not provide more voting power.
+    mint_nft(&mut app, &nft, STAKER, "2")?;
+    prepare_stake_nft(&mut app, &module, STAKER, "2")?;
+    send_nft(&mut app, &nft, "2", STAKER, module.as_str())?;
+    app.execute_contract(
+        Addr::unchecked(STAKER),
+        module.clone(),
+        &ExecuteMsg::ConfirmStake {
+            token_ids: vec!["2".to_string(), "2".to_string(), "2".to_string()],
+        },
+        &[],
+    )?;
+
+    app.update_block(next_block);
+
+    let (total, personal) = query_total_and_voting_power(&app, &module, STAKER, None)?;
+    assert_eq!(total, Uint128::new(2));
+    assert_eq!(personal, Uint128::new(2));
+
     Ok(())
 }
 
