@@ -207,10 +207,13 @@ where
             .map(|d| d.into_checked(deps.as_ref(), dao))
             .transpose()?;
 
+        if let Some(submision_policy) = &submission_policy {
+            submision_policy.validate()?
+        }
+
         self.config
             .update(deps.storage, |prev| -> Result<Config, PreProposeError> {
                 let new_submission_policy = if let Some(submission_policy) = submission_policy {
-                    submission_policy.validate()?;
                     submission_policy
                 } else {
                     prev.submission_policy
