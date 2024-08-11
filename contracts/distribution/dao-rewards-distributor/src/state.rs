@@ -9,7 +9,7 @@ use cw_utils::Duration;
 use std::{cmp::min, collections::HashMap};
 
 use crate::{
-    helpers::{get_duration_scalar, get_exp_diff, get_prev_block_total_vp, scale_factor},
+    helpers::{get_prev_block_total_vp, scale_factor, DurationExt, ExpirationExt},
     rewards::get_active_total_earned_puvp,
     ContractError,
 };
@@ -70,12 +70,12 @@ impl EmissionRate {
             EmissionRate::Linear {
                 amount, duration, ..
             } => {
-                if *amount == Uint128::zero() {
+                if amount.is_zero() {
                     return Err(ContractError::InvalidEmissionRateFieldZero {
                         field: "amount".to_string(),
                     });
                 }
-                if get_duration_scalar(duration) == 0 {
+                if duration.is_zero() {
                     return Err(ContractError::InvalidEmissionRateFieldZero {
                         field: "duration".to_string(),
                     });
@@ -229,24 +229,23 @@ impl DistributionState {
 
     /// get the total rewards to be distributed based on the active epoch's
     /// emission rate
-    pub fn get_total_rewards(&self) -> StdResult<Uint128> {
+    pub fn get_total_rewards(&self) -> Result<Uint128, ContractError> {
         match self.active_epoch.emission_rate {
             EmissionRate::Paused {} => Ok(Uint128::zero()),
             EmissionRate::Immediate {} => Ok(self.funded_amount),
             EmissionRate::Linear {
                 amount, duration, ..
             } => {
-                let epoch_duration =
-                    get_exp_diff(&self.active_epoch.ends_at, &self.active_epoch.started_at)?;
+                let epoch_duration = self
+                    .active_epoch
+                    .ends_at
+                    .duration_since(&self.active_epoch.started_at)?;
 
-                let emission_rate_duration_scalar = match duration {
-                    Duration::Height(h) => h,
-                    Duration::Time(t) => t,
-                };
+                // count total intervals of the rewards emission that will pass
+                // based on the start and end times.
+                let complete_distribution_periods = epoch_duration.checked_div(&duration)?;
 
-                amount
-                    .checked_multiply_ratio(epoch_duration, emission_rate_duration_scalar)
-                    .map_err(|e| StdError::generic_err(e.to_string()))
+                Ok(amount.checked_mul(complete_distribution_periods)?)
             }
         }
     }

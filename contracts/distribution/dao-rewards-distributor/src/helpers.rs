@@ -36,16 +36,6 @@ pub fn get_voting_power_at_block(
     Ok(resp.power)
 }
 
-/// returns underlying scalar value for a given duration.
-/// if the duration is in blocks, returns the block height.
-/// if the duration is in time, returns the time in seconds.
-pub fn get_duration_scalar(duration: &Duration) -> u64 {
-    match duration {
-        Duration::Height(h) => *h,
-        Duration::Time(t) => *t,
-    }
-}
-
 /// Returns the appropriate CosmosMsg for transferring the reward token.
 pub fn get_transfer_msg(recipient: Addr, amount: Uint128, denom: Denom) -> StdResult<CosmosMsg> {
     match denom {
@@ -73,32 +63,6 @@ pub(crate) fn scale_factor() -> Uint256 {
     Uint256::from(10u8).pow(39)
 }
 
-/// Calculate the duration from start to end. If the end is at or before the
-/// start, return 0. The first argument is end, and the second is start.
-pub fn get_exp_diff(end: &Expiration, start: &Expiration) -> StdResult<u64> {
-    match (end, start) {
-        (Expiration::AtHeight(end), Expiration::AtHeight(start)) => {
-            if end > start {
-                Ok(end - start)
-            } else {
-                Ok(0)
-            }
-        }
-        (Expiration::AtTime(end), Expiration::AtTime(start)) => {
-            if end > start {
-                Ok(end.seconds() - start.seconds())
-            } else {
-                Ok(0)
-            }
-        }
-        (Expiration::Never {}, Expiration::Never {}) => Ok(0),
-        _ => Err(StdError::generic_err(format!(
-            "incompatible expirations: got end {:?}, start {:?}",
-            end, start
-        ))),
-    }
-}
-
 pub fn validate_voting_power_contract(
     deps: &DepsMut,
     vp_contract: String,
@@ -109,4 +73,75 @@ pub fn validate_voting_power_contract(
         &VotingQueryMsg::TotalPowerAtHeight { height: None },
     )?;
     Ok(vp_contract)
+}
+
+pub trait ExpirationExt {
+    /// Compute the duration since the start, flooring at 0 if the current
+    /// expiration is before the start. If either is never, or if they have
+    /// different units, returns an error as those cannot be compared.
+    fn duration_since(&self, start: &Self) -> StdResult<Duration>;
+}
+
+impl ExpirationExt for Expiration {
+    fn duration_since(&self, start: &Self) -> StdResult<Duration> {
+        match (self, start) {
+            (Expiration::AtHeight(end), Expiration::AtHeight(start)) => {
+                if end > start {
+                    Ok(Duration::Height(end - start))
+                } else {
+                    Ok(Duration::Height(0))
+                }
+            }
+            (Expiration::AtTime(end), Expiration::AtTime(start)) => {
+                if end > start {
+                    Ok(Duration::Time(end.seconds() - start.seconds()))
+                } else {
+                    Ok(Duration::Time(0))
+                }
+            }
+            (Expiration::Never {}, _) | (_, Expiration::Never {}) => {
+                Err(StdError::generic_err(format!(
+                "can't compute diff between expirations with never: got end {:?} and start {:?}",
+                self, start
+            )))
+            }
+            _ => Err(StdError::generic_err(format!(
+                "incompatible expirations: got end {:?} and start {:?}",
+                self, start
+            ))),
+        }
+    }
+}
+
+pub trait DurationExt {
+    /// Returns true if the duration is 0 blocks or 0 seconds.
+    fn is_zero(&self) -> bool;
+
+    /// Perform checked integer division between two durations, erroring if the
+    /// units do not match or denominator is 0.
+    fn checked_div(&self, denominator: &Self) -> Result<Uint128, ContractError>;
+}
+
+impl DurationExt for Duration {
+    fn is_zero(&self) -> bool {
+        match self {
+            Duration::Height(h) => *h == 0,
+            Duration::Time(t) => *t == 0,
+        }
+    }
+
+    fn checked_div(&self, denominator: &Self) -> Result<Uint128, ContractError> {
+        match (self, denominator) {
+            (Duration::Height(numerator), Duration::Height(denominator)) => {
+                Ok(Uint128::from(*numerator).checked_div(Uint128::from(*denominator))?)
+            }
+            (Duration::Time(numerator), Duration::Time(denominator)) => {
+                Ok(Uint128::from(*numerator).checked_div(Uint128::from(*denominator))?)
+            }
+            _ => Err(ContractError::Std(StdError::generic_err(format!(
+                "incompatible durations: got numerator {:?} and denominator {:?}",
+                self, denominator
+            )))),
+        }
+    }
 }
