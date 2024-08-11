@@ -652,6 +652,8 @@ where
                     }
                 };
 
+                submission_policy.validate()?;
+
                 let deposit_info: Option<CheckedDepositInfo> =
                     old_config.deposit_info.map(|old| CheckedDepositInfo {
                         denom: match old.denom {
