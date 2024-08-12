@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-proposal-condorcet",
-  "contract_version": "2.4.2",
+  "contract_version": "2.5.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -555,6 +555,36 @@
               }
             },
             "additionalProperties": false
+          },
+          {
+            "description": "This maps directly to [MsgVoteWeighted](https://github.com/cosmos/cosmos-sdk/blob/v0.45.8/proto/cosmos/gov/v1beta1/tx.proto#L66-L78) in the Cosmos SDK with voter set to the contract address.",
+            "type": "object",
+            "required": [
+              "vote_weighted"
+            ],
+            "properties": {
+              "vote_weighted": {
+                "type": "object",
+                "required": [
+                  "options",
+                  "proposal_id"
+                ],
+                "properties": {
+                  "options": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/WeightedVoteOption"
+                    }
+                  },
+                  "proposal_id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                }
+              }
+            },
+            "additionalProperties": false
           }
         ]
       },
@@ -973,6 +1003,60 @@
             "additionalProperties": false
           },
           {
+            "description": "Instantiates a new contracts from previously uploaded Wasm code using a predictable address derivation algorithm implemented in [`cosmwasm_std::instantiate2_address`].\n\nThis is translated to a [MsgInstantiateContract2](https://github.com/CosmWasm/wasmd/blob/v0.29.2/proto/cosmwasm/wasm/v1/tx.proto#L73-L96). `sender` is automatically filled with the current contract's address. `fix_msg` is automatically set to false.",
+            "type": "object",
+            "required": [
+              "instantiate2"
+            ],
+            "properties": {
+              "instantiate2": {
+                "type": "object",
+                "required": [
+                  "code_id",
+                  "funds",
+                  "label",
+                  "msg",
+                  "salt"
+                ],
+                "properties": {
+                  "admin": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "code_id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  },
+                  "funds": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/Coin"
+                    }
+                  },
+                  "label": {
+                    "description": "A human-readable label for the contract.\n\nValid values should: - not be empty - not be bigger than 128 bytes (or some chain-specific limit) - not start / end with whitespace",
+                    "type": "string"
+                  },
+                  "msg": {
+                    "description": "msg is the JSON-encoded InstantiateMsg struct (as raw Binary)",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Binary"
+                      }
+                    ]
+                  },
+                  "salt": {
+                    "$ref": "#/definitions/Binary"
+                  }
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          {
             "description": "Migrates a given contracts to use new wasm code. Passes a MigrateMsg to allow us to customize behavior.\n\nOnly the contract admin (as defined in wasmd), if any, is able to make this call.\n\nThis is translated to a [MsgMigrateContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L86-L96). `sender` is automatically filled with the current contract's address.",
             "type": "object",
             "required": [
@@ -1056,6 +1140,21 @@
             "additionalProperties": false
           }
         ]
+      },
+      "WeightedVoteOption": {
+        "type": "object",
+        "required": [
+          "option",
+          "weight"
+        ],
+        "properties": {
+          "option": {
+            "$ref": "#/definitions/VoteOption"
+          },
+          "weight": {
+            "$ref": "#/definitions/Decimal"
+          }
+        }
       }
     }
   },
@@ -1696,6 +1795,36 @@
                 }
               },
               "additionalProperties": false
+            },
+            {
+              "description": "This maps directly to [MsgVoteWeighted](https://github.com/cosmos/cosmos-sdk/blob/v0.45.8/proto/cosmos/gov/v1beta1/tx.proto#L66-L78) in the Cosmos SDK with voter set to the contract address.",
+              "type": "object",
+              "required": [
+                "vote_weighted"
+              ],
+              "properties": {
+                "vote_weighted": {
+                  "type": "object",
+                  "required": [
+                    "options",
+                    "proposal_id"
+                  ],
+                  "properties": {
+                    "options": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/WeightedVoteOption"
+                      }
+                    },
+                    "proposal_id": {
+                      "type": "integer",
+                      "format": "uint64",
+                      "minimum": 0.0
+                    }
+                  }
+                }
+              },
+              "additionalProperties": false
             }
           ]
         },
@@ -2267,6 +2396,60 @@
               "additionalProperties": false
             },
             {
+              "description": "Instantiates a new contracts from previously uploaded Wasm code using a predictable address derivation algorithm implemented in [`cosmwasm_std::instantiate2_address`].\n\nThis is translated to a [MsgInstantiateContract2](https://github.com/CosmWasm/wasmd/blob/v0.29.2/proto/cosmwasm/wasm/v1/tx.proto#L73-L96). `sender` is automatically filled with the current contract's address. `fix_msg` is automatically set to false.",
+              "type": "object",
+              "required": [
+                "instantiate2"
+              ],
+              "properties": {
+                "instantiate2": {
+                  "type": "object",
+                  "required": [
+                    "code_id",
+                    "funds",
+                    "label",
+                    "msg",
+                    "salt"
+                  ],
+                  "properties": {
+                    "admin": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "code_id": {
+                      "type": "integer",
+                      "format": "uint64",
+                      "minimum": 0.0
+                    },
+                    "funds": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/Coin"
+                      }
+                    },
+                    "label": {
+                      "description": "A human-readable label for the contract.\n\nValid values should: - not be empty - not be bigger than 128 bytes (or some chain-specific limit) - not start / end with whitespace",
+                      "type": "string"
+                    },
+                    "msg": {
+                      "description": "msg is the JSON-encoded InstantiateMsg struct (as raw Binary)",
+                      "allOf": [
+                        {
+                          "$ref": "#/definitions/Binary"
+                        }
+                      ]
+                    },
+                    "salt": {
+                      "$ref": "#/definitions/Binary"
+                    }
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
+            {
               "description": "Migrates a given contracts to use new wasm code. Passes a MigrateMsg to allow us to customize behavior.\n\nOnly the contract admin (as defined in wasmd), if any, is able to make this call.\n\nThis is translated to a [MsgMigrateContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L86-L96). `sender` is automatically filled with the current contract's address.",
               "type": "object",
               "required": [
@@ -2350,6 +2533,21 @@
               "additionalProperties": false
             }
           ]
+        },
+        "WeightedVoteOption": {
+          "type": "object",
+          "required": [
+            "option",
+            "weight"
+          ],
+          "properties": {
+            "option": {
+              "$ref": "#/definitions/VoteOption"
+            },
+            "weight": {
+              "$ref": "#/definitions/Decimal"
+            }
+          }
         },
         "Winner": {
           "oneOf": [

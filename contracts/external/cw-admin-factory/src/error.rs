@@ -15,4 +15,7 @@ pub enum ContractError {
 
     #[error("An unknown reply ID was received.")]
     UnknownReplyID {},
+
+    #[error("Expected contract address {expected} but instantiated {actual}.")]
+    UnexpectedContractAddress { expected: String, actual: String },
 }

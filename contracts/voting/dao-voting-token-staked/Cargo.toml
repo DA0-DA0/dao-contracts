@@ -32,7 +32,7 @@ cosmwasm_tokenfactory = ["cw-tokenfactory-issuer/cosmwasm_tokenfactory"]
 kujira_tokenfactory = ["cw-tokenfactory-issuer/kujira_tokenfactory"]
 
 [dependencies]
-cosmwasm-std = { workspace = true, features = ["cosmwasm_1_1"] }
+cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-ownable = { workspace = true }
 cw-storage-plus = { workspace = true }

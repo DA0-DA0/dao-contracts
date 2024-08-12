@@ -1,0 +1,11 @@
+[alias]
+wasm = "build --release --lib --target wasm32-unknown-unknown"
+wasm-debug = "build --lib --target wasm32-unknown-unknown"
+all-test = "test --workspace"
+unit-test = "test --lib"
+integration-test = "test --package integration-tests -- --ignored --test-threads 1 -Z unstable-options --report-time"
+test-tube = "test --features test-tube"
+schema = "run --example schema"
+
+[env]
+RUSTFLAGS = "-C link-arg=-s"
