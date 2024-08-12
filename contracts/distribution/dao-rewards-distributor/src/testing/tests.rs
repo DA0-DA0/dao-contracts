@@ -2447,3 +2447,37 @@ fn test_fund_while_paused() {
     suite.assert_started_at(Expiration::AtHeight(200_000));
     suite.assert_ends_at(Expiration::AtHeight(1_000_000 + 100_000 + 1_000_000));
 }
+
+#[test]
+fn test_large_stake_before_claim() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
+        .with_rewards_config(RewardsConfig {
+            amount: 3_000,
+            denom: UncheckedDenom::Native(DENOM.to_string()),
+            duration: Duration::Height(1),
+            destination: None,
+            continuous: true,
+        })
+        .build();
+
+    suite.assert_amount(3_000);
+    suite.assert_ends_at(Expiration::AtHeight(33_333));
+    suite.assert_duration(1);
+
+    // ADDR1 stake big amount of tokens
+    suite.skip_blocks(33_000);
+    suite.mint_native(coin(10_000, &suite.reward_denom), ADDR1);
+    suite.stake_native_tokens(ADDR1, 10_000);
+
+    // ADD1 claims rewards in the next block
+    suite.skip_blocks(1);
+    suite.claim_rewards(ADDR1, 1);
+
+    // skip to end
+    suite.skip_blocks(100_000_000);
+
+    // all users should be able to claim rewards
+    suite.claim_rewards(ADDR1, 1);
+    suite.claim_rewards(ADDR2, 1);
+    suite.claim_rewards(ADDR3, 1);
+}
