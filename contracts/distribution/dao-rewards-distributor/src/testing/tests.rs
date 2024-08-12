@@ -1,5 +1,6 @@
 use std::borrow::BorrowMut;
 
+use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{coin, coins, to_json_binary, Addr, Timestamp};
 use cosmwasm_std::{Uint128, Uint256};
 use cw2::ContractVersion;
@@ -9,7 +10,8 @@ use cw_multi_test::Executor;
 use cw_utils::Duration;
 use dao_interface::voting::InfoResponse;
 
-use crate::msg::{CreateMsg, FundMsg};
+use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
+use crate::msg::{CreateMsg, FundMsg, MigrateMsg};
 use crate::state::{EmissionRate, Epoch};
 use crate::testing::native_setup::setup_native_token_test;
 use crate::ContractError;
@@ -2480,4 +2482,49 @@ fn test_large_stake_before_claim() {
     suite.claim_rewards(ADDR1, 1);
     suite.claim_rewards(ADDR2, 1);
     suite.claim_rewards(ADDR3, 1);
+}
+
+#[test]
+fn test_migrate() {
+    let mut deps = mock_dependencies();
+
+    cw2::set_contract_version(&mut deps.storage, "test", "0.0.1").unwrap();
+
+    // wrong contract name errors
+    let err: ContractError =
+        crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::MigrationErrorIncorrectContract {
+            expected: CONTRACT_NAME.to_string(),
+            actual: "test".to_string(),
+        }
+    );
+
+    // migration succeeds from past version of same contract
+    cw2::set_contract_version(&mut deps.storage, CONTRACT_NAME, "0.0.1").unwrap();
+    crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
+
+    // same-version migration errors
+    let err: ContractError =
+        crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::MigrationErrorInvalidVersion {
+            new: CONTRACT_VERSION.to_string(),
+            current: CONTRACT_VERSION.to_string(),
+        }
+    );
+
+    // future version errors
+    cw2::set_contract_version(&mut deps.storage, CONTRACT_NAME, "9.9.9").unwrap();
+    let err: ContractError =
+        crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::MigrationErrorInvalidVersion {
+            new: CONTRACT_VERSION.to_string(),
+            current: "9.9.9".to_string(),
+        }
+    );
 }
