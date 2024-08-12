@@ -325,6 +325,20 @@ fn test_update_token_role() {
     // Token was updated successfully
     let info: NftInfoResponse<MetadataExt> = query_token_info(&app, &cw721_addr, "1").unwrap();
     assert_eq!(info.extension.role, Some("queen".to_string()));
+
+    // Can set to None
+    app.execute_contract(
+        Addr::unchecked(DAO),
+        cw721_addr.clone(),
+        &ExecuteMsg::Extension {
+            msg: ExecuteExt::UpdateTokenRole {
+                token_id: "1".to_string(),
+                role: None,
+            },
+        },
+        &[],
+    )
+    .unwrap();
 }
 
 #[test]

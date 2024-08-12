@@ -1,5 +1,6 @@
 use std::borrow::BorrowMut;
 
+use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{coin, coins, to_json_binary, Addr, Timestamp};
 use cosmwasm_std::{Uint128, Uint256};
 use cw2::ContractVersion;
@@ -9,7 +10,8 @@ use cw_multi_test::Executor;
 use cw_utils::Duration;
 use dao_interface::voting::InfoResponse;
 
-use crate::msg::{CreateMsg, FundMsg};
+use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
+use crate::msg::{CreateMsg, FundMsg, MigrateMsg};
 use crate::state::{EmissionRate, Epoch};
 use crate::testing::native_setup::setup_native_token_test;
 use crate::ContractError;
@@ -2358,6 +2360,171 @@ fn test_query_info() {
                 contract: env!("CARGO_PKG_NAME").to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string(),
             }
+        }
+    );
+}
+
+#[test]
+fn test_rewards_not_lost_after_discontinuous_restart() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
+        .with_rewards_config(RewardsConfig {
+            amount: 3_000,
+            denom: UncheckedDenom::Native(DENOM.to_string()),
+            duration: Duration::Height(1),
+            destination: None,
+            continuous: false,
+        })
+        .build();
+
+    suite.assert_amount(3_000);
+    suite.assert_ends_at(Expiration::AtHeight(33_333));
+    suite.assert_duration(1);
+
+    // skip to end
+    suite.skip_blocks(33_333);
+
+    // check pending rewards
+    suite.assert_pending_rewards(ADDR1, 1, 49999500);
+    suite.assert_pending_rewards(ADDR2, 1, 24999750);
+    suite.assert_pending_rewards(ADDR3, 1, 24999750);
+
+    // before user claim rewards, someone funded
+    suite.fund_native(1, coin(1u128, DENOM));
+
+    // pending rewards should still exist
+    suite.assert_pending_rewards(ADDR1, 1, 49999500);
+    suite.assert_pending_rewards(ADDR2, 1, 24999750);
+    suite.assert_pending_rewards(ADDR3, 1, 24999750);
+}
+
+#[test]
+fn test_fund_while_paused() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::CW4).build();
+
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000));
+    suite.assert_duration(10);
+
+    // skip 1/10th
+    suite.skip_blocks(100_000);
+
+    // check pending rewards
+    suite.assert_pending_rewards(ADDR1, 1, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, 1, 2_500_000);
+
+    // pause
+    suite.pause_emission(1);
+
+    // pending rewards should still exist
+    suite.assert_pending_rewards(ADDR1, 1, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, 1, 2_500_000);
+
+    // fund during pause the amount that's already been distributed
+    suite.fund_native(1, coin(10_000_000, DENOM));
+
+    // restart
+    suite.update_emission_rate(1, Duration::Height(10), 1_000, true);
+
+    // expect it to last as long as it was initially going to
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000 + 100_000));
+
+    // skip 1/10th
+    suite.skip_blocks(100_000);
+
+    // check pending rewards
+    suite.assert_pending_rewards(ADDR1, 1, 2 * 5_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 2 * 2_500_000);
+    suite.assert_pending_rewards(ADDR3, 1, 2 * 2_500_000);
+
+    // pause and fund more
+    suite.pause_emission(1);
+    suite.fund_native(1, coin(100_000_000, DENOM));
+
+    // restart
+    suite.update_emission_rate(1, Duration::Height(10), 1_000, true);
+
+    // expect the start and end to adjust again
+    suite.assert_started_at(Expiration::AtHeight(200_000));
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000 + 100_000 + 1_000_000));
+}
+
+#[test]
+fn test_large_stake_before_claim() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
+        .with_rewards_config(RewardsConfig {
+            amount: 3_000,
+            denom: UncheckedDenom::Native(DENOM.to_string()),
+            duration: Duration::Height(1),
+            destination: None,
+            continuous: true,
+        })
+        .build();
+
+    suite.assert_amount(3_000);
+    suite.assert_ends_at(Expiration::AtHeight(33_333));
+    suite.assert_duration(1);
+
+    // ADDR1 stake big amount of tokens
+    suite.skip_blocks(33_000);
+    suite.mint_native(coin(10_000, &suite.reward_denom), ADDR1);
+    suite.stake_native_tokens(ADDR1, 10_000);
+
+    // ADD1 claims rewards in the next block
+    suite.skip_blocks(1);
+    suite.claim_rewards(ADDR1, 1);
+
+    // skip to end
+    suite.skip_blocks(100_000_000);
+
+    // all users should be able to claim rewards
+    suite.claim_rewards(ADDR1, 1);
+    suite.claim_rewards(ADDR2, 1);
+    suite.claim_rewards(ADDR3, 1);
+}
+
+#[test]
+fn test_migrate() {
+    let mut deps = mock_dependencies();
+
+    cw2::set_contract_version(&mut deps.storage, "test", "0.0.1").unwrap();
+
+    // wrong contract name errors
+    let err: ContractError =
+        crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::MigrationErrorIncorrectContract {
+            expected: CONTRACT_NAME.to_string(),
+            actual: "test".to_string(),
+        }
+    );
+
+    // migration succeeds from past version of same contract
+    cw2::set_contract_version(&mut deps.storage, CONTRACT_NAME, "0.0.1").unwrap();
+    crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
+
+    // same-version migration errors
+    let err: ContractError =
+        crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::MigrationErrorInvalidVersion {
+            new: CONTRACT_VERSION.to_string(),
+            current: CONTRACT_VERSION.to_string(),
+        }
+    );
+
+    // future version errors
+    cw2::set_contract_version(&mut deps.storage, CONTRACT_NAME, "9.9.9").unwrap();
+    let err: ContractError =
+        crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::MigrationErrorInvalidVersion {
+            new: CONTRACT_VERSION.to_string(),
+            current: "9.9.9".to_string(),
         }
     );
 }

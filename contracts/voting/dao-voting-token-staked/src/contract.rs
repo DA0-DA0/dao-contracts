@@ -783,7 +783,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         .add_attribute("denom", info.denom)
                         .add_attribute(
                             "token_contract",
-                            info.token_contract.unwrap_or_else(|| "_none".to_string()),
+                            info.token_contract.unwrap_or("None".to_string()),
                         );
 
                     // If a callback has been configured, set the module

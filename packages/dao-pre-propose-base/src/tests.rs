@@ -87,7 +87,7 @@ fn test_proposal_submitted_hooks() {
             &mut deps.storage,
             &Config {
                 deposit_info: None,
-                submission_policy: PreProposeSubmissionPolicy::Anyone { denylist: None },
+                submission_policy: PreProposeSubmissionPolicy::Anyone { denylist: vec![] },
             },
         )
         .unwrap();

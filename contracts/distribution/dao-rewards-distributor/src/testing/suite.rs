@@ -109,6 +109,7 @@ impl SuiteBuilder {
             owner: Some(owner.clone()),
             staking_addr: Addr::unchecked(""),
             voting_power_addr: Addr::unchecked(""),
+            reward_code_id: 0,
             distribution_contract: Addr::unchecked(""),
             cw20_addr: Addr::unchecked(""),
             reward_denom: DENOM.to_string(),
@@ -229,12 +230,12 @@ impl SuiteBuilder {
         };
 
         // initialize the rewards distributor
-        let reward_code_id = suite_built.app.borrow_mut().store_code(contract_rewards());
+        suite_built.reward_code_id = suite_built.app.borrow_mut().store_code(contract_rewards());
         let reward_addr = suite_built
             .app
             .borrow_mut()
             .instantiate_contract(
-                reward_code_id,
+                suite_built.reward_code_id,
                 owner.clone(),
                 &InstantiateMsg {
                     owner: Some(owner.clone().into_string()),
@@ -327,6 +328,7 @@ pub struct Suite {
     pub voting_power_addr: Addr,
     pub reward_denom: String,
 
+    pub reward_code_id: u64,
     pub distribution_contract: Addr,
 
     // cw20 type fields

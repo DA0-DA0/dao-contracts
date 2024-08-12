@@ -2,8 +2,8 @@ use cosmwasm_std::{Addr, BlockInfo, Deps, DepsMut, Env, StdResult, Uint128, Uint
 
 use crate::{
     helpers::{
-        get_duration_scalar, get_exp_diff, get_prev_block_total_vp, get_voting_power_at_block,
-        scale_factor,
+        get_total_voting_power_at_block, get_voting_power_at_block, scale_factor, DurationExt,
+        ExpirationExt,
     },
     state::{DistributionState, EmissionRate, UserRewardState, DISTRIBUTIONS, USER_REWARDS},
     ContractError,
@@ -82,7 +82,7 @@ pub fn get_active_total_earned_puvp(
     deps: Deps,
     block: &BlockInfo,
     distribution: &DistributionState,
-) -> StdResult<Uint256> {
+) -> Result<Uint256, ContractError> {
     match distribution.active_epoch.emission_rate {
         EmissionRate::Paused {} => Ok(Uint256::zero()),
         // this is updated manually during funding, so just return it here.
@@ -98,11 +98,8 @@ pub fn get_active_total_earned_puvp(
             // get the duration from the last time rewards were updated to the
             // last time rewards were distributed. this will be 0 if the rewards
             // were updated at or after the last time rewards were distributed.
-            let new_reward_distribution_duration: Uint128 = get_exp_diff(
-                &last_time_rewards_distributed,
-                &distribution.active_epoch.last_updated_total_earned_puvp,
-            )?
-            .into();
+            let new_reward_distribution_duration = last_time_rewards_distributed
+                .duration_since(&distribution.active_epoch.last_updated_total_earned_puvp)?;
 
             // no need to query total voting power and do math if distribution
             // is already up to date.
@@ -110,16 +107,17 @@ pub fn get_active_total_earned_puvp(
                 return Ok(curr);
             }
 
-            let prev_total_power = get_prev_block_total_vp(deps, block, &distribution.vp_contract)?;
+            let total_power =
+                get_total_voting_power_at_block(deps, block, &distribution.vp_contract)?;
 
             // if no voting power is registered, no one should receive rewards.
-            if prev_total_power.is_zero() {
+            if total_power.is_zero() {
                 Ok(curr)
             } else {
                 // count intervals of the rewards emission that have passed
                 // since the last update which need to be distributed
-                let complete_distribution_periods = new_reward_distribution_duration
-                    .checked_div(get_duration_scalar(&duration).into())?;
+                let complete_distribution_periods =
+                    new_reward_distribution_duration.checked_div(&duration)?;
 
                 // It is impossible for this to overflow as total rewards can
                 // never exceed max value of Uint128 as total tokens in
@@ -131,8 +129,7 @@ pub fn get_active_total_earned_puvp(
 
                 // the new rewards per unit voting power that have been
                 // distributed since the last update
-                let new_rewards_puvp =
-                    new_rewards_distributed.checked_div(prev_total_power.into())?;
+                let new_rewards_puvp = new_rewards_distributed.checked_div(total_power.into())?;
                 Ok(curr.checked_add(new_rewards_puvp)?)
             }
         }

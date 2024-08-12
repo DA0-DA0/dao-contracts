@@ -146,9 +146,13 @@ pub fn execute_confirm_stake(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    token_ids: Vec<String>,
+    mut token_ids: Vec<String>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
+
+    // de-duplicate token IDs to prevent double-counting exploit
+    token_ids.sort();
+    token_ids.dedup();
 
     // verify sender prepared and transferred all the tokens
     let sender_prepared_all = token_ids
@@ -173,11 +177,6 @@ pub fn execute_confirm_stake(
     }
 
     register_staked_nfts(deps.storage, env.block.height, &info.sender, &token_ids)?;
-
-    // remove preparations
-    for token_id in &token_ids {
-        PREPARED_ONFTS.remove(deps.storage, token_id.to_string());
-    }
 
     let hook_msgs = token_ids
         .iter()

@@ -146,7 +146,7 @@ impl SuiteBuilder {
         if let Some(candidates) = self.with_proposal {
             suite
                 .propose(
-                    &suite.sender(),
+                    suite.sender(),
                     (0..candidates)
                         .map(|_| vec![unimportant_message()])
                         .collect(),
