@@ -34,7 +34,7 @@ jobs:
 
       - name: Compile contracts
         timeout-minutes: 30
-        run: optimize_workspace.sh .
+        run: optimize.sh .
 
       - name: Upload contracts
         uses: actions/upload-artifact@v3
