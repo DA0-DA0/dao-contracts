@@ -28,6 +28,7 @@ dao-interface = { workspace = true }
 dao-voting = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
+cw-orch = {workspace = true}
 semver = { workspace = true }
 
 # v2.4.1 packages for state migration
