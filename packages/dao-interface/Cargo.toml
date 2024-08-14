@@ -15,7 +15,6 @@ cw20 = { workspace = true }
 cw721 = { workspace = true }
 cw-utils = { workspace = true }
 osmosis-std = { workspace = true }
-cw-orch = {workspace = true}
 
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }

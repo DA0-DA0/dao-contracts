@@ -1041,31 +1041,6 @@
               }
             },
             "additionalProperties": false
-          },
-          {
-            "description": "This is translated to a [[MsgFundCommunityPool](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#LL69C1-L76C2). `depositor` is automatically filled with the current contract's address.",
-            "type": "object",
-            "required": [
-              "fund_community_pool"
-            ],
-            "properties": {
-              "fund_community_pool": {
-                "type": "object",
-                "required": [
-                  "amount"
-                ],
-                "properties": {
-                  "amount": {
-                    "description": "The amount to spend",
-                    "type": "array",
-                    "items": {
-                      "$ref": "#/definitions/Coin"
-                    }
-                  }
-                }
-              }
-            },
-            "additionalProperties": false
           }
         ]
       },
@@ -3228,31 +3203,6 @@
                 }
               },
               "additionalProperties": false
-            },
-            {
-              "description": "This is translated to a [[MsgFundCommunityPool](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#LL69C1-L76C2). `depositor` is automatically filled with the current contract's address.",
-              "type": "object",
-              "required": [
-                "fund_community_pool"
-              ],
-              "properties": {
-                "fund_community_pool": {
-                  "type": "object",
-                  "required": [
-                    "amount"
-                  ],
-                  "properties": {
-                    "amount": {
-                      "description": "The amount to spend",
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/definitions/Coin"
-                      }
-                    }
-                  }
-                }
-              },
-              "additionalProperties": false
             }
           ]
         },
@@ -4652,31 +4602,6 @@
                 }
               },
               "additionalProperties": false
-            },
-            {
-              "description": "This is translated to a [[MsgFundCommunityPool](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#LL69C1-L76C2). `depositor` is automatically filled with the current contract's address.",
-              "type": "object",
-              "required": [
-                "fund_community_pool"
-              ],
-              "properties": {
-                "fund_community_pool": {
-                  "type": "object",
-                  "required": [
-                    "amount"
-                  ],
-                  "properties": {
-                    "amount": {
-                      "description": "The amount to spend",
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/definitions/Coin"
-                      }
-                    }
-                  }
-                }
-              },
-              "additionalProperties": false
             }
           ]
         },
@@ -6017,31 +5942,6 @@
                     "validator": {
                       "description": "The `validator_address`",
                       "type": "string"
-                    }
-                  }
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "description": "This is translated to a [[MsgFundCommunityPool](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#LL69C1-L76C2). `depositor` is automatically filled with the current contract's address.",
-              "type": "object",
-              "required": [
-                "fund_community_pool"
-              ],
-              "properties": {
-                "fund_community_pool": {
-                  "type": "object",
-                  "required": [
-                    "amount"
-                  ],
-                  "properties": {
-                    "amount": {
-                      "description": "The amount to spend",
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/definitions/Coin"
-                      }
                     }
                   }
                 }

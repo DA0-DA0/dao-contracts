@@ -18,7 +18,6 @@ pub struct InstantiateMsg {
 
 #[cw_ownable_execute]
 #[cw_serde]
-#[derive(cw_orch::ExecuteFns)]
 pub enum ExecuteMsg {
     UpdateConfig {
         staking_addr: String,
@@ -30,7 +29,7 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
-#[derive(QueryResponses, cw_orch::QueryFns)]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(InfoResponse)]
     Info {},

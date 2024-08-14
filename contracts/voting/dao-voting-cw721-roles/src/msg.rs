@@ -44,12 +44,11 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
-#[derive(cw_orch::ExecuteFns)]
 pub enum ExecuteMsg {}
 
 #[voting_module_query]
 #[cw_serde]
-#[derive(QueryResponses, cw_orch::QueryFns)]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(crate::state::Config)]
     Config {},

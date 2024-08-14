@@ -47,7 +47,6 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
-#[derive(cw_orch::ExecuteFns)]
 pub enum ExecuteMsg {
     /// Creates a proposal in the module.
     Propose(SingleChoiceProposeMsg),
@@ -148,7 +147,7 @@ pub enum ExecuteMsg {
 
 #[proposal_module_query]
 #[cw_serde]
-#[derive(QueryResponses, cw_orch::QueryFns)]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
     /// Gets the proposal module's config.
     #[returns(crate::state::Config)]

@@ -9,11 +9,9 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
-#[derive(cw_orch::ExecuteFns)]
 pub enum ExecuteMsg {
     /// Instantiates the target contract with the provided instantiate message,
     /// code ID, and label and updates the contract's admin to be itself.
-    #[cw_orch(payable)]
     InstantiateContractWithSelfAdmin {
         instantiate_msg: Binary,
         code_id: u64,
@@ -22,7 +20,6 @@ pub enum ExecuteMsg {
     /// Instantiates the target contract with the provided instantiate message,
     /// code ID, label, and salt, via instantiate2 to give a predictable
     /// address, and updates the contract's admin to be itself.
-    #[cw_orch(payable)]
     Instantiate2ContractWithSelfAdmin {
         instantiate_msg: Binary,
         code_id: u64,
@@ -36,7 +33,7 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
-#[derive(QueryResponses, cw_orch::QueryFns)]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(AdminResponse)]
     Admin {},
