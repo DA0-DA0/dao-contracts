@@ -19,9 +19,8 @@ library = []
 [dependencies]
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
-cw2 = { workspace = true }
-cw-orch = { workspace = true }
 cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
 dao-interface = { workspace = true }
 osmosis-std-derive = { workspace = true }
 prost = { workspace = true }

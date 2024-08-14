@@ -22,7 +22,6 @@ pub struct InstantiateMsg {
 
 #[cw_ownable_execute]
 #[cw_serde]
-#[derive(cw_orch::ExecuteFns)]
 pub enum ExecuteMsg {
     StakeChangeHook(StakeChangedHookMsg),
     Claim {},
@@ -46,7 +45,7 @@ pub enum ReceiveMsg {
 }
 
 #[cw_serde]
-#[derive(QueryResponses, cw_orch::QueryFns)]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(InfoResponse)]
     Info {},

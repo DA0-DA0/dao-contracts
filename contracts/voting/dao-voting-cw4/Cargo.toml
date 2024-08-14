@@ -27,7 +27,6 @@ dao-dao-macros = { workspace = true }
 dao-interface = { workspace = true }
 cw4 = { workspace = true }
 cw4-group = { workspace = true }
-cw-orch.workspace = true
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }

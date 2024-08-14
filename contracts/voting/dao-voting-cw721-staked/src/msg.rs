@@ -45,7 +45,6 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
-#[derive(cw_orch::ExecuteFns)]
 pub enum ExecuteMsg {
     /// Used to stake NFTs. To stake a NFT send a cw721 send message
     /// to this contract with the NFT you would like to stake. The
@@ -76,7 +75,7 @@ pub enum ExecuteMsg {
 #[active_query]
 #[voting_module_query]
 #[cw_serde]
-#[derive(QueryResponses, cw_orch::QueryFns)]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(crate::state::Config)]
     Config {},

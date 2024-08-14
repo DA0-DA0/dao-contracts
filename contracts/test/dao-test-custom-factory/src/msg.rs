@@ -7,7 +7,6 @@ use dao_interface::token::NewTokenInfo;
 pub struct InstantiateMsg {}
 
 #[cw_serde]
-#[derive(cw_orch::ExecuteFns)]
 pub enum ExecuteMsg {
     /// Example NFT factory implementation
     NftFactory {
@@ -38,7 +37,7 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
-#[derive(QueryResponses, cw_orch::QueryFns)]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(dao_interface::voting::InfoResponse)]
     Info {},

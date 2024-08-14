@@ -53,7 +53,6 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
-#[derive(cw_orch::ExecuteFns)]
 pub enum ExecuteMsg {
     /// Callable by the Admin, if one is configured.
     /// Executes messages in order.
@@ -135,7 +134,7 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
-#[derive(QueryResponses, cw_orch::QueryFns)]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
     /// Get's the DAO's admin. Returns `Addr`.
     #[returns(cosmwasm_std::Addr)]
@@ -148,7 +147,7 @@ pub enum QueryMsg {
     Config {},
     /// Gets the token balance for each cw20 registered with the
     /// contract.
-    #[returns(Vec<crate::query::Cw20BalanceResponse>)]
+    #[returns(crate::query::Cw20BalanceResponse)]
     Cw20Balances {
         start_after: Option<String>,
         limit: Option<u32>,
@@ -179,7 +178,7 @@ pub enum QueryMsg {
     /// example, given the items `{ "group": "foo", "subdao": "bar"}`
     /// this query would return `[("group", "foo"), ("subdao",
     /// "bar")]`.
-    #[returns(Vec<(String, String)>)]
+    #[returns(Vec<String>)]
     ListItems {
         start_after: Option<String>,
         limit: Option<u32>,

@@ -10,7 +10,6 @@ pub struct MetadataExt {
 }
 
 #[cw_serde]
-#[derive(cw_orch::ExecuteFns)]
 pub enum ExecuteExt {
     /// Add a new hook to be informed of all membership changes.
     /// Must be called by Admin
@@ -33,7 +32,7 @@ pub enum ExecuteExt {
 impl CustomMsg for ExecuteExt {}
 
 #[cw_serde]
-#[derive(QueryResponses, cw_orch::QueryFns)]
+#[derive(QueryResponses)]
 pub enum QueryExt {
     /// Total weight at a given height
     #[returns(cw4::TotalWeightResponse)]
