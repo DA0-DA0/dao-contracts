@@ -19,7 +19,16 @@ jobs:
 
       # https://github.com/orgs/community/discussions/25678
       - name: Free up disk space on runner
-        run: df -h && rm -rf /usr/share/dotnet/ && df -h
+        run: |
+          df -h
+          rm -rf /usr/share/dotnet/
+          sudo apt-get remove -y 'php.*'
+          sudo apt-get remove -y '^dotnet-.*'
+          sudo apt-get remove -y azure-cli google-cloud-sdk hhvm google-chrome-stable powershell mono-devel
+          sudo apt-get autoremove -y
+          sudo apt-get clean
+          df -h
+        shell: bash
 
       - name: Install latest nightly toolchain
         uses: actions-rs/toolchain@v1
