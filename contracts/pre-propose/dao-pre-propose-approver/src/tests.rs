@@ -82,12 +82,12 @@ fn get_proposal_module_approval_single_instantiate(
     let pre_propose_id = app.store_code(cw_pre_propose_base_proposal_single());
 
     let submission_policy = if open_proposal_submission {
-        PreProposeSubmissionPolicy::Anyone { denylist: None }
+        PreProposeSubmissionPolicy::Anyone { denylist: vec![] }
     } else {
         PreProposeSubmissionPolicy::Specific {
             dao_members: true,
-            allowlist: None,
-            denylist: None,
+            allowlist: vec![],
+            denylist: vec![],
         }
     };
 
@@ -1359,8 +1359,8 @@ fn test_update_config() {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
-                allowlist: None,
-                denylist: None
+                allowlist: vec![],
+                denylist: vec![]
             }
         }
     );
@@ -1388,7 +1388,7 @@ fn test_update_config() {
             amount: Uint128::new(10),
             refund_policy: DepositRefundPolicy::Never,
         }),
-        PreProposeSubmissionPolicy::Anyone { denylist: None },
+        PreProposeSubmissionPolicy::Anyone { denylist: vec![] },
     );
 
     let config = get_config(&app, pre_propose.clone());
@@ -1400,7 +1400,7 @@ fn test_update_config() {
                 amount: Uint128::new(10),
                 refund_policy: DepositRefundPolicy::Never
             }),
-            submission_policy: PreProposeSubmissionPolicy::Anyone { denylist: None },
+            submission_policy: PreProposeSubmissionPolicy::Anyone { denylist: vec![] },
         }
     );
 
@@ -1457,7 +1457,7 @@ fn test_update_config() {
         pre_propose.clone(),
         proposal_single.as_str(),
         None,
-        PreProposeSubmissionPolicy::Anyone { denylist: None },
+        PreProposeSubmissionPolicy::Anyone { denylist: vec![] },
     );
     assert_eq!(err, PreProposeError::NotDao {});
 
@@ -1469,8 +1469,8 @@ fn test_update_config() {
         None,
         PreProposeSubmissionPolicy::Specific {
             dao_members: false,
-            allowlist: None,
-            denylist: None,
+            allowlist: vec![],
+            denylist: vec![],
         },
     );
     assert_eq!(
@@ -1486,8 +1486,8 @@ fn test_update_config() {
         None,
         PreProposeSubmissionPolicy::Specific {
             dao_members: false,
-            allowlist: Some(vec!["ekez".to_string()]),
-            denylist: Some(vec!["ekez".to_string()]),
+            allowlist: vec![Addr::unchecked("ekez")],
+            denylist: vec![Addr::unchecked("ekez")],
         },
     );
     assert_eq!(
@@ -1520,8 +1520,8 @@ fn test_approver_unsupported_update_config() {
         None,
         PreProposeSubmissionPolicy::Specific {
             dao_members: false,
-            allowlist: Some(vec!["ekez".to_string()]),
-            denylist: None,
+            allowlist: vec![Addr::unchecked("ekez")],
+            denylist: vec![],
         },
     );
     assert_eq!(err, PreProposeError::Unsupported {});
@@ -1636,8 +1636,8 @@ fn test_withdraw() {
         }),
         PreProposeSubmissionPolicy::Specific {
             dao_members: true,
-            allowlist: None,
-            denylist: None,
+            allowlist: vec![],
+            denylist: vec![],
         },
     );
 
@@ -1689,8 +1689,8 @@ fn test_withdraw() {
         }),
         PreProposeSubmissionPolicy::Specific {
             dao_members: true,
-            allowlist: None,
-            denylist: None,
+            allowlist: vec![],
+            denylist: vec![],
         },
     );
 

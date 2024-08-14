@@ -22,6 +22,9 @@ pub enum ContractError {
     #[error(transparent)]
     Payment(#[from] PaymentError),
 
+    #[error("semver parsing error: {0}")]
+    SemVer(String),
+
     #[error("Invalid CW20")]
     InvalidCw20 {},
 
@@ -54,4 +57,16 @@ pub enum ContractError {
 
     #[error("Cannot update emission rate because this distribution has accumulated the maximum rewards. Start a new distribution with the new emission rate instead. (Overflow: {err})")]
     DistributionHistoryTooLarge { err: String },
+
+    #[error("Invalid version migration. {new} is not newer than {current}.")]
+    MigrationErrorInvalidVersion { new: String, current: String },
+
+    #[error("Expected to migrate from contract {expected}. Got {actual}.")]
+    MigrationErrorIncorrectContract { expected: String, actual: String },
+}
+
+impl From<semver::Error> for ContractError {
+    fn from(err: semver::Error) -> Self {
+        Self::SemVer(err.to_string())
+    }
 }

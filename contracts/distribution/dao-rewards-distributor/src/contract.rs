@@ -2,13 +2,14 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     ensure, from_json, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response,
-    StdResult, Uint128, Uint256,
+    StdError, StdResult, Uint128, Uint256,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20ReceiveMsg, Denom};
 use cw_storage_plus::Bound;
 use cw_utils::{must_pay, nonpayable, Duration, Expiration};
 use dao_interface::voting::InfoResponse;
+use semver::Version;
 
 use std::ops::Add;
 
@@ -27,8 +28,8 @@ use crate::rewards::{
 use crate::state::{DistributionState, EmissionRate, Epoch, COUNT, DISTRIBUTIONS, USER_REWARDS};
 use crate::ContractError;
 
-const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub(crate) const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
+pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub const DEFAULT_LIMIT: u32 = 10;
 pub const MAX_LIMIT: u32 = 50;
@@ -281,34 +282,104 @@ fn execute_fund_native(
 fn execute_fund(
     deps: DepsMut,
     env: Env,
+    distribution: DistributionState,
+    amount: Uint128,
+) -> Result<Response, ContractError> {
+    match distribution.active_epoch.emission_rate {
+        EmissionRate::Paused {} => execute_fund_paused(deps, distribution, amount),
+        EmissionRate::Immediate {} => execute_fund_immediate(deps, env, distribution, amount),
+        EmissionRate::Linear { .. } => execute_fund_linear(deps, env, distribution, amount),
+    }
+}
+
+/// funding a paused distribution simply increases the funded amount.
+fn execute_fund_paused(
+    deps: DepsMut,
     mut distribution: DistributionState,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    // will only be true if emission rate is linear and continuous is true
+    distribution.funded_amount += amount;
+
+    DISTRIBUTIONS.save(deps.storage, distribution.id, &distribution)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "fund")
+        .add_attribute("id", distribution.id.to_string())
+        .add_attribute("denom", distribution.get_denom_string())
+        .add_attribute("amount_funded", amount))
+}
+
+/// funding an immediate distribution instantly distributes the new amount.
+fn execute_fund_immediate(
+    deps: DepsMut,
+    env: Env,
+    mut distribution: DistributionState,
+    amount: Uint128,
+) -> Result<Response, ContractError> {
+    distribution.funded_amount += amount;
+
+    // for immediate distribution, update total_earned_puvp instantly since we
+    // need to know the change in funded_amount to calculate the new
+    // total_earned_puvp.
+    distribution.update_immediate_emission_total_earned_puvp(deps.as_ref(), &env.block, amount)?;
+
+    DISTRIBUTIONS.save(deps.storage, distribution.id, &distribution)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "fund")
+        .add_attribute("id", distribution.id.to_string())
+        .add_attribute("denom", distribution.get_denom_string())
+        .add_attribute("amount_funded", amount))
+}
+
+/// funding a linear distribution requires some complex logic based on whether
+/// or not the distribution is continuous and whether or not it's expired.
+///
+/// expired continuous distributions experience backfill with the new funds,
+/// whereas expired discontinuous distributions begin anew (and all past rewards
+/// must be taken into account before restarting distribution).
+fn execute_fund_linear(
+    deps: DepsMut,
+    env: Env,
+    mut distribution: DistributionState,
+    amount: Uint128,
+) -> Result<Response, ContractError> {
     let continuous =
         if let EmissionRate::Linear { continuous, .. } = distribution.active_epoch.emission_rate {
             continuous
         } else {
             false
         };
+    let previously_funded = !distribution.funded_amount.is_zero();
+    let was_expired = distribution.active_epoch.ends_at.is_expired(&env.block);
+    let discontinuous_expired = !continuous && was_expired;
 
     // restart the distribution from the current block if it hasn't yet started
-    // (i.e. never been funded), or if it's expired (i.e. all funds have been
-    // distributed) and not continuous. if it is continuous, treat it as if it
-    // weren't expired by simply adding the new funds and recomputing the end
-    // date, keeping start date the same, effectively backfilling rewards.
-    let restart_distribution = if distribution.funded_amount.is_zero() {
-        true
-    } else {
-        !continuous && distribution.active_epoch.ends_at.is_expired(&env.block)
-    };
+    // (i.e. never been funded) OR if it's both discontinuous and expired (i.e.
+    // all past funds should have been distributed and we're effectively
+    // beginning a new distribution with new funds). this ensures the new funds
+    // start being distributed from now instead of from the past.
+    //
+    // if already funded and continuous or not expired (else block), just add
+    // the new funds and leave start date the same, backfilling rewards.
+    if !previously_funded || discontinuous_expired {
+        // if funding an expired discontinuous distribution that's previously
+        // been funded, ensure all rewards are taken into account before
+        // restarting, in case users haven't claimed yet, by adding the final
+        // total rewards earned to the historical value.
+        if discontinuous_expired && previously_funded {
+            let final_total_earned_puvp =
+                get_active_total_earned_puvp(deps.as_ref(), &env.block, &distribution)?;
+            distribution.historical_earned_puvp = distribution
+                .historical_earned_puvp
+                .checked_add(final_total_earned_puvp)
+                .map_err(|err| ContractError::DistributionHistoryTooLarge {
+                    err: err.to_string(),
+                })?;
+            // last updated block is reset to the new start block below
+        }
 
-    // if necessary, restart the distribution from the current block so that the
-    // new funds start being distributed from now instead of from the past, and
-    // reset funded_amount to the new amount since we're effectively starting a
-    // new distribution. otherwise, just add the new amount to the existing
-    // funded_amount
-    if restart_distribution {
+        // reset all starting fields since a new distribution is starting
         distribution.funded_amount = amount;
         distribution.active_epoch.started_at = match distribution.active_epoch.emission_rate {
             EmissionRate::Paused {} => Expiration::Never {},
@@ -318,10 +389,14 @@ fn execute_fund(
                 Duration::Time(_) => Expiration::AtTime(env.block.time),
             },
         };
+        distribution.active_epoch.total_earned_puvp = Uint256::zero();
+        distribution.active_epoch.last_updated_total_earned_puvp =
+            distribution.active_epoch.started_at;
     } else {
         distribution.funded_amount += amount;
     }
 
+    // update the end block based on the new funds and potentially updated start
     let new_funded_duration = distribution
         .active_epoch
         .emission_rate
@@ -331,25 +406,15 @@ fn execute_fund(
         None => Expiration::Never {},
     };
 
-    // if immediate distribution, update total_earned_puvp instantly since we
-    // need to know the delta in funding_amount to calculate the new
-    // total_earned_puvp.
-    if (distribution.active_epoch.emission_rate == EmissionRate::Immediate {}) {
-        distribution.update_immediate_emission_total_earned_puvp(
-            deps.as_ref(),
-            &env.block,
-            amount,
-        )?;
-
-    // if continuous, meaning rewards should have been distributed in the past
-    // but were not due to lack of sufficient funding, ensure the total rewards
-    // earned puvp is up to date.
-    } else if !restart_distribution && continuous {
+    // if continuous, funds existed in the past, and the distribution was
+    // expired, some rewards may not have been distributed due to lack of
+    // sufficient funding. ensure the total rewards earned puvp is up to date
+    // based on the original start block and the newly updated end block.
+    if continuous && previously_funded && was_expired {
         distribution.active_epoch.total_earned_puvp =
             get_active_total_earned_puvp(deps.as_ref(), &env.block, &distribution)?;
+        distribution.active_epoch.bump_last_updated(&env.block);
     }
-
-    distribution.active_epoch.bump_last_updated(&env.block);
 
     DISTRIBUTIONS.save(deps.storage, distribution.id, &distribution)?;
 
@@ -542,7 +607,8 @@ fn query_pending_rewards(
     for (id, distribution) in distributions {
         // first we get the active epoch earned puvp value
         let active_total_earned_puvp =
-            get_active_total_earned_puvp(deps, &env.block, &distribution)?;
+            get_active_total_earned_puvp(deps, &env.block, &distribution)
+                .map_err(|e| StdError::generic_err(e.to_string()))?;
 
         // then we add that to the historical rewards earned puvp
         let total_earned_puvp =
@@ -592,6 +658,27 @@ fn query_distributions(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let contract_version = get_contract_version(deps.storage)?;
+
+    if contract_version.contract != CONTRACT_NAME {
+        return Err(ContractError::MigrationErrorIncorrectContract {
+            expected: CONTRACT_NAME.to_string(),
+            actual: contract_version.contract,
+        });
+    }
+
+    let new_version: Version = CONTRACT_VERSION.parse()?;
+    let current_version: Version = contract_version.version.parse()?;
+
+    // only allow upgrades
+    if new_version <= current_version {
+        return Err(ContractError::MigrationErrorInvalidVersion {
+            new: new_version.to_string(),
+            current: current_version.to_string(),
+        });
+    }
+
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
     Ok(Response::default())
 }

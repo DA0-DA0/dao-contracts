@@ -3957,8 +3957,8 @@ fn test_update_pre_propose_module() {
                             }),
                             submission_policy: PreProposeSubmissionPolicy::Specific {
                                 dao_members: true,
-                                allowlist: None,
-                                denylist: None,
+                                allowlist: vec![],
+                                denylist: vec![],
                             },
                             extension: Empty::default(),
                         })
@@ -4012,8 +4012,8 @@ fn test_update_pre_propose_module() {
             }),
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
-                allowlist: None,
-                denylist: None
+                allowlist: vec![],
+                denylist: vec![]
             },
         }
     );

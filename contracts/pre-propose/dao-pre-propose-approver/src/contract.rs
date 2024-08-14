@@ -41,8 +41,8 @@ pub fn instantiate(
         deposit_info: None,
         submission_policy: PreProposeSubmissionPolicy::Specific {
             dao_members: true,
-            allowlist: None,
-            denylist: None,
+            allowlist: vec![],
+            denylist: vec![],
         },
         extension: Empty {},
     };
