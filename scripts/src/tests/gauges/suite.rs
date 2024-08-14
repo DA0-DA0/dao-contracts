@@ -1,11 +1,10 @@
 use crate::{
     tests::{daos::voting::dao_cw4_voting_template, gauges::helpers::EPOCH},
-    GaugeSuite,
+    DaoDaoCw4Gauge,
 };
 use cosmwasm_std::{coin, coins, to_json_binary, Decimal};
 use cw4::Member;
 use cw_orch::{anyhow, prelude::*};
-use dao_cw_orch::{DaoDaoCore, DaoProposalSingle, DaoVotingCw4};
 use dao_interface::{
     msg::ExecuteMsg as CoreExecuteMsg,
     state::{Admin, ModuleInstantiateInfo},
@@ -15,33 +14,6 @@ use gauge_orchestrator::msg::{
     ExecuteMsg as GaugeExecuteMsg, ExecuteMsgFns as OrchExecuteMsgFns, GaugeConfig,
 };
 
-/// cw4 voting dao with gauges
-pub struct DaoDaoCw4Gauge<Chain> {
-    pub dao_core: DaoDaoCore<Chain>,
-    pub prop_single: DaoProposalSingle<Chain>,
-    pub cw4_vote: DaoVotingCw4<Chain>,
-    pub gauge_suite: GaugeSuite<Chain>,
-    pub cw4_group: Option<u64>,
-}
-
-impl<Chain: CwEnv> DaoDaoCw4Gauge<Chain> {
-    pub fn new(chain: Chain) -> DaoDaoCw4Gauge<Chain> {
-        DaoDaoCw4Gauge::<Chain> {
-            dao_core: DaoDaoCore::new("dao_dao_core", chain.clone()),
-            prop_single: DaoProposalSingle::new("dao_prop_single", chain.clone()),
-            cw4_vote: DaoVotingCw4::new("dao_cw4_voting", chain.clone()),
-            gauge_suite: GaugeSuite::new(chain.clone()),
-            cw4_group: None,
-        }
-    }
-    pub fn upload(&self) -> Result<(), CwOrchError> {
-        self.dao_core.upload()?;
-        self.prop_single.upload()?;
-        self.cw4_vote.upload()?;
-        self.gauge_suite.upload()?;
-        Ok(())
-    }
-}
 impl DaoDaoCw4Gauge<MockBech32> {
     pub fn upload_with_cw4(&mut self, mock: MockBech32) -> Result<u64, CwOrchError> {
         self.upload()?;
@@ -168,7 +140,7 @@ impl DaoDaoCw4Gauge<MockBech32> {
             total_epochs: None,
         })
     }
-    pub fn init_minimal_adapter(&self, options: &[&str]) -> anyhow::Result<GaugeConfig> {
+    pub fn init_minimal_adapter(&self) -> anyhow::Result<GaugeConfig> {
         // init adapter
         let adapter = self.gauge_suite.adapter.instantiate(
             &gauge_adapter::msg::InstantiateMsg {

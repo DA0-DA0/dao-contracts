@@ -3,7 +3,7 @@ use cosmwasm_std::{Addr, Coin, Uint128};
 use cw_orch::{anyhow, interface, mock::cw_multi_test::AppResponse, prelude::*};
 use cw_orch_core::CwEnvError;
 
-mod suite;
+mod tests;
 
 use abstract_cw20::{Cw20Coin as AbsCw20Coin, MinterResponse};
 // use scripts::DaoDao;

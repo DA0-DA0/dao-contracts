@@ -3,12 +3,11 @@ use cw_orch::{
     prelude::*,
 };
 use dao_voting_cw4::msg::InstantiateMsg as Cw4VotingInitMsg;
-use gauges::suite::DaoDaoCw4Gauge;
 
 use crate::DaoDao;
 
 mod daos;
-mod deploy;
+// mod deploy;
 mod distribution;
 mod external;
 mod gauges;

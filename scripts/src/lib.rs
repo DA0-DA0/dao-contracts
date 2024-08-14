@@ -1,6 +1,7 @@
 #[allow(dead_code)]
 fn main() {}
 
+mod deploy;
 mod dao;
 mod external;
 mod gauges;

@@ -1,4 +1,4 @@
-use crate::tests::{gauges::suite::DaoDaoCw4Gauge, Cw4VotingInitMsg};
+use crate::{tests::Cw4VotingInitMsg, DaoDaoCw4Gauge};
 use cosmwasm_std::{to_json_binary, Uint128};
 use cw4::Member;
 use cw_orch::{anyhow, prelude::*};

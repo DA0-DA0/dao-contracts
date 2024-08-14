@@ -1,7 +1,7 @@
-use crate::{gauges::*, tests::DaoDaoCw4Gauge};
+use crate::gauges::*;
 use cw_orch::prelude::*;
 
-// cw4 voting dao with gauge
+// DAO-cw4 w/ gauges
 impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for DaoDaoCw4Gauge<Chain> {
     // We don't have a custom error type
     type Error = CwOrchError;
@@ -42,7 +42,7 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for DaoDaoCw4Gauge<Chain> {
     }
 }
 
-// gauge
+// Gauge Suite
 impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for GaugeSuite<Chain> {
     // We don't have a custom error type
     type Error = CwOrchError;

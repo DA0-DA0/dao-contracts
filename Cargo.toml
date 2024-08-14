@@ -11,7 +11,7 @@ members = [
   "contracts/test/*",
   "contracts/voting/*",
   "packages/*",
-   "scripts",
+  "scripts",
   "ci/*",
 ]
 resolver = "2"

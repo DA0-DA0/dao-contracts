@@ -1,7 +1,5 @@
-use crate::tests::{
-    gauges::{helpers::EPOCH, suite::DaoDaoCw4Gauge},
-    PREFIX,
-};
+use crate::tests::{gauges::helpers::EPOCH, PREFIX};
+use crate::DaoDaoCw4Gauge;
 use cosmwasm_std::{coin, coins, Decimal, Uint128};
 use cw4::Member;
 use cw_orch::{anyhow, prelude::*};
@@ -15,9 +13,7 @@ use gauge_orchestrator::{
     state::Vote as GaugeVote,
     ContractError,
 };
-
 mod gauge {
-
     use super::*;
     #[test]
     fn test_create_gauge() -> anyhow::Result<(), CwOrchError> {
@@ -705,7 +701,7 @@ mod gauge {
 
 mod reset {
     use super::*;
-    use crate::tests::gauges::{helpers::RESET_EPOCH, suite::DaoDaoCw4Gauge};
+    use crate::tests::gauges::helpers::RESET_EPOCH;
     use gauge_orchestrator::{msg::ResetMigrationConfig, state::Reset};
 
     #[test]
@@ -922,7 +918,7 @@ mod reset {
         let voter2 = mock.addr_make("voter2");
         dao.upload_with_cw4(mock.clone())?;
         dao.default_gauge_setup(mock.clone())?;
-        let mut second_gauge = dao.init_minimal_adapter(&[voter1.as_str(), voter2.as_str()])?;
+        let mut second_gauge = dao.init_minimal_adapter()?;
         // set # of epochs gauge will run to 3
         second_gauge.total_epochs = Some(3);
         dao.add_adapter_to_gauge(second_gauge)?;
