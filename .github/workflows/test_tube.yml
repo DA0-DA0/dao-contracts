@@ -17,6 +17,10 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
+      # https://github.com/orgs/community/discussions/25678
+      - name: Free up disk space on runner
+        run: df -h && rm -rf /usr/share/dotnet/ && df -h
+
       - name: Install latest nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
