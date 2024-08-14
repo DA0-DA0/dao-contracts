@@ -3,7 +3,7 @@ use cw4::{HooksResponse, Member, MemberListResponse, MemberResponse, TotalWeight
 use cw721::{NftInfoResponse, OwnerOfResponse};
 use cw_multi_test::{App, Executor};
 use dao_cw721_extensions::roles::{ExecuteExt, MetadataExt, QueryExt};
-use dao_testing::contracts::{cw721_roles_contract, voting_cw721_staked_contract};
+use dao_testing::contracts::{cw721_roles_contract, cw721_staked_voting_contract};
 use dao_voting_cw721_staked::msg::{InstantiateMsg as Cw721StakedInstantiateMsg, NftContract};
 
 use crate::error::RolesContractError;
@@ -254,7 +254,7 @@ fn test_send_permissions() {
         .unwrap();
 
     // Instantiate an NFT staking voting contract for testing SendNft
-    let dao_voting_cw721_staked_id = app.store_code(voting_cw721_staked_contract());
+    let dao_voting_cw721_staked_id = app.store_code(cw721_staked_voting_contract());
     let cw721_staked_addr = app
         .instantiate_contract(
             dao_voting_cw721_staked_id,
@@ -325,6 +325,20 @@ fn test_update_token_role() {
     // Token was updated successfully
     let info: NftInfoResponse<MetadataExt> = query_token_info(&app, &cw721_addr, "1").unwrap();
     assert_eq!(info.extension.role, Some("queen".to_string()));
+
+    // Can set to None
+    app.execute_contract(
+        Addr::unchecked(DAO),
+        cw721_addr.clone(),
+        &ExecuteMsg::Extension {
+            msg: ExecuteExt::UpdateTokenRole {
+                token_id: "1".to_string(),
+                role: None,
+            },
+        },
+        &[],
+    )
+    .unwrap();
 }
 
 #[test]

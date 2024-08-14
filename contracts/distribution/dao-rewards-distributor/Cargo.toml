@@ -29,6 +29,7 @@ cw-utils = { workspace = true }
 dao-hooks = { workspace = true }
 dao-interface = { workspace = true }
 dao-voting = { workspace = true }
+semver = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]

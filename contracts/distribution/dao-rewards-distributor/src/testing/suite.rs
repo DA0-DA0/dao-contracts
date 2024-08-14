@@ -3,19 +3,20 @@ use std::borrow::BorrowMut;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{coin, coins, to_json_binary, Addr, Coin, Empty, Timestamp, Uint128};
 use cw20::{Cw20Coin, Expiration, UncheckedDenom};
-use cw20_stake::msg::ReceiveMsg;
 use cw4::{Member, MemberListResponse};
 use cw_multi_test::{App, BankSudo, Executor, SudoMsg};
-use cw_ownable::{Action, Ownership};
+use cw_ownable::Action;
 use cw_utils::Duration;
+use dao_interface::voting::InfoResponse;
 
 use crate::{
     msg::{
-        ExecuteMsg, InstantiateMsg, PendingRewardsResponse, QueryMsg, RewardEmissionRate,
-        RewardsStateResponse,
+        CreateMsg, DistributionsResponse, ExecuteMsg, FundMsg, InstantiateMsg,
+        PendingRewardsResponse, QueryMsg, ReceiveCw20Msg,
     },
-    state::DenomRewardState,
+    state::{DistributionState, EmissionRate},
     testing::cw20_setup::instantiate_cw20,
+    ContractError,
 };
 
 use super::{
@@ -42,12 +43,14 @@ pub struct RewardsConfig {
     pub denom: UncheckedDenom,
     pub duration: Duration,
     pub destination: Option<String>,
+    pub continuous: bool,
 }
 
 pub struct SuiteBuilder {
     pub _instantiate: InstantiateMsg,
     pub dao_type: DaoType,
     pub rewards_config: RewardsConfig,
+    pub cw4_members: Vec<Member>,
 }
 
 impl SuiteBuilder {
@@ -62,12 +65,32 @@ impl SuiteBuilder {
                 denom: UncheckedDenom::Native(DENOM.to_string()),
                 duration: Duration::Height(10),
                 destination: None,
+                continuous: true,
             },
+            cw4_members: vec![
+                Member {
+                    addr: ADDR1.to_string(),
+                    weight: 2,
+                },
+                Member {
+                    addr: ADDR2.to_string(),
+                    weight: 1,
+                },
+                Member {
+                    addr: ADDR3.to_string(),
+                    weight: 1,
+                },
+            ],
         }
     }
 
     pub fn with_rewards_config(mut self, rewards_config: RewardsConfig) -> Self {
         self.rewards_config = rewards_config;
+        self
+    }
+
+    pub fn with_cw4_members(mut self, cw4_members: Vec<Member>) -> Self {
+        self.cw4_members = cw4_members;
         self
     }
 
@@ -86,6 +109,7 @@ impl SuiteBuilder {
             owner: Some(owner.clone()),
             staking_addr: Addr::unchecked(""),
             voting_power_addr: Addr::unchecked(""),
+            reward_code_id: 0,
             distribution_contract: Addr::unchecked(""),
             cw20_addr: Addr::unchecked(""),
             reward_denom: DENOM.to_string(),
@@ -100,23 +124,8 @@ impl SuiteBuilder {
 
         match self.dao_type {
             DaoType::CW4 => {
-                let members = vec![
-                    Member {
-                        addr: ADDR1.to_string(),
-                        weight: 2,
-                    },
-                    Member {
-                        addr: ADDR2.to_string(),
-                        weight: 1,
-                    },
-                    Member {
-                        addr: ADDR3.to_string(),
-                        weight: 1,
-                    },
-                ];
-
                 let (voting_power_addr, dao_voting_addr) =
-                    setup_cw4_test(suite_built.app.borrow_mut(), members);
+                    setup_cw4_test(suite_built.app.borrow_mut(), self.cw4_members);
                 suite_built.voting_power_addr = voting_power_addr.clone();
                 suite_built.staking_addr = dao_voting_addr.clone();
             }
@@ -221,12 +230,12 @@ impl SuiteBuilder {
         };
 
         // initialize the rewards distributor
-        let reward_code_id = suite_built.app.borrow_mut().store_code(contract_rewards());
+        suite_built.reward_code_id = suite_built.app.borrow_mut().store_code(contract_rewards());
         let reward_addr = suite_built
             .app
             .borrow_mut()
             .instantiate_contract(
-                reward_code_id,
+                suite_built.reward_code_id,
                 owner.clone(),
                 &InstantiateMsg {
                     owner: Some(owner.clone().into_string()),
@@ -242,19 +251,23 @@ impl SuiteBuilder {
         match self.dao_type {
             DaoType::CW721 => {
                 suite_built.register_hook(suite_built.voting_power_addr.clone());
-                suite_built.register_reward_denom(
+                suite_built.create(
                     self.rewards_config.clone(),
                     suite_built.voting_power_addr.to_string().as_ref(),
+                    None,
                 );
                 match self.rewards_config.denom {
                     UncheckedDenom::Native(_) => {
-                        suite_built.fund_distributor_native(coin(100_000_000, DENOM.to_string()));
+                        suite_built.fund_native(1, coin(100_000_000, DENOM.to_string()));
                     }
                     UncheckedDenom::Cw20(_) => {
-                        suite_built.fund_distributor_cw20(Cw20Coin {
-                            address: suite_built.cw20_addr.to_string(),
-                            amount: Uint128::new(100_000_000),
-                        });
+                        suite_built.fund_cw20(
+                            1,
+                            Cw20Coin {
+                                address: suite_built.cw20_addr.to_string(),
+                                amount: Uint128::new(100_000_000),
+                            },
+                        );
                     }
                 };
             }
@@ -279,19 +292,23 @@ impl SuiteBuilder {
                 };
 
                 suite_built.register_hook(suite_built.staking_addr.clone());
-                suite_built.register_reward_denom(
+                suite_built.create(
                     self.rewards_config.clone(),
                     suite_built.staking_addr.to_string().as_ref(),
+                    None,
                 );
                 match &self.rewards_config.denom {
                     UncheckedDenom::Native(_) => {
-                        suite_built.fund_distributor_native(coin(100_000_000, DENOM.to_string()));
+                        suite_built.fund_native(1, coin(100_000_000, DENOM.to_string()));
                     }
                     UncheckedDenom::Cw20(addr) => {
-                        suite_built.fund_distributor_cw20(Cw20Coin {
-                            address: addr.to_string(),
-                            amount: Uint128::new(100_000_000),
-                        });
+                        suite_built.fund_cw20(
+                            1,
+                            Cw20Coin {
+                                address: addr.to_string(),
+                                amount: Uint128::new(100_000_000),
+                            },
+                        );
                     }
                 };
             }
@@ -311,6 +328,7 @@ pub struct Suite {
     pub voting_power_addr: Addr,
     pub reward_denom: String,
 
+    pub reward_code_id: u64,
     pub distribution_contract: Addr,
 
     // cw20 type fields
@@ -320,9 +338,9 @@ pub struct Suite {
 // SUITE QUERIES
 impl Suite {
     pub fn get_time_until_rewards_expiration(&mut self) -> u64 {
-        let rewards_state_response = self.get_rewards_state_response();
+        let distribution = &self.get_distributions().distributions[0];
         let current_block = self.app.block_info();
-        let (expiration_unit, current_unit) = match rewards_state_response.rewards[0].ends_at {
+        let (expiration_unit, current_unit) = match distribution.active_epoch.ends_at {
             cw20::Expiration::AtHeight(h) => (h, current_block.height),
             cw20::Expiration::AtTime(t) => (t.seconds(), current_block.time.seconds()),
             cw20::Expiration::Never {} => return 0,
@@ -364,67 +382,29 @@ impl Suite {
         result.balance.u128()
     }
 
-    #[allow(dead_code)]
-    pub fn get_ownership<T: Into<String>>(&mut self, address: T) -> Ownership<Addr> {
-        self.app
-            .wrap()
-            .query_wasm_smart(address, &QueryMsg::Ownership {})
-            .unwrap()
-    }
-
-    pub fn get_rewards_state_response(&mut self) -> RewardsStateResponse {
+    pub fn get_distributions(&mut self) -> DistributionsResponse {
         self.app
             .wrap()
             .query_wasm_smart(
                 self.distribution_contract.clone(),
-                &QueryMsg::RewardsState {},
+                &QueryMsg::Distributions {
+                    start_after: None,
+                    limit: None,
+                },
             )
             .unwrap()
     }
 
-    pub fn _get_denom_reward_state(&mut self, denom: &str) -> DenomRewardState {
-        let resp: DenomRewardState = self
+    pub fn get_distribution(&mut self, id: u64) -> DistributionState {
+        let resp: DistributionState = self
             .app
             .wrap()
             .query_wasm_smart(
                 self.distribution_contract.clone(),
-                &QueryMsg::DenomRewardState {
-                    denom: denom.to_string(),
-                },
+                &QueryMsg::Distribution { id },
             )
             .unwrap();
-        println!("[{} REWARD STATE] {:?}", denom, resp);
         resp
-    }
-}
-
-// SUITE ASSERTIONS
-impl Suite {
-    pub fn assert_ends_at(&mut self, expected: Expiration) {
-        let rewards_state_response = self.get_rewards_state_response();
-        assert_eq!(rewards_state_response.rewards[0].ends_at, expected);
-    }
-
-    pub fn assert_started_at(&mut self, expected: Expiration) {
-        let denom_configs = self.get_rewards_state_response();
-        assert_eq!(denom_configs.rewards[0].started_at, expected);
-    }
-
-    pub fn assert_amount(&mut self, expected: u128) {
-        let rewards_state_response = self.get_rewards_state_response();
-        assert_eq!(
-            rewards_state_response.rewards[0].emission_rate.amount,
-            Uint128::new(expected)
-        );
-    }
-
-    pub fn assert_duration(&mut self, expected: u64) {
-        let rewards_state_response = self.get_rewards_state_response();
-        let units = match rewards_state_response.rewards[0].emission_rate.duration {
-            Duration::Height(h) => h,
-            Duration::Time(t) => t,
-        };
-        assert_eq!(units, expected);
     }
 
     pub fn get_owner(&mut self) -> Addr {
@@ -437,20 +417,72 @@ impl Suite {
         ownable_response.owner.unwrap()
     }
 
-    pub fn assert_pending_rewards(&mut self, address: &str, _denom: &str, expected: u128) {
+    pub fn get_info(&mut self) -> InfoResponse {
+        self.app
+            .borrow_mut()
+            .wrap()
+            .query_wasm_smart(self.distribution_contract.clone(), &QueryMsg::Info {})
+            .unwrap()
+    }
+}
+
+// SUITE ASSERTIONS
+impl Suite {
+    pub fn assert_ends_at(&mut self, expected: Expiration) {
+        let distribution = &self.get_distributions().distributions[0];
+        assert_eq!(distribution.active_epoch.ends_at, expected);
+    }
+
+    pub fn assert_started_at(&mut self, expected: Expiration) {
+        let distribution = &self.get_distributions().distributions[0];
+        assert_eq!(distribution.active_epoch.started_at, expected);
+    }
+
+    pub fn assert_amount(&mut self, expected: u128) {
+        let distribution = &self.get_distributions().distributions[0];
+        match distribution.active_epoch.emission_rate {
+            EmissionRate::Paused {} => panic!("expected non-paused emission rate"),
+            EmissionRate::Immediate {} => panic!("expected non-immediate emission rate"),
+            EmissionRate::Linear { amount, .. } => assert_eq!(amount, Uint128::new(expected)),
+        }
+    }
+
+    pub fn assert_duration(&mut self, expected: u64) {
+        let distribution = &self.get_distributions().distributions[0];
+        match distribution.active_epoch.emission_rate {
+            EmissionRate::Paused {} => panic!("expected non-paused emission rate"),
+            EmissionRate::Immediate {} => panic!("expected non-immediate emission rate"),
+            EmissionRate::Linear { duration, .. } => assert_eq!(
+                match duration {
+                    Duration::Height(h) => h,
+                    Duration::Time(t) => t,
+                },
+                expected
+            ),
+        }
+    }
+
+    pub fn assert_pending_rewards(&mut self, address: &str, id: u64, expected: u128) {
         let res: PendingRewardsResponse = self
             .app
             .borrow_mut()
             .wrap()
             .query_wasm_smart(
                 self.distribution_contract.clone(),
-                &QueryMsg::GetPendingRewards {
+                &QueryMsg::PendingRewards {
                     address: address.to_string(),
+                    start_after: None,
+                    limit: None,
                 },
             )
             .unwrap();
 
-        let pending = res.pending_rewards.get(self.reward_denom.as_str()).unwrap();
+        let pending = res
+            .pending_rewards
+            .iter()
+            .find(|p| p.id == id)
+            .unwrap()
+            .pending_rewards;
 
         assert_eq!(
             pending,
@@ -461,23 +493,21 @@ impl Suite {
         );
     }
 
-    pub fn assert_native_balance(&mut self, address: &str, denom: &str, expected: u128) {
+    pub fn assert_native_balance(&self, address: &str, denom: &str, expected: u128) {
         let balance = self.get_balance_native(address, denom);
         assert_eq!(balance, expected);
     }
 
-    pub fn assert_cw20_balance(&mut self, address: &str, expected: u128) {
-        let balance = self.get_balance_cw20(self.reward_denom.clone(), address);
+    pub fn assert_cw20_balance(&self, cw20: &str, address: &str, expected: u128) {
+        let balance = self.get_balance_cw20(cw20, address);
         assert_eq!(balance, expected);
     }
 }
 
 // SUITE ACTIONS
 impl Suite {
-    pub fn shutdown_denom_distribution(&mut self, denom: &str) {
-        let msg = ExecuteMsg::Shutdown {
-            denom: denom.to_string(),
-        };
+    pub fn withdraw(&mut self, id: u64) {
+        let msg = ExecuteMsg::Withdraw { id };
         self.app
             .execute_contract(
                 Addr::unchecked(OWNER),
@@ -488,26 +518,55 @@ impl Suite {
             .unwrap();
     }
 
+    pub fn withdraw_error(&mut self, id: u64) -> ContractError {
+        let msg = ExecuteMsg::Withdraw { id };
+        self.app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap()
+    }
+
     pub fn register_hook(&mut self, addr: Addr) {
         let msg = cw4_group::msg::ExecuteMsg::AddHook {
             addr: self.distribution_contract.to_string(),
         };
-        // TODO: cw721 check here
         self.app
             .execute_contract(Addr::unchecked(OWNER), addr, &msg, &[])
             .unwrap();
     }
 
-    pub fn register_reward_denom(&mut self, reward_config: RewardsConfig, hook_caller: &str) {
-        let register_reward_denom_msg = ExecuteMsg::RegisterRewardDenom {
+    pub fn create(
+        &mut self,
+        reward_config: RewardsConfig,
+        hook_caller: &str,
+        funds: Option<Uint128>,
+    ) {
+        let execute_create_msg = ExecuteMsg::Create(CreateMsg {
             denom: reward_config.denom.clone(),
-            emission_rate: RewardEmissionRate {
+            emission_rate: EmissionRate::Linear {
                 amount: Uint128::new(reward_config.amount),
                 duration: reward_config.duration,
+                continuous: reward_config.continuous,
             },
             hook_caller: hook_caller.to_string(),
             vp_contract: self.voting_power_addr.to_string(),
             withdraw_destination: reward_config.destination,
+        });
+
+        // include funds if provided
+        let send_funds = if let Some(funds) = funds {
+            match reward_config.denom {
+                UncheckedDenom::Native(denom) => vec![coin(funds.u128(), denom)],
+                UncheckedDenom::Cw20(_) => vec![],
+            }
+        } else {
+            vec![]
         };
 
         self.app
@@ -515,13 +574,13 @@ impl Suite {
             .execute_contract(
                 self.owner.clone().unwrap(),
                 self.distribution_contract.clone(),
-                &register_reward_denom_msg,
-                &[],
+                &execute_create_msg,
+                &send_funds,
             )
             .unwrap();
     }
 
-    pub fn mint_native_coin(&mut self, coin: Coin, dest: &str) {
+    pub fn mint_native(&mut self, coin: Coin, dest: &str) {
         // mint the tokens to be funded
         self.app
             .borrow_mut()
@@ -534,32 +593,25 @@ impl Suite {
             .unwrap();
     }
 
-    pub fn mint_cw20_coin(&mut self, coin: Cw20Coin, dest: &str, name: &str) -> Addr {
-        let _msg = cw20::Cw20ExecuteMsg::Mint {
-            recipient: dest.to_string(),
-            amount: coin.amount,
-        };
+    pub fn mint_cw20(&mut self, coin: Cw20Coin, name: &str) -> Addr {
         cw20_setup::instantiate_cw20(self.app.borrow_mut(), name, vec![coin])
     }
 
-    pub fn fund_distributor_native(&mut self, coin: Coin) {
-        self.mint_native_coin(coin.clone(), OWNER);
-        println!("[FUNDING EVENT] native funding: {}", coin);
+    pub fn fund_native(&mut self, id: u64, coin: Coin) {
+        self.mint_native(coin.clone(), OWNER);
         self.app
             .borrow_mut()
             .execute_contract(
                 Addr::unchecked(OWNER),
                 self.distribution_contract.clone(),
-                &ExecuteMsg::Fund {},
+                &ExecuteMsg::Fund(FundMsg { id }),
                 &[coin],
             )
             .unwrap();
     }
 
-    pub fn fund_distributor_cw20(&mut self, coin: Cw20Coin) {
-        println!("[FUNDING EVENT] cw20 funding: {}", coin);
-
-        let fund_sub_msg = to_json_binary(&ReceiveMsg::Fund {}).unwrap();
+    pub fn fund_cw20(&mut self, id: u64, coin: Cw20Coin) {
+        let fund_sub_msg = to_json_binary(&ReceiveCw20Msg::Fund(FundMsg { id })).unwrap();
         self.app
             .execute_contract(
                 Addr::unchecked(OWNER),
@@ -599,11 +651,8 @@ impl Suite {
         });
     }
 
-    pub fn claim_rewards(&mut self, address: &str, denom: &str) {
-        let msg = ExecuteMsg::Claim {
-            denom: denom.to_string(),
-        };
-
+    pub fn claim_rewards(&mut self, address: &str, id: u64) {
+        let msg = ExecuteMsg::Claim { id };
         self.app
             .execute_contract(
                 Addr::unchecked(address),
@@ -621,7 +670,6 @@ impl Suite {
             amount: Uint128::new(amount),
             msg: to_json_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
         };
-        println!("[STAKING EVENT] {} staked {}", sender, amount);
         self.app
             .execute_contract(Addr::unchecked(sender), self.cw20_addr.clone(), &msg, &[])
             .unwrap();
@@ -631,7 +679,6 @@ impl Suite {
         let msg = cw20_stake::msg::ExecuteMsg::Unstake {
             amount: Uint128::new(amount),
         };
-        println!("[STAKING EVENT] {} unstaked {}", sender, amount);
         self.app
             .execute_contract(
                 Addr::unchecked(sender),
@@ -669,6 +716,136 @@ impl Suite {
         unstake_tokenfactory_tokens(self.app.borrow_mut(), &self.staking_addr, address, amount)
     }
 
+    pub fn update_emission_rate(
+        &mut self,
+        id: u64,
+        epoch_duration: Duration,
+        epoch_rewards: u128,
+        continuous: bool,
+    ) {
+        let msg: ExecuteMsg = ExecuteMsg::Update {
+            id,
+            emission_rate: Some(EmissionRate::Linear {
+                amount: Uint128::new(epoch_rewards),
+                duration: epoch_duration,
+                continuous,
+            }),
+            vp_contract: None,
+            hook_caller: None,
+            withdraw_destination: None,
+        };
+
+        let _resp = self
+            .app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+    }
+
+    pub fn set_immediate_emission(&mut self, id: u64) {
+        let msg: ExecuteMsg = ExecuteMsg::Update {
+            id,
+            emission_rate: Some(EmissionRate::Immediate {}),
+            vp_contract: None,
+            hook_caller: None,
+            withdraw_destination: None,
+        };
+
+        let _resp = self
+            .app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+    }
+
+    pub fn pause_emission(&mut self, id: u64) {
+        let msg: ExecuteMsg = ExecuteMsg::Update {
+            id,
+            emission_rate: Some(EmissionRate::Paused {}),
+            vp_contract: None,
+            hook_caller: None,
+            withdraw_destination: None,
+        };
+
+        let _resp = self
+            .app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+    }
+
+    pub fn update_vp_contract(&mut self, id: u64, vp_contract: &str) {
+        let msg: ExecuteMsg = ExecuteMsg::Update {
+            id,
+            emission_rate: None,
+            vp_contract: Some(vp_contract.to_string()),
+            hook_caller: None,
+            withdraw_destination: None,
+        };
+
+        let _resp = self
+            .app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+    }
+
+    pub fn update_hook_caller(&mut self, id: u64, hook_caller: &str) {
+        let msg: ExecuteMsg = ExecuteMsg::Update {
+            id,
+            emission_rate: None,
+            vp_contract: None,
+            hook_caller: Some(hook_caller.to_string()),
+            withdraw_destination: None,
+        };
+
+        let _resp = self
+            .app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+    }
+
+    pub fn update_withdraw_destination(&mut self, id: u64, withdraw_destination: &str) {
+        let msg: ExecuteMsg = ExecuteMsg::Update {
+            id,
+            emission_rate: None,
+            vp_contract: None,
+            hook_caller: None,
+            withdraw_destination: Some(withdraw_destination.to_string()),
+        };
+
+        let _resp = self
+            .app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+    }
+
     pub fn update_members(&mut self, add: Vec<Member>, remove: Vec<String>) {
         let msg = cw4_group::msg::ExecuteMsg::UpdateMembers { remove, add };
 
@@ -689,7 +866,7 @@ impl Suite {
                 },
             )
             .unwrap();
-        println!("[UPDATE CW4] new members: {:?}", members);
+        // println!("[UPDATE CW4] new members: {:?}", members);
         members.members
     }
 

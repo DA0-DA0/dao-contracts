@@ -1,0 +1,42 @@
+[package]
+name = "btsg-ft-factory"
+authors = ["noah <noah@daodao.zone>"]
+description = "A CosmWasm factory contract for issuing fantokens on BitSong."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+dao-interface = { workspace = true }
+osmosis-std-derive = { workspace = true }
+prost = { workspace = true }
+prost-derive = { workspace = true }
+prost-types = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-multi-test = { workspace = true }
+cw-utils = { workspace = true }
+dao-dao-core = { workspace = true, features = ["library"] }
+dao-proposal-single = { workspace = true, features = ["library"] }
+dao-testing = { workspace = true }
+dao-voting-token-staked = { workspace = true, features = ["library"] }
+dao-voting = { workspace = true }

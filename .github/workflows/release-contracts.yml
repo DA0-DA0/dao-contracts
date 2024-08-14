@@ -6,7 +6,7 @@ permissions:
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
     branches:
       - main
       - ci/release-contracts
@@ -14,7 +14,7 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-    container: cosmwasm/workspace-optimizer:0.14.0
+    container: cosmwasm/optimizer:0.16.0
     steps:
       - uses: actions/checkout@v3
 
@@ -29,12 +29,12 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/            
+            target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Compile contracts
         timeout-minutes: 30
-        run: optimize_workspace.sh .
+        run: optimize.sh .
 
       - name: Upload contracts
         uses: actions/upload-artifact@v3
