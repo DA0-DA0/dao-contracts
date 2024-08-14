@@ -17,6 +17,9 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
+      - name: List largest packages
+        run: dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100
+
       - name: Install latest nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
