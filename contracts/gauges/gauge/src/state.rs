@@ -37,8 +37,6 @@ pub struct Config {
     pub voting_powers: Addr,
     /// Addres that will call voting power change hooks (often same as voting power contract)
     pub hook_caller: Addr,
-    /// Address that can add new gauges or stop them
-    pub owner: Addr,
     /// Address of DAO core module resposible for instantiation and execution of messages
     pub dao_core: Addr,
 }
@@ -51,6 +49,10 @@ pub struct Gauge {
     pub adapter: Addr,
     /// Frequency (in seconds) the gauge executes messages, typically something like 7*86400
     pub epoch: u64,
+    /// Epoch count.
+    pub count: Option<u64>,
+    /// total possible count for a gauge to run. will automatially disable itself when reaching this epoch count.
+    pub total_epoch: Option<u64>,
     /// Minimum percentage of votes needed by a given option to be in the selected set
     pub min_percent_selected: Option<Decimal>,
     /// Maximum number of Options to make the selected set. Needed even with
@@ -86,6 +88,19 @@ impl Gauge {
             .map(|r| r.last == Some(r.next))
             .unwrap_or_default()
     }
+    pub fn will_reach_epoch_limit(&self) -> bool {
+        if let Some(total) = self.total_epoch {
+            total == self.count.unwrap_or_default()
+        } else {
+            false
+        }
+    }
+    pub fn increment_gauge_count(&self) -> StdResult<Option<u64>> {
+        Ok(self.count.map_or(Some(0), |o| Some(o + 1)))
+    }
+    pub fn gauge_epoch(&self) -> StdResult<u64> {
+        Ok(self.count.map_or(Some(0), |o| Some(o)).unwrap_or_default())
+    }
 }
 
 #[cw_serde]
@@ -102,7 +117,7 @@ pub struct WeightedVotes {
 }
 
 impl WeightedVotes {
-    /// Returns `true` if the vote is
+    /// Returns `true` if the vote is expired
     pub fn is_expired(&self, gauge: &Gauge) -> bool {
         // check if the vote is older than the last reset
         match &gauge.reset {
@@ -451,6 +466,8 @@ mod tests {
                         next_epoch: env.block.time.seconds(),
                         last_executed_set: None,
                         reset: None,
+                        count: Some(0),
+                        total_epoch: None,
                     },
                 )
                 .unwrap();
@@ -578,6 +595,8 @@ mod tests {
                     next_epoch: env.block.time.seconds(),
                     last_executed_set: None,
                     reset: None,
+                    count: Some(0),
+                    total_epoch: None,
                 },
             )
             .unwrap();

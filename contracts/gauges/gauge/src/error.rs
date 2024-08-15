@@ -8,6 +8,8 @@ pub enum ContractError {
 
     #[error("Unauthorized")]
     Unauthorized {},
+    #[error("{0}")]
+    Ownership(#[from] cw_ownable::OwnershipError),
 
     #[error("Gauge with ID {0} does not exists")]
     GaugeMissing(u64),
@@ -51,6 +53,8 @@ pub enum ContractError {
 
     #[error("Epoch size must be bigger then 60 seconds")]
     EpochSizeTooShort {},
+    #[error("Epoch limit must be bigger then current epoch")]
+    EpochLimitTooShort {},
 
     #[error("Minimum percent selected parameter needs to be smaller then 1.0")]
     MinPercentSelectedTooBig {},
