@@ -40,7 +40,7 @@ pub struct GaugeConfig {
     pub max_available_percentage: Option<Decimal>,
     /// If set, the gauge can be reset periodically, every `reset_epoch` seconds.
     pub reset_epoch: Option<u64>,
-    /// If set, the gauge will disable itself after this many epochs  
+    /// If set, the gauge will disable itself after this many epochs. This count will not be reset if `reset_epoch` is set.
     pub total_epochs: Option<u64>,
 }
 
