@@ -641,7 +641,7 @@ impl Suite {
         to_distribute: (u128, &str),
         max_available_percentage: impl Into<Option<Decimal>>,
         reset_epoch: impl Into<Option<u64>>,
-        epoch_limit: impl Into<Option<u64>>,
+        total_epochs: impl Into<Option<u64>>,
     ) -> AnyResult<GaugeConfig> {
         let gauge_adapter = self.app.instantiate_contract(
             self.gauge_adapter_code_id,
@@ -663,7 +663,7 @@ impl Suite {
             max_options_selected: 10,
             max_available_percentage: max_available_percentage.into(),
             reset_epoch: reset_epoch.into(),
-            total_epochs: epoch_limit.into(),
+            total_epochs: total_epochs.into(),
         })
     }
 
