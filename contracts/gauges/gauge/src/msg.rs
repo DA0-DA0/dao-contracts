@@ -1,6 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{CosmosMsg, Decimal, Uint128};
 use cw4::MemberChangedHookMsg;
+use cw_ownable::{cw_ownable_execute, cw_ownable_query};
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 
 use crate::state::{Reset, Vote};
@@ -39,10 +40,11 @@ pub struct GaugeConfig {
     pub max_available_percentage: Option<Decimal>,
     /// If set, the gauge can be reset periodically, every `reset_epoch` seconds.
     pub reset_epoch: Option<u64>,
-    /// if set, the gauge will disable itself after this many epochs
+    /// If set, the gauge will disable itself after this many epochs  
     pub total_epochs: Option<u64>,
 }
 
+#[cw_ownable_execute]
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Updates gauge voting power in Token DAOs when a user stakes or unstakes
@@ -101,6 +103,7 @@ pub struct CreateGaugeReply {
 }
 
 /// Queries the gauge exposes
+#[cw_ownable_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {

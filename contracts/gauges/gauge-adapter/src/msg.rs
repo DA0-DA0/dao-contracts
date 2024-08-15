@@ -2,7 +2,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, CosmosMsg, Decimal, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_denom::UncheckedDenom;
-use cw_ownable::cw_ownable_execute;
+use cw_ownable::{cw_ownable_execute, cw_ownable_query};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -48,6 +48,7 @@ pub enum MigrateMsg {}
 
 // Queries copied from gauge-orchestrator for now (we could use a common crate for this).
 /// Queries the gauge requires from the adapter contract in order to function.
+#[cw_ownable_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum AdapterQueryMsg {

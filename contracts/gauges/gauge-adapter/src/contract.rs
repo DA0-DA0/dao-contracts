@@ -217,6 +217,7 @@ pub fn query(deps: Deps, _env: Env, msg: AdapterQueryMsg) -> StdResult<Binary> {
             to_json_binary(&query::submission(deps, address)?)
         }
         AdapterQueryMsg::AllSubmissions {} => to_json_binary(&query::all_submissions(deps)?),
+        AdapterQueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
     }
 }
 

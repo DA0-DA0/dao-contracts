@@ -10,6 +10,7 @@ use dao_interface::{
     msg::ExecuteMsg as DaoExecuteMsg,
     voting::{Query as DaoQuery, VotingPowerAtHeightResponse},
 };
+use execute::execute_update_owner;
 
 use crate::msg::{
     AdapterQueryMsg, AllOptionsResponse, CheckOptionResponse, ExecuteMsg, GaugeConfig,
@@ -100,12 +101,14 @@ pub fn execute(
             execute::place_votes(deps, env, info.sender, gauge, votes)
         }
         ExecuteMsg::Execute { gauge } => execute::execute(deps, env, gauge),
+        ExecuteMsg::UpdateOwnership(action) => execute_update_owner(deps, info, env, action),
     }
 }
 
 mod execute {
     use cosmwasm_std::CosmosMsg;
     use cw4::MemberDiff;
+    use cw_utils::nonpayable;
     use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
 
     use super::*;
@@ -460,14 +463,17 @@ mod execute {
         cw_ownable::assert_owner(deps.storage, &sender)?;
 
         let mut gauge = GAUGES.load(deps.storage, gauge_id)?;
+        // updated epoch size must be greater than 60 seconds
         if let Some(epoch_size) = epoch_size {
             ensure!(epoch_size > 60u64, ContractError::EpochSizeTooShort {});
             gauge.epoch = epoch_size;
         }
+        // updated epoch limit count must not already have passed
         if let Some(epoch_limit) = epoch_limit {
             let e = gauge.gauge_epoch()?;
             ensure!(e < epoch_limit, ContractError::EpochLimitTooShort {})
         }
+        // min_perfect_selected percent must be less than 100%. None if 0.
         if let Some(min_percent_selected) = min_percent_selected {
             if min_percent_selected.is_zero() {
                 gauge.min_percent_selected = None
@@ -479,6 +485,7 @@ mod execute {
                 gauge.min_percent_selected = Some(min_percent_selected)
             };
         }
+        // max_options_selected must be at least 1
         if let Some(max_options_selected) = max_options_selected {
             ensure!(
                 max_options_selected > 0,
@@ -486,6 +493,7 @@ mod execute {
             );
             gauge.max_options_selected = max_options_selected;
         }
+        // max_available_percentage must be less than 100%. None if 0.
         if let Some(max_available_percentage) = max_available_percentage {
             if max_available_percentage.is_zero() {
                 gauge.max_available_percentage = None
@@ -831,6 +839,21 @@ mod execute {
             .add_attribute("action", "execute_tally")
             .add_message(execute_msg))
     }
+
+    pub fn execute_update_owner(
+        deps: DepsMut,
+        info: MessageInfo,
+        env: Env,
+        action: cw_ownable::Action,
+    ) -> Result<Response, ContractError> {
+        nonpayable(&info)?;
+
+        // Update the current contract owner. Note, this is a two step process, the
+        // new owner must accept this ownership transfer. First the owner specifies
+        // the new owner, then the new owner must accept.
+        let ownership = cw_ownable::update_ownership(deps, &env.block, &info.sender, action)?;
+        Ok(Response::new().add_attributes(ownership.into_attributes()))
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -868,6 +891,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::LastExecutedSet { gauge } => {
             Ok(to_json_binary(&query::last_executed_set(deps, gauge)?)?)
         }
+        QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
     }
 }
 
