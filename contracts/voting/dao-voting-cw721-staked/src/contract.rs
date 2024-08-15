@@ -505,37 +505,45 @@ pub fn query_nft_owner(deps: Deps, token_id: String) -> StdResult<Binary> {
     let nft_contract = config.nft_address;
 
     // Querying the NFT contract for the owner of the token
-    let owner: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
+    let owner: StdResult<cw721::OwnerOfResponse> = deps.querier.query_wasm_smart(
         nft_contract,
         &cw721::Cw721QueryMsg::OwnerOf {
             token_id: token_id.clone(),
             include_expired: None,
         },
-    )?;
+    );
 
-    // Checkin if the token is staked in this contract
-    let staker = STAKED_NFTS_PER_OWNER
-        .prefix_range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
-        .find_map(|result| {
-            let ((addr, staked_token_id), _) = result.unwrap();
-            if staked_token_id == token_id {
-                Some(addr)
+    match owner {
+        Ok(owner_info) => {
+            // Checking if the token is staked in this contract
+            let staker = STAKED_NFTS_PER_OWNER
+                .prefix_range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+                .find_map(|result| {
+                    let ((addr, staked_token_id), _) = result.unwrap();
+                    if staked_token_id == token_id {
+                        Some(addr)
+                    } else {
+                        None
+                    }
+                });
+
+            let response = if let Some(staker) = staker {
+                AddressResponse {
+                    owner: Some(staker.to_string()),
+                }
             } else {
-                None
-            }
-        });
+                AddressResponse {
+                    owner: Some(owner_info.owner),
+                }
+            };
 
-    let response = if let Some(staker) = staker {
-        AddressResponse {
-            owner: Some(staker.to_string()),
+            to_json_binary(&response)
+        },
+        Err(_) => {
+            // If the NFT doesn't exist, return None for the owner
+            to_json_binary(&AddressResponse { owner: None })
         }
-    } else {
-        AddressResponse {
-            owner: Some(owner.owner),
-        }
-    };
-
-    to_json_binary(&response)
+    }
 }
 
 pub fn query_active_threshold(deps: Deps) -> StdResult<Binary> {

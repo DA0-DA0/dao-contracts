@@ -21,6 +21,7 @@ use crate::{
         queries::{query_config, query_hooks, query_nft_owner, query_total_and_voting_power},
     },
 };
+use crate::msg::AddressResponse;
 
 use super::instantiate::instantiate_cw721_base;
 use super::{
@@ -1452,4 +1453,104 @@ pub fn test_migrate_update_version() {
     let version = cw2::get_contract_version(&deps.storage).unwrap();
     assert_eq!(version.version, CONTRACT_VERSION);
     assert_eq!(version.contract, CONTRACT_NAME);
+}
+
+#[test]
+fn test_query_nft_owner() -> anyhow::Result<()> {
+    let CommonTest {
+        mut app,
+        module,
+        nft,
+    } = setup_test(None);
+
+    // Mint and stake an NFT
+    mint_and_stake_nft(&mut app, &nft, &module, CREATOR_ADDR, "1")?;
+
+    // Query the owner of the staked NFT
+    let res: AddressResponse = app
+        .wrap()
+        .query_wasm_smart(module.clone(), &QueryMsg::NftOwner { token_id: "1".to_string() })?;
+
+    assert_eq!(res.owner, Some(CREATOR_ADDR.to_string()));
+
+    // Mint an NFT but don't stake it
+    mint_nft(&mut app, &nft, CREATOR_ADDR, "recipient", "2")?;
+
+    // Query the owner of the unstaked NFT
+    let res: AddressResponse = app
+        .wrap()
+        .query_wasm_smart(module.clone(), &QueryMsg::NftOwner { token_id: "2".to_string() })?;
+
+    assert_eq!(res.owner, Some("recipient".to_string()));
+
+    // Query a non-existent NFT
+    let res: AddressResponse = app
+        .wrap()
+        .query_wasm_smart(module, &QueryMsg::NftOwner { token_id: "999".to_string() })?;
+
+    assert_eq!(res.owner, None, "Querying non-existent NFT should return None for owner");
+
+    Ok(())
+}
+
+#[test]
+fn test_query_nft_owner_after_unstake() -> anyhow::Result<()> {
+    let CommonTest {
+        mut app,
+        module,
+        nft,
+    } = setup_test(None);
+
+    // Mint and stake an NFT
+    mint_and_stake_nft(&mut app, &nft, &module, CREATOR_ADDR, "1")?;
+
+
+    // Query the owner of the staked NFT.
+    let res: AddressResponse = app
+        .wrap()
+        .query_wasm_smart(module.clone(), &QueryMsg::NftOwner { token_id: "1".to_string() })?;
+
+
+    assert_eq!(res.owner, Some(CREATOR_ADDR.to_string()));
+
+    // Unstake the NFT
+    unstake_nfts(&mut app, &module, CREATOR_ADDR, &["1"])?;
+
+    // Query the owner after unstaking
+    let res: AddressResponse = app
+        .wrap()
+        .query_wasm_smart(module, &QueryMsg::NftOwner { token_id: "1".to_string() })?;
+
+    assert_eq!(res.owner, Some(CREATOR_ADDR.to_string()));
+
+    Ok(())
+}
+
+#[test]
+fn test_query_nft_owner_with_multiple_stakers() -> anyhow::Result<()> {
+    let CommonTest {
+        mut app,
+        module,
+        nft,
+    } = setup_test(None);
+
+    // Mint and stake NFTs for different users.
+    mint_and_stake_nft(&mut app, &nft, &module, CREATOR_ADDR, "1")?;
+    mint_nft(&mut app, &nft, CREATOR_ADDR, "user2", "2")?;
+    stake_nft(&mut app, &nft, &module, "user2", "2")?;
+
+    // Query owners.
+    let res1: AddressResponse = app
+        .wrap()
+        .query_wasm_smart(module.clone(), &QueryMsg::NftOwner { token_id: "1".to_string() })?;
+
+    assert_eq!(res1.owner, Some(CREATOR_ADDR.to_string()));
+
+    let res2: AddressResponse = app
+        .wrap()
+        .query_wasm_smart(module, &QueryMsg::NftOwner { token_id: "2".to_string() })?;
+
+    assert_eq!(res2.owner, Some("user2".to_string()));
+
+    Ok(())
 }
