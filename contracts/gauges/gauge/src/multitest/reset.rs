@@ -494,6 +494,6 @@ fn test_epoch_limit() -> anyhow::Result<()> {
         .unwrap();
     // confirm gauge is now turned off
     let res = suite.query_gauge(gauge_contract, gauge_id)?;
-    assert_eq!(res.is_stopped, true);
+    assert!(res.is_stopped);
     Ok(())
 }
