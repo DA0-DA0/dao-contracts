@@ -482,14 +482,18 @@ fn test_epoch_limit() -> anyhow::Result<()> {
         )
         .unwrap();
 
-    // before advancing specified epoch tally won't get sampled
+    // advance to 1st epoch time
     suite.advance_time(EPOCH);
     suite
         .execute_options(&gauge_contract, voter1, gauge_id)
         .unwrap();
+    // advance to 2nd epoch time
     suite.advance_time(EPOCH);
     suite
         .execute_options(&gauge_contract, voter1, gauge_id)
         .unwrap();
+    // confirm gauge is now turned off
+    let res = suite.query_gauge(gauge_contract, gauge_id)?;
+    assert_eq!(res.is_stopped, true);
     Ok(())
 }
