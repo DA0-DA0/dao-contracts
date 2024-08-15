@@ -99,7 +99,7 @@ impl Gauge {
         Ok(self.count.map_or(Some(0), |o| Some(o + 1)))
     }
     pub fn gauge_epoch(&self) -> StdResult<u64> {
-        Ok(self.count.map_or(Some(0), |o| Some(o)).unwrap_or_default())
+        Ok(self.count.map_or(Some(0), Some).unwrap_or_default())
     }
 }
 

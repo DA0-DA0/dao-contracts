@@ -446,6 +446,7 @@ mod execute {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn update_gauge(
         deps: DepsMut,
         sender: Addr,
@@ -759,7 +760,7 @@ mod execute {
     }
 
     pub fn execute(deps: DepsMut, env: Env, gauge_id: u64) -> Result<Response, ContractError> {
-        let mut gauge = GAUGES.load(deps.storage, gauge_id.clone())?;
+        let mut gauge = GAUGES.load(deps.storage, gauge_id)?;
         let mut msgs = vec![];
 
         if gauge.is_stopped {

@@ -658,7 +658,7 @@ fn update_gauge() {
     let new_max_available_percentage = Some(Decimal::percent(5));
     suite
         .update_gauge(
-            &dao.as_str(),
+            dao.as_str(),
             gauge_contract.clone(),
             0,
             new_epoch,
@@ -705,7 +705,7 @@ fn update_gauge() {
     // clean setting of min_percent_selected on second gauge
     suite
         .update_gauge(
-            &dao.as_str(),
+            dao.as_str(),
             gauge_contract.clone(),
             1,
             None,
@@ -769,7 +769,7 @@ fn update_gauge() {
 
     let err = suite
         .update_gauge(
-            &dao.as_str(),
+            dao.as_str(),
             gauge_contract.clone(),
             0,
             50,
@@ -783,7 +783,7 @@ fn update_gauge() {
 
     let err = suite
         .update_gauge(
-            &dao.as_str(),
+            dao.as_str(),
             gauge_contract.clone(),
             0,
             new_epoch,
@@ -800,7 +800,7 @@ fn update_gauge() {
 
     let err = suite
         .update_gauge(
-            &dao.as_str(),
+            dao.as_str(),
             gauge_contract.clone(),
             0,
             new_epoch,
@@ -817,7 +817,7 @@ fn update_gauge() {
 
     let err = suite
         .update_gauge(
-            &dao.as_str(),
+            dao.as_str(),
             gauge_contract,
             1,
             None,
