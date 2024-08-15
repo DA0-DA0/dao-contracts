@@ -52,7 +52,7 @@ pub struct Gauge {
     /// Epoch count.
     pub count: Option<u64>,
     /// Total possible count for a gauge to run. Will automatially disable itself when reaching this epoch count.
-    /// If `None`, gauge epoch cycles may run indefinetly. 
+    /// If `None`, gauge epoch cycles may run indefinetly.
     pub total_epoch: Option<u64>,
     /// Minimum percentage of votes needed by a given option to be in the selected set
     pub min_percent_selected: Option<Decimal>,

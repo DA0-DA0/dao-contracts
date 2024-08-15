@@ -31,7 +31,7 @@ pub enum ContractError {
 
     #[error("No deposit was required, therefore no deposit can be returned")]
     NoDepositToRefund {},
-    
+
     #[error("Deposit required, cannot create submission.")]
     DepositRequired {},
 }

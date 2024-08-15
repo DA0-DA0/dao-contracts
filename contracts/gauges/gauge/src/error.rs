@@ -9,7 +9,7 @@ pub enum ContractError {
 
     #[error(transparent)]
     Ownership(#[from] cw_ownable::OwnershipError),
-    
+
     #[error(transparent)]
     Payment(#[from] PaymentError),
 
