@@ -89,7 +89,7 @@ impl Gauge {
             .map(|r| r.last == Some(r.next))
             .unwrap_or_default()
     }
-    // Helper checks if the epoch count equals the total # of epochs
+    /// Helper checks if the epoch count equals the total # of epochs
     pub fn will_reach_epoch_limit(&self) -> bool {
         if let Some(total) = self.total_epoch {
             total == self.count.unwrap_or_default()
