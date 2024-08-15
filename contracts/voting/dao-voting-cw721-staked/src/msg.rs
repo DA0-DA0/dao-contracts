@@ -92,7 +92,14 @@ pub enum QueryMsg {
     },
     #[returns(ActiveThresholdResponse)]
     ActiveThreshold {},
+    #[returns(AddressResponse)]
+    NftOwner { token_id: String },
 }
 
 #[cw_serde]
 pub struct MigrateMsg {}
+
+#[cw_serde]
+pub struct AddressResponse {
+    pub owner: Option<String>,
+}

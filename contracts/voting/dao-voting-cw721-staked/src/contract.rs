@@ -17,7 +17,7 @@ use dao_voting::threshold::{
     ActiveThresholdResponse,
 };
 
-use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, NftContract, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, NftContract, QueryMsg, AddressResponse};
 use crate::state::{
     register_staked_nft, register_unstaked_nfts, Config, ACTIVE_THRESHOLD, CONFIG, DAO, HOOKS,
     INITIAL_NFTS, MAX_CLAIMS, NFT_BALANCES, NFT_CLAIMS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
@@ -495,8 +495,47 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, env, height),
         QueryMsg::VotingPowerAtHeight { address, height } => {
             query_voting_power_at_height(deps, env, address, height)
-        }
+        },
+        QueryMsg::NftOwner { token_id } => query_nft_owner(deps, token_id),
     }
+}
+
+pub fn query_nft_owner(deps: Deps, token_id: String) -> StdResult<Binary> {
+    let config = CONFIG.load(deps.storage)?;
+    let nft_contract = config.nft_address;
+
+    // Querying the NFT contract for the owner of the token
+    let owner: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
+        nft_contract,
+        &cw721::Cw721QueryMsg::OwnerOf {
+            token_id: token_id.clone(),
+            include_expired: None,
+        },
+    )?;
+
+    // Checkin if the token is staked in this contract
+    let staker = STAKED_NFTS_PER_OWNER
+        .prefix_range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+        .find_map(|result| {
+            let ((addr, staked_token_id), _) = result.unwrap();
+            if staked_token_id == token_id {
+                Some(addr)
+            } else {
+                None
+            }
+        });
+
+    let response = if let Some(staker) = staker {
+        AddressResponse {
+            owner: Some(staker.to_string()),
+        }
+    } else {
+        AddressResponse {
+            owner: Some(owner.owner),
+        }
+    };
+
+    to_json_binary(&response)
 }
 
 pub fn query_active_threshold(deps: Deps) -> StdResult<Binary> {
