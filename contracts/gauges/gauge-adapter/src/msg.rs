@@ -61,7 +61,8 @@ pub enum AdapterQueryMsg {
     /// Checks if a provided option is included in the available options. Returns a boolean.
     #[returns(CheckOptionResponse)]
     CheckOption { option: String },
-    /// Returns the messages determined by the current voting results for options.Used by the gauge orchestrator to pass messages for DAO to execute.
+    /// Returns the messages determined by the current voting results for options.
+    /// Used by the gauge orchestrator to pass messages for DAO to execute.
     #[returns(SampleGaugeMsgsResponse)]
     SampleGaugeMsgs {
         /// Option along with weight.
