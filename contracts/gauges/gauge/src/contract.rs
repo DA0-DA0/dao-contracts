@@ -473,7 +473,7 @@ mod execute {
             let e = gauge.gauge_epoch()?;
             ensure!(e < epoch_limit, ContractError::EpochLimitTooShort {})
         }
-        // min_perfect_selected percent must be less than 100%. None if 0.
+        // min_percent_selected percent must be less than 100%. None if 0.
         if let Some(min_percent_selected) = min_percent_selected {
             if min_percent_selected.is_zero() {
                 gauge.min_percent_selected = None
