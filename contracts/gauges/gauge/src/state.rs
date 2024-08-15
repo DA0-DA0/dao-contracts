@@ -101,7 +101,7 @@ impl Gauge {
     pub fn increment_gauge_count(&self) -> StdResult<Option<u64>> {
         Ok(self.count.map_or(Some(0), |o| Some(o + 1)))
     }
-    // returns the current epoch of a single gauge
+    /// returns the current epoch of a single gauge
     pub fn gauge_epoch(&self) -> StdResult<u64> {
         Ok(self.count.map_or(Some(0), Some).unwrap_or_default())
     }
