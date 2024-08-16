@@ -1,31 +1,60 @@
 # dao-proposal-incentives
 
-[![dao-proposal-incentives on crates.io](https://img.shields.io/crates/v/dao-proposal-incentives.svg?logo=rust)](https://crates.io/crates/dao-proposal-incentives)
-[![docs.rs](https://img.shields.io/docsrs/dao-proposal-incentives?logo=docsdotrs)](https://docs.rs/dao-proposal-incentives/latest/cw_admin_factory/)
+> **WARNING:** THIS CONTRACT IS NOT AUDITED AND IS EXPERIMENTAL. USE AT YOUR OWN RISK.
 
-This contract enables DAO's to incentivize members for making successful proposals. By integrating this contract, DAO's can automatically reward members whose proposals are successfully passed, using either native tokens or CW20 tokens.
+## Overview
 
-## Instantiate 
+The `dao-proposal-incentives` contract empowers DAOs to boost member engagement by automatically rewarding successful proposals. This approach encourages active participation and high-quality contributions to DAO governance.
 
-To instantiate the contract, provide the following parameters:
+### Key Features
 
-- `owner`: The DAO sending this contract proposal hooks.
-- `proposal_incentives`: Configuration for the incentives to be awarded for successful proposals. This should be specified using the `ProposalIncentivesUnchecked` structure.
+- Automatic rewards for passed proposals
+- Support for both native and CW20 tokens
+- Dynamic incentive adjustment
+- Seamless integration with existing DAO modules
 
-## Configuration
+## How It Works
 
-- This contract should be added as a `ProposalHook` to either the `dao-voting-single` or `dao-voting-multiple` proposal modules.
-- The DAO must be set as the `owner` of this contract to manage incentives and ownership.
+1. **Setup**: The DAO instantiates the contract and sets initial reward parameters.
+2. **Funding**: The contract is funded with tokens for rewards.
+2. **Integration**: The contract is added as a proposal hook to the DAO's voting module.
+3. **Proposal Lifecycle**: When a proposal passes, the contract automatically rewards the proposer.
+4. **Flexible Management**: The DAO can adjust reward amounts and token types as needed.
 
-The incentives can be adjusted at any time by the owner of the contract. The rewards are determined based on the configuration at the proposal's `start_time`. This allows for dynamic adjustment of incentives to reflect the DAO's evolving priorities and resources.
+## Usage Guide
 
-## Execute
+### Instantiation
 
-- **ProposalHook(ProposalHookMsg)**: Triggered when a proposal's status changes. This is used to evaluate and potentially reward successful proposals.
-- **UpdateOwnership(cw_ownable::Action)**: Updates the ownership of the contract. This can be used to transfer ownership or perform other ownership-related actions.
-- **UpdateProposalIncentives { proposal_incentives: ProposalIncentivesUnchecked }**: Updates the incentives configuration. This allows the DAO to modify the rewards for successful proposals.
-- **Receive(Cw20ReceiveMsg)**: Handles the receipt of CW20 tokens. This is necessary for managing CW20-based incentives.
+To set up the contract, provide:
 
-## Query
+- `owner`: The DAO's address (for sending proposal hooks)
+- `proposal_incentives`: Reward configuration using `ProposalIncentivesUnchecked`
 
-- **ProposalIncentives { height: Option<u64> }**: Returns the current configuration of the proposal incentives. The `height` parameter is optional and can be used to query the incentives at a specific blockchain height, providing a snapshot of the incentives at that point in time.
+Example:
+```rust
+let msg = InstantiateMsg {
+    owner: "dao_address".to_string(),
+    proposal_incentives: ProposalIncentivesUnchecked {
+        rewards_per_proposal: Uint128::new(1000),
+        denom: UncheckedDenom::Native("ujuno".to_string()),
+    },
+};
+```
+
+### Configuration
+
+1. Add this contract as a `ProposalHook` to your DAO's voting module (`dao-voting-single` or `dao-voting-multiple`).
+2. Ensure the DAO is set as the contract `owner` for proper management.
+
+### Key Functions
+
+#### Execute Messages
+
+1. **ProposalHook(ProposalHookMsg)**: Handles proposal status changes and reward distribution.
+2. **UpdateOwnership(cw_ownable::Action)**: Manages contract ownership.
+3. **UpdateProposalIncentives**: Allows the DAO to modify reward settings.
+4. **Receive(Cw20ReceiveMsg)**: Processes incoming CW20 tokens for rewards.
+
+#### Query Messages
+
+- **ProposalIncentives { height: Option<u64> }**: Retrieves current or historical incentive configurations.

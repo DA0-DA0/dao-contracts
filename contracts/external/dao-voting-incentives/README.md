@@ -1,37 +1,65 @@
 # dao-voting-incentives
 
-[![dao-voting-incentives on crates.io](https://img.shields.io/crates/v/dao-voting-incentives.svg?logo=rust)](https://crates.io/crates/dao-voting-incentives)
-[![docs.rs](https://img.shields.io/docsrs/dao-voting-incentives?logo=docsdotrs)](https://docs.rs/dao-voting-incentives/latest/cw_admin_factory/)
+> **WARNING:** THIS CONTRACT IS NOT AUDITED AND IS EXPERIMENTAL. USE AT YOUR OWN RISK.
 
-This contract enables DAOs to offer incentives for voting on DAO proposals. By rewarding active voters, DAOs can encourage greater community involvement and decision-making.
+The `dao-voting-incentives` contract is designed to boost participation in DAO governance by offering rewards for voting on proposals. This innovative mechanism encourages active community involvement and more representative decision-making within DAOs.
 
-## Instantiate
+## Features
 
-To instantiate the contract, provide the following parameters:
+- Flexible reward distribution for both native and CW20 tokens
+- Time-bound incentive periods
+- Fair reward calculation based on voting activity
 
-- `owner`: The DAO sending this contract voting hooks.
-- `denom`: The denomination of the tokens to distribute as rewards.
-- `expiration`: The expiration of the voting incentives period, defining how long the incentives are active.
+## Instantiation
 
-## Configuration
+To deploy the contract, provide the following parameters:
 
-- This contract should be added as a `VoteHook` to either the `dao-proposal-single` or `dao-proposal-multiple` proposal modules.
-- The DAO must be set as the `owner` of this contract to manage incentives and ownership.
+```rust
+pub struct InstantiateMsg {
+    pub owner: String,
+    pub denom: UncheckedDenom,
+    pub expiration: Expiration,
+}
+```
 
-If no votes are cast during the voting incentives period, then the contract's funds are sent to the `owner` on expiration.
+- `owner`: The DAO address that will manage the contract and receive vote hooks
+- `denom`: The token denomination (native or CW20) to be distributed as rewards
+- `expiration`: The end date of the voting incentives period
 
-Rewards for a user are determined as such: `reward(user) = votes(user) * contract's balance / total votes`
+## Setup
 
-## Execute
+1. Deploy the `dao-voting-incentives` contract
+2. Add the contract's address as a `VoteHook` to your DAO's proposal module (`dao-proposal-single` or `dao-proposal-multiple`)
+3. Ensure the DAO is set as the `owner` of the contract
+4. Fund the contract with the specified reward tokens
 
-- **VoteHook(VoteHookMsg)**: Triggered when a new vote is cast. This is used to track voting activity and allocate rewards accordingly.
-- **Claim {}**: Allows voters to claim their rewards after expiration.
-- **Expire {}**: Expires the voting incentives period, allowing voters to claim rewards.
-- **UpdateOwnership(cw_ownable::Action)**: Updates the ownership of the contract. This can be used to transfer ownership or perform other ownership-related actions.
-- **Receive(Cw20ReceiveMsg)**: Handles the receipt of CW20 tokens. This is necessary for managing CW20-based incentives.
+## Key Functions
 
-## Query
+### Execute Messages
 
-- **Config {}**: Returns the configuration of the voting incentives.
-- **Rewards { address: String }**: Queries the claimable rewards for a specific address.
-- **ExpectedRewards { address: String }**: Estimates the expected rewards for a specific address, based on current votes.
+- `VoteHook(VoteHookMsg)`: Tracks voting activity (automatically called by the proposal module)
+- `Claim {}`: Allows voters to claim their earned rewards after the incentive period ends
+- `Expire {}`: Finalizes the incentive period, enabling reward claims
+- `UpdateOwnership(Action)`: Manages contract ownership
+- `Receive(Cw20ReceiveMsg)`: Handles incoming CW20 tokens for rewards
+
+### Query Messages
+
+- `Config {}`: Retrieves the contract's configuration
+- `Rewards { address: String }`: Gets the claimable rewards for a specific address
+- `Votes { address: String }`: Returns the number of votes cast by an address
+
+## Reward Calculation
+
+Rewards are calculated using the following formula:
+
+```
+reward(user) = votes(user) * contract_balance / total_votes
+```
+
+This ensures a fair distribution based on each user's voting activity relative to the total participation.
+
+## Important Notes
+
+- If no votes are cast during the incentive period, all funds are returned to the owner (DAO) upon expiration
+- Rewards can only be claimed after the incentive period has ended
