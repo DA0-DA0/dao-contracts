@@ -1,6 +1,6 @@
 [package]
 name ="dao-voting-incentives"
-authors = ["Jake Hartnell <no-reply@no-reply.com>", "Gabe Lopez <ismellike@users.noreply.github.com>"]
+authors = ["Jake Hartnell <no-reply@no-reply.com>", "Gabe <ismellike@users.noreply.github.com>"]
 description = "A contract that implements incentives for voting in a DAO."
 edition = { workspace = true }
 license = { workspace = true }
@@ -9,6 +9,7 @@ version = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+doctest = false
 
 [features]
 # for more explicit tests, cargo test --features=backtraces
