@@ -55,6 +55,7 @@ cw4-group = "1.1"
 cw721 = "0.18"
 cw721-base = "0.18"
 env_logger = "0.10"
+itertools = "0.13.0"
 once_cell = "1.18"
 omniflix-std = "0.1.8"
 osmosis-std = "0.20.1"
@@ -89,6 +90,7 @@ cw-admin-factory = { path = "./contracts/external/cw-admin-factory", version = "
 cw-denom = { path = "./packages/cw-denom", version = "2.5.0" }
 cw-fund-distributor = { path = "./contracts/distribution/cw-fund-distributor", version = "2.5.0" }
 cw-hooks = { path = "./packages/cw-hooks", version = "2.5.0" }
+cw-msg-filter = { path = "./packages/cw-msg-filter", version = "2.5.0" }
 cw-paginate-storage = { path = "./packages/cw-paginate-storage", version = "2.5.0" }
 cw-payroll-factory = { path = "./contracts/external/cw-payroll-factory", version = "2.5.0" }
 cw-stake-tracker = { path = "./packages/cw-stake-tracker", version = "2.5.0" }
