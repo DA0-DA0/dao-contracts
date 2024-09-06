@@ -6,7 +6,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 
-use dao_interface::state::ModuleInstantiateCallback;
+use dao_interface::state::CallbackMessages;
 use dao_pre_propose_approval_single::msg::{
     ApproverProposeMessage, ExecuteExt as ApprovalExt, ExecuteMsg as PreProposeApprovalExecuteMsg,
 };
@@ -59,7 +59,7 @@ pub fn instantiate(
     let addr = deps.api.addr_validate(&msg.pre_propose_approval_contract)?;
     PRE_PROPOSE_APPROVAL_CONTRACT.save(deps.storage, &addr)?;
 
-    Ok(resp.set_data(to_json_binary(&ModuleInstantiateCallback {
+    Ok(resp.set_data(to_json_binary(&CallbackMessages {
         msgs: vec![
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: addr.to_string(),

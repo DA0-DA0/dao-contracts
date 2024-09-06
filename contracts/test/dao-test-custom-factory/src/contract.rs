@@ -15,7 +15,7 @@ use cw_tokenfactory_issuer::msg::{
 use cw_utils::{one_coin, parse_reply_instantiate_data};
 use dao_interface::{
     nft::NftFactoryCallback,
-    state::ModuleInstantiateCallback,
+    state::CallbackMessages,
     token::{InitialBalance, NewTokenInfo, TokenFactoryCallback},
     voting::{ActiveThresholdQuery, Query as VotingModuleQueryMsg},
 };
@@ -274,7 +274,7 @@ pub fn execute_token_factory_factory_wrong_callback(
     )
 }
 
-/// Example method called in the ModuleInstantiateCallback providing
+/// Example method called in the CallbackMessages providing
 /// an example for checking the DAO has been setup correctly.
 pub fn execute_validate_nft_dao(
     deps: DepsMut,
@@ -432,10 +432,10 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             });
 
             // DAO must accept ownership transfer. Here we include a
-            // ModuleInstantiateCallback message that will be called by the
+            // CallbackMessages message that will be called by the
             // dao-dao-core contract when voting module instantiation is
             // complete.
-            let callback = ModuleInstantiateCallback {
+            let callback = CallbackMessages {
                 msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: issuer_addr.clone(),
                     msg: to_json_binary(&IssuerExecuteMsg::UpdateOwnership(
@@ -465,7 +465,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             let initial_nfts = INITIAL_NFTS.load(deps.storage)?;
 
             // Add mint messages that will be called by the DAO in the
-            // ModuleInstantiateCallback
+            // CallbackMessages
             let mut msgs: Vec<CosmosMsg> = initial_nfts
                 .iter()
                 .flat_map(|nft| -> Result<CosmosMsg, ContractError> {
@@ -494,7 +494,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             Ok(
                 Response::new().set_data(to_json_binary(&NftFactoryCallback {
                     nft_contract: nft_address.to_string(),
-                    module_instantiate_callback: Some(ModuleInstantiateCallback { msgs }),
+                    module_instantiate_callback: Some(CallbackMessages { msgs }),
                 })?),
             )
         }

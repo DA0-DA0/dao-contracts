@@ -5,7 +5,7 @@ use cosmwasm_std::Uint128;
 // We re-export them here for convenience.
 pub use osmosis_std::types::cosmos::bank::v1beta1::{DenomUnit, Metadata};
 
-use crate::state::ModuleInstantiateCallback;
+use crate::state::CallbackMessages;
 
 #[cw_serde]
 pub struct InitialBalance {
@@ -48,5 +48,5 @@ pub struct NewTokenInfo {
 pub struct TokenFactoryCallback {
     pub denom: String,
     pub token_contract: Option<String>,
-    pub module_instantiate_callback: Option<ModuleInstantiateCallback>,
+    pub module_instantiate_callback: Option<CallbackMessages>,
 }

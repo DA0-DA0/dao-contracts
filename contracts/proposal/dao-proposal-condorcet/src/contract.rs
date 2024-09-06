@@ -2,6 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
+    SubMsgResult,
 };
 
 use cw2::set_contract_version;
@@ -267,18 +268,24 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     let repl = TaggedReplyId::new(msg.id)?;
     match repl {
-        TaggedReplyId::FailedProposalExecution(proposal_id) => {
-            let mut proposal = PROPOSAL.load(deps.storage, proposal_id as u32)?;
-            proposal.set_execution_failed();
-            PROPOSAL.save(deps.storage, proposal_id as u32, &proposal)?;
+        TaggedReplyId::ProposalExecution(proposal_id) => match msg.result {
+            SubMsgResult::Ok(res) => match res.data {
+                Some(data) => Ok(Response::new()
+                    .add_attribute("proposal_execution_success", proposal_id.to_string())
+                    .set_data(data)),
+                None => Ok(Response::new()
+                    .add_attribute("proposal_execution_success", proposal_id.to_string())),
+            },
+            SubMsgResult::Err(error) => {
+                let mut proposal = PROPOSAL.load(deps.storage, proposal_id as u32)?;
+                proposal.set_execution_failed();
+                PROPOSAL.save(deps.storage, proposal_id as u32, &proposal)?;
 
-            Ok(Response::default()
-                .add_attribute("proposal_execution_failed", proposal_id.to_string())
-                .add_attribute(
-                    "error",
-                    msg.result.into_result().err().unwrap_or("None".to_string()),
-                ))
-        }
+                Ok(Response::new()
+                    .add_attribute("proposal_execution_failed", proposal_id.to_string())
+                    .add_attribute("error", error))
+            }
+        },
         _ => unimplemented!("pre-propose and hooks not yet supported"),
     }
 }

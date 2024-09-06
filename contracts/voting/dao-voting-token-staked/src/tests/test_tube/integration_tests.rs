@@ -424,7 +424,7 @@ fn test_factory() {
     // Check the TF denom is as expected
     assert_eq!(denom, format!("factory/{}/{}", token_contract, DENOM));
 
-    // Check issuer ownership is the DAO and the ModuleInstantiateCallback
+    // Check issuer ownership is the DAO and the CallbackMessages
     // has successfully accepted ownership.
     let issuer =
         TokenfactoryIssuer::new_with_values(&app, tf_issuer.code_id, token_contract.to_string())

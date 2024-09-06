@@ -9,7 +9,7 @@ use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NumTokensResponse};
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_execute_data, parse_reply_instantiate_data, Duration};
 use dao_hooks::nft_stake::{stake_nft_hook_msgs, unstake_nft_hook_msgs};
-use dao_interface::state::ModuleInstantiateCallback;
+use dao_interface::state::CallbackMessages;
 use dao_interface::{nft::NftFactoryCallback, voting::IsActiveResponse};
 use dao_voting::duration::validate_duration;
 use dao_voting::threshold::{
@@ -743,8 +743,8 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
             // On setup success, have the DAO complete the second part of
             // ownership transfer by accepting ownership in a
-            // ModuleInstantiateCallback.
-            let callback = to_json_binary(&ModuleInstantiateCallback {
+            // CallbackMessages.
+            let callback = to_json_binary(&CallbackMessages {
                 msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: collection_addr.to_string(),
                     msg: to_json_binary(
