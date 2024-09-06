@@ -22,7 +22,7 @@ const REPLY_TYPE_MASK: u64 = (1 << BITS_RESERVED_FOR_REPLY_TYPE) - 1;
 #[limit_variant_count(8)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(Debug, PartialEq, Eq))]
 pub enum TaggedReplyId {
-    /// Fired when a proposal's execution fails.
+    /// Fired when a proposal is executed.
     ProposalExecution(u64),
     /// Fired when a proposal hook's execution fails.
     FailedProposalHook(u64),
