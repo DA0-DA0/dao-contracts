@@ -1,8 +1,8 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    from_json,
+    coins, from_json,
     testing::{mock_dependencies, mock_env},
-    to_json_binary, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
+    to_json_binary, Addr, BankMsg, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
 };
 use cw2::{set_contract_version, ContractVersion};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
@@ -79,6 +79,15 @@ fn v1_cw_core_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(contract::execute, contract::instantiate, contract::query)
         .with_reply(contract::reply)
         .with_migrate(contract::migrate);
+    Box::new(contract)
+}
+
+fn dao_callback_messages_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        dao_callback_messages::contract::execute,
+        dao_callback_messages::contract::instantiate,
+        dao_callback_messages::contract::query,
+    );
     Box::new(contract)
 }
 
@@ -3196,4 +3205,94 @@ fn test_query_info() {
             }
         }
     )
+}
+
+#[test]
+pub fn test_callback_messages() {
+    let (core_addr, mut app) = do_standard_instantiate(true, None);
+
+    // Store and instantiate the dao-callback-messages contract
+    let callback_id = app.store_code(dao_callback_messages_contract());
+    let callback_addr = app
+        .instantiate_contract(
+            callback_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &Empty {},
+            &[],
+            "dao-callback-messages",
+            None,
+        )
+        .unwrap();
+
+    // Get the proposal module
+    let proposal_modules: Vec<ProposalModule> = app
+        .wrap()
+        .query_wasm_smart(
+            core_addr.clone(),
+            &QueryMsg::ProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    let proposal_module = proposal_modules[0].address.clone();
+
+    // Test successful callback
+    let success_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: callback_addr.to_string(),
+        msg: to_json_binary(&dao_callback_messages::msg::ExecuteMsg::Execute {
+            msgs: vec![CosmosMsg::Bank(BankMsg::Send {
+                to_address: CREATOR_ADDR.to_string(),
+                amount: coins(100, "utest"),
+            })],
+        })
+        .unwrap(),
+        funds: vec![],
+    });
+
+    let res = app.execute_contract(
+        proposal_module.clone(),
+        core_addr.clone(),
+        &ExecuteMsg::ExecuteProposalHook {
+            msgs: vec![success_msg],
+        },
+        &[],
+    );
+    assert!(res.is_ok());
+
+    // Test error callback
+    let error_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: callback_addr.to_string(),
+        msg: to_json_binary(&dao_callback_messages::msg::ExecuteMsg::Execute {
+            msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "non_existent_contract".to_string(),
+                msg: to_json_binary(&"{}").unwrap(),
+                funds: vec![],
+            })],
+        })
+        .unwrap(),
+        funds: vec![],
+    });
+
+    let res = app.execute_contract(
+        proposal_module,
+        core_addr,
+        &ExecuteMsg::ExecuteProposalHook {
+            msgs: vec![error_msg],
+        },
+        &[],
+    );
+    assert!(res.is_ok());
+
+    // Check for error attributes in the response
+    let attrs = res
+        .unwrap()
+        .events
+        .iter()
+        .flat_map(|e| e.attributes.clone())
+        .collect::<Vec<_>>();
+    let callback_failed_attr = attrs
+        .iter()
+        .find(|attr| attr.key == "callback_message_failed");
+    assert!(callback_failed_attr.is_some());
 }

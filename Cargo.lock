@@ -1642,6 +1642,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dao-callback-messages"
+version = "2.5.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "dao-interface 2.5.0",
+]
+
+[[package]]
 name = "dao-cw721-extensions"
 version = "2.5.0"
 dependencies = [
@@ -1687,6 +1696,7 @@ dependencies = [
  "cw20-base 1.1.2",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
+ "dao-callback-messages",
  "dao-dao-macros 2.5.0",
  "dao-interface 2.5.0",
  "dao-proposal-sudo",

@@ -99,6 +99,7 @@ cw-wormhole = { path = "./packages/cw-wormhole", version = "2.5.0" }
 cw20-stake = { path = "./contracts/staking/cw20-stake", version = "2.5.0" }
 cw721-controllers = { path = "./packages/cw721-controllers", version = "2.5.0" }
 cw721-roles = { path = "./contracts/external/cw721-roles", version = "2.5.0" }
+dao-callback-messages = { path = "./contracts/test/dao-callback-messages", version = "2.5.0" }
 dao-cw721-extensions = { path = "./packages/dao-cw721-extensions", version = "2.5.0" }
 dao-dao-core = { path = "./contracts/dao-dao-core", version = "2.5.0" }
 dao-dao-macros = { path = "./packages/dao-dao-macros", version = "2.5.0" }

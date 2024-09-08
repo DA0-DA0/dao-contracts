@@ -36,3 +36,4 @@ cw20-base = { workspace = true }
 cw721-base = { workspace = true }
 dao-proposal-sudo = { workspace = true }
 dao-voting-cw20-balance = { workspace = true }
+dao-callback-messages = { workspace = true }

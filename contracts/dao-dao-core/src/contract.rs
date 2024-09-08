@@ -2,12 +2,12 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_json, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    Order, Reply, Response, StdError, StdResult, SubMsg, SubMsgResult, WasmMsg,
+    Order, Reply, Response, StdError, StdResult, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_paginate_storage::{paginate_map, paginate_map_keys, paginate_map_values};
 use cw_storage_plus::Map;
-use cw_utils::{parse_reply_instantiate_data, Duration};
+use cw_utils::{parse_reply_execute_data, parse_reply_instantiate_data, Duration};
 use dao_interface::{
     msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{
@@ -34,6 +34,7 @@ const PROPOSAL_MODULE_INSTANTIATE_REPLY_ID: u64 = 0;
 const VOTE_MODULE_INSTANTIATE_REPLY_ID: u64 = 1;
 const VOTE_MODULE_UPDATE_REPLY_ID: u64 = 2;
 const PROPOSAL_MODULE_EXECUTE_REPLY_ID: u64 = 3;
+const CALLBACK_MESSAGES_ERROR_REPLY_ID: u64 = 4;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -1004,13 +1005,16 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             let callback_msgs = match res.data {
                 Some(data) => from_json::<CallbackMessages>(&data)
                     .map(|m| m.msgs)
-                    .unwrap_or_else(|_| vec![]),
+                    .unwrap_or_else(|_| vec![])
+                    .into_iter()
+                    .map(|msg| SubMsg::reply_on_error(msg, CALLBACK_MESSAGES_ERROR_REPLY_ID))
+                    .collect(),
                 None => vec![],
             };
 
             Ok(Response::default()
                 .add_attribute("voting_module", vote_module_addr)
-                .add_messages(callback_msgs))
+                .add_submessages(callback_msgs))
         }
         VOTE_MODULE_UPDATE_REPLY_ID => {
             let res = parse_reply_instantiate_data(msg)?;
@@ -1020,19 +1024,26 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
             Ok(Response::default().add_attribute("voting_module", vote_module_addr))
         }
-        PROPOSAL_MODULE_EXECUTE_REPLY_ID => match msg.result {
-            SubMsgResult::Ok(res) => {
-                let callback_msgs = match res.data {
-                    Some(data) => from_json::<CallbackMessages>(&data)
-                        .map(|m| m.msgs)
-                        .unwrap_or_else(|_| vec![]),
-                    None => vec![],
-                };
+        PROPOSAL_MODULE_EXECUTE_REPLY_ID => {
+            let res = parse_reply_execute_data(msg)?;
+            let callback_msgs = match res.data {
+                Some(data) => from_json::<CallbackMessages>(&data)
+                    .map(|m| m.msgs)
+                    .unwrap_or_else(|_| vec![])
+                    .into_iter()
+                    .map(|msg| SubMsg::reply_on_error(msg, CALLBACK_MESSAGES_ERROR_REPLY_ID))
+                    .collect(),
+                None => vec![],
+            };
 
-                Ok(Response::default().add_messages(callback_msgs))
-            }
-            SubMsgResult::Err(_) => Ok(Response::default()),
-        },
+            Ok(Response::default().add_submessages(callback_msgs))
+        }
+        CALLBACK_MESSAGES_ERROR_REPLY_ID => Ok(Response::default()
+            .add_attribute("callback_message_failed", msg.id.to_string())
+            .add_attribute(
+                "error",
+                msg.result.into_result().err().unwrap_or("None".to_string()),
+            )),
         _ => Err(ContractError::UnknownReplyID {}),
     }
 }

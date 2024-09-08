@@ -1,0 +1,23 @@
+[package]
+name = "dao-callback-messages"
+authors = ["Gabe <ismellike@users.noreply.github.com>"]
+description = "A contract for sending callback messages in the data field."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+dao-interface = { workspace = true }
