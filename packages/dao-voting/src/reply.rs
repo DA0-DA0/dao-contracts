@@ -1,6 +1,6 @@
 use dao_dao_macros::limit_variant_count;
 
-const PROPOSAL_EXECUTION_MASK: u64 = 0b000;
+const FAILED_PROPOSAL_EXECUTION_MASK: u64 = 0b000;
 const FAILED_PROPOSAL_HOOK_MASK: u64 = 0b001;
 const FAILED_VOTE_HOOK_MASK: u64 = 0b010;
 
@@ -22,8 +22,8 @@ const REPLY_TYPE_MASK: u64 = (1 << BITS_RESERVED_FOR_REPLY_TYPE) - 1;
 #[limit_variant_count(8)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(Debug, PartialEq, Eq))]
 pub enum TaggedReplyId {
-    /// Fired when a proposal is executed.
-    ProposalExecution(u64),
+    /// Fired when a proposal's execution fails.
+    FailedProposalExecution(u64),
     /// Fired when a proposal hook's execution fails.
     FailedProposalHook(u64),
     /// Fired when a vote hook's execution fails.
@@ -43,7 +43,9 @@ impl TaggedReplyId {
         let reply_type = id & REPLY_TYPE_MASK;
         let id_after_shift = id >> BITS_RESERVED_FOR_REPLY_TYPE;
         match reply_type {
-            PROPOSAL_EXECUTION_MASK => Ok(TaggedReplyId::ProposalExecution(id_after_shift)),
+            FAILED_PROPOSAL_EXECUTION_MASK => {
+                Ok(TaggedReplyId::FailedProposalExecution(id_after_shift))
+            }
             FAILED_PROPOSAL_HOOK_MASK => Ok(TaggedReplyId::FailedProposalHook(id_after_shift)),
             FAILED_VOTE_HOOK_MASK => Ok(TaggedReplyId::FailedVoteHook(id_after_shift)),
             PRE_PROPOSE_MODULE_INSTANTIATION_ID => Ok(TaggedReplyId::PreProposeModuleInstantiation),
@@ -55,7 +57,7 @@ impl TaggedReplyId {
 
 /// This function can drop bits, if you have more than `u(64-[`BITS_RESERVED_FOR_REPLY_TYPE`])` proposals.
 pub const fn mask_proposal_execution_proposal_id(proposal_id: u64) -> u64 {
-    PROPOSAL_EXECUTION_MASK | (proposal_id << BITS_RESERVED_FOR_REPLY_TYPE)
+    FAILED_PROPOSAL_EXECUTION_MASK | (proposal_id << BITS_RESERVED_FOR_REPLY_TYPE)
 }
 
 pub const fn mask_proposal_hook_index(index: u64) -> u64 {
@@ -101,7 +103,7 @@ mod test {
 
         assert_eq!(
             TaggedReplyId::new(m_proposal_id).unwrap(),
-            TaggedReplyId::ProposalExecution(proposal_id_max)
+            TaggedReplyId::FailedProposalExecution(proposal_id_max)
         );
         assert_eq!(
             TaggedReplyId::new(m_proposal_hook_idx).unwrap(),

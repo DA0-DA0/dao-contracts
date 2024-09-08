@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_json_binary, Addr, Attribute, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
-    Response, StdResult, Storage, SubMsg, SubMsgResult, WasmMsg,
+    Response, StdResult, Storage, SubMsg, WasmMsg,
 };
 
 use cw2::set_contract_version;
@@ -545,14 +545,15 @@ pub fn execute_execute(
                     })?,
                     funds: vec![],
                 };
-                let masked_proposal_id = mask_proposal_execution_proposal_id(proposal_id);
                 match config.close_proposal_on_execution_failure {
-                    true => Response::default()
-                        .add_submessage(SubMsg::reply_always(execute_message, masked_proposal_id)),
-                    false => Response::default().add_submessage(SubMsg::reply_on_success(
-                        execute_message,
-                        masked_proposal_id,
-                    )),
+                    true => {
+                        let masked_proposal_id = mask_proposal_execution_proposal_id(proposal_id);
+                        Response::default().add_submessage(SubMsg::reply_on_error(
+                            execute_message,
+                            masked_proposal_id,
+                        ))
+                    }
+                    false => Response::default().add_message(execute_message),
                 }
             } else {
                 Response::default()
@@ -985,29 +986,22 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     let repl = TaggedReplyId::new(msg.id)?;
     match repl {
-        TaggedReplyId::ProposalExecution(proposal_id) => match msg.result {
-            SubMsgResult::Ok(res) => match res.data {
-                Some(data) => Ok(Response::new()
-                    .add_attribute("proposal_execution_success", proposal_id.to_string())
-                    .set_data(data)),
-                None => Ok(Response::new()
-                    .add_attribute("proposal_execution_success", proposal_id.to_string())),
-            },
-            SubMsgResult::Err(error) => {
-                PROPOSALS.update(deps.storage, proposal_id, |prop| match prop {
-                    Some(mut prop) => {
-                        prop.status = Status::ExecutionFailed;
+        TaggedReplyId::FailedProposalExecution(proposal_id) => {
+            PROPOSALS.update(deps.storage, proposal_id, |prop| match prop {
+                Some(mut prop) => {
+                    prop.status = Status::ExecutionFailed;
+                    Ok(prop)
+                }
+                None => Err(ContractError::NoSuchProposal { id: proposal_id }),
+            })?;
 
-                        Ok(prop)
-                    }
-                    None => Err(ContractError::NoSuchProposal { id: proposal_id }),
-                })?;
-
-                Ok(Response::new()
-                    .add_attribute("proposal_execution_failed", proposal_id.to_string())
-                    .add_attribute("error", error))
-            }
-        },
+            Ok(Response::new()
+                .add_attribute("proposal execution failed", proposal_id.to_string())
+                .add_attribute(
+                    "error",
+                    msg.result.into_result().err().unwrap_or("None".to_string()),
+                ))
+        }
         TaggedReplyId::FailedProposalHook(idx) => {
             let addr = PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?;
             Ok(Response::new().add_attribute("removed_proposal_hook", format!("{addr}:{idx}")))

@@ -164,11 +164,11 @@ impl Proposal {
             msg: to_json_binary(&dao_interface::msg::ExecuteMsg::ExecuteProposalHook { msgs })?,
             funds: vec![],
         };
-        let masked_id = mask_proposal_execution_proposal_id(self.id as u64);
         Ok(if self.close_on_execution_failure {
-            SubMsg::reply_always(core_exec, masked_id)
+            let masked_id = mask_proposal_execution_proposal_id(self.id as u64);
+            SubMsg::reply_on_error(core_exec, masked_id)
         } else {
-            SubMsg::reply_on_success(core_exec, masked_id)
+            SubMsg::new(core_exec)
         })
     }
 
