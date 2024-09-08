@@ -1,8 +1,8 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    coins, from_json,
+    from_json,
     testing::{mock_dependencies, mock_env},
-    to_json_binary, Addr, BankMsg, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
+    to_json_binary, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
 };
 use cw2::{set_contract_version, ContractVersion};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
@@ -3241,9 +3241,13 @@ pub fn test_callback_messages() {
     let success_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: callback_addr.to_string(),
         msg: to_json_binary(&dao_callback_messages::msg::ExecuteMsg::Execute {
-            msgs: vec![CosmosMsg::Bank(BankMsg::Send {
-                to_address: CREATOR_ADDR.to_string(),
-                amount: coins(100, "utest"),
+            msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: callback_addr.to_string(),
+                msg: to_json_binary(&dao_callback_messages::msg::ExecuteMsg::Execute {
+                    msgs: vec![],
+                })
+                .unwrap(),
+                funds: vec![],
             })],
         })
         .unwrap(),
@@ -3259,6 +3263,18 @@ pub fn test_callback_messages() {
         &[],
     );
     assert!(res.is_ok());
+
+    // Check for error attributes not in the response
+    let attrs = res
+        .unwrap()
+        .events
+        .iter()
+        .flat_map(|e| e.attributes.clone())
+        .collect::<Vec<_>>();
+    let callback_failed_attr = attrs
+        .iter()
+        .find(|attr| attr.key == "callback_message_failed");
+    assert!(callback_failed_attr.is_none());
 
     // Test error callback
     let error_msg = CosmosMsg::Wasm(WasmMsg::Execute {

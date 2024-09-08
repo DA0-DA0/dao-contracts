@@ -1024,20 +1024,22 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
             Ok(Response::default().add_attribute("voting_module", vote_module_addr))
         }
-        PROPOSAL_MODULE_EXECUTE_REPLY_ID => {
-            let res = parse_reply_execute_data(msg)?;
-            let callback_msgs = match res.data {
-                Some(data) => from_json::<CallbackMessages>(&data)
-                    .map(|m| m.msgs)
-                    .unwrap_or_else(|_| vec![])
-                    .into_iter()
-                    .map(|msg| SubMsg::reply_on_error(msg, CALLBACK_MESSAGES_ERROR_REPLY_ID))
-                    .collect(),
-                None => vec![],
-            };
+        PROPOSAL_MODULE_EXECUTE_REPLY_ID => match parse_reply_execute_data(msg) {
+            Ok(res) => {
+                let callback_msgs = match res.data {
+                    Some(data) => from_json::<CallbackMessages>(&data)
+                        .map(|m| m.msgs)
+                        .unwrap_or_else(|_| vec![])
+                        .into_iter()
+                        .map(|msg| SubMsg::reply_on_error(msg, CALLBACK_MESSAGES_ERROR_REPLY_ID))
+                        .collect(),
+                    None => vec![],
+                };
 
-            Ok(Response::default().add_submessages(callback_msgs))
-        }
+                Ok(Response::default().add_submessages(callback_msgs))
+            }
+            Err(_) => Ok(Response::default()),
+        },
         CALLBACK_MESSAGES_ERROR_REPLY_ID => Ok(Response::default()
             .add_attribute("callback_message_failed", msg.id.to_string())
             .add_attribute(
