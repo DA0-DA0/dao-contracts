@@ -34,7 +34,6 @@ const PROPOSAL_MODULE_INSTANTIATE_REPLY_ID: u64 = 0;
 const VOTE_MODULE_INSTANTIATE_REPLY_ID: u64 = 1;
 const VOTE_MODULE_UPDATE_REPLY_ID: u64 = 2;
 const PROPOSAL_MODULE_EXECUTE_REPLY_ID: u64 = 3;
-const CALLBACK_MESSAGES_ERROR_REPLY_ID: u64 = 4;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -1005,16 +1004,13 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             let callback_msgs = match res.data {
                 Some(data) => from_json::<CallbackMessages>(&data)
                     .map(|m| m.msgs)
-                    .unwrap_or_else(|_| vec![])
-                    .into_iter()
-                    .map(|msg| SubMsg::reply_on_error(msg, CALLBACK_MESSAGES_ERROR_REPLY_ID))
-                    .collect(),
+                    .unwrap_or_else(|_| vec![]),
                 None => vec![],
             };
 
             Ok(Response::default()
                 .add_attribute("voting_module", vote_module_addr)
-                .add_submessages(callback_msgs))
+                .add_messages(callback_msgs))
         }
         VOTE_MODULE_UPDATE_REPLY_ID => {
             let res = parse_reply_instantiate_data(msg)?;
@@ -1029,23 +1025,14 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                 let callback_msgs = match res.data {
                     Some(data) => from_json::<CallbackMessages>(&data)
                         .map(|m| m.msgs)
-                        .unwrap_or_else(|_| vec![])
-                        .into_iter()
-                        .map(|msg| SubMsg::reply_on_error(msg, CALLBACK_MESSAGES_ERROR_REPLY_ID))
-                        .collect(),
+                        .unwrap_or_else(|_| vec![]),
                     None => vec![],
                 };
 
-                Ok(Response::default().add_submessages(callback_msgs))
+                Ok(Response::default().add_messages(callback_msgs))
             }
             Err(_) => Ok(Response::default()),
         },
-        CALLBACK_MESSAGES_ERROR_REPLY_ID => Ok(Response::default()
-            .add_attribute("callback_message_failed", msg.id.to_string())
-            .add_attribute(
-                "error",
-                msg.result.into_result().err().unwrap_or("None".to_string()),
-            )),
         _ => Err(ContractError::UnknownReplyID {}),
     }
 }

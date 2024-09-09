@@ -3298,17 +3298,5 @@ pub fn test_callback_messages() {
         },
         &[],
     );
-    assert!(res.is_ok());
-
-    // Check for error attributes in the response
-    let attrs = res
-        .unwrap()
-        .events
-        .iter()
-        .flat_map(|e| e.attributes.clone())
-        .collect::<Vec<_>>();
-    let callback_failed_attr = attrs
-        .iter()
-        .find(|attr| attr.key == "callback_message_failed");
-    assert!(callback_failed_attr.is_some());
+    assert!(res.is_err());
 }
