@@ -634,8 +634,37 @@ impl Suite {
             .unwrap();
     }
 
+    pub fn fund_latest_native(&mut self, coin: Coin) {
+        self.mint_native(coin.clone(), OWNER);
+        self.app
+            .borrow_mut()
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &ExecuteMsg::FundLatest {},
+                &[coin],
+            )
+            .unwrap();
+    }
+
     pub fn fund_cw20(&mut self, id: u64, coin: Cw20Coin) {
         let fund_sub_msg = to_json_binary(&ReceiveCw20Msg::Fund(FundMsg { id })).unwrap();
+        self.app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                Addr::unchecked(coin.address),
+                &cw20::Cw20ExecuteMsg::Send {
+                    contract: self.distribution_contract.to_string(),
+                    amount: coin.amount,
+                    msg: fund_sub_msg,
+                },
+                &[],
+            )
+            .unwrap();
+    }
+
+    pub fn fund_latest_cw20(&mut self, coin: Cw20Coin) {
+        let fund_sub_msg = to_json_binary(&ReceiveCw20Msg::FundLatest {}).unwrap();
         self.app
             .execute_contract(
                 Addr::unchecked(OWNER),

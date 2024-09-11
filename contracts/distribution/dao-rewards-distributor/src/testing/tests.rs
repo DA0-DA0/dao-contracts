@@ -2585,6 +2585,55 @@ fn test_large_stake_before_claim() {
 }
 
 #[test]
+fn test_fund_latest_native() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000));
+    suite.assert_duration(10);
+
+    // double duration by 1_000_000 blocks
+    suite.fund_latest_native(coin(100_000_000, DENOM));
+
+    // skip all of the time
+    suite.skip_blocks(2_000_000);
+
+    suite.assert_pending_rewards(ADDR1, 1, 100_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 50_000_000);
+    suite.assert_pending_rewards(ADDR3, 1, 50_000_000);
+}
+
+#[test]
+fn test_fund_latest_cw20() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::CW20)
+        .with_rewards_config(RewardsConfig {
+            amount: 1_000,
+            denom: UncheckedDenom::Cw20(DENOM.to_string()),
+            duration: Duration::Height(10),
+            destination: None,
+            continuous: true,
+        })
+        .build();
+
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000));
+    suite.assert_duration(10);
+
+    // double duration by 1_000_000 blocks
+    suite.fund_latest_cw20(Cw20Coin {
+        address: suite.reward_denom.clone(),
+        amount: Uint128::new(100_000_000),
+    });
+
+    // skip all of the time
+    suite.skip_blocks(2_000_000);
+
+    suite.assert_pending_rewards(ADDR1, 1, 100_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 50_000_000);
+    suite.assert_pending_rewards(ADDR3, 1, 50_000_000);
+}
+
+#[test]
 fn test_migrate() {
     let mut deps = mock_dependencies();
 

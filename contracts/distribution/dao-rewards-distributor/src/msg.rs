@@ -50,6 +50,8 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     /// Used to fund this contract with native tokens.
     Fund(FundMsg),
+    /// Used to fund the latest distribution with native tokens.
+    FundLatest {},
     /// Claims rewards for the sender.
     Claim { id: u64 },
     /// withdraws the undistributed rewards for a distribution. members can
@@ -83,6 +85,15 @@ pub struct FundMsg {
 pub enum ReceiveCw20Msg {
     /// Used to fund this contract with cw20 tokens.
     Fund(FundMsg),
+    /// Used to fund the latest distribution with cw20 tokens. We can't verify
+    /// the sender of CW20 token send contract executions; since the create
+    /// function is restricted to the contract owner, we cannot allow creating
+    /// new distributions and funding with CW20 tokens in one message (like we
+    /// can with native tokens via the funds field). To prevent DAOs from having
+    /// to submit two proposals to create+fund a CW20 distribution, we allow
+    /// creating and funding a distribution in one transaction via this message
+    /// that funds the latest distribution without knowing the ID ahead of time.
+    FundLatest {},
 }
 
 #[cw_serde]
