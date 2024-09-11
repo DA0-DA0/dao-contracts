@@ -407,6 +407,19 @@ impl Suite {
         resp
     }
 
+    pub fn get_undistributed_rewards(&mut self, id: u64) -> Uint128 {
+        let undistributed_rewards: Uint128 = self
+            .app
+            .borrow_mut()
+            .wrap()
+            .query_wasm_smart(
+                self.distribution_contract.clone(),
+                &QueryMsg::UndistributedRewards { id },
+            )
+            .unwrap();
+        undistributed_rewards
+    }
+
     pub fn get_owner(&mut self) -> Addr {
         let ownable_response: cw_ownable::Ownership<Addr> = self
             .app
@@ -490,6 +503,17 @@ impl Suite {
             "expected {} pending rewards, got {}",
             expected,
             pending
+        );
+    }
+
+    pub fn assert_undistributed_rewards(&mut self, id: u64, expected: u128) {
+        let undistributed_rewards = self.get_undistributed_rewards(id);
+        assert_eq!(
+            undistributed_rewards,
+            &Uint128::new(expected),
+            "expected {} undistributed rewards, got {}",
+            expected,
+            undistributed_rewards
         );
     }
 

@@ -101,6 +101,9 @@ pub enum QueryMsg {
         start_after: Option<u64>,
         limit: Option<u32>,
     },
+    /// Returns the undistributed rewards for a distribution.
+    #[returns(Uint128)]
+    UndistributedRewards { id: u64 },
     /// Returns the state of the given distribution.
     #[returns(DistributionState)]
     Distribution { id: u64 },

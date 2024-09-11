@@ -561,6 +561,14 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?)?),
+        QueryMsg::UndistributedRewards { id } => {
+            let state = DISTRIBUTIONS.load(deps.storage, id)?;
+            Ok(to_json_binary(
+                &state
+                    .get_undistributed_rewards(&env.block)
+                    .map_err(|e| StdError::generic_err(e.to_string()))?,
+            )?)
+        }
         QueryMsg::Distribution { id } => {
             let state = DISTRIBUTIONS.load(deps.storage, id)?;
             Ok(to_json_binary(&state)?)

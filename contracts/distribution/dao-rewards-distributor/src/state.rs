@@ -250,6 +250,40 @@ impl DistributionState {
         }
     }
 
+    // get the undistributed rewards based on the active epoch's emission rate
+    pub fn get_undistributed_rewards(
+        &self,
+        current_block: &BlockInfo,
+    ) -> Result<Uint128, ContractError> {
+        match self.active_epoch.emission_rate {
+            // if paused, all rewards are undistributed
+            EmissionRate::Paused {} => Ok(self.funded_amount),
+            // if immediate, no rewards are distributed
+            EmissionRate::Immediate {} => Ok(Uint128::zero()),
+            // if linear, the undistributed rewards are the portion of the
+            // funded amount that hasn't been distributed yet
+            EmissionRate::Linear {
+                amount, duration, ..
+            } => {
+                // get last time rewards were distributed
+                let last_time_rewards_distributed =
+                    self.get_latest_reward_distribution_time(current_block);
+
+                let epoch_duration =
+                    last_time_rewards_distributed.duration_since(&self.active_epoch.started_at)?;
+
+                // count total intervals of the rewards emission that have
+                // passed based on the start and last distribution times
+                let complete_distribution_periods = epoch_duration.checked_div(&duration)?;
+
+                let distributed = amount.checked_mul(complete_distribution_periods)?;
+                let undistributed = self.funded_amount.checked_sub(distributed)?;
+
+                Ok(undistributed)
+            }
+        }
+    }
+
     /// Finish current epoch early and start a new one with a new emission rate.
     pub fn transition_epoch(
         &mut self,
@@ -262,14 +296,12 @@ impl DistributionState {
             return Ok(());
         }
 
-        // 1. finish current epoch by updating rewards and setting end to now
+        // 1. finish current epoch by updating rewards and setting end to the
+        //    last time rewards were distributed (which is either the end date
+        //    or the current block)
         self.active_epoch.total_earned_puvp =
             get_active_total_earned_puvp(deps, current_block, self)?;
-        self.active_epoch.ends_at = match self.active_epoch.started_at {
-            Expiration::Never {} => Expiration::Never {},
-            Expiration::AtHeight(_) => Expiration::AtHeight(current_block.height),
-            Expiration::AtTime(_) => Expiration::AtTime(current_block.time),
-        };
+        self.active_epoch.ends_at = self.get_latest_reward_distribution_time(current_block);
 
         // 2. add current epoch rewards earned to historical rewards
         self.historical_earned_puvp = self

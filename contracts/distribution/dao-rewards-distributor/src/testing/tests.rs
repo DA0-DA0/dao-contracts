@@ -83,12 +83,16 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR2, 1, 2_500_000);
     suite.assert_pending_rewards(ADDR3, 1, 2_500_000);
 
+    suite.assert_undistributed_rewards(1, 90_000_000);
+
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
 
     suite.assert_pending_rewards(ADDR1, 1, 10_000_000);
     suite.assert_pending_rewards(ADDR2, 1, 5_000_000);
     suite.assert_pending_rewards(ADDR3, 1, 5_000_000);
+
+    suite.assert_undistributed_rewards(1, 80_000_000);
 
     // ADDR1 claims rewards
     suite.claim_rewards(ADDR1, 1);
@@ -105,6 +109,8 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR2, 1, 6_250_000);
     suite.assert_pending_rewards(ADDR3, 1, 6_250_000);
 
+    suite.assert_undistributed_rewards(1, 75_000_000);
+
     // double the rewards rate
     // now there will be 10_000_000 tokens distributed over 100_000 blocks
     suite.update_emission_rate(1, Duration::Height(10), 1_000, true);
@@ -116,12 +122,16 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR2, 1, 8_750_000);
     suite.assert_pending_rewards(ADDR3, 1, 8_750_000);
 
+    suite.assert_undistributed_rewards(1, 65_000_000);
+
     // skip 2/10ths of the time
     suite.skip_blocks(200_000);
 
     suite.assert_pending_rewards(ADDR1, 1, 17_500_000);
     suite.assert_pending_rewards(ADDR2, 1, 13_750_000);
     suite.assert_pending_rewards(ADDR3, 1, 13_750_000);
+
+    suite.assert_undistributed_rewards(1, 45_000_000);
 
     // pause the rewards distribution
     suite.pause_emission(1);
@@ -133,6 +143,8 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR1, 1, 17_500_000);
     suite.assert_pending_rewards(ADDR2, 1, 13_750_000);
     suite.assert_pending_rewards(ADDR3, 1, 13_750_000);
+
+    suite.assert_undistributed_rewards(1, 45_000_000);
 
     // assert ADDR1 pre-claim balance
     suite.assert_native_balance(ADDR1, DENOM, 10_000_000);
@@ -153,6 +165,8 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR1, 1, 0);
     suite.assert_pending_rewards(ADDR2, 1, 13_750_000);
     suite.assert_pending_rewards(ADDR3, 1, 13_750_000);
+
+    suite.assert_undistributed_rewards(1, 45_000_000);
 
     // ADDR2 claims their rewards (has 50 to begin with as they unstaked)
     suite.assert_native_balance(ADDR2, DENOM, 50);
@@ -177,6 +191,8 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR2, 1, 0);
     suite.assert_pending_rewards(ADDR3, 1, 13_750_000 + 3_333_333);
 
+    suite.assert_undistributed_rewards(1, 35_000_000);
+
     // ADDR3 claims their rewards
     suite.assert_native_balance(ADDR3, DENOM, 0);
     suite.claim_rewards(ADDR3, 1);
@@ -189,6 +205,8 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR1, 1, 6_666_666 + 6_666_666 + 1);
     suite.assert_pending_rewards(ADDR2, 1, 0);
     suite.assert_pending_rewards(ADDR3, 1, 3_333_333);
+
+    suite.assert_undistributed_rewards(1, 25_000_000);
 
     // claim everything so that there are 0 pending rewards
     suite.claim_rewards(ADDR3, 1);
@@ -211,6 +229,8 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR2, 1, 0);
     suite.assert_pending_rewards(ADDR3, 1, addr3_pending);
 
+    suite.assert_undistributed_rewards(1, 5_000_000);
+
     // ADDR2 wakes up to the increased staking rate and stakes 50 tokens
     // this brings new split to: [ADDR1: 50%, ADDR2: 25%, ADDR3: 25%]
     suite.stake_native_tokens(ADDR2, 50);
@@ -220,6 +240,8 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR1, 1, addr1_pending + 4_000_000 * 2 / 4);
     suite.assert_pending_rewards(ADDR2, 1, 4_000_000 / 4);
     suite.assert_pending_rewards(ADDR3, 1, addr3_pending + 4_000_000 / 4);
+
+    suite.assert_undistributed_rewards(1, 1_000_000);
 
     suite.claim_rewards(ADDR1, 1);
     suite.claim_rewards(ADDR3, 1);
@@ -232,6 +254,8 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR3, 1, addr3_pending + 1_000_000 / 4);
 
     suite.claim_rewards(ADDR2, 1);
+
+    suite.assert_undistributed_rewards(1, 0);
 
     // TODO: there's a few denoms remaining here, ensure such cases are handled properly
     let remaining_rewards = suite.get_balance_native(suite.distribution_contract.clone(), DENOM);
@@ -2448,6 +2472,82 @@ fn test_fund_while_paused() {
     // expect the start and end to adjust again
     suite.assert_started_at(Expiration::AtHeight(200_000));
     suite.assert_ends_at(Expiration::AtHeight(1_000_000 + 100_000 + 1_000_000));
+}
+
+#[test]
+fn test_pause_expired() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::CW4).build();
+
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000));
+    suite.assert_duration(10);
+
+    // skip 1/10th of time
+    suite.skip_blocks(100_000);
+
+    // check pending rewards
+    suite.assert_pending_rewards(ADDR1, 1, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, 1, 2_500_000);
+
+    // check undistributed rewards
+    suite.assert_undistributed_rewards(1, 90_000_000);
+
+    // pause
+    suite.pause_emission(1);
+
+    // check undistributed rewards are the same
+    suite.assert_undistributed_rewards(1, 90_000_000);
+
+    // resume
+    suite.update_emission_rate(1, Duration::Height(10), 1_000, false);
+
+    // check pending rewards are the same
+    suite.assert_pending_rewards(ADDR1, 1, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, 1, 2_500_000);
+
+    // skip all and more, expiring
+    suite.skip_blocks(1_100_000);
+
+    // check undistributed rewards are now empty
+    suite.assert_undistributed_rewards(1, 0);
+
+    // check pending rewards
+    suite.assert_pending_rewards(ADDR1, 1, 50_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 25_000_000);
+    suite.assert_pending_rewards(ADDR3, 1, 25_000_000);
+
+    // pause
+    suite.pause_emission(1);
+
+    // check undistributed rewards
+    suite.assert_undistributed_rewards(1, 0);
+
+    // pending rewards should still exist
+    suite.assert_pending_rewards(ADDR1, 1, 50_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 25_000_000);
+    suite.assert_pending_rewards(ADDR3, 1, 25_000_000);
+
+    // fund
+    suite.fund_native(1, coin(100_000_000, DENOM));
+
+    // resume
+    suite.update_emission_rate(1, Duration::Height(10), 1_000, false);
+
+    // check undistributed rewards changed
+    suite.assert_undistributed_rewards(1, 100_000_000);
+
+    // skip to end
+    suite.skip_blocks(1_000_000);
+
+    // check undistributed rewards
+    suite.assert_undistributed_rewards(1, 0);
+
+    // check pending rewards
+    suite.assert_pending_rewards(ADDR1, 1, 100_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 50_000_000);
+    suite.assert_pending_rewards(ADDR3, 1, 50_000_000);
 }
 
 #[test]
