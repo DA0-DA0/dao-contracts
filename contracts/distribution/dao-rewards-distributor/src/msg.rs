@@ -43,6 +43,8 @@ pub enum ExecuteMsg {
         /// address that will update the reward split when the voting power
         /// distribution changes
         hook_caller: Option<String>,
+        /// whether or not non-owners can fund the distribution
+        open_funding: Option<bool>,
         /// destination address for reward clawbacks. defaults to owner
         withdraw_destination: Option<String>,
     },
@@ -50,6 +52,8 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     /// Used to fund this contract with native tokens.
     Fund(FundMsg),
+    /// Used to fund the latest distribution with native tokens.
+    FundLatest {},
     /// Claims rewards for the sender.
     Claim { id: u64 },
     /// withdraws the undistributed rewards for a distribution. members can
@@ -69,7 +73,9 @@ pub struct CreateMsg {
     /// address that will update the reward split when the voting power
     /// distribution changes
     pub hook_caller: String,
-    /// destination address for reward clawbacks. defaults to owner
+    /// whether or not non-owners can fund the distribution. defaults to true.
+    pub open_funding: Option<bool>,
+    /// destination address for reward clawbacks. defaults to owner.
     pub withdraw_destination: Option<String>,
 }
 
@@ -83,6 +89,15 @@ pub struct FundMsg {
 pub enum ReceiveCw20Msg {
     /// Used to fund this contract with cw20 tokens.
     Fund(FundMsg),
+    /// Used to fund the latest distribution with cw20 tokens. We can't verify
+    /// the sender of CW20 token send contract executions; since the create
+    /// function is restricted to the contract owner, we cannot allow creating
+    /// new distributions and funding with CW20 tokens in one message (like we
+    /// can with native tokens via the funds field). To prevent DAOs from having
+    /// to submit two proposals to create+fund a CW20 distribution, we allow
+    /// creating and funding a distribution in one transaction via this message
+    /// that funds the latest distribution without knowing the ID ahead of time.
+    FundLatest {},
 }
 
 #[cw_serde]
@@ -101,6 +116,9 @@ pub enum QueryMsg {
         start_after: Option<u64>,
         limit: Option<u32>,
     },
+    /// Returns the undistributed rewards for a distribution.
+    #[returns(Uint128)]
+    UndistributedRewards { id: u64 },
     /// Returns the state of the given distribution.
     #[returns(DistributionState)]
     Distribution { id: u64 },

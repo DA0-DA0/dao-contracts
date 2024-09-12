@@ -407,6 +407,19 @@ impl Suite {
         resp
     }
 
+    pub fn get_undistributed_rewards(&mut self, id: u64) -> Uint128 {
+        let undistributed_rewards: Uint128 = self
+            .app
+            .borrow_mut()
+            .wrap()
+            .query_wasm_smart(
+                self.distribution_contract.clone(),
+                &QueryMsg::UndistributedRewards { id },
+            )
+            .unwrap();
+        undistributed_rewards
+    }
+
     pub fn get_owner(&mut self) -> Addr {
         let ownable_response: cw_ownable::Ownership<Addr> = self
             .app
@@ -493,6 +506,17 @@ impl Suite {
         );
     }
 
+    pub fn assert_undistributed_rewards(&mut self, id: u64, expected: u128) {
+        let undistributed_rewards = self.get_undistributed_rewards(id);
+        assert_eq!(
+            undistributed_rewards,
+            &Uint128::new(expected),
+            "expected {} undistributed rewards, got {}",
+            expected,
+            undistributed_rewards
+        );
+    }
+
     pub fn assert_native_balance(&self, address: &str, denom: &str, expected: u128) {
         let balance = self.get_balance_native(address, denom);
         assert_eq!(balance, expected);
@@ -556,6 +580,7 @@ impl Suite {
             },
             hook_caller: hook_caller.to_string(),
             vp_contract: self.voting_power_addr.to_string(),
+            open_funding: None,
             withdraw_destination: reward_config.destination,
         });
 
@@ -610,8 +635,37 @@ impl Suite {
             .unwrap();
     }
 
+    pub fn fund_latest_native(&mut self, coin: Coin) {
+        self.mint_native(coin.clone(), OWNER);
+        self.app
+            .borrow_mut()
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &ExecuteMsg::FundLatest {},
+                &[coin],
+            )
+            .unwrap();
+    }
+
     pub fn fund_cw20(&mut self, id: u64, coin: Cw20Coin) {
         let fund_sub_msg = to_json_binary(&ReceiveCw20Msg::Fund(FundMsg { id })).unwrap();
+        self.app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                Addr::unchecked(coin.address),
+                &cw20::Cw20ExecuteMsg::Send {
+                    contract: self.distribution_contract.to_string(),
+                    amount: coin.amount,
+                    msg: fund_sub_msg,
+                },
+                &[],
+            )
+            .unwrap();
+    }
+
+    pub fn fund_latest_cw20(&mut self, coin: Cw20Coin) {
+        let fund_sub_msg = to_json_binary(&ReceiveCw20Msg::FundLatest {}).unwrap();
         self.app
             .execute_contract(
                 Addr::unchecked(OWNER),
@@ -732,6 +786,7 @@ impl Suite {
             }),
             vp_contract: None,
             hook_caller: None,
+            open_funding: None,
             withdraw_destination: None,
         };
 
@@ -752,6 +807,7 @@ impl Suite {
             emission_rate: Some(EmissionRate::Immediate {}),
             vp_contract: None,
             hook_caller: None,
+            open_funding: None,
             withdraw_destination: None,
         };
 
@@ -772,6 +828,7 @@ impl Suite {
             emission_rate: Some(EmissionRate::Paused {}),
             vp_contract: None,
             hook_caller: None,
+            open_funding: None,
             withdraw_destination: None,
         };
 
@@ -792,6 +849,7 @@ impl Suite {
             emission_rate: None,
             vp_contract: Some(vp_contract.to_string()),
             hook_caller: None,
+            open_funding: None,
             withdraw_destination: None,
         };
 
@@ -812,6 +870,28 @@ impl Suite {
             emission_rate: None,
             vp_contract: None,
             hook_caller: Some(hook_caller.to_string()),
+            open_funding: None,
+            withdraw_destination: None,
+        };
+
+        let _resp = self
+            .app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+    }
+
+    pub fn update_open_funding(&mut self, id: u64, open_funding: bool) {
+        let msg: ExecuteMsg = ExecuteMsg::Update {
+            id,
+            emission_rate: None,
+            vp_contract: None,
+            hook_caller: None,
+            open_funding: Some(open_funding),
             withdraw_destination: None,
         };
 
@@ -832,6 +912,7 @@ impl Suite {
             emission_rate: None,
             vp_contract: None,
             hook_caller: None,
+            open_funding: None,
             withdraw_destination: Some(withdraw_destination.to_string()),
         };
 

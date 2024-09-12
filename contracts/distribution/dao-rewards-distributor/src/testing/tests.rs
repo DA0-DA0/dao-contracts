@@ -7,11 +7,12 @@ use cw2::ContractVersion;
 use cw20::{Cw20Coin, Expiration, UncheckedDenom};
 use cw4::Member;
 use cw_multi_test::Executor;
+use cw_ownable::OwnershipError;
 use cw_utils::Duration;
 use dao_interface::voting::InfoResponse;
 
 use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
-use crate::msg::{CreateMsg, FundMsg, MigrateMsg};
+use crate::msg::{CreateMsg, FundMsg, InstantiateMsg, MigrateMsg};
 use crate::state::{EmissionRate, Epoch};
 use crate::testing::native_setup::setup_native_token_test;
 use crate::ContractError;
@@ -83,12 +84,16 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR2, 1, 2_500_000);
     suite.assert_pending_rewards(ADDR3, 1, 2_500_000);
 
+    suite.assert_undistributed_rewards(1, 90_000_000);
+
     // skip 1/10th of the time
     suite.skip_blocks(100_000);
 
     suite.assert_pending_rewards(ADDR1, 1, 10_000_000);
     suite.assert_pending_rewards(ADDR2, 1, 5_000_000);
     suite.assert_pending_rewards(ADDR3, 1, 5_000_000);
+
+    suite.assert_undistributed_rewards(1, 80_000_000);
 
     // ADDR1 claims rewards
     suite.claim_rewards(ADDR1, 1);
@@ -105,6 +110,8 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR2, 1, 6_250_000);
     suite.assert_pending_rewards(ADDR3, 1, 6_250_000);
 
+    suite.assert_undistributed_rewards(1, 75_000_000);
+
     // double the rewards rate
     // now there will be 10_000_000 tokens distributed over 100_000 blocks
     suite.update_emission_rate(1, Duration::Height(10), 1_000, true);
@@ -116,12 +123,16 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR2, 1, 8_750_000);
     suite.assert_pending_rewards(ADDR3, 1, 8_750_000);
 
+    suite.assert_undistributed_rewards(1, 65_000_000);
+
     // skip 2/10ths of the time
     suite.skip_blocks(200_000);
 
     suite.assert_pending_rewards(ADDR1, 1, 17_500_000);
     suite.assert_pending_rewards(ADDR2, 1, 13_750_000);
     suite.assert_pending_rewards(ADDR3, 1, 13_750_000);
+
+    suite.assert_undistributed_rewards(1, 45_000_000);
 
     // pause the rewards distribution
     suite.pause_emission(1);
@@ -133,6 +144,8 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR1, 1, 17_500_000);
     suite.assert_pending_rewards(ADDR2, 1, 13_750_000);
     suite.assert_pending_rewards(ADDR3, 1, 13_750_000);
+
+    suite.assert_undistributed_rewards(1, 45_000_000);
 
     // assert ADDR1 pre-claim balance
     suite.assert_native_balance(ADDR1, DENOM, 10_000_000);
@@ -153,6 +166,8 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR1, 1, 0);
     suite.assert_pending_rewards(ADDR2, 1, 13_750_000);
     suite.assert_pending_rewards(ADDR3, 1, 13_750_000);
+
+    suite.assert_undistributed_rewards(1, 45_000_000);
 
     // ADDR2 claims their rewards (has 50 to begin with as they unstaked)
     suite.assert_native_balance(ADDR2, DENOM, 50);
@@ -177,6 +192,8 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR2, 1, 0);
     suite.assert_pending_rewards(ADDR3, 1, 13_750_000 + 3_333_333);
 
+    suite.assert_undistributed_rewards(1, 35_000_000);
+
     // ADDR3 claims their rewards
     suite.assert_native_balance(ADDR3, DENOM, 0);
     suite.claim_rewards(ADDR3, 1);
@@ -189,6 +206,8 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR1, 1, 6_666_666 + 6_666_666 + 1);
     suite.assert_pending_rewards(ADDR2, 1, 0);
     suite.assert_pending_rewards(ADDR3, 1, 3_333_333);
+
+    suite.assert_undistributed_rewards(1, 25_000_000);
 
     // claim everything so that there are 0 pending rewards
     suite.claim_rewards(ADDR3, 1);
@@ -211,6 +230,8 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR2, 1, 0);
     suite.assert_pending_rewards(ADDR3, 1, addr3_pending);
 
+    suite.assert_undistributed_rewards(1, 5_000_000);
+
     // ADDR2 wakes up to the increased staking rate and stakes 50 tokens
     // this brings new split to: [ADDR1: 50%, ADDR2: 25%, ADDR3: 25%]
     suite.stake_native_tokens(ADDR2, 50);
@@ -220,6 +241,8 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR1, 1, addr1_pending + 4_000_000 * 2 / 4);
     suite.assert_pending_rewards(ADDR2, 1, 4_000_000 / 4);
     suite.assert_pending_rewards(ADDR3, 1, addr3_pending + 4_000_000 / 4);
+
+    suite.assert_undistributed_rewards(1, 1_000_000);
 
     suite.claim_rewards(ADDR1, 1);
     suite.claim_rewards(ADDR3, 1);
@@ -232,6 +255,8 @@ fn test_native_dao_rewards_update_reward_rate() {
     suite.assert_pending_rewards(ADDR3, 1, addr3_pending + 1_000_000 / 4);
 
     suite.claim_rewards(ADDR2, 1);
+
+    suite.assert_undistributed_rewards(1, 0);
 
     // TODO: there's a few denoms remaining here, ensure such cases are handled properly
     let remaining_rewards = suite.get_balance_native(suite.distribution_contract.clone(), DENOM);
@@ -837,6 +862,7 @@ fn test_immediate_emission() {
         emission_rate: EmissionRate::Immediate {},
         hook_caller: suite.staking_addr.to_string(),
         vp_contract: suite.voting_power_addr.to_string(),
+        open_funding: None,
         withdraw_destination: None,
     });
 
@@ -856,6 +882,9 @@ fn test_immediate_emission() {
     suite.assert_pending_rewards(ADDR2, 2, 25_000_000);
     suite.assert_pending_rewards(ADDR3, 2, 25_000_000);
 
+    // ensure undistributed rewards are immediately 0
+    suite.assert_undistributed_rewards(2, 0);
+
     // another fund immediately adds to the pending rewards
     suite.fund_native(2, coin(100_000_000, ALT_DENOM));
 
@@ -863,6 +892,9 @@ fn test_immediate_emission() {
     suite.assert_pending_rewards(ADDR1, 2, 2 * 50_000_000);
     suite.assert_pending_rewards(ADDR2, 2, 2 * 25_000_000);
     suite.assert_pending_rewards(ADDR3, 2, 2 * 25_000_000);
+
+    // ensure undistributed rewards are immediately 0
+    suite.assert_undistributed_rewards(2, 0);
 
     // a new user stakes tokens
     suite.mint_native(coin(200, DENOM), ADDR4);
@@ -878,6 +910,9 @@ fn test_immediate_emission() {
     suite.assert_pending_rewards(ADDR2, 2, 2 * 25_000_000 + 12_500_000);
     suite.assert_pending_rewards(ADDR3, 2, 2 * 25_000_000 + 12_500_000);
     suite.assert_pending_rewards(ADDR4, 2, 50_000_000);
+
+    // ensure undistributed rewards are immediately 0
+    suite.assert_undistributed_rewards(2, 0);
 
     suite.claim_rewards(ADDR1, 2);
     suite.claim_rewards(ADDR2, 2);
@@ -898,6 +933,9 @@ fn test_immediate_emission() {
     suite.assert_pending_rewards(ADDR2, 2, 0);
     suite.assert_pending_rewards(ADDR3, 2, 0);
     suite.assert_pending_rewards(ADDR4, 2, 100_000_000);
+
+    // ensure undistributed rewards are immediately 0
+    suite.assert_undistributed_rewards(2, 0);
 }
 
 #[test]
@@ -925,6 +963,7 @@ fn test_immediate_emission_fails_if_no_voting_power() {
         emission_rate: EmissionRate::Immediate {},
         hook_caller: suite.staking_addr.to_string(),
         vp_contract: suite.voting_power_addr.to_string(),
+        open_funding: None,
         withdraw_destination: None,
     });
 
@@ -1768,6 +1807,57 @@ fn test_claim_404() {
 }
 
 #[test]
+#[should_panic(expected = "Distribution not found with ID 0")]
+fn test_fund_latest_404() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    // make new rewards contract
+    let reward_addr = suite
+        .app
+        .borrow_mut()
+        .instantiate_contract(
+            suite.reward_code_id,
+            Addr::unchecked(OWNER),
+            &InstantiateMsg {
+                owner: Some(OWNER.to_string()),
+            },
+            &[],
+            "reward2",
+            None,
+        )
+        .unwrap();
+
+    // try to fund latest before creating a distribution
+    suite.mint_native(coin(100_000_000, DENOM), OWNER);
+    suite
+        .app
+        .borrow_mut()
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            reward_addr,
+            &ExecuteMsg::FundLatest {},
+            &[coin(100_000_000, DENOM)],
+        )
+        .unwrap();
+}
+
+#[test]
+#[should_panic(expected = "Distribution not found with ID 3")]
+fn test_undistributed_rewards_404() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    suite.get_undistributed_rewards(3);
+}
+
+#[test]
+#[should_panic(expected = "Distribution not found with ID 3")]
+fn test_get_distribution_404() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    suite.get_distribution(3);
+}
+
+#[test]
 #[should_panic]
 fn test_fund_invalid_native_denom() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
@@ -2164,6 +2254,7 @@ fn test_fund_native_with_other_denom() {
         },
         hook_caller: suite.staking_addr.to_string(),
         vp_contract: suite.voting_power_addr.to_string(),
+        open_funding: None,
         withdraw_destination: None,
     });
 
@@ -2196,6 +2287,7 @@ fn test_fund_native_multiple_denoms() {
         },
         hook_caller: suite.staking_addr.to_string(),
         vp_contract: suite.voting_power_addr.to_string(),
+        open_funding: None,
         withdraw_destination: None,
     });
 
@@ -2237,6 +2329,7 @@ fn test_fund_native_on_create_cw20() {
         },
         hook_caller: suite.staking_addr.to_string(),
         vp_contract: suite.voting_power_addr.to_string(),
+        open_funding: None,
         withdraw_destination: None,
     });
 
@@ -2451,6 +2544,82 @@ fn test_fund_while_paused() {
 }
 
 #[test]
+fn test_pause_expired() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::CW4).build();
+
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000));
+    suite.assert_duration(10);
+
+    // skip 1/10th of time
+    suite.skip_blocks(100_000);
+
+    // check pending rewards
+    suite.assert_pending_rewards(ADDR1, 1, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, 1, 2_500_000);
+
+    // check undistributed rewards
+    suite.assert_undistributed_rewards(1, 90_000_000);
+
+    // pause
+    suite.pause_emission(1);
+
+    // check undistributed rewards are the same
+    suite.assert_undistributed_rewards(1, 90_000_000);
+
+    // resume
+    suite.update_emission_rate(1, Duration::Height(10), 1_000, false);
+
+    // check pending rewards are the same
+    suite.assert_pending_rewards(ADDR1, 1, 5_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 2_500_000);
+    suite.assert_pending_rewards(ADDR3, 1, 2_500_000);
+
+    // skip all and more, expiring
+    suite.skip_blocks(1_100_000);
+
+    // check undistributed rewards are now empty
+    suite.assert_undistributed_rewards(1, 0);
+
+    // check pending rewards
+    suite.assert_pending_rewards(ADDR1, 1, 50_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 25_000_000);
+    suite.assert_pending_rewards(ADDR3, 1, 25_000_000);
+
+    // pause
+    suite.pause_emission(1);
+
+    // check undistributed rewards
+    suite.assert_undistributed_rewards(1, 0);
+
+    // pending rewards should still exist
+    suite.assert_pending_rewards(ADDR1, 1, 50_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 25_000_000);
+    suite.assert_pending_rewards(ADDR3, 1, 25_000_000);
+
+    // fund
+    suite.fund_native(1, coin(100_000_000, DENOM));
+
+    // resume
+    suite.update_emission_rate(1, Duration::Height(10), 1_000, false);
+
+    // check undistributed rewards changed
+    suite.assert_undistributed_rewards(1, 100_000_000);
+
+    // skip to end
+    suite.skip_blocks(1_000_000);
+
+    // check undistributed rewards
+    suite.assert_undistributed_rewards(1, 0);
+
+    // check pending rewards
+    suite.assert_pending_rewards(ADDR1, 1, 100_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 50_000_000);
+    suite.assert_pending_rewards(ADDR3, 1, 50_000_000);
+}
+
+#[test]
 fn test_large_stake_before_claim() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
         .with_rewards_config(RewardsConfig {
@@ -2482,6 +2651,208 @@ fn test_large_stake_before_claim() {
     suite.claim_rewards(ADDR1, 1);
     suite.claim_rewards(ADDR2, 1);
     suite.claim_rewards(ADDR3, 1);
+}
+
+#[test]
+fn test_fund_latest_native() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000));
+    suite.assert_duration(10);
+
+    // double duration by 1_000_000 blocks
+    suite.fund_latest_native(coin(100_000_000, DENOM));
+
+    // skip all of the time
+    suite.skip_blocks(2_000_000);
+
+    suite.assert_pending_rewards(ADDR1, 1, 100_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 50_000_000);
+    suite.assert_pending_rewards(ADDR3, 1, 50_000_000);
+}
+
+#[test]
+fn test_fund_latest_cw20() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::CW20)
+        .with_rewards_config(RewardsConfig {
+            amount: 1_000,
+            denom: UncheckedDenom::Cw20(DENOM.to_string()),
+            duration: Duration::Height(10),
+            destination: None,
+            continuous: true,
+        })
+        .build();
+
+    suite.assert_amount(1_000);
+    suite.assert_ends_at(Expiration::AtHeight(1_000_000));
+    suite.assert_duration(10);
+
+    // double duration by 1_000_000 blocks
+    suite.fund_latest_cw20(Cw20Coin {
+        address: suite.reward_denom.clone(),
+        amount: Uint128::new(100_000_000),
+    });
+
+    // skip all of the time
+    suite.skip_blocks(2_000_000);
+
+    suite.assert_pending_rewards(ADDR1, 1, 100_000_000);
+    suite.assert_pending_rewards(ADDR2, 1, 50_000_000);
+    suite.assert_pending_rewards(ADDR3, 1, 50_000_000);
+}
+
+#[test]
+#[should_panic(expected = "Invalid funds")]
+fn test_fund_latest_cw20_invalid_native() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
+        .with_rewards_config(RewardsConfig {
+            amount: 1_000,
+            denom: UncheckedDenom::Cw20("irrelevant".to_string()),
+            duration: Duration::Height(10),
+            destination: None,
+            continuous: true,
+        })
+        .build();
+
+    suite.fund_latest_native(coin(100, DENOM));
+}
+
+#[test]
+#[should_panic(expected = "Invalid CW20")]
+fn test_fund_latest_cw20_wrong_denom() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
+        .with_rewards_config(RewardsConfig {
+            amount: 1_000,
+            denom: UncheckedDenom::Cw20("irrelevant".to_string()),
+            duration: Duration::Height(10),
+            destination: None,
+            continuous: true,
+        })
+        .build();
+
+    let mint_cw20 = Cw20Coin {
+        address: OWNER.to_string(),
+        amount: Uint128::new(100),
+    };
+
+    let address = suite.mint_cw20(mint_cw20.clone(), "newcoin").to_string();
+
+    suite.fund_latest_cw20(Cw20Coin {
+        address,
+        amount: mint_cw20.amount,
+    });
+}
+
+#[test]
+fn test_closed_funding() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    let execute_create_msg = ExecuteMsg::Create(CreateMsg {
+        denom: cw20::UncheckedDenom::Native(ALT_DENOM.to_string()),
+        emission_rate: EmissionRate::Paused {},
+        hook_caller: suite.staking_addr.to_string(),
+        vp_contract: suite.voting_power_addr.to_string(),
+        open_funding: Some(false),
+        withdraw_destination: None,
+    });
+
+    suite.mint_native(coin(100_000_000, ALT_DENOM), OWNER);
+
+    // create distribution
+    suite
+        .app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            suite.distribution_contract.clone(),
+            &execute_create_msg,
+            &coins(100_000_000, ALT_DENOM),
+        )
+        .unwrap();
+
+    // test fund from owner
+    suite.fund_native(2, coin(200, ALT_DENOM));
+    assert_eq!(
+        suite.get_balance_native(suite.distribution_contract.clone(), ALT_DENOM),
+        100_000_000 + 200
+    );
+
+    // test fund from non-owner
+    suite.mint_native(coin(100, ALT_DENOM), ADDR1);
+    let err: ContractError = suite
+        .app
+        .borrow_mut()
+        .execute_contract(
+            Addr::unchecked(ADDR1),
+            suite.distribution_contract.clone(),
+            &ExecuteMsg::Fund(FundMsg { id: 2 }),
+            &[coin(100, ALT_DENOM)],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Ownable(OwnershipError::NotOwner));
+
+    // update open funding
+    suite.update_open_funding(2, true);
+
+    // test fund from non-owner
+    suite
+        .app
+        .execute_contract(
+            Addr::unchecked(ADDR1),
+            suite.distribution_contract.clone(),
+            &ExecuteMsg::Fund(FundMsg { id: 2 }),
+            &[coin(100, ALT_DENOM)],
+        )
+        .unwrap();
+    assert_eq!(
+        suite.get_balance_native(suite.distribution_contract.clone(), ALT_DENOM),
+        100_000_000 + 200 + 100
+    );
+}
+
+#[test]
+fn test_queries_before_funded() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    // skip 2 blocks since the contract depends on the previous block's total
+    // voting power, and voting power takes 1 block to take effect. so if voting
+    // power is staked on block 0, it takes effect on block 1, so immediate
+    // distribution is only effective on block 2.
+    suite.skip_blocks(2);
+
+    let execute_create_msg = ExecuteMsg::Create(CreateMsg {
+        denom: cw20::UncheckedDenom::Native(ALT_DENOM.to_string()),
+        emission_rate: EmissionRate::Linear {
+            amount: Uint128::one(),
+            duration: Duration::Height(1),
+            continuous: false,
+        },
+        hook_caller: suite.staking_addr.to_string(),
+        vp_contract: suite.voting_power_addr.to_string(),
+        open_funding: None,
+        withdraw_destination: None,
+    });
+
+    // create distribution with no funds
+    suite
+        .app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            suite.distribution_contract.clone(),
+            &execute_create_msg,
+            &[],
+        )
+        .unwrap();
+
+    // users have no rewards
+    suite.assert_pending_rewards(ADDR1, 2, 0);
+    suite.assert_pending_rewards(ADDR2, 2, 0);
+    suite.assert_pending_rewards(ADDR3, 2, 0);
+
+    // ensure undistributed rewards are immediately 0
+    suite.assert_undistributed_rewards(2, 0);
 }
 
 #[test]
