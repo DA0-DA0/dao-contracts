@@ -1,4 +1,5 @@
 use cosmwasm_std::{Addr, BlockInfo, Deps, DepsMut, Env, StdResult, Uint128, Uint256};
+use cw20::Expiration;
 
 use crate::{
     helpers::{
@@ -94,6 +95,12 @@ pub fn get_active_total_earned_puvp(
 
             let last_time_rewards_distributed =
                 distribution.get_latest_reward_distribution_time(block);
+
+            // if never distributed rewards (i.e. not yet funded), return
+            // current, which must be 0.
+            if let Expiration::Never {} = last_time_rewards_distributed {
+                return Ok(curr);
+            }
 
             // get the duration from the last time rewards were updated to the
             // last time rewards were distributed. this will be 0 if the rewards

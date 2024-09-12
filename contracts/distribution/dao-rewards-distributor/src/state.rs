@@ -237,6 +237,11 @@ impl DistributionState {
             EmissionRate::Linear {
                 amount, duration, ..
             } => {
+                // if not yet started, return 0.
+                if let Expiration::Never {} = self.active_epoch.started_at {
+                    return Ok(Uint128::zero());
+                }
+
                 let epoch_duration = expiration.duration_since(&self.active_epoch.started_at)?;
 
                 // count total intervals of the rewards emission that will pass

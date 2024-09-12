@@ -2813,6 +2813,49 @@ fn test_closed_funding() {
 }
 
 #[test]
+fn test_queries_before_funded() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    // skip 2 blocks since the contract depends on the previous block's total
+    // voting power, and voting power takes 1 block to take effect. so if voting
+    // power is staked on block 0, it takes effect on block 1, so immediate
+    // distribution is only effective on block 2.
+    suite.skip_blocks(2);
+
+    let execute_create_msg = ExecuteMsg::Create(CreateMsg {
+        denom: cw20::UncheckedDenom::Native(ALT_DENOM.to_string()),
+        emission_rate: EmissionRate::Linear {
+            amount: Uint128::one(),
+            duration: Duration::Height(1),
+            continuous: false,
+        },
+        hook_caller: suite.staking_addr.to_string(),
+        vp_contract: suite.voting_power_addr.to_string(),
+        open_funding: None,
+        withdraw_destination: None,
+    });
+
+    // create distribution with no funds
+    suite
+        .app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            suite.distribution_contract.clone(),
+            &execute_create_msg,
+            &[],
+        )
+        .unwrap();
+
+    // users have no rewards
+    suite.assert_pending_rewards(ADDR1, 2, 0);
+    suite.assert_pending_rewards(ADDR2, 2, 0);
+    suite.assert_pending_rewards(ADDR3, 2, 0);
+
+    // ensure undistributed rewards are immediately 0
+    suite.assert_undistributed_rewards(2, 0);
+}
+
+#[test]
 fn test_migrate() {
     let mut deps = mock_dependencies();
 
