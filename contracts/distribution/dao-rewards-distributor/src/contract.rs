@@ -68,7 +68,7 @@ pub fn execute(
         ExecuteMsg::MemberChangedHook(msg) => execute_membership_changed(deps, env, info, msg),
         ExecuteMsg::UpdateOwnership(action) => execute_update_owner(deps, info, env, action),
         ExecuteMsg::Receive(msg) => execute_receive_cw20(deps, env, info, msg),
-        ExecuteMsg::Create(create_msg) => execute_create_native(deps, env, info, create_msg),
+        ExecuteMsg::Create(create_msg) => execute_create(deps, env, info, create_msg),
         ExecuteMsg::Update {
             id,
             emission_rate,
@@ -146,44 +146,17 @@ fn execute_receive_cw20(
     }
 }
 
-fn execute_create_native(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: CreateMsg,
-) -> Result<Response, ContractError> {
-    let checked_denom = msg.denom.clone().into_checked(deps.as_ref())?;
-
-    // if native funds provided, ensure they are for this denom. if other native
-    // funds present, return error. if no funds, do nothing and leave registered
-    // denom with no funding, to be funded later.
-    let initial_funds = if !info.funds.is_empty() {
-        match &checked_denom {
-            Denom::Native(denom) => {
-                // ensures there is exactly 1 coin passed that matches the denom
-                Some(must_pay(&info, denom)?)
-            }
-            Denom::Cw20(_) => return Err(ContractError::NoFundsOnCw20Create {}),
-        }
-    } else {
-        None
-    };
-
-    execute_create(deps, env, info.sender, msg, initial_funds)
-}
-
 /// creates a new rewards distribution. only the owner can do this. if funds
 /// provided when creating a native token distribution, will start distributing
 /// rewards immediately.
 fn execute_create(
     deps: DepsMut,
     env: Env,
-    sender: Addr,
+    info: MessageInfo,
     msg: CreateMsg,
-    initial_funds: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     // only the owner can create a new distribution
-    cw_ownable::assert_owner(deps.storage, &sender)?;
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     // update count and use as the new distribution's ID
     let id = COUNT.update(deps.storage, |count| -> StdResult<u64> { Ok(count + 1) })?;
@@ -196,7 +169,7 @@ fn execute_create(
         // if withdraw destination is specified, we validate it
         Some(addr) => deps.api.addr_validate(&addr)?,
         // otherwise default to the owner
-        None => sender.clone(),
+        None => info.sender.clone(),
     };
 
     msg.emission_rate.validate()?;
@@ -237,10 +210,20 @@ fn execute_create(
         .add_attribute("id", id.to_string())
         .add_attribute("denom", distribution.get_denom_string());
 
-    if let Some(initial_funds) = initial_funds {
-        if !initial_funds.is_zero() {
-            execute_fund(deps, env, sender, distribution, initial_funds)?;
-            response = response.add_attribute("amount_funded", initial_funds);
+    // if native funds provided, ensure they are for this denom. if other native
+    // funds present, return error. if no funds, do nothing and leave registered
+    // denom with no funding, to be funded later.
+    if !info.funds.is_empty() {
+        match &distribution.denom {
+            Denom::Native(denom) => {
+                // ensures there is exactly 1 coin passed that matches the denom
+                let initial_funds = must_pay(&info, denom)?;
+
+                execute_fund(deps, env, info.sender, distribution, initial_funds)?;
+
+                response = response.add_attribute("amount_funded", initial_funds);
+            }
+            Denom::Cw20(_) => return Err(ContractError::NoFundsOnCw20Create {}),
         }
     }
 
