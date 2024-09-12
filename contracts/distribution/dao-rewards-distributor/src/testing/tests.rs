@@ -7,11 +7,12 @@ use cw2::ContractVersion;
 use cw20::{Cw20Coin, Expiration, UncheckedDenom};
 use cw4::Member;
 use cw_multi_test::Executor;
+use cw_ownable::OwnershipError;
 use cw_utils::Duration;
 use dao_interface::voting::InfoResponse;
 
 use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
-use crate::msg::{CreateMsg, FundMsg, MigrateMsg};
+use crate::msg::{CreateMsg, FundMsg, InstantiateMsg, MigrateMsg};
 use crate::state::{EmissionRate, Epoch};
 use crate::testing::native_setup::setup_native_token_test;
 use crate::ContractError;
@@ -861,6 +862,7 @@ fn test_immediate_emission() {
         emission_rate: EmissionRate::Immediate {},
         hook_caller: suite.staking_addr.to_string(),
         vp_contract: suite.voting_power_addr.to_string(),
+        open_funding: None,
         withdraw_destination: None,
     });
 
@@ -880,6 +882,9 @@ fn test_immediate_emission() {
     suite.assert_pending_rewards(ADDR2, 2, 25_000_000);
     suite.assert_pending_rewards(ADDR3, 2, 25_000_000);
 
+    // ensure undistributed rewards are immediately 0
+    suite.assert_undistributed_rewards(2, 0);
+
     // another fund immediately adds to the pending rewards
     suite.fund_native(2, coin(100_000_000, ALT_DENOM));
 
@@ -887,6 +892,9 @@ fn test_immediate_emission() {
     suite.assert_pending_rewards(ADDR1, 2, 2 * 50_000_000);
     suite.assert_pending_rewards(ADDR2, 2, 2 * 25_000_000);
     suite.assert_pending_rewards(ADDR3, 2, 2 * 25_000_000);
+
+    // ensure undistributed rewards are immediately 0
+    suite.assert_undistributed_rewards(2, 0);
 
     // a new user stakes tokens
     suite.mint_native(coin(200, DENOM), ADDR4);
@@ -902,6 +910,9 @@ fn test_immediate_emission() {
     suite.assert_pending_rewards(ADDR2, 2, 2 * 25_000_000 + 12_500_000);
     suite.assert_pending_rewards(ADDR3, 2, 2 * 25_000_000 + 12_500_000);
     suite.assert_pending_rewards(ADDR4, 2, 50_000_000);
+
+    // ensure undistributed rewards are immediately 0
+    suite.assert_undistributed_rewards(2, 0);
 
     suite.claim_rewards(ADDR1, 2);
     suite.claim_rewards(ADDR2, 2);
@@ -922,6 +933,9 @@ fn test_immediate_emission() {
     suite.assert_pending_rewards(ADDR2, 2, 0);
     suite.assert_pending_rewards(ADDR3, 2, 0);
     suite.assert_pending_rewards(ADDR4, 2, 100_000_000);
+
+    // ensure undistributed rewards are immediately 0
+    suite.assert_undistributed_rewards(2, 0);
 }
 
 #[test]
@@ -949,6 +963,7 @@ fn test_immediate_emission_fails_if_no_voting_power() {
         emission_rate: EmissionRate::Immediate {},
         hook_caller: suite.staking_addr.to_string(),
         vp_contract: suite.voting_power_addr.to_string(),
+        open_funding: None,
         withdraw_destination: None,
     });
 
@@ -1792,6 +1807,57 @@ fn test_claim_404() {
 }
 
 #[test]
+#[should_panic(expected = "Distribution not found with ID 0")]
+fn test_fund_latest_404() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    // make new rewards contract
+    let reward_addr = suite
+        .app
+        .borrow_mut()
+        .instantiate_contract(
+            suite.reward_code_id,
+            Addr::unchecked(OWNER),
+            &InstantiateMsg {
+                owner: Some(OWNER.to_string()),
+            },
+            &[],
+            "reward2",
+            None,
+        )
+        .unwrap();
+
+    // try to fund latest before creating a distribution
+    suite.mint_native(coin(100_000_000, DENOM), OWNER);
+    suite
+        .app
+        .borrow_mut()
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            reward_addr,
+            &ExecuteMsg::FundLatest {},
+            &[coin(100_000_000, DENOM)],
+        )
+        .unwrap();
+}
+
+#[test]
+#[should_panic(expected = "Distribution not found with ID 3")]
+fn test_undistributed_rewards_404() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    suite.get_undistributed_rewards(3);
+}
+
+#[test]
+#[should_panic(expected = "Distribution not found with ID 3")]
+fn test_get_distribution_404() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    suite.get_distribution(3);
+}
+
+#[test]
 #[should_panic]
 fn test_fund_invalid_native_denom() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
@@ -2188,6 +2254,7 @@ fn test_fund_native_with_other_denom() {
         },
         hook_caller: suite.staking_addr.to_string(),
         vp_contract: suite.voting_power_addr.to_string(),
+        open_funding: None,
         withdraw_destination: None,
     });
 
@@ -2220,6 +2287,7 @@ fn test_fund_native_multiple_denoms() {
         },
         hook_caller: suite.staking_addr.to_string(),
         vp_contract: suite.voting_power_addr.to_string(),
+        open_funding: None,
         withdraw_destination: None,
     });
 
@@ -2261,6 +2329,7 @@ fn test_fund_native_on_create_cw20() {
         },
         hook_caller: suite.staking_addr.to_string(),
         vp_contract: suite.voting_power_addr.to_string(),
+        open_funding: None,
         withdraw_destination: None,
     });
 
@@ -2631,6 +2700,116 @@ fn test_fund_latest_cw20() {
     suite.assert_pending_rewards(ADDR1, 1, 100_000_000);
     suite.assert_pending_rewards(ADDR2, 1, 50_000_000);
     suite.assert_pending_rewards(ADDR3, 1, 50_000_000);
+}
+
+#[test]
+#[should_panic(expected = "Invalid funds")]
+fn test_fund_latest_cw20_invalid_native() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
+        .with_rewards_config(RewardsConfig {
+            amount: 1_000,
+            denom: UncheckedDenom::Cw20("irrelevant".to_string()),
+            duration: Duration::Height(10),
+            destination: None,
+            continuous: true,
+        })
+        .build();
+
+    suite.fund_latest_native(coin(100, DENOM));
+}
+
+#[test]
+#[should_panic(expected = "Invalid CW20")]
+fn test_fund_latest_cw20_wrong_denom() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
+        .with_rewards_config(RewardsConfig {
+            amount: 1_000,
+            denom: UncheckedDenom::Cw20("irrelevant".to_string()),
+            duration: Duration::Height(10),
+            destination: None,
+            continuous: true,
+        })
+        .build();
+
+    let mint_cw20 = Cw20Coin {
+        address: OWNER.to_string(),
+        amount: Uint128::new(100),
+    };
+
+    let address = suite.mint_cw20(mint_cw20.clone(), "newcoin").to_string();
+
+    suite.fund_latest_cw20(Cw20Coin {
+        address,
+        amount: mint_cw20.amount,
+    });
+}
+
+#[test]
+fn test_closed_funding() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    let execute_create_msg = ExecuteMsg::Create(CreateMsg {
+        denom: cw20::UncheckedDenom::Native(ALT_DENOM.to_string()),
+        emission_rate: EmissionRate::Paused {},
+        hook_caller: suite.staking_addr.to_string(),
+        vp_contract: suite.voting_power_addr.to_string(),
+        open_funding: Some(false),
+        withdraw_destination: None,
+    });
+
+    suite.mint_native(coin(100_000_000, ALT_DENOM), OWNER);
+
+    // create distribution
+    suite
+        .app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            suite.distribution_contract.clone(),
+            &execute_create_msg,
+            &coins(100_000_000, ALT_DENOM),
+        )
+        .unwrap();
+
+    // test fund from owner
+    suite.fund_native(2, coin(200, ALT_DENOM));
+    assert_eq!(
+        suite.get_balance_native(suite.distribution_contract.clone(), ALT_DENOM),
+        100_000_000 + 200
+    );
+
+    // test fund from non-owner
+    suite.mint_native(coin(100, ALT_DENOM), ADDR1);
+    let err: ContractError = suite
+        .app
+        .borrow_mut()
+        .execute_contract(
+            Addr::unchecked(ADDR1),
+            suite.distribution_contract.clone(),
+            &ExecuteMsg::Fund(FundMsg { id: 2 }),
+            &[coin(100, ALT_DENOM)],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Ownable(OwnershipError::NotOwner));
+
+    // update open funding
+    suite.update_open_funding(2, true);
+
+    // test fund from non-owner
+    suite
+        .app
+        .execute_contract(
+            Addr::unchecked(ADDR1),
+            suite.distribution_contract.clone(),
+            &ExecuteMsg::Fund(FundMsg { id: 2 }),
+            &[coin(100, ALT_DENOM)],
+        )
+        .unwrap();
+    assert_eq!(
+        suite.get_balance_native(suite.distribution_contract.clone(), ALT_DENOM),
+        100_000_000 + 200 + 100
+    );
 }
 
 #[test]

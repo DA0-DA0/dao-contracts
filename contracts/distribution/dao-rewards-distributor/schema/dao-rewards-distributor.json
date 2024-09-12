@@ -110,6 +110,13 @@
                 "format": "uint64",
                 "minimum": 0.0
               },
+              "open_funding": {
+                "description": "whether or not non-owners can fund the distribution",
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
               "vp_contract": {
                 "description": "address to query the voting power",
                 "type": [
@@ -321,12 +328,19 @@
             "description": "address that will update the reward split when the voting power distribution changes",
             "type": "string"
           },
+          "open_funding": {
+            "description": "whether or not non-owners can fund the distribution. defaults to true.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "vp_contract": {
             "description": "address to query the voting power",
             "type": "string"
           },
           "withdraw_destination": {
-            "description": "destination address for reward clawbacks. defaults to owner",
+            "description": "destination address for reward clawbacks. defaults to owner.",
             "type": [
               "string",
               "null"
@@ -902,6 +916,7 @@
         "historical_earned_puvp",
         "hook_caller",
         "id",
+        "open_funding",
         "vp_contract",
         "withdraw_destination"
       ],
@@ -951,6 +966,10 @@
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
+        },
+        "open_funding": {
+          "description": "whether or not non-owners can fund the distribution",
+          "type": "boolean"
         },
         "vp_contract": {
           "description": "address to query the voting power",
@@ -1292,6 +1311,7 @@
             "historical_earned_puvp",
             "hook_caller",
             "id",
+            "open_funding",
             "vp_contract",
             "withdraw_destination"
           ],
@@ -1341,6 +1361,10 @@
               "type": "integer",
               "format": "uint64",
               "minimum": 0.0
+            },
+            "open_funding": {
+              "description": "whether or not non-owners can fund the distribution",
+              "type": "boolean"
             },
             "vp_contract": {
               "description": "address to query the voting power",

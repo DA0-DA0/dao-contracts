@@ -43,6 +43,8 @@ pub enum ExecuteMsg {
         /// address that will update the reward split when the voting power
         /// distribution changes
         hook_caller: Option<String>,
+        /// whether or not non-owners can fund the distribution
+        open_funding: Option<bool>,
         /// destination address for reward clawbacks. defaults to owner
         withdraw_destination: Option<String>,
     },
@@ -71,7 +73,9 @@ pub struct CreateMsg {
     /// address that will update the reward split when the voting power
     /// distribution changes
     pub hook_caller: String,
-    /// destination address for reward clawbacks. defaults to owner
+    /// whether or not non-owners can fund the distribution. defaults to true.
+    pub open_funding: Option<bool>,
+    /// destination address for reward clawbacks. defaults to owner.
     pub withdraw_destination: Option<String>,
 }
 

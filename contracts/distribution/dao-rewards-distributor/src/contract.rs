@@ -74,6 +74,7 @@ pub fn execute(
             emission_rate,
             vp_contract,
             hook_caller,
+            open_funding,
             withdraw_destination,
         } => execute_update(
             deps,
@@ -83,6 +84,7 @@ pub fn execute(
             emission_rate,
             vp_contract,
             hook_caller,
+            open_funding,
             withdraw_destination,
         ),
         ExecuteMsg::Fund(FundMsg { id }) => execute_fund_native(deps, env, info, id),
@@ -120,7 +122,7 @@ fn execute_receive_cw20(
                 }
             };
 
-            execute_fund(deps, env, distribution, wrapper.amount)
+            execute_fund(deps, env, info.sender, distribution, wrapper.amount)
         }
         ReceiveCw20Msg::FundLatest {} => {
             let id = COUNT.load(deps.storage)?;
@@ -139,7 +141,7 @@ fn execute_receive_cw20(
                 }
             };
 
-            execute_fund(deps, env, distribution, wrapper.amount)
+            execute_fund(deps, env, info.sender, distribution, wrapper.amount)
         }
     }
 }
@@ -199,6 +201,8 @@ fn execute_create(
 
     msg.emission_rate.validate()?;
 
+    let open_funding = msg.open_funding.unwrap_or(true);
+
     // Initialize the distribution state
     let distribution = DistributionState {
         id,
@@ -213,6 +217,7 @@ fn execute_create(
         vp_contract,
         hook_caller: hook_caller.clone(),
         funded_amount: Uint128::zero(),
+        open_funding,
         withdraw_destination,
         historical_earned_puvp: Uint256::zero(),
     };
@@ -234,7 +239,7 @@ fn execute_create(
 
     if let Some(initial_funds) = initial_funds {
         if !initial_funds.is_zero() {
-            execute_fund(deps, env, distribution, initial_funds)?;
+            execute_fund(deps, env, sender, distribution, initial_funds)?;
             response = response.add_attribute("amount_funded", initial_funds);
         }
     }
@@ -252,6 +257,7 @@ fn execute_update(
     emission_rate: Option<EmissionRate>,
     vp_contract: Option<String>,
     hook_caller: Option<String>,
+    open_funding: Option<bool>,
     withdraw_destination: Option<String>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
@@ -282,6 +288,10 @@ fn execute_update(
 
         // add new to registered hooks
         subscribe_distribution_to_hook(deps.storage, id, distribution.hook_caller.clone())?;
+    }
+
+    if let Some(open_funding) = open_funding {
+        distribution.open_funding = open_funding;
     }
 
     if let Some(withdraw_destination) = withdraw_destination {
@@ -322,15 +332,21 @@ fn execute_fund_native(
         Denom::Cw20(_) => return Err(ContractError::InvalidFunds {}),
     };
 
-    execute_fund(deps, env, distribution, amount)
+    execute_fund(deps, env, info.sender, distribution, amount)
 }
 
 fn execute_fund(
     deps: DepsMut,
     env: Env,
+    sender: Addr,
     distribution: DistributionState,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
+    // only the owner can fund if open_funding is disabled
+    if !distribution.open_funding {
+        cw_ownable::assert_owner(deps.storage, &sender)?;
+    }
+
     match distribution.active_epoch.emission_rate {
         EmissionRate::Paused {} => execute_fund_paused(deps, distribution, amount),
         EmissionRate::Immediate {} => execute_fund_immediate(deps, env, distribution, amount),
@@ -607,18 +623,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?)?),
-        QueryMsg::UndistributedRewards { id } => {
-            let state = DISTRIBUTIONS.load(deps.storage, id)?;
-            Ok(to_json_binary(
-                &state
-                    .get_undistributed_rewards(&env.block)
-                    .map_err(|e| StdError::generic_err(e.to_string()))?,
-            )?)
-        }
-        QueryMsg::Distribution { id } => {
-            let state = DISTRIBUTIONS.load(deps.storage, id)?;
-            Ok(to_json_binary(&state)?)
-        }
+        QueryMsg::UndistributedRewards { id } => Ok(to_json_binary(
+            &query_undistributed_rewards(deps, env, id)
+                .map_err(|e| StdError::generic_err(e.to_string()))?,
+        )?),
+        QueryMsg::Distribution { id } => Ok(to_json_binary(
+            &query_distribution(deps, id).map_err(|e| StdError::generic_err(e.to_string()))?,
+        )?),
         QueryMsg::Distributions { start_after, limit } => Ok(to_json_binary(
             &query_distributions(deps, start_after, limit)?,
         )?),
@@ -691,6 +702,19 @@ fn query_pending_rewards(
     }
 
     Ok(PendingRewardsResponse { pending_rewards })
+}
+
+fn query_undistributed_rewards(deps: Deps, env: Env, id: u64) -> Result<Uint128, ContractError> {
+    let distribution = query_distribution(deps, id)?;
+    let undistributed_rewards = distribution.get_undistributed_rewards(&env.block)?;
+    Ok(undistributed_rewards)
+}
+
+fn query_distribution(deps: Deps, id: u64) -> Result<DistributionState, ContractError> {
+    let state = DISTRIBUTIONS
+        .load(deps.storage, id)
+        .map_err(|_| ContractError::DistributionNotFound { id })?;
+    Ok(state)
 }
 
 fn query_distributions(

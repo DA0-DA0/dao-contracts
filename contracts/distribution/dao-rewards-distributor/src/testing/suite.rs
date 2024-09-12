@@ -580,6 +580,7 @@ impl Suite {
             },
             hook_caller: hook_caller.to_string(),
             vp_contract: self.voting_power_addr.to_string(),
+            open_funding: None,
             withdraw_destination: reward_config.destination,
         });
 
@@ -785,6 +786,7 @@ impl Suite {
             }),
             vp_contract: None,
             hook_caller: None,
+            open_funding: None,
             withdraw_destination: None,
         };
 
@@ -805,6 +807,7 @@ impl Suite {
             emission_rate: Some(EmissionRate::Immediate {}),
             vp_contract: None,
             hook_caller: None,
+            open_funding: None,
             withdraw_destination: None,
         };
 
@@ -825,6 +828,7 @@ impl Suite {
             emission_rate: Some(EmissionRate::Paused {}),
             vp_contract: None,
             hook_caller: None,
+            open_funding: None,
             withdraw_destination: None,
         };
 
@@ -845,6 +849,7 @@ impl Suite {
             emission_rate: None,
             vp_contract: Some(vp_contract.to_string()),
             hook_caller: None,
+            open_funding: None,
             withdraw_destination: None,
         };
 
@@ -865,6 +870,28 @@ impl Suite {
             emission_rate: None,
             vp_contract: None,
             hook_caller: Some(hook_caller.to_string()),
+            open_funding: None,
+            withdraw_destination: None,
+        };
+
+        let _resp = self
+            .app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+    }
+
+    pub fn update_open_funding(&mut self, id: u64, open_funding: bool) {
+        let msg: ExecuteMsg = ExecuteMsg::Update {
+            id,
+            emission_rate: None,
+            vp_contract: None,
+            hook_caller: None,
+            open_funding: Some(open_funding),
             withdraw_destination: None,
         };
 
@@ -885,6 +912,7 @@ impl Suite {
             emission_rate: None,
             vp_contract: None,
             hook_caller: None,
+            open_funding: None,
             withdraw_destination: Some(withdraw_destination.to_string()),
         };
 

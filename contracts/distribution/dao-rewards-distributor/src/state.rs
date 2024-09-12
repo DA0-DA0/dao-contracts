@@ -183,6 +183,8 @@ pub struct DistributionState {
     /// address that will update the reward split when the voting power
     /// distribution changes
     pub hook_caller: Addr,
+    /// whether or not non-owners can fund the distribution
+    pub open_funding: bool,
     /// total amount of rewards funded that will be distributed in the active
     /// epoch.
     pub funded_amount: Uint128,
