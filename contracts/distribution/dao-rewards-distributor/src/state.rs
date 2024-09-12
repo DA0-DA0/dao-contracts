@@ -229,19 +229,15 @@ impl DistributionState {
         }
     }
 
-    /// get the total rewards to be distributed based on the active epoch's
-    /// emission rate
-    pub fn get_total_rewards(&self) -> Result<Uint128, ContractError> {
+    /// get rewards to be distributed until the given expiration
+    pub fn get_rewards_until(&self, expiration: Expiration) -> Result<Uint128, ContractError> {
         match self.active_epoch.emission_rate {
             EmissionRate::Paused {} => Ok(Uint128::zero()),
             EmissionRate::Immediate {} => Ok(self.funded_amount),
             EmissionRate::Linear {
                 amount, duration, ..
             } => {
-                let epoch_duration = self
-                    .active_epoch
-                    .ends_at
-                    .duration_since(&self.active_epoch.started_at)?;
+                let epoch_duration = expiration.duration_since(&self.active_epoch.started_at)?;
 
                 // count total intervals of the rewards emission that will pass
                 // based on the start and end times.
@@ -252,38 +248,29 @@ impl DistributionState {
         }
     }
 
-    // get the undistributed rewards based on the active epoch's emission rate
+    /// get the total rewards to be distributed based on the active epoch's
+    /// emission rate and end time
+    pub fn get_total_rewards(&self) -> Result<Uint128, ContractError> {
+        self.get_rewards_until(self.active_epoch.ends_at)
+    }
+
+    /// get the currently undistributed rewards based on the active epoch's
+    /// emission rate
     pub fn get_undistributed_rewards(
         &self,
         current_block: &BlockInfo,
     ) -> Result<Uint128, ContractError> {
-        match self.active_epoch.emission_rate {
-            // if paused, all rewards are undistributed
-            EmissionRate::Paused {} => Ok(self.funded_amount),
-            // if immediate, no rewards are distributed
-            EmissionRate::Immediate {} => Ok(Uint128::zero()),
-            // if linear, the undistributed rewards are the portion of the
-            // funded amount that hasn't been distributed yet
-            EmissionRate::Linear {
-                amount, duration, ..
-            } => {
-                // get last time rewards were distributed
-                let last_time_rewards_distributed =
-                    self.get_latest_reward_distribution_time(current_block);
+        // get last time rewards were distributed (current block or previous end
+        // time)
+        let last_time_rewards_distributed = self.get_latest_reward_distribution_time(current_block);
 
-                let epoch_duration =
-                    last_time_rewards_distributed.duration_since(&self.active_epoch.started_at)?;
+        // get rewards distributed so far
+        let distributed = self.get_rewards_until(last_time_rewards_distributed)?;
 
-                // count total intervals of the rewards emission that have
-                // passed based on the start and last distribution times
-                let complete_distribution_periods = epoch_duration.checked_div(&duration)?;
+        // undistributed rewards are the remaining of the funded amount
+        let undistributed = self.funded_amount.checked_sub(distributed)?;
 
-                let distributed = amount.checked_mul(complete_distribution_periods)?;
-                let undistributed = self.funded_amount.checked_sub(distributed)?;
-
-                Ok(undistributed)
-            }
-        }
+        Ok(undistributed)
     }
 
     /// Finish current epoch early and start a new one with a new emission rate.
