@@ -104,6 +104,7 @@ dao-dao-core = { path = "./contracts/dao-dao-core", version = "2.5.0" }
 dao-dao-macros = { path = "./packages/dao-dao-macros", version = "2.5.0" }
 dao-hooks = { path = "./packages/dao-hooks", version = "2.5.0" }
 dao-interface = { path = "./packages/dao-interface", version = "2.5.0" }
+dao-pre-propose-approval-multiple = { path = "./contracts/pre-propose/dao-pre-propose-approval-multiple", version = "2.5.0" }
 dao-pre-propose-approval-single = { path = "./contracts/pre-propose/dao-pre-propose-approval-single", version = "2.5.0" }
 dao-pre-propose-approver = { path = "./contracts/pre-propose/dao-pre-propose-approver", version = "2.5.0" }
 dao-pre-propose-base = { path = "./packages/dao-pre-propose-base", version = "2.5.0" }
