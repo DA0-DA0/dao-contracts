@@ -7,11 +7,12 @@ use cw_orch::{
 };
 
 use crate::{
-    Cw20Stake, Cw20StakeExternalRewards, Cw20StakeRewardDistributor, DaoDaoCore,
-    DaoPreProposeApprovalSingle, DaoPreProposeApprover, DaoPreProposeMultiple, DaoPreProposeSingle,
-    DaoProposalCondorcet, DaoProposalHookCounter, DaoProposalMultiple, DaoProposalSingle,
-    DaoProposalSudo, DaoTestCustomFactory, DaoVotingCw20Balance, DaoVotingCw20Staked, DaoVotingCw4,
-    DaoVotingCw721Roles, DaoVotingCw721Staked, DaoVotingTokenStaked,
+    DaoDaoCore, DaoPreProposeApprovalSingle, DaoPreProposeApprover, DaoPreProposeMultiple,
+    DaoPreProposeSingle, DaoProposalCondorcet, DaoProposalHookCounter, DaoProposalMultiple,
+    DaoProposalSingle, DaoProposalSudo, DaoStakingCw20, DaoStakingCw20ExternalRewards,
+    DaoStakingCw20RewardDistributor, DaoTestCustomFactory, DaoVotingCw20Balance,
+    DaoVotingCw20Staked, DaoVotingCw4, DaoVotingCw721Roles, DaoVotingCw721Staked,
+    DaoVotingTokenStaked,
 };
 
 pub const DUMMY_CHAIN_INFO: ChainInfo = ChainInfo {
@@ -44,9 +45,9 @@ fn test_all_wasms_different() {
         DaoProposalMultiple::<Mock>::wasm(&DUMMY_CHAIN_INFO.into()),
         DaoProposalSingle::<Mock>::wasm(&DUMMY_CHAIN_INFO.into()),
         // Stake
-        Cw20Stake::<Mock>::wasm(&DUMMY_CHAIN_INFO.into()),
-        Cw20StakeExternalRewards::<Mock>::wasm(&DUMMY_CHAIN_INFO.into()),
-        Cw20StakeRewardDistributor::<Mock>::wasm(&DUMMY_CHAIN_INFO.into()),
+        DaoStakingCw20::<Mock>::wasm(&DUMMY_CHAIN_INFO.into()),
+        DaoStakingCw20ExternalRewards::<Mock>::wasm(&DUMMY_CHAIN_INFO.into()),
+        DaoStakingCw20RewardDistributor::<Mock>::wasm(&DUMMY_CHAIN_INFO.into()),
         // Voting
         DaoVotingCw4::<Mock>::wasm(&DUMMY_CHAIN_INFO.into()),
         DaoVotingCw20Staked::<Mock>::wasm(&DUMMY_CHAIN_INFO.into()),
