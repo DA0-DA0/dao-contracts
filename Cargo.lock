@@ -1859,6 +1859,7 @@ version = "2.5.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-denom 2.4.1",
  "cw-denom 2.5.0",
  "cw-multi-test",
  "cw-paginate-storage 2.5.0",
