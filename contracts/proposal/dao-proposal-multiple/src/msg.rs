@@ -66,6 +66,7 @@ pub enum ExecuteMsg {
     },
     /// Causes the messages associated with a passed proposal to be
     /// executed by the DAO.
+    #[cw_orch(fn_name("proposal_execute"))]
     Execute {
         /// The ID of the proposal to execute.
         proposal_id: u64,
