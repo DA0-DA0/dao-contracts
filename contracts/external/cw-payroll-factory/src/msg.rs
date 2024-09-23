@@ -101,3 +101,8 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
 }
+
+#[cw_serde]
+pub enum MigrateMsg {
+    FromCompatible {},
+}
