@@ -1,5 +1,5 @@
 [package]
-name ="cw-payroll-factory"
+name = "cw-payroll-factory"
 authors = ["Jake Hartnell"]
 description = "A CosmWasm factory contract for instantiating a payroll contract."
 edition = { workspace = true }
@@ -27,6 +27,7 @@ cw20 = { workspace = true }
 thiserror = { workspace = true }
 cw-vesting = { workspace = true, features = ["library"] }
 cw-utils = { workspace = true }
+cw-paginate-storage = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }

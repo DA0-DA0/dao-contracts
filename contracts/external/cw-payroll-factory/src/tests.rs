@@ -57,6 +57,7 @@ pub fn test_instantiate_native_payroll_contract() {
     let instantiate = InstantiateMsg {
         owner: Some(ALICE.to_string()),
         vesting_code_id: cw_vesting_code_id,
+        instantiate_allowlist: None,
     };
     let factory_addr = app
         .instantiate_contract(
@@ -124,7 +125,10 @@ pub fn test_instantiate_native_payroll_contract() {
         .unwrap_err()
         .downcast()
         .unwrap();
-    assert_eq!(err, ContractError::Unauthorized {});
+    assert_eq!(
+        err,
+        ContractError::Ownable(cw_ownable::OwnershipError::NotOwner)
+    );
 
     // Get the payroll address from the instantiate event
     let instantiate_event = &res.events[2];
@@ -240,6 +244,7 @@ pub fn test_instantiate_cw20_payroll_contract() {
     let instantiate = InstantiateMsg {
         owner: Some(ALICE.to_string()),
         vesting_code_id: cw_vesting_code_id,
+        instantiate_allowlist: None,
     };
     let factory_addr = app
         .instantiate_contract(
@@ -369,6 +374,7 @@ fn test_instantiate_wrong_ownership_native() {
     let instantiate = InstantiateMsg {
         owner: Some(ALICE.to_string()),
         vesting_code_id: cw_vesting_code_id,
+        instantiate_allowlist: None,
     };
     let factory_addr = app
         .instantiate_contract(
@@ -407,7 +413,10 @@ fn test_instantiate_wrong_ownership_native() {
         .unwrap();
 
     // Can't instantiate if you are not the owner.
-    assert_eq!(err, ContractError::Unauthorized {});
+    assert_eq!(
+        err,
+        ContractError::Ownable(cw_ownable::OwnershipError::NotOwner)
+    );
 }
 
 #[test]
@@ -421,6 +430,7 @@ fn test_update_vesting_code_id() {
     let instantiate = InstantiateMsg {
         owner: Some(ALICE.to_string()),
         vesting_code_id: cw_vesting_code_id,
+        instantiate_allowlist: None,
     };
     let factory_addr = app
         .instantiate_contract(
@@ -539,6 +549,7 @@ pub fn test_inconsistent_cw20_amount() {
     let instantiate = InstantiateMsg {
         owner: Some(ALICE.to_string()),
         vesting_code_id: cw_vesting_code_id,
+        instantiate_allowlist: None,
     };
     let factory_addr = app
         .instantiate_contract(
@@ -596,5 +607,143 @@ pub fn test_inconsistent_cw20_amount() {
             sent: amount,
             expected: amount - Uint128::one()
         }
+    );
+}
+
+#[test]
+pub fn test_instantiate_allowlist() {
+    let mut app = App::default();
+    let code_id = app.store_code(factory_contract());
+    let cw_vesting_code_id = app.store_code(cw_vesting_contract());
+
+    // Define allowlist
+    let allowlist = vec![BOB.to_string(), "charlie".to_string()];
+
+    // Instantiate factory with Alice as owner and Bob and Charlie in the allowlist
+    let instantiate = InstantiateMsg {
+        owner: Some(ALICE.to_string()),
+        vesting_code_id: cw_vesting_code_id,
+        instantiate_allowlist: Some(allowlist.clone()),
+    };
+    let factory_addr = app
+        .instantiate_contract(
+            code_id,
+            Addr::unchecked("CREATOR"),
+            &instantiate,
+            &[],
+            "cw-admin-factory",
+            None,
+        )
+        .unwrap();
+
+    // Mint tokens for testing
+    for address in &[ALICE, BOB, "charlie", "dave"] {
+        app.sudo(SudoMsg::Bank({
+            BankSudo::Mint {
+                to_address: address.to_string(),
+                amount: coins(INITIAL_BALANCE, NATIVE_DENOM),
+            }
+        }))
+        .unwrap();
+    }
+
+    let amount = Uint128::new(1000000);
+    let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
+
+    let instantiate_payroll_msg = ExecuteMsg::InstantiateNativePayrollContract {
+        instantiate_msg: PayrollInstantiateMsg {
+            owner: None,
+            recipient: "recipient".to_string(),
+            title: "title".to_string(),
+            description: Some("desc".to_string()),
+            total: amount,
+            denom: unchecked_denom.clone(),
+            schedule: Schedule::SaturatingLinear,
+            vesting_duration_seconds: 200,
+            unbonding_duration_seconds: 2592000, // 30 days
+            start_time: None,
+        },
+        label: "Payroll".to_string(),
+    };
+
+    // Test: Alice (owner) can instantiate
+    app.execute_contract(
+        Addr::unchecked(ALICE),
+        factory_addr.clone(),
+        &instantiate_payroll_msg,
+        &coins(amount.u128(), NATIVE_DENOM),
+    )
+    .unwrap();
+
+    // Test: Bob (in allowlist) can instantiate
+    app.execute_contract(
+        Addr::unchecked(BOB),
+        factory_addr.clone(),
+        &instantiate_payroll_msg,
+        &coins(amount.u128(), NATIVE_DENOM),
+    )
+    .unwrap();
+
+    // Test: Charlie (in allowlist) can instantiate
+    app.execute_contract(
+        Addr::unchecked("charlie"),
+        factory_addr.clone(),
+        &instantiate_payroll_msg,
+        &coins(amount.u128(), NATIVE_DENOM),
+    )
+    .unwrap();
+
+    // Test: Dave (not in allowlist) cannot instantiate
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("dave"),
+            factory_addr.clone(),
+            &instantiate_payroll_msg,
+            &coins(amount.u128(), NATIVE_DENOM),
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::Ownable(cw_ownable::OwnershipError::NotOwner)
+    );
+
+    // Test: Update allowlist
+    let update_msg = ExecuteMsg::UpdateInstantiateAllowlist {
+        to_add: Some(vec!["dave".to_string()]),
+        to_remove: Some(vec!["charlie".to_string()]),
+    };
+    app.execute_contract(
+        Addr::unchecked(ALICE),
+        factory_addr.clone(),
+        &update_msg,
+        &[],
+    )
+    .unwrap();
+
+    // Test: Dave (now in allowlist) can instantiate
+    app.execute_contract(
+        Addr::unchecked("dave"),
+        factory_addr.clone(),
+        &instantiate_payroll_msg,
+        &coins(amount.u128(), NATIVE_DENOM),
+    )
+    .unwrap();
+
+    // Test: Charlie (removed from allowlist) cannot instantiate
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("charlie"),
+            factory_addr,
+            &instantiate_payroll_msg,
+            &coins(amount.u128(), NATIVE_DENOM),
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::Ownable(cw_ownable::OwnershipError::NotOwner)
     );
 }

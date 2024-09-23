@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_json, to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Reply,
-    Response, StdResult, SubMsg, WasmMsg,
+    from_json, to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
+    Reply, Response, StdResult, SubMsg, WasmMsg,
 };
 use cosmwasm_std::{Addr, Coin};
 
@@ -20,7 +20,10 @@ use cw_vesting::vesting::Vest;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
-use crate::state::{vesting_contracts, VestingContract, TMP_INSTANTIATOR_INFO, VESTING_CODE_ID};
+use crate::state::{
+    vesting_contracts, VestingContract, INSTANTIATE_ALLOWLIST, TMP_INSTANTIATOR_INFO,
+    VESTING_CODE_ID,
+};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-payroll-factory";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -31,16 +34,32 @@ pub const MAX_LIMIT: u32 = 50;
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    cw_ownable::initialize_owner(deps.storage, deps.api, msg.owner.as_deref())?;
+    let ownership = cw_ownable::initialize_owner(deps.storage, deps.api, msg.owner.as_deref())?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     VESTING_CODE_ID.save(deps.storage, &msg.vesting_code_id)?;
+
+    let mut msgs = vec![];
+
+    if let Some(allowlist) = msg.instantiate_allowlist {
+        msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: env.contract.address.to_string(),
+            msg: to_json_binary(&ExecuteMsg::UpdateInstantiateAllowlist {
+                to_add: Some(allowlist),
+                to_remove: None,
+            })?,
+            funds: vec![],
+        }))
+    }
+
     Ok(Response::new()
+        .add_messages(msgs)
         .add_attribute("method", "instantiate")
-        .add_attribute("creator", info.sender))
+        .add_attribute("creator", info.sender)
+        .add_attributes(ownership.into_attributes()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -60,7 +79,52 @@ pub fn execute(
         ExecuteMsg::UpdateCodeId { vesting_code_id } => {
             execute_update_code_id(deps, info, vesting_code_id)
         }
+        ExecuteMsg::UpdateInstantiateAllowlist { to_add, to_remove } => {
+            execute_set_instantiate_allowlist(deps, env, info, to_add, to_remove)
+        }
     }
+}
+
+pub fn execute_set_instantiate_allowlist(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    to_add: Option<Vec<String>>,
+    to_remove: Option<Vec<String>>,
+) -> Result<Response, ContractError> {
+    if info.sender != env.contract.address {
+        cw_ownable::assert_owner(deps.storage, &info.sender)?;
+    }
+
+    // Add new addresses
+    if let Some(add_list) = to_add.as_ref() {
+        for addr_str in add_list {
+            let addr = deps.api.addr_validate(addr_str)?;
+
+            if !INSTANTIATE_ALLOWLIST.has(deps.storage, &addr) {
+                INSTANTIATE_ALLOWLIST.save(deps.storage, &addr, &Empty {})?;
+            }
+        }
+    }
+
+    // Remove addresses
+    if let Some(remove_list) = to_remove.as_ref() {
+        for addr_str in remove_list {
+            let addr = deps.api.addr_validate(addr_str)?;
+            INSTANTIATE_ALLOWLIST.remove(deps.storage, &addr);
+        }
+    }
+
+    Ok(Response::new()
+        .add_attribute("action", "set_instantiate_allowlist")
+        .add_attribute(
+            "added",
+            to_add.map_or_else(|| "none".to_string(), |v| v.join(", ")),
+        )
+        .add_attribute(
+            "removed",
+            to_remove.map_or_else(|| "none".to_string(), |v| v.join(", ")),
+        ))
 }
 
 pub fn execute_receive_cw20(
@@ -121,15 +185,14 @@ pub fn instantiate_contract(
     instantiate_msg: PayrollInstantiateMsg,
     label: String,
 ) -> Result<Response, ContractError> {
-    // Check sender is contract owner if set
-    let ownership = cw_ownable::get_ownership(deps.storage)?;
-    if ownership
-        .owner
-        .as_ref()
-        .map_or(false, |owner| *owner != sender)
-    {
-        return Err(ContractError::Unauthorized {});
-    }
+    // Check sender is contract owner if set - or an allowlisted address
+    cw_ownable::assert_owner(deps.storage, &sender).or_else(|e| {
+        if INSTANTIATE_ALLOWLIST.has(deps.storage, &sender) {
+            Ok(())
+        } else {
+            Err(ContractError::Ownable(e))
+        }
+    })?;
 
     let code_id = VESTING_CODE_ID.load(deps.storage)?;
 
@@ -291,6 +354,19 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
         QueryMsg::CodeId {} => to_json_binary(&VESTING_CODE_ID.load(deps.storage)?),
+        QueryMsg::InstantiateAllowlist { start_after, limit } => {
+            let start_after = start_after
+                .map(|x| deps.api.addr_validate(&x))
+                .transpose()?;
+
+            to_json_binary(&cw_paginate_storage::paginate_map(
+                deps,
+                &INSTANTIATE_ALLOWLIST,
+                start_after.as_ref(),
+                limit,
+                Order::Ascending,
+            )?)
+        }
     }
 }
 

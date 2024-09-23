@@ -1,10 +1,11 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Addr;
-use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
+use cosmwasm_std::{Addr, Empty};
+use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 
 /// Temporarily holds the address of the instantiator for use in submessages
 pub const TMP_INSTANTIATOR_INFO: Item<Addr> = Item::new("tmp_instantiator_info");
 pub const VESTING_CODE_ID: Item<u64> = Item::new("pci");
+pub const INSTANTIATE_ALLOWLIST: Map<&Addr, Empty> = Map::new("instantiate_allowlist");
 
 #[cw_serde]
 pub struct VestingContract {
