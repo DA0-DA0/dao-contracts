@@ -122,7 +122,9 @@ fn execute_receive_cw20(
                 }
             };
 
-            execute_fund(deps, env, info.sender, distribution, wrapper.amount)
+            let sender = deps.api.addr_validate(&wrapper.sender)?;
+
+            execute_fund(deps, env, sender, distribution, wrapper.amount)
         }
         ReceiveCw20Msg::FundLatest {} => {
             let id = COUNT.load(deps.storage)?;
@@ -141,7 +143,9 @@ fn execute_receive_cw20(
                 }
             };
 
-            execute_fund(deps, env, info.sender, distribution, wrapper.amount)
+            let sender = deps.api.addr_validate(&wrapper.sender)?;
+
+            execute_fund(deps, env, sender, distribution, wrapper.amount)
         }
     }
 }
