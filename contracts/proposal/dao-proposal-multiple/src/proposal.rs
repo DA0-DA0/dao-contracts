@@ -3,6 +3,7 @@ use std::ops::Add;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, BlockInfo, StdError, StdResult, Uint128};
 use cw_utils::Expiration;
+use dao_interface::proposal::GenericProposalInfo;
 use dao_voting::{
     multiple_choice::{
         CheckedMultipleChoiceOption, MultipleChoiceOptionType, MultipleChoiceVotes, VotingStrategy,
@@ -282,6 +283,13 @@ impl MultipleChoiceProposal {
             return Err(StdError::not_found("second highest vote weight"));
         }
         Ok(false)
+    }
+
+    pub fn into_generic(self) -> GenericProposalInfo {
+        GenericProposalInfo {
+            proposer: self.proposer,
+            start_height: self.start_height,
+        }
     }
 }
 

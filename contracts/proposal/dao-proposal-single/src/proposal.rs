@@ -5,6 +5,7 @@ use crate::state::PROPOSAL_COUNT;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdResult, Storage, Uint128};
 use cw_utils::Expiration;
+use dao_interface::proposal::GenericProposalInfo;
 use dao_voting::status::Status;
 use dao_voting::threshold::{PercentageThreshold, Threshold};
 use dao_voting::veto::VetoConfig;
@@ -268,6 +269,13 @@ impl SingleChoiceProposal {
                 let outstanding_votes = self.total_power - self.votes.total();
                 self.votes.yes + outstanding_votes < threshold
             }
+        }
+    }
+
+    pub fn into_generic(self) -> GenericProposalInfo {
+        GenericProposalInfo {
+            proposer: self.proposer,
+            start_height: self.start_height,
         }
     }
 }

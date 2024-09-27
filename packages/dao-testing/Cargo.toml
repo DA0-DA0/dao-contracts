@@ -62,3 +62,5 @@ dao-voting-onft-staked = { workspace = true }
 dao-voting-token-staked = { workspace = true }
 voting-v1 = { workspace = true }
 stake-cw20-v03 = { workspace = true }
+dao-proposal-incentives = { workspace = true }
+dao-voting-incentives = { workspace = true }
