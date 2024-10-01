@@ -34,6 +34,7 @@ semver = { workspace = true }
 cw-denom-v241 = { workspace = true }
 dao-pre-propose-base-v241 = { workspace = true }
 dao-voting-v241 = { workspace = true }
+cw-orch = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }

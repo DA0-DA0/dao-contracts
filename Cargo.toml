@@ -1,5 +1,5 @@
 [workspace]
-exclude = ["ci/configs/", "wasmvm/libwasmvm"]
+exclude = ["ci/configs/", "wasmvm/libwasmvm", "scripts"]
 members = [
   "contracts/dao-dao-core",
   "contracts/distribution/*",
@@ -80,11 +80,14 @@ syn = { version = "1.0", features = ["derive"] }
 test-context = "0.1"
 thiserror = { version = "1.0" }
 wynd-utils = "0.4"
+cw-orch = "0.24.1"
+tokio = "=1.38.1"
 
 # One commit ahead of version 0.3.0. Allows initialization with an
 # optional owner.
 cw-ownable = "0.5"
 
+btsg-ft-factory = { path = "./contracts/external/btsg-ft-factory", version = "2.5.0" }
 cw-admin-factory = { path = "./contracts/external/cw-admin-factory", version = "2.5.0" }
 cw-denom = { path = "./packages/cw-denom", version = "2.5.0" }
 cw-fund-distributor = { path = "./contracts/distribution/cw-fund-distributor", version = "2.5.0" }
@@ -92,6 +95,7 @@ cw-hooks = { path = "./packages/cw-hooks", version = "2.5.0" }
 cw-paginate-storage = { path = "./packages/cw-paginate-storage", version = "2.5.0" }
 cw-payroll-factory = { path = "./contracts/external/cw-payroll-factory", version = "2.5.0" }
 cw-stake-tracker = { path = "./packages/cw-stake-tracker", version = "2.5.0" }
+cw-token-swap = { path = "./contracts/external/cw-token-swap", version = "2.5.0" }
 cw-tokenfactory-issuer = { path = "./contracts/external/cw-tokenfactory-issuer", version = "2.5.0", default-features = false }
 cw-tokenfactory-types = { path = "./packages/cw-tokenfactory-types", version = "2.5.0", default-features = false }
 cw-vesting = { path = "./contracts/external/cw-vesting", version = "2.5.0" }
@@ -104,6 +108,7 @@ dao-dao-core = { path = "./contracts/dao-dao-core", version = "2.5.0" }
 dao-dao-macros = { path = "./packages/dao-dao-macros", version = "2.5.0" }
 dao-hooks = { path = "./packages/dao-hooks", version = "2.5.0" }
 dao-interface = { path = "./packages/dao-interface", version = "2.5.0" }
+dao-migrator = { path = "./contracts/external/dao-migrator", version = "2.5.0" }
 dao-pre-propose-approval-single = { path = "./contracts/pre-propose/dao-pre-propose-approval-single", version = "2.5.0" }
 dao-pre-propose-approver = { path = "./contracts/pre-propose/dao-pre-propose-approver", version = "2.5.0" }
 dao-pre-propose-base = { path = "./packages/dao-pre-propose-base", version = "2.5.0" }
