@@ -283,6 +283,7 @@ pub fn test_allow_voting_after_proposal_execution_pre_expiration_cw20() {
         ),
         close_proposal_on_execution_failure: true,
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_multiple_staked_balances_governance(
@@ -360,8 +361,8 @@ pub fn test_allow_voting_after_proposal_execution_pre_expiration_cw20() {
     // assert proposal is passed with expected votes
     let prop = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(prop.proposal.status, Status::Passed);
-    assert_eq!(prop.proposal.votes.vote_weights[0], Uint128::new(100000000));
-    assert_eq!(prop.proposal.votes.vote_weights[1], Uint128::new(0));
+    assert_eq!(prop.proposal.votes.get_id(0), Uint128::new(100000000));
+    assert_eq!(prop.proposal.votes.get_id(1), Uint128::new(0));
 
     // someone wakes up and casts their vote to express their
     // opinion (not affecting the result of proposal)
@@ -383,8 +384,8 @@ pub fn test_allow_voting_after_proposal_execution_pre_expiration_cw20() {
     // assert proposal is passed with expected votes
     let prop = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(prop.proposal.status, Status::Passed);
-    assert_eq!(prop.proposal.votes.vote_weights[0], Uint128::new(100000000));
-    assert_eq!(prop.proposal.votes.vote_weights[1], Uint128::new(50000000));
+    assert_eq!(prop.proposal.votes.get_id(0), Uint128::new(100000000));
+    assert_eq!(prop.proposal.votes.get_id(1), Uint128::new(50000000));
 
     // execute the proposal expecting
     app.execute_contract(
