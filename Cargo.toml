@@ -3,6 +3,7 @@ exclude = ["ci/configs/", "wasmvm/libwasmvm"]
 members = [
   "contracts/dao-dao-core",
   "contracts/distribution/*",
+  "contracts/delegation/*",
   "contracts/external/*",
   "contracts/proposal/*",
   "contracts/pre-propose/*",
@@ -122,6 +123,7 @@ dao-proposal-sudo = { path = "./contracts/test/dao-proposal-sudo", version = "2.
 dao-rewards-distributor = { path = "./contracts/distribution/dao-rewards-distributor", version = "2.5.0" }
 dao-test-custom-factory = { path = "./contracts/test/dao-test-custom-factory", version = "2.5.0" }
 dao-testing = { path = "./packages/dao-testing", version = "2.5.0" }
+dao-vote-delegation = { path = "./contracts/delegation/dao-vote-delegation", version = "2.5.0" }
 dao-voting = { path = "./packages/dao-voting", version = "2.5.0" }
 dao-voting-cw20-balance = { path = "./contracts/test/dao-voting-cw20-balance", version = "2.5.0" }
 dao-voting-cw20-staked = { path = "./contracts/voting/dao-voting-cw20-staked", version = "2.5.0" }
