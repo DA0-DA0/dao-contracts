@@ -1,9 +1,9 @@
 use cosmwasm_std::{Addr, StdResult, Storage};
 use cw_storage_plus::{Item, Map};
 
-use dao_voting::{approval::ApprovalProposal, proposal::SingleChoiceProposeMsg};
+use dao_voting::{approval::ApprovalProposal, proposal::MultipleChoiceProposeMsg};
 
-pub type Proposal = ApprovalProposal<SingleChoiceProposeMsg>;
+pub type Proposal = ApprovalProposal<MultipleChoiceProposeMsg>;
 
 pub const APPROVER: Item<Addr> = Item::new("approver");
 pub const PENDING_PROPOSALS: Map<u64, Proposal> = Map::new("pending_proposals");

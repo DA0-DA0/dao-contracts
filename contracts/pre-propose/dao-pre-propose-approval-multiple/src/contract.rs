@@ -1,19 +1,17 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response, StdError,
-    StdResult, SubMsg, WasmMsg,
+    to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response, StdResult,
+    SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw_denom::CheckedDenom;
 use cw_paginate_storage::paginate_map_values;
 use dao_pre_propose_base::{
     error::PreProposeError, msg::ExecuteMsg as ExecuteBase, state::PreProposeContract,
 };
 use dao_voting::approval::{ApprovalProposalStatus, ApproverProposeMessage};
-use dao_voting::deposit::{CheckedDepositInfo, DepositRefundPolicy};
-use dao_voting::proposal::SingleChoiceProposeMsg as ProposeMsg;
-use dao_voting::voting::{SingleChoiceAutoVote, Vote};
+use dao_voting::deposit::DepositRefundPolicy;
+use dao_voting::proposal::MultipleChoiceProposeMsg as ProposeMsg;
 
 use crate::msg::{
     ExecuteExt, ExecuteMsg, InstantiateExt, InstantiateMsg, MigrateMsg, ProposeMessage,
@@ -24,7 +22,7 @@ use crate::state::{
     CREATED_PROPOSAL_TO_COMPLETED_PROPOSAL, PENDING_PROPOSALS,
 };
 
-pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-pre-propose-approval-single";
+pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-pre-propose-approval-multiple";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 type PrePropose = PreProposeContract<InstantiateExt, ExecuteExt, QueryExt, Empty, ProposeMessage>;
@@ -96,12 +94,12 @@ pub fn execute_propose(
         ProposeMessage::Propose {
             title,
             description,
-            msgs,
+            choices,
             vote,
         } => ProposeMsg {
             title,
             description,
-            msgs,
+            choices,
             proposer: Some(info.sender.to_string()),
             vote,
         },
@@ -414,129 +412,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, PreProposeError> {
-    let res: Result<Response, PreProposeError> =
-        PrePropose::default().migrate(deps.branch(), msg.clone());
-    match msg {
-        MigrateMsg::FromUnderV250 { .. } => {
-            // the default migrate function above ensures >= v2.4.1 and < v2.5.0
-
-            // migrate proposals to add approver
-
-            let approver = APPROVER.load(deps.storage)?;
-
-            let pending_proposals = dao_pre_propose_approval_single_v241::state::PENDING_PROPOSALS
-                .range(deps.storage, None, None, Order::Ascending)
-                .collect::<StdResult<Vec<_>>>()?;
-            for (id, proposal) in pending_proposals {
-                PENDING_PROPOSALS.save(
-                    deps.storage,
-                    id,
-                    &Proposal {
-                        status: ApprovalProposalStatus::Pending {},
-                        approval_id: proposal.approval_id,
-                        approver: approver.clone(),
-                        proposer: proposal.proposer,
-                        msg: ProposeMsg {
-                            title: proposal.msg.title,
-                            description: proposal.msg.description,
-                            msgs: proposal.msg.msgs,
-                            proposer: proposal.msg.proposer,
-                            vote: proposal.msg.vote.map(|vote| SingleChoiceAutoVote {
-                                vote: match vote.vote {
-                                    dao_voting_v241::voting::Vote::Yes => Vote::Yes,
-                                    dao_voting_v241::voting::Vote::No => Vote::No,
-                                    dao_voting_v241::voting::Vote::Abstain => Vote::Abstain,
-                                },
-                                rationale: vote.rationale,
-                            }),
-                        },
-                        deposit: proposal.deposit.map(|deposit| CheckedDepositInfo {
-                            denom: match deposit.denom {
-                                cw_denom_v241::CheckedDenom::Native(denom) => {
-                                    CheckedDenom::Native(denom)
-                                }
-                                cw_denom_v241::CheckedDenom::Cw20(addr) => CheckedDenom::Cw20(addr),
-                            },
-                            amount: deposit.amount,
-                            refund_policy: match deposit.refund_policy {
-                                dao_voting_v241::deposit::DepositRefundPolicy::Always => {
-                                    DepositRefundPolicy::Always
-                                }
-                                dao_voting_v241::deposit::DepositRefundPolicy::OnlyPassed => {
-                                    DepositRefundPolicy::OnlyPassed
-                                }
-                                dao_voting_v241::deposit::DepositRefundPolicy::Never => {
-                                    DepositRefundPolicy::Never
-                                }
-                            },
-                        }),
-                    },
-                )?;
-            }
-
-            let completed_proposals =
-                dao_pre_propose_approval_single_v241::state::COMPLETED_PROPOSALS
-                    .range(deps.storage, None, None, Order::Ascending)
-                    .collect::<StdResult<Vec<_>>>()?;
-            for (id, proposal) in completed_proposals {
-                COMPLETED_PROPOSALS.save(
-                    deps.storage,
-                    id,
-                    &Proposal {
-                        status: match proposal.status {
-                            dao_pre_propose_approval_single_v241::state::ProposalStatus::Approved { created_proposal_id } => ApprovalProposalStatus::Approved { created_proposal_id },
-                            dao_pre_propose_approval_single_v241::state::ProposalStatus::Rejected {} => ApprovalProposalStatus::Rejected {},
-                            // should not be possible since these are completed
-                            // proposals only
-                            dao_pre_propose_approval_single_v241::state::ProposalStatus::Pending {} => return Err(PreProposeError::Std(StdError::generic_err("unexpected proposal status"))),
-                        },
-                        approval_id: proposal.approval_id,
-                        approver: approver.clone(),
-                        proposer: proposal.proposer,
-                        msg: ProposeMsg {
-                            title: proposal.msg.title,
-                            description: proposal.msg.description,
-                            msgs: proposal.msg.msgs,
-                            proposer: proposal.msg.proposer,
-                            vote: proposal.msg.vote.map(|vote| SingleChoiceAutoVote {
-                                vote: match vote.vote {
-                                    dao_voting_v241::voting::Vote::Yes => Vote::Yes,
-                                    dao_voting_v241::voting::Vote::No => Vote::No,
-                                    dao_voting_v241::voting::Vote::Abstain => Vote::Abstain,
-                                },
-                                rationale: vote.rationale,
-                            }),
-                        },
-                        deposit: proposal.deposit.map(|deposit| CheckedDepositInfo {
-                            denom: match deposit.denom {
-                                cw_denom_v241::CheckedDenom::Native(denom) => {
-                                    CheckedDenom::Native(denom)
-                                }
-                                cw_denom_v241::CheckedDenom::Cw20(addr) => CheckedDenom::Cw20(addr),
-                            },
-                            amount: deposit.amount,
-                            refund_policy: match deposit.refund_policy {
-                                dao_voting_v241::deposit::DepositRefundPolicy::Always => {
-                                    DepositRefundPolicy::Always
-                                }
-                                dao_voting_v241::deposit::DepositRefundPolicy::OnlyPassed => {
-                                    DepositRefundPolicy::OnlyPassed
-                                }
-                                dao_voting_v241::deposit::DepositRefundPolicy::Never => {
-                                    DepositRefundPolicy::Never
-                                }
-                            },
-                        }),
-                    },
-                )?;
-            }
-        }
-        _ => {
-            return Err(PreProposeError::Std(StdError::generic_err(
-                "not implemented",
-            )))
-        }
-    }
+    let res = PrePropose::default().migrate(deps.branch(), msg);
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     res
 }
