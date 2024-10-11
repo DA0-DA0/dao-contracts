@@ -1,11 +1,9 @@
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
 
-use cw20::Expiration;
-use cw_utils::Duration;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-use cosmwasm_std::{BlockInfo, StdResult, Storage};
+use cosmwasm_std::{StdResult, Storage};
 use cw_storage_plus::{KeyDeserialize, Map, Prefixer, PrimaryKey, SnapshotMap, Strategy};
 
 /// Map to a vector that allows reading the subset of items that existed at a
@@ -17,8 +15,8 @@ pub struct SnapshotVectorMap<'a, K, V> {
     /// The next item ID to use per-key.
     next_ids: Map<'a, K, u64>,
     /// The IDs of the items that are active for a key at a given height, and
-    /// optionally when they expire.
-    active: SnapshotMap<'a, K, Vec<(u64, Option<Expiration>)>>,
+    /// optionally the height at which they expire.
+    active: SnapshotMap<'a, K, Vec<(u64, Option<u64>)>>,
 }
 
 /// A loaded item from the vector, including its ID and expiration.
@@ -29,8 +27,8 @@ pub struct LoadedItem<V> {
     pub id: u64,
     /// The item.
     pub item: V,
-    /// When the item expires, if set.
-    pub expiration: Option<Expiration>,
+    /// The block height at which the item expires, if set.
+    pub expiration: Option<u64>,
 }
 
 impl<'a, K, V> SnapshotVectorMap<'a, K, V> {
@@ -78,17 +76,17 @@ where
     // &(key, ID) is a key in a map
     for<'b> &'b (K, u64): PrimaryKey<'b>,
 {
-    /// Adds an item to the vector at the current block, optionally expiring in
-    /// the future, returning the ID of the new item. This block should be
-    /// greater than or equal to the blocks all previous items were
+    /// Adds an item to the vector at the current block height, optionally
+    /// expiring in the future, returning the ID of the new item. This block
+    /// should be greater than or equal to the blocks all previous items were
     /// added/removed at. Pushing to the past will lead to incorrect behavior.
     pub fn push(
         &self,
         store: &mut dyn Storage,
         k: &K,
         data: &V,
-        block: &BlockInfo,
-        expire_in: Option<Duration>,
+        curr_height: u64,
+        expire_in: Option<u64>,
     ) -> StdResult<u64> {
         // get next ID for the key, defaulting to 0
         let next_id = self
@@ -104,14 +102,14 @@ where
 
         // remove expired items
         active.retain(|(_, expiration)| {
-            expiration.map_or(true, |expiration| !expiration.is_expired(block))
+            expiration.map_or(true, |expiration| expiration > curr_height)
         });
 
         // add new item and save list
-        active.push((next_id, expire_in.map(|d| d.after(block))));
+        active.push((next_id, expire_in.map(|d| curr_height + d)));
 
         // save the new list
-        self.active.save(store, k.clone(), &active, block.height)?;
+        self.active.save(store, k.clone(), &active, curr_height)?;
 
         // update next ID
         self.next_ids.save(store, k.clone(), &(next_id + 1))?;
@@ -119,8 +117,8 @@ where
         Ok(next_id)
     }
 
-    /// Removes an item from the vector by ID and returns it. The block should
-    /// be greater than or equal to the blocks all previous items were
+    /// Removes an item from the vector by ID and returns it. The block height
+    /// should be greater than or equal to the blocks all previous items were
     /// added/removed at. Removing from the past will lead to incorrect
     /// behavior.
     pub fn remove(
@@ -128,18 +126,18 @@ where
         store: &mut dyn Storage,
         k: &K,
         id: u64,
-        block: &BlockInfo,
+        curr_height: u64,
     ) -> StdResult<V> {
         // get active list for the key
         let mut active = self.active.may_load(store, k.clone())?.unwrap_or_default();
 
         // remove item and any expired items
         active.retain(|(active_id, expiration)| {
-            active_id != &id && expiration.map_or(true, |expiration| !expiration.is_expired(block))
+            active_id != &id && expiration.map_or(true, |expiration| expiration > curr_height)
         });
 
         // save the new list
-        self.active.save(store, k.clone(), &active, block.height)?;
+        self.active.save(store, k.clone(), &active, curr_height)?;
 
         // load and return the item
         self.load_item(store, k, id)
@@ -150,7 +148,7 @@ where
         &self,
         store: &dyn Storage,
         k: &K,
-        block: &BlockInfo,
+        height: u64,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> StdResult<Vec<LoadedItem<V>>> {
@@ -159,13 +157,13 @@ where
 
         let active_ids = self
             .active
-            .may_load_at_height(store, k.clone(), block.height)?
+            .may_load_at_height(store, k.clone(), height)?
             .unwrap_or_default();
 
         // load paged items, skipping expired ones
         let items = active_ids
             .iter()
-            .filter(|(_, expiration)| expiration.map_or(true, |exp| !exp.is_expired(block)))
+            .filter(|(_, expiration)| expiration.map_or(true, |exp| exp > height))
             .skip(offset)
             .take(limit)
             .map(|(id, expiration)| -> StdResult<LoadedItem<V>> {
@@ -181,14 +179,14 @@ where
         Ok(items)
     }
 
-    /// Loads all items at the given block that are not expired.
+    /// Loads all items at the given block height that are not expired.
     pub fn load_all(
         &self,
         store: &dyn Storage,
         k: &K,
-        block: &BlockInfo,
+        height: u64,
     ) -> StdResult<Vec<LoadedItem<V>>> {
-        self.load(store, k, block, None, None)
+        self.load(store, k, height, None, None)
     }
 
     /// Loads an item from the vector by ID.

@@ -1015,11 +1015,8 @@ dependencies = [
 name = "cw-snapshot-vector-map"
 version = "2.5.0"
 dependencies = [
- "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
- "cw20 1.1.2",
  "serde",
 ]
 
@@ -2359,7 +2356,6 @@ dependencies = [
  "cosmwasm-std",
  "cw-controllers 1.1.2",
  "cw-multi-test",
- "cw-ownable",
  "cw-snapshot-vector-map",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",

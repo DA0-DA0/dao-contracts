@@ -44,20 +44,8 @@ compact ID storage.
 ## Example
 
 ```rust
-use cosmwasm_std::{testing::mock_dependencies, Addr, BlockInfo, Timestamp};
-use cw20::Expiration;
-use cw_utils::Duration;
+use cosmwasm_std::{testing::mock_dependencies, Addr};
 use cw_snapshot_vector_map::{LoadedItem, SnapshotVectorMap};
-
-macro_rules! b {
-    ($x:expr) => {
-        &BlockInfo {
-            chain_id: "CHAIN".to_string(),
-            height: $x,
-            time: Timestamp::from_seconds($x),
-        }
-    };
-}
 
 let storage = &mut mock_dependencies().storage;
 let svm: SnapshotVectorMap<Addr, String> = SnapshotVectorMap::new(
@@ -72,32 +60,32 @@ let first = "first".to_string();
 let second = "second".to_string();
 
 // store the first item at block 1, expiring in 10 blocks (at block 11)
-svm.push(storage, &key, &first, b!(1), Some(Duration::Height(10))).unwrap();
+svm.push(storage, &key, &first, 1, Some(10)).unwrap();
 
 // store the second item at block 5, which does not expire
-svm.push(storage, &key, &second, b!(5), None).unwrap();
+svm.push(storage, &key, &second, 5, None).unwrap();
 
 // remove the second item (ID: 1) at height 15
-svm.remove(storage, &key, 1, b!(15)).unwrap();
+svm.remove(storage, &key, 1, 15).unwrap();
 
 // the vector at block 3 should contain only the first item
 assert_eq!(
-    svm.load_all(storage, &key, b!(3)).unwrap(),
+    svm.load_all(storage, &key, 3).unwrap(),
     vec![LoadedItem {
         id: 0,
         item: first.clone(),
-        expiration: Some(Expiration::AtHeight(11)),
+        expiration: Some(11),
     }]
 );
 
 // the vector at block 7 should contain both items
 assert_eq!(
-    svm.load_all(storage, &key, b!(7)).unwrap(),
+    svm.load_all(storage, &key, 7).unwrap(),
     vec![
         LoadedItem {
             id: 0,
             item: first.clone(),
-            expiration: Some(Expiration::AtHeight(11)),
+            expiration: Some(11),
         },
         LoadedItem {
             id: 1,
@@ -109,7 +97,7 @@ assert_eq!(
 
 // the vector at block 12 should contain only the first item
 assert_eq!(
-    svm.load_all(storage, &key, b!(12)).unwrap(),
+    svm.load_all(storage, &key, 12).unwrap(),
     vec![LoadedItem {
         id: 1,
         item: second.clone(),
@@ -118,8 +106,5 @@ assert_eq!(
 );
 
 // the vector at block 17 should contain nothing
-assert_eq!(
-    svm.load_all(storage, &key, b!(17)).unwrap(),
-    vec![]
-);
+assert_eq!(svm.load_all(storage, &key, 17).unwrap(), vec![]);
 ```
