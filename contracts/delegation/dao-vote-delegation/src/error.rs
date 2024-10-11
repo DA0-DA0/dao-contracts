@@ -8,9 +8,6 @@ pub enum ContractError {
     Std(#[from] StdError),
 
     #[error(transparent)]
-    Ownable(#[from] cw_ownable::OwnershipError),
-
-    #[error(transparent)]
     Overflow(#[from] OverflowError),
 
     #[error(transparent)]
@@ -21,6 +18,39 @@ pub enum ContractError {
 
     #[error("semver parsing error: {0}")]
     SemVer(String),
+
+    #[error("unauthorized")]
+    Unauthorized {},
+
+    #[error("delegate already registered")]
+    DelegateAlreadyRegistered {},
+
+    #[error("delegate not registered")]
+    DelegateNotRegistered {},
+
+    #[error("no voting power to delegate")]
+    NoVotingPower {},
+
+    #[error("cannot delegate to self")]
+    CannotDelegateToSelf {},
+
+    #[error("delegation already exists")]
+    DelegationAlreadyExists {},
+
+    #[error("delegation does not exist")]
+    DelegationDoesNotExist {},
+
+    #[error("cannot delegate more than 100% (current: {current}%)")]
+    CannotDelegateMoreThan100Percent { current: String },
+
+    #[error("invalid voting power percent")]
+    InvalidVotingPowerPercent {},
+
+    #[error("migration error: incorrect contract: expected {expected}, actual {actual}")]
+    MigrationErrorIncorrectContract { expected: String, actual: String },
+
+    #[error("migration error: invalid version: new {new}, current {current}")]
+    MigrationErrorInvalidVersion { new: String, current: String },
 }
 
 impl From<semver::Error> for ContractError {
