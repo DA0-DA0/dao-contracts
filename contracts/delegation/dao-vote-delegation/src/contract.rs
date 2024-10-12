@@ -163,7 +163,7 @@ fn execute_delegate(
     nonpayable(&info)?;
     ensure_setup(deps.as_ref())?;
 
-    if percent <= Decimal::zero() {
+    if percent <= Decimal::zero() || percent > Decimal::one() {
         return Err(ContractError::InvalidVotingPowerPercent {});
     }
 
@@ -185,12 +185,6 @@ fn execute_delegate(
         return Err(ContractError::DelegateNotRegistered {});
     }
 
-    // prevent duplicate delegation
-    let delegation_exists = DELEGATION_IDS.has(deps.storage, (&delegator, &delegate));
-    if delegation_exists {
-        return Err(ContractError::DelegationAlreadyExists {});
-    }
-
     // ensure delegator has voting power in the DAO
     let vp = get_voting_power(
         deps.as_ref(),
@@ -204,37 +198,64 @@ fn execute_delegate(
         return Err(ContractError::NoVotingPower {});
     }
 
-    // ensure not delegating more than 100%
     let current_percent_delegated = PERCENT_DELEGATED
         .may_load(deps.storage, &delegator)?
         .unwrap_or_default();
-    let new_percent_delegated = current_percent_delegated.checked_add(percent)?;
+
+    let existing_delegation_id = DELEGATION_IDS.may_load(deps.storage, (&delegator, &delegate))?;
+
+    // will be set below, differing based on whether this is a new delegation or
+    // an update to an existing one
+    let new_percent_delegated: Decimal;
+    let current_delegated_vp: Uint128;
+
+    // update an existing delegation
+    if let Some(existing_delegation_id) = existing_delegation_id {
+        let existing_delegation =
+            DELEGATIONS.load_item(deps.storage, &delegator, existing_delegation_id)?;
+        // remove existing percent and replace with new percent
+        new_percent_delegated = current_percent_delegated
+            .checked_sub(existing_delegation.percent)?
+            .checked_add(percent)?;
+
+        current_delegated_vp = DELEGATED_VP_AMOUNTS.load(deps.storage, (&delegator, &delegate))?;
+    }
+    // create a new delegation
+    else {
+        new_percent_delegated = current_percent_delegated.checked_add(percent)?;
+        current_delegated_vp = Uint128::zero();
+
+        // add new delegation
+        let delegation_id = DELEGATIONS.push(
+            deps.storage,
+            &delegator,
+            &Delegation {
+                delegate: delegate.clone(),
+                percent,
+            },
+            env.block.height,
+            // TODO: expiry??
+            None,
+        )?;
+        DELEGATION_IDS.save(deps.storage, (&delegator, &delegate), &delegation_id)?;
+    }
+
+    // ensure not delegating more than 100%
     if new_percent_delegated > Decimal::one() {
         return Err(ContractError::CannotDelegateMoreThan100Percent {
             current: current_percent_delegated
                 .checked_mul(Decimal::new(100u128.into()))?
                 .to_string(),
+            attempt: new_percent_delegated
+                .checked_mul(Decimal::new(100u128.into()))?
+                .to_string(),
         });
     }
 
-    // add new delegation
-    let delegation_id = DELEGATIONS.push(
-        deps.storage,
-        &delegator,
-        &Delegation {
-            delegate: delegate.clone(),
-            percent,
-        },
-        env.block.height,
-        // TODO: expiry??
-        None,
-    )?;
-
-    DELEGATION_IDS.save(deps.storage, (&delegator, &delegate), &delegation_id)?;
     PERCENT_DELEGATED.save(deps.storage, &delegator, &new_percent_delegated)?;
 
-    // add the delegated VP to the delegate's total delegated VP
-    let delegated_vp = calculate_delegated_vp(vp, percent);
+    // calculate the new delegated VP and add to the delegate's total
+    let new_delegated_vp = calculate_delegated_vp(vp, percent);
     // this `update` function loads the latest delegated VP, even if it was
     // updated before in this block, and then saves the new total at the current
     // block, which will be reflected in historical queries starting from the
@@ -249,11 +270,16 @@ fn execute_delegate(
         |vp| -> StdResult<Uint128> {
             Ok(vp
                 .unwrap_or_default()
-                .checked_add(delegated_vp)
+                // remove the current delegated VP from the delegate's total and
+                // replace it with the new delegated VP. if this is a new
+                // delegation, this will be zero.
+                .checked_sub(current_delegated_vp)
+                .map_err(StdError::overflow)?
+                .checked_add(new_delegated_vp)
                 .map_err(StdError::overflow)?)
         },
     )?;
-    DELEGATED_VP_AMOUNTS.save(deps.storage, (&delegator, &delegate), &delegated_vp)?;
+    DELEGATED_VP_AMOUNTS.save(deps.storage, (&delegator, &delegate), &new_delegated_vp)?;
 
     Ok(Response::new())
 }

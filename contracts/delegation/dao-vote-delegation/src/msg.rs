@@ -33,7 +33,7 @@ pub enum ExecuteMsg {
     Register {},
     /// Unregister as a delegate.
     Unregister {},
-    /// Create a delegation.
+    /// Create a delegation or update an existing one.
     Delegate {
         /// the delegate to delegate to
         delegate: String,

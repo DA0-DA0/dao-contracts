@@ -46,14 +46,11 @@ pub enum ContractError {
     #[error("cannot delegate to self")]
     CannotDelegateToSelf {},
 
-    #[error("delegation already exists")]
-    DelegationAlreadyExists {},
-
     #[error("delegation does not exist")]
     DelegationDoesNotExist {},
 
-    #[error("cannot delegate more than 100% (current: {current}%)")]
-    CannotDelegateMoreThan100Percent { current: String },
+    #[error("cannot delegate more than 100% (current: {current}%, attempt: {attempt}%)")]
+    CannotDelegateMoreThan100Percent { current: String, attempt: String },
 
     #[error("invalid voting power percent")]
     InvalidVotingPowerPercent {},
