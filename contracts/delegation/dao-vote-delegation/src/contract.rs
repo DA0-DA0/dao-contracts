@@ -1,25 +1,32 @@
-use cosmwasm_std::Order;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{
     entry_point, to_json_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
     StdError, StdResult, Uint128,
 };
+use cosmwasm_std::{Addr, Order};
 use cw2::{get_contract_version, set_contract_version};
-use cw_snapshot_vector_map::LoadedItem;
+use cw_paginate_storage::paginate_map_keys;
 use cw_storage_plus::Bound;
 use cw_utils::{maybe_addr, nonpayable};
-use dao_hooks::vote::VoteHookMsg;
+use dao_interface::state::{ProposalModule, ProposalModuleStatus};
 use dao_interface::voting::InfoResponse;
 use semver::Version;
 
-use crate::helpers::{calculate_delegated_vp, get_udvp, get_voting_power, is_delegate_registered};
+use crate::helpers::{
+    calculate_delegated_vp, ensure_setup, get_udvp, get_voting_power, is_delegate_registered,
+    unregister_delegate,
+};
+use crate::hooks::{
+    execute_membership_changed, execute_nft_stake_changed, execute_stake_changed, execute_vote_hook,
+};
 use crate::msg::{
     DelegateResponse, DelegatesResponse, DelegationsResponse, ExecuteMsg, InstantiateMsg,
     MigrateMsg, OptionalUpdate, QueryMsg,
 };
 use crate::state::{
     Config, Delegate, Delegation, CONFIG, DAO, DELEGATED_VP, DELEGATED_VP_AMOUNTS, DELEGATES,
-    DELEGATIONS, DELEGATION_IDS, PERCENT_DELEGATED, UNVOTED_DELEGATED_VP,
+    DELEGATIONS, DELEGATION_IDS, PERCENT_DELEGATED, PROPOSAL_HOOK_CALLERS,
+    VOTING_POWER_HOOK_CALLERS,
 };
 use crate::ContractError;
 
@@ -53,6 +60,13 @@ pub fn instantiate(
         },
     )?;
 
+    // sync proposal modules with no limit if not disabled. this should succeed
+    // for most DAOs as the query will not run out of gas with only a few
+    // proposal modules.
+    if !msg.no_sync_proposal_modules.unwrap_or(false) {
+        execute_sync_proposal_modules(deps, None, None)?;
+    }
+
     Ok(Response::new().add_attribute("dao", dao))
 }
 
@@ -70,18 +84,25 @@ pub fn execute(
             execute_delegate(deps, env, info, delegate, percent)
         }
         ExecuteMsg::Undelegate { delegate } => execute_undelegate(deps, env, info, delegate),
+        ExecuteMsg::UpdateVotingPowerHookCallers { add, remove } => {
+            execute_update_voting_power_hook_callers(deps, info, add, remove)
+        }
+        ExecuteMsg::SyncProposalModules { start_after, limit } => {
+            execute_sync_proposal_modules(deps, start_after, limit)
+        }
         ExecuteMsg::UpdateConfig { vp_cap_percent, .. } => {
             execute_update_config(deps, info, vp_cap_percent)
         }
-        // ExecuteMsg::StakeChangeHook(msg) => execute_stake_changed(deps, env, info, msg),
-        // ExecuteMsg::NftStakeChangeHook(msg) => execute_nft_stake_changed(deps, env, info, msg),
-        // ExecuteMsg::MemberChangedHook(msg) => execute_membership_changed(deps, env, info, msg),
+        ExecuteMsg::StakeChangeHook(msg) => execute_stake_changed(deps, env, info, msg),
+        ExecuteMsg::NftStakeChangeHook(msg) => execute_nft_stake_changed(deps, env, info, msg),
+        ExecuteMsg::MemberChangedHook(msg) => execute_membership_changed(deps, env, info, msg),
         ExecuteMsg::VoteHook(vote_hook) => execute_vote_hook(deps, env, info, vote_hook),
     }
 }
 
 fn execute_register(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     nonpayable(&info)?;
+    ensure_setup(deps.as_ref())?;
 
     let delegate = info.sender;
 
@@ -119,6 +140,7 @@ fn execute_unregister(
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
+    ensure_setup(deps.as_ref())?;
 
     let delegate = info.sender;
 
@@ -126,7 +148,7 @@ fn execute_unregister(
         return Err(ContractError::DelegateNotRegistered {});
     }
 
-    DELEGATES.remove(deps.storage, delegate, env.block.height)?;
+    unregister_delegate(deps, &delegate, env.block.height)?;
 
     Ok(Response::new())
 }
@@ -139,6 +161,7 @@ fn execute_delegate(
     percent: Decimal,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
+    ensure_setup(deps.as_ref())?;
 
     if percent <= Decimal::zero() {
         return Err(ContractError::InvalidVotingPowerPercent {});
@@ -157,6 +180,17 @@ fn execute_delegate(
         return Err(ContractError::CannotDelegateToSelf {});
     }
 
+    // ensure delegate is registered
+    if !is_delegate_registered(deps.as_ref(), &delegate, None)? {
+        return Err(ContractError::DelegateNotRegistered {});
+    }
+
+    // prevent duplicate delegation
+    let delegation_exists = DELEGATION_IDS.has(deps.storage, (&delegator, &delegate));
+    if delegation_exists {
+        return Err(ContractError::DelegationAlreadyExists {});
+    }
+
     // ensure delegator has voting power in the DAO
     let vp = get_voting_power(
         deps.as_ref(),
@@ -168,17 +202,6 @@ fn execute_delegate(
     )?;
     if vp.is_zero() {
         return Err(ContractError::NoVotingPower {});
-    }
-
-    // prevent duplicate delegation
-    let delegation_exists = DELEGATION_IDS.has(deps.storage, (&delegator, &delegate));
-    if delegation_exists {
-        return Err(ContractError::DelegationAlreadyExists {});
-    }
-
-    // ensure delegate is registered
-    if !is_delegate_registered(deps.as_ref(), &delegate, None)? {
-        return Err(ContractError::DelegateNotRegistered {});
     }
 
     // ensure not delegating more than 100%
@@ -212,6 +235,13 @@ fn execute_delegate(
 
     // add the delegated VP to the delegate's total delegated VP
     let delegated_vp = calculate_delegated_vp(vp, percent);
+    // this `update` function loads the latest delegated VP, even if it was
+    // updated before in this block, and then saves the new total at the current
+    // block, which will be reflected in historical queries starting from the
+    // NEXT block. if future delegations/undelegations/voting power changes
+    // occur in this block, they will immediately load the latest state, and
+    // update the total that will be reflected in historical queries starting
+    // from the next block.
     DELEGATED_VP.update(
         deps.storage,
         &delegate,
@@ -235,6 +265,7 @@ fn execute_undelegate(
     delegate: String,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
+    ensure_setup(deps.as_ref())?;
 
     let delegator = info.sender;
     let delegate = deps.api.addr_validate(&delegate)?;
@@ -257,6 +288,13 @@ fn execute_undelegate(
 
     // remove delegated VP from delegate's total delegated VP
     let current_delegated_vp = DELEGATED_VP_AMOUNTS.load(deps.storage, (&delegator, &delegate))?;
+    // this `update` function loads the latest delegated VP, even if it was
+    // updated before in this block, and then saves the new total at the current
+    // block, which will be reflected in historical queries starting from the
+    // NEXT block. if future delegations/undelegations/voting power changes
+    // occur in this block, they will immediately load the latest state, and
+    // update the total that will be reflected in historical queries starting
+    // from the next block.
     DELEGATED_VP.update(
         deps.storage,
         &delegate,
@@ -272,6 +310,64 @@ fn execute_undelegate(
     DELEGATED_VP_AMOUNTS.remove(deps.storage, (&delegator, &delegate));
 
     Ok(Response::new())
+}
+
+fn execute_update_voting_power_hook_callers(
+    deps: DepsMut,
+    info: MessageInfo,
+    add: Option<Vec<String>>,
+    remove: Option<Vec<String>>,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
+    // only the DAO can update the voting power hook callers
+    let dao = DAO.load(deps.storage)?;
+    if info.sender != dao {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    if let Some(add) = add {
+        for addr in add {
+            VOTING_POWER_HOOK_CALLERS.save(deps.storage, deps.api.addr_validate(&addr)?, &())?;
+        }
+    }
+
+    if let Some(remove) = remove {
+        for addr in remove {
+            VOTING_POWER_HOOK_CALLERS.remove(deps.storage, deps.api.addr_validate(&addr)?);
+        }
+    }
+
+    Ok(Response::new().add_attribute("action", "update_voting_power_hook_callers"))
+}
+
+fn execute_sync_proposal_modules(
+    deps: DepsMut,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> Result<Response, ContractError> {
+    let dao = DAO.load(deps.storage)?;
+    let proposal_modules: Vec<ProposalModule> = deps.querier.query_wasm_smart(
+        dao,
+        &dao_interface::msg::QueryMsg::ProposalModules { start_after, limit },
+    )?;
+
+    let mut enabled = 0;
+    let mut disabled = 0;
+    for proposal_module in proposal_modules {
+        if proposal_module.status == ProposalModuleStatus::Enabled {
+            enabled += 1;
+            PROPOSAL_HOOK_CALLERS.save(deps.storage, proposal_module.address, &())?;
+        } else {
+            disabled += 1;
+            PROPOSAL_HOOK_CALLERS.remove(deps.storage, proposal_module.address);
+        }
+    }
+
+    Ok(Response::new()
+        .add_attribute("action", "sync_proposal_modules")
+        .add_attribute("enabled", enabled.to_string())
+        .add_attribute("disabled", disabled.to_string()))
 }
 
 fn execute_update_config(
@@ -301,64 +397,6 @@ fn execute_update_config(
     Ok(Response::new())
 }
 
-pub fn execute_vote_hook(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    vote_hook: VoteHookMsg,
-) -> Result<Response, ContractError> {
-    let proposal_module = info.sender;
-
-    // TODO: validate proposal module
-
-    match vote_hook {
-        VoteHookMsg::NewVote {
-            proposal_id,
-            voter,
-            power,
-            height,
-            is_first_vote,
-            ..
-        } => {
-            // if first vote, update the unvoted delegated VP for their
-            // delegates by subtracting. if not first vote, this has already
-            // been done.
-            if is_first_vote {
-                let delegator = deps.api.addr_validate(&voter)?;
-                let delegates = DELEGATIONS.load_all(deps.storage, &delegator, env.block.height)?;
-                for LoadedItem {
-                    item: Delegation { delegate, percent },
-                    ..
-                } in delegates
-                {
-                    let udvp = get_udvp(
-                        deps.as_ref(),
-                        &delegate,
-                        &proposal_module,
-                        proposal_id,
-                        height,
-                    )?;
-
-                    let delegated_vp = calculate_delegated_vp(power, percent);
-
-                    // remove the delegator's delegated VP from the delegate's
-                    // unvoted delegated VP for this proposal since this
-                    // delegator just voted.
-                    let new_udvp = udvp.checked_sub(delegated_vp)?;
-
-                    UNVOTED_DELEGATED_VP.save(
-                        deps.storage,
-                        (&delegate, &proposal_module, proposal_id),
-                        &new_udvp,
-                    )?;
-                }
-            }
-        }
-    }
-
-    Ok(Response::new().add_attribute("action", "vote_hook"))
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -386,6 +424,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             proposal_id,
             height,
         )?)?),
+        QueryMsg::ProposalModules { start_after, limit } => Ok(to_json_binary(
+            &query_proposal_modules(deps, start_after, limit)?,
+        )?),
+        QueryMsg::VotingPowerHookCallers { start_after, limit } => Ok(to_json_binary(
+            &query_voting_power_hook_callers(deps, start_after, limit)?,
+        )?),
     }
 }
 
@@ -457,6 +501,38 @@ fn query_unvoted_delegated_vp(
     let proposal_module = deps.api.addr_validate(&proposal_module)?;
 
     get_udvp(deps, &delegate, &proposal_module, proposal_id, height)
+}
+
+fn query_proposal_modules(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<Vec<Addr>> {
+    paginate_map_keys(
+        deps,
+        &PROPOSAL_HOOK_CALLERS,
+        start_after
+            .map(|s| deps.api.addr_validate(&s))
+            .transpose()?,
+        limit,
+        Order::Ascending,
+    )
+}
+
+fn query_voting_power_hook_callers(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<Vec<Addr>> {
+    paginate_map_keys(
+        deps,
+        &VOTING_POWER_HOOK_CALLERS,
+        start_after
+            .map(|s| deps.api.addr_validate(&s))
+            .transpose()?,
+        limit,
+        Order::Ascending,
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

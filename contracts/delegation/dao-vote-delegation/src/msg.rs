@@ -10,6 +10,14 @@ use crate::state::Delegation;
 pub struct InstantiateMsg {
     /// The DAO. If not provided, the instantiator is used.
     pub dao: Option<String>,
+    /// The authorized voting power changed hook callers.
+    pub vp_hook_callers: Option<Vec<String>>,
+    /// Whether or not to sync proposal modules initially. If there are too
+    /// many, the instantiation will run out of gas, so this should be disabled
+    /// and `SyncProposalModules` called manually.
+    ///
+    /// Defaults to false.
+    pub no_sync_proposal_modules: Option<bool>,
     /// the maximum percent of voting power that a single delegate can wield.
     /// they can be delegated any amount of voting power—this cap is only
     /// applied when casting votes.
@@ -36,6 +44,22 @@ pub enum ExecuteMsg {
     Undelegate {
         /// the delegate to undelegate from
         delegate: String,
+    },
+    /// Update the authorized voting power changed hook callers.
+    UpdateVotingPowerHookCallers {
+        /// the addresses to add.
+        add: Option<Vec<String>>,
+        /// the addresses to remove.
+        remove: Option<Vec<String>>,
+    },
+    /// Sync the active proposal modules from the DAO. Can be called by anyone.
+    SyncProposalModules {
+        /// the proposal module to start after, if any. passed through to the
+        /// DAO proposal modules query.
+        start_after: Option<String>,
+        /// the maximum number of proposal modules to return. passed through to
+        /// the DAO proposal modules query.
+        limit: Option<u32>,
     },
     /// Updates the configuration of the delegation system.
     UpdateConfig {
@@ -92,6 +116,18 @@ pub enum QueryMsg {
         proposal_module: String,
         proposal_id: u64,
         height: u64,
+    },
+    /// Returns the proposal modules synced from the DAO.
+    #[returns(Vec<Addr>)]
+    ProposalModules {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    /// Returns the voting power hook callers.
+    #[returns(Vec<Addr>)]
+    VotingPowerHookCallers {
+        start_after: Option<String>,
+        limit: Option<u32>,
     },
 }
 

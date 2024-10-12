@@ -3,6 +3,7 @@
 pub mod contract;
 mod error;
 mod helpers;
+mod hooks;
 pub mod msg;
 pub mod state;
 

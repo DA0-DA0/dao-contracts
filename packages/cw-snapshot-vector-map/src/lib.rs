@@ -145,7 +145,9 @@ where
 
     /// Loads paged items at the given block height that are not expired. This
     /// takes 1 block to reflect updates made earlier in the same block, due to
-    /// how [`SnapshotMap`] is implemented.
+    /// how [`SnapshotMap`] is implemented. When accessing historical data, you
+    /// probably want to use this function. Use [`Self::load_latest`] to access
+    /// the latest updates immediately.
     pub fn load(
         &self,
         store: &dyn Storage,
@@ -191,6 +193,57 @@ where
         height: u64,
     ) -> StdResult<Vec<LoadedItem<V>>> {
         self.load(store, k, height, None, None)
+    }
+
+    /// Loads paged items at the latest block height that are not expired. This
+    /// reflects updates immediately, including those made earlier in the same
+    /// block, in contrast to [`Self::load`]. When you need to access data
+    /// potentially updated in the current block, use this function.
+    ///
+    /// **NOTE: The caller is responsible for ensuring the current height is
+    /// correct, as it is used for checking expiration.**
+    pub fn load_latest(
+        &self,
+        store: &dyn Storage,
+        k: &K,
+        current_height: u64,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> StdResult<Vec<LoadedItem<V>>> {
+        let offset = offset.unwrap_or_default() as usize;
+        let limit = limit.unwrap_or(u64::MAX) as usize;
+
+        let active_ids = self.active.may_load(store, k.clone())?.unwrap_or_default();
+
+        // load paged items, skipping expired ones
+        let items = active_ids
+            .iter()
+            .filter(|(_, expiration)| expiration.map_or(true, |exp| exp > current_height))
+            .skip(offset)
+            .take(limit)
+            .map(|(id, expiration)| -> StdResult<LoadedItem<V>> {
+                let item = self.load_item(store, k, *id)?;
+                Ok(LoadedItem {
+                    id: *id,
+                    item,
+                    expiration: *expiration,
+                })
+            })
+            .collect::<StdResult<Vec<_>>>()?;
+
+        Ok(items)
+    }
+
+    /// Loads all items at the given block height that are not expired. This
+    /// takes 1 block to reflect updates made earlier in the same block, due to
+    /// how [`SnapshotMap`] is implemented.
+    pub fn load_all_latest(
+        &self,
+        store: &dyn Storage,
+        k: &K,
+        current_height: u64,
+    ) -> StdResult<Vec<LoadedItem<V>>> {
+        self.load_latest(store, k, current_height, None, None)
     }
 
     /// Loads an item from the vector by ID.

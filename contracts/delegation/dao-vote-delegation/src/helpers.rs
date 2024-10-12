@@ -1,8 +1,18 @@
-use cosmwasm_std::{Addr, Decimal, Deps, StdResult, Uint128};
+use cosmwasm_std::{Addr, Decimal, Deps, DepsMut, StdResult, Uint128};
 
 use dao_interface::voting;
 
-use crate::state::{DAO, DELEGATED_VP, DELEGATES, UNVOTED_DELEGATED_VP};
+use crate::{
+    state::{
+        DAO, DELEGATED_VP, DELEGATES, PROPOSAL_HOOK_CALLERS, UNVOTED_DELEGATED_VP,
+        VOTING_POWER_HOOK_CALLERS,
+    },
+    ContractError,
+};
+
+pub fn unregister_delegate(deps: DepsMut, delegate: &Addr, height: u64) -> StdResult<()> {
+    DELEGATES.remove(deps.storage, delegate.clone(), height)
+}
 
 pub fn is_delegate_registered(deps: Deps, delegate: &Addr, height: Option<u64>) -> StdResult<bool> {
     let option = if let Some(height) = height {
@@ -28,9 +38,8 @@ pub fn get_voting_power(deps: Deps, addr: &Addr, height: u64) -> StdResult<Uint1
     Ok(voting_power.power)
 }
 
-// TODO: precision factor???
 pub fn calculate_delegated_vp(vp: Uint128, percent: Decimal) -> Uint128 {
-    if percent.is_zero() {
+    if percent.is_zero() || vp.is_zero() {
         return Uint128::zero();
     }
 
@@ -60,4 +69,15 @@ pub fn get_udvp(
             .may_load_at_height(deps.storage, &delegate, height)?
             .unwrap_or_default()),
     }
+}
+
+/// Ensures the delegation module is setup correctly.
+pub fn ensure_setup(deps: Deps) -> Result<(), ContractError> {
+    if VOTING_POWER_HOOK_CALLERS.is_empty(deps.storage)
+        || PROPOSAL_HOOK_CALLERS.is_empty(deps.storage)
+    {
+        return Err(ContractError::DelegationModuleNotSetup {});
+    }
+
+    Ok(())
 }

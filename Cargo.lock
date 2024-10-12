@@ -2356,6 +2356,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-controllers 1.1.2",
  "cw-multi-test",
+ "cw-paginate-storage 2.5.0",
  "cw-snapshot-vector-map",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",

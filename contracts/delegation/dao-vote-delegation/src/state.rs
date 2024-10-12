@@ -9,6 +9,14 @@ pub const CONFIG: Item<Config> = Item::new("config");
 /// the DAO this delegation system is connected to.
 pub const DAO: Item<Addr> = Item::new("dao");
 
+/// the active proposal modules loaded from the DAO that can execute
+/// proposal-related hooks.
+pub const PROPOSAL_HOOK_CALLERS: Map<Addr, ()> = Map::new("dpm");
+
+/// the contracts that can execute the voting power change hooks. these should
+/// be DAO voting modules or their associated staking contracts.
+pub const VOTING_POWER_HOOK_CALLERS: Map<Addr, ()> = Map::new("vphc");
+
 /// the delegates.
 pub const DELEGATES: SnapshotMap<Addr, Delegate> = SnapshotMap::new(
     "delegates",
@@ -45,7 +53,7 @@ pub const DELEGATIONS: SnapshotVectorMap<Addr, Delegation> = SnapshotVectorMap::
 pub const DELEGATION_IDS: Map<(&Addr, &Addr), u64> = Map::new("dids");
 
 /// map (delegator, delegate) -> calculated absolute delegated VP.
-pub const DELEGATED_VP_AMOUNTS: Map<(&Addr, &Addr), Uint128> = Map::new("dvp_amounts");
+pub const DELEGATED_VP_AMOUNTS: Map<(&Addr, &Addr), Uint128> = Map::new("dvpa");
 
 /// map delegator -> percent delegated to all delegates.
 pub const PERCENT_DELEGATED: Map<&Addr, Decimal> = Map::new("pd");
@@ -56,6 +64,7 @@ pub struct Config {
     /// they can be delegated any amount of voting power—this cap is only
     /// applied when casting votes.
     pub vp_cap_percent: Option<Decimal>,
+    // TODO: expiry?? wormhole????
     // /// the duration a delegation is valid for, after which it must be renewed
     // /// by the delegator.
     // pub delegation_validity: Option<Duration>,

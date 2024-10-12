@@ -19,8 +19,14 @@ pub enum ContractError {
     #[error("semver parsing error: {0}")]
     SemVer(String),
 
+    #[error("delegation module not setup. ensure voting power hook callers are registered and proposal modules are synced.")]
+    DelegationModuleNotSetup {},
+
     #[error("unauthorized")]
     Unauthorized {},
+
+    #[error("unauthorized hook caller")]
+    UnauthorizedHookCaller {},
 
     #[error("delegate already registered")]
     DelegateAlreadyRegistered {},
