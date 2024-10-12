@@ -503,8 +503,14 @@ pub fn execute_vote(
         return Err(ContractError::NotRegistered {});
     }
 
+    let mut is_first_vote = true;
+
     BALLOTS.update(deps.storage, (proposal_id, &sender), |bal| match bal {
         Some(current_ballot) => {
+            // If a ballot exists, this is not the first time the voter has
+            // voted on this proposal.
+            is_first_vote = false;
+
             if prop.allow_revoting {
                 if current_ballot.vote == vote {
                     // Don't allow casting the same vote more than
@@ -557,6 +563,9 @@ pub fn execute_vote(
         proposal_id,
         sender.to_string(),
         vote.to_string(),
+        vote_power,
+        prop.start_height,
+        is_first_vote,
     )?;
 
     Ok(Response::default()

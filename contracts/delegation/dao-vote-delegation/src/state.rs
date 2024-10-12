@@ -17,8 +17,9 @@ pub const DELEGATES: SnapshotMap<Addr, Delegate> = SnapshotMap::new(
     Strategy::EveryBlock,
 );
 
-/// the VP delegated to a delegate that has not yet been used in votes cast by
-/// delegators in a specific proposal (module, ID).
+/// map (delegate, proposal_module, proposal_id) -> the VP delegated to the
+/// delegate that has not yet been used in votes cast by delegators in a
+/// specific proposal.
 pub const UNVOTED_DELEGATED_VP: Map<(&Addr, &Addr, u64), Uint128> = Map::new("udvp");
 
 /// the VP delegated to a delegate by height.

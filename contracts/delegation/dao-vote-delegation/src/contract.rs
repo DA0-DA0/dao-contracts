@@ -1,16 +1,21 @@
+use cosmwasm_std::Order;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{
     entry_point, to_json_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
     StdError, StdResult, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version};
-use cw_utils::nonpayable;
+use cw_snapshot_vector_map::LoadedItem;
+use cw_storage_plus::Bound;
+use cw_utils::{maybe_addr, nonpayable};
+use dao_hooks::vote::VoteHookMsg;
 use dao_interface::voting::InfoResponse;
 use semver::Version;
 
-use crate::helpers::{calculate_delegated_vp, get_voting_power, is_delegate_registered};
+use crate::helpers::{calculate_delegated_vp, get_udvp, get_voting_power, is_delegate_registered};
 use crate::msg::{
-    DelegationsResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, OptionalUpdate, QueryMsg,
+    DelegateResponse, DelegatesResponse, DelegationsResponse, ExecuteMsg, InstantiateMsg,
+    MigrateMsg, OptionalUpdate, QueryMsg,
 };
 use crate::state::{
     Config, Delegate, Delegation, CONFIG, DAO, DELEGATED_VP, DELEGATED_VP_AMOUNTS, DELEGATES,
@@ -68,9 +73,10 @@ pub fn execute(
         ExecuteMsg::UpdateConfig { vp_cap_percent, .. } => {
             execute_update_config(deps, info, vp_cap_percent)
         }
-        ExecuteMsg::StakeChangeHook(msg) => execute_stake_changed(deps, env, info, msg),
-        ExecuteMsg::NftStakeChangeHook(msg) => execute_nft_stake_changed(deps, env, info, msg),
-        ExecuteMsg::MemberChangedHook(msg) => execute_membership_changed(deps, env, info, msg),
+        // ExecuteMsg::StakeChangeHook(msg) => execute_stake_changed(deps, env, info, msg),
+        // ExecuteMsg::NftStakeChangeHook(msg) => execute_nft_stake_changed(deps, env, info, msg),
+        // ExecuteMsg::MemberChangedHook(msg) => execute_membership_changed(deps, env, info, msg),
+        ExecuteMsg::VoteHook(vote_hook) => execute_vote_hook(deps, env, info, vote_hook),
     }
 }
 
@@ -79,14 +85,27 @@ fn execute_register(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respon
 
     let delegate = info.sender;
 
-    if is_delegate_registered(deps.as_ref(), &delegate, env.block.height)? {
+    if is_delegate_registered(deps.as_ref(), &delegate, None)? {
         return Err(ContractError::DelegateAlreadyRegistered {});
     }
 
     // ensure delegate has voting power in the DAO
-    let vp = get_voting_power(deps.as_ref(), &delegate, None)?;
+    let vp = get_voting_power(
+        deps.as_ref(),
+        &delegate,
+        // use next block height since voting power takes effect at the start of
+        // the next block. if the delegate changed their voting power in the
+        // current block, we need to use the new value.
+        env.block.height + 1,
+    )?;
     if vp.is_zero() {
         return Err(ContractError::NoVotingPower {});
+    }
+
+    // ensure delegate has no delegations
+    let has_delegations = !DELEGATION_IDS.prefix(&delegate).is_empty(deps.storage);
+    if has_delegations {
+        return Err(ContractError::UndelegateBeforeRegistering {});
     }
 
     DELEGATES.save(deps.storage, delegate, &Delegate {}, env.block.height)?;
@@ -103,7 +122,7 @@ fn execute_unregister(
 
     let delegate = info.sender;
 
-    if !is_delegate_registered(deps.as_ref(), &delegate, env.block.height)? {
+    if !is_delegate_registered(deps.as_ref(), &delegate, None)? {
         return Err(ContractError::DelegateNotRegistered {});
     }
 
@@ -127,6 +146,11 @@ fn execute_delegate(
 
     let delegator = info.sender;
 
+    // delegates cannot delegate to others
+    if is_delegate_registered(deps.as_ref(), &delegator, None)? {
+        return Err(ContractError::DelegatesCannotDelegate {});
+    }
+
     // prevent self delegation
     let delegate = deps.api.addr_validate(&delegate)?;
     if delegate == delegator {
@@ -134,7 +158,14 @@ fn execute_delegate(
     }
 
     // ensure delegator has voting power in the DAO
-    let vp = get_voting_power(deps.as_ref(), &delegator, None)?;
+    let vp = get_voting_power(
+        deps.as_ref(),
+        &delegator,
+        // use next block height since voting power takes effect at the start of
+        // the next block. if the delegator changed their voting power in the
+        // current block, we need to use the new value.
+        env.block.height + 1,
+    )?;
     if vp.is_zero() {
         return Err(ContractError::NoVotingPower {});
     }
@@ -146,7 +177,7 @@ fn execute_delegate(
     }
 
     // ensure delegate is registered
-    if !is_delegate_registered(deps.as_ref(), &delegate, env.block.height)? {
+    if !is_delegate_registered(deps.as_ref(), &delegate, None)? {
         return Err(ContractError::DelegateNotRegistered {});
     }
 
@@ -270,10 +301,71 @@ fn execute_update_config(
     Ok(Response::new())
 }
 
+pub fn execute_vote_hook(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    vote_hook: VoteHookMsg,
+) -> Result<Response, ContractError> {
+    let proposal_module = info.sender;
+
+    // TODO: validate proposal module
+
+    match vote_hook {
+        VoteHookMsg::NewVote {
+            proposal_id,
+            voter,
+            power,
+            height,
+            is_first_vote,
+            ..
+        } => {
+            // if first vote, update the unvoted delegated VP for their
+            // delegates by subtracting. if not first vote, this has already
+            // been done.
+            if is_first_vote {
+                let delegator = deps.api.addr_validate(&voter)?;
+                let delegates = DELEGATIONS.load_all(deps.storage, &delegator, env.block.height)?;
+                for LoadedItem {
+                    item: Delegation { delegate, percent },
+                    ..
+                } in delegates
+                {
+                    let udvp = get_udvp(
+                        deps.as_ref(),
+                        &delegate,
+                        &proposal_module,
+                        proposal_id,
+                        height,
+                    )?;
+
+                    let delegated_vp = calculate_delegated_vp(power, percent);
+
+                    // remove the delegator's delegated VP from the delegate's
+                    // unvoted delegated VP for this proposal since this
+                    // delegator just voted.
+                    let new_udvp = udvp.checked_sub(delegated_vp)?;
+
+                    UNVOTED_DELEGATED_VP.save(
+                        deps.storage,
+                        (&delegate, &proposal_module, proposal_id),
+                        &new_udvp,
+                    )?;
+                }
+            }
+        }
+    }
+
+    Ok(Response::new().add_attribute("action", "vote_hook"))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Info {} => Ok(to_json_binary(&query_info(deps)?)?),
+        QueryMsg::Delegates { start_after, limit } => {
+            Ok(to_json_binary(&query_delegates(deps, start_after, limit)?)?)
+        }
         QueryMsg::Delegations {
             delegator,
             height,
@@ -300,6 +392,31 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 fn query_info(deps: Deps) -> StdResult<InfoResponse> {
     let info = get_contract_version(deps.storage)?;
     Ok(InfoResponse { info })
+}
+
+fn query_delegates(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<DelegatesResponse> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+
+    let start = maybe_addr(deps.api, start_after)?.map(Bound::exclusive);
+
+    let delegates = DELEGATES
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|delegate| {
+            delegate.map(|(delegate, _)| -> StdResult<DelegateResponse> {
+                let power = DELEGATED_VP
+                    .may_load(deps.storage, &delegate)?
+                    .unwrap_or_default();
+                Ok(DelegateResponse { delegate, power })
+            })?
+        })
+        .collect::<StdResult<_>>()?;
+
+    Ok(DelegatesResponse { delegates })
 }
 
 fn query_delegations(
@@ -333,26 +450,13 @@ fn query_unvoted_delegated_vp(
     let delegate = deps.api.addr_validate(&delegate)?;
 
     // if delegate not registered, they have no unvoted delegated VP.
-    if !is_delegate_registered(deps, &delegate, height)? {
+    if !is_delegate_registered(deps, &delegate, Some(height))? {
         return Ok(Uint128::zero());
     }
 
     let proposal_module = deps.api.addr_validate(&proposal_module)?;
 
-    // if no unvoted delegated VP exists for the proposal, use the delegate's
-    // total delegated VP at that height. UNVOTED_DELEGATED_VP gets set when the
-    // delegate or one of their delegators casts a vote. if empty, none of them
-    // have voted yet.
-    let udvp = match UNVOTED_DELEGATED_VP
-        .may_load(deps.storage, (&delegate, &proposal_module, proposal_id))?
-    {
-        Some(vp) => vp,
-        None => DELEGATED_VP
-            .may_load_at_height(deps.storage, &delegate, height)?
-            .unwrap_or_default(),
-    };
-
-    Ok(udvp)
+    get_udvp(deps, &delegate, &proposal_module, proposal_id, height)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

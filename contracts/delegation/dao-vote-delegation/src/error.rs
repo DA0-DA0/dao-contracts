@@ -28,6 +28,12 @@ pub enum ContractError {
     #[error("delegate not registered")]
     DelegateNotRegistered {},
 
+    #[error("delegates cannot delegate to others")]
+    DelegatesCannotDelegate {},
+
+    #[error("undelegate before registering as a delegate")]
+    UndelegateBeforeRegistering {},
+
     #[error("no voting power to delegate")]
     NoVotingPower {},
 

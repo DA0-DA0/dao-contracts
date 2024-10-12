@@ -143,7 +143,9 @@ where
         self.load_item(store, k, id)
     }
 
-    /// Loads paged items at the given block that are not expired.
+    /// Loads paged items at the given block height that are not expired. This
+    /// takes 1 block to reflect updates made earlier in the same block, due to
+    /// how [`SnapshotMap`] is implemented.
     pub fn load(
         &self,
         store: &dyn Storage,
@@ -179,7 +181,9 @@ where
         Ok(items)
     }
 
-    /// Loads all items at the given block height that are not expired.
+    /// Loads all items at the given block height that are not expired. This
+    /// takes 1 block to reflect updates made earlier in the same block, due to
+    /// how [`SnapshotMap`] is implemented.
     pub fn load_all(
         &self,
         store: &dyn Storage,

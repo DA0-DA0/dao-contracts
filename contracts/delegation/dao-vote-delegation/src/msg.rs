@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Decimal, Uint128};
+use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw4::MemberChangedHookMsg;
-use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg};
+use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg, vote::VoteHookMsg};
 use dao_interface::voting::InfoResponse;
 
 use crate::state::Delegation;
@@ -54,6 +54,8 @@ pub enum ExecuteMsg {
     NftStakeChangeHook(NftStakeChangedHookMsg),
     /// Called when tokens are staked or unstaked.
     StakeChangeHook(StakeChangedHookMsg),
+    /// Called when a vote is cast.
+    VoteHook(VoteHookMsg),
 }
 
 #[cw_serde]
@@ -68,6 +70,11 @@ pub enum QueryMsg {
     /// Returns contract version info
     #[returns(InfoResponse)]
     Info {},
+    #[returns(DelegatesResponse)]
+    Delegates {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
     /// Returns the delegations by a delegator, optionally at a given height.
     /// Uses the current block height if not provided.
     #[returns(DelegationsResponse)]
@@ -86,6 +93,20 @@ pub enum QueryMsg {
         proposal_id: u64,
         height: u64,
     },
+}
+
+#[cw_serde]
+pub struct DelegatesResponse {
+    /// The delegates.
+    pub delegates: Vec<DelegateResponse>,
+}
+
+#[cw_serde]
+pub struct DelegateResponse {
+    /// The delegate.
+    pub delegate: Addr,
+    /// The total voting power delegated to the delegate.
+    pub power: Uint128,
 }
 
 #[cw_serde]

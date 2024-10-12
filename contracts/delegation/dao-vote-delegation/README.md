@@ -11,8 +11,8 @@ distributor, to offer a comprehensive delegation system for DAOs that supports
 the following features:
 
 - Fractional delegation of voting power on a per-proposal-module basis.
-- Overridable delegate votes that can be overridden on a per-proposal basis by
-  the delegator
+- Delegate votes that can be overridden on a per-proposal basis by each
+  delegator.
 - Delegate reward commission.
 
 ## Instantiation and Setup
