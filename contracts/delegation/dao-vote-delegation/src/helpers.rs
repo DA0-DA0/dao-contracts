@@ -63,10 +63,10 @@ pub fn get_udvp(
     // total delegated VP at that height. UNVOTED_DELEGATED_VP gets set when the
     // delegate or one of their delegators casts a vote. if empty, none of them
     // have voted yet.
-    match UNVOTED_DELEGATED_VP.may_load(deps.storage, (&delegate, &proposal_module, proposal_id))? {
+    match UNVOTED_DELEGATED_VP.may_load(deps.storage, (delegate, proposal_module, proposal_id))? {
         Some(vp) => Ok(vp),
         None => Ok(DELEGATED_VP
-            .may_load_at_height(deps.storage, &delegate, height)?
+            .may_load_at_height(deps.storage, delegate, height)?
             .unwrap_or_default()),
     }
 }

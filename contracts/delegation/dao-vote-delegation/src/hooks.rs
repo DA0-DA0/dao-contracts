@@ -144,12 +144,11 @@ pub(crate) fn handle_voting_power_changed_hook(
                 &delegate,
                 env.block.height,
                 |vp| -> StdResult<Uint128> {
-                    Ok(vp
-                        .unwrap_or_default()
+                    vp.unwrap_or_default()
                         .checked_sub(current_delegated_vp)
                         .map_err(StdError::overflow)?
                         .checked_add(new_delegated_vp)
-                        .map_err(StdError::overflow)?)
+                        .map_err(StdError::overflow)
                 },
             )?;
             DELEGATED_VP_AMOUNTS.save(deps.storage, (&delegator, &delegate), &new_delegated_vp)?;

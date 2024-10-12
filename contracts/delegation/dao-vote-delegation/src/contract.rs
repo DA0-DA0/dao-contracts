@@ -268,15 +268,14 @@ fn execute_delegate(
         &delegate,
         env.block.height,
         |vp| -> StdResult<Uint128> {
-            Ok(vp
-                .unwrap_or_default()
+            vp.unwrap_or_default()
                 // remove the current delegated VP from the delegate's total and
                 // replace it with the new delegated VP. if this is a new
                 // delegation, this will be zero.
                 .checked_sub(current_delegated_vp)
                 .map_err(StdError::overflow)?
                 .checked_add(new_delegated_vp)
-                .map_err(StdError::overflow)?)
+                .map_err(StdError::overflow)
         },
     )?;
     DELEGATED_VP_AMOUNTS.save(deps.storage, (&delegator, &delegate), &new_delegated_vp)?;
@@ -326,11 +325,11 @@ fn execute_undelegate(
         &delegate,
         env.block.height,
         |vp| -> StdResult<Uint128> {
-            Ok(vp
+            vp
                 // must exist if delegation was added in the past
                 .ok_or(StdError::not_found("delegate's total delegated VP"))?
                 .checked_sub(current_delegated_vp)
-                .map_err(StdError::overflow)?)
+                .map_err(StdError::overflow)
         },
     )?;
     DELEGATED_VP_AMOUNTS.remove(deps.storage, (&delegator, &delegate));
