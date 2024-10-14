@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Deps, DepsMut, StdResult, Uint128};
+use cosmwasm_std::{Addr, Deps, DepsMut, Env, StdResult, Storage, Uint128};
 
 use dao_voting::voting;
 
@@ -49,7 +49,7 @@ pub fn get_udvp(
     match UNVOTED_DELEGATED_VP.may_load(deps.storage, (delegate, proposal_module, proposal_id))? {
         Some(vp) => Ok(vp),
         None => Ok(DELEGATED_VP
-            .may_load_at_height(deps.storage, delegate, height)?
+            .load(deps.storage, delegate.clone(), height)?
             .unwrap_or_default()),
     }
 }
@@ -61,6 +61,69 @@ pub fn ensure_setup(deps: Deps) -> Result<(), ContractError> {
     {
         return Err(ContractError::DelegationModuleNotSetup {});
     }
+
+    Ok(())
+}
+
+/// Add delegated VP from a delegator to a delegate, potentially with a given
+/// expiration.
+pub fn add_delegated_vp(
+    storage: &mut dyn Storage,
+    env: &Env,
+    delegate: &Addr,
+    vp: Uint128,
+    expire_in: Option<u64>,
+) -> StdResult<()> {
+    DELEGATED_VP.increment(
+        storage,
+        delegate.clone(),
+        // update at next block height to match 1-block delay behavior of voting
+        // power queries and delegation changes. this matches the behavior of
+        // creating a new delegation, which also starts on the following block.
+        // if future delegations/undelegations/voting power changes occur in
+        // this block, they will also load the state of the next block and
+        // update the total that will be reflected in historical queries
+        // starting from the next block.
+        env.block.height + 1,
+        vp,
+    )?;
+
+    // if expiration exists, decrement in the future at expiration height
+    if let Some(expire_in) = expire_in {
+        DELEGATED_VP.decrement(storage, delegate.clone(), env.block.height + expire_in, vp)?;
+    }
+
+    Ok(())
+}
+
+/// Remove delegated VP from a delegate, potentially with a given expiration.
+pub fn remove_delegated_vp(
+    storage: &mut dyn Storage,
+    env: &Env,
+    delegate: &Addr,
+    vp: Uint128,
+    original_expiration: Option<u64>,
+) -> StdResult<()> {
+    // if expiration was used when creating this delegation, first undo previous
+    // decrement at end of expiration period. do this before undoing previous
+    // increment to prevent underflow.
+    if let Some(expiration) = original_expiration {
+        DELEGATED_VP.increment(storage, delegate.clone(), expiration, vp)?;
+    }
+
+    DELEGATED_VP.decrement(
+        storage,
+        delegate.clone(),
+        // update at next block height to match 1-block delay behavior of voting
+        // power queries and delegation changes. this matches the behavior of
+        // creating a new delegation, which also starts on the following block.
+        // if future delegations/undelegations/voting power changes occur in
+        // this block, they will also load the state of the next block and
+        // update the total that will be reflected in historical queries
+        // starting from the next block.
+        env.block.height + 1,
+        vp,
+    )?;
 
     Ok(())
 }

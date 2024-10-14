@@ -14,7 +14,7 @@ use dao_hooks::proposal::{
 use dao_hooks::vote::new_vote_hooks;
 use dao_interface::voting::IsActiveResponse;
 use dao_voting::delegation::{
-    self, calculate_delegated_vp, Delegation, UnvotedDelegatedVotingPowerResponse,
+    self, calculate_delegated_vp, DelegationResponse, UnvotedDelegatedVotingPowerResponse,
 };
 use dao_voting::pre_propose::{PreProposeInfo, ProposalCreationPolicy};
 use dao_voting::proposal::{
@@ -583,7 +583,17 @@ pub fn execute_vote(
                 )?
                 .delegations;
 
-            for Delegation { delegate, percent } in delegations {
+            for DelegationResponse {
+                delegate,
+                percent,
+                active,
+            } in delegations
+            {
+                // if delegation is not active, skip.
+                if !active {
+                    continue;
+                }
+
                 // if delegate voted already, untally the VP the delegator
                 // delegated to them since the delegate's vote is being
                 // overridden.

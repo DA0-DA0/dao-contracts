@@ -25,9 +25,9 @@ pub struct InstantiateMsg {
     /// they can be delegated any amount of voting power—this cap is only
     /// applied when casting votes.
     pub vp_cap_percent: Option<Decimal>,
-    // /// the duration a delegation is valid for, after which it must be renewed
-    // /// by the delegator.
-    // pub delegation_validity: Option<Duration>,
+    /// the number of blocks a delegation is valid for, after which it must be
+    /// renewed by the delegator.
+    pub delegation_validity_blocks: Option<u64>,
 }
 
 #[cw_serde]
@@ -70,9 +70,9 @@ pub enum ExecuteMsg {
         /// wield. they can be delegated any amount of voting power—this cap is
         /// only applied when casting votes.
         vp_cap_percent: OptionalUpdate<Decimal>,
-        // /// the duration a delegation is valid for, after which it must be
-        // /// renewed by the delegator.
-        // delegation_validity: Option<Duration>,
+        /// the number of blocks a delegation is valid for, after which it must
+        /// be renewed by the delegator.
+        delegation_validity_blocks: OptionalUpdate<u64>,
     },
     /// Called when a member is added or removed
     /// to a cw4-groups or cw721-roles contract.

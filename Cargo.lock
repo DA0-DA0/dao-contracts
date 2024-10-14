@@ -2360,6 +2360,7 @@ dependencies = [
  "cw-snapshot-vector-map",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
+ "cw-wormhole",
  "cw2 1.1.2",
  "cw20 1.1.2",
  "cw20-base 1.1.2",

@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{
     entry_point, to_json_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
-    StdError, StdResult, Uint128,
+    StdResult, Uint128,
 };
 use cosmwasm_std::{Addr, Order};
 use cw2::{get_contract_version, set_contract_version};
@@ -11,12 +11,15 @@ use cw_utils::{maybe_addr, nonpayable};
 use dao_interface::helpers::OptionalUpdate;
 use dao_interface::state::{ProposalModule, ProposalModuleStatus};
 use dao_interface::voting::InfoResponse;
-use dao_voting::delegation::{calculate_delegated_vp, UnvotedDelegatedVotingPowerResponse};
+use dao_voting::delegation::{
+    calculate_delegated_vp, DelegationResponse, UnvotedDelegatedVotingPowerResponse,
+};
 use dao_voting::voting;
 use semver::Version;
 
 use crate::helpers::{
-    ensure_setup, get_udvp, get_voting_power, is_delegate_registered, unregister_delegate,
+    add_delegated_vp, ensure_setup, get_udvp, get_voting_power, is_delegate_registered,
+    remove_delegated_vp, unregister_delegate,
 };
 use crate::hooks::{
     execute_membership_changed, execute_nft_stake_changed, execute_stake_changed, execute_vote_hook,
@@ -27,7 +30,8 @@ use crate::msg::{
 };
 use crate::state::{
     Config, Delegate, Delegation, CONFIG, DAO, DELEGATED_VP, DELEGATES, DELEGATIONS,
-    DELEGATION_IDS, PERCENT_DELEGATED, PROPOSAL_HOOK_CALLERS, VOTING_POWER_HOOK_CALLERS,
+    DELEGATION_ENTRIES, PERCENT_DELEGATED, PROPOSAL_HOOK_CALLERS, VOTING_POWER_HOOK_CALLERS,
+    VP_CAP_PERCENT,
 };
 use crate::ContractError;
 
@@ -40,7 +44,7 @@ pub const MAX_LIMIT: u32 = 50;
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -54,12 +58,22 @@ pub fn instantiate(
 
     DAO.save(deps.storage, &dao)?;
 
+    if let Some(delegation_validity_blocks) = msg.delegation_validity_blocks {
+        if delegation_validity_blocks < 2 {
+            return Err(ContractError::InvalidDelegationValidityBlocks {
+                provided: delegation_validity_blocks,
+                min: 2,
+            });
+        }
+    }
+
     CONFIG.save(
         deps.storage,
         &Config {
-            vp_cap_percent: msg.vp_cap_percent,
+            delegation_validity_blocks: msg.delegation_validity_blocks,
         },
     )?;
+    VP_CAP_PERCENT.save(deps.storage, &msg.vp_cap_percent, env.block.height)?;
 
     // sync proposal modules with no limit if not disabled. this should succeed
     // for most DAOs as the query will not run out of gas with only a few
@@ -91,9 +105,10 @@ pub fn execute(
         ExecuteMsg::SyncProposalModules { start_after, limit } => {
             execute_sync_proposal_modules(deps, start_after, limit)
         }
-        ExecuteMsg::UpdateConfig { vp_cap_percent, .. } => {
-            execute_update_config(deps, info, vp_cap_percent)
-        }
+        ExecuteMsg::UpdateConfig {
+            vp_cap_percent,
+            delegation_validity_blocks,
+        } => execute_update_config(deps, env, info, vp_cap_percent, delegation_validity_blocks),
         ExecuteMsg::StakeChangeHook(msg) => execute_stake_changed(deps, env, info, msg),
         ExecuteMsg::NftStakeChangeHook(msg) => execute_nft_stake_changed(deps, env, info, msg),
         ExecuteMsg::MemberChangedHook(msg) => execute_membership_changed(deps, env, info, msg),
@@ -125,7 +140,7 @@ fn execute_register(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respon
     }
 
     // ensure delegate has no delegations
-    let has_delegations = !DELEGATION_IDS.prefix(&delegate).is_empty(deps.storage);
+    let has_delegations = !DELEGATION_ENTRIES.prefix(&delegate).is_empty(deps.storage);
     if has_delegations {
         return Err(ContractError::UndelegateBeforeRegistering {});
     }
@@ -199,56 +214,59 @@ fn execute_delegate(
         return Err(ContractError::NoVotingPower {});
     }
 
+    let config = CONFIG.load(deps.storage)?;
+
     let current_percent_delegated = PERCENT_DELEGATED
         .may_load(deps.storage, &delegator)?
         .unwrap_or_default();
 
-    let existing_delegation_id = DELEGATION_IDS.may_load(deps.storage, (&delegator, &delegate))?;
+    let existing_delegation_entry =
+        DELEGATION_ENTRIES.may_load(deps.storage, (&delegator, &delegate))?;
 
     // will be set below, differing based on whether this is a new delegation or
     // an update to an existing one
     let new_total_percent_delegated: Decimal;
-    let current_delegated_vp: Uint128;
 
     // update an existing delegation
-    if let Some(existing_delegation_id) = existing_delegation_id {
+    if let Some((existing_id, existing_expiration)) = existing_delegation_entry {
         let mut existing_delegation =
-            DELEGATIONS.load_item(deps.storage, &delegator, existing_delegation_id)?;
+            DELEGATIONS.load_item(deps.storage, &delegator, existing_id)?;
 
         // remove existing percent and replace with new percent
         new_total_percent_delegated = current_percent_delegated
             .checked_sub(existing_delegation.percent)?
             .checked_add(percent)?;
 
-        // compute current delegated VP to replace based on existing percent
-        // before it's replaced
-        current_delegated_vp = calculate_delegated_vp(vp, existing_delegation.percent);
+        // remove current delegated VP based on existing percent
+        let current_delegated_vp = calculate_delegated_vp(vp, existing_delegation.percent);
+        remove_delegated_vp(
+            deps.storage,
+            &env,
+            &delegate,
+            current_delegated_vp,
+            existing_expiration,
+        )?;
 
         // replace delegation with updated percent
-        DELEGATIONS.remove(
-            deps.storage,
-            &delegator,
-            existing_delegation_id,
-            env.block.height,
-        )?;
+        DELEGATIONS.remove(deps.storage, &delegator, existing_id, env.block.height)?;
+
         existing_delegation.percent = percent;
-        let new_delegation_id = DELEGATIONS.push(
+
+        let new_delegation_entry = DELEGATIONS.push(
             deps.storage,
             &delegator,
             &existing_delegation,
             env.block.height,
-            // TODO: expiry??
-            None,
+            config.delegation_validity_blocks,
         )?;
-        DELEGATION_IDS.save(deps.storage, (&delegator, &delegate), &new_delegation_id)?;
+        DELEGATION_ENTRIES.save(deps.storage, (&delegator, &delegate), &new_delegation_entry)?;
     }
     // create a new delegation
     else {
         new_total_percent_delegated = current_percent_delegated.checked_add(percent)?;
-        current_delegated_vp = Uint128::zero();
 
         // add new delegation
-        let delegation_id = DELEGATIONS.push(
+        let new_delegation_entry = DELEGATIONS.push(
             deps.storage,
             &delegator,
             &Delegation {
@@ -256,10 +274,9 @@ fn execute_delegate(
                 percent,
             },
             env.block.height,
-            // TODO: expiry??
-            None,
+            config.delegation_validity_blocks,
         )?;
-        DELEGATION_IDS.save(deps.storage, (&delegator, &delegate), &delegation_id)?;
+        DELEGATION_ENTRIES.save(deps.storage, (&delegator, &delegate), &new_delegation_entry)?;
     }
 
     // ensure not delegating more than 100%
@@ -278,27 +295,12 @@ fn execute_delegate(
 
     // calculate the new delegated VP and add to the delegate's total
     let new_delegated_vp = calculate_delegated_vp(vp, percent);
-    // this `update` function loads the latest delegated VP, even if it was
-    // updated before in this block, and then saves the new total at the current
-    // block, which will be reflected in historical queries starting from the
-    // NEXT block. if future delegations/undelegations/voting power changes
-    // occur in this block, they will immediately load the latest state, and
-    // update the total that will be reflected in historical queries starting
-    // from the next block.
-    DELEGATED_VP.update(
+    add_delegated_vp(
         deps.storage,
+        &env,
         &delegate,
-        env.block.height,
-        |vp| -> StdResult<Uint128> {
-            vp.unwrap_or_default()
-                // remove the current delegated VP from the delegate's total and
-                // replace it with the new delegated VP. if this is a new
-                // delegation, this will be zero.
-                .checked_sub(current_delegated_vp)
-                .map_err(StdError::overflow)?
-                .checked_add(new_delegated_vp)
-                .map_err(StdError::overflow)
-        },
+        new_delegated_vp,
+        config.delegation_validity_blocks,
     )?;
 
     Ok(Response::new())
@@ -317,7 +319,7 @@ fn execute_undelegate(
     let delegate = deps.api.addr_validate(&delegate)?;
 
     // ensure delegation exists
-    let existing_id = DELEGATION_IDS
+    let (existing_id, existing_expiration) = DELEGATION_ENTRIES
         .load(deps.storage, (&delegator, &delegate))
         .map_err(|_| ContractError::DelegationDoesNotExist {})?;
 
@@ -326,7 +328,7 @@ fn execute_undelegate(
 
     // retrieve and remove delegation
     let delegation = DELEGATIONS.remove(deps.storage, &delegator, existing_id, env.block.height)?;
-    DELEGATION_IDS.remove(deps.storage, (&delegator, &delegate));
+    DELEGATION_ENTRIES.remove(deps.storage, (&delegator, &delegate));
 
     // update delegator's percent delegated
     let new_percent_delegated = current_percent_delegated.checked_sub(delegation.percent)?;
@@ -341,29 +343,18 @@ fn execute_undelegate(
         env.block.height + 1,
     )?;
 
-    // remove delegated VP from delegate's total delegated VP
+    // remove delegated VP from delegate's total delegated VP at the current
+    // height.
     let current_delegated_vp = calculate_delegated_vp(vp, delegation.percent);
-    // this `update` function loads the latest delegated VP, even if it was
-    // updated before in this block, and then saves the new total at the current
-    // block, which will be reflected in historical queries starting from the
-    // NEXT block. if future delegations/undelegations/voting power changes
-    // occur in this block, they will immediately load the latest state, and
-    // update the total that will be reflected in historical queries starting
-    // from the next block.
-    DELEGATED_VP.update(
+    remove_delegated_vp(
         deps.storage,
+        &env,
         &delegate,
-        env.block.height,
-        |vp| -> StdResult<Uint128> {
-            vp
-                // must exist if delegation was added in the past
-                .ok_or(StdError::not_found("delegate's total delegated VP"))?
-                .checked_sub(current_delegated_vp)
-                .map_err(StdError::overflow)
-        },
+        current_delegated_vp,
+        existing_expiration,
     )?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_attribute("action", "undelegate"))
 }
 
 fn execute_update_voting_power_hook_callers(
@@ -426,8 +417,10 @@ fn execute_sync_proposal_modules(
 
 fn execute_update_config(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     vp_cap_percent: OptionalUpdate<Decimal>,
+    delegation_validity_blocks: OptionalUpdate<u64>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
@@ -437,24 +430,42 @@ fn execute_update_config(
         return Err(ContractError::Unauthorized {});
     }
 
-    let mut config = CONFIG.load(deps.storage)?;
+    vp_cap_percent
+        .maybe_update_result(|value| VP_CAP_PERCENT.save(deps.storage, &value, env.block.height))?;
 
-    vp_cap_percent.maybe_update(|value| {
-        config.vp_cap_percent = value;
-    });
+    CONFIG.update(deps.storage, |mut config| -> Result<_, ContractError> {
+        delegation_validity_blocks.maybe_update_result(|value| {
+            // validate if defined
+            if let Some(value) = value {
+                if value < 2 {
+                    return Err(ContractError::InvalidDelegationValidityBlocks {
+                        provided: value,
+                        min: 2,
+                    });
+                }
+            }
 
-    CONFIG.save(deps.storage, &config)?;
+            config.delegation_validity_blocks = value;
 
-    Ok(Response::new())
+            Ok(())
+        })?;
+
+        Ok(config)
+    })?;
+
+    Ok(Response::new().add_attribute("action", "update_config"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Info {} => Ok(to_json_binary(&query_info(deps)?)?),
-        QueryMsg::Delegates { start_after, limit } => {
-            Ok(to_json_binary(&query_delegates(deps, start_after, limit)?)?)
-        }
+        QueryMsg::Delegates { start_after, limit } => Ok(to_json_binary(&query_delegates(
+            deps,
+            env,
+            start_after,
+            limit,
+        )?)?),
         QueryMsg::Delegations {
             delegator,
             height,
@@ -491,6 +502,7 @@ fn query_info(deps: Deps) -> StdResult<InfoResponse> {
 
 fn query_delegates(
     deps: Deps,
+    env: Env,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<DelegatesResponse> {
@@ -504,7 +516,7 @@ fn query_delegates(
         .map(|delegate| {
             delegate.map(|(delegate, _)| -> StdResult<DelegateResponse> {
                 let power = DELEGATED_VP
-                    .may_load(deps.storage, &delegate)?
+                    .load(deps.storage, delegate.clone(), env.block.height)?
                     .unwrap_or_default();
                 Ok(DelegateResponse { delegate, power })
             })?
@@ -527,8 +539,15 @@ fn query_delegations(
     let delegations = DELEGATIONS
         .load(deps.storage, &delegator, height, limit, offset)?
         .into_iter()
-        .map(|d| d.item)
-        .collect();
+        .map(|d| -> StdResult<DelegationResponse> {
+            let active = is_delegate_registered(deps, &d.item.delegate, Some(height))?;
+            Ok(DelegationResponse {
+                delegate: d.item.delegate,
+                percent: d.item.percent,
+                active,
+            })
+        })
+        .collect::<StdResult<_>>()?;
     Ok(DelegationsResponse {
         delegations,
         height,
@@ -558,8 +577,10 @@ fn query_unvoted_delegated_vp(
     let mut effective = total;
 
     // if a VP cap is set, apply it to the total VP to get the effective VP.
-    let config = CONFIG.load(deps.storage)?;
-    if let Some(vp_cap_percent) = config.vp_cap_percent {
+    let vp_cap_percent = VP_CAP_PERCENT
+        .may_load_at_height(deps.storage, height)?
+        .unwrap_or(None);
+    if let Some(vp_cap_percent) = vp_cap_percent {
         if vp_cap_percent < Decimal::one() {
             let dao = DAO.load(deps.storage)?;
             let total_power = voting::get_total_power(deps, &dao, Some(height))?;

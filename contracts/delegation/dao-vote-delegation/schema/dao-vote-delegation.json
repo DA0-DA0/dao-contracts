@@ -14,6 +14,15 @@
           "null"
         ]
       },
+      "delegation_validity_blocks": {
+        "description": "the number of blocks a delegation is valid for, after which it must be renewed by the delegator.",
+        "type": [
+          "integer",
+          "null"
+        ],
+        "format": "uint64",
+        "minimum": 0.0
+      },
       "no_sync_proposal_modules": {
         "description": "Whether or not to sync proposal modules initially. If there are too many, the instantiation will run out of gas, so this should be disabled and `SyncProposalModules` called manually.\n\nDefaults to false.",
         "type": [
@@ -216,9 +225,18 @@
           "update_config": {
             "type": "object",
             "required": [
+              "delegation_validity_blocks",
               "vp_cap_percent"
             ],
             "properties": {
+              "delegation_validity_blocks": {
+                "description": "the number of blocks a delegation is valid for, after which it must be renewed by the delegator.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/OptionalUpdate_for_uint64"
+                  }
+                ]
+              },
               "vp_cap_percent": {
                 "description": "the maximum percent of voting power that a single delegate can wield. they can be delegated any amount of voting power—this cap is only applied when casting votes.",
                 "allOf": [
@@ -409,6 +427,17 @@
           }
         ]
       },
+      "OptionalUpdate_for_uint64": {
+        "description": "An update type that allows partial updates of optional fields.",
+        "anyOf": [
+          {
+            "$ref": "#/definitions/Update_for_uint64"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
       "StakeChangedHookMsg": {
         "description": "An enum representing staking hooks.",
         "oneOf": [
@@ -484,6 +513,30 @@
             "properties": {
               "set": {
                 "$ref": "#/definitions/Decimal"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "Update_for_uint64": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "clear"
+            ]
+          },
+          {
+            "type": "object",
+            "required": [
+              "set"
+            ],
+            "properties": {
+              "set": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
               }
             },
             "additionalProperties": false
@@ -821,7 +874,7 @@
           "description": "The delegations.",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/Delegation"
+            "$ref": "#/definitions/DelegationResponse"
           }
         },
         "height": {
@@ -841,13 +894,18 @@
           "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
           "type": "string"
         },
-        "Delegation": {
+        "DelegationResponse": {
           "type": "object",
           "required": [
+            "active",
             "delegate",
             "percent"
           ],
           "properties": {
+            "active": {
+              "description": "whether or not the delegation is active (i.e. the delegate is still registered at the corresponding block). this can only be false if the delegate was registered when the delegation was created and isn't anymore.",
+              "type": "boolean"
+            },
             "delegate": {
               "description": "the delegate that can vote on behalf of the delegator.",
               "allOf": [

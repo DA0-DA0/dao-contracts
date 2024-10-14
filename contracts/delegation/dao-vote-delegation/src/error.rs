@@ -28,6 +28,9 @@ pub enum ContractError {
     #[error("unauthorized hook caller")]
     UnauthorizedHookCaller {},
 
+    #[error("invalid delegation validity blocks: provided {provided}, minimum {min}")]
+    InvalidDelegationValidityBlocks { provided: u64, min: u64 },
+
     #[error("delegate already registered")]
     DelegateAlreadyRegistered {},
 

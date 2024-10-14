@@ -77,9 +77,10 @@ where
     for<'b> &'b (K, u64): PrimaryKey<'b>,
 {
     /// Adds an item to the vector at the current block height, optionally
-    /// expiring in the future, returning the ID of the new item. This block
-    /// should be greater than or equal to the blocks all previous items were
-    /// added/removed at. Pushing to the past will lead to incorrect behavior.
+    /// expiring in the future, returning the ID and potentially the expiration
+    /// height of the new item. This block should be greater than or equal to
+    /// the blocks all previous items were added/removed at. Pushing to the past
+    /// will lead to incorrect behavior.
     pub fn push(
         &self,
         store: &mut dyn Storage,
@@ -87,7 +88,7 @@ where
         data: &V,
         curr_height: u64,
         expire_in: Option<u64>,
-    ) -> StdResult<u64> {
+    ) -> StdResult<(u64, Option<u64>)> {
         // get next ID for the key, defaulting to 0
         let next_id = self
             .next_ids
@@ -106,7 +107,8 @@ where
         });
 
         // add new item and save list
-        active.push((next_id, expire_in.map(|d| curr_height + d)));
+        let expiration = expire_in.map(|d| curr_height + d);
+        active.push((next_id, expiration));
 
         // save the new list
         self.active.save(store, k.clone(), &active, curr_height)?;
@@ -114,7 +116,7 @@ where
         // update next ID
         self.next_ids.save(store, k.clone(), &(next_id + 1))?;
 
-        Ok(next_id)
+        Ok((next_id, expiration))
     }
 
     /// Removes an item from the vector by ID and returns it. The block height

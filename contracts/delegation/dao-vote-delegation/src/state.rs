@@ -1,13 +1,28 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw_snapshot_vector_map::SnapshotVectorMap;
-use cw_storage_plus::{Item, Map, SnapshotMap, Strategy};
+use cw_storage_plus::{Item, Map, SnapshotItem, SnapshotMap, Strategy};
+
+use cw_wormhole::Wormhole;
 
 // make these types directly available to consumers of this crate
 pub use dao_voting::delegation::{Delegate, Delegation};
 
 /// the configuration of the delegation system.
 pub const CONFIG: Item<Config> = Item::new("config");
+
+/// the maximum percent of voting power that a single delegate can wield. they
+/// can be delegated any amount of voting power—this cap is only applied when
+/// casting votes. historical values must be stored so that proposals that
+/// already exist use deterministic math.
+///
+/// this is separate from config since we need historical queries for it.
+pub const VP_CAP_PERCENT: SnapshotItem<Option<Decimal>> = SnapshotItem::new(
+    "vpc",
+    "vpc__checkpoints",
+    "vpc__changelog",
+    Strategy::EveryBlock,
+);
 
 /// the DAO this delegation system is connected to.
 pub const DAO: Item<Addr> = Item::new("dao");
@@ -33,13 +48,10 @@ pub const DELEGATES: SnapshotMap<Addr, Delegate> = SnapshotMap::new(
 /// specific proposal.
 pub const UNVOTED_DELEGATED_VP: Map<(&Addr, &Addr, u64), Uint128> = Map::new("udvp");
 
-/// the VP delegated to a delegate by height.
-pub const DELEGATED_VP: SnapshotMap<&Addr, Uint128> = SnapshotMap::new(
-    "dvp",
-    "dvp__checkpoints",
-    "dvp__changelog",
-    Strategy::EveryBlock,
-);
+/// the VP delegated to a delegate by height. Wormhole allows us to update
+/// delegated VP in the future, which we need for implementing automatic
+/// delegation expiration.
+pub const DELEGATED_VP: Wormhole<Addr, Uint128> = Wormhole::new("dvp");
 
 /// the delegations of a delegator.
 pub const DELEGATIONS: SnapshotVectorMap<Addr, Delegation> = SnapshotVectorMap::new(
@@ -50,22 +62,17 @@ pub const DELEGATIONS: SnapshotVectorMap<Addr, Delegation> = SnapshotVectorMap::
     "d__active__changelog",
 );
 
-/// map (delegator, delegate) -> ID of the delegation in the vector map. this is
-/// useful for quickly checking if a delegation already exists, and for
-/// undelegating.
-pub const DELEGATION_IDS: Map<(&Addr, &Addr), u64> = Map::new("dids");
+/// map (delegator, delegate) -> (ID, expiration_block) of the delegation in the
+/// vector map. this is useful for quickly checking if a delegation already
+/// exists, and for undelegating.
+pub const DELEGATION_ENTRIES: Map<(&Addr, &Addr), (u64, Option<u64>)> = Map::new("dids");
 
 /// map delegator -> percent delegated to all delegates.
 pub const PERCENT_DELEGATED: Map<&Addr, Decimal> = Map::new("pd");
 
 #[cw_serde]
 pub struct Config {
-    /// the maximum percent of voting power that a single delegate can wield.
-    /// they can be delegated any amount of voting power—this cap is only
-    /// applied when casting votes.
-    pub vp_cap_percent: Option<Decimal>,
-    // TODO: expiry?? wormhole????
-    // /// the duration a delegation is valid for, after which it must be renewed
-    // /// by the delegator.
-    // pub delegation_validity: Option<Duration>,
+    /// the number of blocks a delegation is valid for, after which it must be
+    /// renewed by the delegator.
+    pub delegation_validity_blocks: Option<u64>,
 }

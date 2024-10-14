@@ -68,9 +68,23 @@ pub struct DelegateResponse {
 #[derive(Default)]
 pub struct DelegationsResponse {
     /// The delegations.
-    pub delegations: Vec<Delegation>,
+    pub delegations: Vec<DelegationResponse>,
     /// The height at which the delegations were loaded.
     pub height: u64,
+}
+
+#[cw_serde]
+pub struct DelegationResponse {
+    /// the delegate that can vote on behalf of the delegator.
+    pub delegate: Addr,
+    /// the percent of the delegator's voting power that is delegated to the
+    /// delegate.
+    pub percent: Decimal,
+    /// whether or not the delegation is active (i.e. the delegate is still
+    /// registered at the corresponding block). this can only be false if the
+    /// delegate was registered when the delegation was created and isn't
+    /// anymore.
+    pub active: bool,
 }
 
 #[cw_serde]

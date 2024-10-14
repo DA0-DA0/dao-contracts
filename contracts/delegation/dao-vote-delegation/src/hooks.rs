@@ -1,13 +1,16 @@
-use cosmwasm_std::{Addr, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128};
+use cosmwasm_std::{Addr, DepsMut, Env, MessageInfo, Response};
 use cw4::MemberChangedHookMsg;
 use cw_snapshot_vector_map::LoadedItem;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg, vote::VoteHookMsg};
 use dao_voting::delegation::calculate_delegated_vp;
 
 use crate::{
-    helpers::{get_udvp, get_voting_power, is_delegate_registered, unregister_delegate},
+    helpers::{
+        add_delegated_vp, get_udvp, get_voting_power, is_delegate_registered, remove_delegated_vp,
+        unregister_delegate,
+    },
     state::{
-        Delegation, DELEGATED_VP, DELEGATIONS, PROPOSAL_HOOK_CALLERS, UNVOTED_DELEGATED_VP,
+        Delegation, CONFIG, DELEGATIONS, PROPOSAL_HOOK_CALLERS, UNVOTED_DELEGATED_VP,
         VOTING_POWER_HOOK_CALLERS,
     },
     ContractError,
@@ -119,8 +122,11 @@ pub(crate) fn handle_voting_power_changed_hook(
         let delegations =
             DELEGATIONS.load_all_latest(deps.storage, &delegator, env.block.height)?;
 
+        let config = CONFIG.load(deps.storage)?;
+
         for LoadedItem {
             item: Delegation { delegate, percent },
+            expiration,
             ..
         } in delegations
         {
@@ -129,25 +135,22 @@ pub(crate) fn handle_voting_power_changed_hook(
             let current_delegated_vp = calculate_delegated_vp(old_vp, percent);
             let new_delegated_vp = calculate_delegated_vp(new_vp, percent);
 
-            // this `update` function loads the latest delegated VP, even if it
-            // was updated before in this block, and then saves the new total at
-            // the current block, which will be reflected in historical queries
-            // starting from the NEXT block. if future
-            // delegations/undelegations/voting power changes occur in this
-            // block, they will immediately load the latest state, and update
-            // the total that will be reflected in historical queries starting
-            // from the next block.
-            DELEGATED_VP.update(
+            // remove original delegated VP
+            remove_delegated_vp(
                 deps.storage,
+                env,
                 &delegate,
-                env.block.height,
-                |vp| -> StdResult<Uint128> {
-                    vp.unwrap_or_default()
-                        .checked_sub(current_delegated_vp)
-                        .map_err(StdError::overflow)?
-                        .checked_add(new_delegated_vp)
-                        .map_err(StdError::overflow)
-                },
+                current_delegated_vp,
+                expiration,
+            )?;
+
+            // add new delegated VP
+            add_delegated_vp(
+                deps.storage,
+                env,
+                &delegate,
+                new_delegated_vp,
+                config.delegation_validity_blocks,
             )?;
         }
     }
