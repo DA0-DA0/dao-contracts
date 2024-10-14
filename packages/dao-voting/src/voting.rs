@@ -3,7 +3,7 @@ use cosmwasm_std::{Addr, Decimal, Deps, StdResult, Uint128, Uint256};
 use cw_utils::Duration;
 use dao_interface::voting;
 
-use crate::threshold::PercentageThreshold;
+use crate::{delegation, threshold::PercentageThreshold};
 
 // We multiply by this when calculating needed_votes in order to round
 // up properly.
@@ -214,6 +214,55 @@ pub fn get_voting_power(
         },
     )?;
     Ok(response.power)
+}
+
+/// Query the voting power for a member, including any voting power delegated to
+/// them by other members, given the proposal and its start_height. This should
+/// be used when calculating voting power used to vote. This is not necessary
+/// when simply member-gating proposal creation, execution, nor closure, since
+/// delegates must be members of the DAO anyway.
+pub fn get_voting_power_with_delegation(
+    deps: Deps,
+    proposal_module: &Addr,
+    delegation_module: &Option<Addr>,
+    dao: &Addr,
+    address: &Addr,
+    proposal_id: u64,
+    // the proposal start_height at which voting power should be queried
+    height: u64,
+) -> StdResult<Uint128> {
+    // get individual voting power from voting module
+    let voting::VotingPowerAtHeightResponse { power, .. } = deps.querier.query_wasm_smart(
+        dao,
+        &voting::Query::VotingPowerAtHeight {
+            address: address.to_string(),
+            height: Some(height),
+        },
+    )?;
+
+    // get voting power delegated to this address from other members of the DAO
+    // that has not yet been used to vote on the given proposal. if this query
+    // fails, fail gracefully and assume 0 delegated VP to ensure votes can
+    // still be cast.
+    let udvp = delegation_module
+        .as_ref()
+        .map(|dm| -> StdResult<Uint128> {
+            deps.querier.query_wasm_smart(
+                dm,
+                &delegation::QueryMsg::UnvotedDelegatedVotingPower {
+                    delegate: address.to_string(),
+                    proposal_module: proposal_module.to_string(),
+                    proposal_id,
+                    height,
+                },
+            )
+        })
+        .unwrap_or_else(|| Ok(Uint128::zero()))
+        // fail gracefully if the query fails
+        .unwrap_or_default();
+
+    // sum both to get total voting power for this address on this proposal
+    Ok(power.checked_add(udvp)?)
 }
 
 /// A height of None will query for the current block height.

@@ -2,15 +2,13 @@ use cosmwasm_std::{Addr, DepsMut, Env, MessageInfo, Response, StdError, StdResul
 use cw4::MemberChangedHookMsg;
 use cw_snapshot_vector_map::LoadedItem;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg, vote::VoteHookMsg};
+use dao_voting::delegation::calculate_delegated_vp;
 
 use crate::{
-    helpers::{
-        calculate_delegated_vp, get_udvp, get_voting_power, is_delegate_registered,
-        unregister_delegate,
-    },
+    helpers::{get_udvp, get_voting_power, is_delegate_registered, unregister_delegate},
     state::{
-        Delegation, DELEGATED_VP, DELEGATED_VP_AMOUNTS, DELEGATIONS, PROPOSAL_HOOK_CALLERS,
-        UNVOTED_DELEGATED_VP, VOTING_POWER_HOOK_CALLERS,
+        Delegation, DELEGATED_VP, DELEGATIONS, PROPOSAL_HOOK_CALLERS, UNVOTED_DELEGATED_VP,
+        VOTING_POWER_HOOK_CALLERS,
     },
     ContractError,
 };
@@ -91,6 +89,7 @@ pub(crate) fn handle_voting_power_changed_hook(
     env: &Env,
     addr: Addr,
 ) -> Result<Response, ContractError> {
+    let old_vp = get_voting_power(deps.as_ref(), &addr, env.block.height)?;
     let new_vp = get_voting_power(
         deps.as_ref(),
         &addr,
@@ -125,10 +124,9 @@ pub(crate) fn handle_voting_power_changed_hook(
             ..
         } in delegations
         {
-            // remove the current delegated VP from the delegate's total and
+            // remove the latest delegated VP from the delegate's total and
             // replace it with the new delegated VP
-            let current_delegated_vp =
-                DELEGATED_VP_AMOUNTS.load(deps.storage, (&delegator, &delegate))?;
+            let current_delegated_vp = calculate_delegated_vp(old_vp, percent);
             let new_delegated_vp = calculate_delegated_vp(new_vp, percent);
 
             // this `update` function loads the latest delegated VP, even if it
@@ -151,7 +149,6 @@ pub(crate) fn handle_voting_power_changed_hook(
                         .map_err(StdError::overflow)
                 },
             )?;
-            DELEGATED_VP_AMOUNTS.save(deps.storage, (&delegator, &delegate), &new_delegated_vp)?;
         }
     }
 
@@ -181,8 +178,8 @@ pub fn execute_vote_hook(
             ..
         } => {
             // if first vote, update the unvoted delegated VP for their
-            // delegates by subtracting. if not first vote, this has already
-            // been done.
+            // delegates by subtracting this member's delegated VP. if not first
+            // vote, this has already been done.
             if is_first_vote {
                 let delegator = deps.api.addr_validate(&voter)?;
                 let delegates = DELEGATIONS.load_all(deps.storage, &delegator, env.block.height)?;

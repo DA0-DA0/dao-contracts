@@ -3,6 +3,9 @@ use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw_snapshot_vector_map::SnapshotVectorMap;
 use cw_storage_plus::{Item, Map, SnapshotMap, Strategy};
 
+// make these types directly available to consumers of this crate
+pub use dao_voting::delegation::{Delegate, Delegation};
+
 /// the configuration of the delegation system.
 pub const CONFIG: Item<Config> = Item::new("config");
 
@@ -52,9 +55,6 @@ pub const DELEGATIONS: SnapshotVectorMap<Addr, Delegation> = SnapshotVectorMap::
 /// undelegating.
 pub const DELEGATION_IDS: Map<(&Addr, &Addr), u64> = Map::new("dids");
 
-/// map (delegator, delegate) -> calculated absolute delegated VP.
-pub const DELEGATED_VP_AMOUNTS: Map<(&Addr, &Addr), Uint128> = Map::new("dvpa");
-
 /// map delegator -> percent delegated to all delegates.
 pub const PERCENT_DELEGATED: Map<&Addr, Decimal> = Map::new("pd");
 
@@ -68,16 +68,4 @@ pub struct Config {
     // /// the duration a delegation is valid for, after which it must be renewed
     // /// by the delegator.
     // pub delegation_validity: Option<Duration>,
-}
-
-#[cw_serde]
-pub struct Delegate {}
-
-#[cw_serde]
-pub struct Delegation {
-    /// the delegate that can vote on behalf of the delegator.
-    pub delegate: Addr,
-    /// the percent of the delegator's voting power that is delegated to the
-    /// delegate.
-    pub percent: Decimal,
 }

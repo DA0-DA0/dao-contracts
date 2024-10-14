@@ -77,3 +77,6 @@ pub const VOTE_HOOKS: Hooks = Hooks::new("vote_hooks");
 /// The address of the pre-propose module associated with this
 /// proposal module (if any).
 pub const CREATION_POLICY: Item<ProposalCreationPolicy> = Item::new("creation_policy");
+/// The address of the delegation module associated with this proposal module
+/// (if any).
+pub const DELEGATION_MODULE: Item<Addr> = Item::new("delegation_module");

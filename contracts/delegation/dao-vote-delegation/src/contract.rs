@@ -8,25 +8,25 @@ use cw2::{get_contract_version, set_contract_version};
 use cw_paginate_storage::paginate_map_keys;
 use cw_storage_plus::Bound;
 use cw_utils::{maybe_addr, nonpayable};
+use dao_interface::helpers::OptionalUpdate;
 use dao_interface::state::{ProposalModule, ProposalModuleStatus};
 use dao_interface::voting::InfoResponse;
+use dao_voting::delegation::calculate_delegated_vp;
 use semver::Version;
 
 use crate::helpers::{
-    calculate_delegated_vp, ensure_setup, get_udvp, get_voting_power, is_delegate_registered,
-    unregister_delegate,
+    ensure_setup, get_udvp, get_voting_power, is_delegate_registered, unregister_delegate,
 };
 use crate::hooks::{
     execute_membership_changed, execute_nft_stake_changed, execute_stake_changed, execute_vote_hook,
 };
 use crate::msg::{
     DelegateResponse, DelegatesResponse, DelegationsResponse, ExecuteMsg, InstantiateMsg,
-    MigrateMsg, OptionalUpdate, QueryMsg,
+    MigrateMsg, QueryMsg,
 };
 use crate::state::{
-    Config, Delegate, Delegation, CONFIG, DAO, DELEGATED_VP, DELEGATED_VP_AMOUNTS, DELEGATES,
-    DELEGATIONS, DELEGATION_IDS, PERCENT_DELEGATED, PROPOSAL_HOOK_CALLERS,
-    VOTING_POWER_HOOK_CALLERS,
+    Config, Delegate, Delegation, CONFIG, DAO, DELEGATED_VP, DELEGATES, DELEGATIONS,
+    DELEGATION_IDS, PERCENT_DELEGATED, PROPOSAL_HOOK_CALLERS, VOTING_POWER_HOOK_CALLERS,
 };
 use crate::ContractError;
 
@@ -206,23 +206,44 @@ fn execute_delegate(
 
     // will be set below, differing based on whether this is a new delegation or
     // an update to an existing one
-    let new_percent_delegated: Decimal;
+    let new_total_percent_delegated: Decimal;
     let current_delegated_vp: Uint128;
 
     // update an existing delegation
     if let Some(existing_delegation_id) = existing_delegation_id {
-        let existing_delegation =
+        let mut existing_delegation =
             DELEGATIONS.load_item(deps.storage, &delegator, existing_delegation_id)?;
+
         // remove existing percent and replace with new percent
-        new_percent_delegated = current_percent_delegated
+        new_total_percent_delegated = current_percent_delegated
             .checked_sub(existing_delegation.percent)?
             .checked_add(percent)?;
 
-        current_delegated_vp = DELEGATED_VP_AMOUNTS.load(deps.storage, (&delegator, &delegate))?;
+        // compute current delegated VP to replace based on existing percent
+        // before it's replaced
+        current_delegated_vp = calculate_delegated_vp(vp, existing_delegation.percent);
+
+        // replace delegation with updated percent
+        DELEGATIONS.remove(
+            deps.storage,
+            &delegator,
+            existing_delegation_id,
+            env.block.height,
+        )?;
+        existing_delegation.percent = percent;
+        let new_delegation_id = DELEGATIONS.push(
+            deps.storage,
+            &delegator,
+            &existing_delegation,
+            env.block.height,
+            // TODO: expiry??
+            None,
+        )?;
+        DELEGATION_IDS.save(deps.storage, (&delegator, &delegate), &new_delegation_id)?;
     }
     // create a new delegation
     else {
-        new_percent_delegated = current_percent_delegated.checked_add(percent)?;
+        new_total_percent_delegated = current_percent_delegated.checked_add(percent)?;
         current_delegated_vp = Uint128::zero();
 
         // add new delegation
@@ -241,18 +262,18 @@ fn execute_delegate(
     }
 
     // ensure not delegating more than 100%
-    if new_percent_delegated > Decimal::one() {
+    if new_total_percent_delegated > Decimal::one() {
         return Err(ContractError::CannotDelegateMoreThan100Percent {
             current: current_percent_delegated
                 .checked_mul(Decimal::new(100u128.into()))?
                 .to_string(),
-            attempt: new_percent_delegated
+            attempt: new_total_percent_delegated
                 .checked_mul(Decimal::new(100u128.into()))?
                 .to_string(),
         });
     }
 
-    PERCENT_DELEGATED.save(deps.storage, &delegator, &new_percent_delegated)?;
+    PERCENT_DELEGATED.save(deps.storage, &delegator, &new_total_percent_delegated)?;
 
     // calculate the new delegated VP and add to the delegate's total
     let new_delegated_vp = calculate_delegated_vp(vp, percent);
@@ -278,7 +299,6 @@ fn execute_delegate(
                 .map_err(StdError::overflow)
         },
     )?;
-    DELEGATED_VP_AMOUNTS.save(deps.storage, (&delegator, &delegate), &new_delegated_vp)?;
 
     Ok(Response::new())
 }
@@ -311,8 +331,17 @@ fn execute_undelegate(
     let new_percent_delegated = current_percent_delegated.checked_sub(delegation.percent)?;
     PERCENT_DELEGATED.save(deps.storage, &delegator, &new_percent_delegated)?;
 
+    let vp = get_voting_power(
+        deps.as_ref(),
+        &delegator,
+        // use next block height since voting power takes effect at the start of
+        // the next block. if the delegator changed their voting power in the
+        // current block, we need to use the new value.
+        env.block.height + 1,
+    )?;
+
     // remove delegated VP from delegate's total delegated VP
-    let current_delegated_vp = DELEGATED_VP_AMOUNTS.load(deps.storage, (&delegator, &delegate))?;
+    let current_delegated_vp = calculate_delegated_vp(vp, delegation.percent);
     // this `update` function loads the latest delegated VP, even if it was
     // updated before in this block, and then saves the new total at the current
     // block, which will be reflected in historical queries starting from the
@@ -332,7 +361,6 @@ fn execute_undelegate(
                 .map_err(StdError::overflow)
         },
     )?;
-    DELEGATED_VP_AMOUNTS.remove(deps.storage, (&delegator, &delegate));
 
     Ok(Response::new())
 }
@@ -398,7 +426,7 @@ fn execute_sync_proposal_modules(
 fn execute_update_config(
     deps: DepsMut,
     info: MessageInfo,
-    vp_cap_percent: Option<OptionalUpdate<Decimal>>,
+    vp_cap_percent: OptionalUpdate<Decimal>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
@@ -410,12 +438,9 @@ fn execute_update_config(
 
     let mut config = CONFIG.load(deps.storage)?;
 
-    if let Some(vp_cap_percent) = vp_cap_percent {
-        match vp_cap_percent {
-            OptionalUpdate::Set(vp_cap_percent) => config.vp_cap_percent = Some(vp_cap_percent),
-            OptionalUpdate::Clear => config.vp_cap_percent = None,
-        }
-    }
+    vp_cap_percent.maybe_update(|value| {
+        config.vp_cap_percent = value;
+    });
 
     CONFIG.save(deps.storage, &config)?;
 

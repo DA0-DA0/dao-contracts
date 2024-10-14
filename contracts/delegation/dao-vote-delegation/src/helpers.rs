@@ -1,6 +1,6 @@
-use cosmwasm_std::{Addr, Decimal, Deps, DepsMut, StdResult, Uint128};
+use cosmwasm_std::{Addr, Deps, DepsMut, StdResult, Uint128};
 
-use dao_interface::voting;
+use dao_voting::voting;
 
 use crate::{
     state::{
@@ -26,24 +26,7 @@ pub fn is_delegate_registered(deps: Deps, delegate: &Addr, height: Option<u64>) 
 
 pub fn get_voting_power(deps: Deps, addr: &Addr, height: u64) -> StdResult<Uint128> {
     let dao = DAO.load(deps.storage)?;
-
-    let voting_power: voting::VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
-        &dao,
-        &voting::Query::VotingPowerAtHeight {
-            address: addr.to_string(),
-            height: Some(height),
-        },
-    )?;
-
-    Ok(voting_power.power)
-}
-
-pub fn calculate_delegated_vp(vp: Uint128, percent: Decimal) -> Uint128 {
-    if percent.is_zero() || vp.is_zero() {
-        return Uint128::zero();
-    }
-
-    vp.mul_floor(percent)
+    voting::get_voting_power(deps, addr.clone(), &dao, Some(height))
 }
 
 /// Returns the unvoted delegated VP for a delegate on a proposal, falling back

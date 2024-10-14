@@ -133,6 +133,7 @@ fn test_simple_propose_staked_balances() {
         status: Status::Open,
         veto: None,
         votes: Votes::zero(),
+        delegation_module: None,
     };
 
     assert_eq!(created.proposal, expected);
@@ -183,6 +184,7 @@ fn test_simple_proposal_cw4_voting() {
         status: Status::Open,
         veto: None,
         votes: Votes::zero(),
+        delegation_module: None,
     };
 
     assert_eq!(created.proposal, expected);
@@ -239,6 +241,7 @@ fn test_simple_proposal_auto_vote_yes() {
             no: Uint128::zero(),
             abstain: Uint128::zero(),
         },
+        delegation_module: None,
     };
 
     assert_eq!(created.proposal, expected);
@@ -288,6 +291,7 @@ fn test_simple_proposal_auto_vote_no() {
             no: Uint128::new(1),
             abstain: Uint128::zero(),
         },
+        delegation_module: None,
     };
 
     assert_eq!(created.proposal, expected);
@@ -386,6 +390,7 @@ fn test_instantiate_with_non_voting_module_cw20_deposit() {
         status: Status::Open,
         votes: Votes::zero(),
         veto: None,
+        delegation_module: None,
     };
 
     assert_eq!(created.proposal, expected);
@@ -2246,7 +2251,8 @@ fn test_anyone_may_propose_and_proposal_listing() {
                     no: Uint128::zero(),
                     abstain: Uint128::zero()
                 },
-                veto: None
+                veto: None,
+                delegation_module: None,
             }
         }
     )
@@ -3055,6 +3061,7 @@ fn test_proposal_count_initialized_to_zero() {
             allow_revoting: false,
             pre_propose_info,
             close_proposal_on_execution_failure: true,
+            delegation_module: None,
         },
         Some(vec![
             Cw20Coin {
@@ -3529,6 +3536,7 @@ fn test_reply_proposal_mock() {
                 status: Status::Open,
                 veto: None,
                 votes: Votes::zero(),
+                delegation_module: None,
             },
         )
         .unwrap();

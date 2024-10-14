@@ -13,6 +13,7 @@ use dao_hooks::proposal::{
 };
 use dao_hooks::vote::new_vote_hooks;
 use dao_interface::voting::IsActiveResponse;
+use dao_voting::delegation::{self, calculate_delegated_vp, Delegation};
 use dao_voting::pre_propose::{PreProposeInfo, ProposalCreationPolicy};
 use dao_voting::proposal::{
     SingleChoiceProposeMsg as ProposeMsg, DEFAULT_LIMIT, MAX_PROPOSAL_SIZE,
@@ -23,11 +24,14 @@ use dao_voting::reply::{
 use dao_voting::status::Status;
 use dao_voting::threshold::Threshold;
 use dao_voting::veto::{VetoConfig, VetoError};
-use dao_voting::voting::{get_total_power, get_voting_power, validate_voting_period, Vote, Votes};
+use dao_voting::voting::{
+    get_total_power, get_voting_power, get_voting_power_with_delegation, validate_voting_period,
+    Vote, Votes,
+};
 
 use crate::msg::MigrateMsg;
 use crate::proposal::{next_proposal_id, SingleChoiceProposal};
-use crate::state::{Config, CREATION_POLICY};
+use crate::state::{Config, CREATION_POLICY, DELEGATION_MODULE};
 use crate::v1_state::{
     v1_duration_to_v2, v1_expiration_to_v2, v1_status_to_v2, v1_threshold_to_v2, v1_votes_to_v2,
 };
@@ -135,6 +139,9 @@ pub fn execute(
         ExecuteMsg::UpdatePreProposeInfo { info: new_info } => {
             execute_update_proposal_creation_policy(deps, info, new_info)
         }
+        ExecuteMsg::UpdateDelegationModule { module } => {
+            execute_update_delegation_module(deps, info, module)
+        }
         ExecuteMsg::AddProposalHook { address } => {
             execute_add_proposal_hook(deps, env, info, address)
         }
@@ -198,6 +205,9 @@ pub fn execute_propose(
         return Err(ContractError::InactiveDao {});
     }
 
+    // Delegation module may or may not exist.
+    let delegation_module = DELEGATION_MODULE.may_load(deps.storage)?;
+
     let expiration = config.max_voting_period.after(&env.block);
 
     let total_power = get_total_power(deps.as_ref(), &config.dao, Some(env.block.height))?;
@@ -218,6 +228,7 @@ pub fn execute_propose(
             votes: Votes::zero(),
             allow_revoting: config.allow_revoting,
             veto: config.veto,
+            delegation_module,
         };
         // Update the proposal's status. Addresses case where proposal
         // expires on the same block as it is created.
@@ -493,11 +504,14 @@ pub fn execute_vote(
         return Err(ContractError::Expired { id: proposal_id });
     }
 
-    let vote_power = get_voting_power(
+    let vote_power = get_voting_power_with_delegation(
         deps.as_ref(),
-        sender.clone(),
+        &env.contract.address,
+        &prop.delegation_module,
         &config.dao,
-        Some(prop.start_height),
+        &sender,
+        proposal_id,
+        prop.start_height,
     )?;
     if vote_power.is_zero() {
         return Err(ContractError::NotRegistered {});
@@ -540,6 +554,50 @@ pub fn execute_vote(
             rationale: rationale.clone(),
         }),
     })?;
+
+    // DELEGATION VOTE OVERRIDE: if this is the first time this member voted,
+    // subtract their VP from the vote tally of all of their delegates who
+    // already voted on this proposal, in order to override their vote with the
+    // delegator's preference.
+    //
+    // we must load all delegations and update each. if this partially fails,
+    // the vote tallies will be incorrect, so the entire vote transaction should
+    // fail. we need to prevent this from happening by limiting the number of
+    // delegations a member can have in order to ensure votes can always be
+    // cast.
+    if is_first_vote {
+        if let Some(delegation_module) = &prop.delegation_module {
+            let delegations = deps
+                .querier
+                .query_wasm_smart::<delegation::DelegationsResponse>(
+                    delegation_module,
+                    &delegation::QueryMsg::Delegations {
+                        delegator: sender.to_string(),
+                        height: Some(prop.start_height),
+                        offset: None,
+                        limit: None,
+                    },
+                    // ensure query error gets returned if it fails.
+                )?
+                .delegations;
+
+            for Delegation { delegate, percent } in delegations {
+                // if delegate voted already, untally the VP the delegator
+                // delegated to them since the delegate's vote is being
+                // overridden.
+                if let Some(mut delegate_ballot) =
+                    BALLOTS.may_load(deps.storage, (proposal_id, &delegate))?
+                {
+                    let delegated_vp = calculate_delegated_vp(vote_power, percent);
+
+                    prop.votes.remove_vote(delegate_ballot.vote, delegated_vp);
+
+                    delegate_ballot.power = delegate_ballot.power.checked_sub(delegated_vp)?;
+                    BALLOTS.save(deps.storage, (proposal_id, &delegate), &delegate_ballot)?;
+                }
+            }
+        }
+    }
 
     let old_status = prop.status;
 
@@ -723,6 +781,23 @@ pub fn execute_update_proposal_creation_policy(
         .add_attribute("new_policy", format!("{initial_policy:?}")))
 }
 
+pub fn execute_update_delegation_module(
+    deps: DepsMut,
+    info: MessageInfo,
+    module: String,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if config.dao != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    DELEGATION_MODULE.save(deps.storage, &deps.api.addr_validate(&module)?)?;
+
+    Ok(Response::default()
+        .add_attribute("action", "update_delegation_module")
+        .add_attribute("module", module))
+}
+
 pub fn add_hook(
     hooks: Hooks,
     storage: &mut dyn Storage,
@@ -852,6 +927,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             limit,
         } => query_reverse_proposals(deps, env, start_before, limit),
         QueryMsg::ProposalCreationPolicy {} => query_creation_policy(deps),
+        QueryMsg::DelegationModule {} => query_delegation_module(deps),
         QueryMsg::ProposalHooks {} => to_json_binary(&PROPOSAL_HOOKS.query_hooks(deps)?),
         QueryMsg::VoteHooks {} => to_json_binary(&VOTE_HOOKS.query_hooks(deps)?),
     }
@@ -875,6 +951,11 @@ pub fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<Binary> {
 pub fn query_creation_policy(deps: Deps) -> StdResult<Binary> {
     let policy = CREATION_POLICY.load(deps.storage)?;
     to_json_binary(&policy)
+}
+
+pub fn query_delegation_module(deps: Deps) -> StdResult<Binary> {
+    let module = DELEGATION_MODULE.may_load(deps.storage)?;
+    to_json_binary(&module)
 }
 
 pub fn query_list_proposals(
@@ -1056,6 +1137,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                         votes: v1_votes_to_v2(prop.votes),
                         allow_revoting: prop.allow_revoting,
                         veto: None,
+                        delegation_module: None,
                     };
 
                     PROPOSALS
