@@ -24,8 +24,12 @@ pub enum QueryMsg {
         limit: Option<u64>,
     },
     /// Returns the VP delegated to a delegate that has not yet been used in
-    /// votes cast by delegators in a specific proposal.
-    #[returns(Uint128)]
+    /// votes cast by delegators in a specific proposal. This updates
+    /// immediately via vote hooks (instead of being delayed 1 block like other
+    /// historical queries), making it safe to vote multiple times in the same
+    /// block. Proposal modules are responsible for maintaining the effective VP
+    /// cap when a delegator overrides a delegate's vote.
+    #[returns(UnvotedDelegatedVotingPowerResponse)]
     UnvotedDelegatedVotingPower {
         delegate: String,
         proposal_module: String,
@@ -67,6 +71,16 @@ pub struct DelegationsResponse {
     pub delegations: Vec<Delegation>,
     /// The height at which the delegations were loaded.
     pub height: u64,
+}
+
+#[cw_serde]
+#[derive(Default)]
+pub struct UnvotedDelegatedVotingPowerResponse {
+    /// The total unvoted delegated voting power.
+    pub total: Uint128,
+    /// The unvoted delegated voting power in effect, with configured
+    /// constraints applied, such as the VP cap.
+    pub effective: Uint128,
 }
 
 #[cw_serde]

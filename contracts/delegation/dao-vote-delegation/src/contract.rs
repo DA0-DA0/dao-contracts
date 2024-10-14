@@ -11,7 +11,8 @@ use cw_utils::{maybe_addr, nonpayable};
 use dao_interface::helpers::OptionalUpdate;
 use dao_interface::state::{ProposalModule, ProposalModuleStatus};
 use dao_interface::voting::InfoResponse;
-use dao_voting::delegation::calculate_delegated_vp;
+use dao_voting::delegation::{calculate_delegated_vp, UnvotedDelegatedVotingPowerResponse};
+use dao_voting::voting;
 use semver::Version;
 
 use crate::helpers::{
@@ -540,17 +541,35 @@ fn query_unvoted_delegated_vp(
     proposal_module: String,
     proposal_id: u64,
     height: u64,
-) -> StdResult<Uint128> {
+) -> StdResult<UnvotedDelegatedVotingPowerResponse> {
     let delegate = deps.api.addr_validate(&delegate)?;
 
     // if delegate not registered, they have no unvoted delegated VP.
     if !is_delegate_registered(deps, &delegate, Some(height))? {
-        return Ok(Uint128::zero());
+        return Ok(UnvotedDelegatedVotingPowerResponse {
+            total: Uint128::zero(),
+            effective: Uint128::zero(),
+        });
     }
 
     let proposal_module = deps.api.addr_validate(&proposal_module)?;
 
-    get_udvp(deps, &delegate, &proposal_module, proposal_id, height)
+    let total = get_udvp(deps, &delegate, &proposal_module, proposal_id, height)?;
+    let mut effective = total;
+
+    // if a VP cap is set, apply it to the total VP to get the effective VP.
+    let config = CONFIG.load(deps.storage)?;
+    if let Some(vp_cap_percent) = config.vp_cap_percent {
+        if vp_cap_percent < Decimal::one() {
+            let dao = DAO.load(deps.storage)?;
+            let total_power = voting::get_total_power(deps, &dao, Some(height))?;
+            let cap = calculate_delegated_vp(total_power, vp_cap_percent);
+
+            effective = total.min(cap);
+        }
+    }
+
+    Ok(UnvotedDelegatedVotingPowerResponse { total, effective })
 }
 
 fn query_proposal_modules(

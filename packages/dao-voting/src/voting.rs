@@ -3,7 +3,10 @@ use cosmwasm_std::{Addr, Decimal, Deps, StdResult, Uint128, Uint256};
 use cw_utils::Duration;
 use dao_interface::voting;
 
-use crate::{delegation, threshold::PercentageThreshold};
+use crate::{
+    delegation::{self, UnvotedDelegatedVotingPowerResponse},
+    threshold::PercentageThreshold,
+};
 
 // We multiply by this when calculating needed_votes in order to round
 // up properly.
@@ -240,13 +243,13 @@ pub fn get_voting_power_with_delegation(
         },
     )?;
 
-    // get voting power delegated to this address from other members of the DAO
+    // get effective VP delegated to this address from other members of the DAO
     // that has not yet been used to vote on the given proposal. if this query
     // fails, fail gracefully and assume 0 delegated VP to ensure votes can
     // still be cast.
     let udvp = delegation_module
         .as_ref()
-        .map(|dm| -> StdResult<Uint128> {
+        .map(|dm| -> StdResult<UnvotedDelegatedVotingPowerResponse> {
             deps.querier.query_wasm_smart(
                 dm,
                 &delegation::QueryMsg::UnvotedDelegatedVotingPower {
@@ -257,9 +260,10 @@ pub fn get_voting_power_with_delegation(
                 },
             )
         })
-        .unwrap_or_else(|| Ok(Uint128::zero()))
+        .unwrap_or_else(|| Ok(UnvotedDelegatedVotingPowerResponse::default()))
         // fail gracefully if the query fails
-        .unwrap_or_default();
+        .unwrap_or_default()
+        .effective;
 
     // sum both to get total voting power for this address on this proposal
     Ok(power.checked_add(udvp)?)

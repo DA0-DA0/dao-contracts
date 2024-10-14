@@ -12,7 +12,8 @@ use crate::proposal::SingleChoiceProposal;
 /// A vote cast for a proposal.
 #[cw_serde]
 pub struct Ballot {
-    /// The amount of voting power behind the vote.
+    /// The amount of voting power behind the vote, including any delegated VP.
+    /// This is the amount tallied in the proposal for this ballot.
     pub power: Uint128,
     /// The position.
     pub vote: Vote,
