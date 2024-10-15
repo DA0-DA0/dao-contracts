@@ -15,11 +15,11 @@ use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::{CreateMsg, FundMsg, InstantiateMsg, MigrateMsg};
 use crate::state::{EmissionRate, Epoch};
 use crate::testing::native_setup::setup_native_token_test;
-use crate::ContractError;
 use crate::{
     msg::ExecuteMsg,
     testing::{ADDR1, ADDR2, ADDR3, ADDR4, DENOM},
 };
+use dao_rewards_distributor::ContractError;
 
 use super::{
     suite::{RewardsConfig, SuiteBuilder},
@@ -2862,11 +2862,11 @@ fn test_migrate() {
     cw2::set_contract_version(&mut deps.storage, "test", "0.0.1").unwrap();
 
     // wrong contract name errors
-    let err: ContractError =
+    let err: crate::ContractError =
         crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap_err();
     assert_eq!(
         err,
-        ContractError::MigrationErrorIncorrectContract {
+        crate::ContractError::MigrationErrorIncorrectContract {
             expected: CONTRACT_NAME.to_string(),
             actual: "test".to_string(),
         }
@@ -2877,11 +2877,11 @@ fn test_migrate() {
     crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
 
     // same-version migration errors
-    let err: ContractError =
+    let err: crate::ContractError =
         crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap_err();
     assert_eq!(
         err,
-        ContractError::MigrationErrorInvalidVersion {
+        crate::ContractError::MigrationErrorInvalidVersion {
             new: CONTRACT_VERSION.to_string(),
             current: CONTRACT_VERSION.to_string(),
         }
@@ -2889,11 +2889,11 @@ fn test_migrate() {
 
     // future version errors
     cw2::set_contract_version(&mut deps.storage, CONTRACT_NAME, "9.9.9").unwrap();
-    let err: ContractError =
+    let err: crate::ContractError =
         crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap_err();
     assert_eq!(
         err,
-        ContractError::MigrationErrorInvalidVersion {
+        crate::ContractError::MigrationErrorInvalidVersion {
             new: CONTRACT_VERSION.to_string(),
             current: "9.9.9".to_string(),
         }

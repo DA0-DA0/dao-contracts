@@ -1,6 +1,3 @@
-use cosmwasm_std::Empty;
-use cw_multi_test::{Contract, ContractWrapper};
-
 pub mod suite;
 pub mod tests;
 
@@ -11,15 +8,6 @@ pub const ADDR1: &str = "addr1";
 pub const ADDR2: &str = "addr2";
 pub const ADDR3: &str = "addr3";
 pub const ADDR4: &str = "addr4";
-
-pub fn contract_rewards() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        crate::contract::execute,
-        crate::contract::instantiate,
-        crate::contract::query,
-    );
-    Box::new(contract)
-}
 
 mod cw4_setup {
     use cosmwasm_std::Addr;
@@ -66,7 +54,7 @@ mod cw4_setup {
 mod native_setup {
     use cosmwasm_std::{coins, Addr};
     use cw_multi_test::{App, Executor};
-    use dao_testing::contracts::native_staked_balances_voting_contract;
+    use dao_testing::contracts::dao_voting_token_staked_contract;
 
     use super::{DENOM, OWNER};
 
@@ -100,7 +88,7 @@ mod native_setup {
     }
 
     pub fn setup_native_token_test(app: &mut App) -> Addr {
-        let vp_code_id = app.store_code(native_staked_balances_voting_contract());
+        let vp_code_id = app.store_code(dao_voting_token_staked_contract());
 
         let msg = dao_voting_token_staked::msg::InstantiateMsg {
             active_threshold: None,
@@ -128,7 +116,7 @@ mod cw20_setup {
     use cw_multi_test::{App, Executor};
     use cw_utils::Duration;
     use dao_testing::contracts::{
-        cw20_base_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
+        cw20_base_contract, cw20_stake_contract, dao_voting_cw20_staked_contract,
     };
 
     use super::OWNER;
@@ -171,7 +159,7 @@ mod cw20_setup {
     }
 
     pub fn instantiate_cw20_vp_contract(app: &mut App, cw20: Addr, staking_contract: Addr) -> Addr {
-        let vp_code_id = app.store_code(cw20_staked_balances_voting_contract());
+        let vp_code_id = app.store_code(dao_voting_cw20_staked_contract());
         let msg = dao_voting_cw20_staked::msg::InstantiateMsg {
             token_info: dao_voting_cw20_staked::msg::TokenInfo::Existing {
                 address: cw20.to_string(),
@@ -220,7 +208,7 @@ mod cw721_setup {
 
     use cosmwasm_std::{to_json_binary, Addr, Binary, Empty};
     use cw_multi_test::{App, Executor};
-    use dao_testing::contracts::{cw721_base_contract, cw721_staked_voting_contract};
+    use dao_testing::contracts::{cw721_base_contract, dao_voting_cw721_staked_contract};
     use dao_voting_cw721_staked::state::Config;
 
     use super::OWNER;
@@ -256,7 +244,7 @@ mod cw721_setup {
 
     pub fn setup_cw721_test(app: &mut App, initial_nfts: Vec<Binary>) -> (Addr, Addr) {
         let cw721_code_id = app.store_code(cw721_base_contract());
-        let vp_code_id = app.store_code(cw721_staked_voting_contract());
+        let vp_code_id = app.store_code(dao_voting_cw721_staked_contract());
 
         let msg = dao_voting_cw721_staked::msg::InstantiateMsg {
             nft_contract: dao_voting_cw721_staked::msg::NftContract::New {

@@ -5,7 +5,7 @@ use cosmwasm_std::{
     to_json_binary, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
 };
 use cw2::{set_contract_version, ContractVersion};
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cw_multi_test::{App, Executor};
 use cw_storage_plus::{Item, Map};
 use cw_utils::{Duration, Expiration};
 use dao_interface::{
@@ -17,70 +17,18 @@ use dao_interface::{
     state::{Admin, Config, ModuleInstantiateInfo, ProposalModule, ProposalModuleStatus},
     voting::{InfoResponse, VotingPowerAtHeightResponse},
 };
+use dao_testing::contracts::{
+    cw20_base_contract, cw721_base_contract, dao_dao_core_contract, dao_proposal_sudo_contract,
+    dao_voting_cw20_balance_contract, v1::cw_core_v1_contract,
+};
 
 use crate::{
     contract::{derive_proposal_module_prefix, migrate, CONTRACT_NAME, CONTRACT_VERSION},
     state::PROPOSAL_MODULES,
-    ContractError,
 };
+use dao_dao_core::ContractError;
 
 const CREATOR_ADDR: &str = "creator";
-
-fn cw20_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        cw20_base::contract::execute,
-        cw20_base::contract::instantiate,
-        cw20_base::contract::query,
-    );
-    Box::new(contract)
-}
-
-fn cw721_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        cw721_base::entry::execute,
-        cw721_base::entry::instantiate,
-        cw721_base::entry::query,
-    );
-    Box::new(contract)
-}
-
-fn sudo_proposal_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        dao_proposal_sudo::contract::execute,
-        dao_proposal_sudo::contract::instantiate,
-        dao_proposal_sudo::contract::query,
-    );
-    Box::new(contract)
-}
-
-fn cw20_balances_voting() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        dao_voting_cw20_balance::contract::execute,
-        dao_voting_cw20_balance::contract::instantiate,
-        dao_voting_cw20_balance::contract::query,
-    )
-    .with_reply(dao_voting_cw20_balance::contract::reply);
-    Box::new(contract)
-}
-
-fn cw_core_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        crate::contract::execute,
-        crate::contract::instantiate,
-        crate::contract::query,
-    )
-    .with_reply(crate::contract::reply)
-    .with_migrate(crate::contract::migrate);
-    Box::new(contract)
-}
-
-fn v1_cw_core_contract() -> Box<dyn Contract<Empty>> {
-    use cw_core_v1::contract;
-    let contract = ContractWrapper::new(contract::execute, contract::instantiate, contract::query)
-        .with_reply(contract::reply)
-        .with_migrate(contract::migrate);
-    Box::new(contract)
-}
 
 fn instantiate_gov(app: &mut App, code_id: u64, msg: InstantiateMsg) -> Addr {
     app.instantiate_contract(
@@ -96,8 +44,8 @@ fn instantiate_gov(app: &mut App, code_id: u64, msg: InstantiateMsg) -> Addr {
 
 fn test_instantiate_with_n_gov_modules(n: usize) {
     let mut app = App::default();
-    let cw20_id = app.store_code(cw20_contract());
-    let gov_id = app.store_code(cw_core_contract());
+    let cw20_id = app.store_code(cw20_base_contract());
+    let gov_id = app.store_code(dao_dao_core_contract());
 
     let cw20_instantiate = cw20_base::msg::InstantiateMsg {
         name: "DAO".to_string(),
@@ -176,8 +124,8 @@ fn test_valid_instantiate() {
 #[should_panic(expected = "Error parsing into type cw20_base::msg::InstantiateMsg: Invalid type")]
 fn test_instantiate_with_submessage_failure() {
     let mut app = App::default();
-    let cw20_id = app.store_code(cw20_contract());
-    let gov_id = app.store_code(cw_core_contract());
+    let cw20_id = app.store_code(cw20_base_contract());
+    let gov_id = app.store_code(dao_dao_core_contract());
 
     let cw20_instantiate = cw20_base::msg::InstantiateMsg {
         name: "DAO".to_string(),
@@ -239,8 +187,8 @@ makes wickedness."
 #[test]
 fn test_update_config() {
     let mut app = App::default();
-    let govmod_id = app.store_code(sudo_proposal_contract());
-    let gov_id = app.store_code(cw_core_contract());
+    let govmod_id = app.store_code(dao_proposal_sudo_contract());
+    let gov_id = app.store_code(dao_dao_core_contract());
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -338,8 +286,8 @@ fn test_update_config() {
 
 fn test_swap_governance(swaps: Vec<(u32, u32)>) {
     let mut app = App::default();
-    let propmod_id = app.store_code(sudo_proposal_contract());
-    let core_id = app.store_code(cw_core_contract());
+    let propmod_id = app.store_code(dao_proposal_sudo_contract());
+    let core_id = app.store_code(dao_dao_core_contract());
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -517,8 +465,8 @@ fn test_swap_governance_bad() {
 #[test]
 fn test_removed_modules_can_not_execute() {
     let mut app = App::default();
-    let govmod_id = app.store_code(sudo_proposal_contract());
-    let gov_id = app.store_code(cw_core_contract());
+    let govmod_id = app.store_code(dao_proposal_sudo_contract());
+    let gov_id = app.store_code(dao_dao_core_contract());
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -680,8 +628,8 @@ fn test_removed_modules_can_not_execute() {
 #[test]
 fn test_module_already_disabled() {
     let mut app = App::default();
-    let govmod_id = app.store_code(sudo_proposal_contract());
-    let gov_id = app.store_code(cw_core_contract());
+    let govmod_id = app.store_code(dao_proposal_sudo_contract());
+    let gov_id = app.store_code(dao_dao_core_contract());
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -782,8 +730,8 @@ fn test_module_already_disabled() {
 #[test]
 fn test_swap_voting_module() {
     let mut app = App::default();
-    let govmod_id = app.store_code(sudo_proposal_contract());
-    let gov_id = app.store_code(cw_core_contract());
+    let govmod_id = app.store_code(dao_proposal_sudo_contract());
+    let gov_id = app.store_code(dao_dao_core_contract());
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -888,8 +836,8 @@ fn test_unauthorized(app: &mut App, gov_addr: Addr, msg: ExecuteMsg) {
 #[test]
 fn test_permissions() {
     let mut app = App::default();
-    let govmod_id = app.store_code(sudo_proposal_contract());
-    let gov_id = app.store_code(cw_core_contract());
+    let govmod_id = app.store_code(dao_proposal_sudo_contract());
+    let gov_id = app.store_code(dao_dao_core_contract());
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -972,10 +920,10 @@ fn test_permissions() {
 
 fn do_standard_instantiate(auto_add: bool, admin: Option<String>) -> (Addr, App) {
     let mut app = App::default();
-    let govmod_id = app.store_code(sudo_proposal_contract());
-    let voting_id = app.store_code(cw20_balances_voting());
-    let gov_id = app.store_code(cw_core_contract());
-    let cw20_id = app.store_code(cw20_contract());
+    let govmod_id = app.store_code(dao_proposal_sudo_contract());
+    let voting_id = app.store_code(dao_voting_cw20_balance_contract());
+    let gov_id = app.store_code(dao_dao_core_contract());
+    let cw20_id = app.store_code(cw20_base_contract());
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -1689,10 +1637,10 @@ fn test_remove_missing_key() {
 #[test]
 fn test_list_items() {
     let mut app = App::default();
-    let govmod_id = app.store_code(sudo_proposal_contract());
-    let voting_id = app.store_code(cw20_balances_voting());
-    let gov_id = app.store_code(cw_core_contract());
-    let cw20_id = app.store_code(cw20_contract());
+    let govmod_id = app.store_code(dao_proposal_sudo_contract());
+    let voting_id = app.store_code(dao_voting_cw20_balance_contract());
+    let gov_id = app.store_code(dao_dao_core_contract());
+    let cw20_id = app.store_code(cw20_base_contract());
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -1808,10 +1756,10 @@ fn test_list_items() {
 #[test]
 fn test_instantiate_with_items() {
     let mut app = App::default();
-    let govmod_id = app.store_code(sudo_proposal_contract());
-    let voting_id = app.store_code(cw20_balances_voting());
-    let gov_id = app.store_code(cw_core_contract());
-    let cw20_id = app.store_code(cw20_contract());
+    let govmod_id = app.store_code(dao_proposal_sudo_contract());
+    let voting_id = app.store_code(dao_voting_cw20_balance_contract());
+    let gov_id = app.store_code(dao_dao_core_contract());
+    let cw20_id = app.store_code(cw20_base_contract());
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -1927,7 +1875,7 @@ fn test_instantiate_with_items() {
 fn test_cw20_receive_auto_add() {
     let (gov_addr, mut app) = do_standard_instantiate(true, None);
 
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_base_contract());
     let another_cw20 = app
         .instantiate_contract(
             cw20_id,
@@ -2074,7 +2022,7 @@ fn test_cw20_receive_auto_add() {
 fn test_cw20_receive_no_auto_add() {
     let (gov_addr, mut app) = do_standard_instantiate(false, None);
 
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_base_contract());
     let another_cw20 = app
         .instantiate_contract(
             cw20_id,
@@ -2159,7 +2107,7 @@ fn test_cw20_receive_no_auto_add() {
 fn test_cw721_receive() {
     let (gov_addr, mut app) = do_standard_instantiate(true, None);
 
-    let cw721_id = app.store_code(cw721_contract());
+    let cw721_id = app.store_code(cw721_base_contract());
 
     let cw721_addr = app
         .instantiate_contract(
@@ -2289,7 +2237,7 @@ fn test_cw721_receive() {
 fn test_cw721_receive_no_auto_add() {
     let (gov_addr, mut app) = do_standard_instantiate(false, None);
 
-    let cw721_id = app.store_code(cw721_contract());
+    let cw721_id = app.store_code(cw721_base_contract());
 
     let cw721_addr = app
         .instantiate_contract(
@@ -2651,10 +2599,10 @@ fn test_dump_state_proposal_modules() {
 #[test]
 fn test_migrate_from_compatible() {
     let mut app = App::default();
-    let govmod_id = app.store_code(sudo_proposal_contract());
-    let voting_id = app.store_code(cw20_balances_voting());
-    let gov_id = app.store_code(cw_core_contract());
-    let cw20_id = app.store_code(cw20_contract());
+    let govmod_id = app.store_code(dao_proposal_sudo_contract());
+    let voting_id = app.store_code(dao_voting_cw20_balance_contract());
+    let gov_id = app.store_code(dao_dao_core_contract());
+    let cw20_id = app.store_code(cw20_base_contract());
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -2739,11 +2687,11 @@ fn test_migrate_from_beta() {
     use cw_core_v1 as v1;
 
     let mut app = App::default();
-    let govmod_id = app.store_code(sudo_proposal_contract());
-    let voting_id = app.store_code(cw20_balances_voting());
-    let core_id = app.store_code(cw_core_contract());
-    let v1_core_id = app.store_code(v1_cw_core_contract());
-    let cw20_id = app.store_code(cw20_contract());
+    let govmod_id = app.store_code(dao_proposal_sudo_contract());
+    let voting_id = app.store_code(dao_voting_cw20_balance_contract());
+    let core_id = app.store_code(dao_dao_core_contract());
+    let v1_core_id = app.store_code(cw_core_v1_contract());
+    let cw20_id = app.store_code(cw20_base_contract());
 
     let proposal_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -2953,8 +2901,8 @@ fn test_execute_stargate_msg() {
 #[test]
 fn test_module_prefixes() {
     let mut app = App::default();
-    let govmod_id = app.store_code(sudo_proposal_contract());
-    let gov_id = app.store_code(cw_core_contract());
+    let govmod_id = app.store_code(dao_proposal_sudo_contract());
+    let gov_id = app.store_code(dao_dao_core_contract());
 
     let govmod_instantiate = dao_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),

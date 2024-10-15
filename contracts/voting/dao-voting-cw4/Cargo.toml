@@ -29,4 +29,6 @@ cw4 = { workspace = true }
 cw4-group = { workspace = true }
 
 [dev-dependencies]
+dao-voting-cw4 = { workspace = true }
 cw-multi-test = { workspace = true }
+dao-testing = { workspace = true }

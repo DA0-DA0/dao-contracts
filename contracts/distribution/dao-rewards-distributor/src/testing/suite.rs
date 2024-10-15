@@ -8,6 +8,7 @@ use cw_multi_test::{App, BankSudo, Executor, SudoMsg};
 use cw_ownable::Action;
 use cw_utils::Duration;
 use dao_interface::voting::InfoResponse;
+use dao_testing::contracts::dao_rewards_distributor_contract;
 
 use crate::{
     msg::{
@@ -16,11 +17,10 @@ use crate::{
     },
     state::{DistributionState, EmissionRate},
     testing::cw20_setup::instantiate_cw20,
-    ContractError,
 };
+use dao_rewards_distributor::ContractError;
 
 use super::{
-    contract_rewards,
     cw20_setup::{self, setup_cw20_test},
     cw4_setup::setup_cw4_test,
     cw721_setup::{setup_cw721_test, stake_cw721, unstake_cw721},
@@ -230,7 +230,10 @@ impl SuiteBuilder {
         };
 
         // initialize the rewards distributor
-        suite_built.reward_code_id = suite_built.app.borrow_mut().store_code(contract_rewards());
+        suite_built.reward_code_id = suite_built
+            .app
+            .borrow_mut()
+            .store_code(dao_rewards_distributor_contract());
         let reward_addr = suite_built
             .app
             .borrow_mut()
