@@ -7,6 +7,7 @@ use cw_vesting::msg::InstantiateMsg as PayrollInstantiateMsg;
 pub struct InstantiateMsg {
     pub owner: Option<String>,
     pub vesting_code_id: u64,
+    pub instantiate_allowlist: Option<Vec<String>>,
 }
 
 #[cw_ownable_execute]
@@ -23,6 +24,12 @@ pub enum ExecuteMsg {
     /// Callable only by the current owner. Updates the code ID used
     /// while instantiating vesting contracts.
     UpdateCodeId { vesting_code_id: u64 },
+
+    /// Callable only by the current owner. Updates the addresses that are allowed to instantiate vesting contracts.
+    UpdateInstantiateAllowlist {
+        to_add: Option<Vec<String>>,
+        to_remove: Option<Vec<String>>,
+    },
 }
 
 // Receiver setup
@@ -85,4 +92,17 @@ pub enum QueryMsg {
     /// Returns the code ID currently being used to instantiate vesting contracts.
     #[returns(::std::primitive::u64)]
     CodeId {},
+
+    /// Returns the allowlist
+    /// Addresses allowed to instantiate vesting contracts
+    #[returns(Option<Vec<::cosmwasm_std::Addr>>)]
+    InstantiateAllowlist {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+}
+
+#[cw_serde]
+pub enum MigrateMsg {
+    FromCompatible {},
 }

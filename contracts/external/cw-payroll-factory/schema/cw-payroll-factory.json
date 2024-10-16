@@ -10,6 +10,15 @@
       "vesting_code_id"
     ],
     "properties": {
+      "instantiate_allowlist": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "items": {
+          "type": "string"
+        }
+      },
       "owner": {
         "type": [
           "string",
@@ -84,6 +93,40 @@
                 "type": "integer",
                 "format": "uint64",
                 "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Callable only by the current owner. Updates the addresses that are allowed to instantiate vesting contracts.",
+        "type": "object",
+        "required": [
+          "update_instantiate_allowlist"
+        ],
+        "properties": {
+          "update_instantiate_allowlist": {
+            "type": "object",
+            "properties": {
+              "to_add": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "to_remove": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
               }
             },
             "additionalProperties": false
@@ -636,6 +679,36 @@
           }
         },
         "additionalProperties": false
+      },
+      {
+        "description": "Returns the allowlist Addresses allowed to instantiate vesting contracts",
+        "type": "object",
+        "required": [
+          "instantiate_allowlist"
+        ],
+        "properties": {
+          "instantiate_allowlist": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       }
     ]
   },
@@ -648,6 +721,23 @@
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
+    },
+    "instantiate_allowlist": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Nullable_Array_of_Addr",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Addr"
+      },
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        }
+      }
     },
     "list_vesting_contracts": {
       "$schema": "http://json-schema.org/draft-07/schema#",
