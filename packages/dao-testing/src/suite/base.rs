@@ -5,10 +5,11 @@ use cw_utils::Duration;
 use super::*;
 use crate::contracts::*;
 
-pub struct TestDao {
-    pub core: Addr,
-    pub voting_module: Addr,
+pub struct TestDao<Extra = Empty> {
+    pub core_addr: Addr,
+    pub voting_module_addr: Addr,
     pub proposal_modules: Vec<dao_interface::state::ProposalModule>,
+    pub x: Extra,
 }
 
 pub struct DaoTestingSuiteBase {
@@ -41,7 +42,7 @@ pub struct DaoTestingSuiteBase {
     pub admin_factory_addr: Addr,
 }
 
-pub trait DaoTestingSuite {
+pub trait DaoTestingSuite<Extra = Empty> {
     /// get the testing suite base
     fn base(&self) -> &DaoTestingSuiteBase;
 
@@ -51,8 +52,15 @@ pub trait DaoTestingSuite {
     /// get the voting module info to instantiate the DAO with
     fn get_voting_module_info(&self) -> dao_interface::state::ModuleInstantiateInfo;
 
-    /// build the DAO
-    fn dao(&mut self) -> TestDao {
+    /// get the extra DAO fields
+    fn get_dao_extra(&self, _dao: &TestDao) -> Extra;
+
+    /// perform additional setup for the DAO after it is created. empty default
+    /// implementation makes this optional.
+    fn dao_setup(&mut self, _dao: &mut TestDao<Extra>) {}
+
+    /// build the DAO. no need to override this.
+    fn dao(&mut self) -> TestDao<Extra> {
         let voting_module_info = self.get_voting_module_info();
 
         let proposal_module_infos =
@@ -131,9 +139,25 @@ pub trait DaoTestingSuite {
             label: "multiple choice proposal module".to_string(),
         }];
 
-        return self
+        // create the DAO using the base testing suite
+        let dao = self
             .base_mut()
             .build(voting_module_info, proposal_module_infos);
+
+        // perform additional queries to get extra fields for DAO struct
+        let x = self.get_dao_extra(&dao);
+
+        let mut dao = TestDao {
+            core_addr: dao.core_addr,
+            voting_module_addr: dao.voting_module_addr,
+            proposal_modules: dao.proposal_modules,
+            x,
+        };
+
+        // perform additional setup after the DAO is created
+        self.dao_setup(&mut dao);
+
+        dao
     }
 
     /// get the app querier
@@ -142,6 +166,7 @@ pub trait DaoTestingSuite {
     }
 }
 
+// CONSTRUCTOR
 impl DaoTestingSuiteBase {
     pub fn new() -> Self {
         let mut app = App::default();
@@ -207,12 +232,13 @@ impl DaoTestingSuiteBase {
     }
 }
 
+// DAO CREATION
 impl DaoTestingSuiteBase {
     pub fn build(
         &mut self,
         voting_module_instantiate_info: dao_interface::state::ModuleInstantiateInfo,
         proposal_modules_instantiate_info: Vec<dao_interface::state::ModuleInstantiateInfo>,
-    ) -> TestDao {
+    ) -> TestDao<Empty> {
         let init = dao_interface::msg::InstantiateMsg {
             admin: None,
             name: "DAO DAO".to_string(),
@@ -266,63 +292,34 @@ impl DaoTestingSuiteBase {
             .unwrap();
 
         TestDao {
-            core,
-            voting_module,
+            core_addr: core,
+            voting_module_addr: voting_module,
             proposal_modules,
+            x: Empty::default(),
         }
     }
 
     pub fn cw4(&mut self) -> DaoTestingSuiteCw4 {
         DaoTestingSuiteCw4::new(self)
     }
+
+    pub fn cw20(&mut self) -> DaoTestingSuiteCw20 {
+        DaoTestingSuiteCw20::new(self)
+    }
+
+    pub fn cw721(&mut self) -> DaoTestingSuiteCw721 {
+        DaoTestingSuiteCw721::new(self)
+    }
+
+    pub fn token(&mut self) -> DaoTestingSuiteToken {
+        DaoTestingSuiteToken::new(self)
+    }
 }
 
-#[cfg(test)]
-mod test {
-    use cosmwasm_std::Uint128;
-
-    use super::*;
-
-    #[test]
-    fn dao_testing_suite_cw4() {
-        let mut suite = DaoTestingSuiteBase::new();
-        let mut suite = suite.cw4();
-        let cw4_dao = suite.dao();
-
-        let voting_module: Addr = suite
-            .querier()
-            .query_wasm_smart(
-                &cw4_dao.core,
-                &dao_interface::msg::QueryMsg::VotingModule {},
-            )
-            .unwrap();
-        assert_eq!(voting_module, cw4_dao.voting_module);
-
-        let proposal_modules: Vec<dao_interface::state::ProposalModule> = suite
-            .querier()
-            .query_wasm_smart(
-                &cw4_dao.core,
-                &dao_interface::msg::QueryMsg::ProposalModules {
-                    start_after: None,
-                    limit: None,
-                },
-            )
-            .unwrap();
-        assert_eq!(proposal_modules.len(), 2);
-
-        let total_weight: dao_interface::voting::TotalPowerAtHeightResponse = suite
-            .querier()
-            .query_wasm_smart(
-                &cw4_dao.core,
-                &dao_interface::msg::QueryMsg::TotalPowerAtHeight { height: None },
-            )
-            .unwrap();
-        assert_eq!(
-            total_weight.power,
-            suite
-                .members
-                .iter()
-                .fold(Uint128::zero(), |acc, m| acc + Uint128::from(m.weight))
-        );
+// UTILITIES
+impl DaoTestingSuiteBase {
+    /// advance the block height by one
+    pub fn advance_block(&mut self) {
+        self.app.update_block(|b| b.height += 1);
     }
 }

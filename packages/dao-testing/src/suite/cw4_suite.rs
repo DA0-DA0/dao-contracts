@@ -1,4 +1,4 @@
-use cosmwasm_std::to_json_binary;
+use cosmwasm_std::{to_json_binary, Addr};
 
 use super::*;
 
@@ -7,6 +7,12 @@ pub struct DaoTestingSuiteCw4<'a> {
 
     pub members: Vec<cw4::Member>,
 }
+
+pub struct Cw4DaoExtra {
+    pub group_addr: Addr,
+}
+
+pub type Cw4TestDao = TestDao<Cw4DaoExtra>;
 
 impl<'a> DaoTestingSuiteCw4<'a> {
     pub fn new(base: &'a mut DaoTestingSuiteBase) -> Self {
@@ -43,7 +49,7 @@ impl<'a> DaoTestingSuiteCw4<'a> {
     }
 }
 
-impl<'a> DaoTestingSuite for DaoTestingSuiteCw4<'a> {
+impl<'a> DaoTestingSuite<Cw4DaoExtra> for DaoTestingSuiteCw4<'a> {
     fn base(&self) -> &DaoTestingSuiteBase {
         self.base
     }
@@ -66,5 +72,76 @@ impl<'a> DaoTestingSuite for DaoTestingSuiteCw4<'a> {
             funds: vec![],
             label: "voting module".to_string(),
         }
+    }
+
+    fn get_dao_extra(&self, dao: &TestDao) -> Cw4DaoExtra {
+        let group_addr: Addr = self
+            .querier()
+            .query_wasm_smart(
+                &dao.voting_module_addr,
+                &dao_voting_cw4::msg::QueryMsg::GroupContract {},
+            )
+            .unwrap();
+
+        Cw4DaoExtra { group_addr }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use cosmwasm_std::Uint128;
+
+    use super::*;
+
+    #[test]
+    fn dao_testing_suite_cw4() {
+        let mut suite = DaoTestingSuiteBase::new();
+        let mut suite = suite.cw4();
+        let dao = suite.dao();
+
+        let voting_module: Addr = suite
+            .querier()
+            .query_wasm_smart(
+                &dao.core_addr,
+                &dao_interface::msg::QueryMsg::VotingModule {},
+            )
+            .unwrap();
+        assert_eq!(voting_module, dao.voting_module_addr);
+
+        let proposal_modules: Vec<dao_interface::state::ProposalModule> = suite
+            .querier()
+            .query_wasm_smart(
+                &dao.core_addr,
+                &dao_interface::msg::QueryMsg::ProposalModules {
+                    start_after: None,
+                    limit: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(proposal_modules.len(), 2);
+
+        let group_addr: Addr = suite
+            .querier()
+            .query_wasm_smart(
+                &dao.voting_module_addr,
+                &dao_voting_cw4::msg::QueryMsg::GroupContract {},
+            )
+            .unwrap();
+        assert_eq!(group_addr, dao.x.group_addr);
+
+        let total_weight: dao_interface::voting::TotalPowerAtHeightResponse = suite
+            .querier()
+            .query_wasm_smart(
+                &dao.core_addr,
+                &dao_interface::msg::QueryMsg::TotalPowerAtHeight { height: None },
+            )
+            .unwrap();
+        assert_eq!(
+            total_weight.power,
+            suite
+                .members
+                .iter()
+                .fold(Uint128::zero(), |acc, m| acc + Uint128::from(m.weight))
+        );
     }
 }
