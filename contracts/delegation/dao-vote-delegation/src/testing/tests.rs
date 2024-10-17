@@ -1,6 +1,6 @@
 use cosmwasm_std::{Addr, Decimal, Empty, Uint128};
 use cw_multi_test::{Contract, ContractWrapper};
-use dao_testing::{DaoTestingSuite, DaoTestingSuiteBase, Executor, ADDR0, ADDR1, ADDR2};
+use dao_testing::{DaoTestingSuite, DaoTestingSuiteBase, ADDR0, ADDR1, ADDR2};
 use dao_voting::delegation::{DelegationResponse, DelegationsResponse};
 
 pub fn dao_vote_delegation_contract() -> Box<dyn Contract<Empty>> {
@@ -19,55 +19,43 @@ fn test_setup() {
     let mut suite = base.cw4();
     let dao = suite.dao();
 
-    let code_id = suite.base.app.store_code(dao_vote_delegation_contract());
-    let delegation_addr = suite
-        .base
-        .app
-        .instantiate_contract(
-            code_id,
-            dao.core_addr.clone(),
-            &crate::msg::InstantiateMsg {
-                dao: None,
-                vp_hook_callers: Some(vec![dao.x.group_addr.to_string()]),
-                no_sync_proposal_modules: None,
-                vp_cap_percent: Some(Decimal::percent(50)),
-                delegation_validity_blocks: Some(100),
-            },
-            &[],
-            "delegation",
-            None,
-        )
-        .unwrap();
+    let code_id = suite.store(dao_vote_delegation_contract);
+    let delegation_addr = suite.instantiate(
+        code_id,
+        &dao.core_addr,
+        &crate::msg::InstantiateMsg {
+            dao: None,
+            vp_hook_callers: Some(vec![dao.x.group_addr.to_string()]),
+            no_sync_proposal_modules: None,
+            vp_cap_percent: Some(Decimal::percent(50)),
+            delegation_validity_blocks: Some(100),
+        },
+        &[],
+        "delegation",
+        None,
+    );
 
     // register addr0 as a delegate
-    suite
-        .base
-        .app
-        .execute_contract(
-            Addr::unchecked(ADDR0),
-            delegation_addr.clone(),
-            &crate::msg::ExecuteMsg::Register {},
-            &[],
-        )
-        .unwrap();
+    suite.execute_smart(
+        ADDR0,
+        &delegation_addr,
+        &crate::msg::ExecuteMsg::Register {},
+        &[],
+    );
 
     // delegate 100% of addr1's voting power to addr0
-    suite
-        .base
-        .app
-        .execute_contract(
-            Addr::unchecked(ADDR1),
-            delegation_addr.clone(),
-            &crate::msg::ExecuteMsg::Delegate {
-                delegate: ADDR0.to_string(),
-                percent: Decimal::percent(100),
-            },
-            &[],
-        )
-        .unwrap();
+    suite.execute_smart(
+        ADDR1,
+        &delegation_addr,
+        &crate::msg::ExecuteMsg::Delegate {
+            delegate: ADDR0.to_string(),
+            percent: Decimal::percent(100),
+        },
+        &[],
+    );
 
     // delegations take effect on the next block
-    suite.base.advance_block();
+    suite.advance_block();
 
     let delegations: DelegationsResponse = suite
         .querier()
@@ -94,7 +82,7 @@ fn test_setup() {
 
     // propose a proposal
     let (proposal_module, id1, p1) =
-        dao.propose_single_choice(&mut suite.base.app, ADDR0, "test proposal 1", vec![]);
+        dao.propose_single_choice(&mut suite, ADDR0, "test proposal 1", vec![]);
 
     // ensure delegation is correctly applied to proposal
     let udvp: dao_voting::delegation::UnvotedDelegatedVotingPowerResponse = suite
@@ -115,26 +103,21 @@ fn test_setup() {
     );
 
     // set delegation to 50%
-    suite
-        .base
-        .app
-        .execute_contract(
-            Addr::unchecked(ADDR1),
-            delegation_addr.clone(),
-            &crate::msg::ExecuteMsg::Delegate {
-                delegate: ADDR0.to_string(),
-                percent: Decimal::percent(50),
-            },
-            &[],
-        )
-        .unwrap();
+    suite.execute_smart(
+        ADDR1,
+        &delegation_addr,
+        &crate::msg::ExecuteMsg::Delegate {
+            delegate: ADDR0.to_string(),
+            percent: Decimal::percent(50),
+        },
+        &[],
+    );
 
     // delegations take effect on the next block
-    suite.base.advance_block();
+    suite.advance_block();
 
     // propose a proposal
-    let (_, id2, p2) =
-        dao.propose_single_choice(&mut suite.base.app, ADDR2, "test proposal 2", vec![]);
+    let (_, id2, p2) = dao.propose_single_choice(&mut suite, ADDR2, "test proposal 2", vec![]);
 
     // ensure delegation is correctly applied to new proposal
     let udvp: dao_voting::delegation::UnvotedDelegatedVotingPowerResponse = suite

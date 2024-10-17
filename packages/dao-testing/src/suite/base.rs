@@ -1,7 +1,13 @@
-use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Empty, QuerierWrapper, Timestamp};
+use std::{
+    fmt::{Debug, Display},
+    ops::{Deref, DerefMut},
+};
+
+use cosmwasm_std::{to_json_binary, Addr, Coin, CosmosMsg, Empty, QuerierWrapper, Timestamp};
 use cw20::Cw20Coin;
-use cw_multi_test::{App, Executor};
+use cw_multi_test::{App, AppResponse, Contract, Executor};
 use cw_utils::Duration;
+use serde::Serialize;
 
 use super::*;
 use crate::contracts::*;
@@ -21,7 +27,7 @@ impl<T> TestDao<T> {
     /// proposal ID, and proposal
     pub fn propose_single_choice(
         &self,
-        app: &mut App,
+        base: &mut DaoTestingSuiteBase,
         proposer: impl Into<String>,
         title: impl Into<String>,
         msgs: Vec<CosmosMsg>,
@@ -41,24 +47,23 @@ impl<T> TestDao<T> {
 
         let (pre_propose_module, proposal_module) = &self.proposal_modules[0];
 
-        app.execute_contract(
-            Addr::unchecked(proposer.into()),
-            pre_propose_module.as_ref().unwrap().clone(),
+        base.execute_smart(
+            proposer,
+            pre_propose_module.as_ref().unwrap(),
             &pre_propose_msg,
             &[],
-        )
-        .unwrap();
+        );
 
-        let proposal_id: u64 = app
-            .wrap()
+        let proposal_id: u64 = base
+            .querier()
             .query_wasm_smart(
                 proposal_module.clone(),
                 &dao_proposal_single::msg::QueryMsg::ProposalCount {},
             )
             .unwrap();
 
-        let res: dao_proposal_single::query::ProposalResponse = app
-            .wrap()
+        let res: dao_proposal_single::query::ProposalResponse = base
+            .querier()
             .query_wasm_smart(
                 proposal_module.clone(),
                 &dao_proposal_single::msg::QueryMsg::Proposal { proposal_id },
@@ -99,7 +104,7 @@ pub struct DaoTestingSuiteBase {
     pub admin_factory_addr: Addr,
 }
 
-pub trait DaoTestingSuite<Extra = Empty> {
+pub trait DaoTestingSuite<Extra = Empty>: Deref + DerefMut {
     /// get the testing suite base
     fn base(&self) -> &DaoTestingSuiteBase;
 
@@ -218,11 +223,6 @@ pub trait DaoTestingSuite<Extra = Empty> {
 
         dao
     }
-
-    /// get the app querier
-    fn querier(&self) -> QuerierWrapper<'_> {
-        self.base().app.wrap()
-    }
 }
 
 // CONSTRUCTOR
@@ -296,24 +296,20 @@ impl DaoTestingSuiteBase {
         }
     }
 
-    pub fn instantiate_cw20(&mut self, name: &str, initial_balances: Vec<Cw20Coin>) -> Addr {
-        self.app
-            .instantiate_contract(
-                self.cw20_base_id,
-                Addr::unchecked(OWNER),
-                &cw20_base::msg::InstantiateMsg {
-                    name: name.to_string(),
-                    symbol: name.to_string(),
-                    decimals: 6,
-                    initial_balances,
-                    mint: None,
-                    marketing: None,
-                },
-                &[],
-                "cw20",
-                None,
-            )
-            .unwrap()
+    pub fn cw4(&mut self) -> DaoTestingSuiteCw4 {
+        DaoTestingSuiteCw4::new(self)
+    }
+
+    pub fn cw20(&mut self) -> DaoTestingSuiteCw20 {
+        DaoTestingSuiteCw20::new(self)
+    }
+
+    pub fn cw721(&mut self) -> DaoTestingSuiteCw721 {
+        DaoTestingSuiteCw721::new(self)
+    }
+
+    pub fn token(&mut self) -> DaoTestingSuiteToken {
+        DaoTestingSuiteToken::new(self)
     }
 }
 
@@ -404,28 +400,101 @@ impl DaoTestingSuiteBase {
             x: Empty::default(),
         }
     }
-
-    pub fn cw4(&mut self) -> DaoTestingSuiteCw4 {
-        DaoTestingSuiteCw4::new(self)
-    }
-
-    pub fn cw20(&mut self) -> DaoTestingSuiteCw20 {
-        DaoTestingSuiteCw20::new(self)
-    }
-
-    pub fn cw721(&mut self) -> DaoTestingSuiteCw721 {
-        DaoTestingSuiteCw721::new(self)
-    }
-
-    pub fn token(&mut self) -> DaoTestingSuiteToken {
-        DaoTestingSuiteToken::new(self)
-    }
 }
 
 // UTILITIES
 impl DaoTestingSuiteBase {
+    /// get the app querier
+    pub fn querier(&self) -> QuerierWrapper<'_> {
+        self.app.wrap()
+    }
+
     /// advance the block height by one
     pub fn advance_block(&mut self) {
         self.app.update_block(|b| b.height += 1);
+    }
+
+    /// store a contract given its maker function and return its code ID
+    pub fn store(&mut self, contract_maker: impl FnOnce() -> Box<dyn Contract<Empty>>) -> u64 {
+        self.app.store_code(contract_maker())
+    }
+
+    /// instantiate a smart contract and return its address
+    pub fn instantiate<T: Serialize + Debug>(
+        &mut self,
+        code_id: u64,
+        sender: impl Into<String>,
+        init_msg: &T,
+        send_funds: &[Coin],
+        label: impl Into<String>,
+        admin: Option<String>,
+    ) -> Addr {
+        self.app
+            .instantiate_contract(
+                code_id,
+                Addr::unchecked(sender),
+                init_msg,
+                send_funds,
+                label.into(),
+                admin.map(|a| a.into()),
+            )
+            .unwrap()
+    }
+
+    /// execute a smart contract and expect it to succeed
+    pub fn execute_smart<T: Serialize + Debug>(
+        &mut self,
+        sender: impl Into<String>,
+        contract_addr: impl Into<String>,
+        msg: &T,
+        send_funds: &[Coin],
+    ) -> AppResponse {
+        self.app
+            .execute_contract(
+                Addr::unchecked(sender.into()),
+                Addr::unchecked(contract_addr.into()),
+                msg,
+                send_funds,
+            )
+            .unwrap()
+    }
+
+    /// execute a smart contract and return the error
+    pub fn execute_smart_err<T: Serialize + Debug, E: Display + Debug + Send + Sync + 'static>(
+        &mut self,
+        sender: impl Into<String>,
+        contract_addr: impl Into<String>,
+        msg: &T,
+        send_funds: &[Coin],
+    ) -> E {
+        self.app
+            .execute_contract(
+                Addr::unchecked(sender.into()),
+                Addr::unchecked(contract_addr.into()),
+                msg,
+                send_funds,
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap()
+    }
+
+    /// instantiate a cw20 contract and return its address
+    pub fn instantiate_cw20(&mut self, name: &str, initial_balances: Vec<Cw20Coin>) -> Addr {
+        self.instantiate(
+            self.cw20_base_id,
+            OWNER,
+            &cw20_base::msg::InstantiateMsg {
+                name: name.to_string(),
+                symbol: name.to_string(),
+                decimals: 6,
+                initial_balances,
+                mint: None,
+                marketing: None,
+            },
+            &[],
+            "cw20",
+            None,
+        )
     }
 }
