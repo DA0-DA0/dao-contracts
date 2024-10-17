@@ -5,7 +5,7 @@ use std::{
 
 use cosmwasm_std::{to_json_binary, Addr, Coin, CosmosMsg, Empty, QuerierWrapper, Timestamp};
 use cw20::Cw20Coin;
-use cw_multi_test::{App, AppResponse, Contract, Executor};
+use cw_multi_test::{error::AnyResult, App, AppResponse, Contract, Executor};
 use cw_utils::Duration;
 use serde::Serialize;
 
@@ -20,58 +20,6 @@ pub struct TestDao<Extra = Empty> {
     /// the pre-propose module is None, then it does not exist.
     pub proposal_modules: Vec<(Option<Addr>, Addr)>,
     pub x: Extra,
-}
-
-impl<T> TestDao<T> {
-    /// propose a single choice proposal and return the proposal module address,
-    /// proposal ID, and proposal
-    pub fn propose_single_choice(
-        &self,
-        base: &mut DaoTestingSuiteBase,
-        proposer: impl Into<String>,
-        title: impl Into<String>,
-        msgs: Vec<CosmosMsg>,
-    ) -> (
-        Addr,
-        u64,
-        dao_proposal_single::proposal::SingleChoiceProposal,
-    ) {
-        let pre_propose_msg = dao_pre_propose_single::ExecuteMsg::Propose {
-            msg: dao_pre_propose_single::ProposeMessage::Propose {
-                title: title.into(),
-                description: "".to_string(),
-                msgs,
-                vote: None,
-            },
-        };
-
-        let (pre_propose_module, proposal_module) = &self.proposal_modules[0];
-
-        base.execute_smart(
-            proposer,
-            pre_propose_module.as_ref().unwrap(),
-            &pre_propose_msg,
-            &[],
-        );
-
-        let proposal_id: u64 = base
-            .querier()
-            .query_wasm_smart(
-                proposal_module.clone(),
-                &dao_proposal_single::msg::QueryMsg::ProposalCount {},
-            )
-            .unwrap();
-
-        let res: dao_proposal_single::query::ProposalResponse = base
-            .querier()
-            .query_wasm_smart(
-                proposal_module.clone(),
-                &dao_proposal_single::msg::QueryMsg::Proposal { proposal_id },
-            )
-            .unwrap();
-
-        (proposal_module.clone(), proposal_id, res.proposal)
-    }
 }
 
 pub struct DaoTestingSuiteBase {
@@ -409,9 +357,14 @@ impl DaoTestingSuiteBase {
         self.app.wrap()
     }
 
+    /// advance the block height by N
+    pub fn advance_blocks(&mut self, n: u64) {
+        self.app.update_block(|b| b.height += n);
+    }
+
     /// advance the block height by one
     pub fn advance_block(&mut self) {
-        self.app.update_block(|b| b.height += 1);
+        self.advance_blocks(1);
     }
 
     /// store a contract given its maker function and return its code ID
@@ -436,26 +389,36 @@ impl DaoTestingSuiteBase {
                 init_msg,
                 send_funds,
                 label.into(),
-                admin.map(|a| a.into()),
+                admin,
             )
             .unwrap()
     }
 
-    /// execute a smart contract and expect it to succeed
+    /// execute a smart contract and return the result
     pub fn execute_smart<T: Serialize + Debug>(
         &mut self,
         sender: impl Into<String>,
         contract_addr: impl Into<String>,
         msg: &T,
         send_funds: &[Coin],
+    ) -> AnyResult<AppResponse> {
+        self.app.execute_contract(
+            Addr::unchecked(sender.into()),
+            Addr::unchecked(contract_addr.into()),
+            msg,
+            send_funds,
+        )
+    }
+
+    /// execute a smart contract and expect it to succeed
+    pub fn execute_smart_ok<T: Serialize + Debug>(
+        &mut self,
+        sender: impl Into<String>,
+        contract_addr: impl Into<String>,
+        msg: &T,
+        send_funds: &[Coin],
     ) -> AppResponse {
-        self.app
-            .execute_contract(
-                Addr::unchecked(sender.into()),
-                Addr::unchecked(contract_addr.into()),
-                msg,
-                send_funds,
-            )
+        self.execute_smart(sender, contract_addr, msg, send_funds)
             .unwrap()
     }
 
@@ -467,13 +430,7 @@ impl DaoTestingSuiteBase {
         msg: &T,
         send_funds: &[Coin],
     ) -> E {
-        self.app
-            .execute_contract(
-                Addr::unchecked(sender.into()),
-                Addr::unchecked(contract_addr.into()),
-                msg,
-                send_funds,
-            )
+        self.execute_smart(sender, contract_addr, msg, send_funds)
             .unwrap_err()
             .downcast()
             .unwrap()
@@ -496,5 +453,55 @@ impl DaoTestingSuiteBase {
             "cw20",
             None,
         )
+    }
+
+    /// propose a single choice proposal and return the proposal module address,
+    /// proposal ID, and proposal
+    pub fn propose_single_choice<T>(
+        &mut self,
+        dao: &TestDao<T>,
+        proposer: impl Into<String>,
+        title: impl Into<String>,
+        msgs: Vec<CosmosMsg>,
+    ) -> (
+        Addr,
+        u64,
+        dao_proposal_single::proposal::SingleChoiceProposal,
+    ) {
+        let pre_propose_msg = dao_pre_propose_single::ExecuteMsg::Propose {
+            msg: dao_pre_propose_single::ProposeMessage::Propose {
+                title: title.into(),
+                description: "".to_string(),
+                msgs,
+                vote: None,
+            },
+        };
+
+        let (pre_propose_module, proposal_module) = &dao.proposal_modules[0];
+
+        self.execute_smart_ok(
+            proposer,
+            pre_propose_module.as_ref().unwrap(),
+            &pre_propose_msg,
+            &[],
+        );
+
+        let proposal_id: u64 = self
+            .querier()
+            .query_wasm_smart(
+                proposal_module.clone(),
+                &dao_proposal_single::msg::QueryMsg::ProposalCount {},
+            )
+            .unwrap();
+
+        let res: dao_proposal_single::query::ProposalResponse = self
+            .querier()
+            .query_wasm_smart(
+                proposal_module.clone(),
+                &dao_proposal_single::msg::QueryMsg::Proposal { proposal_id },
+            )
+            .unwrap();
+
+        (proposal_module.clone(), proposal_id, res.proposal)
     }
 }

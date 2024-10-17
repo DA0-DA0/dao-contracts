@@ -31,13 +31,13 @@ impl<'a> Deref for DaoTestingSuiteCw721<'a> {
     type Target = DaoTestingSuiteBase;
 
     fn deref(&self) -> &Self::Target {
-        &self.base
+        self.base
     }
 }
 
 impl<'a> DerefMut for DaoTestingSuiteCw721<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.base
+        self.base
     }
 }
 
@@ -98,7 +98,7 @@ impl<'a> DaoTestingSuiteCw721<'a> {
         staker: impl Into<String>,
         token_id: impl Into<String>,
     ) {
-        self.execute_smart(
+        self.execute_smart_ok(
             staker,
             &dao.x.cw721_addr,
             &cw721_base::msg::ExecuteMsg::<Empty, Empty>::SendNft {
@@ -117,7 +117,7 @@ impl<'a> DaoTestingSuiteCw721<'a> {
         staker: impl Into<String>,
         token_id: impl Into<String>,
     ) {
-        self.execute_smart(
+        self.execute_smart_ok(
             staker,
             &dao.voting_module_addr,
             &dao_voting_cw721_staked::msg::ExecuteMsg::Unstake {

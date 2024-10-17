@@ -26,13 +26,13 @@ impl<'a> Deref for DaoTestingSuiteToken<'a> {
     type Target = DaoTestingSuiteBase;
 
     fn deref(&self) -> &Self::Target {
-        &self.base
+        self.base
     }
 }
 
 impl<'a> DerefMut for DaoTestingSuiteToken<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.base
+        self.base
     }
 }
 
@@ -110,7 +110,7 @@ impl<'a> DaoTestingSuiteToken<'a> {
         staker: impl Into<String>,
         amount: impl Into<u128>,
     ) {
-        self.execute_smart(
+        self.execute_smart_ok(
             staker,
             &dao.voting_module_addr,
             &dao_voting_token_staked::msg::ExecuteMsg::Stake {},
@@ -125,7 +125,7 @@ impl<'a> DaoTestingSuiteToken<'a> {
         staker: impl Into<String>,
         amount: impl Into<Uint128>,
     ) {
-        self.execute_smart(
+        self.execute_smart_ok(
             staker,
             &dao.voting_module_addr,
             &dao_voting_token_staked::msg::ExecuteMsg::Unstake {
