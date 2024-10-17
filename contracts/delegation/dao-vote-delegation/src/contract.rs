@@ -75,6 +75,13 @@ pub fn instantiate(
     )?;
     VP_CAP_PERCENT.save(deps.storage, &msg.vp_cap_percent, env.block.height)?;
 
+    // initialize voting power changed hook callers
+    if let Some(vp_hook_callers) = msg.vp_hook_callers {
+        for caller in vp_hook_callers {
+            VOTING_POWER_HOOK_CALLERS.save(deps.storage, deps.api.addr_validate(&caller)?, &())?;
+        }
+    }
+
     // sync proposal modules with no limit if not disabled. this should succeed
     // for most DAOs as the query will not run out of gas with only a few
     // proposal modules.

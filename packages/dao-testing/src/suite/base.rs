@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_json_binary, Addr, Empty, QuerierWrapper, Timestamp};
+use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Empty, QuerierWrapper, Timestamp};
 use cw20::Cw20Coin;
 use cw_multi_test::{App, Executor};
 use cw_utils::Duration;
@@ -10,8 +10,63 @@ use crate::contracts::*;
 pub struct TestDao<Extra = Empty> {
     pub core_addr: Addr,
     pub voting_module_addr: Addr,
-    pub proposal_modules: Vec<dao_interface::state::ProposalModule>,
+    /// proposal modules in the form (pre-propose module, proposal module). if
+    /// the pre-propose module is None, then it does not exist.
+    pub proposal_modules: Vec<(Option<Addr>, Addr)>,
     pub x: Extra,
+}
+
+impl<T> TestDao<T> {
+    /// propose a single choice proposal and return the proposal module address,
+    /// proposal ID, and proposal
+    pub fn propose_single_choice(
+        &self,
+        app: &mut App,
+        proposer: impl Into<String>,
+        title: impl Into<String>,
+        msgs: Vec<CosmosMsg>,
+    ) -> (
+        Addr,
+        u64,
+        dao_proposal_single::proposal::SingleChoiceProposal,
+    ) {
+        let pre_propose_msg = dao_pre_propose_single::ExecuteMsg::Propose {
+            msg: dao_pre_propose_single::ProposeMessage::Propose {
+                title: title.into(),
+                description: "".to_string(),
+                msgs,
+                vote: None,
+            },
+        };
+
+        let (pre_propose_module, proposal_module) = &self.proposal_modules[0];
+
+        app.execute_contract(
+            Addr::unchecked(proposer.into()),
+            pre_propose_module.as_ref().unwrap().clone(),
+            &pre_propose_msg,
+            &[],
+        )
+        .unwrap();
+
+        let proposal_id: u64 = app
+            .wrap()
+            .query_wasm_smart(
+                proposal_module.clone(),
+                &dao_proposal_single::msg::QueryMsg::ProposalCount {},
+            )
+            .unwrap();
+
+        let res: dao_proposal_single::query::ProposalResponse = app
+            .wrap()
+            .query_wasm_smart(
+                proposal_module.clone(),
+                &dao_proposal_single::msg::QueryMsg::Proposal { proposal_id },
+            )
+            .unwrap();
+
+        (proposal_module.clone(), proposal_id, res.proposal)
+    }
 }
 
 pub struct DaoTestingSuiteBase {
@@ -97,6 +152,7 @@ pub trait DaoTestingSuite<Extra = Empty> {
                 },
                 close_proposal_on_execution_failure: true,
                 veto: None,
+                delegation_module: None,
             })
             .unwrap(),
             admin: Some(dao_interface::state::Admin::CoreModule {}),
@@ -134,6 +190,7 @@ pub trait DaoTestingSuite<Extra = Empty> {
                 },
                 close_proposal_on_execution_failure: true,
                 veto: None,
+                delegation_module: None,
             })
             .unwrap(),
             admin: Some(dao_interface::state::Admin::CoreModule {}),
@@ -300,7 +357,7 @@ impl DaoTestingSuiteBase {
         let core = Addr::unchecked(instantiate_event.attributes[0].value.clone());
 
         // get voting module address
-        let voting_module: Addr = self
+        let voting_module_addr: Addr = self
             .app
             .wrap()
             .query_wasm_smart(&core, &dao_interface::msg::QueryMsg::VotingModule {})
@@ -319,9 +376,30 @@ impl DaoTestingSuiteBase {
             )
             .unwrap();
 
+        let proposal_modules = proposal_modules
+            .into_iter()
+            .map(|p| -> (Option<Addr>, Addr) {
+                let pre_propose_module: dao_voting::pre_propose::ProposalCreationPolicy = self
+                    .app
+                    .wrap()
+                    .query_wasm_smart(
+                        &p.address,
+                        &dao_proposal_single::msg::QueryMsg::ProposalCreationPolicy {},
+                    )
+                    .unwrap();
+
+                match pre_propose_module {
+                    dao_voting::pre_propose::ProposalCreationPolicy::Anyone {} => (None, p.address),
+                    dao_voting::pre_propose::ProposalCreationPolicy::Module { addr } => {
+                        (Some(addr), p.address)
+                    }
+                }
+            })
+            .collect::<Vec<_>>();
+
         TestDao {
             core_addr: core,
-            voting_module_addr: voting_module,
+            voting_module_addr,
             proposal_modules,
             x: Empty::default(),
         }
