@@ -14,6 +14,10 @@ use dao_hooks::proposal::{
 };
 use dao_hooks::vote::new_vote_hooks;
 use dao_interface::voting::IsActiveResponse;
+use dao_voting::delegation::{
+    self, calculate_delegated_vp, DelegationResponse, UnvotedDelegatedVotingPowerResponse,
+};
+use dao_voting::voting::get_voting_power_with_delegation;
 use dao_voting::{
     multiple_choice::{MultipleChoiceVote, MultipleChoiceVotes, VotingStrategy},
     pre_propose::{PreProposeInfo, ProposalCreationPolicy},
@@ -26,6 +30,7 @@ use dao_voting::{
     voting::{get_total_power, get_voting_power, validate_voting_period},
 };
 
+use crate::state::DELEGATION_MODULE;
 use crate::{msg::MigrateMsg, state::CREATION_POLICY};
 use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
@@ -129,6 +134,9 @@ pub fn execute(
         ExecuteMsg::UpdatePreProposeInfo { info: new_info } => {
             execute_update_proposal_creation_policy(deps, info, new_info)
         }
+        ExecuteMsg::UpdateDelegationModule { module } => {
+            execute_update_delegation_module(deps, info, module)
+        }
         ExecuteMsg::AddProposalHook { address } => {
             execute_add_proposal_hook(deps, env, info, address)
         }
@@ -198,6 +206,9 @@ pub fn execute_propose(
     // Validate options.
     let checked_multiple_choice_options = choices.into_checked()?.options;
 
+    // Delegation module may or may not exist.
+    let delegation_module = DELEGATION_MODULE.may_load(deps.storage)?;
+
     let expiration = config.max_voting_period.after(&env.block);
     let total_power = get_total_power(deps.as_ref(), &config.dao, None)?;
 
@@ -217,6 +228,7 @@ pub fn execute_propose(
             allow_revoting: config.allow_revoting,
             choices: checked_multiple_choice_options,
             veto: config.veto,
+            delegation_module,
         };
         // Update the proposal's status. Addresses case where proposal
         // expires on the same block as it is created.
@@ -392,18 +404,27 @@ pub fn execute_vote(
         return Err(ContractError::Expired { id: proposal_id });
     }
 
-    let vote_power = get_voting_power(
+    let vote_power = get_voting_power_with_delegation(
         deps.as_ref(),
-        sender.clone(),
+        &env.contract.address,
+        &prop.delegation_module,
         &config.dao,
-        Some(prop.start_height),
+        &sender,
+        proposal_id,
+        prop.start_height,
     )?;
     if vote_power.is_zero() {
         return Err(ContractError::NotRegistered {});
     }
 
+    let mut is_first_vote = true;
+
     BALLOTS.update(deps.storage, (proposal_id, &sender), |bal| match bal {
         Some(current_ballot) => {
+            // If a ballot exists, this is not the first time the voter has
+            // voted on this proposal.
+            is_first_vote = false;
+
             if prop.allow_revoting {
                 if current_ballot.vote == vote {
                     // Don't allow casting the same vote more than
@@ -431,6 +452,108 @@ pub fn execute_vote(
         }),
     })?;
 
+    // DELEGATION VOTE OVERRIDE: if this is the first time this member voted,
+    // subtract their VP from the vote tally of all of their delegates who
+    // already voted on this proposal, in order to override their vote with the
+    // delegator's preference.
+    //
+    // we must load all delegations and update each. if this partially fails,
+    // the vote tallies will be incorrect, so the entire vote transaction should
+    // fail. we need to prevent this from happening by limiting the number of
+    // delegations a member can have in order to ensure votes can always be
+    // cast.
+    if is_first_vote {
+        if let Some(delegation_module) = &prop.delegation_module {
+            let delegations = deps
+                .querier
+                .query_wasm_smart::<delegation::DelegationsResponse>(
+                    delegation_module,
+                    &delegation::QueryMsg::Delegations {
+                        delegator: sender.to_string(),
+                        height: Some(prop.start_height),
+                        offset: None,
+                        limit: None,
+                    },
+                    // ensure query error gets returned if it fails.
+                )?
+                .delegations;
+
+            for DelegationResponse {
+                delegate,
+                percent,
+                active,
+            } in delegations
+            {
+                // if delegation is not active, skip.
+                if !active {
+                    continue;
+                }
+
+                // if delegate voted already, untally the VP the delegator
+                // delegated to them since the delegate's vote is being
+                // overridden.
+                if let Some(mut delegate_ballot) =
+                    BALLOTS.may_load(deps.storage, (proposal_id, &delegate))?
+                {
+                    // get the delegate's current unvoted delegated VP. since we
+                    // are currently overriding this delegate's vote, this UDVP
+                    // response will not yet take into account the loss of this
+                    // current voter's delegated VP, so we have to do math below
+                    // to remove this voter's VP from the delegate's effective
+                    // VP. the vote hook at the end of this fn will update this
+                    // UDVP in the delegation module for future votes.
+                    //
+                    // NOTE: this UDVP query reflects updates immediately,
+                    // instead of waiting 1 block to take effect like other
+                    // historical queries, so this will reflect the updated UDVP
+                    // from the vote hooks within the same block, making it safe
+                    // to vote twice in the same block.
+                    let prev_udvp: UnvotedDelegatedVotingPowerResponse =
+                        deps.querier.query_wasm_smart(
+                            delegation_module,
+                            &delegation::QueryMsg::UnvotedDelegatedVotingPower {
+                                delegate: delegate.to_string(),
+                                proposal_module: env.contract.address.to_string(),
+                                proposal_id,
+                                height: prop.start_height,
+                            },
+                        )?;
+
+                    let voter_delegated_vp = calculate_delegated_vp(vote_power, percent);
+
+                    // subtract this voter's delegated VP from the delegate's
+                    // total VP, and cap the result at the delegate's effective
+                    // VP. if the delegate has been delegated in total more than
+                    // this voter's delegated VP above the cap, they will not
+                    // lose any VP. they will lose part or all of this voter's
+                    // delegated VP based on how their total VP ranks relative
+                    // to the cap.
+                    let new_effective_delegated = prev_udvp
+                        .total
+                        .checked_sub(voter_delegated_vp)?
+                        .min(prev_udvp.effective);
+
+                    // if the new effective VP is less than the previous
+                    // effective VP, update the delegate's ballot and tally.
+                    if new_effective_delegated < prev_udvp.effective {
+                        // how much VP the delegate is losing based on this
+                        // voter's VP and the cap.
+                        let diff = prev_udvp.effective.checked_sub(new_effective_delegated)?;
+
+                        // update ballot total and vote tally by removing the
+                        // lost delegated VP only. this makes sure to fully
+                        // preserve the delegate's personal VP even if they lose
+                        // all delegated VP due to delegators overriding votes.
+                        delegate_ballot.power -= diff;
+                        prop.votes.remove_vote(delegate_ballot.vote, diff)?;
+
+                        BALLOTS.save(deps.storage, (proposal_id, &delegate), &delegate_ballot)?;
+                    }
+                }
+            }
+        }
+    }
+
     let old_status = prop.status;
 
     prop.votes.add_vote(vote, vote_power)?;
@@ -450,6 +573,9 @@ pub fn execute_vote(
         proposal_id,
         sender.to_string(),
         vote.to_string(),
+        vote_power,
+        prop.start_height,
+        is_first_vote,
     )?;
     Ok(Response::default()
         .add_submessages(change_hooks)
@@ -694,6 +820,23 @@ pub fn execute_update_proposal_creation_policy(
         .add_attribute("new_policy", format!("{initial_policy:?}")))
 }
 
+pub fn execute_update_delegation_module(
+    deps: DepsMut,
+    info: MessageInfo,
+    module: String,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if config.dao != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    DELEGATION_MODULE.save(deps.storage, &deps.api.addr_validate(&module)?)?;
+
+    Ok(Response::default()
+        .add_attribute("action", "update_delegation_module")
+        .add_attribute("module", module))
+}
+
 pub fn execute_update_rationale(
     deps: DepsMut,
     info: MessageInfo,
@@ -862,6 +1005,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             limit,
         } => query_reverse_proposals(deps, env, start_before, limit),
         QueryMsg::ProposalCreationPolicy {} => query_creation_policy(deps),
+        QueryMsg::DelegationModule {} => query_delegation_module(deps),
         QueryMsg::ProposalHooks {} => to_json_binary(&PROPOSAL_HOOKS.query_hooks(deps)?),
         QueryMsg::VoteHooks {} => to_json_binary(&VOTE_HOOKS.query_hooks(deps)?),
         QueryMsg::Dao {} => query_dao(deps),
@@ -886,6 +1030,11 @@ pub fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<Binary> {
 pub fn query_creation_policy(deps: Deps) -> StdResult<Binary> {
     let policy = CREATION_POLICY.load(deps.storage)?;
     to_json_binary(&policy)
+}
+
+pub fn query_delegation_module(deps: Deps) -> StdResult<Binary> {
+    let module = DELEGATION_MODULE.may_load(deps.storage)?;
+    to_json_binary(&module)
 }
 
 pub fn query_list_proposals(

@@ -51,6 +51,9 @@ pub struct MultipleChoiceProposal {
     /// Optional veto configuration. If set to `None`, veto option
     /// is disabled. Otherwise contains the configuration for veto flow.
     pub veto: Option<VetoConfig>,
+    /// The address of the delegation module associated with this proposal (if
+    /// one existed when the proposal was created).
+    pub delegation_module: Option<Addr>,
 }
 
 pub enum VoteResult {
@@ -336,6 +339,7 @@ mod tests {
             allow_revoting,
             min_voting_period: None,
             veto: None,
+            delegation_module: None,
         }
     }
 

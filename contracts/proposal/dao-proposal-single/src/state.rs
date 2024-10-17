@@ -12,7 +12,8 @@ use crate::proposal::SingleChoiceProposal;
 /// A vote cast for a proposal.
 #[cw_serde]
 pub struct Ballot {
-    /// The amount of voting power behind the vote.
+    /// The amount of voting power behind the vote, including any delegated VP.
+    /// This is the amount tallied in the proposal for this ballot.
     pub power: Uint128,
     /// The position.
     pub vote: Vote,
@@ -77,3 +78,6 @@ pub const VOTE_HOOKS: Hooks = Hooks::new("vote_hooks");
 /// The address of the pre-propose module associated with this
 /// proposal module (if any).
 pub const CREATION_POLICY: Item<ProposalCreationPolicy> = Item::new("creation_policy");
+/// The address of the delegation module associated with this proposal module
+/// (if any).
+pub const DELEGATION_MODULE: Item<Addr> = Item::new("delegation_module");

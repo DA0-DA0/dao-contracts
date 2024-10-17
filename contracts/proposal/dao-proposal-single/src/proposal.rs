@@ -46,6 +46,9 @@ pub struct SingleChoiceProposal {
     /// Optional veto configuration. If set to `None`, veto option
     /// is disabled. Otherwise contains the configuration for veto flow.
     pub veto: Option<VetoConfig>,
+    /// The address of the delegation module associated with this proposal (if
+    /// one existed when the proposal was created).
+    pub delegation_module: Option<Addr>,
 }
 
 pub fn next_proposal_id(store: &dyn Storage) -> StdResult<u64> {
@@ -312,6 +315,7 @@ mod test {
             veto: None,
             total_power,
             votes,
+            delegation_module: None,
         };
         (prop, block)
     }

@@ -23,6 +23,13 @@
         "description": "If set to true proposals will be closed if their execution fails. Otherwise, proposals will remain open after execution failure. For example, with this enabled a proposal to send 5 tokens out of a DAO's treasury with 4 tokens would be closed when it is executed. With this disabled, that same proposal would remain open until the DAO's treasury was large enough for it to be executed.",
         "type": "boolean"
       },
+      "delegation_module": {
+        "description": "The address of the delegation module to use for this proposal module (if any).",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "max_voting_period": {
         "description": "The amount of time a proposal can be voted on before expiring",
         "allOf": [
@@ -615,6 +622,28 @@
             "properties": {
               "info": {
                 "$ref": "#/definitions/PreProposeInfo"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Update's the address of the delegation module associated with this proposal module. Only the DAO may call this method.",
+        "type": "object",
+        "required": [
+          "update_delegation_module"
+        ],
+        "properties": {
+          "update_delegation_module": {
+            "type": "object",
+            "required": [
+              "module"
+            ],
+            "properties": {
+              "module": {
+                "type": "string"
               }
             },
             "additionalProperties": false
@@ -2109,6 +2138,20 @@
         "additionalProperties": false
       },
       {
+        "description": "Gets the address of the delegation module associated with this proposal module (if any).",
+        "type": "object",
+        "required": [
+          "delegation_module"
+        ],
+        "properties": {
+          "delegation_module": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "description": "Lists all of the consumers of proposal hooks for this module.",
         "type": "object",
         "required": [
@@ -2678,6 +2721,24 @@
       "title": "Addr",
       "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
       "type": "string"
+    },
+    "delegation_module": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Nullable_Addr",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Addr"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        }
+      }
     },
     "get_vote": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -3449,6 +3510,17 @@
               "items": {
                 "$ref": "#/definitions/CheckedMultipleChoiceOption"
               }
+            },
+            "delegation_module": {
+              "description": "The address of the delegation module associated with this proposal (if one existed when the proposal was created).",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "description": {
               "description": "The main body of the proposal text",
@@ -4838,6 +4910,17 @@
                 "$ref": "#/definitions/CheckedMultipleChoiceOption"
               }
             },
+            "delegation_module": {
+              "description": "The address of the delegation module associated with this proposal (if one existed when the proposal was created).",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "description": {
               "description": "The main body of the proposal text",
               "type": "string"
@@ -6183,6 +6266,17 @@
               "items": {
                 "$ref": "#/definitions/CheckedMultipleChoiceOption"
               }
+            },
+            "delegation_module": {
+              "description": "The address of the delegation module associated with this proposal (if one existed when the proposal was created).",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "description": {
               "description": "The main body of the proposal text",
