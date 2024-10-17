@@ -13,6 +13,7 @@ pub struct DaoTestingSuiteToken<'a> {
     pub active_threshold: Option<dao_voting::threshold::ActiveThreshold>,
 }
 
+#[derive(Clone, Debug)]
 pub struct TokenDaoExtra {
     pub denom: String,
 }
@@ -46,7 +47,7 @@ impl<'a> DaoTestingSuiteToken<'a> {
                     amount: Uint128::new(100),
                 },
             ],
-            unstaking_duration: Some(Duration::Height(10)),
+            unstaking_duration: None,
             active_threshold: None,
         }
     }
@@ -140,7 +141,7 @@ impl<'a> DaoTestingSuite<TokenDaoExtra> for DaoTestingSuiteToken<'a> {
             code_id: self.base.voting_token_staked_id,
             msg: to_json_binary(&dao_voting_token_staked::msg::InstantiateMsg {
                 token_info: dao_voting_token_staked::msg::TokenInfo::Existing {
-                    denom: GOVTOKEN1.to_string(),
+                    denom: GOV_DENOM.to_string(),
                 },
                 unstaking_duration: self.unstaking_duration,
                 active_threshold: self.active_threshold.clone(),
@@ -167,8 +168,8 @@ impl<'a> DaoTestingSuite<TokenDaoExtra> for DaoTestingSuiteToken<'a> {
     /// mint and stake all initial balances and progress one block
     fn dao_setup(&mut self, dao: &mut TokenTestDao) {
         for member in self.initial_balances.clone() {
-            self.mint(&dao, member.address.clone(), member.amount);
-            self.stake(&dao, member.address, member.amount);
+            self.mint(dao, member.address.clone(), member.amount);
+            self.stake(dao, member.address, member.amount);
         }
 
         // staking takes effect at the next block
@@ -184,7 +185,7 @@ mod tests {
 
     #[test]
     fn dao_testing_suite_token() {
-        let mut suite = DaoTestingSuiteBase::new();
+        let mut suite = DaoTestingSuiteBase::base();
         let mut suite = suite.token();
         let dao = suite.dao();
 

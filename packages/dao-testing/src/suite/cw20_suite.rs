@@ -13,6 +13,7 @@ pub struct DaoTestingSuiteCw20<'a> {
     pub active_threshold: Option<dao_voting::threshold::ActiveThreshold>,
 }
 
+#[derive(Clone, Debug)]
 pub struct Cw20DaoExtra {
     pub cw20_addr: Addr,
     pub staking_addr: Addr,
@@ -48,7 +49,7 @@ impl<'a> DaoTestingSuiteCw20<'a> {
                 },
             ],
             initial_dao_balance: Uint128::new(10000),
-            unstaking_duration: Some(Duration::Height(10)),
+            unstaking_duration: None,
             active_threshold: None,
         }
     }
@@ -124,7 +125,7 @@ impl<'a> DaoTestingSuiteCw20<'a> {
     /// stake all initial balances and progress one block
     pub fn stake_all_initial(&mut self, dao: &Cw20TestDao) {
         for member in self.initial_balances.clone() {
-            self.stake(&dao, member.address, member.amount);
+            self.stake(dao, member.address, member.amount);
         }
 
         // staking takes effect at the next block
@@ -191,7 +192,7 @@ impl<'a> DaoTestingSuite<Cw20DaoExtra> for DaoTestingSuiteCw20<'a> {
     /// stake all initial balances and progress one block
     fn dao_setup(&mut self, dao: &mut Cw20TestDao) {
         for member in self.initial_balances.clone() {
-            self.stake(&dao, member.address, member.amount);
+            self.stake(dao, member.address, member.amount);
         }
 
         // staking takes effect at the next block
@@ -207,7 +208,7 @@ mod tests {
 
     #[test]
     fn dao_testing_suite_cw20() {
-        let mut suite = DaoTestingSuiteBase::new();
+        let mut suite = DaoTestingSuiteBase::base();
         let mut suite = suite.cw20();
         let dao = suite.dao();
 

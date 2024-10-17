@@ -8,6 +8,7 @@ pub struct DaoTestingSuiteCw4<'a> {
     pub members: Vec<cw4::Member>,
 }
 
+#[derive(Clone, Debug)]
 pub struct Cw4DaoExtra {
     pub group_addr: Addr,
 }
@@ -95,7 +96,7 @@ mod tests {
 
     #[test]
     fn dao_testing_suite_cw4() {
-        let mut suite = DaoTestingSuiteBase::new();
+        let mut suite = DaoTestingSuiteBase::base();
         let mut suite = suite.cw4();
         let dao = suite.dao();
 

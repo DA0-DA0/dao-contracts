@@ -1,10 +1,12 @@
-use cosmwasm_std::{to_json_binary, Addr, Empty, QuerierWrapper};
+use cosmwasm_std::{to_json_binary, Addr, Empty, QuerierWrapper, Timestamp};
+use cw20::Cw20Coin;
 use cw_multi_test::{App, Executor};
 use cw_utils::Duration;
 
 use super::*;
 use crate::contracts::*;
 
+#[derive(Clone, Debug)]
 pub struct TestDao<Extra = Empty> {
     pub core_addr: Addr,
     pub voting_module_addr: Addr,
@@ -168,8 +170,14 @@ pub trait DaoTestingSuite<Extra = Empty> {
 
 // CONSTRUCTOR
 impl DaoTestingSuiteBase {
-    pub fn new() -> Self {
+    pub fn base() -> Self {
         let mut app = App::default();
+
+        // start at 0 height and time
+        app.update_block(|b| {
+            b.height = 0;
+            b.time = Timestamp::from_seconds(0);
+        });
 
         let core_id = app.store_code(dao_dao_core_contract());
         let admin_factory_id = app.store_code(cw_admin_factory_contract());
@@ -196,7 +204,7 @@ impl DaoTestingSuiteBase {
         let admin_factory_addr = app
             .instantiate_contract(
                 admin_factory_id,
-                Addr::unchecked(CREATOR),
+                Addr::unchecked(OWNER),
                 &cw_admin_factory::msg::InstantiateMsg { admin: None },
                 &[],
                 "admin factory",
@@ -230,6 +238,26 @@ impl DaoTestingSuiteBase {
             admin_factory_addr,
         }
     }
+
+    pub fn instantiate_cw20(&mut self, name: &str, initial_balances: Vec<Cw20Coin>) -> Addr {
+        self.app
+            .instantiate_contract(
+                self.cw20_base_id,
+                Addr::unchecked(OWNER),
+                &cw20_base::msg::InstantiateMsg {
+                    name: name.to_string(),
+                    symbol: name.to_string(),
+                    decimals: 6,
+                    initial_balances,
+                    mint: None,
+                    marketing: None,
+                },
+                &[],
+                "cw20",
+                None,
+            )
+            .unwrap()
+    }
 }
 
 // DAO CREATION
@@ -255,7 +283,7 @@ impl DaoTestingSuiteBase {
         let res = self
             .app
             .execute_contract(
-                Addr::unchecked(CREATOR),
+                Addr::unchecked(OWNER),
                 self.admin_factory_addr.clone(),
                 &cw_admin_factory::msg::ExecuteMsg::InstantiateContractWithSelfAdmin {
                     instantiate_msg: to_json_binary(&init).unwrap(),

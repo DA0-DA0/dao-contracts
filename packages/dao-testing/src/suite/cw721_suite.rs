@@ -18,6 +18,7 @@ pub struct DaoTestingSuiteCw721<'a> {
     pub active_threshold: Option<dao_voting::threshold::ActiveThreshold>,
 }
 
+#[derive(Clone, Debug)]
 pub struct Cw721DaoExtra {
     pub cw721_addr: Addr,
 }
@@ -51,7 +52,7 @@ impl<'a> DaoTestingSuiteCw721<'a> {
                     owner: MEMBER5.to_string(),
                 },
             ],
-            unstaking_duration: Some(Duration::Height(10)),
+            unstaking_duration: None,
             active_threshold: None,
         }
     }
@@ -136,7 +137,7 @@ impl<'a> DaoTestingSuite<Cw721DaoExtra> for DaoTestingSuiteCw721<'a> {
                     msg: to_json_binary(&cw721_base::msg::InstantiateMsg {
                         name: "Voting NFT".to_string(),
                         symbol: "VOTE".to_string(),
-                        minter: CREATOR.to_string(),
+                        minter: OWNER.to_string(),
                     })
                     .unwrap(),
                     initial_nfts: self
@@ -180,7 +181,7 @@ impl<'a> DaoTestingSuite<Cw721DaoExtra> for DaoTestingSuiteCw721<'a> {
     /// stake all initial NFTs and progress one block
     fn dao_setup(&mut self, dao: &mut Cw721TestDao) {
         for nft in self.initial_nfts.clone() {
-            self.stake(&dao, nft.owner, nft.token_id);
+            self.stake(dao, nft.owner, nft.token_id);
         }
 
         // staking takes effect at the next block
@@ -196,7 +197,7 @@ mod tests {
 
     #[test]
     fn dao_testing_suite_cw721() {
-        let mut suite = DaoTestingSuiteBase::new();
+        let mut suite = DaoTestingSuiteBase::base();
         let mut suite = suite.cw721();
         let dao = suite.dao();
 
