@@ -190,6 +190,15 @@ impl Votes {
     pub fn total(&self) -> Uint128 {
         self.yes + self.no + self.abstain
     }
+
+    /// Returns the number of votes for a given vote option.
+    pub fn get(&self, vote: Vote) -> Uint128 {
+        match vote {
+            Vote::Yes => self.yes,
+            Vote::No => self.no,
+            Vote::Abstain => self.abstain,
+        }
+    }
 }
 
 impl std::fmt::Display for Vote {

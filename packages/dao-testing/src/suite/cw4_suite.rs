@@ -21,13 +21,13 @@ impl<'a> Deref for DaoTestingSuiteCw4<'a> {
     type Target = DaoTestingSuiteBase;
 
     fn deref(&self) -> &Self::Target {
-        &self.base
+        self.base
     }
 }
 
 impl<'a> DerefMut for DaoTestingSuiteCw4<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.base
+        self.base
     }
 }
 
