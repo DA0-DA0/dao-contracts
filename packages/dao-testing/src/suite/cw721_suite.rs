@@ -32,24 +32,24 @@ impl<'a> DaoTestingSuiteCw721<'a> {
 
             initial_nfts: vec![
                 InitialNft {
+                    token_id: "0".to_string(),
+                    owner: ADDR0.to_string(),
+                },
+                InitialNft {
                     token_id: "1".to_string(),
-                    owner: MEMBER1.to_string(),
+                    owner: ADDR1.to_string(),
                 },
                 InitialNft {
                     token_id: "2".to_string(),
-                    owner: MEMBER2.to_string(),
+                    owner: ADDR2.to_string(),
                 },
                 InitialNft {
                     token_id: "3".to_string(),
-                    owner: MEMBER3.to_string(),
+                    owner: ADDR3.to_string(),
                 },
                 InitialNft {
                     token_id: "4".to_string(),
-                    owner: MEMBER4.to_string(),
-                },
-                InitialNft {
-                    token_id: "5".to_string(),
-                    owner: MEMBER5.to_string(),
+                    owner: ADDR4.to_string(),
                 },
             ],
             unstaking_duration: None,

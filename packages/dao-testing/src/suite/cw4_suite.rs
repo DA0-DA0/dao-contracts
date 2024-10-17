@@ -21,23 +21,23 @@ impl<'a> DaoTestingSuiteCw4<'a> {
             base,
             members: vec![
                 cw4::Member {
-                    addr: MEMBER1.to_string(),
+                    addr: ADDR0.to_string(),
                     weight: 1,
                 },
                 cw4::Member {
-                    addr: MEMBER2.to_string(),
+                    addr: ADDR1.to_string(),
                     weight: 2,
                 },
                 cw4::Member {
-                    addr: MEMBER3.to_string(),
+                    addr: ADDR2.to_string(),
                     weight: 3,
                 },
                 cw4::Member {
-                    addr: MEMBER4.to_string(),
+                    addr: ADDR3.to_string(),
                     weight: 3,
                 },
                 cw4::Member {
-                    addr: MEMBER5.to_string(),
+                    addr: ADDR4.to_string(),
                     weight: 1,
                 },
             ],

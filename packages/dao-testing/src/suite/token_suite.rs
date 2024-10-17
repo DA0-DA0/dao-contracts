@@ -27,23 +27,23 @@ impl<'a> DaoTestingSuiteToken<'a> {
 
             initial_balances: vec![
                 InitialBalance {
-                    address: MEMBER1.to_string(),
+                    address: ADDR0.to_string(),
                     amount: Uint128::new(100),
                 },
                 InitialBalance {
-                    address: MEMBER2.to_string(),
+                    address: ADDR1.to_string(),
                     amount: Uint128::new(200),
                 },
                 InitialBalance {
-                    address: MEMBER3.to_string(),
+                    address: ADDR2.to_string(),
                     amount: Uint128::new(300),
                 },
                 InitialBalance {
-                    address: MEMBER4.to_string(),
+                    address: ADDR3.to_string(),
                     amount: Uint128::new(300),
                 },
                 InitialBalance {
-                    address: MEMBER5.to_string(),
+                    address: ADDR4.to_string(),
                     amount: Uint128::new(100),
                 },
             ],

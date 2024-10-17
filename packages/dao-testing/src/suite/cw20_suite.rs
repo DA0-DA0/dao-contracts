@@ -28,23 +28,23 @@ impl<'a> DaoTestingSuiteCw20<'a> {
 
             initial_balances: vec![
                 Cw20Coin {
-                    address: MEMBER1.to_string(),
+                    address: ADDR0.to_string(),
                     amount: Uint128::new(100),
                 },
                 Cw20Coin {
-                    address: MEMBER2.to_string(),
+                    address: ADDR1.to_string(),
                     amount: Uint128::new(200),
                 },
                 Cw20Coin {
-                    address: MEMBER3.to_string(),
+                    address: ADDR2.to_string(),
                     amount: Uint128::new(300),
                 },
                 Cw20Coin {
-                    address: MEMBER4.to_string(),
+                    address: ADDR3.to_string(),
                     amount: Uint128::new(300),
                 },
                 Cw20Coin {
-                    address: MEMBER5.to_string(),
+                    address: ADDR4.to_string(),
                     amount: Uint128::new(100),
                 },
             ],
