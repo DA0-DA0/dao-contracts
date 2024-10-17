@@ -41,6 +41,7 @@ dao-pre-propose-multiple = { workspace = true }
 voting-v1 = { workspace = true }
 
 [dev-dependencies]
+dao-proposal-multiple = { workspace = true }
 anyhow = { workspace = true }
 cw-multi-test = { workspace = true }
 dao-voting-cw4 = { workspace = true }
