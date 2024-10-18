@@ -95,7 +95,7 @@ impl DaoVoteDelegationTestingSuite {
             },
             &[],
             "delegation",
-            None,
+            Some(core_addr.to_string()),
         );
 
         self.setup_delegation_module();

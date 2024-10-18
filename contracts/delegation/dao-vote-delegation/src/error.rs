@@ -40,14 +40,11 @@ pub enum ContractError {
     #[error("delegates cannot delegate to others")]
     DelegatesCannotDelegate {},
 
-    #[error("undelegate before registering as a delegate")]
-    UndelegateBeforeRegistering {},
+    #[error("cannot register as a delegate with existing delegations")]
+    CannotRegisterWithDelegations {},
 
-    #[error("no voting power to delegate")]
+    #[error("no voting power")]
     NoVotingPower {},
-
-    #[error("cannot delegate to self")]
-    CannotDelegateToSelf {},
 
     #[error("delegation does not exist")]
     DelegationDoesNotExist {},
@@ -58,7 +55,7 @@ pub enum ContractError {
     #[error("invalid voting power percent")]
     InvalidVotingPowerPercent {},
 
-    #[error("migration error: incorrect contract: expected {expected}, actual {actual}")]
+    #[error("migration error: incorrect contract: expected \"{expected}\", actual \"{actual}\"")]
     MigrationErrorIncorrectContract { expected: String, actual: String },
 
     #[error("migration error: invalid version: new {new}, current {current}")]

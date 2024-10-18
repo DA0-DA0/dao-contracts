@@ -1,6 +1,12 @@
-use cosmwasm_std::{to_json_binary, Addr, Decimal, Empty, Uint128};
+use cosmwasm_std::{
+    testing::{mock_dependencies, mock_env},
+    to_json_binary, Addr, Decimal, Empty, Uint128,
+};
 use cw_multi_test::{Contract, ContractWrapper};
+use dao_interface::helpers::OptionalUpdate;
 use dao_testing::{ADDR0, ADDR1, ADDR2, ADDR3, ADDR4};
+
+use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
 
 use super::*;
 
@@ -606,4 +612,252 @@ fn test_vote_with_override() {
         dao_voting::voting::Vote::Yes,
         suite.members[0].weight + suite.members[2].weight,
     );
+}
+
+#[test]
+fn test_allow_register_after_unregister_same_block() {
+    let mut suite = DaoVoteDelegationTestingSuite::new().build();
+
+    suite.register(ADDR0);
+    suite.unregister(ADDR0);
+    suite.register(ADDR0);
+}
+
+#[test]
+fn test_allow_register_after_unregister_next_block() {
+    let mut suite = DaoVoteDelegationTestingSuite::new().build();
+
+    suite.register(ADDR0);
+    suite.advance_block();
+    suite.unregister(ADDR0);
+    suite.advance_block();
+    suite.register(ADDR0);
+}
+
+#[test]
+#[should_panic(expected = "invalid delegation validity blocks: provided 1, minimum 2")]
+fn test_validate_delegation_validity_blocks() {
+    DaoVoteDelegationTestingSuite::new()
+        .with_delegation_validity_blocks(1)
+        .build();
+}
+
+#[test]
+#[should_panic(expected = "invalid delegation validity blocks: provided 1, minimum 2")]
+fn test_validate_delegation_validity_blocks_update() {
+    let mut suite = DaoVoteDelegationTestingSuite::new().build();
+
+    suite.update_delegation_validity_blocks(Some(1));
+}
+
+#[test]
+#[should_panic(expected = "delegate already registered")]
+fn test_no_double_register() {
+    let mut suite = DaoVoteDelegationTestingSuite::new().build();
+
+    suite.register(ADDR0);
+    suite.register(ADDR0);
+}
+
+#[test]
+#[should_panic(expected = "no voting power")]
+fn test_no_vp_register() {
+    let mut suite = DaoVoteDelegationTestingSuite::new().build();
+
+    suite.register("non_member");
+}
+
+#[test]
+#[should_panic(expected = "cannot register as a delegate with existing delegations")]
+fn test_cannot_register_with_delegations_same_block() {
+    let mut suite = DaoVoteDelegationTestingSuite::new().build();
+
+    suite.register(ADDR0);
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(100));
+    suite.register(ADDR1);
+}
+
+#[test]
+#[should_panic(expected = "cannot register as a delegate with existing delegations")]
+fn test_cannot_register_with_delegations_next_block() {
+    let mut suite = DaoVoteDelegationTestingSuite::new().build();
+
+    suite.register(ADDR0);
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(100));
+    suite.advance_block();
+    suite.register(ADDR1);
+}
+
+#[test]
+#[should_panic(expected = "delegate not registered")]
+fn test_cannot_unregister_unregistered() {
+    let mut suite = DaoVoteDelegationTestingSuite::new().build();
+
+    suite.unregister(ADDR0);
+}
+
+#[test]
+#[should_panic(expected = "invalid voting power percent")]
+fn test_cannot_delegate_zero_percent() {
+    let mut suite = DaoVoteDelegationTestingSuite::new().build();
+
+    suite.register(ADDR0);
+    suite.delegate(ADDR1, ADDR0, Decimal::zero());
+}
+
+#[test]
+#[should_panic(expected = "invalid voting power percent")]
+fn test_cannot_delegate_more_than_100_percent() {
+    let mut suite = DaoVoteDelegationTestingSuite::new().build();
+
+    suite.register(ADDR0);
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(101));
+}
+
+#[test]
+#[should_panic(expected = "delegates cannot delegate to others")]
+fn test_delegates_cannot_delegate() {
+    let mut suite = DaoVoteDelegationTestingSuite::new().build();
+
+    suite.register(ADDR0);
+    suite.register(ADDR1);
+    suite.delegate(ADDR0, ADDR1, Decimal::percent(100));
+}
+
+#[test]
+#[should_panic(expected = "delegate not registered")]
+fn test_cannot_delegate_unregistered() {
+    let mut suite = DaoVoteDelegationTestingSuite::new().build();
+
+    suite.delegate(ADDR0, ADDR1, Decimal::percent(100));
+}
+
+#[test]
+#[should_panic(expected = "no voting power")]
+fn test_cannot_delegate_no_vp() {
+    let mut suite = DaoVoteDelegationTestingSuite::new().build();
+
+    suite.register(ADDR0);
+    suite.delegate("not_member", ADDR0, Decimal::percent(100));
+}
+
+#[test]
+#[should_panic(expected = "cannot delegate more than 100% (current: 50%, attempt: 101%)")]
+fn test_cannot_delegate_more_than_100() {
+    let mut suite = DaoVoteDelegationTestingSuite::new().build();
+
+    suite.register(ADDR0);
+    suite.register(ADDR1);
+    suite.delegate(ADDR2, ADDR0, Decimal::percent(50));
+    suite.delegate(ADDR2, ADDR1, Decimal::percent(51));
+}
+
+#[test]
+#[should_panic(expected = "delegation does not exist")]
+fn test_cannot_undelegate_nonexistent() {
+    let mut suite = DaoVoteDelegationTestingSuite::new().build();
+
+    suite.undelegate(ADDR0, ADDR1);
+}
+
+#[test]
+fn test_delegate_undelegate_same_block() {
+    let mut suite = DaoVoteDelegationTestingSuite::new().build();
+
+    suite.register(ADDR0);
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(100));
+    suite.undelegate(ADDR1, ADDR0);
+}
+
+#[test]
+#[should_panic(expected = "delegation does not exist")]
+fn test_cannot_undelegate_twice() {
+    let mut suite = DaoVoteDelegationTestingSuite::new().build();
+
+    suite.register(ADDR0);
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(100));
+    suite.undelegate(ADDR1, ADDR0);
+    suite.undelegate(ADDR1, ADDR0);
+}
+
+#[test]
+#[should_panic(expected = "unauthorized")]
+fn test_unauthorized_update_voting_power_hook_callers() {
+    let mut suite = DaoVoteDelegationTestingSuite::new().build();
+    let delegation_addr = suite.delegation_addr.clone();
+
+    suite.execute_smart_ok(
+        "no_one",
+        &delegation_addr,
+        &crate::msg::ExecuteMsg::UpdateVotingPowerHookCallers {
+            add: None,
+            remove: None,
+        },
+        &[],
+    );
+}
+
+#[test]
+#[should_panic(expected = "unauthorized")]
+fn test_unauthorized_config_update() {
+    let mut suite = DaoVoteDelegationTestingSuite::new().build();
+    let delegation_addr = suite.delegation_addr.clone();
+
+    suite.execute_smart_ok(
+        "no_one",
+        &delegation_addr,
+        &crate::msg::ExecuteMsg::UpdateConfig {
+            vp_cap_percent: OptionalUpdate(None),
+            delegation_validity_blocks: OptionalUpdate(None),
+        },
+        &[],
+    );
+}
+
+#[test]
+fn test_migration_incorrect_contract() {
+    let mut deps = mock_dependencies();
+
+    cw2::set_contract_version(&mut deps.storage, "different_contract", "0.1.0").unwrap();
+
+    let err =
+        crate::contract::migrate(deps.as_mut(), mock_env(), crate::msg::MigrateMsg {}).unwrap_err();
+    assert_eq!(
+        err,
+        crate::ContractError::MigrationErrorIncorrectContract {
+            expected: "crates.io:dao-vote-delegation".to_string(),
+            actual: "different_contract".to_string(),
+        }
+    );
+}
+
+#[test]
+fn test_cannot_migrate_to_same_version() {
+    let mut deps = mock_dependencies();
+
+    cw2::set_contract_version(&mut deps.storage, CONTRACT_NAME, CONTRACT_VERSION).unwrap();
+
+    let err =
+        crate::contract::migrate(deps.as_mut(), mock_env(), crate::msg::MigrateMsg {}).unwrap_err();
+    assert_eq!(
+        err,
+        crate::ContractError::MigrationErrorInvalidVersion {
+            new: CONTRACT_VERSION.to_string(),
+            current: CONTRACT_VERSION.to_string()
+        }
+    );
+}
+
+#[test]
+fn test_migrate() {
+    let mut deps = mock_dependencies();
+
+    cw2::set_contract_version(&mut deps.storage, CONTRACT_NAME, "2.4.0").unwrap();
+
+    crate::contract::migrate(deps.as_mut(), mock_env(), crate::msg::MigrateMsg {}).unwrap();
+
+    let version = cw2::get_contract_version(&deps.storage).unwrap();
+
+    assert_eq!(version.contract, CONTRACT_NAME);
+    assert_eq!(version.version, CONTRACT_VERSION);
 }

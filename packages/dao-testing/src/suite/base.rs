@@ -431,6 +431,47 @@ impl DaoTestingSuiteBase {
             .unwrap()
     }
 
+    /// migrate a smart contract and return the result
+    pub fn migrate<T: Serialize + Debug>(
+        &mut self,
+        sender: impl Into<String>,
+        contract_addr: impl Into<String>,
+        msg: &T,
+        code_id: u64,
+    ) -> AnyResult<AppResponse> {
+        self.app.migrate_contract(
+            Addr::unchecked(sender),
+            Addr::unchecked(contract_addr),
+            msg,
+            code_id,
+        )
+    }
+
+    /// migrate a smart contract and expect it to succeed
+    pub fn migrate_ok<T: Serialize + Debug>(
+        &mut self,
+        sender: impl Into<String>,
+        contract_addr: impl Into<String>,
+        msg: &T,
+        code_id: u64,
+    ) -> AppResponse {
+        self.migrate(sender, contract_addr, msg, code_id).unwrap()
+    }
+
+    /// migrate a smart contract and return the error
+    pub fn migrate_err<T: Serialize + Debug, E: Display + Debug + Send + Sync + 'static>(
+        &mut self,
+        sender: impl Into<String>,
+        contract_addr: impl Into<String>,
+        msg: &T,
+        code_id: u64,
+    ) -> E {
+        self.migrate(sender, contract_addr, msg, code_id)
+            .unwrap_err()
+            .downcast()
+            .unwrap()
+    }
+
     /// instantiate a cw20 contract and return its address
     pub fn instantiate_cw20(&mut self, name: &str, initial_balances: Vec<Cw20Coin>) -> Addr {
         self.instantiate(

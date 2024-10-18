@@ -35,7 +35,7 @@ use crate::state::{
 };
 use crate::ContractError;
 
-pub(crate) const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
+pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-vote-delegation";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub const DEFAULT_LIMIT: u32 = 10;
@@ -149,7 +149,7 @@ fn execute_register(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respon
     // ensure delegate has no delegations
     let has_delegations = !DELEGATION_ENTRIES.prefix(&delegate).is_empty(deps.storage);
     if has_delegations {
-        return Err(ContractError::UndelegateBeforeRegistering {});
+        return Err(ContractError::CannotRegisterWithDelegations {});
     }
 
     DELEGATES.save(deps.storage, delegate, &Delegate {}, env.block.height)?;
@@ -191,16 +191,11 @@ fn execute_delegate(
     }
 
     let delegator = info.sender;
+    let delegate = deps.api.addr_validate(&delegate)?;
 
     // delegates cannot delegate to others
     if is_delegate_registered(deps.as_ref(), &delegator, None)? {
         return Err(ContractError::DelegatesCannotDelegate {});
-    }
-
-    // prevent self delegation
-    let delegate = deps.api.addr_validate(&delegate)?;
-    if delegate == delegator {
-        return Err(ContractError::CannotDelegateToSelf {});
     }
 
     // ensure delegate is registered
@@ -290,10 +285,10 @@ fn execute_delegate(
     if new_total_percent_delegated > Decimal::one() {
         return Err(ContractError::CannotDelegateMoreThan100Percent {
             current: current_percent_delegated
-                .checked_mul(Decimal::new(100u128.into()))?
+                .checked_mul(Decimal::from_atomics(100u128, 0).unwrap())?
                 .to_string(),
             attempt: new_total_percent_delegated
-                .checked_mul(Decimal::new(100u128.into()))?
+                .checked_mul(Decimal::from_atomics(100u128, 0).unwrap())?
                 .to_string(),
         });
     }
