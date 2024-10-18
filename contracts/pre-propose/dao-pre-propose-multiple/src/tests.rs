@@ -86,6 +86,7 @@ fn get_default_proposal_module_instantiate(
         },
         close_proposal_on_execution_failure: false,
         veto: None,
+        delegation_module: None,
     }
 }
 
@@ -1368,6 +1369,7 @@ fn test_instantiate_with_zero_native_deposit() {
             },
             close_proposal_on_execution_failure: false,
             veto: None,
+            delegation_module: None,
         }
     };
 
@@ -1435,6 +1437,7 @@ fn test_instantiate_with_zero_cw20_deposit() {
             },
             close_proposal_on_execution_failure: false,
             veto: None,
+            delegation_module: None,
         }
     };
 

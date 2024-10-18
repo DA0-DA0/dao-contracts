@@ -3,6 +3,7 @@ exclude = ["ci/configs/", "wasmvm/libwasmvm"]
 members = [
   "contracts/dao-dao-core",
   "contracts/distribution/*",
+  "contracts/delegation/*",
   "contracts/external/*",
   "contracts/proposal/*",
   "contracts/pre-propose/*",
@@ -92,6 +93,7 @@ cw-fund-distributor = { path = "./contracts/distribution/cw-fund-distributor", v
 cw-hooks = { path = "./packages/cw-hooks", version = "2.5.0" }
 cw-paginate-storage = { path = "./packages/cw-paginate-storage", version = "2.5.0" }
 cw-payroll-factory = { path = "./contracts/external/cw-payroll-factory", version = "2.5.0" }
+cw-snapshot-vector-map = { path = "./packages/cw-snapshot-vector-map", version = "2.5.0" }
 cw-stake-tracker = { path = "./packages/cw-stake-tracker", version = "2.5.0" }
 cw-token-swap = { path = "./contracts/external/cw-token-swap", version = "2.5.0" }
 cw-tokenfactory-issuer = { path = "./contracts/external/cw-tokenfactory-issuer", version = "2.5.0", default-features = false }
@@ -122,6 +124,7 @@ dao-proposal-sudo = { path = "./contracts/test/dao-proposal-sudo", version = "2.
 dao-rewards-distributor = { path = "./contracts/distribution/dao-rewards-distributor", version = "2.5.0" }
 dao-test-custom-factory = { path = "./contracts/test/dao-test-custom-factory", version = "2.5.0" }
 dao-testing = { path = "./packages/dao-testing", version = "2.5.0" }
+dao-vote-delegation = { path = "./contracts/delegation/dao-vote-delegation", version = "2.5.0" }
 dao-voting = { path = "./packages/dao-voting", version = "2.5.0" }
 dao-voting-cw20-balance = { path = "./contracts/test/dao-voting-cw20-balance", version = "2.5.0" }
 dao-voting-cw20-staked = { path = "./contracts/voting/dao-voting-cw20-staked", version = "2.5.0" }
