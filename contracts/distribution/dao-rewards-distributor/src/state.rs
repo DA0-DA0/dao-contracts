@@ -246,9 +246,9 @@ impl DistributionState {
 
                 // count total intervals of the rewards emission that will pass
                 // based on the start and end times.
-                let complete_distribution_periods = epoch_duration.checked_div(&duration)?;
+                let complete_distribution_periods = epoch_duration.ratio(&duration)?;
 
-                Ok(amount.checked_mul(complete_distribution_periods)?)
+                Ok(amount.checked_mul_floor(complete_distribution_periods)?)
             }
         }
     }

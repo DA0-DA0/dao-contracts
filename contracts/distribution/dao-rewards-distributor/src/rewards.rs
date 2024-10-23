@@ -121,17 +121,13 @@ pub fn get_active_total_earned_puvp(
             if total_power.is_zero() {
                 Ok(curr)
             } else {
-                // count intervals of the rewards emission that have passed
-                // since the last update which need to be distributed
+                // count (partial) intervals of the rewards emission that have
+                // passed since the last update which need to be distributed
                 let complete_distribution_periods =
-                    new_reward_distribution_duration.checked_div(&duration)?;
+                    new_reward_distribution_duration.ratio(&duration)?;
 
-                // It is impossible for this to overflow as total rewards can
-                // never exceed max value of Uint128 as total tokens in
-                // existence cannot exceed Uint128 (because the bank module Coin
-                // type uses Uint128).
-                let new_rewards_distributed = amount
-                    .full_mul(complete_distribution_periods)
+                let new_rewards_distributed = Uint256::from(amount)
+                    .checked_mul_floor(complete_distribution_periods)?
                     .checked_mul(scale_factor())?;
 
                 // the new rewards per unit voting power that have been

@@ -2660,6 +2660,43 @@ fn test_large_stake_before_claim() {
 }
 
 #[test]
+fn test_stake_during_interval() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
+        .with_rewards_config(RewardsConfig {
+            amount: 100,
+            denom: UncheckedDenom::Native(GOV_DENOM.to_string()),
+            duration: Duration::Height(100),
+            destination: None,
+            continuous: true,
+        })
+        .build();
+
+    suite.assert_amount(100);
+    suite.assert_ends_at(Expiration::AtHeight(100_000_000));
+    suite.assert_duration(100);
+
+    // after half the duration, half the rewards (50) should be distributed.
+    suite.skip_blocks(50);
+
+    // MEMBER1 has 50% voting power, so should receive 50% of the rewards.
+    suite.assert_pending_rewards(MEMBER1, 1, 25);
+
+    // change voting power before the next distribution interval. MEMBER1 now
+    // has 80% voting power, an increase from 50%.
+    suite.mint_native(coin(300, GOV_DENOM), MEMBER1);
+    suite.stake_native_tokens(MEMBER1, 300);
+
+    // after the rest of the initial duration, they should earn rewards at the
+    // increased rate (50 more tokens, and they own 80% of them). 25 + 40 = 65
+    suite.skip_blocks(50);
+    suite.assert_pending_rewards(MEMBER1, 1, 65);
+
+    // after 50 more blocks from VP change, there are 40 more rewards.
+    suite.skip_blocks(50);
+    suite.assert_pending_rewards(MEMBER1, 1, 105);
+}
+
+#[test]
 fn test_fund_latest_native() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
@@ -2865,12 +2902,11 @@ fn test_queries_before_funded() {
 }
 
 #[test]
-fn test_migrate() {
+fn test_migrate_validation() {
     let mut deps = mock_dependencies();
 
-    cw2::set_contract_version(&mut deps.storage, "test", "0.0.1").unwrap();
-
     // wrong contract name errors
+    cw2::set_contract_version(&mut deps.storage, "test", "0.0.1").unwrap();
     let err: crate::ContractError =
         crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap_err();
     assert_eq!(
@@ -2881,16 +2917,13 @@ fn test_migrate() {
         }
     );
 
-    // migration succeeds from past version of same contract
-    cw2::set_contract_version(&mut deps.storage, CONTRACT_NAME, "0.0.1").unwrap();
-    crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
-
     // same-version migration errors
+    cw2::set_contract_version(&mut deps.storage, CONTRACT_NAME, CONTRACT_VERSION).unwrap();
     let err: crate::ContractError =
         crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap_err();
     assert_eq!(
         err,
-        crate::ContractError::MigrationErrorInvalidVersion {
+        crate::ContractError::MigrationErrorInvalidVersionNotNewer {
             new: CONTRACT_VERSION.to_string(),
             current: CONTRACT_VERSION.to_string(),
         }
@@ -2902,9 +2935,40 @@ fn test_migrate() {
         crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap_err();
     assert_eq!(
         err,
-        crate::ContractError::MigrationErrorInvalidVersion {
+        crate::ContractError::MigrationErrorInvalidVersionNotNewer {
             new: CONTRACT_VERSION.to_string(),
             current: "9.9.9".to_string(),
         }
     );
+
+    // migration succeeds from v2.4.0
+    cw2::set_contract_version(&mut deps.storage, CONTRACT_NAME, "2.4.0").unwrap();
+    crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
+}
+
+#[test]
+fn test_unsafe_force_withdraw() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    let before_balance =
+        suite.get_balance_native(suite.distribution_contract.clone(), &suite.reward_denom);
+
+    // non-owner cannot force withdraw
+    let err = suite.unsafe_force_withdraw_unauthorized(coin(100, &suite.reward_denom));
+    assert_eq!(err, ContractError::Ownable(OwnershipError::NotOwner));
+
+    let after_balance =
+        suite.get_balance_native(suite.distribution_contract.clone(), &suite.reward_denom);
+    assert_eq!(after_balance, before_balance);
+
+    // owner has no balance
+    let owner_balance = suite.get_balance_native(OWNER, &suite.reward_denom);
+    assert_eq!(owner_balance, 0);
+
+    // owner can force withdraw
+    suite.unsafe_force_withdraw(coin(100, &suite.reward_denom));
+
+    // owner has balance
+    let owner_balance = suite.get_balance_native(OWNER, &suite.reward_denom);
+    assert_eq!(owner_balance, 100);
 }
