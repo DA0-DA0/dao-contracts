@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-rewards-distributor",
-  "contract_version": "2.5.0",
+  "contract_version": "2.5.1",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -226,6 +226,28 @@
         "additionalProperties": false
       },
       {
+        "description": "forcibly withdraw funds from the contract. this is unsafe and should only be used to recover funds that are stuck in the contract.",
+        "type": "object",
+        "required": [
+          "unsafe_force_withdraw"
+        ],
+        "properties": {
+          "unsafe_force_withdraw": {
+            "type": "object",
+            "required": [
+              "amount"
+            ],
+            "properties": {
+              "amount": {
+                "$ref": "#/definitions/Coin"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "description": "Update the contract's ownership. The `action` to be provided can be either to propose transferring ownership to an account, accept a pending ownership transfer, or renounce the ownership permanently.",
         "type": "object",
         "required": [
@@ -298,6 +320,21 @@
       "Binary": {
         "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
         "type": "string"
+      },
+      "Coin": {
+        "type": "object",
+        "required": [
+          "amount",
+          "denom"
+        ],
+        "properties": {
+          "amount": {
+            "$ref": "#/definitions/Uint128"
+          },
+          "denom": {
+            "type": "string"
+          }
+        }
       },
       "CreateMsg": {
         "type": "object",
@@ -899,8 +936,22 @@
   "migrate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "MigrateMsg",
-    "type": "object",
-    "additionalProperties": false
+    "oneOf": [
+      {
+        "description": "Migrate from v2.5.0",
+        "type": "object",
+        "required": [
+          "from_v250"
+        ],
+        "properties": {
+          "from_v250": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ]
   },
   "sudo": null,
   "responses": {
