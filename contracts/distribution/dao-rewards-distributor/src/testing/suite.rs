@@ -974,4 +974,32 @@ impl Suite {
             )
             .unwrap();
     }
+
+    pub fn unsafe_force_withdraw(&mut self, amount: Coin) {
+        let msg = ExecuteMsg::UnsafeForceWithdraw { amount };
+        self.base
+            .app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+    }
+
+    pub fn unsafe_force_withdraw_unauthorized(&mut self, amount: Coin) -> ContractError {
+        let msg = ExecuteMsg::UnsafeForceWithdraw { amount };
+        self.base
+            .app
+            .execute_contract(
+                Addr::unchecked("no_one"),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap()
+    }
 }

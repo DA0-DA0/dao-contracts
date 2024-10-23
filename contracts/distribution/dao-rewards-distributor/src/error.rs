@@ -67,7 +67,7 @@ pub enum ContractError {
     DistributionHistoryTooLarge { err: String },
 
     #[error("Invalid version migration. {new} is not newer than {current}.")]
-    MigrationErrorInvalidVersion { new: String, current: String },
+    MigrationErrorInvalidVersionNotNewer { new: String, current: String },
 
     #[error("Expected to migrate from contract {expected}. Got {actual}.")]
     MigrationErrorIncorrectContract { expected: String, actual: String },

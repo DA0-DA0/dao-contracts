@@ -2902,12 +2902,11 @@ fn test_queries_before_funded() {
 }
 
 #[test]
-fn test_migrate() {
+fn test_migrate_validation() {
     let mut deps = mock_dependencies();
 
-    cw2::set_contract_version(&mut deps.storage, "test", "0.0.1").unwrap();
-
     // wrong contract name errors
+    cw2::set_contract_version(&mut deps.storage, "test", "0.0.1").unwrap();
     let err: crate::ContractError =
         crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap_err();
     assert_eq!(
@@ -2918,16 +2917,13 @@ fn test_migrate() {
         }
     );
 
-    // migration succeeds from past version of same contract
-    cw2::set_contract_version(&mut deps.storage, CONTRACT_NAME, "0.0.1").unwrap();
-    crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
-
     // same-version migration errors
+    cw2::set_contract_version(&mut deps.storage, CONTRACT_NAME, CONTRACT_VERSION).unwrap();
     let err: crate::ContractError =
         crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap_err();
     assert_eq!(
         err,
-        crate::ContractError::MigrationErrorInvalidVersion {
+        crate::ContractError::MigrationErrorInvalidVersionNotNewer {
             new: CONTRACT_VERSION.to_string(),
             current: CONTRACT_VERSION.to_string(),
         }
@@ -2939,9 +2935,40 @@ fn test_migrate() {
         crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap_err();
     assert_eq!(
         err,
-        crate::ContractError::MigrationErrorInvalidVersion {
+        crate::ContractError::MigrationErrorInvalidVersionNotNewer {
             new: CONTRACT_VERSION.to_string(),
             current: "9.9.9".to_string(),
         }
     );
+
+    // migration succeeds from v2.4.0
+    cw2::set_contract_version(&mut deps.storage, CONTRACT_NAME, "2.4.0").unwrap();
+    crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
+}
+
+#[test]
+fn test_unsafe_force_withdraw() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    let before_balance =
+        suite.get_balance_native(suite.distribution_contract.clone(), &suite.reward_denom);
+
+    // non-owner cannot force withdraw
+    let err = suite.unsafe_force_withdraw_unauthorized(coin(100, &suite.reward_denom));
+    assert_eq!(err, ContractError::Ownable(OwnershipError::NotOwner));
+
+    let after_balance =
+        suite.get_balance_native(suite.distribution_contract.clone(), &suite.reward_denom);
+    assert_eq!(after_balance, before_balance);
+
+    // owner has no balance
+    let owner_balance = suite.get_balance_native(OWNER, &suite.reward_denom);
+    assert_eq!(owner_balance, 0);
+
+    // owner can force withdraw
+    suite.unsafe_force_withdraw(coin(100, &suite.reward_denom));
+
+    // owner has balance
+    let owner_balance = suite.get_balance_native(OWNER, &suite.reward_denom);
+    assert_eq!(owner_balance, 100);
 }
