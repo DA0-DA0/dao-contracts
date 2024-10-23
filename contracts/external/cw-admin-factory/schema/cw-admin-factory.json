@@ -9,7 +9,10 @@
     "properties": {
       "admin": {
         "description": "The account allowed to execute this contract. If no admin, anyone can execute it.",
-        "type": ["string", "null"]
+        "type": [
+          "string",
+          "null"
+        ]
       }
     },
     "additionalProperties": false
@@ -21,11 +24,17 @@
       {
         "description": "Instantiates the target contract with the provided instantiate message, code ID, and label and updates the contract's admin to be itself.",
         "type": "object",
-        "required": ["instantiate_contract_with_self_admin"],
+        "required": [
+          "instantiate_contract_with_self_admin"
+        ],
         "properties": {
           "instantiate_contract_with_self_admin": {
             "type": "object",
-            "required": ["code_id", "instantiate_msg", "label"],
+            "required": [
+              "code_id",
+              "instantiate_msg",
+              "label"
+            ],
             "properties": {
               "code_id": {
                 "type": "integer",
@@ -47,11 +56,18 @@
       {
         "description": "Instantiates the target contract with the provided instantiate message, code ID, label, and salt, via instantiate2 to give a predictable address, and updates the contract's admin to be itself.",
         "type": "object",
-        "required": ["instantiate2_contract_with_self_admin"],
+        "required": [
+          "instantiate2_contract_with_self_admin"
+        ],
         "properties": {
           "instantiate2_contract_with_self_admin": {
             "type": "object",
-            "required": ["code_id", "instantiate_msg", "label", "salt"],
+            "required": [
+              "code_id",
+              "instantiate_msg",
+              "label",
+              "salt"
+            ],
             "properties": {
               "code_id": {
                 "type": "integer",
@@ -60,7 +76,10 @@
               },
               "expect": {
                 "description": "Optionally specify the expected address and fail if it doesn't match the instantiated contract. This makes it easy for a consumer to validate that they are using the correct address elsewhere.",
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "instantiate_msg": {
                 "$ref": "#/definitions/Binary"
@@ -91,7 +110,9 @@
     "oneOf": [
       {
         "type": "object",
-        "required": ["admin"],
+        "required": [
+          "admin"
+        ],
         "properties": {
           "admin": {
             "type": "object",

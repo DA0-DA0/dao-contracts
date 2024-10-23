@@ -936,22 +936,8 @@
   "migrate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "MigrateMsg",
-    "oneOf": [
-      {
-        "description": "Migrate from v2.5.0",
-        "type": "object",
-        "required": [
-          "from_v250"
-        ],
-        "properties": {
-          "from_v250": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      }
-    ]
+    "type": "object",
+    "additionalProperties": false
   },
   "sudo": null,
   "responses": {
