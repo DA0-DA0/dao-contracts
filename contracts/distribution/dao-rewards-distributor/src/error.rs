@@ -1,4 +1,6 @@
-use cosmwasm_std::{DivideByZeroError, OverflowError, StdError};
+use cosmwasm_std::{
+    CheckedFromRatioError, CheckedMultiplyFractionError, DivideByZeroError, OverflowError, StdError,
+};
 use cw_utils::PaymentError;
 use thiserror::Error;
 
@@ -18,6 +20,12 @@ pub enum ContractError {
 
     #[error(transparent)]
     DivideByZero(#[from] DivideByZeroError),
+
+    #[error(transparent)]
+    CheckedFromRatio(#[from] CheckedFromRatioError),
+
+    #[error(transparent)]
+    CheckedMultiplyFraction(#[from] CheckedMultiplyFractionError),
 
     #[error(transparent)]
     Payment(#[from] PaymentError),
