@@ -58,7 +58,8 @@ impl MultipleChoiceVotes {
 
     // Add a vote to the tally
     pub fn add_vote(&mut self, vote: MultipleChoiceVote, weight: Uint128) -> StdResult<()> {
-        self.vote_weights[vote.option_id as usize] = self.vote_weights[vote.option_id as usize]
+        self.vote_weights[vote.option_id as usize] = self
+            .get(vote)
             .checked_add(weight)
             .map_err(StdError::overflow)?;
         Ok(())
@@ -66,7 +67,8 @@ impl MultipleChoiceVotes {
 
     // Remove a vote from the tally
     pub fn remove_vote(&mut self, vote: MultipleChoiceVote, weight: Uint128) -> StdResult<()> {
-        self.vote_weights[vote.option_id as usize] = self.vote_weights[vote.option_id as usize]
+        self.vote_weights[vote.option_id as usize] = self
+            .get(vote)
             .checked_sub(weight)
             .map_err(StdError::overflow)?;
         Ok(())
@@ -77,6 +79,16 @@ impl MultipleChoiceVotes {
         Self {
             vote_weights: vec![Uint128::zero(); num_choices],
         }
+    }
+
+    /// Returns the number of votes for a given vote option.
+    pub fn get(&self, vote: MultipleChoiceVote) -> Uint128 {
+        self.get_id(vote.option_id)
+    }
+
+    /// Returns the number of votes for a given vote option ID.
+    pub fn get_id(&self, id: u32) -> Uint128 {
+        self.vote_weights[id as usize]
     }
 }
 

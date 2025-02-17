@@ -3,6 +3,7 @@ use cosmwasm_std::{
     to_json_binary, Addr, Decimal, Empty, Uint128,
 };
 use cw_multi_test::{Contract, ContractWrapper};
+use cw_utils::Duration;
 use dao_interface::helpers::OptionalUpdate;
 use dao_testing::{ADDR0, ADDR1, ADDR2, ADDR3, ADDR4};
 
@@ -1498,4 +1499,185 @@ fn test_gas_limits() {
             0u128,
         );
     }
+}
+
+#[test]
+fn test_revote() {
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
+    let dao = suite.dao.clone();
+
+    // Enable revoting on both proposal modules.
+    suite
+        .execute_smart(
+            &dao.core_addr,
+            &dao.proposal_modules[0].1,
+            &dao_proposal_single::msg::ExecuteMsg::UpdateConfig {
+                threshold: dao_voting::threshold::Threshold::AbsolutePercentage {
+                    percentage: dao_voting::threshold::PercentageThreshold::Majority {},
+                },
+                max_voting_period: Duration::Height(10),
+                min_voting_period: None,
+                only_members_execute: true,
+                allow_revoting: true,
+                dao: dao.core_addr.to_string(),
+                close_proposal_on_execution_failure: true,
+                veto: None,
+            },
+            &[],
+        )
+        .unwrap();
+    suite
+        .execute_smart(
+            &dao.core_addr,
+            &dao.proposal_modules[1].1,
+            &dao_proposal_multiple::msg::ExecuteMsg::UpdateConfig {
+                voting_strategy: dao_voting::multiple_choice::VotingStrategy::SingleChoice {
+                    quorum: dao_voting::threshold::PercentageThreshold::Majority {},
+                },
+                max_voting_period: Duration::Height(10),
+                min_voting_period: None,
+                only_members_execute: true,
+                allow_revoting: true,
+                dao: dao.core_addr.to_string(),
+                close_proposal_on_execution_failure: true,
+                veto: None,
+            },
+            &[],
+        )
+        .unwrap();
+
+    // register member as delegate
+    suite.register(ADDR0);
+
+    // delegate 100% of voting power to ADDR0
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(100));
+
+    // delegations take effect on the next block
+    suite.advance_block();
+
+    // SINGLE CHOICE PROPOSAL
+
+    // propose a single choice proposal
+    let (proposal_module, proposal_id, _) =
+        suite.propose_single_choice(&dao, ADDR0, "test proposal", vec![]);
+
+    // delegate votes on the proposal
+    suite.vote_single_choice(&dao, ADDR0, proposal_id, dao_voting::voting::Vote::Yes);
+
+    // assert vote count on single choice proposal
+    suite.assert_single_choice_votes_count(
+        &proposal_module,
+        proposal_id,
+        dao_voting::voting::Vote::Yes,
+        // both members' weight is used by delegate
+        suite.members[0].weight + suite.members[1].weight,
+    );
+    // assert individual vote count on single choice proposal
+    suite.assert_single_choice_individual_votes_count(
+        &proposal_module,
+        proposal_id,
+        dao_voting::voting::Vote::Yes,
+        // only delegate weight is counted in individual votes
+        suite.members[0].weight,
+    );
+
+    // revote on the proposal
+    suite.vote_single_choice(&dao, ADDR0, proposal_id, dao_voting::voting::Vote::No);
+
+    // assert vote count on single choice proposal
+    suite.assert_single_choice_votes_count(
+        &proposal_module,
+        proposal_id,
+        dao_voting::voting::Vote::Yes,
+        0u128,
+    );
+    suite.assert_single_choice_votes_count(
+        &proposal_module,
+        proposal_id,
+        dao_voting::voting::Vote::No,
+        // both members' weight is used by delegate
+        suite.members[0].weight + suite.members[1].weight,
+    );
+    // assert individual vote count on single choice proposal
+    suite.assert_single_choice_individual_votes_count(
+        &proposal_module,
+        proposal_id,
+        dao_voting::voting::Vote::Yes,
+        0u128,
+    );
+    suite.assert_single_choice_individual_votes_count(
+        &proposal_module,
+        proposal_id,
+        dao_voting::voting::Vote::No,
+        // only delegate weight is counted in individual votes
+        suite.members[0].weight,
+    );
+
+    // MULTIPLE CHOICE PROPOSAL
+
+    // propose a multiple choice proposal
+    let (proposal_module, proposal_id, _) = suite.propose_multiple_choice(
+        &dao,
+        ADDR0,
+        "test proposal",
+        vec![
+            dao_voting::multiple_choice::MultipleChoiceOption {
+                title: "Option 1".to_string(),
+                description: "Option 1 description".to_string(),
+                msgs: vec![],
+            },
+            dao_voting::multiple_choice::MultipleChoiceOption {
+                title: "Option 2".to_string(),
+                description: "Option 2 description".to_string(),
+                msgs: vec![],
+            },
+            dao_voting::multiple_choice::MultipleChoiceOption {
+                title: "Option 3".to_string(),
+                description: "Option 3 description".to_string(),
+                msgs: vec![],
+            },
+        ],
+    );
+
+    // delegate votes on the proposal
+    suite.vote_multiple_choice(&dao, ADDR0, proposal_id, 1);
+
+    // assert vote count on multiple choice proposal
+    suite.assert_multiple_choice_votes_count(
+        &proposal_module,
+        proposal_id,
+        1,
+        // both members' weight is used by delegate
+        suite.members[0].weight + suite.members[1].weight,
+    );
+    // assert individual vote count on multiple choice proposal
+    suite.assert_multiple_choice_individual_votes_count(
+        &proposal_module,
+        proposal_id,
+        1,
+        // only delegate weight is counted in individual votes
+        suite.members[0].weight,
+    );
+
+    // revote on the proposal
+    suite.vote_multiple_choice(&dao, ADDR0, proposal_id, 2);
+
+    // assert vote count on multiple choice proposal
+    suite.assert_multiple_choice_votes_count(&proposal_module, proposal_id, 1, 0u128);
+    suite.assert_multiple_choice_votes_count(
+        &proposal_module,
+        proposal_id,
+        2,
+        // both members' weight is used by delegate
+        suite.members[0].weight + suite.members[1].weight,
+    );
+    // assert individual vote count on multiple choice proposal
+    suite.assert_multiple_choice_individual_votes_count(&proposal_module, proposal_id, 1, 0u128);
+    suite.assert_multiple_choice_individual_votes_count(
+        &proposal_module,
+        proposal_id,
+        2,
+        // only delegate weight is counted in individual votes
+        suite.members[0].weight,
+    );
 }

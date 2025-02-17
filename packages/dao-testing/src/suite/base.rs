@@ -557,6 +557,72 @@ impl DaoTestingSuiteBase {
         );
     }
 
+    /// propose a multiple choice proposal and return the proposal module
+    /// address, proposal ID, and proposal
+    pub fn propose_multiple_choice<T>(
+        &mut self,
+        dao: &TestDao<T>,
+        proposer: impl Into<String>,
+        title: impl Into<String>,
+        options: Vec<dao_voting::multiple_choice::MultipleChoiceOption>,
+    ) -> (
+        Addr,
+        u64,
+        dao_proposal_multiple::proposal::MultipleChoiceProposal,
+    ) {
+        let pre_propose_msg = dao_pre_propose_multiple::ExecuteMsg::Propose {
+            msg: dao_pre_propose_multiple::ProposeMessage::Propose {
+                title: title.into(),
+                description: "".to_string(),
+                vote: None,
+                choices: dao_voting::multiple_choice::MultipleChoiceOptions { options },
+            },
+        };
+
+        let (pre_propose_module, proposal_module) = &dao.proposal_modules[1];
+
+        self.execute_smart_ok(
+            proposer,
+            pre_propose_module.as_ref().unwrap(),
+            &pre_propose_msg,
+            &[],
+        );
+
+        let proposal_id: u64 = self
+            .querier()
+            .query_wasm_smart(
+                proposal_module.clone(),
+                &dao_proposal_multiple::msg::QueryMsg::ProposalCount {},
+            )
+            .unwrap();
+
+        let proposal = self.get_multiple_choice_proposal(proposal_module, proposal_id);
+
+        (proposal_module.clone(), proposal_id, proposal)
+    }
+
+    /// vote on a multiple choice proposal
+    pub fn vote_multiple_choice<T>(
+        &mut self,
+        dao: &TestDao<T>,
+        voter: impl Into<String>,
+        proposal_id: u64,
+        vote_option_id: u32,
+    ) {
+        self.execute_smart_ok(
+            voter,
+            &dao.proposal_modules[1].1,
+            &dao_proposal_multiple::msg::ExecuteMsg::Vote {
+                proposal_id,
+                vote: dao_voting::multiple_choice::MultipleChoiceVote {
+                    option_id: vote_option_id,
+                },
+                rationale: None,
+            },
+            &[],
+        );
+    }
+
     /// add vote hook to all proposal modules
     pub fn add_vote_hook<T>(&mut self, dao: &TestDao<T>, addr: impl Into<String>) {
         let address = addr.into();
@@ -614,6 +680,21 @@ impl DaoTestingSuiteBase {
             .proposal
     }
 
+    /// get a multiple choice proposal
+    pub fn get_multiple_choice_proposal(
+        &self,
+        proposal_module: impl Into<String>,
+        proposal_id: u64,
+    ) -> dao_proposal_multiple::proposal::MultipleChoiceProposal {
+        self.querier()
+            .query_wasm_smart::<dao_proposal_multiple::query::ProposalResponse>(
+                Addr::unchecked(proposal_module),
+                &dao_proposal_multiple::msg::QueryMsg::Proposal { proposal_id },
+            )
+            .unwrap()
+            .proposal
+    }
+
     /// assert vote count on single choice proposal
     pub fn assert_single_choice_votes_count(
         &self,
@@ -626,6 +707,18 @@ impl DaoTestingSuiteBase {
         assert_eq!(proposal.votes.get(vote), count.into());
     }
 
+    /// assert individual vote count on single choice proposal
+    pub fn assert_single_choice_individual_votes_count(
+        &self,
+        proposal_module: impl Into<String>,
+        proposal_id: u64,
+        vote: dao_voting::voting::Vote,
+        count: impl Into<Uint128>,
+    ) {
+        let proposal = self.get_single_choice_proposal(proposal_module, proposal_id);
+        assert_eq!(proposal.individual_votes.get(vote), count.into());
+    }
+
     /// assert status on single choice proposal
     pub fn assert_single_choice_status(
         &self,
@@ -634,6 +727,44 @@ impl DaoTestingSuiteBase {
         status: dao_voting::status::Status,
     ) {
         let proposal = self.get_single_choice_proposal(proposal_module, proposal_id);
+        assert_eq!(proposal.status, status);
+    }
+
+    /// assert vote count on multiple choice proposal
+    pub fn assert_multiple_choice_votes_count(
+        &self,
+        proposal_module: impl Into<String>,
+        proposal_id: u64,
+        vote_option_id: u32,
+        count: impl Into<Uint128>,
+    ) {
+        let proposal = self.get_multiple_choice_proposal(proposal_module, proposal_id);
+        assert_eq!(proposal.votes.get_id(vote_option_id), count.into());
+    }
+
+    /// assert individual vote count on multiple choice proposal
+    pub fn assert_multiple_choice_individual_votes_count(
+        &self,
+        proposal_module: impl Into<String>,
+        proposal_id: u64,
+        vote_option_id: u32,
+        count: impl Into<Uint128>,
+    ) {
+        let proposal = self.get_multiple_choice_proposal(proposal_module, proposal_id);
+        assert_eq!(
+            proposal.individual_votes.get_id(vote_option_id),
+            count.into()
+        );
+    }
+
+    /// assert status on multiple choice proposal
+    pub fn assert_multiple_choice_status(
+        &self,
+        proposal_module: impl Into<String>,
+        proposal_id: u64,
+        status: dao_voting::status::Status,
+    ) {
+        let proposal = self.get_multiple_choice_proposal(proposal_module, proposal_id);
         assert_eq!(proposal.status, status);
     }
 }

@@ -47,3 +47,4 @@ dao-voting-cw721-staked = { workspace = true, features = ["library"] }
 dao-testing = { workspace = true }
 dao-proposal-sudo = { workspace = true }
 dao-proposal-single = { workspace = true }
+dao-proposal-multiple = { workspace = true }

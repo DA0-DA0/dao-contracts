@@ -314,7 +314,7 @@ impl MultipleChoiceProposal {
         votes_to_consider: &MultipleChoiceVotes,
         winning_choice: &CheckedMultipleChoiceOption,
     ) -> StdResult<bool> {
-        let winning_choice_power = votes_to_consider.vote_weights[winning_choice.index as usize];
+        let winning_choice_power = votes_to_consider.get_id(winning_choice.index);
         if let Some(second_choice_power) = votes_to_consider
             .vote_weights
             .iter()
@@ -841,7 +841,7 @@ mod tests {
         );
         // Everyone voted and proposal is in a tie...
         assert_eq!(prop.total_power, prop.votes.total());
-        assert_eq!(prop.votes.vote_weights[0], prop.votes.vote_weights[1]);
+        assert_eq!(prop.votes.get_id(0), prop.votes.get_id(1));
         // ... but proposal is still active => no rejection
         assert!(!prop.is_rejected(&env.block).unwrap());
 
@@ -854,7 +854,7 @@ mod tests {
             true,
         );
         // Proposal has expired and ended in a tie => rejection
-        assert_eq!(prop.votes.vote_weights[0], prop.votes.vote_weights[1]);
+        assert_eq!(prop.votes.get_id(0), prop.votes.get_id(1));
         assert!(prop.is_rejected(&env.block).unwrap());
     }
 

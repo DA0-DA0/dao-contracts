@@ -3533,14 +3533,8 @@ fn test_revoting() {
     // Assert that both vote options have equal vote weights at some block
     let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
     assert_eq!(proposal.proposal.status, Status::Open);
-    assert_eq!(
-        proposal.proposal.votes.vote_weights[0],
-        Uint128::new(100_000_000),
-    );
-    assert_eq!(
-        proposal.proposal.votes.vote_weights[1],
-        Uint128::new(100_000_000),
-    );
+    assert_eq!(proposal.proposal.votes.get_id(0), Uint128::new(100_000_000),);
+    assert_eq!(proposal.proposal.votes.get_id(1), Uint128::new(100_000_000),);
 
     // More time passes..
     app.update_block(|b| b.height += 3);
@@ -3564,11 +3558,8 @@ fn test_revoting() {
     // Assert that revote succeeded
     let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
     assert_eq!(proposal.proposal.status, Status::Passed);
-    assert_eq!(
-        proposal.proposal.votes.vote_weights[0],
-        Uint128::new(200_000_000),
-    );
-    assert_eq!(proposal.proposal.votes.vote_weights[1], Uint128::new(0),);
+    assert_eq!(proposal.proposal.votes.get_id(0), Uint128::new(200_000_000),);
+    assert_eq!(proposal.proposal.votes.get_id(1), Uint128::new(0),);
 }
 
 /// Tests that revoting is stored at a per-proposal level.
@@ -3920,14 +3911,8 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
     // Assert that both vote options have equal vote weights at some block
     let proposal: ProposalResponse = query_proposal(&app, &proposal_module, 1);
     assert_eq!(proposal.proposal.status, Status::Open);
-    assert_eq!(
-        proposal.proposal.votes.vote_weights[0],
-        Uint128::new(100_000_000),
-    );
-    assert_eq!(
-        proposal.proposal.votes.vote_weights[1],
-        Uint128::new(100_000_000),
-    );
+    assert_eq!(proposal.proposal.votes.get_id(0), Uint128::new(100_000_000),);
+    assert_eq!(proposal.proposal.votes.get_id(1), Uint128::new(100_000_000),);
 
     // Time passes..
     app.update_block(|b| b.height += 3);
@@ -3949,14 +3934,8 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
         .downcast()
         .unwrap();
     // Assert that prior votes remained the same
-    assert_eq!(
-        proposal.proposal.votes.vote_weights[0],
-        Uint128::new(100_000_000),
-    );
-    assert_eq!(
-        proposal.proposal.votes.vote_weights[1],
-        Uint128::new(100_000_000),
-    );
+    assert_eq!(proposal.proposal.votes.get_id(0), Uint128::new(100_000_000),);
+    assert_eq!(proposal.proposal.votes.get_id(1), Uint128::new(100_000_000),);
     assert!(matches!(err, ContractError::InvalidVote {}));
 }
 
@@ -4550,7 +4529,7 @@ pub fn test_not_allow_voting_on_expired_proposal() {
     // assert the vote got rejected and did not count towards the votes
     let proposal = query_proposal(&app, &proposal_module, 1);
     assert_eq!(proposal.proposal.status, Status::Rejected);
-    assert_eq!(proposal.proposal.votes.vote_weights[0], Uint128::zero());
+    assert_eq!(proposal.proposal.votes.get_id(0), Uint128::zero());
     assert!(matches!(err, ContractError::Expired { id: _proposal_id }));
 }
 

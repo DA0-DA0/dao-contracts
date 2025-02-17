@@ -435,9 +435,10 @@ pub fn execute_vote(
                     prop.votes
                         .remove_vote(current_ballot.vote, current_ballot.power)?;
                     prop.individual_votes
-                        .remove_vote(current_ballot.vote, current_ballot.power)?;
+                        .remove_vote(current_ballot.vote, current_ballot.individual_power)?;
                     Ok(Ballot {
                         power: vote_power.total,
+                        individual_power: vote_power.individual,
                         vote,
                         rationale: rationale.clone(),
                     })
@@ -449,6 +450,7 @@ pub fn execute_vote(
         None => Ok(Ballot {
             vote,
             power: vote_power.total,
+            individual_power: vote_power.individual,
             rationale: rationale.clone(),
         }),
     })?;
