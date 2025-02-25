@@ -108,7 +108,7 @@ impl SuiteBuilder {
                 label: "condorcet module".to_string(),
             }],
             initial_items: None,
-            initial_dao_actions: None,
+            initial_actions: None,
             dao_uri: None,
         };
         let core = app

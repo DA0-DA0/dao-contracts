@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::{Addr, CosmosMsg, Uint128};
 use cw2::ContractVersion;
 use cw_utils::Expiration;
 
@@ -13,7 +13,7 @@ pub struct DumpStateResponse {
     pub admin: Addr,
     /// The governance contract's config.
     pub config: Config,
-    // True if the contract is currently paused.
+    /// The pause state of the DAO.
     pub pause_info: PauseInfoResponse,
     /// The governance contract's version.
     pub version: ContractVersion,
@@ -26,6 +26,8 @@ pub struct DumpStateResponse {
     pub active_proposal_module_count: u32,
     /// The total number of proposal modules.
     pub total_proposal_module_count: u32,
+    /// The initial actions executed by the DAO on instantiation, if any.
+    pub initial_actions: Vec<CosmosMsg>,
 }
 
 /// Information about if the contract is currently paused.

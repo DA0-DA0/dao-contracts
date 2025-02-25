@@ -121,7 +121,7 @@ fn test_full_integration_with_factory() {
             label: "DAO DAO Proposal Module".to_string(),
         }],
         initial_items: None,
-        initial_dao_actions: None,
+        initial_actions: None,
     };
 
     // Instantiating without funds fails

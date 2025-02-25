@@ -145,7 +145,7 @@ impl TestEnvBuilder {
                 label: "DAO DAO Proposal Module".to_string(),
             }],
             initial_items: None,
-            initial_dao_actions: None,
+            initial_actions: None,
         };
 
         // Instantiate DAO

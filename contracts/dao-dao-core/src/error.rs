@@ -56,4 +56,7 @@ pub enum ContractError {
 
     #[error("Can not migrate. Current version is up to date.")]
     AlreadyMigrated {},
+
+    #[error("Initial actions error: {error}")]
+    InitialActionsError { error: String },
 }

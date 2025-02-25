@@ -405,7 +405,7 @@ fn test_factory() {
             label: "DAO DAO Proposal Module".to_string(),
         }],
         initial_items: None,
-        initial_dao_actions: None,
+        initial_actions: None,
     };
 
     // Instantiate DAO succeeds
@@ -517,7 +517,7 @@ fn test_factory_funds_pass_through() {
             label: "DAO DAO Proposal Module".to_string(),
         }],
         initial_items: None,
-        initial_dao_actions: None,
+        initial_actions: None,
     };
 
     // Instantiate DAO fails because no funds to create the token were sent
@@ -645,7 +645,7 @@ fn test_factory_no_callback() {
             label: "DAO DAO Proposal Module".to_string(),
         }],
         initial_items: None,
-        initial_dao_actions: None,
+        initial_actions: None,
     };
 
     // Instantiate DAO fails because no callback
@@ -728,7 +728,7 @@ fn test_factory_wrong_callback() {
             label: "DAO DAO Proposal Module".to_string(),
         }],
         initial_items: None,
-        initial_dao_actions: None,
+        initial_actions: None,
     };
 
     // Instantiate DAO fails because of wrong callback
