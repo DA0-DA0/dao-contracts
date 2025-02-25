@@ -281,6 +281,7 @@ impl DaoTestingSuiteBase {
             proposal_modules_instantiate_info,
             initial_items: None,
             dao_uri: None,
+            initial_dao_actions: None,
         };
 
         let res = self

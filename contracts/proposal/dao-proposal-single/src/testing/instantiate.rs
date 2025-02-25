@@ -181,6 +181,7 @@ pub(crate) fn instantiate_with_staked_cw721_governance(
             label: "DAO DAO governance module.".to_string(),
         }],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     let core_addr = app
@@ -300,6 +301,7 @@ pub(crate) fn instantiate_with_native_staked_balances_governance(
             label: "DAO DAO governance module.".to_string(),
         }],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     let core_addr = app
@@ -421,6 +423,7 @@ pub(crate) fn instantiate_with_staked_balances_governance(
             label: "DAO DAO governance module.".to_string(),
         }],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     let core_addr = app
@@ -536,6 +539,7 @@ pub(crate) fn instantiate_with_staking_active_threshold(
             label: "DAO DAO governance module".to_string(),
         }],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     app.instantiate_contract(
@@ -615,6 +619,7 @@ pub(crate) fn instantiate_with_cw4_groups_governance(
             label: "DAO DAO governance module".to_string(),
         }],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     let addr = app

@@ -21,11 +21,11 @@ use dao_interface::{
     voting,
 };
 
-use crate::error::ContractError;
 use crate::state::{
     ACTIVE_PROPOSAL_MODULE_COUNT, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN,
     PAUSED, PROPOSAL_MODULES, SUBDAO_LIST, TOTAL_PROPOSAL_MODULE_COUNT, VOTING_MODULE,
 };
+use crate::{error::ContractError, state::INITIAL_DAO_ACTIONS};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-dao-core";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -92,11 +92,18 @@ pub fn instantiate(
     TOTAL_PROPOSAL_MODULE_COUNT.save(deps.storage, &0)?;
     ACTIVE_PROPOSAL_MODULE_COUNT.save(deps.storage, &0)?;
 
-    Ok(Response::new()
+    let res = Response::new()
         .add_attribute("action", "instantiate")
         .add_attribute("sender", info.sender)
         .add_submessage(vote_module_msg)
-        .add_submessages(proposal_module_msgs))
+        .add_submessages(proposal_module_msgs);
+
+    if let Some(initial_dao_actions) = msg.initial_dao_actions {
+        INITIAL_DAO_ACTIONS.save(deps.storage, &initial_dao_actions)?;
+
+        return Ok(res.add_messages(initial_dao_actions));
+    }
+    Ok(res)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -595,6 +602,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             query_list_sub_daos(deps, start_after, limit)
         }
         QueryMsg::DaoURI {} => query_dao_uri(deps),
+        QueryMsg::InitialDaoActions {} => query_initial_dao_actions(deps),
     }
 }
 
@@ -866,6 +874,12 @@ pub fn query_proposal_module_count(deps: Deps) -> StdResult<Binary> {
         active_proposal_module_count: ACTIVE_PROPOSAL_MODULE_COUNT.load(deps.storage)?,
         total_proposal_module_count: TOTAL_PROPOSAL_MODULE_COUNT.load(deps.storage)?,
     })
+}
+
+pub fn query_initial_dao_actions(deps: Deps) -> StdResult<Binary> {
+    let actions = INITIAL_DAO_ACTIONS.may_load(deps.storage)?;
+
+    to_json_binary(&actions)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

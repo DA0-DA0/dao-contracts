@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Empty};
+use cosmwasm_std::{Addr, CosmosMsg, Empty};
 use cw_storage_plus::{Item, Map};
 use cw_utils::Expiration;
 use dao_interface::state::{Config, ProposalModule};
@@ -53,3 +53,6 @@ pub const CW721_LIST: Map<Addr, Empty> = Map::new("cw721s");
 
 /// List of SubDAOs associated to this DAO. Each SubDAO has an optional charter.
 pub const SUBDAO_LIST: Map<&Addr, Option<String>> = Map::new("sub_daos");
+
+/// List of initial dao actions.
+pub const INITIAL_DAO_ACTIONS: Item<Vec<CosmosMsg>> = Item::new("initial_dao_actions");

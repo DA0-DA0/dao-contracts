@@ -91,6 +91,7 @@ fn test_issue_fantoken() -> anyhow::Result<()> {
             label: "DAO DAO governance module".to_string(),
         }],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     let dao = app
@@ -194,6 +195,7 @@ fn test_initial_fantoken_balances() -> anyhow::Result<()> {
             label: "DAO DAO governance module".to_string(),
         }],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     let dao = app
@@ -302,6 +304,7 @@ fn test_fantoken_minter_and_authority_set_to_dao() -> anyhow::Result<()> {
             label: "DAO DAO governance module".to_string(),
         }],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     let dao = app
@@ -460,6 +463,7 @@ fn test_fantoken_can_be_staked() -> anyhow::Result<()> {
             label: "DAO DAO governance module".to_string(),
         }],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     let dao = app

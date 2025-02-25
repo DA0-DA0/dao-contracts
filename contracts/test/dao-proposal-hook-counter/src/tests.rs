@@ -87,6 +87,7 @@ fn instantiate_with_default_governance(
             label: "DAO DAO governance module".to_string(),
         }],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     instantiate_governance(app, governance_id, governance_instantiate)

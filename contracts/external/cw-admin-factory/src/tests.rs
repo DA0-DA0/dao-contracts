@@ -80,6 +80,7 @@ pub fn test_set_self_admin() {
             },
         ],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     let res: AppResponse = app
@@ -174,6 +175,7 @@ pub fn test_authorized_set_self_admin() {
             },
         ],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     // Fails when not the admin.

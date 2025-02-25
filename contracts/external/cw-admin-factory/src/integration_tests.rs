@@ -99,6 +99,7 @@ fn test_set_self_admin_instantiate2() {
             label: "DAO DAO Proposal Module".to_string(),
         }],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     let salt = Binary::from("salt".as_bytes());

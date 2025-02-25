@@ -80,6 +80,7 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
             })
             .collect(),
         initial_items: None,
+        initial_dao_actions: None,
     };
     let gov_addr = instantiate_gov(&mut app, gov_id, instantiate);
 
@@ -180,6 +181,7 @@ makes wickedness."
         },
         proposal_modules_instantiate_info: governance_modules,
         initial_items: None,
+        initial_dao_actions: None,
     };
     instantiate_gov(&mut app, gov_id, instantiate);
 }
@@ -217,6 +219,7 @@ fn test_update_config() {
             label: "voting module".to_string(),
         }],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     let gov_addr = app
@@ -316,6 +319,7 @@ fn test_swap_governance(swaps: Vec<(u32, u32)>) {
             label: "governance module".to_string(),
         }],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     let gov_addr = app
@@ -495,6 +499,7 @@ fn test_removed_modules_can_not_execute() {
             label: "governance module".to_string(),
         }],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     let gov_addr = app
@@ -658,6 +663,7 @@ fn test_module_already_disabled() {
             label: "governance module".to_string(),
         }],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     let gov_addr = app
@@ -760,6 +766,7 @@ fn test_swap_voting_module() {
             label: "governance module".to_string(),
         }],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     let gov_addr = app
@@ -866,6 +873,7 @@ fn test_permissions() {
         initial_items: None,
         automatically_add_cw20s: true,
         automatically_add_cw721s: true,
+        initial_dao_actions: None,
     };
 
     let gov_addr = app
@@ -966,6 +974,7 @@ fn do_standard_instantiate(auto_add: bool, admin: Option<String>) -> (Addr, App)
             label: "governance module".to_string(),
         }],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     let gov_addr = app
@@ -1683,6 +1692,7 @@ fn test_list_items() {
             label: "governance module".to_string(),
         }],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     let gov_addr = app
@@ -1817,6 +1827,7 @@ fn test_instantiate_with_items() {
             label: "governance module".to_string(),
         }],
         initial_items: Some(initial_items.clone()),
+        initial_dao_actions: None,
     };
 
     // Ensure duplicates are dissallowed.
@@ -2646,6 +2657,7 @@ fn test_migrate_from_compatible() {
             label: "governance module".to_string(),
         }],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     let core_addr = app
@@ -2947,6 +2959,7 @@ fn test_module_prefixes() {
             },
         ],
         initial_items: None,
+        initial_dao_actions: None,
     };
 
     let gov_addr = app
