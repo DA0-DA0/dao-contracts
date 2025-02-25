@@ -14,14 +14,21 @@ repository = { workspace = true }
 # the default DAO DAO license
 license = "Apache-2.0"
 
-
-exclude = [
-  # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
-  "contract.wasm",
-  "hash.txt",
+# configure different optimizer builds for each tokenfactory standard used by
+# different chains
+[package.metadata.optimizer]
+standard-build = false
+builds = [
+  { name = "osmosis", features = [
+    "osmosis_tokenfactory",
+  ], default-features = false },
+  { name = "cosmwasm", features = [
+    "cosmwasm_tokenfactory",
+  ], default-features = false },
+  { name = "kujira", features = [
+    "kujira_tokenfactory",
+  ], default-features = false },
 ]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 crate-type = ["cdylib", "rlib"]

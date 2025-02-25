@@ -7,6 +7,18 @@ license = { workspace = true }
 repository = { workspace = true }
 version = { workspace = true }
 
+# configure different optimizer builds for whether or not staking is enabled by
+# the chain
+[package.metadata.optimizer]
+standard-build = false
+builds = [
+  { name = "staking", features = [
+    "staking",
+  ], default-features = false },
+  { name = "no_staking", features = [
+  ], default-features = false },
+]
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
