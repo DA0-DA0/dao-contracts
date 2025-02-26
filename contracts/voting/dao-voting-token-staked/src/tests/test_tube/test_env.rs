@@ -137,6 +137,7 @@ impl TestEnvBuilder {
             &InstantiateMsg {
                 token_info: TokenInfo::New(NewTokenInfo {
                     token_issuer_code_id: issuer_id,
+                    token_issuer_salt: None,
                     subdenom: DENOM.to_string(),
                     metadata: Some(NewDenomMetadata {
                         description: "Awesome token, get it meow!".to_string(),
@@ -209,6 +210,7 @@ impl TestEnvBuilder {
                 msg: to_json_binary(&InstantiateMsg {
                     token_info: TokenInfo::New(NewTokenInfo {
                         token_issuer_code_id: issuer_id,
+                        token_issuer_salt: None,
                         subdenom: DENOM.to_string(),
                         metadata: Some(NewDenomMetadata {
                             description: "Awesome token, get it meow!".to_string(),
@@ -231,8 +233,9 @@ impl TestEnvBuilder {
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                funds: vec![],
+                funds: None,
                 label: "DAO DAO Voting Module".to_string(),
+                salt: None,
             },
             proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
                 code_id: proposal_single_id,
@@ -252,8 +255,9 @@ impl TestEnvBuilder {
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                funds: vec![],
+                funds: None,
                 label: "DAO DAO Proposal Module".to_string(),
+                salt: None,
             }],
             initial_items: None,
             initial_actions: None,

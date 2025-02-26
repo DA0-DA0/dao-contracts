@@ -21,6 +21,10 @@
     },
     "additionalProperties": false,
     "definitions": {
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      },
       "MetadataExt": {
         "type": "object",
         "required": [
@@ -103,6 +107,17 @@
                   "name": {
                     "description": "NFT collection name",
                     "type": "string"
+                  },
+                  "salt": {
+                    "description": "Optionally instantiate the token via instantiate2 using this salt.",
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Binary"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "symbol": {
                     "description": "NFT collection symbol",

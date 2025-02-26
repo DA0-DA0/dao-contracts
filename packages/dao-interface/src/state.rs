@@ -61,23 +61,42 @@ pub struct ModuleInstantiateInfo {
     /// <https://docs.cosmwasm.com/docs/1.0/smart-contracts/migration>
     pub admin: Option<Admin>,
     /// Funds to be sent to the instantiated contract.
-    pub funds: Vec<Coin>,
+    pub funds: Option<Vec<Coin>>,
     /// Label for the instantiated contract.
     pub label: String,
+    /// Salt to use with instantiate2, if defined. Otherwise uses normal
+    /// instantiate.
+    pub salt: Option<Binary>,
 }
 
 impl ModuleInstantiateInfo {
-    pub fn into_wasm_msg(self, dao: Addr) -> WasmMsg {
-        WasmMsg::Instantiate {
-            admin: self.admin.map(|admin| match admin {
-                Admin::Address { addr } => addr,
-                Admin::CoreModule {} => dao.into_string(),
-            }),
-            code_id: self.code_id,
-            msg: self.msg,
-            funds: self.funds,
-            label: self.label,
+    pub fn into_wasm_msg(self, dao: impl Into<String>) -> WasmMsg {
+        let admin = self.admin.map(|admin| match admin {
+            Admin::Address { addr } => addr,
+            Admin::CoreModule {} => dao.into(),
+        });
+
+        match self.salt {
+            Some(salt) => WasmMsg::Instantiate2 {
+                admin,
+                code_id: self.code_id,
+                msg: self.msg,
+                funds: self.funds.unwrap_or_default(),
+                label: self.label,
+                salt,
+            },
+            None => WasmMsg::Instantiate {
+                admin,
+                code_id: self.code_id,
+                msg: self.msg,
+                funds: self.funds.unwrap_or_default(),
+                label: self.label,
+            },
         }
+    }
+
+    pub fn into_cosmos_msg(self, dao: impl Into<String>) -> CosmosMsg {
+        self.into_wasm_msg(dao).into()
     }
 }
 
@@ -91,7 +110,7 @@ pub struct ModuleInstantiateCallback {
 mod tests {
     use super::*;
 
-    use cosmwasm_std::{to_json_binary, Addr, WasmMsg};
+    use cosmwasm_std::{coins, to_json_binary, Addr, Uint128, WasmMsg};
 
     #[test]
     fn test_module_instantiate_admin_none() {
@@ -100,7 +119,8 @@ mod tests {
             msg: to_json_binary("foo").unwrap(),
             admin: None,
             label: "bar".to_string(),
-            funds: vec![],
+            funds: Some(coins(100, "uatom")),
+            salt: None,
         };
         assert_eq!(
             no_admin.into_wasm_msg(Addr::unchecked("ekez")),
@@ -108,7 +128,10 @@ mod tests {
                 admin: None,
                 code_id: 42,
                 msg: to_json_binary("foo").unwrap(),
-                funds: vec![],
+                funds: vec![Coin {
+                    denom: "uatom".to_string(),
+                    amount: Uint128::from(100u64),
+                }],
                 label: "bar".to_string()
             }
         )
@@ -123,7 +146,8 @@ mod tests {
                 addr: "core".to_string(),
             }),
             label: "bar".to_string(),
-            funds: vec![],
+            funds: None,
+            salt: None,
         };
         assert_eq!(
             no_admin.into_wasm_msg(Addr::unchecked("ekez")),
@@ -144,7 +168,8 @@ mod tests {
             msg: to_json_binary("foo").unwrap(),
             admin: Some(Admin::CoreModule {}),
             label: "bar".to_string(),
-            funds: vec![],
+            funds: None,
+            salt: None,
         };
         assert_eq!(
             no_admin.into_wasm_msg(Addr::unchecked("ekez")),
@@ -154,6 +179,80 @@ mod tests {
                 msg: to_json_binary("foo").unwrap(),
                 funds: vec![],
                 label: "bar".to_string()
+            }
+        )
+    }
+
+    #[test]
+    fn test_module_instantiate2_admin_none() {
+        let no_admin = ModuleInstantiateInfo {
+            code_id: 42,
+            msg: to_json_binary("foo").unwrap(),
+            admin: None,
+            label: "bar".to_string(),
+            funds: Some(coins(100, "uatom")),
+            salt: Some(to_json_binary("test_salt").unwrap()),
+        };
+        assert_eq!(
+            no_admin.into_wasm_msg(Addr::unchecked("ekez")),
+            WasmMsg::Instantiate2 {
+                admin: None,
+                code_id: 42,
+                msg: to_json_binary("foo").unwrap(),
+                funds: vec![Coin {
+                    denom: "uatom".to_string(),
+                    amount: Uint128::from(100u64),
+                }],
+                label: "bar".to_string(),
+                salt: to_json_binary("test_salt").unwrap()
+            }
+        )
+    }
+
+    #[test]
+    fn test_module_instantiate2_admin_addr() {
+        let no_admin = ModuleInstantiateInfo {
+            code_id: 42,
+            msg: to_json_binary("foo").unwrap(),
+            admin: Some(Admin::Address {
+                addr: "core".to_string(),
+            }),
+            label: "bar".to_string(),
+            funds: None,
+            salt: Some(to_json_binary("test_salt").unwrap()),
+        };
+        assert_eq!(
+            no_admin.into_wasm_msg(Addr::unchecked("ekez")),
+            WasmMsg::Instantiate2 {
+                admin: Some("core".to_string()),
+                code_id: 42,
+                msg: to_json_binary("foo").unwrap(),
+                funds: vec![],
+                label: "bar".to_string(),
+                salt: to_json_binary("test_salt").unwrap()
+            }
+        )
+    }
+
+    #[test]
+    fn test_module_instantiate2_instantiator_addr() {
+        let no_admin = ModuleInstantiateInfo {
+            code_id: 42,
+            msg: to_json_binary("foo").unwrap(),
+            admin: Some(Admin::CoreModule {}),
+            label: "bar".to_string(),
+            funds: None,
+            salt: Some(to_json_binary("test_salt").unwrap()),
+        };
+        assert_eq!(
+            no_admin.into_wasm_msg(Addr::unchecked("ekez")),
+            WasmMsg::Instantiate2 {
+                admin: Some("ekez".to_string()),
+                code_id: 42,
+                msg: to_json_binary("foo").unwrap(),
+                funds: vec![],
+                label: "bar".to_string(),
+                salt: to_json_binary("test_salt").unwrap()
             }
         )
     }

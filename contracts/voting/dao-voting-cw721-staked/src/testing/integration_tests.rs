@@ -93,11 +93,12 @@ fn test_full_integration_with_factory() {
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![Coin {
+            funds: Some(vec![Coin {
                 amount: Uint128::new(1000),
                 denom: "uosmo".to_string(),
-            }],
+            }]),
             label: "DAO DAO Voting Module".to_string(),
+            salt: None,
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: proposal_single.code_id,
@@ -117,8 +118,9 @@ fn test_full_integration_with_factory() {
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO Proposal Module".to_string(),
+            salt: None,
         }],
         initial_items: None,
         initial_actions: None,

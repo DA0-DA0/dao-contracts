@@ -2,11 +2,12 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
-    Uint128, WasmMsg,
+    Uint128,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw4::{MemberListResponse, MemberResponse, TotalWeightResponse};
 use cw_utils::parse_reply_instantiate_data;
+use dao_interface::state::{Admin, ModuleInstantiateInfo};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, GroupContract, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -31,6 +32,7 @@ pub fn instantiate(
     match msg.group_contract {
         GroupContract::New {
             cw4_group_code_id,
+            cw4_group_salt,
             initial_members,
         } => {
             if initial_members.is_empty() {
@@ -64,18 +66,21 @@ pub fn instantiate(
             // Instantiate group contract, set DAO as admin.
             // Voting module contracts are instantiated by the main dao-dao-core
             // contract, so the Admin is set to info.sender.
-            let msg = WasmMsg::Instantiate {
-                admin: Some(info.sender.to_string()),
-                code_id: cw4_group_code_id,
-                msg: to_json_binary(&cw4_group::msg::InstantiateMsg {
-                    admin: Some(info.sender.to_string()),
-                    members: initial_members,
-                })?,
-                funds: vec![],
-                label: env.contract.address.to_string(),
-            };
-
-            let msg = SubMsg::reply_on_success(msg, INSTANTIATE_GROUP_REPLY_ID);
+            let msg = SubMsg::reply_on_success(
+                ModuleInstantiateInfo {
+                    admin: Some(Admin::CoreModule {}),
+                    code_id: cw4_group_code_id,
+                    msg: to_json_binary(&cw4_group::msg::InstantiateMsg {
+                        admin: Some(info.sender.to_string()),
+                        members: initial_members,
+                    })?,
+                    funds: None,
+                    label: env.contract.address.to_string(),
+                    salt: cw4_group_salt,
+                }
+                .into_cosmos_msg(info.sender),
+                INSTANTIATE_GROUP_REPLY_ID,
+            );
 
             Ok(Response::new()
                 .add_attribute("action", "instantiate")

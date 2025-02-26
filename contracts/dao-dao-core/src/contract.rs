@@ -951,7 +951,8 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
                             msg: to_json_binary(&migrate_params.params).unwrap(),
                             admin: Some(Admin::CoreModule {}),
                             label: "migrator".to_string(),
-                            funds: vec![],
+                            funds: None,
+                            salt: None,
                         }],
                         to_disable: vec![],
                     })

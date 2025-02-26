@@ -194,6 +194,17 @@
                   },
                   "msg": {
                     "$ref": "#/definitions/Binary"
+                  },
+                  "salt": {
+                    "description": "Optionally instantiate the token via instantiate2 using this salt.",
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Binary"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "additionalProperties": false

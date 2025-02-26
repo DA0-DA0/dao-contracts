@@ -102,8 +102,9 @@ pub fn get_pre_propose_info(
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "pre_propose_contract".to_string(),
+            salt: None,
         },
     }
 }
@@ -1113,6 +1114,7 @@ fn test_bad_token_proposal_deposit() {
                         amount: Uint128::new(1),
                     }],
                     marketing: None,
+                    salt: None,
                 },
             },
             &[],

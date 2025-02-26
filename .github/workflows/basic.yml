@@ -23,18 +23,18 @@ jobs:
           docker-images: true
           swap-storage: true
 
-      - name: Install latest stable toolchain
+      - name: Install nightly-2024-01-08 toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: nightly-2024-01-08
           target: wasm32-unknown-unknown
           override: true
 
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
-          toolchain: stable
+          toolchain: nightly-2024-01-08
           command: all-test
           args: --locked
         env:
@@ -43,7 +43,7 @@ jobs:
       - name: Compile WASM contract
         uses: actions-rs/cargo@v1
         with:
-          toolchain: stable
+          toolchain: nightly-2024-01-08
           command: wasm
           args: --locked
         env:
@@ -56,25 +56,25 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
 
-      - name: Install stable toolchain
+      - name: Install nightly-2024-01-08 toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: nightly-2024-01-08
           override: true
           components: rustfmt, clippy
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
         with:
-          toolchain: stable
+          toolchain: nightly-2024-01-08
           command: fmt
           args: --all -- --check
 
       - name: Run cargo clippy
         uses: actions-rs/cargo@v1
         with:
-          toolchain: stable
+          toolchain: nightly-2024-01-08
           command: clippy
           args: --all-targets -- -D warnings
 

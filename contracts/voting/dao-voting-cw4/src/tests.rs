@@ -61,6 +61,7 @@ fn setup_test_case(app: &mut App) -> Addr {
         InstantiateMsg {
             group_contract: GroupContract::New {
                 cw4_group_code_id: cw4_id,
+                cw4_group_salt: None,
                 initial_members: members,
             },
         },
@@ -80,6 +81,7 @@ fn test_instantiate() {
         group_contract: GroupContract::New {
             cw4_group_code_id: cw4_id,
             initial_members: [].into(),
+            cw4_group_salt: None,
         },
     };
     let _err = app
@@ -111,6 +113,7 @@ fn test_instantiate() {
                     weight: 0,
                 },
             ],
+            cw4_group_salt: None,
         },
     };
     let _err = app
@@ -560,6 +563,7 @@ fn test_migrate() {
         group_contract: GroupContract::New {
             cw4_group_code_id: cw4_id,
             initial_members,
+            cw4_group_salt: None,
         },
     };
     let voting_addr = app
@@ -637,6 +641,7 @@ fn test_duplicate_member() {
                     weight: 19,
                 },
             ],
+            cw4_group_salt: None,
         },
     };
     // Previous versions voting power was 100, due to no dedup.

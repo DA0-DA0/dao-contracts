@@ -157,8 +157,9 @@ impl DaoTestingSuite<TokenDaoExtra> for DaoTestingSuiteToken<'_> {
             })
             .unwrap(),
             admin: Some(dao_interface::state::Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "voting module".to_string(),
+            salt: None,
         }
     }
 

@@ -12,6 +12,7 @@ use cw721_base::{
 use cw_ownable::Action;
 use cw_utils::parse_reply_instantiate_data;
 use dao_cw721_extensions::roles::{ExecuteExt, MetadataExt, QueryExt};
+use dao_interface::state::{Admin, ModuleInstantiateInfo};
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, NftContract, QueryMsg};
 use crate::state::{Config, CONFIG, DAO, INITIAL_NFTS};
@@ -46,6 +47,7 @@ pub fn instantiate(
         }
         NftContract::New {
             code_id,
+            salt,
             label,
             name,
             symbol,
@@ -61,10 +63,9 @@ pub fn instantiate(
 
             // Create instantiate submessage for NFT roles contract
             let msg = SubMsg::reply_on_success(
-                WasmMsg::Instantiate {
+                ModuleInstantiateInfo {
                     code_id,
-                    funds: vec![],
-                    admin: Some(info.sender.to_string()),
+                    admin: Some(Admin::CoreModule {}),
                     label,
                     msg: to_json_binary(&Cw721InstantiateMsg {
                         name,
@@ -72,7 +73,10 @@ pub fn instantiate(
                         // Admin must be set to contract to mint initial NFTs
                         minter: env.contract.address.to_string(),
                     })?,
-                },
+                    funds: None,
+                    salt,
+                }
+                .into_cosmos_msg(info.sender),
                 INSTANTIATE_NFT_CONTRACT_REPLY_ID,
             );
 

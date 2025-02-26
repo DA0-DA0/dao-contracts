@@ -101,8 +101,9 @@ pub trait DaoTestingSuite<Extra = Empty>: Deref + DerefMut {
                         })
                         .unwrap(),
                         admin: Some(dao_interface::state::Admin::CoreModule {}),
-                        funds: vec![],
+                        funds: None,
                         label: "single choice pre-propose module".to_string(),
+                        salt: None,
                     },
                 },
                 close_proposal_on_execution_failure: true,
@@ -111,8 +112,9 @@ pub trait DaoTestingSuite<Extra = Empty>: Deref + DerefMut {
             })
             .unwrap(),
             admin: Some(dao_interface::state::Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "single choice proposal module".to_string(),
+            salt: None,
         },
         dao_interface::state::ModuleInstantiateInfo {
             code_id: self.base().proposal_multiple_id,
@@ -139,8 +141,9 @@ pub trait DaoTestingSuite<Extra = Empty>: Deref + DerefMut {
                         })
                         .unwrap(),
                         admin: Some(dao_interface::state::Admin::CoreModule {}),
-                        funds: vec![],
+                        funds: None,
                         label: "multiple choice pre-propose module".to_string(),
+                        salt: None,
                     },
                 },
                 close_proposal_on_execution_failure: true,
@@ -149,8 +152,9 @@ pub trait DaoTestingSuite<Extra = Empty>: Deref + DerefMut {
             })
             .unwrap(),
             admin: Some(dao_interface::state::Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "multiple choice proposal module".to_string(),
+            salt: None,
         }];
 
         // create the DAO using the base testing suite

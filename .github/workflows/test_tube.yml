@@ -28,7 +28,7 @@ jobs:
           docker-images: true
           swap-storage: true
 
-      - name: Install latest nightly toolchain
+      - name: Install nightly-2024-01-08 toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal

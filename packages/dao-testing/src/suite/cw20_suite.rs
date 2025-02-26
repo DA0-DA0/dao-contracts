@@ -158,6 +158,7 @@ impl DaoTestingSuite<Cw20DaoExtra> for DaoTestingSuiteCw20<'_> {
             msg: to_json_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
                 token_info: dao_voting_cw20_staked::msg::TokenInfo::New {
                     code_id: self.cw20_base_id,
+                    salt: None,
                     label: "voting token".to_string(),
                     name: "Voting Token".to_string(),
                     symbol: "VOTE".to_string(),
@@ -165,6 +166,7 @@ impl DaoTestingSuite<Cw20DaoExtra> for DaoTestingSuiteCw20<'_> {
                     initial_balances: self.initial_balances.clone(),
                     marketing: None,
                     staking_code_id: self.cw20_stake_id,
+                    staking_salt: None,
                     unstaking_duration: self.unstaking_duration,
                     initial_dao_balance: Some(self.initial_dao_balance),
                 },
@@ -172,8 +174,9 @@ impl DaoTestingSuite<Cw20DaoExtra> for DaoTestingSuiteCw20<'_> {
             })
             .unwrap(),
             admin: Some(dao_interface::state::Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "voting module".to_string(),
+            salt: None,
         }
     }
 

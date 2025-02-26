@@ -81,13 +81,15 @@ impl DaoTestingSuite<Cw4DaoExtra> for DaoTestingSuiteCw4<'_> {
             msg: to_json_binary(&dao_voting_cw4::msg::InstantiateMsg {
                 group_contract: dao_voting_cw4::msg::GroupContract::New {
                     cw4_group_code_id: self.cw4_group_id,
+                    cw4_group_salt: None,
                     initial_members: self.members.clone(),
                 },
             })
             .unwrap(),
             admin: Some(dao_interface::state::Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "voting module".to_string(),
+            salt: None,
         }
     }
 

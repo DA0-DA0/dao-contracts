@@ -273,6 +273,17 @@
                     "format": "uint64",
                     "minimum": 0.0
                   },
+                  "staking_salt": {
+                    "description": "Optionally instantiate the staking contract via instantiate2 using this salt.",
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Binary"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "unstaking_duration": {
                     "description": "See corresponding field in cw20-stake's instantiation. This will be used when instantiating the new staking contract.",
                     "anyOf": [
@@ -387,10 +398,32 @@
                   "name": {
                     "type": "string"
                   },
+                  "salt": {
+                    "description": "Optionally instantiate the token via instantiate2 using this salt.",
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Binary"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "staking_code_id": {
                     "type": "integer",
                     "format": "uint64",
                     "minimum": 0.0
+                  },
+                  "staking_salt": {
+                    "description": "Optionally instantiate the staking contract via instantiate2 using this salt.",
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Binary"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "symbol": {
                     "type": "string"

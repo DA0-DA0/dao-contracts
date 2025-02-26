@@ -35,6 +35,7 @@ pub(crate) fn setup_test(initial_nfts: Vec<NftMintMsg>) -> CommonTest {
                     name: "Job Titles".to_string(),
                     symbol: "TITLES".to_string(),
                     initial_nfts,
+                    salt: None,
                 },
             },
             &[],

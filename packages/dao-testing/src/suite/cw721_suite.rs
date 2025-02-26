@@ -143,6 +143,7 @@ impl DaoTestingSuite<Cw721DaoExtra> for DaoTestingSuiteCw721<'_> {
             msg: to_json_binary(&dao_voting_cw721_staked::msg::InstantiateMsg {
                 nft_contract: dao_voting_cw721_staked::msg::NftContract::New {
                     code_id: self.cw721_base_id,
+                    salt: None,
                     label: "voting NFT".to_string(),
                     msg: to_json_binary(&cw721_base::msg::InstantiateMsg {
                         name: "Voting NFT".to_string(),
@@ -169,8 +170,9 @@ impl DaoTestingSuite<Cw721DaoExtra> for DaoTestingSuiteCw721<'_> {
             })
             .unwrap(),
             admin: Some(dao_interface::state::Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "voting module".to_string(),
+            salt: None,
         }
     }
 

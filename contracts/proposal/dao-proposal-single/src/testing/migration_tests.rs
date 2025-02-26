@@ -88,6 +88,8 @@ fn test_v1_v2_full_migration() {
                             staking_code_id: cw20_stake_code,
                             unstaking_duration: None,
                             initial_dao_balance: Some(Uint128::new(100)),
+                            salt: None,
+                            staking_salt: None,
                         },
                     })
                     .unwrap(),

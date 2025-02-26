@@ -63,6 +63,8 @@ fn setup_test(initial_balances: Vec<Cw20Coin>) -> BaseTest {
                     staking_code_id: stake_cw20_id,
                     unstaking_duration: None,
                     initial_dao_balance: None,
+                    salt: None,
+                    staking_salt: None,
                 },
             },
             &[],

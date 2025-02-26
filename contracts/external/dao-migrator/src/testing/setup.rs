@@ -315,8 +315,9 @@ pub fn execute_migration(
                             })
                             .unwrap(),
                             admin: Some(Admin::CoreModule {}),
-                            funds: vec![],
+                            funds: None,
                             label: "migrator".to_string(),
+                            salt: None,
                         }],
                         to_disable: vec![],
                     })

@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Binary, Uint128};
 use cw20::Cw20Coin;
 use cw20_base::msg::InstantiateMarketingInfo;
 use cw_utils::Duration;
@@ -18,6 +18,9 @@ pub enum StakingInfo {
     New {
         /// Code ID for staking contract to instantiate.
         staking_code_id: u64,
+        /// Optionally instantiate the staking contract via instantiate2 using
+        /// this salt.
+        staking_salt: Option<Binary>,
         /// See corresponding field in cw20-stake's
         /// instantiation. This will be used when instantiating the
         /// new staking contract.
@@ -37,6 +40,8 @@ pub enum TokenInfo {
     New {
         /// Code ID for cw20 token contract.
         code_id: u64,
+        /// Optionally instantiate the token via instantiate2 using this salt.
+        salt: Option<Binary>,
         /// Label to use for instantiated cw20 contract.
         label: String,
 
@@ -47,6 +52,9 @@ pub enum TokenInfo {
         marketing: Option<InstantiateMarketingInfo>,
 
         staking_code_id: u64,
+        /// Optionally instantiate the staking contract via instantiate2 using
+        /// this salt.
+        staking_salt: Option<Binary>,
         unstaking_duration: Option<Duration>,
         initial_dao_balance: Option<Uint128>,
     },

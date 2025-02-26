@@ -112,6 +112,7 @@ fn test_instantiate_no_dao_balance() {
             &InstantiateMsg {
                 token_info: TokenInfo::New(NewTokenInfo {
                     token_issuer_code_id: tf_issuer_id,
+                    token_issuer_salt: None,
                     subdenom: "ucat".to_string(),
                     metadata: Some(NewDenomMetadata {
                         description: "Awesome token, get it meow!".to_string(),
@@ -175,6 +176,7 @@ fn test_instantiate_no_metadata() {
         &InstantiateMsg {
             token_info: TokenInfo::New(NewTokenInfo {
                 token_issuer_code_id: tf_issuer_id,
+                token_issuer_salt: None,
                 subdenom: "ucat".to_string(),
                 metadata: None,
                 initial_balances: vec![InitialBalance {
@@ -205,6 +207,7 @@ fn test_instantiate_invalid_metadata_fails() {
         &InstantiateMsg {
             token_info: TokenInfo::New(NewTokenInfo {
                 token_issuer_code_id: tf_issuer_id,
+                token_issuer_salt: None,
                 subdenom: "cat".to_string(),
                 metadata: Some(NewDenomMetadata {
                     description: "Awesome token, get it meow!".to_string(),
@@ -247,6 +250,7 @@ fn test_instantiate_invalid_active_threshold_count_fails() {
             &InstantiateMsg {
                 token_info: TokenInfo::New(NewTokenInfo {
                     token_issuer_code_id: tf_issuer_id,
+                    token_issuer_salt: None,
                     subdenom: "cat".to_string(),
                     metadata: Some(NewDenomMetadata {
                         description: "Awesome token, get it meow!".to_string(),
@@ -297,6 +301,7 @@ fn test_instantiate_no_initial_balances_fails() {
             &InstantiateMsg {
                 token_info: TokenInfo::New(NewTokenInfo {
                     token_issuer_code_id: tf_issuer_id,
+                    token_issuer_salt: None,
                     subdenom: "ucat".to_string(),
                     metadata: Some(NewDenomMetadata {
                         description: "Awesome token, get it meow!".to_string(),
@@ -358,6 +363,7 @@ fn test_factory() {
                             &dao_test_custom_factory::msg::ExecuteMsg::TokenFactoryFactory(
                                 NewTokenInfo {
                                     token_issuer_code_id: tf_issuer.code_id,
+                                    token_issuer_salt: None,
                                     subdenom: DENOM.to_string(),
                                     metadata: None,
                                     initial_balances: vec![InitialBalance {
@@ -380,8 +386,9 @@ fn test_factory() {
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO Voting Module".to_string(),
+            salt: None,
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: proposal_single.unwrap().code_id,
@@ -401,8 +408,9 @@ fn test_factory() {
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO Proposal Module".to_string(),
+            salt: None,
         }],
         initial_items: None,
         initial_actions: None,
@@ -470,6 +478,7 @@ fn test_factory_funds_pass_through() {
                             &dao_test_custom_factory::msg::ExecuteMsg::TokenFactoryFactoryWithFunds(
                                 NewTokenInfo {
                                     token_issuer_code_id: tf_issuer.code_id,
+                                    token_issuer_salt: None,
                                     subdenom: DENOM.to_string(),
                                     metadata: None,
                                     initial_balances: vec![InitialBalance {
@@ -492,8 +501,9 @@ fn test_factory_funds_pass_through() {
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO Voting Module".to_string(),
+            salt: None,
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: proposal_single.unwrap().code_id,
@@ -513,8 +523,9 @@ fn test_factory_funds_pass_through() {
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO Proposal Module".to_string(),
+            salt: None,
         }],
         initial_items: None,
         initial_actions: None,
@@ -546,6 +557,7 @@ fn test_factory_funds_pass_through() {
                         &dao_test_custom_factory::msg::ExecuteMsg::TokenFactoryFactoryWithFunds(
                             NewTokenInfo {
                                 token_issuer_code_id: tf_issuer.code_id,
+                                token_issuer_salt: None,
                                 subdenom: DENOM.to_string(),
                                 metadata: None,
                                 initial_balances: vec![InitialBalance {
@@ -568,8 +580,9 @@ fn test_factory_funds_pass_through() {
         })
         .unwrap(),
         admin: Some(Admin::CoreModule {}),
-        funds: funds.clone(),
+        funds: Some(funds.clone()),
         label: "DAO DAO Voting Module".to_string(),
+        salt: None,
     };
 
     // Creating the DAO now succeeds
@@ -620,8 +633,9 @@ fn test_factory_no_callback() {
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO Voting Module".to_string(),
+            salt: None,
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: proposal_single.unwrap().code_id,
@@ -641,8 +655,9 @@ fn test_factory_no_callback() {
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO Proposal Module".to_string(),
+            salt: None,
         }],
         initial_items: None,
         initial_actions: None,
@@ -703,8 +718,9 @@ fn test_factory_wrong_callback() {
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO Voting Module".to_string(),
+            salt: None,
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: proposal_single.unwrap().code_id,
@@ -724,8 +740,9 @@ fn test_factory_wrong_callback() {
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO Proposal Module".to_string(),
+            salt: None,
         }],
         initial_items: None,
         initial_actions: None,

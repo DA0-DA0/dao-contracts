@@ -49,7 +49,7 @@ pub struct InstantiateMsg {
     /// It is an error to provide two items with the same key.
     pub initial_items: Option<Vec<InitialItem>>,
     /// Actions for the DAO to execute immediately.
-    pub initial_actions: Option<Vec<CosmosMsg>>,
+    pub initial_actions: Option<Vec<CosmosMsg<Empty>>>,
 
     /// Implements the DAO Star standard: <https://daostar.one/EIP>
     pub dao_uri: Option<String>,

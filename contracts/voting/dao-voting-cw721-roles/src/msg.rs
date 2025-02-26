@@ -1,4 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Binary;
 use dao_cw721_extensions::roles::MetadataExt;
 use dao_dao_macros::voting_module_query;
 
@@ -25,6 +26,8 @@ pub enum NftContract {
     New {
         /// Code ID for cw721 token contract.
         code_id: u64,
+        /// Optionally instantiate the token via instantiate2 using this salt.
+        salt: Option<Binary>,
         /// Label to use for instantiated cw721 contract.
         label: String,
         /// NFT collection name

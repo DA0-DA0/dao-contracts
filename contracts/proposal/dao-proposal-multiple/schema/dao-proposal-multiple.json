@@ -186,7 +186,6 @@
         "type": "object",
         "required": [
           "code_id",
-          "funds",
           "label",
           "msg"
         ],
@@ -210,7 +209,10 @@
           },
           "funds": {
             "description": "Funds to be sent to the instantiated contract.",
-            "type": "array",
+            "type": [
+              "array",
+              "null"
+            ],
             "items": {
               "$ref": "#/definitions/Coin"
             }
@@ -224,6 +226,17 @@
             "allOf": [
               {
                 "$ref": "#/definitions/Binary"
+              }
+            ]
+          },
+          "salt": {
+            "description": "Salt to use with instantiate2, if defined. Otherwise uses normal instantiate.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              },
+              {
+                "type": "null"
               }
             ]
           }
@@ -1283,7 +1296,6 @@
         "type": "object",
         "required": [
           "code_id",
-          "funds",
           "label",
           "msg"
         ],
@@ -1307,7 +1319,10 @@
           },
           "funds": {
             "description": "Funds to be sent to the instantiated contract.",
-            "type": "array",
+            "type": [
+              "array",
+              "null"
+            ],
             "items": {
               "$ref": "#/definitions/Coin"
             }
@@ -1321,6 +1336,17 @@
             "allOf": [
               {
                 "$ref": "#/definitions/Binary"
+              }
+            ]
+          },
+          "salt": {
+            "description": "Salt to use with instantiate2, if defined. Otherwise uses normal instantiate.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              },
+              {
+                "type": "null"
               }
             ]
           }
@@ -2383,7 +2409,6 @@
         "type": "object",
         "required": [
           "code_id",
-          "funds",
           "label",
           "msg"
         ],
@@ -2407,7 +2432,10 @@
           },
           "funds": {
             "description": "Funds to be sent to the instantiated contract.",
-            "type": "array",
+            "type": [
+              "array",
+              "null"
+            ],
             "items": {
               "$ref": "#/definitions/Coin"
             }
@@ -2421,6 +2449,17 @@
             "allOf": [
               {
                 "$ref": "#/definitions/Binary"
+              }
+            ]
+          },
+          "salt": {
+            "description": "Salt to use with instantiate2, if defined. Otherwise uses normal instantiate.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              },
+              {
+                "type": "null"
               }
             ]
           }

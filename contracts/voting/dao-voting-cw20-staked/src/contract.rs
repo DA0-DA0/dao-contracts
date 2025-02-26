@@ -2,11 +2,12 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_json_binary, Addr, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdResult, SubMsg, Uint128, Uint256, WasmMsg,
+    StdResult, SubMsg, Uint128, Uint256,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw20::{Cw20Coin, TokenInfoResponse};
 use cw_utils::parse_reply_instantiate_data;
+use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_interface::voting::IsActiveResponse;
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 use std::convert::TryInto;
@@ -14,7 +15,7 @@ use std::convert::TryInto;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StakingInfo, TokenInfo};
 use crate::state::{
-    ACTIVE_THRESHOLD, DAO, STAKING_CONTRACT, STAKING_CONTRACT_CODE_ID,
+    ACTIVE_THRESHOLD, DAO, STAKING_CONTRACT, STAKING_CONTRACT_CODE_ID, STAKING_CONTRACT_SALT,
     STAKING_CONTRACT_UNSTAKING_DURATION, TOKEN,
 };
 
@@ -82,20 +83,25 @@ pub fn instantiate(
                 }
                 StakingInfo::New {
                     staking_code_id,
+                    staking_salt: salt,
                     unstaking_duration,
                 } => {
-                    let msg = WasmMsg::Instantiate {
-                        code_id: staking_code_id,
-                        funds: vec![],
-                        admin: Some(info.sender.to_string()),
-                        label: env.contract.address.to_string(),
-                        msg: to_json_binary(&cw20_stake::msg::InstantiateMsg {
-                            owner: Some(info.sender.to_string()),
-                            unstaking_duration,
-                            token_address: address.to_string(),
-                        })?,
-                    };
-                    let msg = SubMsg::reply_on_success(msg, INSTANTIATE_STAKING_REPLY_ID);
+                    let msg = SubMsg::reply_on_success(
+                        ModuleInstantiateInfo {
+                            code_id: staking_code_id,
+                            admin: Some(Admin::CoreModule {}),
+                            label: env.contract.address.to_string(),
+                            msg: to_json_binary(&cw20_stake::msg::InstantiateMsg {
+                                owner: Some(info.sender.to_string()),
+                                unstaking_duration,
+                                token_address: address.to_string(),
+                            })?,
+                            funds: None,
+                            salt,
+                        }
+                        .into_cosmos_msg(info.sender),
+                        INSTANTIATE_STAKING_REPLY_ID,
+                    );
                     Ok(Response::default()
                         .add_attribute("action", "instantiate")
                         .add_attribute("token", "existing_token")
@@ -106,6 +112,7 @@ pub fn instantiate(
         }
         TokenInfo::New {
             code_id,
+            salt,
             label,
             name,
             symbol,
@@ -114,6 +121,7 @@ pub fn instantiate(
             initial_dao_balance,
             marketing,
             staking_code_id,
+            staking_salt,
             unstaking_duration,
         } => {
             let initial_supply = initial_balances
@@ -136,26 +144,32 @@ pub fn instantiate(
             }
 
             STAKING_CONTRACT_CODE_ID.save(deps.storage, &staking_code_id)?;
+            if let Some(staking_salt) = staking_salt {
+                STAKING_CONTRACT_SALT.save(deps.storage, &staking_salt)?;
+            }
             STAKING_CONTRACT_UNSTAKING_DURATION.save(deps.storage, &unstaking_duration)?;
-
-            let msg = WasmMsg::Instantiate {
-                admin: Some(info.sender.to_string()),
-                code_id,
-                msg: to_json_binary(&cw20_base::msg::InstantiateMsg {
-                    name,
-                    symbol,
-                    decimals,
-                    initial_balances,
-                    mint: Some(cw20::MinterResponse {
-                        minter: info.sender.to_string(),
-                        cap: None,
-                    }),
-                    marketing,
-                })?,
-                funds: vec![],
-                label,
-            };
-            let msg = SubMsg::reply_on_success(msg, INSTANTIATE_TOKEN_REPLY_ID);
+            let msg = SubMsg::reply_on_success(
+                ModuleInstantiateInfo {
+                    admin: Some(Admin::CoreModule {}),
+                    code_id,
+                    msg: to_json_binary(&cw20_base::msg::InstantiateMsg {
+                        name,
+                        symbol,
+                        decimals,
+                        initial_balances,
+                        mint: Some(cw20::MinterResponse {
+                            minter: info.sender.to_string(),
+                            cap: None,
+                        }),
+                        marketing,
+                    })?,
+                    funds: None,
+                    label,
+                    salt,
+                }
+                .into_cosmos_msg(info.sender),
+                INSTANTIATE_TOKEN_REPLY_ID,
+            );
 
             Ok(Response::default()
                 .add_attribute("action", "instantiate")
@@ -405,21 +419,26 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     }
 
                     let staking_contract_code_id = STAKING_CONTRACT_CODE_ID.load(deps.storage)?;
+                    let staking_contract_salt = STAKING_CONTRACT_SALT.may_load(deps.storage)?;
                     let unstaking_duration =
                         STAKING_CONTRACT_UNSTAKING_DURATION.load(deps.storage)?;
                     let dao = DAO.load(deps.storage)?;
-                    let msg = WasmMsg::Instantiate {
-                        code_id: staking_contract_code_id,
-                        funds: vec![],
-                        admin: Some(dao.to_string()),
-                        label: env.contract.address.to_string(),
-                        msg: to_json_binary(&cw20_stake::msg::InstantiateMsg {
-                            owner: Some(dao.to_string()),
-                            unstaking_duration,
-                            token_address: token.to_string(),
-                        })?,
-                    };
-                    let msg = SubMsg::reply_on_success(msg, INSTANTIATE_STAKING_REPLY_ID);
+                    let msg = SubMsg::reply_on_success(
+                        ModuleInstantiateInfo {
+                            code_id: staking_contract_code_id,
+                            admin: Some(Admin::CoreModule {}),
+                            label: env.contract.address.to_string(),
+                            msg: to_json_binary(&cw20_stake::msg::InstantiateMsg {
+                                owner: Some(dao.to_string()),
+                                unstaking_duration,
+                                token_address: token.to_string(),
+                            })?,
+                            funds: None,
+                            salt: staking_contract_salt,
+                        }
+                        .into_cosmos_msg(dao),
+                        INSTANTIATE_STAKING_REPLY_ID,
+                    );
                     Ok(Response::default()
                         .add_attribute("token_address", token)
                         .add_submessage(msg))

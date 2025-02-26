@@ -262,6 +262,17 @@
             "type": "integer",
             "format": "uint64",
             "minimum": 0.0
+          },
+          "token_issuer_salt": {
+            "description": "Optionally instantiate the cw-tokenfactory-issuer contract with instantiate2 using this salt.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false
