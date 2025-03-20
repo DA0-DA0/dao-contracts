@@ -132,26 +132,30 @@ pub(crate) fn handle_voting_power_changed_hook(
         {
             // remove the latest delegated VP from the delegate's total and
             // replace it with the new delegated VP
+
+            // remove original delegated VP if nonzero
             let current_delegated_vp = calculate_delegated_vp(old_vp, percent);
+            if !current_delegated_vp.is_zero() {
+                remove_delegated_vp(
+                    deps.storage,
+                    env,
+                    &delegate,
+                    current_delegated_vp,
+                    expiration,
+                )?;
+            }
+
+            // add new delegated VP if nonzero
             let new_delegated_vp = calculate_delegated_vp(new_vp, percent);
-
-            // remove original delegated VP
-            remove_delegated_vp(
-                deps.storage,
-                env,
-                &delegate,
-                current_delegated_vp,
-                expiration,
-            )?;
-
-            // add new delegated VP
-            add_delegated_vp(
-                deps.storage,
-                env,
-                &delegate,
-                new_delegated_vp,
-                config.delegation_validity_blocks,
-            )?;
+            if !new_delegated_vp.is_zero() {
+                add_delegated_vp(
+                    deps.storage,
+                    env,
+                    &delegate,
+                    new_delegated_vp,
+                    config.delegation_validity_blocks,
+                )?;
+            }
         }
     }
 
