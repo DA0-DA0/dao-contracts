@@ -4,7 +4,7 @@ use std::{
 };
 
 use cosmwasm_std::{
-    to_json_binary, Addr, Coin, CosmosMsg, Empty, QuerierWrapper, Timestamp, Uint128,
+    to_json_binary, Addr, BlockInfo, Coin, CosmosMsg, Empty, QuerierWrapper, Timestamp, Uint128,
 };
 use cw20::Cw20Coin;
 use cw_multi_test::{error::AnyResult, App, AppResponse, Contract, Executor};
@@ -668,6 +668,11 @@ impl DaoTestingSuiteBase {
     /// get the app querier
     pub fn querier(&self) -> QuerierWrapper<'_> {
         self.app.wrap()
+    }
+
+    /// get the current block
+    pub fn block(&self) -> BlockInfo {
+        self.app.block_info()
     }
 
     /// get a single choice proposal

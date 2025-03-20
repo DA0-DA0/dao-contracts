@@ -13,7 +13,7 @@ use dao_interface::state::{ProposalModule, ProposalModuleStatus};
 use dao_interface::voting::InfoResponse;
 use dao_voting::delegation::{
     calculate_delegated_vp, DelegationResponse, RegistrationResponse,
-    UnvotedDelegatedVotingPowerResponse,
+    UnvotedDelegatedVotingPowerResponse, VotingPowerCapResponse,
 };
 use dao_voting::voting;
 use semver::Version;
@@ -62,6 +62,12 @@ pub fn instantiate(
         .unwrap_or(info.sender);
 
     DAO.save(deps.storage, &dao)?;
+
+    if let Some(vp_cap_percent) = msg.vp_cap_percent {
+        if vp_cap_percent <= Decimal::zero() || vp_cap_percent > Decimal::one() {
+            return Err(ContractError::InvalidVotingPowerPercent {});
+        }
+    }
 
     if let Some(delegation_validity_blocks) = msg.delegation_validity_blocks {
         if delegation_validity_blocks < 2 {
@@ -467,8 +473,17 @@ fn execute_update_config(
         return Err(ContractError::Unauthorized {});
     }
 
-    vp_cap_percent
-        .maybe_update_result(|value| VP_CAP_PERCENT.save(deps.storage, &value, env.block.height))?;
+    vp_cap_percent.maybe_update_result(|value| -> Result<_, ContractError> {
+        if let Some(value) = value {
+            if value <= Decimal::zero() || value > Decimal::one() {
+                return Err(ContractError::InvalidVotingPowerPercent {});
+            }
+        }
+
+        VP_CAP_PERCENT.save(deps.storage, &value, env.block.height)?;
+
+        Ok(())
+    })?;
 
     CONFIG.update(deps.storage, |mut config| -> Result<_, ContractError> {
         delegation_validity_blocks.maybe_update_result(|value| {
@@ -537,6 +552,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             &query_voting_power_hook_callers(deps, start_after, limit)?,
         )?),
         QueryMsg::Config {} => Ok(to_json_binary(&query_config(deps)?)?),
+        QueryMsg::VotingPowerCap { height } => {
+            Ok(to_json_binary(&query_voting_power_cap(deps, env, height)?)?)
+        }
     }
 }
 
@@ -694,6 +712,21 @@ fn query_voting_power_hook_callers(
 fn query_config(deps: Deps) -> StdResult<Config> {
     let config = CONFIG.load(deps.storage)?;
     Ok(config)
+}
+
+fn query_voting_power_cap(
+    deps: Deps,
+    env: Env,
+    height: Option<u64>,
+) -> StdResult<VotingPowerCapResponse> {
+    let height = height.unwrap_or(env.block.height);
+    let vp_cap_percent = VP_CAP_PERCENT
+        .may_load_at_height(deps.storage, height)?
+        .flatten();
+    Ok(VotingPowerCapResponse {
+        vp_cap_percent,
+        height,
+    })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

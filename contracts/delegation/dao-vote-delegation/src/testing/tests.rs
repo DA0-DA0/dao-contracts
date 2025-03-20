@@ -242,6 +242,8 @@ fn test_vp_cap_update() {
     // delegations take effect on the next block
     suite.advance_block();
 
+    let first_block_height = suite.block().height;
+
     let total_vp_except_addr0 = suite
         .members
         .iter()
@@ -273,10 +275,20 @@ fn test_vp_cap_update() {
         total_vp_except_addr0,
     );
 
+    suite.assert_voting_power_cap(None, Some(Decimal::percent(50)));
+    suite.assert_voting_power_cap(Some(suite.block().height), Some(Decimal::percent(50)));
+    suite.assert_voting_power_cap(Some(first_block_height), Some(Decimal::percent(50)));
+
     // change VP cap to 30% of total
     suite.update_vp_cap_percent(Some(Decimal::percent(30)));
     // updates take effect on the next block
     suite.advance_block();
+
+    suite.assert_voting_power_cap(None, Some(Decimal::percent(30)));
+    suite.assert_voting_power_cap(Some(suite.block().height), Some(Decimal::percent(30)));
+
+    // historical query still works
+    suite.assert_voting_power_cap(Some(first_block_height), Some(Decimal::percent(50)));
 
     // propose another proposal
     let (_, id2, p2) = suite.propose_single_choice(&dao, ADDR0, "test proposal", vec![]);
@@ -323,6 +335,11 @@ fn test_vp_cap_update() {
     suite.update_vp_cap_percent(None);
     // updates take effect on the next block
     suite.advance_block();
+    suite.assert_voting_power_cap(None, None);
+    suite.assert_voting_power_cap(Some(suite.block().height), None);
+
+    // historical query still works
+    suite.assert_voting_power_cap(Some(first_block_height), Some(Decimal::percent(50)));
 
     // propose another proposal
     let (_, id3, p3) = suite.propose_single_choice(&dao, ADDR0, "test proposal", vec![]);
@@ -842,6 +859,26 @@ fn test_validate_delegation_validity_blocks_update() {
 }
 
 #[test]
+#[should_panic(
+    expected = "invalid voting power percent: must be greater than 0 and less than or equal to 1"
+)]
+fn test_validate_vp_cap_percent() {
+    Cw4DaoVoteDelegationTestingSuite::new()
+        .with_vp_cap_percent(Decimal::percent(101))
+        .build();
+}
+
+#[test]
+#[should_panic(
+    expected = "invalid voting power percent: must be greater than 0 and less than or equal to 1"
+)]
+fn test_validate_vp_cap_percent_update() {
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
+
+    suite.update_vp_cap_percent(Some(Decimal::percent(101)));
+}
+
+#[test]
 fn test_max_delegations_config() {
     // instantiate with nothing, should set default
     let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
@@ -907,7 +944,9 @@ fn test_cannot_unregister_unregistered() {
 }
 
 #[test]
-#[should_panic(expected = "invalid voting power percent")]
+#[should_panic(
+    expected = "invalid voting power percent: must be greater than 0 and less than or equal to 1"
+)]
 fn test_cannot_delegate_zero_percent() {
     let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
 
@@ -916,7 +955,9 @@ fn test_cannot_delegate_zero_percent() {
 }
 
 #[test]
-#[should_panic(expected = "invalid voting power percent")]
+#[should_panic(
+    expected = "invalid voting power percent: must be greater than 0 and less than or equal to 1"
+)]
 fn test_cannot_delegate_more_than_100_percent() {
     let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
 

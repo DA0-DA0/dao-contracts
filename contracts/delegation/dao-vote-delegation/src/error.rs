@@ -52,7 +52,7 @@ pub enum ContractError {
     #[error("cannot delegate more than 100% (current: {current}%, attempt: {attempt}%)")]
     CannotDelegateMoreThan100Percent { current: String, attempt: String },
 
-    #[error("invalid voting power percent")]
+    #[error("invalid voting power percent: must be greater than 0 and less than or equal to 1")]
     InvalidVotingPowerPercent {},
 
     #[error("cannot delegate more than {max} delegations (current: {current})")]

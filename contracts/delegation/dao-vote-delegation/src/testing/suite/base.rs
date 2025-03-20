@@ -324,6 +324,19 @@ impl DaoVoteDelegationTestingSuiteBase {
             .query_wasm_smart(&self.delegation_addr, &crate::msg::QueryMsg::Config {})
             .unwrap()
     }
+
+    /// get the voting power cap
+    pub fn voting_power_cap(
+        &self,
+        height: Option<u64>,
+    ) -> dao_voting::delegation::VotingPowerCapResponse {
+        self.querier()
+            .query_wasm_smart(
+                &self.delegation_addr,
+                &crate::msg::QueryMsg::VotingPowerCap { height },
+            )
+            .unwrap()
+    }
 }
 
 /// ASSERTIONS
@@ -438,5 +451,11 @@ impl DaoVoteDelegationTestingSuiteBase {
     pub fn assert_max_delegations(&self, expected: u64) {
         let config = self.config();
         assert_eq!(config.max_delegations, expected);
+    }
+
+    /// assert that the voting power cap is set
+    pub fn assert_voting_power_cap(&self, height: Option<u64>, expected: Option<Decimal>) {
+        let cap = self.voting_power_cap(height);
+        assert_eq!(cap.vp_cap_percent, expected);
     }
 }

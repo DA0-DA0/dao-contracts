@@ -64,6 +64,9 @@ pub enum QueryMsg {
     /// Returns the config.
     #[returns(Config)]
     Config {},
+    /// Returns the voting power cap, optionally at a given height.
+    #[returns(VotingPowerCapResponse)]
+    VotingPowerCap { height: Option<u64> },
 }
 
 #[cw_serde]
@@ -155,6 +158,14 @@ pub struct Config {
     /// lowest gas limits on any chain), we found that 50 delegations is a safe
     /// upper bound.
     pub max_delegations: u64,
+}
+
+#[cw_serde]
+pub struct VotingPowerCapResponse {
+    /// The voting power cap percent.
+    pub vp_cap_percent: Option<Decimal>,
+    /// The height at which the voting power cap was loaded.
+    pub height: u64,
 }
 
 /// Calculate delegated voting power given a member's total voting power and a
