@@ -89,6 +89,10 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
     CREATION_POLICY.save(deps.storage, &initial_policy)?;
 
+    if let Some(delegation_module) = msg.delegation_module {
+        DELEGATION_MODULE.save(deps.storage, &deps.api.addr_validate(&delegation_module)?)?;
+    }
+
     Ok(Response::default()
         .add_submessages(pre_propose_messages)
         .add_attribute("action", "instantiate")
