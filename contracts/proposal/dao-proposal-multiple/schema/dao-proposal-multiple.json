@@ -2824,11 +2824,20 @@
           "description": "Information about a vote that was cast.",
           "type": "object",
           "required": [
+            "individual_power",
             "power",
             "vote",
             "voter"
           ],
           "properties": {
+            "individual_power": {
+              "description": "The individual voting power behind the vote (excluding delegation).",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                }
+              ]
+            },
             "power": {
               "description": "The voting power behind the vote.",
               "allOf": [
@@ -4255,11 +4264,20 @@
           "description": "Information about a vote that was cast.",
           "type": "object",
           "required": [
+            "individual_power",
             "power",
             "vote",
             "voter"
           ],
           "properties": {
+            "individual_power": {
+              "description": "The individual voting power behind the vote (excluding delegation).",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                }
+              ]
+            },
             "power": {
               "description": "The voting power behind the vote.",
               "allOf": [

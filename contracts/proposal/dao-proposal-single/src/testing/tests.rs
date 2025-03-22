@@ -3894,31 +3894,36 @@ fn test_query_list_votes() {
                 rationale: None,
                 voter: Addr::unchecked("five"),
                 vote: Vote::Yes,
-                power: Uint128::new(1)
+                power: Uint128::new(1),
+                individual_power: Uint128::new(1),
             },
             VoteInfo {
                 rationale: None,
                 voter: Addr::unchecked("four"),
                 vote: Vote::Yes,
-                power: Uint128::new(1)
+                power: Uint128::new(1),
+                individual_power: Uint128::new(1),
             },
             VoteInfo {
                 rationale: None,
                 voter: Addr::unchecked("one"),
                 vote: Vote::Yes,
-                power: Uint128::new(1)
+                power: Uint128::new(1),
+                individual_power: Uint128::new(1),
             },
             VoteInfo {
                 rationale: None,
                 voter: Addr::unchecked("three"),
                 vote: Vote::No,
-                power: Uint128::new(1)
+                power: Uint128::new(1),
+                individual_power: Uint128::new(1),
             },
             VoteInfo {
                 rationale: None,
                 voter: Addr::unchecked("two"),
                 vote: Vote::No,
-                power: Uint128::new(1)
+                power: Uint128::new(1),
+                individual_power: Uint128::new(1),
             }
         ]
     );
@@ -3937,13 +3942,15 @@ fn test_query_list_votes() {
                 rationale: None,
                 voter: Addr::unchecked("one"),
                 vote: Vote::Yes,
-                power: Uint128::new(1)
+                power: Uint128::new(1),
+                individual_power: Uint128::new(1),
             },
             VoteInfo {
                 rationale: None,
                 voter: Addr::unchecked("three"),
                 vote: Vote::No,
-                power: Uint128::new(1)
+                power: Uint128::new(1),
+                individual_power: Uint128::new(1),
             },
         ]
     );

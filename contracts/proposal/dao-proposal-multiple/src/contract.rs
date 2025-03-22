@@ -1011,6 +1011,7 @@ pub fn query_vote(deps: Deps, proposal_id: u64, voter: String) -> StdResult<Bina
         voter,
         vote: ballot.vote,
         power: ballot.power,
+        individual_power: ballot.individual_power,
         rationale: ballot.rationale,
     });
     to_json_binary(&VoteResponse { vote })
@@ -1038,6 +1039,7 @@ pub fn query_list_votes(
                 voter,
                 vote: ballot.vote,
                 power: ballot.power,
+                individual_power: ballot.individual_power,
                 rationale: ballot.rationale,
             })
         })

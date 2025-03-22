@@ -1666,12 +1666,14 @@ fn test_query_list_votes() {
             voter: Addr::unchecked("blue"),
             vote: MultipleChoiceVote { option_id: 0 },
             power: Uint128::new(10),
+            individual_power: Uint128::new(10),
             rationale: None,
         },
         VoteInfo {
             voter: Addr::unchecked("note"),
             vote: MultipleChoiceVote { option_id: 1 },
             power: Uint128::new(20),
+            individual_power: Uint128::new(20),
             rationale: None,
         },
     ];
