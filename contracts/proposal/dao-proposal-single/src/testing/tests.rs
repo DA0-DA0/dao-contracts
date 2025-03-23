@@ -70,7 +70,7 @@ use dao_proposal_single::ContractError;
 use super::{
     do_votes::do_votes_staked_balances,
     execute::vote_on_proposal_with_rationale,
-    queries::{query_next_proposal_id, query_vote},
+    queries::{query_delegation_module, query_next_proposal_id, query_vote},
     CREATOR_ADDR,
 };
 
@@ -4287,4 +4287,31 @@ fn test_proposal_count_goes_up() {
 
     let next = query_next_proposal_id(&app, &proposal_module);
     assert_eq!(next, 3);
+}
+
+#[test]
+#[should_panic]
+fn test_instantiation_validates_delegation_module_addr() {
+    let mut app = App::default();
+    let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
+    instantiate.delegation_module = Some("".to_string());
+    instantiate_with_staked_balances_governance(&mut app, instantiate, None);
+}
+
+#[test]
+fn test_instantiation_stores_delegation_module_addr() {
+    let mut app = App::default();
+    let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
+    instantiate.delegation_module = Some(CREATOR_ADDR.to_string());
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
+
+    let proposal_module = query_single_proposal_module(&app, &core_addr);
+    let gov_token = query_dao_token(&app, &core_addr);
+
+    // Mint some tokens to pay the proposal deposit.
+    mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
+    make_proposal(&mut app, &proposal_module, CREATOR_ADDR, vec![], None);
+
+    let delegation_module = query_delegation_module(&app, &proposal_module).unwrap();
+    assert_eq!(delegation_module.to_string(), CREATOR_ADDR.to_string());
 }
