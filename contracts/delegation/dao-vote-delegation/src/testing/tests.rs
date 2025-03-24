@@ -4,6 +4,7 @@ use cosmwasm_std::{
 };
 use cw_multi_test::{Contract, ContractWrapper};
 use cw_utils::Duration;
+use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg, vote::VoteHookMsg};
 use dao_interface::helpers::OptionalUpdate;
 use dao_testing::{ADDR0, ADDR1, ADDR2, ADDR3, ADDR4};
 
@@ -1044,6 +1045,76 @@ fn test_unauthorized_update_voting_power_hook_callers() {
             add: None,
             remove: None,
         },
+        &[],
+    );
+}
+
+#[test]
+#[should_panic(expected = "unauthorized hook caller")]
+fn test_unauthorized_stake_changed_hook_caller() {
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
+    let delegation_addr = suite.delegation_addr.clone();
+
+    suite.execute_smart_ok(
+        "not_registered_hook_caller",
+        &delegation_addr,
+        &crate::msg::ExecuteMsg::StakeChangeHook(StakeChangedHookMsg::Stake {
+            addr: Addr::unchecked("not_registered_hook_caller"),
+            amount: Uint128::one(),
+        }),
+        &[],
+    );
+}
+
+#[test]
+#[should_panic(expected = "unauthorized hook caller")]
+fn test_unauthorized_membership_changed_hook_caller() {
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
+    let delegation_addr = suite.delegation_addr.clone();
+
+    suite.execute_smart_ok(
+        "not_registered_hook_caller",
+        &delegation_addr,
+        &crate::msg::ExecuteMsg::MemberChangedHook(cw4::MemberChangedHookMsg { diffs: vec![] }),
+        &[],
+    );
+}
+
+#[test]
+#[should_panic(expected = "unauthorized hook caller")]
+fn test_unauthorized_nft_stake_changed_hook_caller() {
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
+    let delegation_addr = suite.delegation_addr.clone();
+
+    suite.execute_smart_ok(
+        "not_registered_hook_caller",
+        &delegation_addr,
+        &crate::msg::ExecuteMsg::NftStakeChangeHook(NftStakeChangedHookMsg::Stake {
+            addr: Addr::unchecked("not_registered_hook_caller"),
+            token_id: "t_id".to_string(),
+        }),
+        &[],
+    );
+}
+
+#[test]
+#[should_panic(expected = "unauthorized hook caller")]
+fn test_unauthorized_execute_vote_hook_caller() {
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
+    let delegation_addr = suite.delegation_addr.clone();
+
+    suite.execute_smart_ok(
+        "not_registered_hook_caller",
+        &delegation_addr,
+        &crate::msg::ExecuteMsg::VoteHook(VoteHookMsg::NewVote {
+            proposal_id: 1,
+            voter: "voter".to_string(),
+            vote: "vote".to_string(),
+            power: Uint128::one(),
+            individual_power: Uint128::one(),
+            height: 1,
+            is_first_vote: false,
+        }),
         &[],
     );
 }

@@ -4315,3 +4315,91 @@ fn test_instantiation_stores_delegation_module_addr() {
     let delegation_module = query_delegation_module(&app, &proposal_module).unwrap();
     assert_eq!(delegation_module.to_string(), CREATOR_ADDR.to_string());
 }
+
+#[test]
+fn test_update_delegation_module_validates_addr() {
+    let CommonTest {
+        mut app,
+        proposal_module,
+        gov_token,
+        core_addr,
+        ..
+    } = setup_test(vec![]);
+
+    // make a proposal to update the delegation module
+    mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
+    let proposal_id = make_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        vec![WasmMsg::Execute {
+            contract_addr: proposal_module.to_string(),
+            msg: to_json_binary(&ExecuteMsg::UpdateDelegationModule {
+                module: "".to_string(),
+            })
+            .unwrap(),
+            funds: vec![],
+        }
+        .into()],
+        None,
+    );
+
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        proposal_id,
+        Vote::Yes,
+    );
+
+    execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
+
+    let proposal = query_proposal(&app, &proposal_module, proposal_id);
+
+    // proposal should fail to execute
+    assert_eq!(proposal.proposal.status, Status::ExecutionFailed);
+}
+
+#[test]
+fn test_update_delegation_module() {
+    let CommonTest {
+        mut app,
+        proposal_module,
+        gov_token,
+        core_addr,
+        ..
+    } = setup_test(vec![]);
+
+    let delegation_module = "new_delegation_module".to_string();
+
+    // make a proposal to update the delegation module
+    mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
+    let proposal_id = make_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        vec![WasmMsg::Execute {
+            contract_addr: proposal_module.to_string(),
+            msg: to_json_binary(&ExecuteMsg::UpdateDelegationModule {
+                module: delegation_module.to_string(),
+            })
+            .unwrap(),
+            funds: vec![],
+        }
+        .into()],
+        None,
+    );
+
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        proposal_id,
+        Vote::Yes,
+    );
+    execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
+
+    let new_delegation_module = query_delegation_module(&app, &proposal_module).unwrap();
+
+    assert_eq!(delegation_module, new_delegation_module);
+}
