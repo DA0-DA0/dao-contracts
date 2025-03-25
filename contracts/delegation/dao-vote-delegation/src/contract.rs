@@ -111,15 +111,17 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     match msg {
-        ExecuteMsg::Register {} => execute_register(deps, env, info),
-        ExecuteMsg::Unregister {} => execute_unregister(deps, env, info),
+        ExecuteMsg::Register {} => execute_register(deps, env, info.sender),
+        ExecuteMsg::Unregister {} => execute_unregister(deps, env, info.sender),
         ExecuteMsg::Delegate { delegate, percent } => {
-            execute_delegate(deps, env, info, delegate, percent)
+            execute_delegate(deps, env, info.sender, delegate, percent)
         }
-        ExecuteMsg::Undelegate { delegate } => execute_undelegate(deps, env, info, delegate),
+        ExecuteMsg::Undelegate { delegate } => execute_undelegate(deps, env, info.sender, delegate),
         ExecuteMsg::UpdateVotingPowerHookCallers { add, remove } => {
-            execute_update_voting_power_hook_callers(deps, info, add, remove)
+            execute_update_voting_power_hook_callers(deps, info.sender, add, remove)
         }
         ExecuteMsg::SyncProposalModules { start_after, limit } => {
             execute_sync_proposal_modules(deps, start_after, limit)
@@ -131,23 +133,24 @@ pub fn execute(
         } => execute_update_config(
             deps,
             env,
-            info,
+            info.sender,
             vp_cap_percent,
             delegation_validity_blocks,
             max_delegations,
         ),
-        ExecuteMsg::StakeChangeHook(msg) => execute_stake_changed(deps, env, info, msg),
-        ExecuteMsg::NftStakeChangeHook(msg) => execute_nft_stake_changed(deps, env, info, msg),
-        ExecuteMsg::MemberChangedHook(msg) => execute_membership_changed(deps, env, info, msg),
-        ExecuteMsg::VoteHook(vote_hook) => execute_vote_hook(deps, env, info, vote_hook),
+        ExecuteMsg::StakeChangeHook(msg) => execute_stake_changed(deps, env, info.sender, msg),
+        ExecuteMsg::NftStakeChangeHook(msg) => {
+            execute_nft_stake_changed(deps, env, info.sender, msg)
+        }
+        ExecuteMsg::MemberChangedHook(msg) => {
+            execute_membership_changed(deps, env, info.sender, msg)
+        }
+        ExecuteMsg::VoteHook(vote_hook) => execute_vote_hook(deps, env, info.sender, vote_hook),
     }
 }
 
-fn execute_register(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
+fn execute_register(deps: DepsMut, env: Env, delegate: Addr) -> Result<Response, ContractError> {
     ensure_setup(deps.as_ref())?;
-
-    let delegate = info.sender;
 
     if is_delegate_registered(deps.as_ref(), &delegate, None)? {
         return Err(ContractError::DelegateAlreadyRegistered {});
@@ -177,15 +180,8 @@ fn execute_register(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respon
     Ok(Response::new())
 }
 
-fn execute_unregister(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
+fn execute_unregister(deps: DepsMut, env: Env, delegate: Addr) -> Result<Response, ContractError> {
     ensure_setup(deps.as_ref())?;
-
-    let delegate = info.sender;
 
     if !is_delegate_registered(deps.as_ref(), &delegate, None)? {
         return Err(ContractError::DelegateNotRegistered {});
@@ -199,18 +195,16 @@ fn execute_unregister(
 fn execute_delegate(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    delegator: Addr,
     delegate: String,
     percent: Decimal,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
     ensure_setup(deps.as_ref())?;
 
     if percent <= Decimal::zero() || percent > Decimal::one() {
         return Err(ContractError::InvalidVotingPowerPercent {});
     }
 
-    let delegator = info.sender;
     let delegate = deps.api.addr_validate(&delegate)?;
 
     // delegates cannot delegate to others
@@ -350,13 +344,11 @@ fn execute_delegate(
 fn execute_undelegate(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    delegator: Addr,
     delegate: String,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
     ensure_setup(deps.as_ref())?;
 
-    let delegator = info.sender;
     let delegate = deps.api.addr_validate(&delegate)?;
 
     // ensure delegation exists
@@ -401,15 +393,13 @@ fn execute_undelegate(
 
 fn execute_update_voting_power_hook_callers(
     deps: DepsMut,
-    info: MessageInfo,
+    sender: Addr,
     add: Option<Vec<String>>,
     remove: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
-
     // only the DAO can update the voting power hook callers
     let dao = DAO.load(deps.storage)?;
-    if info.sender != dao {
+    if sender != dao {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -460,16 +450,14 @@ fn execute_sync_proposal_modules(
 fn execute_update_config(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    sender: Addr,
     vp_cap_percent: OptionalUpdate<Decimal>,
     delegation_validity_blocks: OptionalUpdate<u64>,
     max_delegations: Option<u64>,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
-
     // only the DAO can update the config
     let dao = DAO.load(deps.storage)?;
-    if info.sender != dao {
+    if sender != dao {
         return Err(ContractError::Unauthorized {});
     }
 

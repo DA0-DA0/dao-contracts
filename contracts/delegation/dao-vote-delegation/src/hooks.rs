@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{Addr, DepsMut, Env, Response};
 use cw4::MemberChangedHookMsg;
 use cw_snapshot_vector_map::LoadedItem;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg, vote::VoteHookMsg};
@@ -19,11 +19,11 @@ use crate::{
 pub(crate) fn execute_stake_changed(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    sender: Addr,
     msg: StakeChangedHookMsg,
 ) -> Result<Response, ContractError> {
     // ensure voting power hook caller is registered
-    if !VOTING_POWER_HOOK_CALLERS.has(deps.storage, info.sender.clone()) {
+    if !VOTING_POWER_HOOK_CALLERS.has(deps.storage, sender) {
         return Err(ContractError::UnauthorizedHookCaller {});
     }
 
@@ -40,11 +40,11 @@ pub(crate) fn execute_stake_changed(
 pub(crate) fn execute_membership_changed(
     mut deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    sender: Addr,
     msg: MemberChangedHookMsg,
 ) -> Result<Response, ContractError> {
     // ensure voting power hook caller is registered
-    if !VOTING_POWER_HOOK_CALLERS.has(deps.storage, info.sender.clone()) {
+    if !VOTING_POWER_HOOK_CALLERS.has(deps.storage, sender) {
         return Err(ContractError::UnauthorizedHookCaller {});
     }
 
@@ -60,11 +60,11 @@ pub(crate) fn execute_membership_changed(
 pub(crate) fn execute_nft_stake_changed(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    sender: Addr,
     msg: NftStakeChangedHookMsg,
 ) -> Result<Response, ContractError> {
     // ensure voting power hook caller is registered
-    if !VOTING_POWER_HOOK_CALLERS.has(deps.storage, info.sender.clone()) {
+    if !VOTING_POWER_HOOK_CALLERS.has(deps.storage, sender) {
         return Err(ContractError::UnauthorizedHookCaller {});
     }
 
@@ -165,11 +165,9 @@ pub(crate) fn handle_voting_power_changed_hook(
 pub fn execute_vote_hook(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    proposal_module: Addr,
     vote_hook: VoteHookMsg,
 ) -> Result<Response, ContractError> {
-    let proposal_module = info.sender;
-
     // ensure proposal module is registered
     if !PROPOSAL_HOOK_CALLERS.has(deps.storage, proposal_module.clone()) {
         return Err(ContractError::UnauthorizedHookCaller {});
