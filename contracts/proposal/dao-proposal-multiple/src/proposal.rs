@@ -278,8 +278,7 @@ impl MultipleChoiceProposal {
                     .iter()
                     .max_by(|&a, &b| a.cmp(b))
                 {
-                    let top_choices: Vec<(usize, &Uint128)> = self
-                        .votes
+                    let top_choices: Vec<(usize, &Uint128)> = votes_to_consider
                         .vote_weights
                         .iter()
                         .enumerate()
