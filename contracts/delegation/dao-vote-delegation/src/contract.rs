@@ -1,9 +1,9 @@
+use cosmwasm_std::{ensure, Addr, Order};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{
     entry_point, to_json_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
     StdResult, Uint128,
 };
-use cosmwasm_std::{Addr, Order};
 use cw2::{get_contract_version, set_contract_version};
 use cw_paginate_storage::paginate_map_keys;
 use cw_storage_plus::Bound;
@@ -170,10 +170,10 @@ fn execute_register(deps: DepsMut, env: Env, delegate: Addr) -> Result<Response,
     }
 
     // ensure delegate has no delegations
-    let has_delegations = !DELEGATION_ENTRIES.prefix(&delegate).is_empty(deps.storage);
-    if has_delegations {
-        return Err(ContractError::CannotRegisterWithDelegations {});
-    }
+    ensure!(
+        DELEGATION_ENTRIES.prefix(&delegate).is_empty(deps.storage),
+        ContractError::CannotRegisterWithDelegations {}
+    );
 
     DELEGATES.save(deps.storage, delegate, &Delegate {}, env.block.height)?;
 

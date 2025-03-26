@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, DepsMut, Env, Response};
+use cosmwasm_std::{Addr, DepsMut, Env, Response, Uint128};
 use cw4::MemberChangedHookMsg;
 use cw_snapshot_vector_map::LoadedItem;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg, vote::VoteHookMsg};
@@ -6,11 +6,11 @@ use dao_voting::delegation::calculate_delegated_vp;
 
 use crate::{
     helpers::{
-        add_delegated_vp, get_udvp, get_voting_power, is_delegate_registered, remove_delegated_vp,
+        add_delegated_vp, get_udvp, is_delegate_registered, remove_delegated_vp,
         unregister_delegate,
     },
     state::{
-        Delegation, CONFIG, DELEGATIONS, PROPOSAL_HOOK_CALLERS, UNVOTED_DELEGATED_VP,
+        Delegation, CONFIG, DAO, DELEGATIONS, PROPOSAL_HOOK_CALLERS, UNVOTED_DELEGATED_VP,
         VOTING_POWER_HOOK_CALLERS,
     },
     ContractError,
@@ -27,14 +27,11 @@ pub(crate) fn execute_stake_changed(
         return Err(ContractError::UnauthorizedHookCaller {});
     }
 
-    match msg {
-        StakeChangedHookMsg::Stake { addr, .. } => {
-            handle_voting_power_changed_hook(deps, &env, addr)
-        }
-        StakeChangedHookMsg::Unstake { addr, .. } => {
-            handle_voting_power_changed_hook(deps, &env, addr)
-        }
-    }
+    let addr = match msg {
+        StakeChangedHookMsg::Stake { addr, .. } | StakeChangedHookMsg::Unstake { addr, .. } => addr,
+    };
+
+    handle_voting_power_changed_hook(deps, &env, addr)
 }
 
 pub(crate) fn execute_membership_changed(
@@ -68,14 +65,12 @@ pub(crate) fn execute_nft_stake_changed(
         return Err(ContractError::UnauthorizedHookCaller {});
     }
 
-    match msg {
-        NftStakeChangedHookMsg::Stake { addr, .. } => {
-            handle_voting_power_changed_hook(deps, &env, addr)
-        }
-        NftStakeChangedHookMsg::Unstake { addr, .. } => {
-            handle_voting_power_changed_hook(deps, &env, addr)
-        }
-    }
+    let addr = match msg {
+        NftStakeChangedHookMsg::Stake { addr, .. }
+        | NftStakeChangedHookMsg::Unstake { addr, .. } => addr,
+    };
+
+    handle_voting_power_changed_hook(deps, &env, addr)
 }
 
 /// Perform necessary updates when a member's voting power changes.
@@ -92,74 +87,95 @@ pub(crate) fn handle_voting_power_changed_hook(
     env: &Env,
     addr: Addr,
 ) -> Result<Response, ContractError> {
-    let old_vp = get_voting_power(deps.as_ref(), &addr, env.block.height)?;
-    let new_vp = get_voting_power(
+    let dao = DAO.load(deps.storage)?;
+
+    let new_vp = dao_voting::voting::get_voting_power(
         deps.as_ref(),
-        &addr,
+        addr.clone(),
+        &dao,
         // use next block height since voting power takes effect at the start of
         // the next block. since the member changed their voting power in the
         // current block, we need to use the new value.
-        env.block.height + 1,
+        Some(env.block.height + 1),
     )?;
 
     // check latest state instead of historical height, since we need access to
     // immediate updates made earlier in the same block
-    if is_delegate_registered(deps.as_ref(), &addr, None)? {
-        let delegate = addr;
-
-        // unregister if no more voting power
-        if new_vp.is_zero() {
-            unregister_delegate(deps, &delegate, env.block.height)?;
-        }
+    match is_delegate_registered(deps.as_ref(), &addr, None)? {
+        true => handle_delegate_voting_power_changed_hook(deps, env.block.height, addr, new_vp),
+        // if not a delegate, check if they have any delegations, and update
+        // delegate VPs accordingly
+        false => handle_delegator_voting_power_changed_hook(deps, env, dao, addr, new_vp),
     }
-    // if not a delegate, check if they have any delegations, and update
-    // delegate VPs accordingly
-    else {
-        let delegator = addr;
+}
 
-        // need to get the latest delegations in case any were updated earlier
-        // in the same block
-        let delegations =
-            DELEGATIONS.load_all_latest(deps.storage, &delegator, env.block.height)?;
-
-        let config = CONFIG.load(deps.storage)?;
-
-        for LoadedItem {
-            item: Delegation { delegate, percent },
-            expiration,
-            ..
-        } in delegations
-        {
-            // remove the latest delegated VP from the delegate's total and
-            // replace it with the new delegated VP
-
-            // remove original delegated VP if nonzero
-            let current_delegated_vp = calculate_delegated_vp(old_vp, percent);
-            if !current_delegated_vp.is_zero() {
-                remove_delegated_vp(
-                    deps.storage,
-                    env,
-                    &delegate,
-                    current_delegated_vp,
-                    expiration,
-                )?;
-            }
-
-            // add new delegated VP if nonzero
-            let new_delegated_vp = calculate_delegated_vp(new_vp, percent);
-            if !new_delegated_vp.is_zero() {
-                add_delegated_vp(
-                    deps.storage,
-                    env,
-                    &delegate,
-                    new_delegated_vp,
-                    config.delegation_validity_blocks,
-                )?;
-            }
-        }
+fn handle_delegate_voting_power_changed_hook(
+    deps: DepsMut,
+    block_height: u64,
+    delegate: Addr,
+    new_vp: Uint128,
+) -> Result<Response, ContractError> {
+    // unregister if no more voting power
+    if new_vp.is_zero() {
+        unregister_delegate(deps, &delegate, block_height)?;
     }
 
-    Ok(Response::new().add_attribute("action", "voting_power_change_hook"))
+    Ok(Response::new()
+        .add_attribute("action", "voting_power_change_hook")
+        .add_attribute("member_type", "delegate"))
+}
+
+fn handle_delegator_voting_power_changed_hook(
+    deps: DepsMut,
+    env: &Env,
+    dao: Addr,
+    delegator: Addr,
+    new_vp: Uint128,
+) -> Result<Response, ContractError> {
+    // need to get the latest delegations in case any were updated earlier
+    // in the same block
+    let delegations = DELEGATIONS.load_all_latest(deps.storage, &delegator, env.block.height)?;
+
+    let config = CONFIG.load(deps.storage)?;
+    let old_vp = dao_voting::voting::get_voting_power(deps.as_ref(), delegator, &dao, None)?;
+
+    for LoadedItem {
+        item: Delegation { delegate, percent },
+        expiration,
+        ..
+    } in delegations
+    {
+        // remove the latest delegated VP from the delegate's total and
+        // replace it with the new delegated VP
+
+        // remove original delegated VP if nonzero
+        let current_delegated_vp = calculate_delegated_vp(old_vp, percent);
+        if !current_delegated_vp.is_zero() {
+            remove_delegated_vp(
+                deps.storage,
+                env,
+                &delegate,
+                current_delegated_vp,
+                expiration,
+            )?;
+        }
+
+        // add new delegated VP if nonzero
+        let new_delegated_vp = calculate_delegated_vp(new_vp, percent);
+        if !new_delegated_vp.is_zero() {
+            add_delegated_vp(
+                deps.storage,
+                env,
+                &delegate,
+                new_delegated_vp,
+                config.delegation_validity_blocks,
+            )?;
+        }
+    }
+
+    Ok(Response::new()
+        .add_attribute("action", "voting_power_change_hook")
+        .add_attribute("member_type", "delegator"))
 }
 
 pub fn execute_vote_hook(
