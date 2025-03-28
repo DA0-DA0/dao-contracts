@@ -5,13 +5,10 @@ use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg, v
 use dao_voting::delegation::calculate_delegated_vp;
 
 use crate::{
-    helpers::{
-        add_delegated_vp, get_udvp, is_delegate_registered, remove_delegated_vp,
-        unregister_delegate,
-    },
+    helpers::{get_udvp, is_delegate_registered, unregister_delegate},
     state::{
-        Delegation, CONFIG, DAO, DELEGATIONS, PROPOSAL_HOOK_CALLERS, UNVOTED_DELEGATED_VP,
-        VOTING_POWER_HOOK_CALLERS,
+        Delegation, CONFIG, DAO, DELEGATED_VP, DELEGATIONS, PROPOSAL_HOOK_CALLERS,
+        UNVOTED_DELEGATED_VP, VOTING_POWER_HOOK_CALLERS,
     },
     ContractError,
 };
@@ -156,31 +153,59 @@ fn handle_delegator_voting_power_changed_hook(
         ..
     } in delegations
     {
-        // remove the latest delegated VP from the delegate's total and
-        // replace it with the new delegated VP
-
-        // remove original delegated VP if nonzero
+        // for each delegation, we first find the current delegated VP and
+        // the new delegated VP
         let current_delegated_vp = calculate_delegated_vp(old_vp, percent);
-        if !current_delegated_vp.is_zero() {
-            remove_delegated_vp(
+        let new_delegated_vp = calculate_delegated_vp(new_vp, percent);
+
+        // first we update the next block's delegated VP for the delegate.
+        // for cases where current delegated VP is equal to new delegated VP,
+        // we don't need to do anything.
+        if new_delegated_vp > current_delegated_vp {
+            // if the new delegated VP is greater than the current delegated VP,
+            // we increment the delegated VP by the delta.
+            DELEGATED_VP.increment(
                 deps.storage,
-                env,
-                &delegate,
-                current_delegated_vp,
-                expiration,
+                delegate.clone(),
+                env.block.height + 1,
+                new_delegated_vp - current_delegated_vp,
+            )?;
+        } else if current_delegated_vp > new_delegated_vp {
+            // if the new delegated VP is lesser than the current delegated VP,
+            // we decrement the delegated VP by the delta.
+            DELEGATED_VP.decrement(
+                deps.storage,
+                delegate.clone(),
+                env.block.height + 1,
+                current_delegated_vp - new_delegated_vp,
             )?;
         }
 
-        // add new delegated VP if nonzero
-        let new_delegated_vp = calculate_delegated_vp(new_vp, percent);
-        if !new_delegated_vp.is_zero() {
-            add_delegated_vp(
-                deps.storage,
-                env,
-                &delegate,
-                new_delegated_vp,
-                config.delegation_validity_blocks,
-            )?;
+        // if original delegation had voting power and an expiration date,
+        // we undo the previous decrement at the end of the expiration period.
+        if current_delegated_vp.u128() > 0 {
+            if let Some(expire_in) = expiration {
+                DELEGATED_VP.increment(
+                    deps.storage,
+                    delegate.clone(),
+                    expire_in,
+                    current_delegated_vp,
+                )?;
+            }
+        }
+
+        // if the new delegation has voting power & global config specifies
+        // a delegation validity duration, we apply the decrement at the end
+        // of the expiration period.
+        if new_delegated_vp.u128() > 0 {
+            if let Some(config_expiration) = config.delegation_validity_blocks {
+                DELEGATED_VP.decrement(
+                    deps.storage,
+                    delegate.clone(),
+                    env.block.height + config_expiration,
+                    new_delegated_vp,
+                )?;
+            }
         }
     }
 
