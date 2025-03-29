@@ -352,11 +352,13 @@ fn execute_undelegate(
         DELEGATIONS.remove(deps.storage, &delegator, existing_id, env.block.height)?;
     DELEGATION_ENTRIES.remove(deps.storage, (&delegator, &delegate));
 
-    // if delegation exists above, percent will exist
-    let current_percent_delegated = PERCENT_DELEGATED.load(deps.storage, &delegator)?;
-    // update delegator's percent delegated
-    let new_percent_delegated = current_percent_delegated.checked_sub(delegation.percent)?;
-    PERCENT_DELEGATED.save(deps.storage, &delegator, &new_percent_delegated)?;
+    // update the total percent delegated by the delegator
+    PERCENT_DELEGATED.update(deps.storage, &delegator, |c| -> StdResult<_> {
+        // if delegation above exists, percent will exist. if for some reason it
+        // doesn't, it will surface in the checked_sub call below due to an overflow.
+        let current_percentage = c.unwrap_or_default();
+        Ok(current_percentage.checked_sub(delegation.percent)?)
+    })?;
 
     let vp = get_voting_power(
         deps.as_ref(),
@@ -369,12 +371,12 @@ fn execute_undelegate(
 
     // remove delegated VP from delegate's total delegated VP at the current
     // height.
-    let current_delegated_vp = calculate_delegated_vp(vp, delegation.percent);
+    let delegated_vp = calculate_delegated_vp(vp, delegation.percent);
     remove_delegated_vp(
         deps.storage,
         &env,
         &delegate,
-        current_delegated_vp,
+        delegated_vp,
         existing_expiration,
     )?;
 
