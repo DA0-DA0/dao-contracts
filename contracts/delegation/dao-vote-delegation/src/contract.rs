@@ -265,28 +265,28 @@ fn execute_delegate(
             existing_expiration,
         )?;
 
-        // replace delegation with updated percent
-        let (_, total_minus_one) =
-            DELEGATIONS.remove(deps.storage, &delegator, existing_id, env.block.height)?;
-
-        // don't let them update if they are over the max, instead requiring
-        // them to remove existing delegations before updating any
-        if total_minus_one + 1 > config.max_delegations as usize {
-            return Err(ContractError::MaxDelegationsReached {
-                max: config.max_delegations,
-                current: total_minus_one + 1,
-            });
-        }
+        // remove the existing delegation entry before updating it
+        DELEGATIONS.remove(deps.storage, &delegator, existing_id, env.block.height)?;
 
         existing_delegation.percent = percent;
 
-        let (new_delegation_entry, _) = DELEGATIONS.push(
+        let (new_delegation_entry, new_total) = DELEGATIONS.push(
             deps.storage,
             &delegator,
             &existing_delegation,
             env.block.height,
             config.delegation_validity_blocks,
         )?;
+
+        // don't let them update if they are over the max, instead requiring
+        // them to remove existing delegations before updating any
+        if new_total > config.max_delegations as usize {
+            return Err(ContractError::MaxDelegationsReached {
+                max: config.max_delegations,
+                current: new_total,
+            });
+        }
+
         DELEGATION_ENTRIES.save(deps.storage, (&delegator, &delegate), &new_delegation_entry)?;
     }
     // create a new delegation
@@ -424,6 +424,7 @@ fn execute_sync_proposal_modules(
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> Result<Response, ContractError> {
+    // TODO: nonpayable?
     let dao = DAO.load(deps.storage)?;
     let proposal_modules: Vec<ProposalModule> = deps.querier.query_wasm_smart(
         dao,
