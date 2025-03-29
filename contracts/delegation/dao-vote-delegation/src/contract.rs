@@ -2,7 +2,7 @@ use cosmwasm_std::{ensure, Addr, Order};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{
     entry_point, to_json_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
-    StdResult, Uint128,
+    StdResult,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_paginate_storage::paginate_map_keys;
@@ -46,6 +46,8 @@ pub const DEFAULT_LIMIT: u32 = 10;
 /// bound, so this defaults to 50.
 pub const DEFAULT_MAX_DELEGATIONS: u64 = 50;
 
+const MIN_DELEGATION_VALIDITY_BLOCKS: u64 = 2;
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -70,10 +72,10 @@ pub fn instantiate(
     }
 
     if let Some(delegation_validity_blocks) = msg.delegation_validity_blocks {
-        if delegation_validity_blocks < 2 {
+        if delegation_validity_blocks < MIN_DELEGATION_VALIDITY_BLOCKS {
             return Err(ContractError::InvalidDelegationValidityBlocks {
                 provided: delegation_validity_blocks,
-                min: 2,
+                min: MIN_DELEGATION_VALIDITY_BLOCKS,
             });
         }
     }
@@ -318,10 +320,10 @@ fn execute_delegate(
     if new_total_percent_delegated > Decimal::one() {
         return Err(ContractError::CannotDelegateMoreThan100Percent {
             current: current_percent_delegated
-                .checked_mul(Decimal::from_atomics(100u128, 0).unwrap())?
+                .checked_mul(Decimal::percent(10_000))?
                 .to_string(),
             attempt: new_total_percent_delegated
-                .checked_mul(Decimal::from_atomics(100u128, 0).unwrap())?
+                .checked_mul(Decimal::percent(10_000))?
                 .to_string(),
         });
     }
@@ -356,14 +358,13 @@ fn execute_undelegate(
         .load(deps.storage, (&delegator, &delegate))
         .map_err(|_| ContractError::DelegationDoesNotExist {})?;
 
-    // if delegation exists above, percent will exist
-    let current_percent_delegated = PERCENT_DELEGATED.load(deps.storage, &delegator)?;
-
     // retrieve and remove delegation
     let (delegation, _) =
         DELEGATIONS.remove(deps.storage, &delegator, existing_id, env.block.height)?;
     DELEGATION_ENTRIES.remove(deps.storage, (&delegator, &delegate));
 
+    // if delegation exists above, percent will exist
+    let current_percent_delegated = PERCENT_DELEGATED.load(deps.storage, &delegator)?;
     // update delegator's percent delegated
     let new_percent_delegated = current_percent_delegated.checked_sub(delegation.percent)?;
     PERCENT_DELEGATED.save(deps.storage, &delegator, &new_percent_delegated)?;
@@ -477,10 +478,10 @@ fn execute_update_config(
         delegation_validity_blocks.maybe_update_result(|value| {
             // validate if defined
             if let Some(value) = value {
-                if value < 2 {
+                if value < MIN_DELEGATION_VALIDITY_BLOCKS {
                     return Err(ContractError::InvalidDelegationValidityBlocks {
                         provided: value,
-                        min: 2,
+                        min: MIN_DELEGATION_VALIDITY_BLOCKS,
                     });
                 }
             }
@@ -637,10 +638,7 @@ fn query_unvoted_delegated_vp(
 
     // if delegate not registered, they have no unvoted delegated VP.
     if !is_delegate_registered(deps, &delegate, Some(height))? {
-        return Ok(UnvotedDelegatedVotingPowerResponse {
-            total: Uint128::zero(),
-            effective: Uint128::zero(),
-        });
+        return Ok(UnvotedDelegatedVotingPowerResponse::default());
     }
 
     let proposal_module = deps.api.addr_validate(&proposal_module)?;
@@ -698,8 +696,7 @@ fn query_voting_power_hook_callers(
 }
 
 fn query_config(deps: Deps) -> StdResult<Config> {
-    let config = CONFIG.load(deps.storage)?;
-    Ok(config)
+    CONFIG.load(deps.storage)
 }
 
 fn query_voting_power_cap(
