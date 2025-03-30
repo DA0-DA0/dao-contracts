@@ -7,7 +7,6 @@ use cw_utils::Duration;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg, vote::VoteHookMsg};
 use dao_interface::helpers::OptionalUpdate;
 use dao_testing::{ADDR0, ADDR1, ADDR2, ADDR3, ADDR4};
-use dao_voting_token_staked::msg::ListStakersResponse;
 
 use crate::{
     contract::{CONTRACT_NAME, CONTRACT_VERSION, DEFAULT_MAX_DELEGATIONS},

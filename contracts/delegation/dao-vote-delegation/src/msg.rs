@@ -19,8 +19,8 @@ pub struct InstantiateMsg {
     /// many, the instantiation will run out of gas, so this should be disabled
     /// and `SyncProposalModules` called manually.
     ///
-    /// Defaults to false.
-    pub no_sync_proposal_modules: Option<bool>,
+    /// Defaults to `true`.
+    pub sync_proposal_modules: Option<bool>,
     /// the maximum percent of voting power that a single delegate can wield.
     /// they can be delegated any amount of voting power—this cap is only
     /// applied when casting votes.
