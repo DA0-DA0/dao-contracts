@@ -32,8 +32,8 @@
         "format": "uint64",
         "minimum": 0.0
       },
-      "no_sync_proposal_modules": {
-        "description": "Whether or not to sync proposal modules initially. If there are too many, the instantiation will run out of gas, so this should be disabled and `SyncProposalModules` called manually.\n\nDefaults to false.",
+      "sync_proposal_modules": {
+        "description": "Whether or not to sync proposal modules initially. If there are too many, the instantiation will run out of gas, so this should be disabled and `SyncProposalModules` called manually.\n\nDefaults to `true`.",
         "type": [
           "boolean",
           "null"

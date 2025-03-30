@@ -72,14 +72,6 @@ pub(crate) fn execute_nft_stake_changed(
 }
 
 /// Perform necessary updates when a member's voting power changes.
-///
-/// For delegators:
-/// - update their delegated VP for each delegate
-/// - update each delegate's total delegated VP
-///
-/// For delegates:
-/// - unregister them if they have no voting power
-/// - TODO: re-register them if previously registered but had no voting power???
 pub(crate) fn handle_voting_power_changed_hook(
     deps: DepsMut,
     env: &Env,
@@ -129,6 +121,7 @@ fn handle_delegate_voting_power_changed_hook(
 }
 
 /// handles the delegator voting power changed hook by updating
+/// their delegated VP for each delegate they are delegating to.
 fn handle_delegator_voting_power_changed_hook(
     deps: DepsMut,
     env: &Env,
