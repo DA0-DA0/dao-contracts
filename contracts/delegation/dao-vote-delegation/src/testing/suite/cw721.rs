@@ -46,21 +46,6 @@ impl Cw721DaoVoteDelegationTestingSuite {
         Self { base, dao, members }
     }
 
-    pub fn with_vp_cap_percent(mut self, vp_cap_percent: Decimal) -> Self {
-        self.vp_cap_percent = Some(vp_cap_percent);
-        self
-    }
-
-    pub fn with_delegation_validity_blocks(mut self, delegation_validity_blocks: u64) -> Self {
-        self.delegation_validity_blocks = Some(delegation_validity_blocks);
-        self
-    }
-
-    pub fn with_max_delegations(mut self, max_delegations: u64) -> Self {
-        self.max_delegations = Some(max_delegations);
-        self
-    }
-
     pub fn build(mut self) -> Self {
         let code_id = self.delegation_code_id;
         let core_addr = self.dao.core_addr.clone();
@@ -125,5 +110,17 @@ impl Cw721DaoVoteDelegationTestingSuite {
 
             assert_eq!(delegation_module, Addr::unchecked(delegation_addr.clone()));
         });
+    }
+
+    /// unstake cw721
+    pub fn unstake(&mut self, staker: impl Into<String>, token_id: &str) {
+        let dao = self.dao.clone();
+        self.cw721().unstake(&dao, staker, token_id);
+    }
+
+    /// stake cw721
+    pub fn stake(&mut self, staker: impl Into<String>, token_id: &str) {
+        let dao = self.dao.clone();
+        self.cw721().stake(&dao, staker, token_id);
     }
 }

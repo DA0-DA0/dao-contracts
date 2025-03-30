@@ -539,24 +539,6 @@ fn test_max_delegations() {
 }
 
 #[test]
-#[should_panic(expected = "unauthorized hook caller")]
-fn test_nft_stake_changed_hook_authorizes() {
-    let mut suite = Cw721DaoVoteDelegationTestingSuite::new().build();
-    let dao = suite.dao.clone();
-    let delegation_addr = suite.delegation_addr.clone();
-
-    suite.execute_smart_ok(
-        ADDR1,
-        delegation_addr,
-        &crate::msg::ExecuteMsg::NftStakeChangeHook(NftStakeChangedHookMsg::Stake {
-            addr: Addr::unchecked(ADDR3),
-            token_id: dao.x.cw721_addr.to_string(),
-        }),
-        &[],
-    );
-}
-
-#[test]
 fn test_update_hook_callers() {
     let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
     let dao = suite.dao.clone();
@@ -732,6 +714,58 @@ fn test_vote_with_override() {
         dao_voting::voting::Vote::Yes,
         suite.members[0].weight + suite.members[2].weight,
     );
+}
+
+#[test]
+fn test_cw721_hook_handling() {
+    let mut suite = Cw721DaoVoteDelegationTestingSuite::new().build();
+    let dao = suite.dao.clone();
+
+    // start with ADDR2 unstaking their token
+    suite.unstake(ADDR2, "2");
+
+    // register ADDR0 as delegate
+    suite.register(ADDR0);
+
+    // addr3 and addr4 delegate to addr0
+    suite.delegate(ADDR3, ADDR0, Decimal::percent(100));
+    suite.delegate(ADDR4, ADDR0, Decimal::percent(100));
+
+    suite.advance_block();
+
+    // first prop
+    let (proposal_module, id1, p1) =
+        suite.propose_single_choice(&dao, ADDR3, "test proposal", vec![]);
+
+    suite.assert_effective_udvp(ADDR0, &proposal_module, id1, p1.start_height, 2u128);
+
+    // addr3 decides to unstake their cw721, which should decrease the effective
+    // udvp of addr0
+    suite.unstake(ADDR3, "3");
+
+    suite.advance_block();
+    suite.advance_block();
+
+    // second prop
+    let (proposal_module, id2, p2) =
+        suite.propose_single_choice(&dao, ADDR0, "test proposal 2", vec![]);
+
+    // assert that addr0's effective udvp is now 1
+    suite.assert_effective_udvp(ADDR0, &proposal_module, id2, p2.start_height, 1u128);
+
+    // addr3 stakes again, having not undelegated their voting power from addr0.
+    // this should increase the effective udvp of addr0.
+    suite.stake(ADDR3, "3");
+
+    suite.advance_block();
+    suite.advance_block();
+
+    // propose a proposal
+    let (proposal_module, id3, p3) =
+        suite.propose_single_choice(&dao, ADDR0, "test proposal 3", vec![]);
+
+    // assert that addr3's stake is now reflected in addr0's effective udvp again
+    suite.assert_effective_udvp(ADDR0, &proposal_module, id3, p3.start_height, 2u128);
 }
 
 #[test]
@@ -1101,16 +1135,17 @@ fn test_unauthorized_membership_changed_hook_caller() {
 
 #[test]
 #[should_panic(expected = "unauthorized hook caller")]
-fn test_unauthorized_nft_stake_changed_hook_caller() {
-    let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
+fn test_cw721_stake_changed_hook_authorizes() {
+    let mut suite = Cw721DaoVoteDelegationTestingSuite::new().build();
+    let dao = suite.dao.clone();
     let delegation_addr = suite.delegation_addr.clone();
 
     suite.execute_smart_ok(
-        "not_registered_hook_caller",
-        &delegation_addr,
+        ADDR1,
+        delegation_addr,
         &crate::msg::ExecuteMsg::NftStakeChangeHook(NftStakeChangedHookMsg::Stake {
-            addr: Addr::unchecked("not_registered_hook_caller"),
-            token_id: "t_id".to_string(),
+            addr: Addr::unchecked(ADDR3),
+            token_id: dao.x.cw721_addr.to_string(),
         }),
         &[],
     );
