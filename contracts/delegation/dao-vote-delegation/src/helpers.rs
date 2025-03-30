@@ -64,6 +64,19 @@ pub fn ensure_setup(deps: Deps) -> Result<(), ContractError> {
     Ok(())
 }
 
+/// Ensures that the max delegations limit has not been reached.
+pub fn ensure_max_delegations_not_reached(
+    max: u64,
+    old: usize,
+    new: usize,
+) -> Result<(), ContractError> {
+    if new > max as usize {
+        return Err(ContractError::MaxDelegationsReached { max, current: old });
+    }
+
+    Ok(())
+}
+
 /// Add delegated VP from a delegator to a delegate, potentially with a given
 /// expiration.
 pub fn add_delegated_vp(

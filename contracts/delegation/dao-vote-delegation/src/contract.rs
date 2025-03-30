@@ -19,8 +19,8 @@ use dao_voting::voting;
 use semver::Version;
 
 use crate::helpers::{
-    add_delegated_vp, ensure_setup, get_udvp, get_voting_power, is_delegate_registered,
-    remove_delegated_vp, unregister_delegate,
+    add_delegated_vp, ensure_max_delegations_not_reached, ensure_setup, get_udvp, get_voting_power,
+    is_delegate_registered, remove_delegated_vp, unregister_delegate,
 };
 use crate::hooks::{
     execute_membership_changed, execute_nft_stake_changed, execute_stake_changed, execute_vote_hook,
@@ -267,12 +267,7 @@ fn execute_delegate(
 
         // don't let them update if they are over the max, instead requiring
         // them to remove existing delegations before updating any
-        if total_count > config.max_delegations as usize {
-            return Err(ContractError::MaxDelegationsReached {
-                max: config.max_delegations,
-                current: total_count,
-            });
-        }
+        ensure_max_delegations_not_reached(config.max_delegations, total_count, total_count)?;
 
         (new_total, entry)
     }
@@ -293,12 +288,7 @@ fn execute_delegate(
         )?;
 
         // prevent new delegations if they are over the max
-        if total_count > config.max_delegations as usize {
-            return Err(ContractError::MaxDelegationsReached {
-                max: config.max_delegations,
-                current: total_count - 1,
-            });
-        }
+        ensure_max_delegations_not_reached(config.max_delegations, total_count - 1, total_count)?;
 
         (new_total, entry)
     };
