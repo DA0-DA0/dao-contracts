@@ -56,12 +56,13 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    nonpayable(&info)?;
 
     let dao = msg
         .dao
         .map(|d| deps.api.addr_validate(&d))
         .transpose()?
-        .unwrap_or(info.sender.clone());
+        .unwrap_or(info.sender);
     DAO.save(deps.storage, &dao)?;
 
     if let Some(vp_cap_percent) = msg.vp_cap_percent {
@@ -99,7 +100,7 @@ pub fn instantiate(
     // for most DAOs as the query will not run out of gas with only a few
     // proposal modules.
     if msg.sync_proposal_modules.unwrap_or(true) {
-        execute_sync_proposal_modules(deps, &info, None, None)?;
+        execute_sync_proposal_modules(deps, None, None)?;
     }
 
     Ok(Response::new().add_attribute("dao", dao))
@@ -125,7 +126,7 @@ pub fn execute(
             execute_update_voting_power_hook_callers(deps, info.sender, add, remove)
         }
         ExecuteMsg::SyncProposalModules { start_after, limit } => {
-            execute_sync_proposal_modules(deps, &info, start_after, limit)
+            execute_sync_proposal_modules(deps, start_after, limit)
         }
         ExecuteMsg::UpdateConfig {
             vp_cap_percent,
@@ -401,12 +402,9 @@ fn execute_update_voting_power_hook_callers(
 
 fn execute_sync_proposal_modules(
     deps: DepsMut,
-    info: &MessageInfo,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> Result<Response, ContractError> {
-    nonpayable(info)?;
-
     let dao = DAO.load(deps.storage)?;
     let proposal_modules: Vec<ProposalModule> = deps.querier.query_wasm_smart(
         dao,
