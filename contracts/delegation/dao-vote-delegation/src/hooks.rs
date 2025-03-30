@@ -3,6 +3,7 @@ use cw4::MemberChangedHookMsg;
 use cw_snapshot_vector_map::LoadedItem;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg, vote::VoteHookMsg};
 use dao_voting::delegation::calculate_delegated_vp;
+use std::cmp::Ordering;
 
 use crate::{
     helpers::{get_udvp, is_delegate_registered, unregister_delegate},
@@ -158,27 +159,32 @@ fn handle_delegator_voting_power_changed_hook(
         let current_delegated_vp = calculate_delegated_vp(old_vp, percent);
         let new_delegated_vp = calculate_delegated_vp(new_vp, percent);
 
-        // first we update the next block's delegated VP for the delegate.
-        // for cases where current delegated VP is equal to new delegated VP,
-        // we don't need to do anything.
-        if new_delegated_vp > current_delegated_vp {
-            // if the new delegated VP is greater than the current delegated VP,
-            // we increment the delegated VP by the delta.
-            DELEGATED_VP.increment(
-                deps.storage,
-                delegate.clone(),
-                env.block.height + 1,
-                new_delegated_vp - current_delegated_vp,
-            )?;
-        } else if current_delegated_vp > new_delegated_vp {
-            // if the new delegated VP is lesser than the current delegated VP,
-            // we decrement the delegated VP by the delta.
-            DELEGATED_VP.decrement(
-                deps.storage,
-                delegate.clone(),
-                env.block.height + 1,
-                current_delegated_vp - new_delegated_vp,
-            )?;
+        // first we update the next block's delegated VP for the delegate
+        match new_delegated_vp.cmp(&current_delegated_vp) {
+            Ordering::Less => {
+                // if the new delegated VP is lesser than the current delegated VP,
+                // we decrement the delegated VP by the delta.
+                DELEGATED_VP.decrement(
+                    deps.storage,
+                    delegate.clone(),
+                    env.block.height + 1,
+                    current_delegated_vp - new_delegated_vp,
+                )?;
+            }
+            Ordering::Equal => {
+                // for cases where current delegated VP is equal to new delegated VP,
+                // we don't need to do anything.
+            }
+            Ordering::Greater => {
+                // if the new delegated VP is greater than the current delegated VP,
+                // we increment the delegated VP by the delta.
+                DELEGATED_VP.increment(
+                    deps.storage,
+                    delegate.clone(),
+                    env.block.height + 1,
+                    new_delegated_vp - current_delegated_vp,
+                )?;
+            }
         }
 
         // if original delegation had voting power and an expiration date,
