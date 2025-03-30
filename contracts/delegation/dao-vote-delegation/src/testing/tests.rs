@@ -721,8 +721,7 @@ fn test_cw721_hook_handling() {
     let mut suite = Cw721DaoVoteDelegationTestingSuite::new().build();
     let dao = suite.dao.clone();
 
-    // start with ADDR2 unstaking their token
-    suite.unstake(ADDR2, "2");
+    let tid_3 = suite.members[3].token_id.to_string();
 
     // register ADDR0 as delegate
     suite.register(ADDR0);
@@ -737,11 +736,11 @@ fn test_cw721_hook_handling() {
     let (proposal_module, id1, p1) =
         suite.propose_single_choice(&dao, ADDR3, "test proposal", vec![]);
 
-    suite.assert_effective_udvp(ADDR0, &proposal_module, id1, p1.start_height, 2u128);
+    suite.assert_effective_udvp(ADDR0, proposal_module, id1, p1.start_height, 2u128);
 
     // addr3 decides to unstake their cw721, which should decrease the effective
     // udvp of addr0
-    suite.unstake(ADDR3, "3");
+    suite.unstake(ADDR3, &tid_3);
 
     suite.advance_block();
     suite.advance_block();
@@ -751,11 +750,11 @@ fn test_cw721_hook_handling() {
         suite.propose_single_choice(&dao, ADDR0, "test proposal 2", vec![]);
 
     // assert that addr0's effective udvp is now 1
-    suite.assert_effective_udvp(ADDR0, &proposal_module, id2, p2.start_height, 1u128);
+    suite.assert_effective_udvp(ADDR0, proposal_module, id2, p2.start_height, 1u128);
 
     // addr3 stakes again, having not undelegated their voting power from addr0.
     // this should increase the effective udvp of addr0.
-    suite.stake(ADDR3, "3");
+    suite.stake(ADDR3, &tid_3);
 
     suite.advance_block();
     suite.advance_block();
@@ -765,7 +764,7 @@ fn test_cw721_hook_handling() {
         suite.propose_single_choice(&dao, ADDR0, "test proposal 3", vec![]);
 
     // assert that addr3's stake is now reflected in addr0's effective udvp again
-    suite.assert_effective_udvp(ADDR0, &proposal_module, id3, p3.start_height, 2u128);
+    suite.assert_effective_udvp(ADDR0, proposal_module, id3, p3.start_height, 2u128);
 }
 
 #[test]

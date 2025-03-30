@@ -57,11 +57,12 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let dao = match msg.dao {
-        Some(addr) => &deps.api.addr_validate(&addr)?,
-        None => &info.sender,
-    };
-    DAO.save(deps.storage, dao)?;
+    let dao = msg
+        .dao
+        .map(|d| deps.api.addr_validate(&d))
+        .transpose()?
+        .unwrap_or(info.sender.clone());
+    DAO.save(deps.storage, &dao)?;
 
     if let Some(vp_cap_percent) = msg.vp_cap_percent {
         if vp_cap_percent <= Decimal::zero() || vp_cap_percent > Decimal::one() {

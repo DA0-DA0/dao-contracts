@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use cosmwasm_std::{Addr, Decimal};
+use cosmwasm_std::Addr;
 use dao_testing::{Cw721TestDao, DaoTestingSuite, InitialNft};
 
 use super::base::DaoVoteDelegationTestingSuiteBase;
