@@ -7,6 +7,7 @@ use cw_utils::Duration;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg, vote::VoteHookMsg};
 use dao_interface::helpers::OptionalUpdate;
 use dao_testing::{ADDR0, ADDR1, ADDR2, ADDR3, ADDR4};
+use dao_voting_token_staked::msg::ListStakersResponse;
 
 use crate::{
     contract::{CONTRACT_NAME, CONTRACT_VERSION, DEFAULT_MAX_DELEGATIONS},
@@ -14,7 +15,8 @@ use crate::{
 };
 
 use super::suite::{
-    cw4::Cw4DaoVoteDelegationTestingSuite, token::TokenDaoVoteDelegationTestingSuite,
+    cw4::Cw4DaoVoteDelegationTestingSuite, cw721::Cw721DaoVoteDelegationTestingSuite,
+    token::TokenDaoVoteDelegationTestingSuite,
 };
 
 pub fn dao_vote_delegation_contract() -> Box<dyn Contract<Empty>> {
@@ -535,6 +537,24 @@ fn test_max_delegations() {
 
     suite.assert_delegations_count(ADDR3, 1);
     suite.assert_delegation(ADDR3, ADDR1, Decimal::percent(25));
+}
+
+#[test]
+#[should_panic(expected = "unauthorized hook caller")]
+fn test_nft_stake_changed_hook_authorizes() {
+    let mut suite = Cw721DaoVoteDelegationTestingSuite::new().build();
+    let dao = suite.dao.clone();
+    let delegation_addr = suite.delegation_addr.clone();
+
+    suite.execute_smart_ok(
+        ADDR1,
+        delegation_addr,
+        &crate::msg::ExecuteMsg::NftStakeChangeHook(NftStakeChangedHookMsg::Stake {
+            addr: Addr::unchecked(ADDR3),
+            token_id: dao.x.cw721_addr.to_string(),
+        }),
+        &[],
+    );
 }
 
 #[test]

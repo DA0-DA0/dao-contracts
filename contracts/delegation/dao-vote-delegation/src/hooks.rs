@@ -261,11 +261,11 @@ fn handle_first_delegator_vote(
     proposal_module: &Addr,
 ) -> Result<(), ContractError> {
     let delegator = deps.api.addr_validate(&voter)?;
-    let delegates = DELEGATIONS.load_all(deps.storage, &delegator, env_block_height)?;
+    let delegations = DELEGATIONS.load_all(deps.storage, &delegator, env_block_height)?;
     for LoadedItem {
         item: Delegation { delegate, percent },
         ..
-    } in delegates
+    } in delegations
     {
         let udvp = get_udvp(
             deps.as_ref(),
