@@ -96,10 +96,10 @@ pub fn instantiate(
         }
     }
 
-    // sync proposal modules with no limit unless disabled. this should succeed
+    // sync proposal modules with no limit if not disabled. this should succeed
     // for most DAOs as the query will not run out of gas with only a few
     // proposal modules.
-    if msg.sync_proposal_modules.unwrap_or(true) {
+    if !msg.no_sync_proposal_modules.unwrap_or(false) {
         execute_sync_proposal_modules(deps, None, None)?;
     }
 

@@ -74,7 +74,7 @@ impl Cw4DaoVoteDelegationTestingSuite {
             &crate::msg::InstantiateMsg {
                 dao: None,
                 vp_hook_callers: Some(vec![group_addr]),
-                sync_proposal_modules: None,
+                no_sync_proposal_modules: None,
                 vp_cap_percent,
                 delegation_validity_blocks,
                 max_delegations,
