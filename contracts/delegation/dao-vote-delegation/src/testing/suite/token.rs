@@ -139,6 +139,14 @@ impl TokenDaoVoteDelegationTestingSuite {
         );
     }
 
+    /// mint and stake tokens
+    pub fn mint_and_stake(&mut self, staker: impl Into<String>, amount: impl Into<u128>) {
+        let staker = staker.into();
+        let amount = amount.into();
+        self.mint(&staker, amount);
+        self.stake(&staker, amount);
+    }
+
     /// unstake tokens
     pub fn unstake(&mut self, staker: impl Into<String>, amount: impl Into<Uint128>) {
         let voting_module_addr = self.dao.voting_module_addr.clone();

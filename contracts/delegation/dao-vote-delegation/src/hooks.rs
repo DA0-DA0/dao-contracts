@@ -8,8 +8,8 @@ use std::cmp::Ordering;
 use crate::{
     helpers::{get_udvp, is_delegate_registered, unregister_delegate},
     state::{
-        Delegation, CONFIG, DAO, DELEGATED_VP, DELEGATIONS, PROPOSAL_HOOK_CALLERS,
-        UNVOTED_DELEGATED_VP, VOTING_POWER_HOOK_CALLERS,
+        Delegation, DAO, DELEGATED_VP, DELEGATIONS, PROPOSAL_HOOK_CALLERS, UNVOTED_DELEGATED_VP,
+        VOTING_POWER_HOOK_CALLERS,
     },
     ContractError,
 };
@@ -123,6 +123,7 @@ fn handle_delegate_voting_power_changed_hook(
 /// handles the delegator voting power changed hook by updating their delegated
 /// VP for each delegate they are delegating to and each delegate's total
 /// delegated VP.
+/// TODO: fix bug when multiple voting power changes occur in the same block
 fn handle_delegator_voting_power_changed_hook(
     deps: DepsMut,
     env: &Env,
@@ -134,7 +135,6 @@ fn handle_delegator_voting_power_changed_hook(
     // the same block
     let delegations = DELEGATIONS.load_all_latest(deps.storage, &delegator, env.block.height)?;
 
-    let config = CONFIG.load(deps.storage)?;
     let old_vp = dao_voting::voting::get_voting_power(
         deps.as_ref(),
         delegator,
@@ -148,29 +148,29 @@ fn handle_delegator_voting_power_changed_hook(
         ..
     } in delegations
     {
+        // if this delegation expires on the next block, do nothing since this
+        // update won't take effect until the next block anyway.
+        if expiration == Some(env.block.height + 1) {
+            continue;
+        }
+
         // for each delegation, we first find the current delegated VP and the
         // new delegated VP
         let current_delegated_vp = calculate_delegated_vp(old_vp, percent);
         let new_delegated_vp = calculate_delegated_vp(new_vp, percent);
 
-        // if original delegation had voting power and an expiration date, we
-        // undo the previous decrement at the end of the expiration period,
-        // essentially undoing the expiration since we're about to restart the
-        // expiration period.
-        if !current_delegated_vp.is_zero() {
-            if let Some(expire_in) = expiration {
-                DELEGATED_VP.increment(
-                    deps.storage,
-                    delegate.clone(),
-                    expire_in,
-                    current_delegated_vp,
-                )?;
-            }
-        }
-
-        // first we update the next block's delegated VP for the delegate
+        // update the next block's delegated VP for the delegate and perform the
+        // reverse on the expiration block if necessary.
         match new_delegated_vp.cmp(&current_delegated_vp) {
             Ordering::Less => {
+                let delta = current_delegated_vp - new_delegated_vp;
+
+                // perform the inverse of the change on the expiration block. do
+                // this increment before the decrement to avoid underflow.
+                if let Some(expiration) = expiration {
+                    DELEGATED_VP.increment(deps.storage, delegate.clone(), expiration, delta)?;
+                }
+
                 // if the new delegated VP is less than the current delegated
                 // VP, we decrement the delegated VP by the delta.
                 DELEGATED_VP.decrement(
@@ -185,7 +185,7 @@ fn handle_delegator_voting_power_changed_hook(
                     // block and update the total that will be reflected in
                     // historical queries starting from the next block.
                     env.block.height + 1,
-                    current_delegated_vp - new_delegated_vp,
+                    delta,
                 )?;
             }
             Ordering::Equal => {
@@ -193,6 +193,8 @@ fn handle_delegator_voting_power_changed_hook(
                 // delegated VP, we don't need to do anything.
             }
             Ordering::Greater => {
+                let delta = new_delegated_vp - current_delegated_vp;
+
                 // if the new delegated VP is greater than the current delegated
                 // VP, we increment the delegated VP by the delta.
                 DELEGATED_VP.increment(
@@ -207,22 +209,14 @@ fn handle_delegator_voting_power_changed_hook(
                     // block and update the total that will be reflected in
                     // historical queries starting from the next block.
                     env.block.height + 1,
-                    new_delegated_vp - current_delegated_vp,
+                    delta,
                 )?;
-            }
-        }
 
-        // if the new delegation has voting power and global config specifies a
-        // delegation validity duration, we apply the decrement at the end of
-        // the expiration period.
-        if !new_delegated_vp.is_zero() {
-            if let Some(config_expiration) = config.delegation_validity_blocks {
-                DELEGATED_VP.decrement(
-                    deps.storage,
-                    delegate.clone(),
-                    env.block.height + config_expiration,
-                    new_delegated_vp,
-                )?;
+                // perform the inverse of the change on the expiration block. do
+                // this decrement after the increment to avoid underflow.
+                if let Some(expiration) = expiration {
+                    DELEGATED_VP.decrement(deps.storage, delegate.clone(), expiration, delta)?;
+                }
             }
         }
     }

@@ -224,6 +224,161 @@ fn test_simple() {
 }
 
 #[test]
+fn test_voting_power_updates() {
+    // Create a token-based DAO for testing
+    let mut suite = TokenDaoVoteDelegationTestingSuite::new()
+        .with_delegation_validity_blocks(20) // Set a shorter expiration period for testing
+        .build();
+    let dao = suite.dao.clone();
+
+    // Register ADDR0 as a delegate
+    suite.register(ADDR0);
+
+    // Find the delegator's initial staked amount
+    let delegator = ADDR1;
+    let delegator_info = suite
+        .members
+        .iter()
+        .find(|m| m.address == delegator)
+        .expect("Delegator should exist in members");
+    let initial_staked = delegator_info.amount;
+
+    // Delegate 100% of ADDR1's voting power to ADDR0
+    let delegation_block = suite.block().height;
+    suite.delegate(delegator, ADDR0, Decimal::percent(100));
+
+    // Delegations take effect on the next block
+    suite.advance_block();
+
+    // Verify the initial delegation amount
+    suite.assert_delegate_total_delegated_vp(ADDR0, initial_staked);
+
+    // CASE 1: INCREASE voting power by minting and staking more tokens
+    let additional_stake = Uint128::from(500u128);
+    suite.mint_and_stake(delegator, additional_stake);
+    suite.advance_block();
+
+    // Verify the delegated voting power increases correctly
+    let expected_vp_after_increase = initial_staked + additional_stake;
+    suite.assert_delegate_total_delegated_vp(ADDR0, expected_vp_after_increase);
+
+    // CASE 2: DECREASE voting power by unstaking some tokens
+    let unstake_amount = Uint128::from(200u128);
+    suite.unstake(delegator, unstake_amount);
+    suite.advance_block();
+
+    // Verify the delegated voting power decreases correctly
+    let expected_vp_after_decrease = expected_vp_after_increase - unstake_amount;
+    suite.assert_delegate_total_delegated_vp(ADDR0, expected_vp_after_decrease);
+
+    // CASE 3: Verify with proposal creation that delegation is correctly applied
+    let (proposal_module, id, p) =
+        suite.propose_single_choice(&dao, ADDR0, "test voting power updates", vec![]);
+
+    // Verify delegate's effective voting power on the proposal
+    suite.assert_effective_udvp(
+        ADDR0,
+        &proposal_module,
+        id,
+        p.start_height,
+        expected_vp_after_decrease,
+    );
+
+    // CASE 4: INCREASE voting power again
+    let additional_stake_2 = Uint128::from(700u128);
+    suite.mint_and_stake(delegator, additional_stake_2);
+    suite.advance_block();
+
+    // Verify the delegated voting power increases correctly
+    let expected_vp_after_increase_2 = expected_vp_after_decrease + additional_stake_2;
+    suite.assert_delegate_total_delegated_vp(ADDR0, expected_vp_after_increase_2);
+
+    // Verify historical query still shows original voting power for earlier proposal
+    suite.assert_effective_udvp(
+        ADDR0,
+        &proposal_module,
+        id,
+        p.start_height,
+        expected_vp_after_decrease,
+    );
+
+    // Create a new proposal to check the updated voting power
+    let (proposal_module_2, id_2, p_2) =
+        suite.propose_single_choice(&dao, ADDR0, "test updated voting power", vec![]);
+
+    // Verify delegate's effective voting power on the new proposal
+    suite.assert_effective_udvp(
+        ADDR0,
+        &proposal_module_2,
+        id_2,
+        p_2.start_height,
+        expected_vp_after_increase_2,
+    );
+
+    // CASE 5: Multiple operations test - unstake then stake in same block
+    let unstake_amount_3 = Uint128::from(300u128);
+    let stake_amount_3 = Uint128::from(100u128);
+
+    suite.unstake(delegator, unstake_amount_3);
+    suite.mint_and_stake(delegator, stake_amount_3);
+    suite.advance_block();
+
+    // Verify the delegated voting power is correctly updated after both operations
+    let expected_final_vp = expected_vp_after_increase_2;
+
+    suite.assert_delegate_total_delegated_vp(ADDR0, expected_final_vp);
+
+    // CASE 6: Test automatic expiration
+    // Get original delegation expiration block
+    let expiry_height = delegation_block + 20; // Based on .with_delegation_validity_blocks(20)
+
+    // Advance to 1 block before expiration
+    let blocks_to_advance = expiry_height - suite.block().height - 1;
+    suite.advance_blocks(blocks_to_advance);
+
+    // Delegation should still be active
+    suite.assert_delegations_count(delegator, 1);
+    suite.assert_delegate_total_delegated_vp(ADDR0, expected_final_vp);
+
+    // Create a proposal just before expiration
+    let (proposal_module_3, id_3, p_3) =
+        suite.propose_single_choice(&dao, ADDR0, "test before expiration", vec![]);
+
+    // Verify delegate's effective voting power on this pre-expiration proposal
+    suite.assert_effective_udvp(
+        ADDR0,
+        &proposal_module_3,
+        id_3,
+        p_3.start_height,
+        expected_final_vp,
+    );
+
+    // Advance 1 more block so we hit expiration
+    suite.advance_block();
+
+    // Verify delegation is now expired
+    suite.assert_delegations_count(delegator, 0);
+    suite.assert_delegate_total_delegated_vp(ADDR0, 0u128);
+
+    // Create a proposal after expiration
+    let (proposal_module_4, id_4, p_4) =
+        suite.propose_single_choice(&dao, ADDR0, "test after expiration", vec![]);
+
+    // Verify delegate has no effective voting power on this post-expiration proposal
+    suite.assert_effective_udvp(ADDR0, &proposal_module_4, id_4, p_4.start_height, 0u128);
+
+    // Verify that historical queries still show the correct voting power for proposals
+    // created before expiration
+    suite.assert_effective_udvp(
+        ADDR0,
+        &proposal_module_3,
+        id_3,
+        p_3.start_height,
+        expected_final_vp,
+    );
+}
+
+#[test]
 fn test_vp_cap_update() {
     let mut suite = Cw4DaoVoteDelegationTestingSuite::new()
         .with_vp_cap_percent(Decimal::percent(50))
@@ -1616,8 +1771,7 @@ fn test_gas_limits() {
         Uint128::from(initial_staked)
             .mul_floor(percent_delegated)
             // add personal voting power
-            .checked_add(Uint128::from(initial_staked))
-            .unwrap()
+            .strict_add(Uint128::from(initial_staked))
             // multiply by number of delegates
             .checked_mul(Uint128::from(delegates))
             .unwrap(),
