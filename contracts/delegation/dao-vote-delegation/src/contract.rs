@@ -147,7 +147,7 @@ pub fn execute(
         ExecuteMsg::MemberChangedHook(msg) => {
             execute_membership_changed(deps, env, info.sender, msg)
         }
-        ExecuteMsg::VoteHook(vote_hook) => execute_vote_hook(deps, env, info.sender, vote_hook),
+        ExecuteMsg::VoteHook(vote_hook) => execute_vote_hook(deps, info.sender, vote_hook),
     }
 }
 
@@ -296,9 +296,13 @@ fn execute_delegate(
     // ensure not delegating more than 100%
     if new_total_percent > Decimal::one() {
         return Err(ContractError::CannotDelegateMoreThan100Percent {
+            // multiply decimal (between 0 and 1) by 100 (which = 10,000%) to
+            // convert to a human-readable percentage out of 100%
             current: current_percent_delegated
                 .checked_mul(Decimal::percent(10_000))?
                 .to_string(),
+            // multiply decimal (between 0 and 1) by 100 (which = 10,000%) to
+            // convert to a human-readable percentage out of 100%
             attempt: new_total_percent
                 .checked_mul(Decimal::percent(10_000))?
                 .to_string(),
@@ -343,12 +347,19 @@ fn execute_undelegate(
     DELEGATION_ENTRIES.remove(deps.storage, (&delegator, &delegate));
 
     // update the total percent delegated by the delegator
-    PERCENT_DELEGATED.update(deps.storage, &delegator, |c| -> StdResult<_> {
-        // if delegation above exists, percent will exist. if for some reason it
-        // doesn't, it will surface in the checked_sub call below due to an overflow.
-        let current_percentage = c.unwrap_or_default();
-        Ok(current_percentage.checked_sub(delegation.percent)?)
-    })?;
+    PERCENT_DELEGATED.update(
+        deps.storage,
+        &delegator,
+        |current_percent| -> StdResult<_> {
+            // if delegation above exists, percent will exist. if for some
+            // reason it doesn't, it will surface in the checked_sub call below
+            // due to an underflow, in which case something is horribly wrong so
+            // we should error.
+            Ok(current_percent
+                .unwrap_or_default()
+                .checked_sub(delegation.percent)?)
+        },
+    )?;
 
     let vp = get_voting_power(
         deps.as_ref(),
