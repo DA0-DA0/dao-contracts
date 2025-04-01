@@ -153,6 +153,21 @@ fn handle_delegator_voting_power_changed_hook(
         let current_delegated_vp = calculate_delegated_vp(old_vp, percent);
         let new_delegated_vp = calculate_delegated_vp(new_vp, percent);
 
+        // if original delegation had voting power and an expiration date, we
+        // undo the previous decrement at the end of the expiration period,
+        // essentially undoing the expiration since we're about to restart the
+        // expiration period.
+        if !current_delegated_vp.is_zero() {
+            if let Some(expire_in) = expiration {
+                DELEGATED_VP.increment(
+                    deps.storage,
+                    delegate.clone(),
+                    expire_in,
+                    current_delegated_vp,
+                )?;
+            }
+        }
+
         // first we update the next block's delegated VP for the delegate
         match new_delegated_vp.cmp(&current_delegated_vp) {
             Ordering::Less => {
@@ -197,23 +212,10 @@ fn handle_delegator_voting_power_changed_hook(
             }
         }
 
-        // if original delegation had voting power and an expiration date, we
-        // undo the previous decrement at the end of the expiration period.
-        if current_delegated_vp.u128() > 0 {
-            if let Some(expire_in) = expiration {
-                DELEGATED_VP.increment(
-                    deps.storage,
-                    delegate.clone(),
-                    expire_in,
-                    current_delegated_vp,
-                )?;
-            }
-        }
-
         // if the new delegation has voting power and global config specifies a
         // delegation validity duration, we apply the decrement at the end of
         // the expiration period.
-        if new_delegated_vp.u128() > 0 {
+        if !new_delegated_vp.is_zero() {
             if let Some(config_expiration) = config.delegation_validity_blocks {
                 DELEGATED_VP.decrement(
                     deps.storage,
