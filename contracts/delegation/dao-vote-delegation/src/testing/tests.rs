@@ -309,7 +309,7 @@ fn test_voting_power_updates() {
     // Verify delegate's effective voting power on the new proposal
     suite.assert_effective_udvp(
         ADDR0,
-        &proposal_module_2,
+        proposal_module_2,
         id_2,
         p_2.start_height,
         expected_vp_after_increase_2,
@@ -365,13 +365,13 @@ fn test_voting_power_updates() {
         suite.propose_single_choice(&dao, ADDR0, "test after expiration", vec![]);
 
     // Verify delegate has no effective voting power on this post-expiration proposal
-    suite.assert_effective_udvp(ADDR0, &proposal_module_4, id_4, p_4.start_height, 0u128);
+    suite.assert_effective_udvp(ADDR0, proposal_module_4, id_4, p_4.start_height, 0u128);
 
     // Verify that historical queries still show the correct voting power for proposals
     // created before expiration
     suite.assert_effective_udvp(
         ADDR0,
-        &proposal_module_3,
+        proposal_module_3,
         id_3,
         p_3.start_height,
         expected_final_vp,
