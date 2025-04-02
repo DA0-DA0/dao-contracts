@@ -26,8 +26,11 @@ pub(crate) fn execute_stake_changed(
     }
 
     match msg {
-        StakeChangedHookMsg::Stake { addr, .. } | StakeChangedHookMsg::Unstake { addr, .. } => {
-            handle_voting_power_changed_hook(deps, &env, addr)
+        StakeChangedHookMsg::Stake { addr, amount } => {
+            handle_voting_power_changed_hook(deps, &env, addr, amount, true)
+        }
+        StakeChangedHookMsg::Unstake { addr, amount } => {
+            handle_voting_power_changed_hook(deps, &env, addr, amount, false)
         }
     }
 }
@@ -46,7 +49,19 @@ pub(crate) fn execute_membership_changed(
     // Get the members whose voting power changed and update their voting power.
     for member in msg.diffs {
         let addr = deps.api.addr_validate(&member.key)?;
-        handle_voting_power_changed_hook(deps.branch(), &env, addr)?;
+
+        // old is None when adding a new member
+        let old = member.old.unwrap_or_default();
+        // new is None when removing a member
+        let new = member.new.unwrap_or_default();
+        // compute the delta and whether the voting power increased or decreased
+        let (vp_delta, increased) = if new > old {
+            (new - old, true)
+        } else {
+            (old - new, false)
+        };
+
+        handle_voting_power_changed_hook(deps.branch(), &env, addr, vp_delta, increased)?;
     }
 
     Ok(Response::new().add_attribute("action", "voting_power_change_hook"))
@@ -64,18 +79,24 @@ pub(crate) fn execute_nft_stake_changed(
     }
 
     match msg {
-        NftStakeChangedHookMsg::Stake { addr, .. }
-        | NftStakeChangedHookMsg::Unstake { addr, .. } => {
-            handle_voting_power_changed_hook(deps, &env, addr)
+        NftStakeChangedHookMsg::Stake { addr, .. } => {
+            // NFTs are staked one at a time
+            handle_voting_power_changed_hook(deps, &env, addr, Uint128::one(), true)
+        }
+        NftStakeChangedHookMsg::Unstake { addr, token_ids } => {
+            // more than one NFT can be unstaked at once
+            handle_voting_power_changed_hook(deps, &env, addr, token_ids.len() as u128, false)
         }
     }
 }
 
 /// Perform necessary updates when a member's voting power changes.
-pub(crate) fn handle_voting_power_changed_hook(
+fn handle_voting_power_changed_hook(
     deps: DepsMut,
     env: &Env,
     addr: Addr,
+    vp_delta: impl Into<Uint128>,
+    increased: bool,
 ) -> Result<Response, ContractError> {
     let dao = DAO.load(deps.storage)?;
 
@@ -98,7 +119,14 @@ pub(crate) fn handle_voting_power_changed_hook(
     } else {
         // if not a delegate, check if they have any delegations, and update
         // delegate VPs accordingly
-        handle_delegator_voting_power_changed_hook(deps, env, dao, addr, new_vp)
+        handle_delegator_voting_power_changed_hook(
+            deps,
+            env,
+            addr,
+            new_vp,
+            vp_delta.into(),
+            increased,
+        )
     }
 }
 
@@ -123,24 +151,44 @@ fn handle_delegate_voting_power_changed_hook(
 /// handles the delegator voting power changed hook by updating their delegated
 /// VP for each delegate they are delegating to and each delegate's total
 /// delegated VP.
-/// TODO: fix bug when multiple voting power changes occur in the same block
 fn handle_delegator_voting_power_changed_hook(
     deps: DepsMut,
     env: &Env,
-    dao: Addr,
     delegator: Addr,
     new_vp: Uint128,
+    vp_delta: Uint128,
+    increased: bool,
 ) -> Result<Response, ContractError> {
     // need to get the latest delegations in case any were updated earlier in
     // the same block
     let delegations = DELEGATIONS.load_all_latest(deps.storage, &delegator, env.block.height)?;
 
-    let old_vp = dao_voting::voting::get_voting_power(
-        deps.as_ref(),
-        delegator,
-        &dao,
-        Some(env.block.height),
-    )?;
+    // compute old VP based on the new VP and the delta, since multiple voting
+    // power changes can occur in the same block and we can't reliably access
+    // the previous VP without storing intermediate state (which would require
+    // storing every single voting power change and never clearing them). we can
+    // only query voting power at the beginning of the current block (before any
+    // changes) or at the end of the current block/beginning of the next block
+    // thus far (i.e. the new voting power after this most recent change).
+    // however, what we really want is the voting power change between the
+    // previous update, which may or may not have been an earlier transaction in
+    // this same block, and this current update. thus, we use the delta from the
+    // current update and the final voting power after all changes thus far have
+    // been processed to compute the previously updated VP.
+    //
+    // also, we need the actual raw VPs instead of just the delta to ensure that
+    // rounding behavior remains consistent. everywhere delegated VP is
+    // calculated, the percent delegated is multiplied by the delegator's VP and
+    // floored to the nearest integer. thus, we need to calculate the floored
+    // delegated VP before and after and then find the delta, instead of finding
+    // the delta and applying the floor, since the floor of the delta may not
+    // match the difference between the floored VPs. we care about the delta
+    // between the floored VPs.
+    let old_vp = if increased {
+        new_vp.checked_sub(vp_delta)?
+    } else {
+        new_vp.checked_add(vp_delta)?
+    };
 
     for LoadedItem {
         item: Delegation { delegate, percent },

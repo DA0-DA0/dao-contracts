@@ -324,7 +324,7 @@ fn test_voting_power_updates() {
     suite.advance_block();
 
     // Verify the delegated voting power is correctly updated after both operations
-    let expected_final_vp = expected_vp_after_increase_2;
+    let expected_final_vp = expected_vp_after_increase_2 - unstake_amount_3 + stake_amount_3;
 
     suite.assert_delegate_total_delegated_vp(ADDR0, expected_final_vp);
 
