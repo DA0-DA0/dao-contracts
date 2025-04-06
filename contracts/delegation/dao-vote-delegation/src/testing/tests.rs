@@ -916,6 +916,17 @@ fn test_vote_with_override() {
         suite.members[0].weight + suite.members[1].weight + suite.members[2].weight / 2,
     );
 
+    // ensure ADDR0 delegate will lose all of ADDR1's 100% delegated voting
+    // power on this proposal if they override their vote
+    suite.assert_less_vote_power_without_delegation(
+        ADDR0,
+        &proposal_module,
+        id1,
+        p1.start_height,
+        suite.members[1].weight,
+        suite.members[1].weight,
+    );
+
     // ADDR1 overrides ADDR0's vote
     suite.vote_single_choice(&dao, ADDR1, id1, dao_voting::voting::Vote::No);
     // ADDR0's unvoted delegated voting power should no longer include ADDR1's
@@ -941,6 +952,17 @@ fn test_vote_with_override() {
         suite.members[1].weight,
     );
 
+    // ensure ADDR3 delegate will lose all of ADDR4's 100% delegated voting
+    // power on this proposal if they override their vote
+    suite.assert_less_vote_power_without_delegation(
+        ADDR3,
+        &proposal_module,
+        id1,
+        p1.start_height,
+        suite.members[4].weight,
+        suite.members[4].weight,
+    );
+
     // ADDR4 votes before their delegate ADDR3 does
     suite.vote_single_choice(&dao, ADDR4, id1, dao_voting::voting::Vote::Abstain);
     // ADDR3 unvoted delegated voting power should not include ADDR4's voting
@@ -964,6 +986,17 @@ fn test_vote_with_override() {
         id1,
         dao_voting::voting::Vote::No,
         suite.members[1].weight + suite.members[3].weight,
+    );
+
+    // ensure ADDR0 delegate will lose all of ADDR2's 50% delegated voting power
+    // on this proposal if they override their vote
+    suite.assert_less_vote_power_without_delegation(
+        ADDR0,
+        &proposal_module,
+        id1,
+        p1.start_height,
+        suite.members[2].weight / 2,
+        suite.members[2].weight / 2,
     );
 
     // ADDR2 overrides ADDR0's vote

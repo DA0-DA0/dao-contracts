@@ -288,7 +288,30 @@ impl DaoVoteDelegationTestingSuiteBase {
                     delegate: delegate.into(),
                     proposal_module: proposal_module.into(),
                     proposal_id,
-                    height: start_height,
+                    proposal_height: start_height,
+                },
+            )
+            .unwrap()
+    }
+
+    /// get the less vote power without delegation for a proposal
+    pub fn less_vote_power_without_delegation(
+        &self,
+        delegate: impl Into<String>,
+        proposal_module: impl Into<String>,
+        proposal_id: u64,
+        start_height: u64,
+        delegated_vp: impl Into<Uint128>,
+    ) -> Uint128 {
+        self.querier()
+            .query_wasm_smart(
+                &self.delegation_addr,
+                &crate::msg::QueryMsg::LessVotePowerWithoutDelegation {
+                    delegate: delegate.into(),
+                    proposal_module: proposal_module.into(),
+                    proposal_id,
+                    proposal_height: start_height,
+                    delegated_vp: delegated_vp.into(),
                 },
             )
             .unwrap()
@@ -445,6 +468,26 @@ impl DaoVoteDelegationTestingSuiteBase {
             start_height,
         );
         assert_eq!(udvp.effective, effective.into());
+    }
+
+    /// assert a delegate's less vote power without delegation on a proposal
+    pub fn assert_less_vote_power_without_delegation(
+        &self,
+        delegate: impl Into<String>,
+        proposal_module: impl Into<String>,
+        proposal_id: u64,
+        start_height: u64,
+        delegated_vp: impl Into<Uint128>,
+        expected: impl Into<Uint128>,
+    ) {
+        let less_vote_power = self.less_vote_power_without_delegation(
+            delegate,
+            proposal_module,
+            proposal_id,
+            start_height,
+            delegated_vp,
+        );
+        assert_eq!(less_vote_power, expected.into());
     }
 
     /// assert that the max delegations is set

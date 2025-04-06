@@ -7,7 +7,7 @@ use cosmwasm_std::{Addr, Decimal, DepsMut, StdResult, Uint128};
 use cw_storage_plus::Map;
 use dao_interface::voting::InfoResponse;
 
-use crate::{proposal::Ballot, voting::VotingPowerWithDelegation};
+use crate::proposal::Ballot;
 
 #[cw_serde]
 #[derive(QueryResponses)]
@@ -41,13 +41,29 @@ pub enum QueryMsg {
     /// immediately via vote hooks (instead of being delayed 1 block like other
     /// historical queries), making it safe to vote multiple times in the same
     /// block. Proposal modules are responsible for maintaining the effective VP
-    /// cap when a delegator overrides a delegate's vote.
+    /// cap when a delegator overrides a delegate's vote. The `proposal_height`
+    /// field is the height at which the proposal was created.
     #[returns(UnvotedDelegatedVotingPowerResponse)]
     UnvotedDelegatedVotingPower {
         delegate: String,
         proposal_module: String,
         proposal_id: u64,
-        height: u64,
+        proposal_height: u64,
+    },
+    /// Returns the VP that should be removed from a delegate's vote tally on a
+    /// specific proposal when a delegator overrides their vote. The
+    /// `proposal_height` field is the height at which the proposal was created.
+    /// The `delegated_vp` field is the amount of VP delegated by the delegator
+    /// to the delegate for this proposal. This query takes into account the
+    /// configured VP cap and should be used by proposal modules when a
+    /// delegator overrides a delegate's vote to compute ballot VP updates.
+    #[returns(Uint128)]
+    LessVotePowerWithoutDelegation {
+        proposal_module: String,
+        proposal_id: u64,
+        proposal_height: u64,
+        delegate: String,
+        delegated_vp: Uint128,
     },
     /// Returns the proposal modules synced from the DAO.
     #[returns(Vec<Addr>)]
@@ -181,14 +197,14 @@ pub fn calculate_delegated_vp(vp: Uint128, percent: Decimal) -> Uint128 {
 // DELEGATE VOTE OVERRIDE: if this is the first time this member voted, override
 // their delegates' votes with the delegator's vote.
 //
-// subtract the delegator's VP from the vote tally of all of their delegates who
-// already voted on this proposal, in order to override their vote with the
-// delegator's preference.
+// subtract the delegator's respective delegated VP  amounts from the vote tally
+// of all of their delegates who already voted on this proposal in order to
+// override their vote with the delegator's preference.
 //
 // we must load all delegations and update each. if this partially fails, the
 // vote tallies will be incorrect, so the entire vote transaction should fail.
-// we need to prevent this from happening by limiting the number of delegations
-// a member can have in order to ensure votes can always be cast.
+// we need to prevent this from running out of gas by limiting the number of
+// delegations a member can have in order to ensure votes can always be cast.
 #[allow(clippy::too_many_arguments)]
 pub fn handle_delegate_vote_override<Vote: Serialize + DeserializeOwned>(
     deps: DepsMut,
@@ -196,8 +212,8 @@ pub fn handle_delegate_vote_override<Vote: Serialize + DeserializeOwned>(
     delegation_module: &Option<Addr>,
     proposal_module: &Addr,
     proposal_id: u64,
-    proposal_start_height: u64,
-    vote_power: &VotingPowerWithDelegation,
+    proposal_height: u64,
+    individual_vote_power: &Uint128,
     ballots: Map<(u64, &Addr), Ballot<Vote>>,
     remove_vote: &mut impl FnMut(&Vote, Uint128) -> StdResult<()>,
 ) -> StdResult<()> {
@@ -208,7 +224,7 @@ pub fn handle_delegate_vote_override<Vote: Serialize + DeserializeOwned>(
                 delegation_module,
                 &QueryMsg::Delegations {
                     delegator: delegator.to_string(),
-                    height: Some(proposal_start_height),
+                    height: Some(proposal_height),
                     offset: None,
                     limit: None,
                 },
@@ -232,59 +248,31 @@ pub fn handle_delegate_vote_override<Vote: Serialize + DeserializeOwned>(
             if let Some(mut delegate_ballot) =
                 ballots.may_load(deps.storage, (proposal_id, &delegate))?
             {
-                // get the delegate's current unvoted delegated VP. since we are
-                // currently overriding this delegate's vote, this UDVP response
-                // will not yet take into account the loss of this current
-                // voter's delegated VP, so we have to do math below to remove
-                // this voter's VP from the delegate's effective VP. the vote
-                // hook at the end of the proposal module's vote function will
-                // update this UDVP in the delegation module for future votes.
-                //
-                // NOTE: this UDVP query reflects updates immediately, instead
-                // of waiting 1 block to take effect like other historical
-                // queries, so this will reflect the updated UDVP from the vote
-                // hooks within the same block, making it safe to vote twice in
-                // the same block.
-                let prev_udvp: UnvotedDelegatedVotingPowerResponse =
-                    deps.querier.query_wasm_smart(
-                        delegation_module,
-                        &QueryMsg::UnvotedDelegatedVotingPower {
-                            delegate: delegate.to_string(),
-                            proposal_module: proposal_module.to_string(),
-                            proposal_id,
-                            height: proposal_start_height,
-                        },
-                    )?;
+                let delegated_vp = calculate_delegated_vp(*individual_vote_power, percent);
 
-                let voter_delegated_vp = calculate_delegated_vp(vote_power.individual, percent);
+                // get the amount of VP the delegate should lose due to this
+                // delegator's vote override. this loss should be equal to the
+                // delegated VP or less if the delegated VP is already being
+                // capped due to the delegation module config.
+                let diff: Uint128 = deps.querier.query_wasm_smart(
+                    delegation_module,
+                    &QueryMsg::LessVotePowerWithoutDelegation {
+                        proposal_module: proposal_module.to_string(),
+                        proposal_id,
+                        proposal_height,
+                        delegate: delegate.to_string(),
+                        delegated_vp,
+                    },
+                )?;
 
-                // subtract this voter's delegated VP from the delegate's total
-                // VP, and cap the result at the delegate's effective VP, to
-                // ensure we properly take into account the configured VP cap.
-                // if the delegate has been delegated in total more than this
-                // voter's delegated VP above the cap, they will not lose any
-                // VP. they will lose part or all of this voter's delegated VP
-                // based on how their total VP ranks relative to the configured
-                // cap.
-                let new_effective_delegated = prev_udvp
-                    .total
-                    .checked_sub(voter_delegated_vp)?
-                    .min(prev_udvp.effective);
-
-                // if the new effective VP is less than the previous effective
-                // VP, update the delegate's ballot and tally.
-                if new_effective_delegated < prev_udvp.effective {
-                    // how much VP the delegate is losing based on this voter's
-                    // VP and the cap.
-                    let diff = prev_udvp.effective - new_effective_delegated;
-
-                    // update ballot total and vote tally by removing the lost
-                    // delegated VP only. this makes sure to fully preserve the
-                    // delegate's personal VP even if they lose all delegated VP
-                    // due to delegators overriding votes.
+                // if the delegate's effective VP is less without the
+                // delegator's vote, update ballot total and vote tally by
+                // removing the lost delegated VP only. this diff method makes
+                // sure to preserve the delegate's individual VP even if they
+                // lose all delegated VP due to delegators overriding votes.
+                if !diff.is_zero() {
                     delegate_ballot.power -= diff;
                     remove_vote(&delegate_ballot.vote, diff)?;
-
                     ballots.save(deps.storage, (proposal_id, &delegate), &delegate_ballot)?;
                 }
             }

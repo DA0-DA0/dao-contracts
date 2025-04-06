@@ -1,4 +1,4 @@
-use cosmwasm_std::{ensure, Addr, Order};
+use cosmwasm_std::{ensure, Addr, Order, Uint128};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{
     entry_point, to_json_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
@@ -520,13 +520,27 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             delegate,
             proposal_module,
             proposal_id,
-            height,
+            proposal_height,
         } => Ok(to_json_binary(&query_unvoted_delegated_vp(
             deps,
             delegate,
             proposal_module,
             proposal_id,
-            height,
+            proposal_height,
+        )?)?),
+        QueryMsg::LessVotePowerWithoutDelegation {
+            proposal_module,
+            proposal_id,
+            proposal_height,
+            delegate,
+            delegated_vp,
+        } => Ok(to_json_binary(&query_less_vote_power_without_delegation(
+            deps,
+            proposal_module,
+            proposal_id,
+            proposal_height,
+            delegate,
+            delegated_vp,
         )?)?),
         QueryMsg::ProposalModules { start_after, limit } => Ok(to_json_binary(
             &query_proposal_modules(deps, start_after, limit)?,
@@ -655,6 +669,61 @@ fn query_unvoted_delegated_vp(
     }
 
     Ok(UnvotedDelegatedVotingPowerResponse { total, effective })
+}
+
+fn query_less_vote_power_without_delegation(
+    deps: Deps,
+    proposal_module: String,
+    proposal_id: u64,
+    proposal_height: u64,
+    delegate: String,
+    delegated_vp: Uint128,
+) -> StdResult<Uint128> {
+    let udvp = query_unvoted_delegated_vp(
+        deps,
+        delegate,
+        proposal_module,
+        proposal_id,
+        proposal_height,
+    )?;
+
+    // compute the new effective UDVP after this voter's delegated VP is
+    // removed, respecting the configured cap. subtract the voter's delegated VP
+    // from the delegate's total UDVP, and cap the result at the delegate's
+    // effective UDVP, to ensure we properly take into account the configured VP
+    // cap (the effective UDVP is the total UDVP with the cap applied, so the
+    // effective UDVP can be used in place of the cap in this computation).
+    let new_effective_udvp = udvp.total.checked_sub(delegated_vp)?.min(udvp.effective);
+
+    // compute the amount of UDVP the delegate will lose due to this voter's
+    // delegated VP being removed (likely due to a vote override).
+    // new_effective_udvp is capped at udvp.effective, so this will never
+    // underflow, but use saturating_sub for vibes anyway.
+    //
+    // the delegate will lose none, part, or all of this voter's delegated VP
+    // based on how the delegate's total UDVP and voter's delegated VP compare
+    // to the configured cap:
+    //
+    // 1. if the delegate's total UDVP is less than or equal to the cap, the
+    //    delegate will lose all of this voter's delegated VP since the cap is
+    //    not exceeded.
+    //
+    //       IF total_udvp <= cap, THEN loss = voter_delegated
+    //
+    // 2. if the delegate's total UDVP is greater than the cap by a margin less
+    //    than this voter's delegated VP, the delegate will lose part of this
+    //    voter's delegated VP. specifically: the difference between the cap and
+    //    the delegate's total UDVP without the voter's delegated VP.
+    //
+    //       IF total_udvp - voter_delegated < cap AND total_udvp > cap, THEN
+    //       loss = cap - (total_udvp - voter_delegated)
+    //
+    // 3. if the delegate's total UDVP is greater than the cap by a margin
+    //    greater than or equal to this voter's delegated VP, the delegate will
+    //    not lose any VP since the cap is already low enough.
+    //
+    //       IF total_udvp - voter_delegated >= cap, THEN loss = 0
+    Ok(udvp.effective.saturating_sub(new_effective_udvp))
 }
 
 fn query_proposal_modules(

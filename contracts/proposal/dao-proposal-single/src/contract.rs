@@ -576,7 +576,7 @@ pub fn execute_vote(
             &env.contract.address,
             proposal_id,
             prop.start_height,
-            &vote_power,
+            &vote_power.individual,
             BALLOTS,
             &mut |vote, power| {
                 prop.votes.remove_vote(*vote, power);
