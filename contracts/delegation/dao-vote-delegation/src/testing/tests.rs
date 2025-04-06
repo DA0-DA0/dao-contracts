@@ -694,6 +694,115 @@ fn test_max_delegations() {
 }
 
 #[test]
+fn test_different_daos_delegations_query() {
+    let mut token_dao_suite = TokenDaoVoteDelegationTestingSuite::new().build();
+
+    let mut cw4_dao_suite = Cw4DaoVoteDelegationTestingSuite::new().build();
+
+    let mut cw721_dao_suite = Cw721DaoVoteDelegationTestingSuite::new().build();
+
+    let token_dao_block = token_dao_suite.block().height;
+    let cw4_dao_block = cw4_dao_suite.block().height;
+    let cw721_dao_block = cw721_dao_suite.block().height;
+
+    assert_eq!(token_dao_block, 1);
+    assert_eq!(cw4_dao_block, 1);
+    assert_eq!(cw721_dao_block, 1);
+
+    // register a delegate to all daos
+    cw4_dao_suite.register(ADDR0);
+    token_dao_suite.register(ADDR0);
+    cw721_dao_suite.register(ADDR0);
+
+    // have a member delegate to the delegate in all daos
+    cw4_dao_suite.delegate(ADDR1, ADDR0, Decimal::percent(100));
+    token_dao_suite.delegate(ADDR1, ADDR0, Decimal::percent(100));
+    cw721_dao_suite.delegate(ADDR1, ADDR0, Decimal::percent(100));
+
+    // skip some blocks
+    cw4_dao_suite.advance_blocks(2);
+    token_dao_suite.advance_blocks(2);
+    cw721_dao_suite.advance_blocks(2);
+
+    let cw4_delegations = cw4_dao_suite
+        .delegations(ADDR1.to_string(), Some(1), None, None)
+        .delegations;
+    let token_delegations = token_dao_suite
+        .delegations(ADDR1.to_string(), Some(1), None, None)
+        .delegations;
+    let cw721_delegations = cw721_dao_suite
+        .delegations(ADDR1.to_string(), Some(1), None, None)
+        .delegations;
+
+    assert!(cw4_delegations.is_empty());
+    assert!(token_delegations.is_empty());
+    assert!(cw721_delegations.is_empty());
+
+    let cw4_delegations = cw4_dao_suite
+        .delegations(ADDR1.to_string(), Some(2), None, None)
+        .delegations;
+    let token_delegations = token_dao_suite
+        .delegations(ADDR1.to_string(), Some(2), None, None)
+        .delegations;
+    let cw721_delegations = cw721_dao_suite
+        .delegations(ADDR1.to_string(), Some(2), None, None)
+        .delegations;
+
+    assert_eq!(cw4_delegations.len(), 1);
+    assert_eq!(token_delegations.len(), 1);
+    assert_eq!(cw721_delegations.len(), 1);
+}
+
+#[test]
+fn test_token_dao_update_expiration_period() {
+    let mut suite = TokenDaoVoteDelegationTestingSuite::new()
+        .with_delegation_validity_blocks(5)
+        .build();
+
+    // register a delegate
+    suite.register(ADDR0);
+
+    // delegate to ADDR0 at block 1, expiring at block 1 + 5 = 6
+    suite.delegate(ADDR3, ADDR0, Decimal::percent(100));
+
+    // block height: 2
+    suite.advance_block();
+    suite.assert_delegations_count(ADDR3, 1);
+
+    // block height: 3
+    suite.advance_block();
+    suite.assert_delegations_count(ADDR3, 1);
+
+    // at block 5 the delegation should still be valid
+    let block_5_delegations = suite.delegations(ADDR3, Some(5), None, None);
+    assert_eq!(block_5_delegations.delegations.len(), 1);
+
+    // at block 6 the delegation should be expired
+    let block_6_delegations = suite.delegations(ADDR3, Some(6), None, None);
+    assert_eq!(block_6_delegations.delegations.len(), 0);
+
+    // dao updates the config and shortens the delegation validity blocks to 2
+    suite.update_delegation_validity_blocks(Some(2));
+
+    // delegate to ADDR0 at block 3. subject to new delegation expiration cfg,
+    // this should expire at block 3 + 2 = 5
+    suite.delegate(ADDR3, ADDR0, Decimal::percent(100));
+
+    suite.assert_delegations_count(ADDR3, 1);
+
+    // advance to block 4, there should still be an active delegation
+    suite.advance_block();
+    suite.assert_delegations_count(ADDR3, 1);
+
+    // at blocks 5, 6... the delegation should be expired
+    suite.advance_block();
+    suite.assert_delegations_count(ADDR3, 0);
+
+    suite.advance_block();
+    suite.assert_delegations_count(ADDR3, 0);
+}
+
+#[test]
 fn test_update_hook_callers() {
     let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
     let dao = suite.dao.clone();

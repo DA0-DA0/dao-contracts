@@ -467,6 +467,8 @@ fn execute_update_config(
     })?;
 
     CONFIG.update(deps.storage, |mut config| -> Result<_, ContractError> {
+        // updating delegation validity blocks will only apply to new delegations.
+        // all existing delegations will keep their existing expiration until it expires.
         delegation_validity_blocks.maybe_update_result(|value| {
             // validate if defined
             if let Some(value) = value {
