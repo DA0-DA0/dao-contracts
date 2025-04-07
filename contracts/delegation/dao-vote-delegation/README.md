@@ -12,6 +12,10 @@ delegation system for DAOs that supports the following features:
 - Fractional delegation of voting power on a per-proposal-module basis.
 - Delegate votes that can be overridden on a per-proposal basis by each
   delegator.
+- Configurable cap that restricts the maximum amount of voting power that a
+  single delegate can wield when casting votes.
+- Configurable expiration period for delegation.
+- Configurable limit on the number of delegations a member can have.
 
 ## Instantiation and Setup
 
