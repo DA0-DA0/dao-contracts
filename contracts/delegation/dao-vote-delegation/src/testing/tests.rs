@@ -918,7 +918,7 @@ fn test_vote_with_override() {
 
     // ensure ADDR0 delegate will lose all of ADDR1's 100% delegated voting
     // power on this proposal if they override their vote
-    suite.assert_less_vote_power_without_delegation(
+    suite.assert_delegated_vote_power_reduction(
         ADDR0,
         &proposal_module,
         id1,
@@ -954,7 +954,7 @@ fn test_vote_with_override() {
 
     // ensure ADDR3 delegate will lose all of ADDR4's 100% delegated voting
     // power on this proposal if they override their vote
-    suite.assert_less_vote_power_without_delegation(
+    suite.assert_delegated_vote_power_reduction(
         ADDR3,
         &proposal_module,
         id1,
@@ -990,7 +990,7 @@ fn test_vote_with_override() {
 
     // ensure ADDR0 delegate will lose all of ADDR2's 50% delegated voting power
     // on this proposal if they override their vote
-    suite.assert_less_vote_power_without_delegation(
+    suite.assert_delegated_vote_power_reduction(
         ADDR0,
         &proposal_module,
         id1,
@@ -1010,6 +1010,147 @@ fn test_vote_with_override() {
         id1,
         dao_voting::voting::Vote::Yes,
         suite.members[0].weight + suite.members[2].weight,
+    );
+}
+
+#[test]
+fn test_vote_override_with_cap() {
+    let vp_cap_percent = Decimal::percent(20);
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new()
+        .with_vp_cap_percent(vp_cap_percent)
+        .build();
+    let dao = suite.dao.clone();
+
+    let delegation_cap = suite
+        .total_voting_power(&dao.core_addr)
+        .mul_floor(vp_cap_percent);
+
+    suite.register(ADDR2);
+
+    // delegate all of ADDR3's and ADDR0's voting power to ADDR2
+    suite.delegate(ADDR3, ADDR2, Decimal::percent(100));
+    suite.delegate(ADDR0, ADDR2, Decimal::percent(100));
+    suite.advance_block();
+
+    let total_udvp = suite.members[3].weight + suite.members[0].weight;
+
+    // propose a proposal
+    let (proposal_module, id1, p1) =
+        suite.propose_single_choice(&dao, ADDR2, "test proposal", vec![]);
+
+    // delegate casts vote with all their VP and delegator's VP capped at 20%
+    suite.vote_single_choice(&dao, ADDR2, id1, dao_voting::voting::Vote::Yes);
+    suite.assert_single_choice_votes_count(
+        &proposal_module,
+        id1,
+        dao_voting::voting::Vote::Yes,
+        Uint128::from(suite.members[2].weight) + delegation_cap,
+    );
+
+    // ADDR2 has 100% of ADDR3's and ADDR0's voting power
+    suite.assert_total_udvp(ADDR2, &proposal_module, id1, p1.start_height, total_udvp);
+    // but cap is less so effective UDVP is capped
+    assert!(delegation_cap < total_udvp.into());
+    suite.assert_effective_udvp(
+        ADDR2,
+        &proposal_module,
+        id1,
+        p1.start_height,
+        delegation_cap,
+    );
+
+    // if ADDR0 were to override the delegate's vote, the effective UDVP should
+    // stay the same, since it's capped below the total UDVP and ADDR0's voting
+    // power is only 1
+    suite.assert_delegated_vote_power_reduction(
+        ADDR2,
+        &proposal_module,
+        id1,
+        p1.start_height,
+        suite.members[0].weight,
+        0u128,
+    );
+
+    // if ADDR3 were to override the delegate's vote, the effective UDVP will
+    // reduce by part of ADDR3's VP since the cap is applied: the new effective
+    // UDVP is total UDVP minus ADDR3's VP, so the reduction is the difference
+    // between the cap (which is the current effective UDVP) and the new value
+    let new_effective_udvp = Uint128::from(total_udvp - suite.members[3].weight);
+    suite.assert_delegated_vote_power_reduction(
+        ADDR2,
+        &proposal_module,
+        id1,
+        p1.start_height,
+        suite.members[3].weight,
+        delegation_cap - new_effective_udvp,
+    );
+
+    // ADDR3 cast a vote, bringing the effective UDVP below the cap
+    suite.vote_single_choice(&dao, ADDR3, id1, dao_voting::voting::Vote::No);
+    // effective UDVP should be reduced by the full amount of ADDR3's VP
+    suite.assert_effective_udvp(
+        ADDR2,
+        &proposal_module,
+        id1,
+        p1.start_height,
+        new_effective_udvp,
+    );
+    // since effective UDVP is below the cap, it should match the total UDVP
+    suite.assert_total_udvp(
+        ADDR2,
+        &proposal_module,
+        id1,
+        p1.start_height,
+        new_effective_udvp,
+    );
+
+    // since ADDR3 voted and reduced ADDR2's effective UDVP, the vote counts
+    // should reflect that. YES should have ADDR2's individual VP and new
+    // effective UDVP after the ADDR3 reduction, and NO should have ADDR3's VP
+    suite.assert_single_choice_votes_count(
+        &proposal_module,
+        id1,
+        dao_voting::voting::Vote::Yes,
+        Uint128::from(suite.members[2].weight) + new_effective_udvp,
+    );
+    suite.assert_single_choice_votes_count(
+        &proposal_module,
+        id1,
+        dao_voting::voting::Vote::No,
+        suite.members[3].weight,
+    );
+
+    // now if ADDR0 were to override the delegate's vote, the effective UDVP
+    // should be reduced by the full amount of ADDR0's VP since the effective
+    // UDVP is already below the cap
+    suite.assert_delegated_vote_power_reduction(
+        ADDR2,
+        &proposal_module,
+        id1,
+        p1.start_height,
+        suite.members[0].weight,
+        suite.members[0].weight,
+    );
+
+    // ADDR0 votes yes in agreement with the delegate's vote
+    suite.vote_single_choice(&dao, ADDR0, id1, dao_voting::voting::Vote::Yes);
+    // UDVP should be reduced entirely to 0 since both delegators voted
+    suite.assert_effective_udvp(ADDR2, &proposal_module, id1, p1.start_height, 0u128);
+    suite.assert_total_udvp(ADDR2, &proposal_module, id1, p1.start_height, 0u128);
+    // vote counts should not change since the delegator's vote matched the
+    // delegate's vote
+    assert_eq!(new_effective_udvp, Uint128::from(suite.members[0].weight));
+    suite.assert_single_choice_votes_count(
+        &proposal_module,
+        id1,
+        dao_voting::voting::Vote::Yes,
+        suite.members[2].weight + suite.members[0].weight,
+    );
+    suite.assert_single_choice_votes_count(
+        &proposal_module,
+        id1,
+        dao_voting::voting::Vote::No,
+        suite.members[3].weight,
     );
 }
 

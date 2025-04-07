@@ -528,13 +528,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             proposal_id,
             proposal_height,
         )?)?),
-        QueryMsg::LessVotePowerWithoutDelegation {
+        QueryMsg::DelegatedVotePowerReduction {
             proposal_module,
             proposal_id,
             proposal_height,
             delegate,
             delegated_vp,
-        } => Ok(to_json_binary(&query_less_vote_power_without_delegation(
+        } => Ok(to_json_binary(&query_delegated_vote_power_reduction(
             deps,
             proposal_module,
             proposal_id,
@@ -671,7 +671,7 @@ fn query_unvoted_delegated_vp(
     Ok(UnvotedDelegatedVotingPowerResponse { total, effective })
 }
 
-fn query_less_vote_power_without_delegation(
+fn query_delegated_vote_power_reduction(
     deps: Deps,
     proposal_module: String,
     proposal_id: u64,

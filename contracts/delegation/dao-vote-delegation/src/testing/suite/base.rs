@@ -294,8 +294,8 @@ impl DaoVoteDelegationTestingSuiteBase {
             .unwrap()
     }
 
-    /// get the less vote power without delegation for a proposal
-    pub fn less_vote_power_without_delegation(
+    /// get the delegated vote power reduction for a proposal
+    pub fn delegated_vote_power_reduction(
         &self,
         delegate: impl Into<String>,
         proposal_module: impl Into<String>,
@@ -306,7 +306,7 @@ impl DaoVoteDelegationTestingSuiteBase {
         self.querier()
             .query_wasm_smart(
                 &self.delegation_addr,
-                &crate::msg::QueryMsg::LessVotePowerWithoutDelegation {
+                &crate::msg::QueryMsg::DelegatedVotePowerReduction {
                     delegate: delegate.into(),
                     proposal_module: proposal_module.into(),
                     proposal_id,
@@ -470,8 +470,8 @@ impl DaoVoteDelegationTestingSuiteBase {
         assert_eq!(udvp.effective, effective.into());
     }
 
-    /// assert a delegate's less vote power without delegation on a proposal
-    pub fn assert_less_vote_power_without_delegation(
+    /// assert the delegated vote power reduction on a proposal for a delegate
+    pub fn assert_delegated_vote_power_reduction(
         &self,
         delegate: impl Into<String>,
         proposal_module: impl Into<String>,
@@ -480,14 +480,14 @@ impl DaoVoteDelegationTestingSuiteBase {
         delegated_vp: impl Into<Uint128>,
         expected: impl Into<Uint128>,
     ) {
-        let less_vote_power = self.less_vote_power_without_delegation(
+        let reduction = self.delegated_vote_power_reduction(
             delegate,
             proposal_module,
             proposal_id,
             start_height,
             delegated_vp,
         );
-        assert_eq!(less_vote_power, expected.into());
+        assert_eq!(reduction, expected.into());
     }
 
     /// assert that the max delegations is set

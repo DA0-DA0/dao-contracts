@@ -50,15 +50,16 @@ pub enum QueryMsg {
         proposal_id: u64,
         proposal_height: u64,
     },
-    /// Returns the VP that should be removed from a delegate's vote tally on a
-    /// specific proposal when a delegator overrides their vote. The
+    /// Returns the VP that should be removed from a delegate's effective UDVP
+    /// (and vote tally if already voted) on a specific proposal when a
+    /// delegator casts a vote (potentially overriding the delegate's vote). The
     /// `proposal_height` field is the height at which the proposal was created.
     /// The `delegated_vp` field is the amount of VP delegated by the delegator
     /// to the delegate for this proposal. This query takes into account the
     /// configured VP cap and should be used by proposal modules when a
     /// delegator overrides a delegate's vote to compute ballot VP updates.
     #[returns(Uint128)]
-    LessVotePowerWithoutDelegation {
+    DelegatedVotePowerReduction {
         proposal_module: String,
         proposal_id: u64,
         proposal_height: u64,
@@ -254,9 +255,9 @@ pub fn handle_delegate_vote_override<Vote: Serialize + DeserializeOwned>(
                 // delegator's vote override. this loss should be equal to the
                 // delegated VP or less if the delegated VP is already being
                 // capped due to the delegation module config.
-                let diff: Uint128 = deps.querier.query_wasm_smart(
+                let reduction: Uint128 = deps.querier.query_wasm_smart(
                     delegation_module,
-                    &QueryMsg::LessVotePowerWithoutDelegation {
+                    &QueryMsg::DelegatedVotePowerReduction {
                         proposal_module: proposal_module.to_string(),
                         proposal_id,
                         proposal_height,
@@ -265,14 +266,13 @@ pub fn handle_delegate_vote_override<Vote: Serialize + DeserializeOwned>(
                     },
                 )?;
 
-                // if the delegate's effective VP is less without the
-                // delegator's vote, update ballot total and vote tally by
-                // removing the lost delegated VP only. this diff method makes
-                // sure to preserve the delegate's individual VP even if they
-                // lose all delegated VP due to delegators overriding votes.
-                if !diff.is_zero() {
-                    delegate_ballot.power -= diff;
-                    remove_vote(&delegate_ballot.vote, diff)?;
+                // if the delegate's effective VP must be reduced, update ballot
+                // total and vote tally. this diff method makes sure to preserve
+                // the delegate's individual VP even if they lose all delegated
+                // VP due to delegators overriding votes.
+                if !reduction.is_zero() {
+                    delegate_ballot.power -= reduction;
+                    remove_vote(&delegate_ballot.vote, reduction)?;
                     ballots.save(deps.storage, (proposal_id, &delegate), &delegate_ballot)?;
                 }
             }
