@@ -294,8 +294,9 @@ impl DaoVoteDelegationTestingSuiteBase {
             .unwrap()
     }
 
-    /// get the delegated vote power reduction for a proposal
-    pub fn delegated_vote_power_reduction(
+    /// get the effective unvoted delegated voting power reduction for a
+    /// proposal
+    pub fn effective_unvoted_delegated_voting_power_reduction(
         &self,
         delegate: impl Into<String>,
         proposal_module: impl Into<String>,
@@ -306,7 +307,7 @@ impl DaoVoteDelegationTestingSuiteBase {
         self.querier()
             .query_wasm_smart(
                 &self.delegation_addr,
-                &crate::msg::QueryMsg::DelegatedVotePowerReduction {
+                &crate::msg::QueryMsg::EffectiveUnvotedDelegatedVotingPowerReduction {
                     delegate: delegate.into(),
                     proposal_module: proposal_module.into(),
                     proposal_id,
@@ -470,8 +471,8 @@ impl DaoVoteDelegationTestingSuiteBase {
         assert_eq!(udvp.effective, effective.into());
     }
 
-    /// assert the delegated vote power reduction on a proposal for a delegate
-    pub fn assert_delegated_vote_power_reduction(
+    /// assert the effective UDVP reduction on a proposal
+    pub fn assert_effective_udvp_reduction(
         &self,
         delegate: impl Into<String>,
         proposal_module: impl Into<String>,
@@ -480,7 +481,7 @@ impl DaoVoteDelegationTestingSuiteBase {
         delegated_vp: impl Into<Uint128>,
         expected: impl Into<Uint128>,
     ) {
-        let reduction = self.delegated_vote_power_reduction(
+        let reduction = self.effective_unvoted_delegated_voting_power_reduction(
             delegate,
             proposal_module,
             proposal_id,

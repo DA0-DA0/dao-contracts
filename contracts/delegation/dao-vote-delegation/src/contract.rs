@@ -528,20 +528,22 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             proposal_id,
             proposal_height,
         )?)?),
-        QueryMsg::DelegatedVotePowerReduction {
+        QueryMsg::EffectiveUnvotedDelegatedVotingPowerReduction {
             proposal_module,
             proposal_id,
             proposal_height,
             delegate,
             delegated_vp,
-        } => Ok(to_json_binary(&query_delegated_vote_power_reduction(
-            deps,
-            proposal_module,
-            proposal_id,
-            proposal_height,
-            delegate,
-            delegated_vp,
-        )?)?),
+        } => Ok(to_json_binary(
+            &query_effective_unvoted_delegated_vote_power_reduction(
+                deps,
+                proposal_module,
+                proposal_id,
+                proposal_height,
+                delegate,
+                delegated_vp,
+            )?,
+        )?),
         QueryMsg::ProposalModules { start_after, limit } => Ok(to_json_binary(
             &query_proposal_modules(deps, start_after, limit)?,
         )?),
@@ -671,7 +673,7 @@ fn query_unvoted_delegated_vp(
     Ok(UnvotedDelegatedVotingPowerResponse { total, effective })
 }
 
-fn query_delegated_vote_power_reduction(
+fn query_effective_unvoted_delegated_vote_power_reduction(
     deps: Deps,
     proposal_module: String,
     proposal_id: u64,

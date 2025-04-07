@@ -918,7 +918,7 @@ fn test_vote_with_override() {
 
     // ensure ADDR0 delegate will lose all of ADDR1's 100% delegated voting
     // power on this proposal if they override their vote
-    suite.assert_delegated_vote_power_reduction(
+    suite.assert_effective_udvp_reduction(
         ADDR0,
         &proposal_module,
         id1,
@@ -954,7 +954,7 @@ fn test_vote_with_override() {
 
     // ensure ADDR3 delegate will lose all of ADDR4's 100% delegated voting
     // power on this proposal if they override their vote
-    suite.assert_delegated_vote_power_reduction(
+    suite.assert_effective_udvp_reduction(
         ADDR3,
         &proposal_module,
         id1,
@@ -990,7 +990,7 @@ fn test_vote_with_override() {
 
     // ensure ADDR0 delegate will lose all of ADDR2's 50% delegated voting power
     // on this proposal if they override their vote
-    suite.assert_delegated_vote_power_reduction(
+    suite.assert_effective_udvp_reduction(
         ADDR0,
         &proposal_module,
         id1,
@@ -1062,7 +1062,7 @@ fn test_vote_override_with_cap() {
     // if ADDR0 were to override the delegate's vote, the effective UDVP should
     // stay the same, since it's capped below the total UDVP and ADDR0's voting
     // power is only 1
-    suite.assert_delegated_vote_power_reduction(
+    suite.assert_effective_udvp_reduction(
         ADDR2,
         &proposal_module,
         id1,
@@ -1076,7 +1076,7 @@ fn test_vote_override_with_cap() {
     // UDVP is total UDVP minus ADDR3's VP, so the reduction is the difference
     // between the cap (which is the current effective UDVP) and the new value
     let new_effective_udvp = Uint128::from(total_udvp - suite.members[3].weight);
-    suite.assert_delegated_vote_power_reduction(
+    suite.assert_effective_udvp_reduction(
         ADDR2,
         &proposal_module,
         id1,
@@ -1123,7 +1123,7 @@ fn test_vote_override_with_cap() {
     // now if ADDR0 were to override the delegate's vote, the effective UDVP
     // should be reduced by the full amount of ADDR0's VP since the effective
     // UDVP is already below the cap
-    suite.assert_delegated_vote_power_reduction(
+    suite.assert_effective_udvp_reduction(
         ADDR2,
         &proposal_module,
         id1,

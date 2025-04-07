@@ -59,7 +59,7 @@ pub enum QueryMsg {
     /// configured VP cap and should be used by proposal modules when a
     /// delegator overrides a delegate's vote to compute ballot VP updates.
     #[returns(Uint128)]
-    DelegatedVotePowerReduction {
+    EffectiveUnvotedDelegatedVotingPowerReduction {
         proposal_module: String,
         proposal_id: u64,
         proposal_height: u64,
@@ -257,7 +257,7 @@ pub fn handle_delegate_vote_override<Vote: Serialize + DeserializeOwned>(
                 // capped due to the delegation module config.
                 let reduction: Uint128 = deps.querier.query_wasm_smart(
                     delegation_module,
-                    &QueryMsg::DelegatedVotePowerReduction {
+                    &QueryMsg::EffectiveUnvotedDelegatedVotingPowerReduction {
                         proposal_module: proposal_module.to_string(),
                         proposal_id,
                         proposal_height,
