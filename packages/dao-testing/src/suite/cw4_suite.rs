@@ -104,6 +104,11 @@ impl DaoTestingSuite<Cw4DaoExtra> for DaoTestingSuiteCw4<'_> {
 
         Cw4DaoExtra { group_addr }
     }
+
+    fn dao_setup(&mut self, _dao: &mut TestDao<Cw4DaoExtra>) {
+        // advancing block for consistency with other dao types
+        self.advance_block();
+    }
 }
 
 #[cfg(test)]

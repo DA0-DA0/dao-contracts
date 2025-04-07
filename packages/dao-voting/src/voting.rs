@@ -247,10 +247,10 @@ pub fn get_voting_power_with_delegation(
     address: &Addr,
     proposal_id: u64,
     // the proposal start_height at which voting power should be queried
-    height: u64,
+    proposal_height: u64,
 ) -> StdResult<VotingPowerWithDelegation> {
     // get individual voting power from voting module
-    let individual = get_voting_power(deps, address.clone(), dao, Some(height))?;
+    let individual = get_voting_power(deps, address.clone(), dao, Some(proposal_height))?;
 
     // get effective VP delegated to this address from other members of the DAO
     // that has not yet been used to vote on the given proposal. if this query
@@ -265,7 +265,7 @@ pub fn get_voting_power_with_delegation(
                     delegate: address.to_string(),
                     proposal_module: proposal_module.to_string(),
                     proposal_id,
-                    height,
+                    proposal_height,
                 },
             )
         })

@@ -675,6 +675,17 @@ impl DaoTestingSuiteBase {
         self.app.block_info()
     }
 
+    /// get the total voting power of the DAO
+    pub fn total_voting_power(&self, core_addr: impl Into<String>) -> Uint128 {
+        self.querier()
+            .query_wasm_smart::<dao_interface::voting::TotalPowerAtHeightResponse>(
+                Addr::unchecked(core_addr.into()),
+                &dao_interface::msg::QueryMsg::TotalPowerAtHeight { height: None },
+            )
+            .unwrap()
+            .power
+    }
+
     /// get a single choice proposal
     pub fn get_single_choice_proposal(
         &self,

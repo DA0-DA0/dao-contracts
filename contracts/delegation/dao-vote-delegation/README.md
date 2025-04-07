@@ -84,6 +84,7 @@ state. However, when querying information from the past, we need to match the
 delayed update behavior of voting power queries.
 
 More concretely:
+
 - when registering/unregistering a delegate, delegating/undelegating, or
   handling voting power change hooks, we need to access the account's latest
   voting power (by querying `latest_height + 1`), even if it was updated in the
@@ -102,3 +103,64 @@ More concretely:
   total unvoted delegated VP when they cast a vote, or when a vote cast hook is
   triggered for a delegator, we need to use historical queries that match the
   behavior of the voting module's voting power queries, i.e. delayed by 1 block.
+
+## Limitations
+
+### Voting Module Compatibility
+
+The delegation module expects the voting power module to realize voting power
+changes on the block following a change. In DAO DAO's voting power contracts,
+this is accomplished by using CosmWasm's `SnapshotMap` storage type.
+
+More concretely: staking tokens on block `n` will not reflect the change in
+voting power until block `n+1`. Querying voting power at height `n` will return
+the voting power as it was at the beginning of block `n`, before any
+transactions occurred, after any changes from `n-1`. Querying `n+1` is the first
+block where the voting power changes from `n` will be reflected.
+
+If custom voting power modules are used, the voting module must ensure that the
+1-block delay is respected, or else proposal vote tallies will be incorrect.
+
+### Voting Power Granularity
+
+Because voting power is floored when multiplying by delegation percentages, the
+granularity of delegation is restricted to the unit size used by the voting
+power module.
+
+For example, if a DAO is using the `cw4-group` voting power module—a
+multisig-like structure with static membership weights—and a member has a weight
+of `1`, then they can only delegate all their voting power to a single delegate.
+Delegating any less than 100% will be floored to 0 and effectively nullify the
+delegation. The DAO can remedy this by increasing the order of magnitude of
+voting power weights, giving members a weight of 1,000 (or more) instead of 1,
+for example.
+
+This is particularly problematic for NFT-based DAOs, since 1 NFT corresponds
+with 1 voting power unit: the number of NFTs a member has staked will determine
+how many delegations they can have and the percentages that can be used.
+
+For token-based DAOs, this isn't really an issue, since tokens usually have
+divisible units with a precision of at least 6 decimal places, meaning 1 token
+in a user's wallet is actually 1,000,000 token units.
+
+### Delegation Limits
+
+Because all math is done on-chain, the block gas limit configured by the chain
+determines the maximum number of delegations a user can have. When a delegator's
+voting power changes, or a delegator's vote overrides their delegates' votes on
+a proposal, the computation needed to update all the relevant state depends on
+the number of delegations. This is unavoidable, unless the computation were to
+be moved off-chain.
+
+### Delegates Cannot Delegate
+
+Delegates cannot delegate their voting power to other delegates. This is
+technically possible to implement, though it would be more complex and approach
+computation limits must faster, so it was not included in this first version.
+
+### Delegation Expiration Defined in Blocks
+
+Automatic delegation expiry must be configured in blocks because proposals
+freeze members' voting power at the block when the proposal was created, and
+historical queries don't have access to timestamps associated with past blocks
+(only the current one).

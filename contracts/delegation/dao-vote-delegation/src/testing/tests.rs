@@ -4,6 +4,7 @@ use cosmwasm_std::{
 };
 use cw_multi_test::{Contract, ContractWrapper};
 use cw_utils::Duration;
+use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg, vote::VoteHookMsg};
 use dao_interface::helpers::OptionalUpdate;
 use dao_testing::{ADDR0, ADDR1, ADDR2, ADDR3, ADDR4};
 
@@ -13,7 +14,8 @@ use crate::{
 };
 
 use super::suite::{
-    cw4::Cw4DaoVoteDelegationTestingSuite, token::TokenDaoVoteDelegationTestingSuite,
+    cw4::Cw4DaoVoteDelegationTestingSuite, cw721::Cw721DaoVoteDelegationTestingSuite,
+    token::TokenDaoVoteDelegationTestingSuite,
 };
 
 pub fn dao_vote_delegation_contract() -> Box<dyn Contract<Empty>> {
@@ -219,6 +221,161 @@ fn test_simple() {
     // delegate unregistered
     suite.assert_delegations_count(ADDR1, 1);
     suite.assert_active_delegations_count(ADDR1, 0);
+}
+
+#[test]
+fn test_voting_power_updates() {
+    // Create a token-based DAO for testing
+    let mut suite = TokenDaoVoteDelegationTestingSuite::new()
+        .with_delegation_validity_blocks(20) // Set a shorter expiration period for testing
+        .build();
+    let dao = suite.dao.clone();
+
+    // Register ADDR0 as a delegate
+    suite.register(ADDR0);
+
+    // Find the delegator's initial staked amount
+    let delegator = ADDR1;
+    let delegator_info = suite
+        .members
+        .iter()
+        .find(|m| m.address == delegator)
+        .expect("Delegator should exist in members");
+    let initial_staked = delegator_info.amount;
+
+    // Delegate 100% of ADDR1's voting power to ADDR0
+    let delegation_block = suite.block().height;
+    suite.delegate(delegator, ADDR0, Decimal::percent(100));
+
+    // Delegations take effect on the next block
+    suite.advance_block();
+
+    // Verify the initial delegation amount
+    suite.assert_delegate_total_delegated_vp(ADDR0, initial_staked);
+
+    // CASE 1: INCREASE voting power by minting and staking more tokens
+    let additional_stake = Uint128::from(500u128);
+    suite.mint_and_stake(delegator, additional_stake);
+    suite.advance_block();
+
+    // Verify the delegated voting power increases correctly
+    let expected_vp_after_increase = initial_staked + additional_stake;
+    suite.assert_delegate_total_delegated_vp(ADDR0, expected_vp_after_increase);
+
+    // CASE 2: DECREASE voting power by unstaking some tokens
+    let unstake_amount = Uint128::from(200u128);
+    suite.unstake(delegator, unstake_amount);
+    suite.advance_block();
+
+    // Verify the delegated voting power decreases correctly
+    let expected_vp_after_decrease = expected_vp_after_increase - unstake_amount;
+    suite.assert_delegate_total_delegated_vp(ADDR0, expected_vp_after_decrease);
+
+    // CASE 3: Verify with proposal creation that delegation is correctly applied
+    let (proposal_module, id, p) =
+        suite.propose_single_choice(&dao, ADDR0, "test voting power updates", vec![]);
+
+    // Verify delegate's effective voting power on the proposal
+    suite.assert_effective_udvp(
+        ADDR0,
+        &proposal_module,
+        id,
+        p.start_height,
+        expected_vp_after_decrease,
+    );
+
+    // CASE 4: INCREASE voting power again
+    let additional_stake_2 = Uint128::from(700u128);
+    suite.mint_and_stake(delegator, additional_stake_2);
+    suite.advance_block();
+
+    // Verify the delegated voting power increases correctly
+    let expected_vp_after_increase_2 = expected_vp_after_decrease + additional_stake_2;
+    suite.assert_delegate_total_delegated_vp(ADDR0, expected_vp_after_increase_2);
+
+    // Verify historical query still shows original voting power for earlier proposal
+    suite.assert_effective_udvp(
+        ADDR0,
+        &proposal_module,
+        id,
+        p.start_height,
+        expected_vp_after_decrease,
+    );
+
+    // Create a new proposal to check the updated voting power
+    let (proposal_module_2, id_2, p_2) =
+        suite.propose_single_choice(&dao, ADDR0, "test updated voting power", vec![]);
+
+    // Verify delegate's effective voting power on the new proposal
+    suite.assert_effective_udvp(
+        ADDR0,
+        proposal_module_2,
+        id_2,
+        p_2.start_height,
+        expected_vp_after_increase_2,
+    );
+
+    // CASE 5: Multiple operations test - unstake then stake in same block
+    let unstake_amount_3 = Uint128::from(300u128);
+    let stake_amount_3 = Uint128::from(100u128);
+
+    suite.unstake(delegator, unstake_amount_3);
+    suite.mint_and_stake(delegator, stake_amount_3);
+    suite.advance_block();
+
+    // Verify the delegated voting power is correctly updated after both operations
+    let expected_final_vp = expected_vp_after_increase_2 - unstake_amount_3 + stake_amount_3;
+
+    suite.assert_delegate_total_delegated_vp(ADDR0, expected_final_vp);
+
+    // CASE 6: Test automatic expiration
+    // Get original delegation expiration block
+    let expiry_height = delegation_block + 20; // Based on .with_delegation_validity_blocks(20)
+
+    // Advance to 1 block before expiration
+    let blocks_to_advance = expiry_height - suite.block().height - 1;
+    suite.advance_blocks(blocks_to_advance);
+
+    // Delegation should still be active
+    suite.assert_delegations_count(delegator, 1);
+    suite.assert_delegate_total_delegated_vp(ADDR0, expected_final_vp);
+
+    // Create a proposal just before expiration
+    let (proposal_module_3, id_3, p_3) =
+        suite.propose_single_choice(&dao, ADDR0, "test before expiration", vec![]);
+
+    // Verify delegate's effective voting power on this pre-expiration proposal
+    suite.assert_effective_udvp(
+        ADDR0,
+        &proposal_module_3,
+        id_3,
+        p_3.start_height,
+        expected_final_vp,
+    );
+
+    // Advance 1 more block so we hit expiration
+    suite.advance_block();
+
+    // Verify delegation is now expired
+    suite.assert_delegations_count(delegator, 0);
+    suite.assert_delegate_total_delegated_vp(ADDR0, 0u128);
+
+    // Create a proposal after expiration
+    let (proposal_module_4, id_4, p_4) =
+        suite.propose_single_choice(&dao, ADDR0, "test after expiration", vec![]);
+
+    // Verify delegate has no effective voting power on this post-expiration proposal
+    suite.assert_effective_udvp(ADDR0, proposal_module_4, id_4, p_4.start_height, 0u128);
+
+    // Verify that historical queries still show the correct voting power for proposals
+    // created before expiration
+    suite.assert_effective_udvp(
+        ADDR0,
+        proposal_module_3,
+        id_3,
+        p_3.start_height,
+        expected_final_vp,
+    );
 }
 
 #[test]
@@ -537,6 +694,115 @@ fn test_max_delegations() {
 }
 
 #[test]
+fn test_different_daos_delegations_query() {
+    let mut token_dao_suite = TokenDaoVoteDelegationTestingSuite::new().build();
+
+    let mut cw4_dao_suite = Cw4DaoVoteDelegationTestingSuite::new().build();
+
+    let mut cw721_dao_suite = Cw721DaoVoteDelegationTestingSuite::new().build();
+
+    let token_dao_block = token_dao_suite.block().height;
+    let cw4_dao_block = cw4_dao_suite.block().height;
+    let cw721_dao_block = cw721_dao_suite.block().height;
+
+    assert_eq!(token_dao_block, 1);
+    assert_eq!(cw4_dao_block, 1);
+    assert_eq!(cw721_dao_block, 1);
+
+    // register a delegate to all daos
+    cw4_dao_suite.register(ADDR0);
+    token_dao_suite.register(ADDR0);
+    cw721_dao_suite.register(ADDR0);
+
+    // have a member delegate to the delegate in all daos
+    cw4_dao_suite.delegate(ADDR1, ADDR0, Decimal::percent(100));
+    token_dao_suite.delegate(ADDR1, ADDR0, Decimal::percent(100));
+    cw721_dao_suite.delegate(ADDR1, ADDR0, Decimal::percent(100));
+
+    // skip some blocks
+    cw4_dao_suite.advance_blocks(2);
+    token_dao_suite.advance_blocks(2);
+    cw721_dao_suite.advance_blocks(2);
+
+    let cw4_delegations = cw4_dao_suite
+        .delegations(ADDR1.to_string(), Some(1), None, None)
+        .delegations;
+    let token_delegations = token_dao_suite
+        .delegations(ADDR1.to_string(), Some(1), None, None)
+        .delegations;
+    let cw721_delegations = cw721_dao_suite
+        .delegations(ADDR1.to_string(), Some(1), None, None)
+        .delegations;
+
+    assert!(cw4_delegations.is_empty());
+    assert!(token_delegations.is_empty());
+    assert!(cw721_delegations.is_empty());
+
+    let cw4_delegations = cw4_dao_suite
+        .delegations(ADDR1.to_string(), Some(2), None, None)
+        .delegations;
+    let token_delegations = token_dao_suite
+        .delegations(ADDR1.to_string(), Some(2), None, None)
+        .delegations;
+    let cw721_delegations = cw721_dao_suite
+        .delegations(ADDR1.to_string(), Some(2), None, None)
+        .delegations;
+
+    assert_eq!(cw4_delegations.len(), 1);
+    assert_eq!(token_delegations.len(), 1);
+    assert_eq!(cw721_delegations.len(), 1);
+}
+
+#[test]
+fn test_token_dao_update_expiration_period() {
+    let mut suite = TokenDaoVoteDelegationTestingSuite::new()
+        .with_delegation_validity_blocks(5)
+        .build();
+
+    // register a delegate
+    suite.register(ADDR0);
+
+    // delegate to ADDR0 at block 1, expiring at block 1 + 5 = 6
+    suite.delegate(ADDR3, ADDR0, Decimal::percent(100));
+
+    // block height: 2
+    suite.advance_block();
+    suite.assert_delegations_count(ADDR3, 1);
+
+    // block height: 3
+    suite.advance_block();
+    suite.assert_delegations_count(ADDR3, 1);
+
+    // at block 5 the delegation should still be valid
+    let block_5_delegations = suite.delegations(ADDR3, Some(5), None, None);
+    assert_eq!(block_5_delegations.delegations.len(), 1);
+
+    // at block 6 the delegation should be expired
+    let block_6_delegations = suite.delegations(ADDR3, Some(6), None, None);
+    assert_eq!(block_6_delegations.delegations.len(), 0);
+
+    // dao updates the config and shortens the delegation validity blocks to 2
+    suite.update_delegation_validity_blocks(Some(2));
+
+    // delegate to ADDR0 at block 3. subject to new delegation expiration cfg,
+    // this should expire at block 3 + 2 = 5
+    suite.delegate(ADDR3, ADDR0, Decimal::percent(100));
+
+    suite.assert_delegations_count(ADDR3, 1);
+
+    // advance to block 4, there should still be an active delegation
+    suite.advance_block();
+    suite.assert_delegations_count(ADDR3, 1);
+
+    // at blocks 5, 6... the delegation should be expired
+    suite.advance_block();
+    suite.assert_delegations_count(ADDR3, 0);
+
+    suite.advance_block();
+    suite.assert_delegations_count(ADDR3, 0);
+}
+
+#[test]
 fn test_update_hook_callers() {
     let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
     let dao = suite.dao.clone();
@@ -650,6 +916,17 @@ fn test_vote_with_override() {
         suite.members[0].weight + suite.members[1].weight + suite.members[2].weight / 2,
     );
 
+    // ensure ADDR0 delegate will lose all of ADDR1's 100% delegated voting
+    // power on this proposal if they override their vote
+    suite.assert_effective_udvp_reduction(
+        ADDR0,
+        &proposal_module,
+        id1,
+        p1.start_height,
+        suite.members[1].weight,
+        suite.members[1].weight,
+    );
+
     // ADDR1 overrides ADDR0's vote
     suite.vote_single_choice(&dao, ADDR1, id1, dao_voting::voting::Vote::No);
     // ADDR0's unvoted delegated voting power should no longer include ADDR1's
@@ -673,6 +950,17 @@ fn test_vote_with_override() {
         id1,
         dao_voting::voting::Vote::No,
         suite.members[1].weight,
+    );
+
+    // ensure ADDR3 delegate will lose all of ADDR4's 100% delegated voting
+    // power on this proposal if they override their vote
+    suite.assert_effective_udvp_reduction(
+        ADDR3,
+        &proposal_module,
+        id1,
+        p1.start_height,
+        suite.members[4].weight,
+        suite.members[4].weight,
     );
 
     // ADDR4 votes before their delegate ADDR3 does
@@ -700,6 +988,17 @@ fn test_vote_with_override() {
         suite.members[1].weight + suite.members[3].weight,
     );
 
+    // ensure ADDR0 delegate will lose all of ADDR2's 50% delegated voting power
+    // on this proposal if they override their vote
+    suite.assert_effective_udvp_reduction(
+        ADDR0,
+        &proposal_module,
+        id1,
+        p1.start_height,
+        suite.members[2].weight / 2,
+        suite.members[2].weight / 2,
+    );
+
     // ADDR2 overrides ADDR0's vote
     suite.vote_single_choice(&dao, ADDR2, id1, dao_voting::voting::Vote::Yes);
     // UDVP should now be zero for ADDR0 since all of their delegates overrode
@@ -712,6 +1011,198 @@ fn test_vote_with_override() {
         dao_voting::voting::Vote::Yes,
         suite.members[0].weight + suite.members[2].weight,
     );
+}
+
+#[test]
+fn test_vote_override_with_cap() {
+    let vp_cap_percent = Decimal::percent(20);
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new()
+        .with_vp_cap_percent(vp_cap_percent)
+        .build();
+    let dao = suite.dao.clone();
+
+    let delegation_cap = suite
+        .total_voting_power(&dao.core_addr)
+        .mul_floor(vp_cap_percent);
+
+    suite.register(ADDR2);
+
+    // delegate all of ADDR3's and ADDR0's voting power to ADDR2
+    suite.delegate(ADDR3, ADDR2, Decimal::percent(100));
+    suite.delegate(ADDR0, ADDR2, Decimal::percent(100));
+    suite.advance_block();
+
+    let total_udvp = suite.members[3].weight + suite.members[0].weight;
+
+    // propose a proposal
+    let (proposal_module, id1, p1) =
+        suite.propose_single_choice(&dao, ADDR2, "test proposal", vec![]);
+
+    // delegate casts vote with all their VP and delegator's VP capped at 20%
+    suite.vote_single_choice(&dao, ADDR2, id1, dao_voting::voting::Vote::Yes);
+    suite.assert_single_choice_votes_count(
+        &proposal_module,
+        id1,
+        dao_voting::voting::Vote::Yes,
+        Uint128::from(suite.members[2].weight) + delegation_cap,
+    );
+
+    // ADDR2 has 100% of ADDR3's and ADDR0's voting power
+    suite.assert_total_udvp(ADDR2, &proposal_module, id1, p1.start_height, total_udvp);
+    // but cap is less so effective UDVP is capped
+    assert!(delegation_cap < total_udvp.into());
+    suite.assert_effective_udvp(
+        ADDR2,
+        &proposal_module,
+        id1,
+        p1.start_height,
+        delegation_cap,
+    );
+
+    // if ADDR0 were to override the delegate's vote, the effective UDVP should
+    // stay the same, since it's capped below the total UDVP and ADDR0's voting
+    // power is only 1
+    suite.assert_effective_udvp_reduction(
+        ADDR2,
+        &proposal_module,
+        id1,
+        p1.start_height,
+        suite.members[0].weight,
+        0u128,
+    );
+
+    // if ADDR3 were to override the delegate's vote, the effective UDVP will
+    // reduce by part of ADDR3's VP since the cap is applied: the new effective
+    // UDVP is total UDVP minus ADDR3's VP, so the reduction is the difference
+    // between the cap (which is the current effective UDVP) and the new value
+    let new_effective_udvp = Uint128::from(total_udvp - suite.members[3].weight);
+    suite.assert_effective_udvp_reduction(
+        ADDR2,
+        &proposal_module,
+        id1,
+        p1.start_height,
+        suite.members[3].weight,
+        delegation_cap - new_effective_udvp,
+    );
+
+    // ADDR3 cast a vote, bringing the effective UDVP below the cap
+    suite.vote_single_choice(&dao, ADDR3, id1, dao_voting::voting::Vote::No);
+    // effective UDVP should be reduced by the full amount of ADDR3's VP
+    suite.assert_effective_udvp(
+        ADDR2,
+        &proposal_module,
+        id1,
+        p1.start_height,
+        new_effective_udvp,
+    );
+    // since effective UDVP is below the cap, it should match the total UDVP
+    suite.assert_total_udvp(
+        ADDR2,
+        &proposal_module,
+        id1,
+        p1.start_height,
+        new_effective_udvp,
+    );
+
+    // since ADDR3 voted and reduced ADDR2's effective UDVP, the vote counts
+    // should reflect that. YES should have ADDR2's individual VP and new
+    // effective UDVP after the ADDR3 reduction, and NO should have ADDR3's VP
+    suite.assert_single_choice_votes_count(
+        &proposal_module,
+        id1,
+        dao_voting::voting::Vote::Yes,
+        Uint128::from(suite.members[2].weight) + new_effective_udvp,
+    );
+    suite.assert_single_choice_votes_count(
+        &proposal_module,
+        id1,
+        dao_voting::voting::Vote::No,
+        suite.members[3].weight,
+    );
+
+    // now if ADDR0 were to override the delegate's vote, the effective UDVP
+    // should be reduced by the full amount of ADDR0's VP since the effective
+    // UDVP is already below the cap
+    suite.assert_effective_udvp_reduction(
+        ADDR2,
+        &proposal_module,
+        id1,
+        p1.start_height,
+        suite.members[0].weight,
+        suite.members[0].weight,
+    );
+
+    // ADDR0 votes yes in agreement with the delegate's vote
+    suite.vote_single_choice(&dao, ADDR0, id1, dao_voting::voting::Vote::Yes);
+    // UDVP should be reduced entirely to 0 since both delegators voted
+    suite.assert_effective_udvp(ADDR2, &proposal_module, id1, p1.start_height, 0u128);
+    suite.assert_total_udvp(ADDR2, &proposal_module, id1, p1.start_height, 0u128);
+    // vote counts should not change since the delegator's vote matched the
+    // delegate's vote
+    assert_eq!(new_effective_udvp, Uint128::from(suite.members[0].weight));
+    suite.assert_single_choice_votes_count(
+        &proposal_module,
+        id1,
+        dao_voting::voting::Vote::Yes,
+        suite.members[2].weight + suite.members[0].weight,
+    );
+    suite.assert_single_choice_votes_count(
+        &proposal_module,
+        id1,
+        dao_voting::voting::Vote::No,
+        suite.members[3].weight,
+    );
+}
+
+#[test]
+fn test_cw721_hook_handling() {
+    let mut suite = Cw721DaoVoteDelegationTestingSuite::new().build();
+    let dao = suite.dao.clone();
+
+    let tid_3 = suite.members[3].token_id.to_string();
+
+    // register ADDR0 as delegate
+    suite.register(ADDR0);
+
+    // addr3 and addr4 delegate to addr0
+    suite.delegate(ADDR3, ADDR0, Decimal::percent(100));
+    suite.delegate(ADDR4, ADDR0, Decimal::percent(100));
+
+    suite.advance_block();
+
+    // first prop
+    let (proposal_module, id1, p1) =
+        suite.propose_single_choice(&dao, ADDR3, "test proposal", vec![]);
+
+    suite.assert_effective_udvp(ADDR0, proposal_module, id1, p1.start_height, 2u128);
+
+    // addr3 decides to unstake their cw721, which should decrease the effective
+    // udvp of addr0
+    suite.unstake(ADDR3, &tid_3);
+
+    suite.advance_block();
+    suite.advance_block();
+
+    // second prop
+    let (proposal_module, id2, p2) =
+        suite.propose_single_choice(&dao, ADDR0, "test proposal 2", vec![]);
+
+    // assert that addr0's effective udvp is now 1
+    suite.assert_effective_udvp(ADDR0, proposal_module, id2, p2.start_height, 1u128);
+
+    // addr3 stakes again, having not undelegated their voting power from addr0.
+    // this should increase the effective udvp of addr0.
+    suite.stake(ADDR3, &tid_3);
+
+    suite.advance_block();
+    suite.advance_block();
+
+    // propose a proposal
+    let (proposal_module, id3, p3) =
+        suite.propose_single_choice(&dao, ADDR0, "test proposal 3", vec![]);
+
+    // assert that addr3's stake is now reflected in addr0's effective udvp again
+    suite.assert_effective_udvp(ADDR0, proposal_module, id3, p3.start_height, 2u128);
 }
 
 #[test]
@@ -1044,6 +1535,77 @@ fn test_unauthorized_update_voting_power_hook_callers() {
             add: None,
             remove: None,
         },
+        &[],
+    );
+}
+
+#[test]
+#[should_panic(expected = "unauthorized hook caller")]
+fn test_unauthorized_stake_changed_hook_caller() {
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
+    let delegation_addr = suite.delegation_addr.clone();
+
+    suite.execute_smart_ok(
+        "not_registered_hook_caller",
+        &delegation_addr,
+        &crate::msg::ExecuteMsg::StakeChangeHook(StakeChangedHookMsg::Stake {
+            addr: Addr::unchecked("not_registered_hook_caller"),
+            amount: Uint128::one(),
+        }),
+        &[],
+    );
+}
+
+#[test]
+#[should_panic(expected = "unauthorized hook caller")]
+fn test_unauthorized_membership_changed_hook_caller() {
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
+    let delegation_addr = suite.delegation_addr.clone();
+
+    suite.execute_smart_ok(
+        "not_registered_hook_caller",
+        &delegation_addr,
+        &crate::msg::ExecuteMsg::MemberChangedHook(cw4::MemberChangedHookMsg { diffs: vec![] }),
+        &[],
+    );
+}
+
+#[test]
+#[should_panic(expected = "unauthorized hook caller")]
+fn test_cw721_stake_changed_hook_authorizes() {
+    let mut suite = Cw721DaoVoteDelegationTestingSuite::new().build();
+    let dao = suite.dao.clone();
+    let delegation_addr = suite.delegation_addr.clone();
+
+    suite.execute_smart_ok(
+        ADDR1,
+        delegation_addr,
+        &crate::msg::ExecuteMsg::NftStakeChangeHook(NftStakeChangedHookMsg::Stake {
+            addr: Addr::unchecked(ADDR3),
+            token_id: dao.x.cw721_addr.to_string(),
+        }),
+        &[],
+    );
+}
+
+#[test]
+#[should_panic(expected = "unauthorized hook caller")]
+fn test_unauthorized_execute_vote_hook_caller() {
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
+    let delegation_addr = suite.delegation_addr.clone();
+
+    suite.execute_smart_ok(
+        "not_registered_hook_caller",
+        &delegation_addr,
+        &crate::msg::ExecuteMsg::VoteHook(VoteHookMsg::NewVote {
+            proposal_id: 1,
+            voter: "voter".to_string(),
+            vote: "vote".to_string(),
+            power: Uint128::one(),
+            individual_power: Uint128::one(),
+            height: 1,
+            is_first_vote: false,
+        }),
         &[],
     );
 }
@@ -1492,8 +2054,7 @@ fn test_gas_limits() {
         Uint128::from(initial_staked)
             .mul_floor(percent_delegated)
             // add personal voting power
-            .checked_add(Uint128::from(initial_staked))
-            .unwrap()
+            .strict_add(Uint128::from(initial_staked))
             // multiply by number of delegates
             .checked_mul(Uint128::from(delegates))
             .unwrap(),

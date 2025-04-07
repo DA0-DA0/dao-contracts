@@ -1,16 +1,14 @@
-use cosmwasm_std::{Addr, DepsMut, Env, Response};
+use cosmwasm_std::{Addr, DepsMut, Env, Response, Uint128};
 use cw4::MemberChangedHookMsg;
 use cw_snapshot_vector_map::LoadedItem;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg, vote::VoteHookMsg};
 use dao_voting::delegation::calculate_delegated_vp;
+use std::cmp::Ordering;
 
 use crate::{
-    helpers::{
-        add_delegated_vp, get_udvp, get_voting_power, is_delegate_registered, remove_delegated_vp,
-        unregister_delegate,
-    },
+    helpers::{get_udvp, is_delegate_registered, unregister_delegate},
     state::{
-        Delegation, CONFIG, DELEGATIONS, PROPOSAL_HOOK_CALLERS, UNVOTED_DELEGATED_VP,
+        Delegation, DAO, DELEGATED_VP, DELEGATIONS, PROPOSAL_HOOK_CALLERS, UNVOTED_DELEGATED_VP,
         VOTING_POWER_HOOK_CALLERS,
     },
     ContractError,
@@ -28,11 +26,11 @@ pub(crate) fn execute_stake_changed(
     }
 
     match msg {
-        StakeChangedHookMsg::Stake { addr, .. } => {
-            handle_voting_power_changed_hook(deps, &env, addr)
+        StakeChangedHookMsg::Stake { addr, amount } => {
+            handle_voting_power_changed_hook(deps, &env, addr, amount, true)
         }
-        StakeChangedHookMsg::Unstake { addr, .. } => {
-            handle_voting_power_changed_hook(deps, &env, addr)
+        StakeChangedHookMsg::Unstake { addr, amount } => {
+            handle_voting_power_changed_hook(deps, &env, addr, amount, false)
         }
     }
 }
@@ -51,7 +49,19 @@ pub(crate) fn execute_membership_changed(
     // Get the members whose voting power changed and update their voting power.
     for member in msg.diffs {
         let addr = deps.api.addr_validate(&member.key)?;
-        handle_voting_power_changed_hook(deps.branch(), &env, addr)?;
+
+        // old is None when adding a new member
+        let old = member.old.unwrap_or_default();
+        // new is None when removing a member
+        let new = member.new.unwrap_or_default();
+        // compute the delta and whether the voting power increased or decreased
+        let (vp_delta, increased) = if new > old {
+            (new - old, true)
+        } else {
+            (old - new, false)
+        };
+
+        handle_voting_power_changed_hook(deps.branch(), &env, addr, vp_delta, increased)?;
     }
 
     Ok(Response::new().add_attribute("action", "voting_power_change_hook"))
@@ -70,101 +80,205 @@ pub(crate) fn execute_nft_stake_changed(
 
     match msg {
         NftStakeChangedHookMsg::Stake { addr, .. } => {
-            handle_voting_power_changed_hook(deps, &env, addr)
+            // NFTs are staked one at a time
+            handle_voting_power_changed_hook(deps, &env, addr, Uint128::one(), true)
         }
-        NftStakeChangedHookMsg::Unstake { addr, .. } => {
-            handle_voting_power_changed_hook(deps, &env, addr)
+        NftStakeChangedHookMsg::Unstake { addr, token_ids } => {
+            // more than one NFT can be unstaked at once
+            handle_voting_power_changed_hook(deps, &env, addr, token_ids.len() as u128, false)
         }
     }
 }
 
 /// Perform necessary updates when a member's voting power changes.
-///
-/// For delegators:
-/// - update their delegated VP for each delegate
-/// - update each delegate's total delegated VP
-///
-/// For delegates:
-/// - unregister them if they have no voting power
-/// - TODO: re-register them if previously registered but had no voting power???
-pub(crate) fn handle_voting_power_changed_hook(
+fn handle_voting_power_changed_hook(
     deps: DepsMut,
     env: &Env,
     addr: Addr,
+    vp_delta: impl Into<Uint128>,
+    increased: bool,
 ) -> Result<Response, ContractError> {
-    let old_vp = get_voting_power(deps.as_ref(), &addr, env.block.height)?;
-    let new_vp = get_voting_power(
+    let dao = DAO.load(deps.storage)?;
+
+    let new_vp = dao_voting::voting::get_voting_power(
         deps.as_ref(),
-        &addr,
+        addr.clone(),
+        &dao,
         // use next block height since voting power takes effect at the start of
         // the next block. since the member changed their voting power in the
         // current block, we need to use the new value.
-        env.block.height + 1,
+        Some(env.block.height + 1),
     )?;
 
-    // check latest state instead of historical height, since we need access to
+    // depending on whether the voting power hook was fired for a delegate or
+    // delegator, we need to handle the voting power change differently. check
+    // latest state instead of historical height, since we need access to
     // immediate updates made earlier in the same block
     if is_delegate_registered(deps.as_ref(), &addr, None)? {
-        let delegate = addr;
-
-        // unregister if no more voting power
-        if new_vp.is_zero() {
-            unregister_delegate(deps, &delegate, env.block.height)?;
-        }
+        handle_delegate_voting_power_changed_hook(deps, env, addr, new_vp)
+    } else {
+        // if not a delegate, check if they have any delegations, and update
+        // delegate VPs accordingly
+        handle_delegator_voting_power_changed_hook(
+            deps,
+            env,
+            addr,
+            new_vp,
+            vp_delta.into(),
+            increased,
+        )
     }
-    // if not a delegate, check if they have any delegations, and update
-    // delegate VPs accordingly
-    else {
-        let delegator = addr;
-
-        // need to get the latest delegations in case any were updated earlier
-        // in the same block
-        let delegations =
-            DELEGATIONS.load_all_latest(deps.storage, &delegator, env.block.height)?;
-
-        let config = CONFIG.load(deps.storage)?;
-
-        for LoadedItem {
-            item: Delegation { delegate, percent },
-            expiration,
-            ..
-        } in delegations
-        {
-            // remove the latest delegated VP from the delegate's total and
-            // replace it with the new delegated VP
-
-            // remove original delegated VP if nonzero
-            let current_delegated_vp = calculate_delegated_vp(old_vp, percent);
-            if !current_delegated_vp.is_zero() {
-                remove_delegated_vp(
-                    deps.storage,
-                    env,
-                    &delegate,
-                    current_delegated_vp,
-                    expiration,
-                )?;
-            }
-
-            // add new delegated VP if nonzero
-            let new_delegated_vp = calculate_delegated_vp(new_vp, percent);
-            if !new_delegated_vp.is_zero() {
-                add_delegated_vp(
-                    deps.storage,
-                    env,
-                    &delegate,
-                    new_delegated_vp,
-                    config.delegation_validity_blocks,
-                )?;
-            }
-        }
-    }
-
-    Ok(Response::new().add_attribute("action", "voting_power_change_hook"))
 }
 
+/// handles the delegate voting power changed hook by unregistering the delegate
+/// if they no longer have any voting power.
+fn handle_delegate_voting_power_changed_hook(
+    deps: DepsMut,
+    env: &Env,
+    delegate: Addr,
+    new_vp: Uint128,
+) -> Result<Response, ContractError> {
+    // unregister if no more voting power
+    if new_vp.is_zero() {
+        unregister_delegate(deps, &delegate, env.block.height)?;
+    }
+
+    Ok(Response::new()
+        .add_attribute("action", "voting_power_change_hook")
+        .add_attribute("member_type", "delegate"))
+}
+
+/// handles the delegator voting power changed hook by updating their delegated
+/// VP for each delegate they are delegating to and each delegate's total
+/// delegated VP.
+fn handle_delegator_voting_power_changed_hook(
+    deps: DepsMut,
+    env: &Env,
+    delegator: Addr,
+    new_vp: Uint128,
+    vp_delta: Uint128,
+    increased: bool,
+) -> Result<Response, ContractError> {
+    // need to get the latest delegations in case any were updated earlier in
+    // the same block
+    let delegations = DELEGATIONS.load_all_latest(deps.storage, &delegator, env.block.height)?;
+
+    // compute old VP based on the new VP and the delta, since multiple voting
+    // power changes can occur in the same block and we can't reliably access
+    // the previous VP without storing intermediate state (which would require
+    // storing every single voting power change and never clearing them). we can
+    // only query voting power at the beginning of the current block (before any
+    // changes) or at the end of the current block/beginning of the next block
+    // thus far (i.e. the new voting power after this most recent change).
+    // however, what we really want is the voting power change between the
+    // previous update, which may or may not have been an earlier transaction in
+    // this same block, and this current update. thus, we use the delta from the
+    // current update and the final voting power after all changes thus far have
+    // been processed to compute the previously updated VP.
+    //
+    // also, we need the actual raw VPs instead of just the delta to ensure that
+    // rounding behavior remains consistent. everywhere delegated VP is
+    // calculated, the percent delegated is multiplied by the delegator's VP and
+    // floored to the nearest integer. thus, we need to calculate the floored
+    // delegated VP before and after and then find the delta, instead of finding
+    // the delta and applying the floor, since the floor of the delta may not
+    // match the difference between the floored VPs. we care about the delta
+    // between the floored VPs.
+    let old_vp = if increased {
+        new_vp.checked_sub(vp_delta)?
+    } else {
+        new_vp.checked_add(vp_delta)?
+    };
+
+    for LoadedItem {
+        item: Delegation { delegate, percent },
+        expiration,
+        ..
+    } in delegations
+    {
+        // if this delegation expires on the next block, do nothing since this
+        // update won't take effect until the next block anyway.
+        if expiration == Some(env.block.height + 1) {
+            continue;
+        }
+
+        // for each delegation, we first find the current delegated VP and the
+        // new delegated VP
+        let current_delegated_vp = calculate_delegated_vp(old_vp, percent);
+        let new_delegated_vp = calculate_delegated_vp(new_vp, percent);
+
+        // update the next block's delegated VP for the delegate and perform the
+        // reverse on the expiration block if necessary.
+        match new_delegated_vp.cmp(&current_delegated_vp) {
+            Ordering::Less => {
+                let delta = current_delegated_vp - new_delegated_vp;
+
+                // perform the inverse of the change on the expiration block. do
+                // this increment before the decrement to avoid underflow.
+                if let Some(expiration) = expiration {
+                    DELEGATED_VP.increment(deps.storage, delegate.clone(), expiration, delta)?;
+                }
+
+                // if the new delegated VP is less than the current delegated
+                // VP, we decrement the delegated VP by the delta.
+                DELEGATED_VP.decrement(
+                    deps.storage,
+                    delegate.clone(),
+                    // update at next block height to match 1-block delay
+                    // behavior of voting power queries and delegation changes.
+                    // this matches the behavior of creating a new delegation,
+                    // which also starts on the following block. if future
+                    // delegations/undelegations/voting power changes occur in
+                    // this block, they will also load the state of the next
+                    // block and update the total that will be reflected in
+                    // historical queries starting from the next block.
+                    env.block.height + 1,
+                    delta,
+                )?;
+            }
+            Ordering::Equal => {
+                // for cases where current delegated VP is equal to new
+                // delegated VP, we don't need to do anything.
+            }
+            Ordering::Greater => {
+                let delta = new_delegated_vp - current_delegated_vp;
+
+                // if the new delegated VP is greater than the current delegated
+                // VP, we increment the delegated VP by the delta.
+                DELEGATED_VP.increment(
+                    deps.storage,
+                    delegate.clone(),
+                    // update at next block height to match 1-block delay
+                    // behavior of voting power queries and delegation changes.
+                    // this matches the behavior of creating a new delegation,
+                    // which also starts on the following block. if future
+                    // delegations/undelegations/voting power changes occur in
+                    // this block, they will also load the state of the next
+                    // block and update the total that will be reflected in
+                    // historical queries starting from the next block.
+                    env.block.height + 1,
+                    delta,
+                )?;
+
+                // perform the inverse of the change on the expiration block. do
+                // this decrement after the increment to avoid underflow.
+                if let Some(expiration) = expiration {
+                    DELEGATED_VP.decrement(deps.storage, delegate.clone(), expiration, delta)?;
+                }
+            }
+        }
+    }
+
+    Ok(Response::new()
+        .add_attribute("action", "voting_power_change_hook")
+        .add_attribute("member_type", "delegator"))
+}
+
+// if first vote by a delegator, update the unvoted delegated VP for their
+// delegates, if any, by subtracting this member's delegated VP. if not first
+// vote, this has already been done.
 pub fn execute_vote_hook(
     deps: DepsMut,
-    env: Env,
     proposal_module: Addr,
     vote_hook: VoteHookMsg,
 ) -> Result<Response, ContractError> {
@@ -182,41 +296,47 @@ pub fn execute_vote_hook(
             is_first_vote,
             ..
         } => {
-            // if first vote, update the unvoted delegated VP for their
-            // delegates by subtracting this member's delegated VP. if not first
-            // vote, this has already been done.
-            if is_first_vote {
-                let delegator = deps.api.addr_validate(&voter)?;
-                let delegates = DELEGATIONS.load_all(deps.storage, &delegator, env.block.height)?;
-                for LoadedItem {
-                    item: Delegation { delegate, percent },
-                    ..
-                } in delegates
-                {
-                    let udvp = get_udvp(
-                        deps.as_ref(),
-                        &delegate,
-                        &proposal_module,
-                        proposal_id,
-                        height,
-                    )?;
+            // if not first vote, this has already been done.
+            if !is_first_vote {
+                return Ok(Response::new()
+                    .add_attribute("action", "vote_hook")
+                    .add_attribute("is_first_vote", "false"));
+            }
 
-                    let delegated_vp = calculate_delegated_vp(power, percent);
+            // update voting power for all delegates, if any. if this voter is a
+            // delegate themself, there will simply be no delegations.
+            let delegator = deps.api.addr_validate(&voter)?;
+            let delegations = DELEGATIONS.load_all(deps.storage, &delegator, height)?;
+            for LoadedItem {
+                item: Delegation { delegate, percent },
+                ..
+            } in delegations
+            {
+                let udvp = get_udvp(
+                    deps.as_ref(),
+                    &delegate,
+                    &proposal_module,
+                    proposal_id,
+                    height,
+                )?;
 
-                    // remove the delegator's delegated VP from the delegate's
-                    // unvoted delegated VP for this proposal since this
-                    // delegator just voted.
-                    let new_udvp = udvp.checked_sub(delegated_vp)?;
+                let delegated_vp = calculate_delegated_vp(power, percent);
 
-                    UNVOTED_DELEGATED_VP.save(
-                        deps.storage,
-                        (&delegate, &proposal_module, proposal_id),
-                        &new_udvp,
-                    )?;
-                }
+                // remove the delegator's delegated VP from the delegate's
+                // unvoted delegated VP for this proposal since this
+                // delegator just voted.
+                let new_udvp = udvp.checked_sub(delegated_vp)?;
+
+                UNVOTED_DELEGATED_VP.save(
+                    deps.storage,
+                    (&delegate, &proposal_module, proposal_id),
+                    &new_udvp,
+                )?;
             }
         }
     }
 
-    Ok(Response::new().add_attribute("action", "vote_hook"))
+    Ok(Response::new()
+        .add_attribute("action", "vote_hook")
+        .add_attribute("is_first_vote", "true"))
 }
