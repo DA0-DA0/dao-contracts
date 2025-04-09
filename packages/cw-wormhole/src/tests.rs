@@ -1,4 +1,4 @@
-use cosmwasm_std::{testing::mock_dependencies, Uint128};
+use cosmwasm_std::{testing::mock_dependencies, Order, Uint128};
 
 use crate::Wormhole;
 
@@ -108,4 +108,82 @@ fn test_dangerous_update() {
     // values.
     let v = w.load(storage, (), 4).unwrap().unwrap();
     assert_eq!(v, 10);
+}
+
+/// Ensures redundant updates are removed by simulating a series of delegation
+/// updates with auto-expiry in the future.
+#[test]
+fn test_redundant_updates_are_removed() {
+    let storage = &mut mock_dependencies().storage;
+    let w: Wormhole<(), u32> = Wormhole::new("ns");
+
+    // Delegation expiry = 10
+    //
+    // Delegation updates:
+    // - at block 0: +5 -> 5
+    // - at block 2: +2 -> 7
+    // - at block 5: -4 -> 3
+    //
+    // Each update undoes the previous auto-expiration, resetting the expiry.
+    // Redundant values should be removed, meaning that by the end, the
+    // underlying map should only have values at blocks 0, 2, 5, and 15. The
+    // expiration blocks 10 and 12 that were reversed should be removed.
+
+    // (0) -> +5 -> 5
+    w.increment(storage, (), 0, 5).unwrap();
+    assert_eq!(w.load(storage, (), 0).unwrap(), Some(5));
+    // (10) -> -5 -> 0
+    w.decrement(storage, (), 10, 5).unwrap();
+    assert_eq!(w.load(storage, (), 10).unwrap(), Some(0));
+
+    // (10) -> +5 -> 5
+    w.increment(storage, (), 10, 5).unwrap();
+    assert_eq!(w.load(storage, (), 10).unwrap(), Some(5));
+    // (2) -> +2 -> 7
+    // (10) -> 7
+    w.increment(storage, (), 2, 2).unwrap();
+    assert_eq!(w.load(storage, (), 2).unwrap(), Some(7));
+    assert_eq!(w.load(storage, (), 10).unwrap(), Some(7));
+    // (12) -> -7 -> 0
+    w.decrement(storage, (), 12, 7).unwrap();
+    assert_eq!(w.load(storage, (), 12).unwrap(), Some(0));
+
+    // (12) -> +7 -> 7
+    w.increment(storage, (), 12, 7).unwrap();
+    assert_eq!(w.load(storage, (), 12).unwrap(), Some(7));
+    // (5) -> -4 -> 3
+    // (10) -> 3
+    // (12) -> 3
+    w.decrement(storage, (), 5, 4).unwrap();
+    assert_eq!(w.load(storage, (), 5).unwrap(), Some(3));
+    assert_eq!(w.load(storage, (), 10).unwrap(), Some(3));
+    assert_eq!(w.load(storage, (), 12).unwrap(), Some(3));
+    // (15) -> -3 -> 0
+    w.decrement(storage, (), 15, 3).unwrap();
+    assert_eq!(w.load(storage, (), 15).unwrap(), Some(0));
+
+    // Final state:
+    // (0) -> 5
+    // (2) -> 7
+    // (5) -> 3
+    // (10) -> 3
+    // (12) -> 3
+    // (15) -> 0
+    assert_eq!(w.load(storage, (), 0).unwrap(), Some(5));
+    assert_eq!(w.load(storage, (), 2).unwrap(), Some(7));
+    assert_eq!(w.load(storage, (), 5).unwrap(), Some(3));
+    assert_eq!(w.load(storage, (), 10).unwrap(), Some(3));
+    assert_eq!(w.load(storage, (), 12).unwrap(), Some(3));
+    assert_eq!(w.load(storage, (), 15).unwrap(), Some(0));
+
+    // Access underlying map to verify that only 0, 2, 5, and 15 are set.
+    let mut iter = w
+        .snapshots()
+        .prefix(())
+        .range(storage, None, None, Order::Ascending);
+    assert_eq!(iter.next().unwrap().unwrap(), (0, 5));
+    assert_eq!(iter.next().unwrap().unwrap(), (2, 7));
+    assert_eq!(iter.next().unwrap().unwrap(), (5, 3));
+    assert_eq!(iter.next().unwrap().unwrap(), (15, 0));
+    assert_eq!(iter.next(), None);
 }
