@@ -40,7 +40,6 @@ For proposal modules, the corresponding hook is `add_vote_hook`:
 
 - `dao-proposal-single`
 - `dao-proposal-multiple`
-- `dao-proposal-condorcet`
 
 ## Design Decisions
 
@@ -160,7 +159,7 @@ be moved off-chain.
 
 Delegates cannot delegate their voting power to other delegates. This is
 technically possible to implement, though it would be more complex and approach
-computation limits must faster, so it was not included in this first version.
+computation limits much faster, so it was not included in this first version.
 
 ### Delegation Expiration Defined in Blocks
 
