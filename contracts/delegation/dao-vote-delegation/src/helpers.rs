@@ -198,8 +198,6 @@ pub fn validate_delegation(
     delegate: &Addr,
     new_percent: Decimal,
 ) -> Result<Uint128, ContractError> {
-    ensure_setup(deps)?;
-
     if new_percent <= Decimal::zero() || new_percent > Decimal::one() {
         return Err(ContractError::InvalidVotingPowerPercent {});
     }

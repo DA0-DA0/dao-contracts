@@ -202,6 +202,7 @@ fn execute_delegate(
     new_percent: Decimal,
 ) -> Result<Response, ContractError> {
     // validations
+    ensure_setup(deps.as_ref())?;
     let delegate = deps.api.addr_validate(&delegate)?;
     let vp = validate_delegation(deps.as_ref(), &env, &delegator, &delegate, new_percent)?;
 
