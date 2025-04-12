@@ -19,9 +19,9 @@ use dao_voting::voting;
 use semver::Version;
 
 use crate::helpers::{
-    add_delegated_vp, ensure_max_delegations_not_reached, ensure_setup, get_udvp, get_voting_power,
-    is_delegate_registered, remove_delegated_vp_if_not_expired, unregister_delegate,
-    update_delegated_vp_expiration,
+    add_delegated_vp, ensure_setup, get_udvp, get_voting_power, handle_new_delegation,
+    handle_redelegation, is_delegate_registered, remove_delegated_vp_if_not_expired,
+    unregister_delegate, validate_and_update_percent_delegated, validate_delegation,
 };
 use crate::hooks::{
     execute_membership_changed, execute_nft_stake_changed, execute_stake_changed, execute_vote_hook,
@@ -31,9 +31,8 @@ use crate::msg::{
     MigrateMsg, QueryMsg,
 };
 use crate::state::{
-    Config, Delegate, Delegation, CONFIG, DAO, DELEGATED_VP, DELEGATES, DELEGATIONS,
-    DELEGATION_ENTRIES, PERCENT_DELEGATED, PROPOSAL_HOOK_CALLERS, VOTING_POWER_HOOK_CALLERS,
-    VP_CAP_PERCENT,
+    Config, Delegate, CONFIG, DAO, DELEGATED_VP, DELEGATES, DELEGATIONS, DELEGATION_ENTRIES,
+    PERCENT_DELEGATED, PROPOSAL_HOOK_CALLERS, VOTING_POWER_HOOK_CALLERS, VP_CAP_PERCENT,
 };
 use crate::ContractError;
 
@@ -196,43 +195,17 @@ fn execute_unregister(deps: DepsMut, env: Env, delegate: Addr) -> Result<Respons
 }
 
 fn execute_delegate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     delegator: Addr,
     delegate: String,
     new_percent: Decimal,
 ) -> Result<Response, ContractError> {
-    ensure_setup(deps.as_ref())?;
-
-    if new_percent <= Decimal::zero() || new_percent > Decimal::one() {
-        return Err(ContractError::InvalidVotingPowerPercent {});
-    }
-
+    // validations
     let delegate = deps.api.addr_validate(&delegate)?;
+    let vp = validate_delegation(deps.as_ref(), &env, &delegator, &delegate, new_percent)?;
 
-    // delegates cannot delegate to others
-    if is_delegate_registered(deps.as_ref(), &delegator, None)? {
-        return Err(ContractError::DelegatesCannotDelegate {});
-    }
-
-    // ensure delegate is registered
-    if !is_delegate_registered(deps.as_ref(), &delegate, None)? {
-        return Err(ContractError::DelegateNotRegistered {});
-    }
-
-    // ensure delegator has voting power in the DAO
-    let vp = get_voting_power(
-        deps.as_ref(),
-        &delegator,
-        // use next block height since voting power takes effect at the start of
-        // the next block. if the delegator changed their voting power in the
-        // current block, we need to use the new value.
-        env.block.height + 1,
-    )?;
-    if vp.is_zero() {
-        return Err(ContractError::NoVotingPower {});
-    }
-
+    // load state
     let config = CONFIG.load(deps.storage)?;
     let current_percent_delegated = PERCENT_DELEGATED
         .may_load(deps.storage, &delegator)?
@@ -243,120 +216,44 @@ fn execute_delegate(
     // update an existing delegation, returning the new total percent delegated,
     // the new entry, and whether or not delegated VP changed (if not, just the
     // expiration was updated).
-    let (new_total_percent, new_entry, delegated_vp_changed) = if let Some((id, expiration)) =
-        existing_delegation_entry
-    {
-        let current_percent = DELEGATIONS.load_item(deps.storage, &delegator, id)?.percent;
-        let expired = expiration.is_some_and(|exp| exp <= env.block.height);
-
-        // if delegation is not expired and percent is the same, just extend the
-        // expiration based on the current config.
-        if !expired && current_percent == new_percent {
-            // if both expirations are none, do nothing.
-            if expiration.is_none() && config.delegation_validity_blocks.is_none() {
-                (current_percent_delegated, (id, expiration), false)
-            } else {
-                let new_expiration = DELEGATIONS.update_expiration(
-                    deps.storage,
-                    &delegator,
-                    id,
-                    env.block.height,
-                    config.delegation_validity_blocks,
-                )?;
-
-                update_delegated_vp_expiration(
-                    deps.storage,
-                    &env,
-                    &delegate,
-                    vp,
-                    expiration,
-                    new_expiration,
-                )?;
-
-                (current_percent_delegated, (id, new_expiration), false)
-            }
-        } else {
-            // remove existing percent and replace with new percent
-            let new_total = current_percent_delegated
-                .checked_sub(current_percent)?
-                .checked_add(new_percent)?;
-
-            if !expired {
-                // remove current delegated VP based on existing percent
-                let old_vp = calculate_delegated_vp(vp, current_percent);
-                remove_delegated_vp_if_not_expired(
-                    deps.storage,
-                    &env,
-                    &delegate,
-                    old_vp,
-                    expiration,
-                )?;
-            }
-
-            // update the delegation entry
-            let (entry, total_count) = DELEGATIONS.update(
-                deps.storage,
+    let (new_total_percent, new_entry, delegated_vp_changed) =
+        if let Some(existing_delegation_entry) = existing_delegation_entry {
+            handle_redelegation(
+                deps.branch(),
+                &env,
                 &delegator,
-                id,
-                env.block.height,
-                |d| {
-                    d.percent = new_percent;
-                },
-                config.delegation_validity_blocks,
-            )?;
-
-            // don't let them update if they are over the max, instead requiring
-            // them to remove existing delegations before updating any
-            ensure_max_delegations_not_reached(config.max_delegations, total_count, total_count)?;
-
-            (new_total, entry, true)
+                &delegate,
+                new_percent,
+                &config,
+                current_percent_delegated,
+                vp,
+                existing_delegation_entry,
+            )?
         }
-    }
-    // create a new delegation
-    else {
-        let new_total = current_percent_delegated.checked_add(new_percent)?;
-
-        // add new delegation
-        let (entry, total_count) = DELEGATIONS.push(
-            deps.storage,
-            &delegator,
-            &Delegation {
-                delegate: delegate.clone(),
-                percent: new_percent,
-            },
-            env.block.height,
-            config.delegation_validity_blocks,
-        )?;
-
-        // prevent new delegations if they are over the max
-        ensure_max_delegations_not_reached(config.max_delegations, total_count - 1, total_count)?;
-
-        (new_total, entry, true)
-    };
+        // create a new delegation
+        else {
+            handle_new_delegation(
+                deps.branch(),
+                &env,
+                &delegator,
+                &delegate,
+                new_percent,
+                &config,
+                current_percent_delegated,
+            )?
+        };
 
     // update the delegation entry (ID and expiration)
     DELEGATION_ENTRIES.save(deps.storage, (&delegator, &delegate), &new_entry)?;
 
-    // if total percent changed, validate and update
+    // if total percent changed, update delegator and delegate values
     if delegated_vp_changed {
-        // ensure not delegating more than 100%
-        if new_total_percent > Decimal::one() {
-            return Err(ContractError::CannotDelegateMoreThan100Percent {
-                // multiply decimal (between 0 and 1) by 100 (which = 10,000%)
-                // to convert to a human-readable percentage out of 100%
-                current: current_percent_delegated
-                    .checked_mul(Decimal::percent(10_000))?
-                    .to_string(),
-                // multiply decimal (between 0 and 1) by 100 (which = 10,000%)
-                // to convert to a human-readable percentage out of 100%
-                attempt: new_total_percent
-                    .checked_mul(Decimal::percent(10_000))?
-                    .to_string(),
-            });
-        }
-
-        // final state updates applicable to both new and existing delegations
-        PERCENT_DELEGATED.save(deps.storage, &delegator, &new_total_percent)?;
+        validate_and_update_percent_delegated(
+            deps.branch(),
+            &delegator,
+            current_percent_delegated,
+            new_total_percent,
+        )?;
 
         // calculate the new delegated VP and add to the delegate's total
         let new_delegated_vp = calculate_delegated_vp(vp, new_percent);
