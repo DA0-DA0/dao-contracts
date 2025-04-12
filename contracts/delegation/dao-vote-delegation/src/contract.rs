@@ -19,9 +19,9 @@ use dao_voting::voting;
 use semver::Version;
 
 use crate::helpers::{
-    add_delegated_vp, ensure_setup, get_udvp, get_voting_power, handle_new_delegation,
-    handle_redelegation, is_delegate_registered, remove_delegated_vp_if_not_expired,
-    unregister_delegate, validate_and_update_percent_delegated, validate_delegation,
+    ensure_setup, get_udvp, get_voting_power, handle_new_delegation, handle_redelegation,
+    is_delegate_registered, remove_delegated_vp_if_not_expired, unregister_delegate,
+    validate_and_update_delegated_vp, validate_delegation,
 };
 use crate::hooks::{
     execute_membership_changed, execute_nft_stake_changed, execute_stake_changed, execute_vote_hook,
@@ -251,18 +251,13 @@ fn execute_delegate(
 
     // if total percent changed, update delegator and delegate values
     if delegated_vp_changed {
-        validate_and_update_percent_delegated(
+        validate_and_update_delegated_vp(
             deps.branch(),
+            &env,
             &delegator,
+            &delegate,
             current_percent_delegated,
             new_total_percent,
-        )?;
-
-        // add new delegated VP to the delegate's total
-        add_delegated_vp(
-            deps.storage,
-            &env,
-            &delegate,
             new_delegated_vp,
             config
                 .delegation_validity_blocks

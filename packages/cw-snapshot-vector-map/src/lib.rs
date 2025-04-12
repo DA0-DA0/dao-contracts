@@ -8,7 +8,7 @@ use serde::Serialize;
 use cosmwasm_std::{StdError, StdResult, Storage};
 use cw_storage_plus::{KeyDeserialize, Map, Prefixer, PrimaryKey, SnapshotMap, Strategy};
 
-/// A reference to an item in the vector, including its ID and expiration.
+/// A reference to an item in the vector: ID and optional expiration.
 pub type SnapshotVectorMapItemRef = (u64, Option<u64>);
 
 /// Map to a vector that allows reading the subset of items that existed at a
@@ -88,10 +88,10 @@ where
     for<'b> &'b (K, u64): PrimaryKey<'b>,
 {
     /// Adds an item to the vector at the current block height, optionally
-    /// expiring in the future, returning the ID and potentially the expiration
-    /// height of the new item, along with the total number of items. This block
-    /// should be greater than or equal to the blocks all previous items were
-    /// added/removed at. Pushing to the past will lead to incorrect behavior.
+    /// expiring in the future, returning the item reference and the total
+    /// number of items. This block should be greater than or equal to the
+    /// blocks all previous items were added/removed at. Pushing to the past
+    /// will lead to incorrect behavior.
     pub fn push(
         &self,
         store: &mut dyn Storage,
@@ -163,15 +163,16 @@ where
         Ok((item, active.len()))
     }
 
-    /// Updates an item from the vector, returning the ID of the new item and
-    /// potentially its expiration, along with the total number of items
-    /// remaining. The block height should be greater than or equal to the
-    /// blocks all previous items were added/removed at. Updating in the past
-    /// will lead to incorrect behavior.
+    /// Updates an item from the vector, returning the new item reference and
+    /// the total number of items remaining. The block height should be greater
+    /// than or equal to the blocks all previous items were added/removed at.
+    /// Updating in the past will lead to incorrect behavior.
     ///
     /// This is a convenient way to update items, and reduces the overhead of a
     /// remove and then push, but it does still create a new item since we need
-    /// to preserve the old item for historical queries.
+    /// to preserve the old item for historical queries. This works even if the
+    /// item is expired since IDs are preserved indefinitely for historical
+    /// queries.
     pub fn update(
         &self,
         store: &mut dyn Storage,
@@ -215,7 +216,7 @@ where
     }
 
     /// Updates the expiration of an item in the current vector by ID if it's
-    /// not expired, returning the new expiration. If the item is expired, this
+    /// not expired, returning the item reference. If the item is expired, this
     /// will error to prevent rewriting the past. An expired item should be
     /// thought of as "removed" from the vector, and should not be updated.
     pub fn update_expiration(
@@ -225,7 +226,7 @@ where
         id: u64,
         curr_height: u64,
         expire_in: Option<u64>,
-    ) -> StdResult<Option<u64>> {
+    ) -> StdResult<SnapshotVectorMapItemRef> {
         // get the last active update
         let last_active_update = self
             .last_active_update
@@ -262,7 +263,7 @@ where
         self.active
             .save(store, k.clone(), &active, last_active_update)?;
 
-        Ok(new_expiration)
+        Ok((id, new_expiration))
     }
 
     /// Validate that updates are performed at or after the last update and

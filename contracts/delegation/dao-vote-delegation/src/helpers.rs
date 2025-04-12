@@ -261,7 +261,7 @@ pub fn handle_redelegation(
             ));
         }
 
-        let new_expiration = DELEGATIONS.update_expiration(
+        let (_, new_expiration) = DELEGATIONS.update_expiration(
             deps.storage,
             delegator,
             existing_delegation_id,
@@ -284,6 +284,8 @@ pub fn handle_redelegation(
             false,
         ));
     }
+
+    // delegation is expired or percent is different: update.
 
     // remove existing percent and replace with new percent
     let new_total = current_percent_delegated
@@ -351,12 +353,18 @@ pub fn handle_new_delegation(
     Ok((new_total, entry, true))
 }
 
-/// Validate and update total percent delegated for a delegator.
-pub fn validate_and_update_percent_delegated(
+/// Validate and update total percent delegated for a delegator and the
+/// delegated VP for a delegate.
+#[allow(clippy::too_many_arguments)]
+pub fn validate_and_update_delegated_vp(
     deps: DepsMut,
+    env: &Env,
     delegator: &Addr,
+    delegate: &Addr,
     current_total_percent: Decimal,
     new_total_percent: Decimal,
+    delegated_vp: Uint128,
+    expiration: Option<u64>,
 ) -> Result<(), ContractError> {
     // ensure not delegating more than 100%
     if new_total_percent > Decimal::one() {
@@ -374,8 +382,10 @@ pub fn validate_and_update_percent_delegated(
         });
     }
 
-    // final state updates applicable to both new and existing delegations
     PERCENT_DELEGATED.save(deps.storage, delegator, &new_total_percent)?;
+
+    // add new delegated VP to the delegate's total
+    add_delegated_vp(deps.storage, env, delegate, delegated_vp, expiration)?;
 
     Ok(())
 }
