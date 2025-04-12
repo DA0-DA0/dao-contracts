@@ -1083,6 +1083,15 @@
                 }
               ]
             },
+            "expiration_height": {
+              "description": "the block height at which the delegation expires, if at all.",
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
             "percent": {
               "description": "the percent of the delegator's voting power that is delegated to the delegate.",
               "allOf": [

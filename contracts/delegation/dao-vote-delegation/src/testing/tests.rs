@@ -68,7 +68,12 @@ fn test_simple() {
     suite.assert_delegate_not_registered(ADDR0, Some(suite.app.block_info().height - 1));
 
     suite.assert_delegations_count(ADDR1, 1);
-    suite.assert_delegation(ADDR1, ADDR0, Decimal::percent(100));
+    suite.assert_delegation(
+        ADDR1,
+        ADDR0,
+        Decimal::percent(100),
+        Some(suite.app.block_info().height + 9),
+    );
     suite.assert_delegate_total_delegated_vp(ADDR0, suite.members[1].weight);
 
     // propose a proposal
@@ -97,7 +102,12 @@ fn test_simple() {
     // delegations take effect on the next block
     suite.advance_block();
 
-    suite.assert_delegation(ADDR1, ADDR0, Decimal::percent(50));
+    suite.assert_delegation(
+        ADDR1,
+        ADDR0,
+        Decimal::percent(50),
+        Some(suite.app.block_info().height + 9),
+    );
     suite.assert_delegate_total_delegated_vp(ADDR0, suite.members[1].weight / 2);
 
     // propose another proposal
@@ -567,7 +577,12 @@ fn test_expiration_update() {
     suite.advance_block();
 
     suite.assert_delegations_count(ADDR1, 1);
-    suite.assert_delegation(ADDR1, ADDR0, Decimal::percent(100));
+    suite.assert_delegation(
+        ADDR1,
+        ADDR0,
+        Decimal::percent(100),
+        Some(suite.app.block_info().height + 9),
+    );
     suite.assert_delegate_total_delegated_vp(ADDR0, suite.members[1].weight);
 
     // update delegation validity blocks to 50
@@ -590,7 +605,12 @@ fn test_expiration_update() {
 
     // delegation should still be active
     suite.assert_delegations_count(ADDR1, 1);
-    suite.assert_delegation(ADDR1, ADDR0, Decimal::percent(100));
+    suite.assert_delegation(
+        ADDR1,
+        ADDR0,
+        Decimal::percent(100),
+        Some(suite.app.block_info().height + 39),
+    );
     suite.assert_delegate_total_delegated_vp(ADDR0, suite.members[1].weight);
 
     // move 40 blocks into the future
@@ -615,7 +635,7 @@ fn test_expiration_update() {
 
     // delegation should still be active
     suite.assert_delegations_count(ADDR1, 1);
-    suite.assert_delegation(ADDR1, ADDR0, Decimal::percent(100));
+    suite.assert_delegation(ADDR1, ADDR0, Decimal::percent(100), None);
     suite.assert_delegate_total_delegated_vp(ADDR0, suite.members[1].weight);
 
     // move 100 blocks into the future
@@ -623,7 +643,103 @@ fn test_expiration_update() {
 
     // delegation should still be active
     suite.assert_delegations_count(ADDR1, 1);
-    suite.assert_delegation(ADDR1, ADDR0, Decimal::percent(100));
+    suite.assert_delegation(ADDR1, ADDR0, Decimal::percent(100), None);
+    suite.assert_delegate_total_delegated_vp(ADDR0, suite.members[1].weight);
+
+    // set expiration to 10 blocks
+    suite.update_delegation_validity_blocks(Some(10));
+
+    // update delegation expiration by calling delegate with the same percent
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(100));
+    // delegation expiration update should take effect immediately
+
+    // delegation should still be active
+    suite.assert_delegations_count(ADDR1, 1);
+    suite.assert_delegation(
+        ADDR1,
+        ADDR0,
+        Decimal::percent(100),
+        Some(suite.app.block_info().height + 10),
+    );
+    suite.assert_delegate_total_delegated_vp(ADDR0, suite.members[1].weight);
+
+    // move 10 blocks into the future
+    suite.advance_blocks(10);
+
+    // delegation should be expired
+    suite.assert_delegations_count(ADDR1, 0);
+    suite.assert_delegate_total_delegated_vp(ADDR0, 0u128);
+
+    // delegate again
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(100));
+    // delegations take effect on the next block
+    suite.advance_block();
+
+    // delegation should still be active
+    suite.assert_delegations_count(ADDR1, 1);
+    suite.assert_delegation(
+        ADDR1,
+        ADDR0,
+        Decimal::percent(100),
+        Some(suite.app.block_info().height + 9),
+    );
+    suite.assert_delegate_total_delegated_vp(ADDR0, suite.members[1].weight);
+
+    // move 5 blocks into the future
+    suite.advance_blocks(5);
+
+    // delegation should still be active
+    suite.assert_delegations_count(ADDR1, 1);
+    suite.assert_delegation(
+        ADDR1,
+        ADDR0,
+        Decimal::percent(100),
+        Some(suite.app.block_info().height + 4),
+    );
+    suite.assert_delegate_total_delegated_vp(ADDR0, suite.members[1].weight);
+
+    // update delegation expiration by calling delegate with the same percent
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(100));
+    // delegation expiration update should take effect immediately since it
+    // never expired
+    suite.assert_delegation(
+        ADDR1,
+        ADDR0,
+        Decimal::percent(100),
+        Some(suite.app.block_info().height + 10),
+    );
+    suite.assert_delegate_total_delegated_vp(ADDR0, suite.members[1].weight);
+
+    // move 100 blocks into the future
+    suite.advance_blocks(100);
+
+    // delegation should be expired
+    suite.assert_delegations_count(ADDR1, 0);
+    suite.assert_delegate_total_delegated_vp(ADDR0, 0u128);
+
+    // delegate again after expiry, which should take a block since it's not
+    // just an expiration extension
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(100));
+    // delegation is not yet active since it takes effect on the next block
+    suite.assert_delegate_total_delegated_vp(ADDR0, 0u128);
+    // delegation should not be retroactively reactivated
+    suite.assert_delegate_total_delegated_vp_at_height(
+        Some(suite.app.block_info().height - 10),
+        ADDR0,
+        0u128,
+    );
+
+    // move 1 block into the future
+    suite.advance_block();
+
+    // delegation should be active
+    suite.assert_delegations_count(ADDR1, 1);
+    suite.assert_delegation(
+        ADDR1,
+        ADDR0,
+        Decimal::percent(100),
+        Some(suite.app.block_info().height + 9),
+    );
     suite.assert_delegate_total_delegated_vp(ADDR0, suite.members[1].weight);
 }
 
@@ -690,7 +806,7 @@ fn test_max_delegations() {
     suite.advance_block();
 
     suite.assert_delegations_count(ADDR3, 1);
-    suite.assert_delegation(ADDR3, ADDR1, Decimal::percent(25));
+    suite.assert_delegation(ADDR3, ADDR1, Decimal::percent(25), None);
 }
 
 #[test]
@@ -2283,4 +2399,98 @@ fn test_revote() {
         // only delegate weight is counted in individual votes
         suite.members[0].weight,
     );
+}
+
+/// verify that an expired delegation does not get reactivated retroactively
+/// when another delegation is created after.
+#[test]
+fn test_delegation_not_retroactively_reactivated() {
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new()
+        .with_delegation_validity_blocks(10)
+        .build();
+
+    // register member as delegate
+    suite.register(ADDR0);
+
+    // delegate 100% of voting power to ADDR0
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(100));
+
+    // delegations take effect on the next block
+    suite.advance_block();
+
+    suite.assert_delegations_count(ADDR1, 1);
+    suite.assert_delegation(
+        ADDR1,
+        ADDR0,
+        Decimal::percent(100),
+        Some(suite.app.block_info().height + 9),
+    );
+    suite.assert_delegate_total_delegated_vp(ADDR0, suite.members[1].weight);
+
+    // move 15 blocks into the future
+    suite.advance_blocks(15);
+
+    // delegation should be expired
+    suite.assert_delegations_count(ADDR1, 0);
+    suite.assert_delegate_total_delegated_vp(ADDR0, 0u128);
+
+    // delegate again
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(50));
+
+    // delegation should not be active yet
+    suite.assert_delegations_count(ADDR1, 0);
+    suite.assert_delegate_total_delegated_vp(ADDR0, 0u128);
+    // delegation shouldn't be retroactively reactivated
+    suite.assert_delegate_total_delegated_vp_at_height(
+        Some(suite.app.block_info().height - 2),
+        ADDR0,
+        0u128,
+    );
+
+    // delegations take effect on the next block
+    suite.advance_block();
+
+    // delegation should be active
+    suite.assert_delegations_count(ADDR1, 1);
+    suite.assert_delegation(
+        ADDR1,
+        ADDR0,
+        Decimal::percent(50),
+        Some(suite.app.block_info().height + 9),
+    );
+    suite.assert_delegate_total_delegated_vp(ADDR0, suite.members[1].weight / 2);
+
+    // move 15 blocks into the future
+    suite.advance_blocks(15);
+
+    // delegation should be expired
+    suite.assert_delegations_count(ADDR1, 0);
+    suite.assert_delegate_total_delegated_vp(ADDR0, 0u128);
+
+    // delegate again, the same as before, which should just perform an
+    // expiration update on the existing delegation
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(50));
+
+    // delegation should not be active yet
+    suite.assert_delegations_count(ADDR1, 0);
+    suite.assert_delegate_total_delegated_vp(ADDR0, 0u128);
+    // delegation shouldn't be retroactively reactivated
+    suite.assert_delegate_total_delegated_vp_at_height(
+        Some(suite.app.block_info().height - 2),
+        ADDR0,
+        0u128,
+    );
+
+    // delegations take effect on the next block
+    suite.advance_block();
+
+    // delegation should be active
+    suite.assert_delegations_count(ADDR1, 1);
+    suite.assert_delegation(
+        ADDR1,
+        ADDR0,
+        Decimal::percent(50),
+        Some(suite.app.block_info().height + 9),
+    );
+    suite.assert_delegate_total_delegated_vp(ADDR0, suite.members[1].weight / 2);
 }

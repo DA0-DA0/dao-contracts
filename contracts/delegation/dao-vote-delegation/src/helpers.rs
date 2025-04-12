@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Deps, DepsMut, Env, StdResult, Storage, Uint128};
+use cosmwasm_std::{Addr, Deps, DepsMut, Env, StdError, StdResult, Storage, Uint128};
 
 use dao_voting::voting;
 
@@ -84,7 +84,7 @@ pub fn add_delegated_vp(
     env: &Env,
     delegate: &Addr,
     vp: Uint128,
-    expire_in: Option<u64>,
+    expiration: Option<u64>,
 ) -> StdResult<()> {
     DELEGATED_VP.increment(
         storage,
@@ -101,26 +101,36 @@ pub fn add_delegated_vp(
     )?;
 
     // if expiration exists, decrement in the future at expiration height
-    if let Some(expire_in) = expire_in {
-        DELEGATED_VP.decrement(storage, delegate.clone(), env.block.height + expire_in, vp)?;
+    if let Some(expiration) = expiration {
+        DELEGATED_VP.decrement(storage, delegate.clone(), expiration, vp)?;
     }
 
     Ok(())
 }
 
-/// Remove delegated VP from a delegate, potentially with a given expiration.
-pub fn remove_delegated_vp(
+/// Remove delegated VP from a delegate, potentially with a given expiration, if
+/// not already expired. If already expired, the delegated VP should already be
+/// removed due to Wormhole's future decrement behavior (in `add_delegated_vp`
+/// above).
+pub fn remove_delegated_vp_if_not_expired(
     storage: &mut dyn Storage,
     env: &Env,
     delegate: &Addr,
     vp: Uint128,
     original_expiration: Option<u64>,
 ) -> StdResult<()> {
+    // if delegation already expired, do nothing.
+    if let Some(original_expiration) = original_expiration {
+        if original_expiration <= env.block.height {
+            return Ok(());
+        }
+    }
+
     // if expiration was used when creating this delegation, first undo previous
     // decrement at end of expiration period. do this before undoing previous
     // increment to prevent underflow.
-    if let Some(expiration) = original_expiration {
-        DELEGATED_VP.increment(storage, delegate.clone(), expiration, vp)?;
+    if let Some(original_expiration) = original_expiration {
+        DELEGATED_VP.increment(storage, delegate.clone(), original_expiration, vp)?;
     }
 
     DELEGATED_VP.decrement(
@@ -136,6 +146,41 @@ pub fn remove_delegated_vp(
         env.block.height + 1,
         vp,
     )?;
+
+    Ok(())
+}
+
+/// Update delegated VP expiration, erroring if either is in the past.
+pub fn update_delegated_vp_expiration(
+    storage: &mut dyn Storage,
+    env: &Env,
+    delegate: &Addr,
+    vp: Uint128,
+    original_expiration: Option<u64>,
+    new_expiration: Option<u64>,
+) -> StdResult<()> {
+    // if expiration was used when creating this delegation, first undo previous
+    // decrement at end of expiration period.
+    if let Some(original_expiration) = original_expiration {
+        if original_expiration <= env.block.height {
+            return Err(StdError::generic_err(
+                "original expiration is in the past, cannot rewrite history",
+            ));
+        }
+
+        DELEGATED_VP.increment(storage, delegate.clone(), original_expiration, vp)?;
+    }
+
+    // if new expiration is set, decrement at new expiration
+    if let Some(new_expiration) = new_expiration {
+        if new_expiration <= env.block.height {
+            return Err(StdError::generic_err(
+                "new expiration is in the past, cannot rewrite history",
+            ));
+        }
+
+        DELEGATED_VP.decrement(storage, delegate.clone(), new_expiration, vp)?;
+    }
 
     Ok(())
 }

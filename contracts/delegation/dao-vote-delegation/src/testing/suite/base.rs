@@ -223,8 +223,12 @@ impl DaoVoteDelegationTestingSuiteBase {
 
 /// QUERIES
 impl DaoVoteDelegationTestingSuiteBase {
-    /// get whether a delegate is registered
-    pub fn registered(&self, delegate: impl Into<String>, height: Option<u64>) -> bool {
+    /// get the registration for a delegate at a given height
+    pub fn registration(
+        &self,
+        delegate: impl Into<String>,
+        height: Option<u64>,
+    ) -> dao_voting::delegation::RegistrationResponse {
         self.querier()
             .query_wasm_smart::<dao_voting::delegation::RegistrationResponse>(
                 &self.delegation_addr,
@@ -234,7 +238,11 @@ impl DaoVoteDelegationTestingSuiteBase {
                 },
             )
             .unwrap()
-            .registered
+    }
+
+    /// get whether a delegate is registered
+    pub fn registered(&self, delegate: impl Into<String>, height: Option<u64>) -> bool {
+        self.registration(delegate, height).registered
     }
 
     /// get the delegates
@@ -366,9 +374,19 @@ impl DaoVoteDelegationTestingSuiteBase {
 /// ASSERTIONS
 impl DaoVoteDelegationTestingSuiteBase {
     /// assert that there are N delegations
-    pub fn assert_delegations_count(&self, delegator: impl Into<String>, count: u32) {
-        let delegations = self.delegations(delegator, None, None, None);
+    pub fn assert_delegations_count_at_height(
+        &self,
+        height: Option<u64>,
+        delegator: impl Into<String>,
+        count: u32,
+    ) {
+        let delegations = self.delegations(delegator, height, None, None);
         assert_eq!(delegations.delegations.len() as u32, count);
+    }
+
+    /// assert that there are N delegations
+    pub fn assert_delegations_count(&self, delegator: impl Into<String>, count: u32) {
+        self.assert_delegations_count_at_height(None, delegator, count);
     }
 
     /// assert that there are N active delegations
@@ -381,17 +399,33 @@ impl DaoVoteDelegationTestingSuiteBase {
     }
 
     /// assert that an active delegation exists
+    pub fn assert_delegation_at_height(
+        &self,
+        height: Option<u64>,
+        delegator: impl Into<String>,
+        delegate: impl Into<String> + Copy,
+        percent: Decimal,
+        expiration_height: Option<u64>,
+    ) {
+        let delegations = self.delegations(delegator, height, None, None);
+        assert!(delegations
+            .delegations
+            .iter()
+            .any(|d| d.delegate == delegate.into()
+                && d.percent == percent
+                && d.active
+                && d.expiration_height == expiration_height));
+    }
+
+    /// assert that an active delegation exists
     pub fn assert_delegation(
         &self,
         delegator: impl Into<String>,
         delegate: impl Into<String> + Copy,
         percent: Decimal,
+        expiration_height: Option<u64>,
     ) {
-        let delegations = self.delegations(delegator, None, None, None);
-        assert!(delegations
-            .delegations
-            .iter()
-            .any(|d| d.delegate == delegate.into() && d.percent == percent && d.active));
+        self.assert_delegation_at_height(None, delegator, delegate, percent, expiration_height);
     }
 
     /// assert that a delegate is registered
@@ -420,19 +454,24 @@ impl DaoVoteDelegationTestingSuiteBase {
         assert_eq!(delegates.len() as u32, count);
     }
 
+    /// assert a delegate's total delegated voting power at a given height
+    pub fn assert_delegate_total_delegated_vp_at_height(
+        &self,
+        height: Option<u64>,
+        delegate: impl Into<String> + Copy,
+        expected_total: impl Into<Uint128>,
+    ) {
+        let delegate_total = self.registration(delegate, height).power;
+        assert_eq!(delegate_total, expected_total.into());
+    }
+
     /// assert a delegate's total delegated voting power
     pub fn assert_delegate_total_delegated_vp(
         &self,
         delegate: impl Into<String> + Copy,
         expected_total: impl Into<Uint128>,
     ) {
-        let delegate_total = self
-            .delegates(None, None)
-            .into_iter()
-            .find(|d| d.delegate == delegate.into())
-            .unwrap()
-            .power;
-        assert_eq!(delegate_total, expected_total.into());
+        self.assert_delegate_total_delegated_vp_at_height(None, delegate, expected_total);
     }
 
     /// assert a delegate's total UDVP on a proposal

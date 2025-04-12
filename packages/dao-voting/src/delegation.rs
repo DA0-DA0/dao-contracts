@@ -132,6 +132,8 @@ pub struct DelegationResponse {
     /// delegate was registered when the delegation was created and isn't
     /// anymore.
     pub active: bool,
+    /// the block height at which the delegation expires, if at all.
+    pub expiration_height: Option<u64>,
 }
 
 #[cw_serde]
@@ -237,6 +239,7 @@ pub fn handle_delegate_vote_override<Vote: Serialize + DeserializeOwned>(
             delegate,
             percent,
             active,
+            ..
         } in delegations
         {
             // if delegation is not active, skip.

@@ -93,12 +93,12 @@ where
         &self,
         store: &mut dyn Storage,
         k: &K,
-        data: &V,
+        new_item: &V,
         curr_height: u64,
         expire_in: Option<u64>,
     ) -> StdResult<((u64, Option<u64>), usize)> {
         // ensure push operations are performed at or after the last update
-        self.validate_update_order(store, k, curr_height)?;
+        self.validate_order_and_update(store, k, curr_height)?;
 
         // get next ID for the key, defaulting to 0
         let next_id = self
@@ -107,7 +107,7 @@ where
             .unwrap_or_default();
 
         // add item to the list of all items for the key
-        self.items.save(store, &(k.clone(), next_id), data)?;
+        self.items.save(store, &(k.clone(), next_id), new_item)?;
 
         // get active list for the key
         let mut active = self.active.may_load(store, k.clone())?.unwrap_or_default();
@@ -120,8 +120,6 @@ where
         // add new item and save list
         let expiration = expire_in.map(|d| curr_height + d);
         active.push((next_id, expiration));
-
-        // save the new list
         self.active.save(store, k.clone(), &active, curr_height)?;
 
         // update next ID
@@ -142,7 +140,7 @@ where
         curr_height: u64,
     ) -> StdResult<(V, usize)> {
         // ensure remove operations are performed at or after the last update
-        self.validate_update_order(store, k, curr_height)?;
+        self.validate_order_and_update(store, k, curr_height)?;
 
         // get active list for the key
         let mut active = self.active.may_load(store, k.clone())?.unwrap_or_default();
@@ -162,8 +160,111 @@ where
         Ok((item, active.len()))
     }
 
-    /// Validate that updates are performed at or after the last update.
-    pub fn validate_update_order(
+    /// Updates an item from the vector, returning the ID of the new item and
+    /// potentially its expiration, along with the total number of items
+    /// remaining. The block height should be greater than or equal to the
+    /// blocks all previous items were added/removed at. Updating in the past
+    /// will lead to incorrect behavior.
+    ///
+    /// This is a convenient way to update items, and reduces the overhead of a
+    /// remove and then push, but it does still create a new item since we need
+    /// to preserve the old item for historical queries.
+    pub fn update(
+        &self,
+        store: &mut dyn Storage,
+        k: &K,
+        id: u64,
+        curr_height: u64,
+        update: impl FnOnce(&mut V),
+        expire_in: Option<u64>,
+    ) -> StdResult<((u64, Option<u64>), usize)> {
+        // ensure remove operations are performed at or after the last update
+        self.validate_order_and_update(store, k, curr_height)?;
+
+        // get active list for the key
+        let mut active = self.active.may_load(store, k.clone())?.unwrap_or_default();
+
+        // remove existing item and any expired items
+        active.retain(|(active_id, expiration)| {
+            active_id != &id && expiration.map_or(true, |expiration: u64| expiration > curr_height)
+        });
+
+        // get next ID for the key, defaulting to 0
+        let next_id = self
+            .next_ids
+            .may_load(store, k.clone())?
+            .unwrap_or_default();
+
+        // load, update, and save the item with the new ID
+        let mut item = self.load_item(store, k, id)?;
+        update(&mut item);
+        self.items.save(store, &(k.clone(), next_id), &item)?;
+
+        // add new item and save list
+        let expiration = expire_in.map(|d| curr_height + d);
+        active.push((next_id, expiration));
+        self.active.save(store, k.clone(), &active, curr_height)?;
+
+        // save the next ID
+        self.next_ids.save(store, k.clone(), &(next_id + 1))?;
+
+        Ok(((next_id, expiration), active.len()))
+    }
+
+    /// Updates the expiration of an item in the current vector by ID if it's
+    /// not expired, returning the new expiration. If the item is expired, this
+    /// will error to prevent rewriting the past. An expired item should be
+    /// thought of as "removed" from the vector, and should not be updated.
+    pub fn update_expiration(
+        &self,
+        store: &mut dyn Storage,
+        k: &K,
+        id: u64,
+        curr_height: u64,
+        expire_in: Option<u64>,
+    ) -> StdResult<Option<u64>> {
+        // get the last active update
+        let last_active_update = self
+            .last_active_update
+            .may_load(store, k.clone())?
+            .ok_or(StdError::generic_err("no active items for key"))?;
+
+        // ensure this update is performed at or after the last update, and
+        // don't update the last active update since we're not making a new copy
+        if curr_height < last_active_update {
+            return Err(StdError::generic_err(format!(
+                "update must be performed at or after the last update ({last_active_update})",
+            )));
+        }
+
+        // get latest version of the active list, corresponding to the last
+        // active update
+        let mut active = self.active.may_load(store, k.clone())?.unwrap_or_default();
+
+        let new_expiration = expire_in.map(|d| curr_height + d);
+
+        // update the expiration of the item if it exists and is not expired,
+        // otherwise error
+        active
+            .iter_mut()
+            .find(|(item_id, expiration)| {
+                *item_id == id && expiration.map_or(true, |exp| exp > curr_height)
+            })
+            .map(|(_, expiration)| {
+                *expiration = new_expiration;
+            })
+            .ok_or(StdError::generic_err("item not found or expired"))?;
+
+        // override the list at the last active update
+        self.active
+            .save(store, k.clone(), &active, last_active_update)?;
+
+        Ok(new_expiration)
+    }
+
+    /// Validate that updates are performed at or after the last update and
+    /// update the last active update if necessary.
+    pub fn validate_order_and_update(
         &self,
         store: &mut dyn Storage,
         k: &K,
