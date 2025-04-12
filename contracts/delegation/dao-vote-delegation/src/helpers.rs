@@ -1,5 +1,6 @@
 use cosmwasm_std::{Addr, Decimal, Deps, DepsMut, Env, StdError, StdResult, Storage, Uint128};
 
+use cw_snapshot_vector_map::SnapshotVectorMapItemRef;
 use dao_voting::{
     delegation::{calculate_delegated_vp, Config, Delegation},
     voting,
@@ -13,7 +14,7 @@ use crate::{
     ContractError,
 };
 
-pub type DelegationHandlerResult = Result<(Decimal, (u64, Option<u64>), bool), ContractError>;
+pub type DelegationHandlerResult = Result<(Decimal, SnapshotVectorMapItemRef, bool), ContractError>;
 
 pub fn unregister_delegate(deps: DepsMut, delegate: &Addr, height: u64) -> StdResult<()> {
     DELEGATES.remove(deps.storage, delegate.clone(), height)
@@ -239,7 +240,7 @@ pub fn handle_redelegation(
     config: &Config,
     current_percent_delegated: Decimal,
     vp: Uint128,
-    existing_delegation_entry: (u64, Option<u64>),
+    existing_delegation_entry: SnapshotVectorMapItemRef,
 ) -> DelegationHandlerResult {
     let (existing_delegation_id, existing_delegation_expiration) = existing_delegation_entry;
     let expired = existing_delegation_expiration.is_some_and(|exp| exp <= env.block.height);

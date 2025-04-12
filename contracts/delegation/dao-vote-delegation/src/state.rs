@@ -1,5 +1,5 @@
 use cosmwasm_std::{Addr, Decimal, Uint128};
-use cw_snapshot_vector_map::SnapshotVectorMap;
+use cw_snapshot_vector_map::{SnapshotVectorMap, SnapshotVectorMapItemRef};
 use cw_storage_plus::{Item, Map, SnapshotItem, SnapshotMap, Strategy};
 
 use cw_wormhole::Wormhole;
@@ -65,7 +65,7 @@ pub const DELEGATIONS: SnapshotVectorMap<Addr, Delegation> = SnapshotVectorMap::
 /// map (delegator, delegate) -> (ID, expiration_block) of the delegation in the
 /// vector map. this is useful for quickly checking if a delegation already
 /// exists, and for undelegating.
-pub const DELEGATION_ENTRIES: Map<(&Addr, &Addr), (u64, Option<u64>)> = Map::new("dids");
+pub const DELEGATION_ENTRIES: Map<(&Addr, &Addr), SnapshotVectorMapItemRef> = Map::new("dids");
 
 /// map delegator -> percent delegated to all delegates.
 pub const PERCENT_DELEGATED: Map<&Addr, Decimal> = Map::new("pd");

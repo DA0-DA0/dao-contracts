@@ -8,6 +8,9 @@ use serde::Serialize;
 use cosmwasm_std::{StdError, StdResult, Storage};
 use cw_storage_plus::{KeyDeserialize, Map, Prefixer, PrimaryKey, SnapshotMap, Strategy};
 
+/// A reference to an item in the vector, including its ID and expiration.
+pub type SnapshotVectorMapItemRef = (u64, Option<u64>);
+
 /// Map to a vector that allows reading the subset of items that existed at a
 /// specific height in the past based on when items were added, removed, and
 /// expired.
@@ -18,7 +21,7 @@ pub struct SnapshotVectorMap<'a, K, V> {
     next_ids: Map<'a, K, u64>,
     /// The IDs of the items that are active for a key at a given height, and
     /// optionally the height at which they expire.
-    active: SnapshotMap<'a, K, Vec<(u64, Option<u64>)>>,
+    active: SnapshotMap<'a, K, Vec<SnapshotVectorMapItemRef>>,
     /// The last height at which the active list was updated for each key, to
     /// enforce that updates (push/remove) are done in order.
     last_active_update: Map<'a, K, u64>,
@@ -96,7 +99,7 @@ where
         new_item: &V,
         curr_height: u64,
         expire_in: Option<u64>,
-    ) -> StdResult<((u64, Option<u64>), usize)> {
+    ) -> StdResult<(SnapshotVectorMapItemRef, usize)> {
         // ensure push operations are performed at or after the last update
         self.validate_order_and_update(store, k, curr_height)?;
 
@@ -177,7 +180,7 @@ where
         curr_height: u64,
         update: impl FnOnce(&mut V),
         expire_in: Option<u64>,
-    ) -> StdResult<((u64, Option<u64>), usize)> {
+    ) -> StdResult<(SnapshotVectorMapItemRef, usize)> {
         // ensure remove operations are performed at or after the last update
         self.validate_order_and_update(store, k, curr_height)?;
 
