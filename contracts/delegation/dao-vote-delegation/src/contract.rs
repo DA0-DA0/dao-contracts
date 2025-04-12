@@ -247,6 +247,8 @@ fn execute_delegate(
     // update the delegation entry (ID and expiration)
     DELEGATION_ENTRIES.save(deps.storage, (&delegator, &delegate), &new_entry)?;
 
+    let new_delegated_vp = calculate_delegated_vp(vp, new_percent);
+
     // if total percent changed, update delegator and delegate values
     if delegated_vp_changed {
         validate_and_update_percent_delegated(
@@ -256,8 +258,7 @@ fn execute_delegate(
             new_total_percent,
         )?;
 
-        // calculate the new delegated VP and add to the delegate's total
-        let new_delegated_vp = calculate_delegated_vp(vp, new_percent);
+        // add new delegated VP to the delegate's total
         add_delegated_vp(
             deps.storage,
             &env,
@@ -269,7 +270,12 @@ fn execute_delegate(
         )?;
     }
 
-    Ok(Response::new())
+    Ok(Response::new()
+        .add_attribute("action", "delegate")
+        .add_attribute("delegator", delegator.to_string())
+        .add_attribute("delegate", delegate.to_string())
+        .add_attribute("percent", new_percent.to_string())
+        .add_attribute("vp", new_delegated_vp.to_string()))
 }
 
 fn execute_undelegate(
@@ -327,7 +333,12 @@ fn execute_undelegate(
         existing_expiration,
     )?;
 
-    Ok(Response::new().add_attribute("action", "undelegate"))
+    Ok(Response::new()
+        .add_attribute("action", "undelegate")
+        .add_attribute("delegator", delegator.to_string())
+        .add_attribute("delegate", delegate.to_string())
+        .add_attribute("percent", delegation.percent.to_string())
+        .add_attribute("vp", delegated_vp.to_string()))
 }
 
 fn execute_update_voting_power_hook_callers(
