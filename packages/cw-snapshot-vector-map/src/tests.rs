@@ -432,3 +432,224 @@ fn test_expiration() {
         StdError::generic_err("update must be performed at or after the last update (31)")
     );
 }
+
+#[test]
+fn test_update() {
+    let storage = &mut mock_dependencies().storage;
+    let svm: SnapshotVectorMap<Addr, u32> = SnapshotVectorMap::new(
+        "svm__items",
+        "svm__next_ids",
+        "svm__active",
+        "svm__active__checkpoints",
+        "svm__active__changelog",
+        "svm__active__last_update",
+    );
+    let k1 = &Addr::unchecked("bekauz");
+    let item_1_value = 13;
+    let item_2_value = 23;
+
+    // push a couple of items: one with an expiration and one without
+    let ((item_1_id, item_1_expiration), svm_size_1) =
+        svm.push(storage, k1, &item_1_value, 1, None).unwrap();
+    let ((item_2_id, item_2_expiration), svm_size_2) =
+        svm.push(storage, k1, &item_2_value, 2, Some(5)).unwrap();
+
+    assert_eq!(item_1_id, 0);
+    assert_eq!(item_1_expiration, None);
+    assert_eq!(svm_size_1, 1);
+    let loaded_svm_item_1 = svm.load_item(storage, k1, item_1_id).unwrap();
+    assert_eq!(loaded_svm_item_1, item_1_value);
+
+    assert_eq!(item_2_id, 1);
+    assert_eq!(item_2_expiration, Some(7));
+    assert_eq!(svm_size_2, 2);
+    let loaded_svm_item_2 = svm.load_item(storage, k1, item_2_id).unwrap();
+    assert_eq!(loaded_svm_item_2, item_2_value);
+
+    // perform an update of item1 at block #3, multiplying its value by 10
+    let ((item_1_id_update1, item_1_expiration_update1), svm_size_3) = svm
+        .update(storage, k1, item_1_id, 3, |v| *v *= 10, None)
+        .unwrap();
+
+    // assert that the snapshotvectormap size remains the same
+    assert_eq!(svm_size_2, svm_size_3);
+    // assert that the expiration of item1 remains the same (`None`)
+    assert_eq!(item_1_expiration, item_1_expiration_update1);
+    // assert that the newly assigned id is +1 from the last inserted item
+    assert_eq!(item_1_id_update1, 2);
+
+    // assert that at the current block values are unchanged
+    assert_eq!(
+        svm.load_all(storage, k1, 3).unwrap(),
+        vec![
+            LoadedItem {
+                id: item_1_id,
+                item: item_1_value,
+                expiration: None
+            },
+            LoadedItem {
+                id: item_2_id,
+                item: item_2_value,
+                expiration: Some(7)
+            },
+        ]
+    );
+
+    // now load values at the next block and assert that the previous item
+    // with id `item_1_id` is gone and replaced by the new item with id `new_item_1_id`
+    assert_eq!(
+        svm.load_all(storage, k1, 4).unwrap(),
+        vec![
+            LoadedItem {
+                id: item_2_id,
+                item: item_2_value,
+                expiration: Some(7)
+            },
+            LoadedItem {
+                id: item_1_id_update1,
+                item: item_1_value * 10,
+                expiration: None
+            }
+        ]
+    );
+
+    // perform another update of item1 at block #4, multiplying its value by 2
+    // and setting it to expire in 5 blocks
+    let ((item_1_id_update2, item_1_expiration_update2), svm_size_4) = svm
+        .update(storage, k1, item_1_id_update1, 4, |v| *v *= 2, Some(5))
+        .unwrap();
+
+    // assert that the snapshotvectormap size remains the same
+    assert_eq!(svm_size_3, svm_size_4);
+    // assert that the item now has an expiration at block height #9
+    assert_eq!(item_1_expiration_update2, Some(9));
+    // assert that the newly assigned id is +1 from the last inserted item
+    assert_eq!(item_1_id_update2, 3);
+
+    assert_eq!(
+        svm.load_all(storage, k1, 5).unwrap(),
+        vec![
+            LoadedItem {
+                id: item_2_id,
+                item: item_2_value,
+                expiration: Some(7)
+            },
+            LoadedItem {
+                id: item_1_id_update2,
+                item: item_1_value * 10 * 2,
+                expiration: Some(9)
+            }
+        ]
+    );
+
+    // at block 6 both items should be included
+    assert_eq!(svm.load_all(storage, k1, 6).unwrap().len(), 2);
+
+    // at block 7 there should be one item remaining
+    assert_eq!(svm.load_all(storage, k1, 7).unwrap().len(), 1);
+
+    // at block 9 both items should be expired
+    assert_eq!(svm.load_all(storage, k1, 9).unwrap().len(), 0);
+}
+
+#[test]
+#[should_panic(expected = "update must be performed at or after the last update (1)")]
+fn test_update_before_last_update() {
+    let storage = &mut mock_dependencies().storage;
+    let svm: SnapshotVectorMap<Addr, u32> = SnapshotVectorMap::new(
+        "svm__items",
+        "svm__next_ids",
+        "svm__active",
+        "svm__active__checkpoints",
+        "svm__active__changelog",
+        "svm__active__last_update",
+    );
+    let k1 = &Addr::unchecked("bekauz");
+
+    // push an item at block #1
+    let ((item_id, _), _) = svm.push(storage, k1, &69, 1, None).unwrap();
+
+    // attempt to update at block 0 (before last update at block 1)
+    svm.update(storage, k1, item_id, 0, |v| *v += 1, None)
+        .unwrap();
+}
+
+#[test]
+#[should_panic(expected = "update must be performed at or after the last update (3)")]
+fn test_update_in_past() {
+    let storage = &mut mock_dependencies().storage;
+    let svm: SnapshotVectorMap<Addr, u32> = SnapshotVectorMap::new(
+        "svm__items",
+        "svm__next_ids",
+        "svm__active",
+        "svm__active__checkpoints",
+        "svm__active__changelog",
+        "svm__active__last_update",
+    );
+    let k1 = &Addr::unchecked("bekauz");
+
+    // push an item at block #1
+    let ((item_id, _), _) = svm.push(storage, k1, &69, 1, None).unwrap();
+
+    // then push another item at block #3
+    svm.push(storage, k1, &100, 3, None).unwrap();
+
+    // attempts to update at block #2 should panic because there was
+    // a push at block #3
+    svm.update(storage, k1, item_id, 2, |v| *v += 1, None)
+        .unwrap();
+}
+
+#[test]
+#[should_panic(expected = "NotFound")]
+fn test_update_non_existent_item() {
+    let storage = &mut mock_dependencies().storage;
+    let svm: SnapshotVectorMap<Addr, u32> = SnapshotVectorMap::new(
+        "svm__items",
+        "svm__next_ids",
+        "svm__active",
+        "svm__active__checkpoints",
+        "svm__active__changelog",
+        "svm__active__last_update",
+    );
+
+    let k1 = &Addr::unchecked("bekauz");
+
+    // attempt to update non-existent item when vector is empty
+    svm.update(storage, k1, 0, 1, |v| *v += 1, None).unwrap();
+}
+
+#[test]
+#[should_panic]
+fn test_update_expired_item() {
+    let storage = &mut mock_dependencies().storage;
+    let svm: SnapshotVectorMap<Addr, u32> = SnapshotVectorMap::new(
+        "svm__items",
+        "svm__next_ids",
+        "svm__active",
+        "svm__active__checkpoints",
+        "svm__active__changelog",
+        "svm__active__last_update",
+    );
+    let k1 = &Addr::unchecked("bekauz");
+
+    // at block #1, push item that expires in 4 blocks (at block #5)
+    let ((expired_id, _), _) = svm.push(storage, k1, &24, 1, Some(4)).unwrap();
+    assert_eq!(expired_id, 0);
+
+    // assert the expiration based on loading all items
+    assert_eq!(svm.load_all(storage, k1, 4).unwrap().len(), 1);
+    assert_eq!(svm.load_all(storage, k1, 5).unwrap().len(), 0);
+
+    let ((pushed_id_b5, _), _) = svm.push(storage, k1, &24, 5, None).unwrap();
+    assert_eq!(pushed_id_b5, 1);
+
+    // attempt to update an expired item after its expiration
+    svm.update(storage, k1, expired_id, 6, |v| *v += 12, None)
+        .unwrap();
+
+    let ((new_push_id, _), _) = svm.push(storage, k1, &24, 7, None).unwrap();
+
+    // new item is pushed at ID 3 while the last item was pushed at ID 1.
+    assert_eq!(new_push_id, 3);
+}
