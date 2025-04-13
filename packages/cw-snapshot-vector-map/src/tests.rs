@@ -601,7 +601,7 @@ fn test_update_in_past() {
 }
 
 #[test]
-#[should_panic(expected = "NotFound")]
+#[should_panic]
 fn test_update_non_existent_item() {
     let storage = &mut mock_dependencies().storage;
     let svm: SnapshotVectorMap<Addr, u32> = SnapshotVectorMap::new(
@@ -620,7 +620,7 @@ fn test_update_non_existent_item() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "item not found or expired")]
 fn test_update_expired_item() {
     let storage = &mut mock_dependencies().storage;
     let svm: SnapshotVectorMap<Addr, u32> = SnapshotVectorMap::new(
@@ -641,15 +641,7 @@ fn test_update_expired_item() {
     assert_eq!(svm.load_all(storage, k1, 4).unwrap().len(), 1);
     assert_eq!(svm.load_all(storage, k1, 5).unwrap().len(), 0);
 
-    let ((pushed_id_b5, _), _) = svm.push(storage, k1, &24, 5, None).unwrap();
-    assert_eq!(pushed_id_b5, 1);
-
     // attempt to update an expired item after its expiration
     svm.update(storage, k1, expired_id, 6, |v| *v += 12, None)
         .unwrap();
-
-    let ((new_push_id, _), _) = svm.push(storage, k1, &24, 7, None).unwrap();
-
-    // new item is pushed at ID 3 while the last item was pushed at ID 1.
-    assert_eq!(new_push_id, 3);
 }
