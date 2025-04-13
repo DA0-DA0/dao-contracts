@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Binary, Uint128};
 
 // These are Cosmos Proto types used for Denom Metadata.
 // We re-export them here for convenience.
@@ -32,6 +32,9 @@ pub struct NewDenomMetadata {
 pub struct NewTokenInfo {
     /// The code id of the cw-tokenfactory-issuer contract
     pub token_issuer_code_id: u64,
+    /// Optionally instantiate the cw-tokenfactory-issuer contract with
+    /// instantiate2 using this salt.
+    pub token_issuer_salt: Option<Binary>,
     /// The subdenom of the token to create, will also be used as an alias
     /// for the denom. The Token Factory denom will have the format of
     /// factory/{contract_address}/{subdenom}

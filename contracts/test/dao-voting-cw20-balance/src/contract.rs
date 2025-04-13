@@ -2,10 +2,11 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
-    Uint128, WasmMsg,
+    Uint128,
 };
 use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
+use dao_interface::state::{Admin, ModuleInstantiateInfo};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenInfo};
@@ -38,6 +39,7 @@ pub fn instantiate(
         }
         TokenInfo::New {
             code_id,
+            salt,
             label,
             name,
             symbol,
@@ -52,24 +54,28 @@ pub fn instantiate(
                 return Err(ContractError::InitialBalancesError {});
             }
 
-            let msg = WasmMsg::Instantiate {
-                admin: Some(info.sender.to_string()),
-                code_id,
-                msg: to_json_binary(&cw20_base::msg::InstantiateMsg {
-                    name,
-                    symbol,
-                    decimals,
-                    initial_balances,
-                    mint: Some(cw20::MinterResponse {
-                        minter: info.sender.to_string(),
-                        cap: None,
-                    }),
-                    marketing,
-                })?,
-                funds: vec![],
-                label,
-            };
-            let msg = SubMsg::reply_on_success(msg, INSTANTIATE_TOKEN_REPLY_ID);
+            let msg = SubMsg::reply_on_success(
+                ModuleInstantiateInfo {
+                    admin: Some(Admin::CoreModule {}),
+                    code_id,
+                    msg: to_json_binary(&cw20_base::msg::InstantiateMsg {
+                        name,
+                        symbol,
+                        decimals,
+                        initial_balances,
+                        mint: Some(cw20::MinterResponse {
+                            minter: info.sender.to_string(),
+                            cap: None,
+                        }),
+                        marketing,
+                    })?,
+                    funds: None,
+                    label,
+                    salt,
+                }
+                .into_cosmos_msg(info.sender),
+                INSTANTIATE_TOKEN_REPLY_ID,
+            );
 
             Ok(Response::default()
                 .add_attribute("action", "instantiate")

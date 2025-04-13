@@ -9,7 +9,7 @@ use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NumTokensResponse};
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_execute_data, parse_reply_instantiate_data, Duration};
 use dao_hooks::nft_stake::{stake_nft_hook_msgs, unstake_nft_hook_msgs};
-use dao_interface::state::ModuleInstantiateCallback;
+use dao_interface::state::{Admin, ModuleInstantiateCallback, ModuleInstantiateInfo};
 use dao_interface::{nft::NftFactoryCallback, voting::IsActiveResponse};
 use dao_voting::duration::validate_duration;
 use dao_voting::threshold::{
@@ -124,6 +124,7 @@ pub fn instantiate(
         }
         NftContract::New {
             code_id,
+            salt,
             label,
             msg: instantiate_msg,
             initial_nfts,
@@ -152,13 +153,15 @@ pub fn instantiate(
 
             // Create instantiate submessage for NFT contract
             let instantiate_msg = SubMsg::reply_on_success(
-                WasmMsg::Instantiate {
+                ModuleInstantiateInfo {
                     code_id,
-                    funds: vec![],
-                    admin: Some(info.sender.to_string()),
+                    admin: Some(Admin::CoreModule {}),
                     label,
                     msg: instantiate_msg.to_json_binary()?,
-                },
+                    funds: None,
+                    salt,
+                }
+                .into_cosmos_msg(info.sender),
                 INSTANTIATE_NFT_CONTRACT_REPLY_ID,
             );
 

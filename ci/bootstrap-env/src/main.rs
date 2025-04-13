@@ -59,6 +59,7 @@ fn main() -> Result<()> {
             msg: to_json_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
                 token_info: dao_voting_cw20_staked::msg::TokenInfo::New {
                     code_id: orc.contract_map.code_id("cw20_base")?,
+                    salt: None,
                     label: "DAO DAO Gov token".to_string(),
                     name: "DAO".to_string(),
                     symbol: "DAO".to_string(),
@@ -69,14 +70,16 @@ fn main() -> Result<()> {
                     }],
                     marketing: None,
                     staking_code_id: orc.contract_map.code_id("cw20_stake")?,
+                    staking_salt: None,
                     unstaking_duration: Some(cw_utils::Duration::Time(1209600)),
                     initial_dao_balance: None,
                 },
                 active_threshold: None,
             })?,
-            funds: vec![],
+            funds: None,
             admin: Some(Admin::CoreModule {}),
             label: "DAO DAO Voting Module".to_string(),
+            salt: None,
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: orc.contract_map.code_id("dao_proposal_single")?,
@@ -109,18 +112,22 @@ fn main() -> Result<()> {
                         })
                         .unwrap(),
                         admin: Some(Admin::CoreModule {}),
-                        funds: vec![],
+                        funds: None,
                         label: "DAO DAO Pre-Propose Module".to_string(),
+                        salt: None,
                     },
                 },
                 close_proposal_on_execution_failure: false,
                 veto: None,
+                delegation_module: None,
             })?,
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO Proposal Module".to_string(),
+            salt: None,
         }],
         initial_items: None,
+        initial_actions: None,
     };
 
     // Init dao dao dao with an initial treasury of 9000000 tokens

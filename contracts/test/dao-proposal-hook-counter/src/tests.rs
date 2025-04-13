@@ -72,21 +72,25 @@ fn instantiate_with_default_governance(
                     decimals: 6,
                     initial_balances,
                     marketing: None,
+                    salt: None,
                 },
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO voting module".to_string(),
+            salt: None,
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id,
             msg: to_json_binary(&msg).unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO governance module".to_string(),
+            salt: None,
         }],
         initial_items: None,
+        initial_actions: None,
     };
 
     instantiate_governance(app, governance_id, governance_instantiate)
@@ -111,6 +115,7 @@ fn test_counters() {
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         close_proposal_on_execution_failure: true,
         veto: None,
+        delegation_module: None,
     };
 
     let governance_addr =

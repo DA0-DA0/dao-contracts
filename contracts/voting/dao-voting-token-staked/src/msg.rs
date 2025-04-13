@@ -6,6 +6,7 @@ use dao_interface::token::NewTokenInfo;
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
 #[cw_serde]
+#[allow(clippy::large_enum_variant)]
 pub enum TokenInfo {
     /// Uses an existing Token Factory token and creates a new issuer contract.
     /// Full setup, such as transferring ownership or setting up MsgSetBeforeSendHook,

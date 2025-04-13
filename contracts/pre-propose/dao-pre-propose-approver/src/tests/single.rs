@@ -77,12 +77,14 @@ fn get_proposal_module_approval_single_instantiate(
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                funds: vec![],
+                funds: None,
                 label: "baby's first pre-propose module, needs supervision".to_string(),
+                salt: None,
             },
         },
         close_proposal_on_execution_failure: false,
         veto: None,
+        delegation_module: None,
     }
 }
 
@@ -110,12 +112,14 @@ fn get_proposal_module_approver_instantiate(
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                funds: vec![],
+                funds: None,
                 label: "approver module".to_string(),
+                salt: None,
             },
         },
         close_proposal_on_execution_failure: false,
         veto: None,
+        delegation_module: None,
     }
 }
 

@@ -50,8 +50,9 @@ pub(crate) fn get_pre_propose_info(
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "pre_propose_contract".to_string(),
+            salt: None,
         },
     }
 }
@@ -79,6 +80,7 @@ pub(crate) fn get_default_token_dao_proposal_module_instantiate(app: &mut App) -
             false,
         ),
         close_proposal_on_execution_failure: true,
+        delegation_module: None,
     }
 }
 
@@ -98,6 +100,7 @@ pub(crate) fn get_default_non_token_dao_proposal_module_instantiate(
         allow_revoting: false,
         pre_propose_info: get_pre_propose_info(app, None, false),
         close_proposal_on_execution_failure: true,
+        delegation_module: None,
     }
 }
 
@@ -168,17 +171,20 @@ pub(crate) fn instantiate_with_staked_cw721_governance(
             })
             .unwrap(),
             admin: None,
-            funds: vec![],
+            funds: None,
             label: "DAO DAO voting module".to_string(),
+            salt: None,
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: proposal_module_code_id,
             msg: to_json_binary(&proposal_module_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO governance module.".to_string(),
+            salt: None,
         }],
         initial_items: None,
+        initial_actions: None,
     };
 
     let core_addr = app
@@ -287,17 +293,20 @@ pub(crate) fn instantiate_with_native_staked_balances_governance(
             })
             .unwrap(),
             admin: None,
-            funds: vec![],
+            funds: None,
             label: "DAO DAO voting module".to_string(),
+            salt: None,
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: proposal_module_code_id,
             msg: to_json_binary(&proposal_module_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO governance module.".to_string(),
+            salt: None,
         }],
         initial_items: None,
+        initial_actions: None,
     };
 
     let core_addr = app
@@ -404,21 +413,26 @@ pub(crate) fn instantiate_with_staked_balances_governance(
                     staking_code_id: cw20_stake_id,
                     unstaking_duration: Some(Duration::Height(6)),
                     initial_dao_balance: None,
+                    salt: None,
+                    staking_salt: None,
                 },
             })
             .unwrap(),
             admin: None,
-            funds: vec![],
+            funds: None,
             label: "DAO DAO voting module".to_string(),
+            salt: None,
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: proposal_module_code_id,
             msg: to_json_binary(&proposal_module_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO governance module.".to_string(),
+            salt: None,
         }],
         initial_items: None,
+        initial_actions: None,
     };
 
     let core_addr = app
@@ -518,22 +532,27 @@ pub(crate) fn instantiate_with_staking_active_threshold(
                     staking_code_id: cw20_staking_id,
                     unstaking_duration: None,
                     initial_dao_balance: None,
+                    salt: None,
+                    staking_salt: None,
                 },
                 active_threshold,
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO voting module".to_string(),
+            salt: None,
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: proposal_module_code_id,
             msg: to_json_binary(&proposal_module_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO governance module".to_string(),
+            salt: None,
         }],
         initial_items: None,
+        initial_actions: None,
     };
 
     app.instantiate_contract(
@@ -597,22 +616,26 @@ pub(crate) fn instantiate_with_cw4_groups_governance(
             msg: to_json_binary(&dao_voting_cw4::msg::InstantiateMsg {
                 group_contract: GroupContract::New {
                     cw4_group_code_id: cw4_id,
+                    cw4_group_salt: None,
                     initial_members: initial_weights,
                 },
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO voting module".to_string(),
+            salt: None,
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: proposal_module_code_id,
             msg: to_json_binary(&proposal_module_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO governance module".to_string(),
+            salt: None,
         }],
         initial_items: None,
+        initial_actions: None,
     };
 
     let addr = app

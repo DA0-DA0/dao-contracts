@@ -142,6 +142,7 @@ where
         allow_revoting: false,
         close_proposal_on_execution_failure: true,
         pre_propose_info,
+        delegation_module: None,
     };
 
     let core_addr = setup_governance(&mut app, instantiate, Some(initial_balances));
@@ -247,27 +248,29 @@ where
                         },
                     )
                     .unwrap();
+                let expected_power = match deposit_config.deposit_info {
+                    Some(CheckedDepositInfo {
+                        amount,
+                        denom: CheckedDenom::Cw20(_),
+                        ..
+                    }) => {
+                        if proposer == voter {
+                            weight - amount
+                        } else {
+                            weight
+                        }
+                    }
+                    // Native token deposits shouldn't impact
+                    // expected voting power.
+                    _ => weight,
+                };
                 let expected = VoteResponse {
                     vote: Some(VoteInfo {
                         rationale: None,
                         voter: Addr::unchecked(&voter),
                         vote: position,
-                        power: match deposit_config.deposit_info {
-                            Some(CheckedDepositInfo {
-                                amount,
-                                denom: CheckedDenom::Cw20(_),
-                                ..
-                            }) => {
-                                if proposer == voter {
-                                    weight - amount
-                                } else {
-                                    weight
-                                }
-                            }
-                            // Native token deposits shouldn't impact
-                            // expected voting power.
-                            _ => weight,
-                        },
+                        power: expected_power,
+                        individual_power: expected_power,
                     }),
                 };
                 assert_eq!(vote, expected)

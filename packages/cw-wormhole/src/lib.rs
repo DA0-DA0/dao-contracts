@@ -78,8 +78,8 @@ impl<'n, K, V> Wormhole<'n, K, V> {
 
 impl<'n, K, V> Wormhole<'n, K, V>
 where
-    // 1. values in the map can be serialized and deserialized
-    V: Serialize + DeserializeOwned + Default + Clone,
+    // 1. values in the map can be serialized, deserialized, and compared
+    V: Serialize + DeserializeOwned + Default + Clone + PartialEq,
     // 1.1. keys in the map can be cloned
     K: Clone,
     // 2. &(key, time) is a value key in a map
@@ -134,6 +134,8 @@ where
     /// Updates `k` at time `t`. To do so, update is called on the
     /// current value of `k` (or Default::default() if there is no
     /// current value), and then all future (t' > t) values of `k`.
+    /// If a future value is updated to be the same as the value
+    /// preceding it, it is redundant and thus removed.
     ///
     /// For example, to perform a increment operation, the `update`
     /// function used is `|v| v + amount`.
@@ -151,7 +153,9 @@ where
         let updated = update(prev, t);
         self.snapshots().save(storage, &(k.clone(), t), &updated)?;
 
-        // Update all values where t' > t.
+        // Update all values where t' > t, removing those that match their
+        // preceding value.
+        let mut preceding_value = updated.clone();
         for (t, v) in self
             .snapshots()
             .prefix(k.clone().into())
@@ -159,9 +163,20 @@ where
             .collect::<StdResult<Vec<_>>>()?
             .into_iter()
         {
-            self.snapshots()
-                .save(storage, &(k.clone(), t.into()), &update(v, t.into()))?;
+            let updated_value = update(v, t.into());
+
+            // If the updated value is different from the preceding value, save
+            // the updated value. Otherwise, remove this because it's redundant.
+            if updated_value != preceding_value {
+                self.snapshots()
+                    .save(storage, &(k.clone(), t.into()), &updated_value)?;
+            } else {
+                self.snapshots().remove(storage, &(k.clone(), t.into()));
+            }
+
+            preceding_value = updated_value;
         }
+
         Ok(updated)
     }
 

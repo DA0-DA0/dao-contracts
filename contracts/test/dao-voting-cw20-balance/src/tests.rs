@@ -43,6 +43,7 @@ fn test_instantiate_zero_supply() {
                     amount: Uint128::zero(),
                 }],
                 marketing: None,
+                salt: None,
             },
         },
     );
@@ -66,6 +67,7 @@ fn test_instantiate_no_balances() {
                 decimals: 6,
                 initial_balances: vec![],
                 marketing: None,
+                salt: None,
             },
         },
     );
@@ -92,6 +94,7 @@ fn test_contract_info() {
                     amount: Uint128::from(2u64),
                 }],
                 marketing: None,
+                salt: None,
             },
         },
     );
@@ -132,6 +135,7 @@ fn test_new_cw20() {
                     amount: Uint128::from(2u64),
                 }],
                 marketing: None,
+                salt: None,
             },
         },
     );

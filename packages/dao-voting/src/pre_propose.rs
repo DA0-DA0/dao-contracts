@@ -192,8 +192,9 @@ mod tests {
                 code_id: 42,
                 msg: to_json_binary("foo").unwrap(),
                 admin: None,
-                funds: vec![],
+                funds: None,
                 label: "pre-propose-9000".to_string(),
+                salt: None,
             },
         };
         let (policy, messages) = info

@@ -212,3 +212,9 @@ pub(crate) fn query_proposal_count(app: &App, proposal_single: &Addr) -> u64 {
         .query_wasm_smart(proposal_single, &QueryMsg::ProposalCount {})
         .unwrap()
 }
+
+pub(crate) fn query_delegation_module(app: &App, proposal_single: &Addr) -> Option<Addr> {
+    app.wrap()
+        .query_wasm_smart(proposal_single, &crate::msg::QueryMsg::DelegationModule {})
+        .unwrap()
+}

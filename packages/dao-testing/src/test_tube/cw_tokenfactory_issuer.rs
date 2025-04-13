@@ -128,7 +128,7 @@ impl<'a> TokenfactoryIssuer<'a> {
                 .join("..")
                 .join("..")
                 .join("artifacts")
-                .join("cw_tokenfactory_issuer.wasm"),
+                .join("cw_tokenfactory_issuer-osmosis.wasm"),
         );
         match byte_code {
             Ok(byte_code) => byte_code,
@@ -138,7 +138,7 @@ impl<'a> TokenfactoryIssuer<'a> {
                     .join("..")
                     .join("..")
                     .join("artifacts")
-                    .join("cw_tokenfactory_issuer-aarch64.wasm"),
+                    .join("cw_tokenfactory_issuer-osmosis-aarch64.wasm"),
             )
             .unwrap(),
         }

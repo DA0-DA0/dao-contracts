@@ -60,26 +60,30 @@ pub fn test_set_self_admin() {
             code_id: cw20_code_id,
             msg: to_json_binary(&cw20_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "voting module".to_string(),
+            salt: None,
         },
         proposal_modules_instantiate_info: vec![
             ModuleInstantiateInfo {
                 code_id: cw20_code_id,
                 msg: to_json_binary(&cw20_instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                funds: vec![],
+                funds: None,
                 label: "prop module".to_string(),
+                salt: None,
             },
             ModuleInstantiateInfo {
                 code_id: cw20_code_id,
                 msg: to_json_binary(&cw20_instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                funds: vec![],
+                funds: None,
                 label: "prop module 2".to_string(),
+                salt: None,
             },
         ],
         initial_items: None,
+        initial_actions: None,
     };
 
     let res: AppResponse = app
@@ -154,26 +158,30 @@ pub fn test_authorized_set_self_admin() {
             code_id: cw20_code_id,
             msg: to_json_binary(&cw20_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "voting module".to_string(),
+            salt: None,
         },
         proposal_modules_instantiate_info: vec![
             ModuleInstantiateInfo {
                 code_id: cw20_code_id,
                 msg: to_json_binary(&cw20_instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                funds: vec![],
+                funds: None,
                 label: "prop module".to_string(),
+                salt: None,
             },
             ModuleInstantiateInfo {
                 code_id: cw20_code_id,
                 msg: to_json_binary(&cw20_instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                funds: vec![],
+                funds: None,
                 label: "prop module 2".to_string(),
+                salt: None,
             },
         ],
         initial_items: None,
+        initial_actions: None,
     };
 
     // Fails when not the admin.

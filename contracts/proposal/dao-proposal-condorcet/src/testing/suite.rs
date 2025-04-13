@@ -92,22 +92,26 @@ impl SuiteBuilder {
                 msg: to_json_binary(&dao_voting_cw4::msg::InstantiateMsg {
                     group_contract: GroupContract::New {
                         cw4_group_code_id: cw4_id,
+                        cw4_group_salt: None,
                         initial_members,
                     },
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                funds: vec![],
+                funds: None,
                 label: "voting module".to_string(),
+                salt: None,
             },
             proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
                 code_id: condorcet_id,
                 msg: to_json_binary(&self.instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                funds: vec![],
+                funds: None,
                 label: "condorcet module".to_string(),
+                salt: None,
             }],
             initial_items: None,
+            initial_actions: None,
             dao_uri: None,
         };
         let core = app

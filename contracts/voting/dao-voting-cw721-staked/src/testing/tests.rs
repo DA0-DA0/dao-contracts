@@ -49,6 +49,7 @@ fn test_instantiate_with_new_cw721_collection() -> anyhow::Result<()> {
             &InstantiateMsg {
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
+                    salt: None,
                     label: "Test NFT".to_string(),
                     msg: to_json_binary(&Cw721InstantiateMsg {
                         name: "Test NFT".to_string(),
@@ -586,6 +587,7 @@ fn test_instantiate_with_invalid_duration_fails() {
             &InstantiateMsg {
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
+                    salt: None,
                     label: "Test NFT".to_string(),
                     msg: to_json_binary(&Cw721InstantiateMsg {
                         name: "Test NFT".to_string(),
@@ -625,6 +627,7 @@ fn test_instantiate_zero_active_threshold_count() {
         &InstantiateMsg {
             nft_contract: NftContract::New {
                 code_id: cw721_id,
+                salt: None,
                 label: "Test NFT".to_string(),
                 msg: to_json_binary(&Cw721InstantiateMsg {
                     name: "Test NFT".to_string(),
@@ -665,6 +668,7 @@ fn test_instantiate_invalid_active_threshold_count_new_nft() {
         &InstantiateMsg {
             nft_contract: NftContract::New {
                 code_id: cw721_id,
+                salt: None,
                 label: "Test NFT".to_string(),
                 msg: to_json_binary(&Cw721InstantiateMsg {
                     name: "Test NFT".to_string(),
@@ -731,6 +735,7 @@ fn test_active_threshold_absolute_count() {
             &InstantiateMsg {
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
+                    salt: None,
                     label: "Test NFT".to_string(),
                     msg: to_json_binary(&Cw721InstantiateMsg {
                         name: "Test NFT".to_string(),
@@ -811,6 +816,7 @@ fn test_active_threshold_percent() {
             &InstantiateMsg {
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
+                    salt: None,
                     label: "Test NFT".to_string(),
                     msg: to_json_binary(&Cw721InstantiateMsg {
                         name: "Test NFT".to_string(),
@@ -872,6 +878,7 @@ fn test_active_threshold_percent_rounds_up() {
             &InstantiateMsg {
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
+                    salt: None,
                     label: "Test NFT".to_string(),
                     msg: to_json_binary(&Cw721InstantiateMsg {
                         name: "Test NFT".to_string(),
@@ -974,6 +981,7 @@ fn test_update_active_threshold() {
             &InstantiateMsg {
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
+                    salt: None,
                     label: "Test NFT".to_string(),
                     msg: to_json_binary(&Cw721InstantiateMsg {
                         name: "Test NFT".to_string(),
@@ -1050,6 +1058,7 @@ fn test_active_threshold_percentage_gt_100() {
         &InstantiateMsg {
             nft_contract: NftContract::New {
                 code_id: cw721_id,
+                salt: None,
                 label: "Test NFT".to_string(),
                 msg: to_json_binary(&Cw721InstantiateMsg {
                     name: "Test NFT".to_string(),
@@ -1092,6 +1101,7 @@ fn test_active_threshold_percentage_lte_0() {
         &InstantiateMsg {
             nft_contract: NftContract::New {
                 code_id: cw721_id,
+                salt: None,
                 label: "Test NFT".to_string(),
                 msg: to_json_binary(&Cw721InstantiateMsg {
                     name: "Test NFT".to_string(),
@@ -1132,6 +1142,7 @@ fn test_invalid_instantiate_msg() {
             &InstantiateMsg {
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
+                    salt: None,
                     label: "Test NFT".to_string(),
                     msg: to_json_binary(&Empty {}).unwrap(),
                     initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
@@ -1171,6 +1182,7 @@ fn test_invalid_initial_nft_msg() {
             &InstantiateMsg {
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
+                    salt: None,
                     label: "Test NFT".to_string(),
                     msg: to_json_binary(&Cw721InstantiateMsg {
                         name: "Test NFT".to_string(),
@@ -1210,6 +1222,7 @@ fn test_invalid_initial_nft_msg_wrong_absolute_count() {
             &InstantiateMsg {
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
+                    salt: None,
                     label: "Test NFT".to_string(),
                     msg: to_json_binary(&Cw721InstantiateMsg {
                         name: "Test NFT".to_string(),
@@ -1260,6 +1273,7 @@ fn test_no_initial_nfts_fails() {
             &InstantiateMsg {
                 nft_contract: NftContract::New {
                     code_id: cw721_id,
+                    salt: None,
                     label: "Test NFT".to_string(),
                     msg: to_json_binary(&Cw721InstantiateMsg {
                         name: "Test NFT".to_string(),

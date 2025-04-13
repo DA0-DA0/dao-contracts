@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-voting-cw721-staked",
-  "contract_version": "2.6.0",
+  "contract_version": "2.7.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -194,6 +194,17 @@
                   },
                   "msg": {
                     "$ref": "#/definitions/Binary"
+                  },
+                  "salt": {
+                    "description": "Optionally instantiate the token via instantiate2 using this salt.",
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Binary"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "additionalProperties": false

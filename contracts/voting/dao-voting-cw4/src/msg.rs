@@ -1,4 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Binary;
 use dao_dao_macros::voting_module_query;
 
 #[cw_serde]
@@ -8,6 +9,9 @@ pub enum GroupContract {
     },
     New {
         cw4_group_code_id: u64,
+        /// Optionally instantiate the cw4 group via instantiate2 using this
+        /// salt.
+        cw4_group_salt: Option<Binary>,
         initial_members: Vec<cw4::Member>,
     },
 }

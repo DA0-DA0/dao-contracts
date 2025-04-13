@@ -23,8 +23,9 @@ use dao_interface::{
 
 use crate::error::ContractError;
 use crate::state::{
-    ACTIVE_PROPOSAL_MODULE_COUNT, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN,
-    PAUSED, PROPOSAL_MODULES, SUBDAO_LIST, TOTAL_PROPOSAL_MODULE_COUNT, VOTING_MODULE,
+    ACTIVE_PROPOSAL_MODULE_COUNT, ADMIN, CONFIG, CW20_LIST, CW721_LIST, INITIAL_ACTIONS, ITEMS,
+    NOMINATED_ADMIN, PAUSED, PROPOSAL_MODULES, SUBDAO_LIST, TOTAL_PROPOSAL_MODULE_COUNT,
+    VOTING_MODULE,
 };
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-dao-core";
@@ -33,6 +34,7 @@ pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const PROPOSAL_MODULE_REPLY_ID: u64 = 0;
 const VOTE_MODULE_INSTANTIATE_REPLY_ID: u64 = 1;
 const VOTE_MODULE_UPDATE_REPLY_ID: u64 = 2;
+const INITIAL_ACTIONS_REPLY_ID: u64 = 3;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -92,11 +94,22 @@ pub fn instantiate(
     TOTAL_PROPOSAL_MODULE_COUNT.save(deps.storage, &0)?;
     ACTIVE_PROPOSAL_MODULE_COUNT.save(deps.storage, &0)?;
 
-    Ok(Response::new()
+    let mut res = Response::new()
         .add_attribute("action", "instantiate")
         .add_attribute("sender", info.sender)
         .add_submessage(vote_module_msg)
-        .add_submessages(proposal_module_msgs))
+        .add_submessages(proposal_module_msgs);
+
+    if let Some(initial_actions) = msg.initial_actions {
+        INITIAL_ACTIONS.save(deps.storage, &initial_actions)?;
+        res = res.add_submessages(
+            initial_actions
+                .into_iter()
+                .map(|msg| SubMsg::reply_on_error(msg, INITIAL_ACTIONS_REPLY_ID)),
+        );
+    }
+
+    Ok(res)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -595,6 +608,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             query_list_sub_daos(deps, start_after, limit)
         }
         QueryMsg::DaoURI {} => query_dao_uri(deps),
+        QueryMsg::InitialActions {} => query_initial_actions(deps),
     }
 }
 
@@ -704,6 +718,7 @@ pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
     let version = get_contract_version(deps.storage)?;
     let active_proposal_module_count = ACTIVE_PROPOSAL_MODULE_COUNT.load(deps.storage)?;
     let total_proposal_module_count = TOTAL_PROPOSAL_MODULE_COUNT.load(deps.storage)?;
+    let initial_actions = INITIAL_ACTIONS.may_load(deps.storage)?.unwrap_or_default();
     to_json_binary(&DumpStateResponse {
         admin,
         config,
@@ -713,6 +728,7 @@ pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
         voting_module,
         active_proposal_module_count,
         total_proposal_module_count,
+        initial_actions,
     })
 }
 
@@ -868,6 +884,10 @@ pub fn query_proposal_module_count(deps: Deps) -> StdResult<Binary> {
     })
 }
 
+pub fn query_initial_actions(deps: Deps) -> StdResult<Binary> {
+    to_json_binary(&INITIAL_ACTIONS.may_load(deps.storage)?.unwrap_or_default())
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     let ContractVersion { version, .. } = get_contract_version(deps.storage)?;
@@ -931,7 +951,8 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
                             msg: to_json_binary(&migrate_params.params).unwrap(),
                             admin: Some(Admin::CoreModule {}),
                             label: "migrator".to_string(),
-                            funds: vec![],
+                            funds: None,
+                            salt: None,
                         }],
                         to_disable: vec![],
                     })
@@ -1016,6 +1037,12 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             VOTING_MODULE.save(deps.storage, &vote_module_addr)?;
 
             Ok(Response::default().add_attribute("voting_module", vote_module_addr))
+        }
+        INITIAL_ACTIONS_REPLY_ID => {
+            // initial actions only reply on error
+            Err(ContractError::InitialActionsError {
+                error: msg.result.unwrap_err(),
+            })
         }
         _ => Err(ContractError::UnknownReplyID {}),
     }

@@ -25,6 +25,8 @@ pub struct VoteInfo {
     pub vote: MultipleChoiceVote,
     /// The voting power behind the vote.
     pub power: Uint128,
+    /// The individual voting power behind the vote (excluding delegation).
+    pub individual_power: Uint128,
     /// The rationale behind the vote.
     pub rationale: Option<String>,
 }

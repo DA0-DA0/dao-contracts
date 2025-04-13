@@ -48,6 +48,9 @@ pub struct InstantiateMsg {
     ///
     /// It is an error to provide two items with the same key.
     pub initial_items: Option<Vec<InitialItem>>,
+    /// Actions for the DAO to execute immediately.
+    pub initial_actions: Option<Vec<CosmosMsg<Empty>>>,
+
     /// Implements the DAO Star standard: <https://daostar.one/EIP>
     pub dao_uri: Option<String>,
 }
@@ -229,6 +232,9 @@ pub enum QueryMsg {
     /// Returns the total voting power at a given block height.
     #[returns(crate::voting::TotalPowerAtHeightResponse)]
     TotalPowerAtHeight { height: Option<u64> },
+    /// Returns the actions executed by the DAO on instantiation, if any.
+    #[returns(Vec<CosmosMsg>)]
+    InitialActions {},
 }
 
 #[allow(clippy::large_enum_variant)]

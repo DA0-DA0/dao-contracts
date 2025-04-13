@@ -66,6 +66,7 @@ fn test_set_self_admin_instantiate2() {
             msg: to_json_binary(&dao_voting_cw4::msg::InstantiateMsg {
                 group_contract: dao_voting_cw4::msg::GroupContract::New {
                     cw4_group_code_id: cw4_group_id,
+                    cw4_group_salt: None,
                     initial_members: vec![cw4::Member {
                         addr: accounts[0].address(),
                         weight: 1,
@@ -74,8 +75,9 @@ fn test_set_self_admin_instantiate2() {
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO Voting Module".to_string(),
+            salt: None,
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: proposal_single_id,
@@ -91,13 +93,16 @@ fn test_set_self_admin_instantiate2() {
                 close_proposal_on_execution_failure: false,
                 pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
                 veto: None,
+                delegation_module: None,
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO Proposal Module".to_string(),
+            salt: None,
         }],
         initial_items: None,
+        initial_actions: None,
     };
 
     let salt = Binary::from("salt".as_bytes());

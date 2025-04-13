@@ -9,7 +9,6 @@ use cosmwasm_std::{Addr, Coin};
 use cw2::set_contract_version;
 use cw20::Cw20ExecuteMsg;
 use cw20::Cw20ReceiveMsg;
-use cw_denom::CheckedDenom;
 use cw_storage_plus::Bound;
 use cw_utils::{nonpayable, parse_reply_instantiate_data};
 use cw_vesting::msg::{
@@ -17,6 +16,7 @@ use cw_vesting::msg::{
     ReceiveMsg as PayrollReceiveMsg,
 };
 use cw_vesting::vesting::Vest;
+use cw_vesting::CheckedDenom;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
@@ -123,11 +123,7 @@ pub fn instantiate_contract(
 ) -> Result<Response, ContractError> {
     // Check sender is contract owner if set
     let ownership = cw_ownable::get_ownership(deps.storage)?;
-    if ownership
-        .owner
-        .as_ref()
-        .map_or(false, |owner| *owner != sender)
-    {
+    if ownership.owner != Some(sender) {
         return Err(ContractError::Unauthorized {});
     }
 

@@ -8,7 +8,7 @@ use dao_interface::proposal::InfoResponse;
 use dao_interface::state::ProposalModule;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_pre_propose_base::{error::PreProposeError, msg::DepositInfoResponse, state::Config};
-use dao_proposal_single::query::ProposalResponse;
+use dao_proposal_single as dps;
 use dao_testing::{
     contracts::{
         cw20_base_contract, cw4_group_contract, dao_pre_propose_approval_single_contract,
@@ -44,7 +44,7 @@ fn get_default_proposal_module_instantiate(
     app: &mut App,
     deposit_info: Option<UncheckedDepositInfo>,
     open_proposal_submission: bool,
-) -> dao_proposal_single::msg::InstantiateMsg {
+) -> dps::msg::InstantiateMsg {
     let pre_propose_id = app.store_code(dao_pre_propose_approval_single_contract());
 
     let submission_policy = if open_proposal_submission {
@@ -57,7 +57,7 @@ fn get_default_proposal_module_instantiate(
         }
     };
 
-    dao_proposal_single::msg::InstantiateMsg {
+    dps::msg::InstantiateMsg {
         threshold: Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Majority {},
         },
@@ -77,12 +77,14 @@ fn get_default_proposal_module_instantiate(
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                funds: vec![],
+                funds: None,
                 label: "baby's first pre-propose module".to_string(),
+                salt: None,
             },
         },
         close_proposal_on_execution_failure: false,
         veto: None,
+        delegation_module: None,
     }
 }
 
@@ -158,7 +160,7 @@ fn setup_default_test(
         .wrap()
         .query_wasm_smart(
             proposal_single.clone(),
-            &dao_proposal_single::msg::QueryMsg::ProposalCreationPolicy {},
+            &dps::msg::QueryMsg::ProposalCreationPolicy {},
         )
         .unwrap();
 
@@ -268,7 +270,7 @@ fn vote(app: &mut App, module: Addr, sender: &str, id: u64, position: Vote) -> S
     app.execute_contract(
         Addr::unchecked(sender),
         module.clone(),
-        &dao_proposal_single::msg::ExecuteMsg::Vote {
+        &dps::msg::ExecuteMsg::Vote {
             proposal_id: id,
             vote: position,
             rationale: None,
@@ -277,12 +279,9 @@ fn vote(app: &mut App, module: Addr, sender: &str, id: u64, position: Vote) -> S
     )
     .unwrap();
 
-    let proposal: ProposalResponse = app
+    let proposal: dps::query::ProposalResponse = app
         .wrap()
-        .query_wasm_smart(
-            module,
-            &dao_proposal_single::msg::QueryMsg::Proposal { proposal_id: id },
-        )
+        .query_wasm_smart(module, &dps::msg::QueryMsg::Proposal { proposal_id: id })
         .unwrap();
 
     proposal.proposal.status
@@ -402,7 +401,7 @@ fn close_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64) {
     app.execute_contract(
         Addr::unchecked(sender),
         module,
-        &dao_proposal_single::msg::ExecuteMsg::Close { proposal_id },
+        &dps::msg::ExecuteMsg::Close { proposal_id },
         &[],
     )
     .unwrap();
@@ -412,7 +411,7 @@ fn execute_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64)
     app.execute_contract(
         Addr::unchecked(sender),
         module,
-        &dao_proposal_single::msg::ExecuteMsg::Execute { proposal_id },
+        &dps::msg::ExecuteMsg::Execute { proposal_id },
         &[],
     )
     .unwrap();
@@ -1666,7 +1665,7 @@ fn test_instantiate_with_zero_native_deposit() {
     let proposal_module_instantiate = {
         let pre_propose_id = app.store_code(dao_pre_propose_approval_single_contract());
 
-        dao_proposal_single::msg::InstantiateMsg {
+        dps::msg::InstantiateMsg {
             threshold: Threshold::AbsolutePercentage {
                 percentage: PercentageThreshold::Majority {},
             },
@@ -1696,12 +1695,14 @@ fn test_instantiate_with_zero_native_deposit() {
                     })
                     .unwrap(),
                     admin: Some(Admin::CoreModule {}),
-                    funds: vec![],
+                    funds: None,
                     label: "baby's first pre-propose module".to_string(),
+                    salt: None,
                 },
             },
             close_proposal_on_execution_failure: false,
             veto: None,
+            delegation_module: None,
         }
     };
 
@@ -1735,7 +1736,7 @@ fn test_instantiate_with_zero_cw20_deposit() {
     let proposal_module_instantiate = {
         let pre_propose_id = app.store_code(dao_pre_propose_approval_single_contract());
 
-        dao_proposal_single::msg::InstantiateMsg {
+        dps::msg::InstantiateMsg {
             threshold: Threshold::AbsolutePercentage {
                 percentage: PercentageThreshold::Majority {},
             },
@@ -1765,12 +1766,14 @@ fn test_instantiate_with_zero_cw20_deposit() {
                     })
                     .unwrap(),
                     admin: Some(Admin::CoreModule {}),
-                    funds: vec![],
+                    funds: None,
                     label: "baby's first pre-propose module".to_string(),
+                    salt: None,
                 },
             },
             close_proposal_on_execution_failure: false,
             veto: None,
+            delegation_module: None,
         }
     };
 
@@ -2534,7 +2537,7 @@ fn test_withdraw() {
         .wrap()
         .query_wasm_smart(
             proposal_single.clone(),
-            &dao_proposal_single::msg::QueryMsg::ProposalCreationPolicy {},
+            &dps::msg::QueryMsg::ProposalCreationPolicy {},
         )
         .unwrap();
 
@@ -2862,8 +2865,8 @@ fn test_migrate_from_v241() {
     app.execute_contract(
         Addr::unchecked("approver"),
         pre_propose.clone(),
-        &dppas_v241::msg::ExecuteMsg::Extension {
-            msg: dppas_v241::msg::ExecuteExt::Approve { id: 3 },
+        &ExecuteMsg::Extension {
+            msg: ExecuteExt::Approve { id: 3 },
         },
         &[],
     )
@@ -2871,18 +2874,18 @@ fn test_migrate_from_v241() {
     app.execute_contract(
         Addr::unchecked("ekez"),
         proposal_single.clone(),
-        &dao_proposal_single::msg::ExecuteMsg::Execute { proposal_id: 3 },
+        &dps_v241::msg::ExecuteMsg::Execute { proposal_id: 3 },
         &[],
     )
     .unwrap();
-    let proposal: ProposalResponse = app
+    let proposal: dps_v241::query::ProposalResponse = app
         .wrap()
         .query_wasm_smart(
             proposal_single.clone(),
-            &dao_proposal_single::msg::QueryMsg::Proposal { proposal_id: 3 },
+            &dps_v241::msg::QueryMsg::Proposal { proposal_id: 3 },
         )
         .unwrap();
-    assert_eq!(proposal.proposal.status, Status::Executed);
+    assert_eq!(proposal.proposal.status, dv_v241::status::Status::Executed);
 }
 
 #[test]
@@ -3116,8 +3119,8 @@ fn test_migrate_from_v241_with_policy_update() {
     app.execute_contract(
         Addr::unchecked("approver"),
         pre_propose.clone(),
-        &dppas_v241::msg::ExecuteMsg::Extension {
-            msg: dppas_v241::msg::ExecuteExt::Approve { id: 2 },
+        &ExecuteMsg::Extension {
+            msg: ExecuteExt::Approve { id: 2 },
         },
         &[],
     )
@@ -3223,9 +3226,9 @@ fn test_migrate_from_v241_with_policy_update() {
     app.execute_contract(
         Addr::unchecked("ekez"),
         proposal_single.clone(),
-        &dao_proposal_single::msg::ExecuteMsg::Vote {
+        &dps_v241::msg::ExecuteMsg::Vote {
             proposal_id: 3,
-            vote: Vote::Yes,
+            vote: dv_v241::voting::Vote::Yes,
             rationale: None,
         },
         &[],
@@ -3234,16 +3237,16 @@ fn test_migrate_from_v241_with_policy_update() {
     app.execute_contract(
         Addr::unchecked("ekez"),
         proposal_single.clone(),
-        &dao_proposal_single::msg::ExecuteMsg::Execute { proposal_id: 3 },
+        &dps_v241::msg::ExecuteMsg::Execute { proposal_id: 3 },
         &[],
     )
     .unwrap();
-    let proposal: ProposalResponse = app
+    let proposal: dps_v241::query::ProposalResponse = app
         .wrap()
         .query_wasm_smart(
             proposal_single.clone(),
-            &dao_proposal_single::msg::QueryMsg::Proposal { proposal_id: 3 },
+            &dps_v241::msg::QueryMsg::Proposal { proposal_id: 3 },
         )
         .unwrap();
-    assert_eq!(proposal.proposal.status, Status::Executed);
+    assert_eq!(proposal.proposal.status, dv_v241::status::Status::Executed);
 }

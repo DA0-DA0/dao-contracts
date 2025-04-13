@@ -20,7 +20,7 @@ use cw_utils::{
 };
 use dao_hooks::stake::{stake_hook_msgs, unstake_hook_msgs};
 use dao_interface::{
-    state::ModuleInstantiateCallback,
+    state::{Admin, ModuleInstantiateCallback, ModuleInstantiateInfo},
     token::{InitialBalance, NewTokenInfo, TokenFactoryCallback},
     voting::{
         DenomResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
@@ -106,6 +106,7 @@ pub fn instantiate(
             let NewTokenInfo {
                 subdenom,
                 token_issuer_code_id,
+                token_issuer_salt,
                 ..
             } = token;
 
@@ -115,15 +116,17 @@ pub fn instantiate(
             // Instantiate cw-token-factory-issuer contract
             // DAO (sender) is set as contract admin
             let issuer_instantiate_msg = SubMsg::reply_on_success(
-                WasmMsg::Instantiate {
-                    admin: Some(info.sender.to_string()),
+                ModuleInstantiateInfo {
+                    admin: Some(Admin::CoreModule {}),
                     code_id: *token_issuer_code_id,
                     msg: to_json_binary(&IssuerInstantiateMsg::NewToken {
                         subdenom: subdenom.to_string(),
                     })?,
-                    funds: info.funds,
+                    funds: Some(info.funds),
                     label: "cw-tokenfactory-issuer".to_string(),
-                },
+                    salt: token_issuer_salt.clone(),
+                }
+                .into_cosmos_msg(info.sender),
                 INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID,
             );
 

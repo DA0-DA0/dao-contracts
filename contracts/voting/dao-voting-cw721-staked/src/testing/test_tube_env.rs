@@ -120,8 +120,9 @@ impl TestEnvBuilder {
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                funds: vec![],
+                funds: None,
                 label: "DAO DAO Voting Module".to_string(),
+                salt: None,
             },
             proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
                 code_id: proposal_single_id,
@@ -137,13 +138,16 @@ impl TestEnvBuilder {
                     close_proposal_on_execution_failure: false,
                     pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
                     veto: None,
+                    delegation_module: None,
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                funds: vec![],
+                funds: None,
                 label: "DAO DAO Proposal Module".to_string(),
+                salt: None,
             }],
             initial_items: None,
+            initial_actions: None,
         };
 
         // Instantiate DAO

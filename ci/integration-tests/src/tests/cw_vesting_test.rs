@@ -13,7 +13,7 @@ use test_context::test_context;
 
 use crate::helpers::chain::Chain;
 
-const CONTRACT_NAME: &str = "cw_vesting";
+const CONTRACT_NAME: &str = "cw_vesting-staking";
 
 async fn balance<C: CosmosClient>(addr: &str, client: &CosmTome<C>) -> u128 {
     client

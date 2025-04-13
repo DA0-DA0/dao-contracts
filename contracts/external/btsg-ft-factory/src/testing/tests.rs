@@ -68,8 +68,9 @@ fn test_issue_fantoken() -> anyhow::Result<()> {
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO voting module".to_string(),
+            salt: None,
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: proposal_single_id,
@@ -84,12 +85,15 @@ fn test_issue_fantoken() -> anyhow::Result<()> {
                 pre_propose_info: dao_voting::pre_propose::PreProposeInfo::AnyoneMayPropose {},
                 close_proposal_on_execution_failure: true,
                 veto: None,
+                delegation_module: None,
             })?,
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO governance module".to_string(),
+            salt: None,
         }],
         initial_items: None,
+        initial_actions: None,
     };
 
     let dao = app
@@ -170,8 +174,9 @@ fn test_initial_fantoken_balances() -> anyhow::Result<()> {
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO voting module".to_string(),
+            salt: None,
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: proposal_single_id,
@@ -186,12 +191,15 @@ fn test_initial_fantoken_balances() -> anyhow::Result<()> {
                 pre_propose_info: dao_voting::pre_propose::PreProposeInfo::AnyoneMayPropose {},
                 close_proposal_on_execution_failure: true,
                 veto: None,
+                delegation_module: None,
             })?,
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO governance module".to_string(),
+            salt: None,
         }],
         initial_items: None,
+        initial_actions: None,
     };
 
     let dao = app
@@ -277,8 +285,9 @@ fn test_fantoken_minter_and_authority_set_to_dao() -> anyhow::Result<()> {
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO voting module".to_string(),
+            salt: None,
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: proposal_single_id,
@@ -293,12 +302,15 @@ fn test_fantoken_minter_and_authority_set_to_dao() -> anyhow::Result<()> {
                 pre_propose_info: dao_voting::pre_propose::PreProposeInfo::AnyoneMayPropose {},
                 close_proposal_on_execution_failure: true,
                 veto: None,
+                delegation_module: None,
             })?,
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO governance module".to_string(),
+            salt: None,
         }],
         initial_items: None,
+        initial_actions: None,
     };
 
     let dao = app
@@ -434,8 +446,9 @@ fn test_fantoken_can_be_staked() -> anyhow::Result<()> {
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO voting module".to_string(),
+            salt: None,
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: proposal_single_id,
@@ -450,12 +463,15 @@ fn test_fantoken_can_be_staked() -> anyhow::Result<()> {
                 pre_propose_info: dao_voting::pre_propose::PreProposeInfo::AnyoneMayPropose {},
                 close_proposal_on_execution_failure: true,
                 veto: None,
+                delegation_module: None,
             })?,
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "DAO DAO governance module".to_string(),
+            salt: None,
         }],
         initial_items: None,
+        initial_actions: None,
     };
 
     let dao = app

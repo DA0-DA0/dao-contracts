@@ -70,7 +70,7 @@ use dao_proposal_single::ContractError;
 use super::{
     do_votes::do_votes_staked_balances,
     execute::vote_on_proposal_with_rationale,
-    queries::{query_next_proposal_id, query_vote},
+    queries::{query_delegation_module, query_next_proposal_id, query_vote},
     CREATOR_ADDR,
 };
 
@@ -133,6 +133,8 @@ fn test_simple_propose_staked_balances() {
         status: Status::Open,
         veto: None,
         votes: Votes::zero(),
+        individual_votes: Votes::zero(),
+        delegation_module: None,
     };
 
     assert_eq!(created.proposal, expected);
@@ -183,6 +185,8 @@ fn test_simple_proposal_cw4_voting() {
         status: Status::Open,
         veto: None,
         votes: Votes::zero(),
+        individual_votes: Votes::zero(),
+        delegation_module: None,
     };
 
     assert_eq!(created.proposal, expected);
@@ -239,6 +243,12 @@ fn test_simple_proposal_auto_vote_yes() {
             no: Uint128::zero(),
             abstain: Uint128::zero(),
         },
+        individual_votes: Votes {
+            yes: Uint128::new(1),
+            no: Uint128::zero(),
+            abstain: Uint128::zero(),
+        },
+        delegation_module: None,
     };
 
     assert_eq!(created.proposal, expected);
@@ -288,6 +298,12 @@ fn test_simple_proposal_auto_vote_no() {
             no: Uint128::new(1),
             abstain: Uint128::zero(),
         },
+        individual_votes: Votes {
+            yes: Uint128::zero(),
+            no: Uint128::new(1),
+            abstain: Uint128::zero(),
+        },
+        delegation_module: None,
     };
 
     assert_eq!(created.proposal, expected);
@@ -385,7 +401,9 @@ fn test_instantiate_with_non_voting_module_cw20_deposit() {
         msgs: vec![],
         status: Status::Open,
         votes: Votes::zero(),
+        individual_votes: Votes::zero(),
         veto: None,
+        delegation_module: None,
     };
 
     assert_eq!(created.proposal, expected);
@@ -2246,7 +2264,13 @@ fn test_anyone_may_propose_and_proposal_listing() {
                     no: Uint128::zero(),
                     abstain: Uint128::zero()
                 },
-                veto: None
+                individual_votes: Votes {
+                    yes: Uint128::new(100_000_000),
+                    no: Uint128::zero(),
+                    abstain: Uint128::zero()
+                },
+                veto: None,
+                delegation_module: None,
             }
         }
     )
@@ -3055,6 +3079,7 @@ fn test_proposal_count_initialized_to_zero() {
             allow_revoting: false,
             pre_propose_info,
             close_proposal_on_execution_failure: true,
+            delegation_module: None,
         },
         Some(vec![
             Cw20Coin {
@@ -3186,15 +3211,17 @@ pub fn test_migrate_updates_version() {
 //         })
 //         .unwrap(),
 //         admin: None,
-//         funds: vec![],
+//         funds: None,
 //         label: "DAO DAO voting module".to_string(),
+//         salt: None,
 //     },
 //     proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
 //         code_id: v1_proposal_single_code,
 //         msg: to_json_binary(&instantiate).unwrap(),
 //         admin: Some(Admin::CoreModule {}),
-//         funds: vec![],
+//         funds: None,
 //         label: "DAO DAO governance module.".to_string(),
+//         salt: None,
 //     }],
 //     initial_items: None,
 // };
@@ -3529,6 +3556,8 @@ fn test_reply_proposal_mock() {
                 status: Status::Open,
                 veto: None,
                 votes: Votes::zero(),
+                individual_votes: Votes::zero(),
+                delegation_module: None,
             },
         )
         .unwrap();
@@ -3865,31 +3894,36 @@ fn test_query_list_votes() {
                 rationale: None,
                 voter: Addr::unchecked("five"),
                 vote: Vote::Yes,
-                power: Uint128::new(1)
+                power: Uint128::new(1),
+                individual_power: Uint128::new(1),
             },
             VoteInfo {
                 rationale: None,
                 voter: Addr::unchecked("four"),
                 vote: Vote::Yes,
-                power: Uint128::new(1)
+                power: Uint128::new(1),
+                individual_power: Uint128::new(1),
             },
             VoteInfo {
                 rationale: None,
                 voter: Addr::unchecked("one"),
                 vote: Vote::Yes,
-                power: Uint128::new(1)
+                power: Uint128::new(1),
+                individual_power: Uint128::new(1),
             },
             VoteInfo {
                 rationale: None,
                 voter: Addr::unchecked("three"),
                 vote: Vote::No,
-                power: Uint128::new(1)
+                power: Uint128::new(1),
+                individual_power: Uint128::new(1),
             },
             VoteInfo {
                 rationale: None,
                 voter: Addr::unchecked("two"),
                 vote: Vote::No,
-                power: Uint128::new(1)
+                power: Uint128::new(1),
+                individual_power: Uint128::new(1),
             }
         ]
     );
@@ -3908,13 +3942,15 @@ fn test_query_list_votes() {
                 rationale: None,
                 voter: Addr::unchecked("one"),
                 vote: Vote::Yes,
-                power: Uint128::new(1)
+                power: Uint128::new(1),
+                individual_power: Uint128::new(1),
             },
             VoteInfo {
                 rationale: None,
                 voter: Addr::unchecked("three"),
                 vote: Vote::No,
-                power: Uint128::new(1)
+                power: Uint128::new(1),
+                individual_power: Uint128::new(1),
             },
         ]
     );
@@ -3969,8 +4005,9 @@ fn test_update_pre_propose_module() {
                         })
                         .unwrap(),
                         admin: Some(Admin::CoreModule {}),
-                        funds: vec![],
+                        funds: None,
                         label: "new pre-propose module".to_string(),
+                        salt: None,
                     },
                 },
             })
@@ -4250,4 +4287,119 @@ fn test_proposal_count_goes_up() {
 
     let next = query_next_proposal_id(&app, &proposal_module);
     assert_eq!(next, 3);
+}
+
+#[test]
+#[should_panic]
+fn test_instantiation_validates_delegation_module_addr() {
+    let mut app = App::default();
+    let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
+    instantiate.delegation_module = Some("".to_string());
+    instantiate_with_staked_balances_governance(&mut app, instantiate, None);
+}
+
+#[test]
+fn test_instantiation_stores_delegation_module_addr() {
+    let mut app = App::default();
+    let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
+    instantiate.delegation_module = Some(CREATOR_ADDR.to_string());
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
+
+    let proposal_module = query_single_proposal_module(&app, &core_addr);
+    let gov_token = query_dao_token(&app, &core_addr);
+
+    // Mint some tokens to pay the proposal deposit.
+    mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
+    make_proposal(&mut app, &proposal_module, CREATOR_ADDR, vec![], None);
+
+    let delegation_module = query_delegation_module(&app, &proposal_module).unwrap();
+    assert_eq!(delegation_module.to_string(), CREATOR_ADDR.to_string());
+}
+
+#[test]
+fn test_update_delegation_module_validates_addr() {
+    let CommonTest {
+        mut app,
+        proposal_module,
+        gov_token,
+        core_addr,
+        ..
+    } = setup_test(vec![]);
+
+    // make a proposal to update the delegation module
+    mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
+    let proposal_id = make_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        vec![WasmMsg::Execute {
+            contract_addr: proposal_module.to_string(),
+            msg: to_json_binary(&ExecuteMsg::UpdateDelegationModule {
+                module: "".to_string(),
+            })
+            .unwrap(),
+            funds: vec![],
+        }
+        .into()],
+        None,
+    );
+
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        proposal_id,
+        Vote::Yes,
+    );
+
+    execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
+
+    let proposal = query_proposal(&app, &proposal_module, proposal_id);
+
+    // proposal should fail to execute
+    assert_eq!(proposal.proposal.status, Status::ExecutionFailed);
+}
+
+#[test]
+fn test_update_delegation_module() {
+    let CommonTest {
+        mut app,
+        proposal_module,
+        gov_token,
+        core_addr,
+        ..
+    } = setup_test(vec![]);
+
+    let delegation_module = "new_delegation_module".to_string();
+
+    // make a proposal to update the delegation module
+    mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
+    let proposal_id = make_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        vec![WasmMsg::Execute {
+            contract_addr: proposal_module.to_string(),
+            msg: to_json_binary(&ExecuteMsg::UpdateDelegationModule {
+                module: delegation_module.to_string(),
+            })
+            .unwrap(),
+            funds: vec![],
+        }
+        .into()],
+        None,
+    );
+
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        proposal_id,
+        Vote::Yes,
+    );
+    execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
+
+    let new_delegation_module = query_delegation_module(&app, &proposal_module).unwrap();
+
+    assert_eq!(delegation_module, new_delegation_module);
 }

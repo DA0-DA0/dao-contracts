@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-voting-cw4",
-  "contract_version": "2.6.0",
+  "contract_version": "2.7.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -16,6 +16,10 @@
     },
     "additionalProperties": false,
     "definitions": {
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      },
       "GroupContract": {
         "oneOf": [
           {
@@ -56,6 +60,17 @@
                     "type": "integer",
                     "format": "uint64",
                     "minimum": 0.0
+                  },
+                  "cw4_group_salt": {
+                    "description": "Optionally instantiate the cw4 group via instantiate2 using this salt.",
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Binary"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "initial_members": {
                     "type": "array",

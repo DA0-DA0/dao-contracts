@@ -102,8 +102,9 @@ pub fn get_pre_propose_info(
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
-            funds: vec![],
+            funds: None,
             label: "pre_propose_contract".to_string(),
+            salt: None,
         },
     }
 }
@@ -127,6 +128,7 @@ fn test_propose() {
         close_proposal_on_execution_failure: true,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
@@ -181,9 +183,13 @@ fn test_propose() {
         votes: MultipleChoiceVotes {
             vote_weights: vec![Uint128::zero(); 3],
         },
+        individual_votes: MultipleChoiceVotes {
+            vote_weights: vec![Uint128::zero(); 3],
+        },
         allow_revoting: false,
         min_voting_period: None,
         veto: None,
+        delegation_module: None,
     };
 
     assert_eq!(created.proposal, expected);
@@ -209,6 +215,7 @@ fn test_propose_wrong_num_choices() {
         voting_strategy: voting_strategy.clone(),
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
@@ -289,6 +296,7 @@ fn test_proposal_count_initialized_to_zero() {
         allow_revoting: false,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
     let core_addr = instantiate_with_staked_balances_governance(&mut app, msg, None);
 
@@ -328,6 +336,7 @@ fn test_propose_auto_vote_winner() {
         close_proposal_on_execution_failure: true,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
@@ -391,9 +400,13 @@ fn test_propose_auto_vote_winner() {
         votes: MultipleChoiceVotes {
             vote_weights: vec![Uint128::new(100_000_000), Uint128::zero(), Uint128::zero()],
         },
+        individual_votes: MultipleChoiceVotes {
+            vote_weights: vec![Uint128::new(100_000_000), Uint128::zero(), Uint128::zero()],
+        },
         allow_revoting: false,
         min_voting_period: None,
         veto: None,
+        delegation_module: None,
     };
 
     assert_eq!(created.proposal, expected);
@@ -419,6 +432,7 @@ fn test_propose_auto_vote_reject() {
         close_proposal_on_execution_failure: true,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
@@ -482,9 +496,13 @@ fn test_propose_auto_vote_reject() {
         votes: MultipleChoiceVotes {
             vote_weights: vec![Uint128::zero(), Uint128::zero(), Uint128::new(100_000_000)],
         },
+        individual_votes: MultipleChoiceVotes {
+            vote_weights: vec![Uint128::zero(), Uint128::zero(), Uint128::new(100_000_000)],
+        },
         allow_revoting: false,
         min_voting_period: None,
         veto: None,
+        delegation_module: None,
     };
 
     assert_eq!(created.proposal, expected);
@@ -511,6 +529,7 @@ fn test_propose_non_member_auto_vote_fail() {
         close_proposal_on_execution_failure: true,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
@@ -573,6 +592,7 @@ fn test_no_early_pass_with_min_duration() {
         close_proposal_on_execution_failure: true,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_staked_balances_governance(
@@ -669,6 +689,7 @@ fn test_propose_with_messages() {
         allow_revoting: false,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_staked_balances_governance(
@@ -791,6 +812,7 @@ fn test_min_duration_units_missmatch() {
         close_proposal_on_execution_failure: true,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
     instantiate_with_staked_balances_governance(
         &mut app,
@@ -824,6 +846,7 @@ fn test_min_duration_larger_than_proposal_duration() {
         close_proposal_on_execution_failure: true,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
     instantiate_with_staked_balances_governance(
         &mut app,
@@ -856,6 +879,7 @@ fn test_min_duration_same_as_proposal_duration() {
         close_proposal_on_execution_failure: true,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_staked_balances_governance(
@@ -980,6 +1004,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
             false,
         ),
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
@@ -1056,6 +1081,7 @@ fn test_different_token_proposal_deposit() {
             false,
         ),
         veto: None,
+        delegation_module: None,
     };
 
     instantiate_with_staked_balances_governance(&mut app, instantiate, None);
@@ -1088,6 +1114,7 @@ fn test_bad_token_proposal_deposit() {
                         amount: Uint128::new(1),
                     }],
                     marketing: None,
+                    salt: None,
                 },
             },
             &[],
@@ -1118,6 +1145,7 @@ fn test_bad_token_proposal_deposit() {
             false,
         ),
         veto: None,
+        delegation_module: None,
     };
 
     instantiate_with_staked_balances_governance(&mut app, instantiate, None);
@@ -1151,6 +1179,7 @@ fn test_take_proposal_deposit() {
             false,
         ),
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_cw20_balances_governance(
@@ -1259,6 +1288,7 @@ fn test_take_native_proposal_deposit() {
             false,
         ),
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_native_staked_balances_governance(
@@ -1353,6 +1383,7 @@ fn test_native_proposal_deposit() {
             false,
         ),
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_staked_balances_governance(
@@ -1635,12 +1666,14 @@ fn test_query_list_votes() {
             voter: Addr::unchecked("blue"),
             vote: MultipleChoiceVote { option_id: 0 },
             power: Uint128::new(10),
+            individual_power: Uint128::new(10),
             rationale: None,
         },
         VoteInfo {
             voter: Addr::unchecked("note"),
             vote: MultipleChoiceVote { option_id: 1 },
             power: Uint128::new(20),
+            individual_power: Uint128::new(20),
             rationale: None,
         },
     ];
@@ -1784,6 +1817,7 @@ fn test_cant_propose_zero_power() {
             false,
         ),
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_cw20_balances_governance(
@@ -1953,6 +1987,7 @@ fn test_cant_execute_not_member() {
         voting_strategy,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_staked_balances_governance(
@@ -2045,6 +2080,7 @@ fn test_cant_execute_not_member_when_proposal_created() {
         voting_strategy,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_staked_balances_governance(
@@ -2164,6 +2200,7 @@ fn test_open_proposal_submission() {
         close_proposal_on_execution_failure: true,
         pre_propose_info: get_pre_propose_info(&mut app, None, true),
         veto: None,
+        delegation_module: None,
     };
     let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
     let govmod = query_multiple_proposal_module(&app, &core_addr);
@@ -2233,7 +2270,11 @@ fn test_open_proposal_submission() {
         votes: MultipleChoiceVotes {
             vote_weights: vec![Uint128::zero(); 3],
         },
+        individual_votes: MultipleChoiceVotes {
+            vote_weights: vec![Uint128::zero(); 3],
+        },
         veto: None,
+        delegation_module: None,
     };
 
     assert_eq!(created.proposal, expected);
@@ -2466,6 +2507,7 @@ fn test_execute_expired_proposal() {
         voting_strategy,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_staked_balances_governance(
@@ -2765,6 +2807,7 @@ fn test_query_list_proposals() {
         voting_strategy: voting_strategy.clone(),
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
     let gov_addr = instantiate_with_staked_balances_governance(
         &mut app,
@@ -2844,9 +2887,13 @@ fn test_query_list_proposals() {
             votes: MultipleChoiceVotes {
                 vote_weights: vec![Uint128::zero(); 3],
             },
+            individual_votes: MultipleChoiceVotes {
+                vote_weights: vec![Uint128::zero(); 3],
+            },
             allow_revoting: false,
             min_voting_period: None,
             veto: None,
+            delegation_module: None,
         },
     };
     assert_eq!(proposals_forward.proposals[0], expected);
@@ -2873,9 +2920,13 @@ fn test_query_list_proposals() {
             votes: MultipleChoiceVotes {
                 vote_weights: vec![Uint128::zero(); 3],
             },
+            individual_votes: MultipleChoiceVotes {
+                vote_weights: vec![Uint128::zero(); 3],
+            },
             allow_revoting: false,
             min_voting_period: None,
             veto: None,
+            delegation_module: None,
         },
     };
     assert_eq!(proposals_forward.proposals[0], expected);
@@ -2902,6 +2953,7 @@ fn test_hooks() {
         voting_strategy,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
@@ -3029,6 +3081,7 @@ fn test_active_threshold_absolute() {
         voting_strategy,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_staking_active_threshold(
@@ -3160,6 +3213,7 @@ fn test_active_threshold_percent() {
         voting_strategy,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
 
     // 20% needed to be active, 20% of 100000000 is 20000000
@@ -3292,6 +3346,7 @@ fn test_active_threshold_none() {
         voting_strategy,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr =
@@ -3405,6 +3460,7 @@ fn test_revoting() {
             close_proposal_on_execution_failure: false,
             pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
             veto: None,
+            delegation_module: None,
         },
         Some(vec![
             Cw20Coin {
@@ -3481,14 +3537,8 @@ fn test_revoting() {
     // Assert that both vote options have equal vote weights at some block
     let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
     assert_eq!(proposal.proposal.status, Status::Open);
-    assert_eq!(
-        proposal.proposal.votes.vote_weights[0],
-        Uint128::new(100_000_000),
-    );
-    assert_eq!(
-        proposal.proposal.votes.vote_weights[1],
-        Uint128::new(100_000_000),
-    );
+    assert_eq!(proposal.proposal.votes.get_id(0), Uint128::new(100_000_000),);
+    assert_eq!(proposal.proposal.votes.get_id(1), Uint128::new(100_000_000),);
 
     // More time passes..
     app.update_block(|b| b.height += 3);
@@ -3512,11 +3562,8 @@ fn test_revoting() {
     // Assert that revote succeeded
     let proposal: ProposalResponse = query_proposal(&app, &govmod, 1);
     assert_eq!(proposal.proposal.status, Status::Passed);
-    assert_eq!(
-        proposal.proposal.votes.vote_weights[0],
-        Uint128::new(200_000_000),
-    );
-    assert_eq!(proposal.proposal.votes.vote_weights[1], Uint128::new(0),);
+    assert_eq!(proposal.proposal.votes.get_id(0), Uint128::new(200_000_000),);
+    assert_eq!(proposal.proposal.votes.get_id(1), Uint128::new(0),);
 }
 
 /// Tests that revoting is stored at a per-proposal level.
@@ -3539,6 +3586,7 @@ fn test_allow_revoting_config_changes() {
             close_proposal_on_execution_failure: false,
             pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
             veto: None,
+            delegation_module: None,
         },
         Some(vec![
             Cw20Coin {
@@ -3694,6 +3742,7 @@ fn test_revoting_same_vote_twice() {
             close_proposal_on_execution_failure: false,
             pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
             veto: None,
+            delegation_module: None,
         },
         Some(vec![
             Cw20Coin {
@@ -3790,6 +3839,7 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
             close_proposal_on_execution_failure: false,
             pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
             veto: None,
+            delegation_module: None,
         },
         Some(vec![
             Cw20Coin {
@@ -3865,14 +3915,8 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
     // Assert that both vote options have equal vote weights at some block
     let proposal: ProposalResponse = query_proposal(&app, &proposal_module, 1);
     assert_eq!(proposal.proposal.status, Status::Open);
-    assert_eq!(
-        proposal.proposal.votes.vote_weights[0],
-        Uint128::new(100_000_000),
-    );
-    assert_eq!(
-        proposal.proposal.votes.vote_weights[1],
-        Uint128::new(100_000_000),
-    );
+    assert_eq!(proposal.proposal.votes.get_id(0), Uint128::new(100_000_000),);
+    assert_eq!(proposal.proposal.votes.get_id(1), Uint128::new(100_000_000),);
 
     // Time passes..
     app.update_block(|b| b.height += 3);
@@ -3894,14 +3938,8 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
         .downcast()
         .unwrap();
     // Assert that prior votes remained the same
-    assert_eq!(
-        proposal.proposal.votes.vote_weights[0],
-        Uint128::new(100_000_000),
-    );
-    assert_eq!(
-        proposal.proposal.votes.vote_weights[1],
-        Uint128::new(100_000_000),
-    );
+    assert_eq!(proposal.proposal.votes.get_id(0), Uint128::new(100_000_000),);
+    assert_eq!(proposal.proposal.votes.get_id(1), Uint128::new(100_000_000),);
     assert!(matches!(err, ContractError::InvalidVote {}));
 }
 
@@ -3985,6 +4023,7 @@ fn test_close_failed_proposal() {
         close_proposal_on_execution_failure: true,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_staking_active_threshold(&mut app, instantiate, None, None);
@@ -4240,6 +4279,7 @@ fn test_no_double_refund_on_execute_fail_and_close() {
             false,
         ),
         veto: None,
+        delegation_module: None,
     };
 
     let core_addr = instantiate_with_staking_active_threshold(
@@ -4420,6 +4460,7 @@ pub fn test_not_allow_voting_on_expired_proposal() {
         close_proposal_on_execution_failure: true,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         veto: None,
+        delegation_module: None,
     };
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
@@ -4492,7 +4533,7 @@ pub fn test_not_allow_voting_on_expired_proposal() {
     // assert the vote got rejected and did not count towards the votes
     let proposal = query_proposal(&app, &proposal_module, 1);
     assert_eq!(proposal.proposal.status, Status::Rejected);
-    assert_eq!(proposal.proposal.votes.vote_weights[0], Uint128::zero());
+    assert_eq!(proposal.proposal.votes.get_id(0), Uint128::zero());
     assert!(matches!(err, ContractError::Expired { id: _proposal_id }));
 }
 
@@ -4513,6 +4554,7 @@ fn test_next_proposal_id() {
             close_proposal_on_execution_failure: false,
             pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
             veto: None,
+            delegation_module: None,
         },
         Some(vec![
             Cw20Coin {
@@ -4586,6 +4628,7 @@ fn test_vote_with_rationale() {
             close_proposal_on_execution_failure: false,
             pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
             veto: None,
+            delegation_module: None,
         },
         Some(vec![
             Cw20Coin {
@@ -4684,6 +4727,7 @@ fn test_revote_with_rationale() {
             close_proposal_on_execution_failure: false,
             pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
             veto: None,
+            delegation_module: None,
         },
         Some(vec![
             Cw20Coin {
@@ -4840,6 +4884,7 @@ fn test_update_rationale() {
             close_proposal_on_execution_failure: false,
             pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
             veto: None,
+            delegation_module: None,
         },
         Some(vec![
             Cw20Coin {
@@ -4979,6 +5024,7 @@ fn test_open_proposal_passes_with_zero_timelock_veto_duration() {
             close_proposal_on_execution_failure: false,
             pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
             veto: Some(veto_config),
+            delegation_module: None,
         },
         Some(vec![
             Cw20Coin {
@@ -5088,6 +5134,7 @@ fn test_veto_non_existing_prop_id() {
             close_proposal_on_execution_failure: false,
             pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
             veto: Some(veto_config),
+            delegation_module: None,
         },
         Some(vec![
             Cw20Coin {
@@ -5134,6 +5181,7 @@ fn test_veto_with_no_veto_configuration() {
             close_proposal_on_execution_failure: false,
             pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
             veto: None,
+            delegation_module: None,
         },
         Some(vec![
             Cw20Coin {
@@ -5226,6 +5274,7 @@ fn test_veto_open_prop_with_veto_before_passed_disabled() {
             close_proposal_on_execution_failure: false,
             pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
             veto: Some(veto_config),
+            delegation_module: None,
         },
         Some(vec![
             Cw20Coin {
@@ -5334,6 +5383,7 @@ fn test_veto_when_veto_timelock_expired() -> anyhow::Result<()> {
             close_proposal_on_execution_failure: false,
             pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
             veto: Some(veto_config),
+            delegation_module: None,
         },
         Some(vec![
             Cw20Coin {
@@ -5449,6 +5499,7 @@ fn test_veto_sets_prop_status_to_vetoed() -> anyhow::Result<()> {
             close_proposal_on_execution_failure: false,
             pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
             veto: Some(veto_config),
+            delegation_module: None,
         },
         Some(vec![
             Cw20Coin {
@@ -5560,6 +5611,7 @@ fn test_veto_from_catchall_state() {
             close_proposal_on_execution_failure: false,
             pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
             veto: Some(veto_config),
+            delegation_module: None,
         },
         Some(vec![
             Cw20Coin {
@@ -5681,6 +5733,7 @@ fn test_veto_timelock_early_execute_happy() -> anyhow::Result<()> {
             close_proposal_on_execution_failure: false,
             pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
             veto: Some(veto_config),
+            delegation_module: None,
         },
         Some(vec![
             Cw20Coin {
@@ -5805,6 +5858,7 @@ fn test_veto_timelock_expires_happy() -> anyhow::Result<()> {
             close_proposal_on_execution_failure: false,
             pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
             veto: Some(veto_config),
+            delegation_module: None,
         },
         Some(vec![
             Cw20Coin {
@@ -5918,6 +5972,7 @@ fn test_veto_only_members_execute_proposal() -> anyhow::Result<()> {
             close_proposal_on_execution_failure: false,
             pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
             veto: Some(veto_config),
+            delegation_module: None,
         },
         Some(vec![
             Cw20Coin {
