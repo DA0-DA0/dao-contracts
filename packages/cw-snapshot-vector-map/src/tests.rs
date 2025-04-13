@@ -620,8 +620,7 @@ fn test_update_non_existent_item() {
 }
 
 #[test]
-#[should_panic(expected = "item not found or expired")]
-fn test_update_expired_item() {
+fn test_update_expired_item_creates_new_entry() {
     let storage = &mut mock_dependencies().storage;
     let svm: SnapshotVectorMap<Addr, u32> = SnapshotVectorMap::new(
         "svm__items",
@@ -641,7 +640,21 @@ fn test_update_expired_item() {
     assert_eq!(svm.load_all(storage, k1, 4).unwrap().len(), 1);
     assert_eq!(svm.load_all(storage, k1, 5).unwrap().len(), 0);
 
-    // attempt to update an expired item after its expiration
-    svm.update(storage, k1, expired_id, 6, |v| *v += 12, None)
+    // update an expired item after its expiration will create a new entry
+    let ((updated_id, _), _) = svm
+        .update(storage, k1, expired_id, 6, |v| *v = *v, Some(3))
         .unwrap();
+
+    assert_eq!(svm.load_all(storage, k1, 6).unwrap().len(), 0);
+
+    let next_block_active_list = svm.load_all(storage, k1, 7).unwrap();
+    assert_eq!(next_block_active_list.len(), 1);
+    assert_eq!(
+        next_block_active_list[0],
+        LoadedItem {
+            id: updated_id,      // new id returned from the update call
+            item: 24,            // same item value
+            expiration: Some(9)  // new expiration
+        }
+    );
 }
