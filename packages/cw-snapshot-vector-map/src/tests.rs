@@ -642,7 +642,7 @@ fn test_update_expired_item_creates_new_entry() {
 
     // update an expired item after its expiration will create a new entry
     let ((updated_id, _), _) = svm
-        .update(storage, k1, expired_id, 6, |v| *v = *v, Some(3))
+        .update(storage, k1, expired_id, 6, |_| {}, Some(3))
         .unwrap();
 
     assert_eq!(svm.load_all(storage, k1, 6).unwrap().len(), 0);
