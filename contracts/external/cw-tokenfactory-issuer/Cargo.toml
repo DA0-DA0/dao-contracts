@@ -25,8 +25,8 @@ builds = [
   { name = "cosmwasm", features = [
     "cosmwasm_tokenfactory",
   ], default-features = false },
-  { name = "kujira", features = [
-    "kujira_tokenfactory",
+  { name = "thorchain", features = [
+    "thorchain_tokenfactory",
   ], default-features = false },
 ]
 
@@ -46,7 +46,7 @@ test-tube = ["osmosis_tokenfactory"]
 # standard in types library
 osmosis_tokenfactory = ["cw-tokenfactory-types/osmosis_tokenfactory"]
 cosmwasm_tokenfactory = ["cw-tokenfactory-types/cosmwasm_tokenfactory"]
-kujira_tokenfactory = ["cw-tokenfactory-types/kujira_tokenfactory"]
+thorchain_tokenfactory = ["cw-tokenfactory-types/thorchain_tokenfactory"]
 
 [dependencies]
 cosmwasm-schema = { workspace = true }

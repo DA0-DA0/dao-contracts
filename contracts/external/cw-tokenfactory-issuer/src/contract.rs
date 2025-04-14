@@ -6,7 +6,7 @@ use cosmwasm_std::{
     to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
-use cw_tokenfactory_types::msg::{msg_create_denom, MsgCreateDenomResponse};
+use cw_tokenfactory_types::msg::MsgCreateDenomResponse;
 
 use crate::error::ContractError;
 use crate::execute;
@@ -44,6 +44,7 @@ pub fn instantiate(
     IS_FROZEN.save(deps.storage, &false)?;
 
     match msg {
+        #[cfg(not(feature = "thorchain_tokenfactory"))]
         InstantiateMsg::NewToken { subdenom } => {
             Ok(Response::new()
                 .add_attribute("action", "instantiate")
@@ -52,7 +53,28 @@ pub fn instantiate(
                 .add_submessage(
                     // Create new denom, denom info is saved in the reply
                     SubMsg::reply_on_success(
-                        msg_create_denom(env.contract.address.to_string(), subdenom),
+                        cw_tokenfactory_types::msg::msg_create_denom(
+                            env.contract.address.to_string(),
+                            subdenom,
+                        ),
+                        CREATE_DENOM_REPLY_ID,
+                    ),
+                ))
+        }
+        #[cfg(feature = "thorchain_tokenfactory")]
+        InstantiateMsg::NewToken { subdenom, metadata } => {
+            Ok(Response::new()
+                .add_attribute("action", "instantiate")
+                .add_attribute("owner", info.sender)
+                .add_attribute("subdenom", subdenom.clone())
+                .add_submessage(
+                    // Create new denom, denom info is saved in the reply
+                    SubMsg::reply_on_success(
+                        cw_tokenfactory_types::msg::msg_create_denom(
+                            env.contract.address.to_string(),
+                            subdenom,
+                            metadata,
+                        ),
                         CREATE_DENOM_REPLY_ID,
                     ),
                 ))
