@@ -9,9 +9,9 @@ use cw721::{Cw721QueryMsg, NumTokensResponse};
 use cw721_base::InstantiateMsg as Cw721InstantiateMsg;
 use cw_ownable::Ownership;
 use cw_storage_plus::Item;
-use cw_tokenfactory_issuer::msg::{
-    ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg,
-};
+use cw_tokenfactory_issuer::msg::ExecuteMsg as IssuerExecuteMsg;
+#[cfg(feature = "osmosis_tokenfactory")]
+use cw_tokenfactory_issuer::msg::InstantiateMsg as IssuerInstantiateMsg;
 use cw_utils::{one_coin, parse_reply_instantiate_data};
 use dao_interface::{
     nft::NftFactoryCallback,
@@ -89,15 +89,19 @@ pub fn execute(
         ExecuteMsg::NftFactoryWrongCallback {} => {
             execute_nft_factory_wrong_callback(deps, env, info)
         }
+        #[cfg(feature = "osmosis_tokenfactory")]
         ExecuteMsg::TokenFactoryFactory(token) => {
             execute_token_factory_factory(deps, env, info, token)
         }
+        #[cfg(feature = "osmosis_tokenfactory")]
         ExecuteMsg::TokenFactoryFactoryWithFunds(token) => {
             execute_token_factory_factory_with_funds(deps, env, info, token)
         }
+        #[cfg(feature = "osmosis_tokenfactory")]
         ExecuteMsg::TokenFactoryFactoryNoCallback {} => {
             execute_token_factory_factory_no_callback(deps, env, info)
         }
+        #[cfg(feature = "osmosis_tokenfactory")]
         ExecuteMsg::TokenFactoryFactoryWrongCallback {} => {
             execute_token_factory_factory_wrong_callback(deps, env, info)
         }
@@ -202,6 +206,7 @@ pub fn execute_nft_factory_wrong_callback(
 /// An example factory that instantiates a cw_tokenfactory_issuer contract
 /// A more realistic example would be something like a DeFi Pool or Augmented
 /// bonding curve.
+#[cfg(feature = "osmosis_tokenfactory")]
 pub fn execute_token_factory_factory(
     deps: DepsMut,
     _env: Env,
@@ -239,6 +244,7 @@ pub fn execute_token_factory_factory(
 }
 
 /// Requires one coin sent to test funds pass through for factory contracts
+#[cfg(feature = "osmosis_tokenfactory")]
 pub fn execute_token_factory_factory_with_funds(
     deps: DepsMut,
     env: Env,
@@ -252,6 +258,7 @@ pub fn execute_token_factory_factory_with_funds(
 }
 
 /// No callback for testing
+#[cfg(feature = "osmosis_tokenfactory")]
 pub fn execute_token_factory_factory_no_callback(
     _deps: DepsMut,
     _env: Env,
@@ -261,6 +268,7 @@ pub fn execute_token_factory_factory_no_callback(
 }
 
 /// Wrong callback for testing
+#[cfg(feature = "osmosis_tokenfactory")]
 pub fn execute_token_factory_factory_wrong_callback(
     _deps: DepsMut,
     _env: Env,

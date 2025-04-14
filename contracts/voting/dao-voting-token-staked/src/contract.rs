@@ -1,6 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
+#[cfg(feature = "thorchain_tokenfactory")]
+use cosmwasm_std::instantiate2_address;
 use cosmwasm_std::{
     coins, from_json, to_json_binary, BankMsg, BankQuery, Binary, Coin, CosmosMsg, Deps, DepsMut,
     Env, MessageInfo, Order, Reply, Response, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
@@ -12,7 +14,6 @@ use cw_tokenfactory_issuer::msg::{
     ExecuteMsg as IssuerExecuteMsg, InstantiateMsg as IssuerInstantiateMsg,
 };
 
-#[cfg(any(feature = "osmosis_tokenfactory", feature = "cosmwasm_tokenfactory"))]
 use cw_tokenfactory_issuer::msg::{DenomUnit, Metadata};
 
 use cw_utils::{
@@ -110,8 +111,72 @@ pub fn instantiate(
                 ..
             } = token;
 
+            #[cfg(feature = "thorchain_tokenfactory")]
+            let mut token_issuer_salt = token_issuer_salt.clone();
+
             // Save new token info for use in reply
             TOKEN_INSTANTIATION_INFO.save(deps.storage, &msg.token_info)?;
+
+            #[cfg(feature = "thorchain_tokenfactory")]
+            let msg = if let Some(metadata) = &token.metadata {
+                // If the salt is not provided, use a default salt so that
+                // we can predict the address for the token factory issuer
+                // contract and generate the correct denom.
+                if token_issuer_salt.is_none() {
+                    token_issuer_salt = Some(to_json_binary("thorchain_tokenfactory")?);
+                }
+
+                let checksum = deps
+                    .querier
+                    .query_wasm_code_info(*token_issuer_code_id)?
+                    .checksum
+                    .to_vec();
+
+                let issuer_addr = deps.api.addr_humanize(&instantiate2_address(
+                    &checksum,
+                    &deps.api.addr_canonicalize(_env.contract.address.as_str())?,
+                    &token_issuer_salt.clone().unwrap(),
+                )?)?;
+
+                let denom = format!("factory/{}/{}", &issuer_addr, token.subdenom);
+
+                // The first denom_unit must be the same as the tf and base
+                // denom. It must have an exponent of 0. This the smallest
+                // unit of the token. For more info: //
+                // https://docs.cosmos.network/main/architecture/adr-024-coin-metadata
+                let mut denom_units = vec![DenomUnit {
+                    denom: denom.clone(),
+                    exponent: 0,
+                    aliases: vec![token.subdenom.clone()],
+                }];
+
+                // Caller can optionally define additional units
+                if let Some(mut additional_units) = metadata.additional_denom_units.clone() {
+                    denom_units.append(&mut additional_units);
+                }
+
+                // Sort denom units by exponent, must be in ascending order
+                denom_units.sort_by(|a, b| a.exponent.cmp(&b.exponent));
+
+                to_json_binary(&IssuerInstantiateMsg::NewToken {
+                    subdenom: subdenom.to_string(),
+                    metadata: Metadata {
+                        description: metadata.description.clone(),
+                        denom_units,
+                        base: denom.clone(),
+                        display: metadata.display.clone(),
+                        name: metadata.name.clone(),
+                        symbol: metadata.symbol.clone(),
+                    },
+                })?
+            } else {
+                return Err(ContractError::MetadataRequired {});
+            };
+
+            #[cfg(not(feature = "thorchain_tokenfactory"))]
+            let msg = to_json_binary(&IssuerInstantiateMsg::NewToken {
+                subdenom: subdenom.to_string(),
+            })?;
 
             // Instantiate cw-token-factory-issuer contract
             // DAO (sender) is set as contract admin
@@ -119,9 +184,7 @@ pub fn instantiate(
                 ModuleInstantiateInfo {
                     admin: Some(Admin::CoreModule {}),
                     code_id: *token_issuer_code_id,
-                    msg: to_json_binary(&IssuerInstantiateMsg::NewToken {
-                        subdenom: subdenom.to_string(),
-                    })?,
+                    msg,
                     funds: Some(info.funds),
                     label: "cw-tokenfactory-issuer".to_string(),
                     salt: token_issuer_salt.clone(),

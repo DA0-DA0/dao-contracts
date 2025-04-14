@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{Instantiate2AddressError, StdError};
 use cw_utils::{ParseReplyError, PaymentError};
 use dao_voting::threshold::ActiveThresholdError;
 use thiserror::Error;
@@ -22,6 +22,9 @@ pub enum ContractError {
 
     #[error(transparent)]
     UnstakingDurationError(#[from] dao_voting::duration::UnstakingDurationError),
+
+    #[error(transparent)]
+    Instantiate2AddressError(#[from] Instantiate2AddressError),
 
     #[error("Initial governance token balances must not be empty")]
     InitialBalancesError {},
@@ -49,4 +52,7 @@ pub enum ContractError {
 
     #[error("Amount being unstaked must be non-zero")]
     ZeroUnstake {},
+
+    #[error("Metadata is required")]
+    MetadataRequired {},
 }

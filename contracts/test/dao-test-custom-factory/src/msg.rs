@@ -1,6 +1,8 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
 use cw721_base::InstantiateMsg as Cw721InstantiateMsg;
+
+#[cfg(feature = "osmosis_tokenfactory")]
 use dao_interface::token::NewTokenInfo;
 
 #[cw_serde]
@@ -25,12 +27,16 @@ pub enum ExecuteMsg {
     /// Used for testing wrong callback
     NftFactoryWrongCallback {},
     /// Example Factory Implementation
+    #[cfg(feature = "osmosis_tokenfactory")]
     TokenFactoryFactory(NewTokenInfo),
     /// Example Factory Implementation that accepts funds
+    #[cfg(feature = "osmosis_tokenfactory")]
     TokenFactoryFactoryWithFunds(NewTokenInfo),
     /// Used for testing no callback
+    #[cfg(feature = "osmosis_tokenfactory")]
     TokenFactoryFactoryNoCallback {},
     /// Used for testing wrong callback
+    #[cfg(feature = "osmosis_tokenfactory")]
     TokenFactoryFactoryWrongCallback {},
     /// Validate NFT DAO
     ValidateNftDao {},

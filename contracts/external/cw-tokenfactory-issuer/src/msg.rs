@@ -2,7 +2,6 @@ use crate::state::BeforeSendHookInfo;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Uint128};
 
-#[cfg(any(feature = "osmosis_tokenfactory", feature = "cosmwasm_tokenfactory"))]
 pub use dao_interface::token::{DenomUnit, Metadata};
 
 /// The message used to create a new instance of this smart contract.
@@ -11,9 +10,16 @@ pub enum InstantiateMsg {
     /// `NewToken` will create a new token when instantiate the contract.
     /// Newly created token will have full denom as `factory/<contract_address>/<subdenom>`.
     /// It will be attached to the contract setup the beforesend listener automatically.
+    #[cfg(not(feature = "thorchain_tokenfactory"))]
     NewToken {
         /// component of fulldenom (`factory/<contract_address>/<subdenom>`).
         subdenom: String,
+    },
+    #[cfg(feature = "thorchain_tokenfactory")]
+    NewToken {
+        /// component of fulldenom (`factory/<contract_address>/<subdenom>`).
+        subdenom: String,
+        metadata: Metadata,
     },
     /// `ExistingToken` will use already created token. So to set this up,
     /// Token Factory admin for the existing token needs trasfer admin over

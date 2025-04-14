@@ -4,13 +4,13 @@ mod tokenfactory_msg {
         MsgBurn, MsgChangeAdmin, MsgCreateDenom, MsgForceTransfer, MsgMint, MsgSetBeforeSendHook,
         MsgSetDenomMetadata,
     };
-    use dao_interface::token::Metadata;
     use osmosis_std::types::cosmos::{
         bank::v1beta1::{DenomUnit as OsmosisDenomUnit, Metadata as OsmosisMetadata},
         base::v1beta1::Coin,
     };
 
     pub use crate::osmosis::MsgCreateDenomResponse;
+    pub use dao_interface::token::Metadata;
 
     pub fn msg_create_denom(sender: String, subdenom: String) -> MsgCreateDenom {
         MsgCreateDenom { sender, subdenom }
@@ -108,9 +108,9 @@ mod tokenfactory_msg {
 mod tokenfactory_msg {
     use crate::cosmos::{Coin, DenomUnit as CosmwasmDenomUnit, Metadata as CosmwasmMetadata};
     use crate::cosmwasm::{MsgBurn, MsgChangeAdmin, MsgCreateDenom, MsgMint, MsgSetDenomMetadata};
-    use dao_interface::token::Metadata;
 
     pub use crate::cosmwasm::MsgCreateDenomResponse;
+    pub use dao_interface::token::Metadata;
 
     pub fn msg_create_denom(sender: String, subdenom: String) -> MsgCreateDenom {
         MsgCreateDenom { sender, subdenom }
@@ -172,29 +172,48 @@ mod tokenfactory_msg {
     }
 }
 
-#[cfg(feature = "kujira_tokenfactory")]
+#[cfg(feature = "thorchain_tokenfactory")]
 mod tokenfactory_msg {
-    use crate::{
-        cosmos::Coin,
-        kujira::{MsgBurn, MsgChangeAdmin, MsgCreateDenom, MsgMint},
-    };
+    use crate::cosmos::{Coin, DenomUnit as ThorchainDenomUnit, Metadata as ThorchainMetadata};
+    use crate::thorchain::{MsgBurnTokens, MsgChangeDenomAdmin, MsgCreateDenom, MsgMintTokens};
 
-    pub use crate::cosmwasm::MsgCreateDenomResponse;
+    pub use crate::thorchain::MsgCreateDenomResponse;
+    pub use dao_interface::token::Metadata;
 
-    pub fn msg_create_denom(sender: String, subdenom: String) -> MsgCreateDenom {
+    pub fn msg_create_denom(
+        sender: String,
+        subdenom: String,
+        metadata: Metadata,
+    ) -> MsgCreateDenom {
         MsgCreateDenom {
             sender,
-            nonce: subdenom,
+            id: subdenom,
+            metadata: ThorchainMetadata {
+                description: metadata.description,
+                denom_units: metadata
+                    .denom_units
+                    .into_iter()
+                    .map(|denom_unit| ThorchainDenomUnit {
+                        denom: denom_unit.denom,
+                        exponent: denom_unit.exponent,
+                        aliases: denom_unit.aliases,
+                    })
+                    .collect(),
+                base: metadata.base,
+                display: metadata.display,
+                name: metadata.name,
+                symbol: metadata.symbol,
+            },
         }
     }
 
-    pub fn msg_mint(sender: String, amount: u128, denom: String) -> MsgMint {
-        MsgMint {
+    pub fn msg_mint(sender: String, amount: u128, denom: String) -> MsgMintTokens {
+        MsgMintTokens {
             sender: sender.clone(),
-            amount: Some(Coin {
+            amount: Coin {
                 amount: amount.to_string(),
                 denom,
-            }),
+            },
             // other tokenfactories only support minting to the sender, so force
             // this behavior to be the same
             recipient: sender,
@@ -206,18 +225,22 @@ mod tokenfactory_msg {
         amount: u128,
         denom: String,
         _burn_from_address: String,
-    ) -> MsgBurn {
-        MsgBurn {
+    ) -> MsgBurnTokens {
+        MsgBurnTokens {
             sender,
-            amount: Some(Coin {
+            amount: Coin {
                 amount: amount.to_string(),
                 denom,
-            }),
+            },
         }
     }
 
-    pub fn msg_change_admin(sender: String, denom: String, new_admin: String) -> MsgChangeAdmin {
-        MsgChangeAdmin {
+    pub fn msg_change_admin(
+        sender: String,
+        denom: String,
+        new_admin: String,
+    ) -> MsgChangeDenomAdmin {
+        MsgChangeDenomAdmin {
             sender,
             denom,
             new_admin,
@@ -229,7 +252,7 @@ mod tokenfactory_msg {
 #[cfg(any(
     feature = "osmosis_tokenfactory",
     feature = "cosmwasm_tokenfactory",
-    feature = "kujira_tokenfactory"
+    feature = "thorchain_tokenfactory"
 ))]
 pub use tokenfactory_msg::*;
 
@@ -237,10 +260,10 @@ pub use tokenfactory_msg::*;
 #[cfg(not(any(
     feature = "osmosis_tokenfactory",
     feature = "cosmwasm_tokenfactory",
-    feature = "kujira_tokenfactory"
+    feature = "thorchain_tokenfactory"
 )))]
 compile_error!(
-    "feature \"osmosis_tokenfactory\", \"cosmwasm_tokenfactory\", or \"kujira_tokenfactory\" must be enabled"
+    "feature \"osmosis_tokenfactory\", \"cosmwasm_tokenfactory\", or \"thorchain_tokenfactory\" must be enabled"
 );
 
 // prevent more than one tokenfactory standard from being chosen
@@ -248,8 +271,8 @@ compile_error!(
 #[cfg(all(feature = "osmosis_tokenfactory", feature = "cosmwasm_tokenfactory"))]
 compile_error!("feature \"osmosis_tokenfactory\" and feature \"cosmwasm_tokenfactory\" cannot be enabled at the same time");
 
-#[cfg(all(feature = "osmosis_tokenfactory", feature = "kujira_tokenfactory"))]
-compile_error!("feature \"osmosis_tokenfactory\" and feature \"kujira_tokenfactory\" cannot be enabled at the same time");
+#[cfg(all(feature = "osmosis_tokenfactory", feature = "thorchain_tokenfactory"))]
+compile_error!("feature \"osmosis_tokenfactory\" and feature \"thorchain_tokenfactory\" cannot be enabled at the same time");
 
-#[cfg(all(feature = "cosmwasm_tokenfactory", feature = "kujira_tokenfactory"))]
-compile_error!("feature \"cosmwasm_tokenfactory\" and feature \"kujira_tokenfactory\" cannot be enabled at the same time");
+#[cfg(all(feature = "cosmwasm_tokenfactory", feature = "thorchain_tokenfactory"))]
+compile_error!("feature \"cosmwasm_tokenfactory\" and feature \"thorchain_tokenfactory\" cannot be enabled at the same time");

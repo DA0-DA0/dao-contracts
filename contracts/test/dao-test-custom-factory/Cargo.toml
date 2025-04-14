@@ -11,10 +11,14 @@ version = { workspace = true }
 crate-type = ["cdylib", "rlib"]
 
 [features]
+default = ["osmosis_tokenfactory"]
 # for more explicit tests, cargo test --features=backtraces
 backtraces = ["cosmwasm-std/backtraces"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
+# different tokenfactory cosmos sdk module standards. enable corresponding
+# standard in types library
+osmosis_tokenfactory = ["cw-tokenfactory-issuer/osmosis_tokenfactory"]
 
 [dependencies]
 cosmwasm-std = { workspace = true }
@@ -29,9 +33,8 @@ thiserror = { workspace = true }
 dao-dao-macros = { workspace = true }
 dao-interface = { workspace = true }
 dao-voting = { workspace = true }
-cw-tokenfactory-issuer = { workspace = true, features = [
+cw-tokenfactory-issuer = { workspace = true, default-features = false, features = [
   "library",
-  "osmosis_tokenfactory",
 ] }
 
 [dev-dependencies]

@@ -11,6 +11,20 @@ license = { workspace = true }
 repository = { workspace = true }
 version = { workspace = true }
 
+# configure different optimizer builds for tokenfactory standards used by
+# different chains. only need to support thorchain and non-thorchain, since only
+# thorchain requires custom logic in this contract.
+[package.metadata.optimizer]
+standard-build = false
+builds = [
+  { name = "default", features = [
+    "osmosis_tokenfactory",
+  ], default-features = false },
+  { name = "thorchain", features = [
+    "thorchain_tokenfactory",
+  ], default-features = false },
+]
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
@@ -29,7 +43,7 @@ test-tube = []
 # standard in types library
 osmosis_tokenfactory = ["cw-tokenfactory-issuer/osmosis_tokenfactory"]
 cosmwasm_tokenfactory = ["cw-tokenfactory-issuer/cosmwasm_tokenfactory"]
-kujira_tokenfactory = ["cw-tokenfactory-issuer/kujira_tokenfactory"]
+thorchain_tokenfactory = ["cw-tokenfactory-issuer/thorchain_tokenfactory"]
 
 [dependencies]
 cosmwasm-std = { workspace = true }
