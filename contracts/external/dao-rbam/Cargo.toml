@@ -1,0 +1,42 @@
+[package]
+name = "dao-rbam"
+authors = ["Noah Saso <noah@daodao.zone>"]
+description = "Roles-based Authorization Module (RBAM) lets DAOs configure organization-wide roles and authorization policies."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+# use test tube feature to enable test-tube integration tests, for example
+# cargo test --features "test-tube"
+test-tube = []
+# when writing tests you may wish to enable test-tube as a default feature
+# default = ["test-tube"]
+
+[dependencies]
+cosmwasm-std = { workspace = true, features = ["cosmwasm_1_2"] }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+thiserror = { workspace = true }
+cw-utils = { workspace = true }
+cw-ownable = { workspace = true }
+serde_json = { workspace = true }
+cw2 = { workspace = true }
+
+[dev-dependencies]
+bech32 = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-multi-test = { workspace = true }
+dao-interface = { workspace = true }
+dao-proposal-single = { workspace = true }
+dao-testing = { workspace = true }
+dao-voting = { workspace = true }
+dao-voting-cw4 = { workspace = true }
