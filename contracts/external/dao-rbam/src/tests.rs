@@ -40,6 +40,6 @@ fn test_set_enabled() {
 
     // Query enabled state
     let res = query(deps.as_ref(), mock_env(), QueryMsg::IsEnabled {}).unwrap();
-    let value: crate::msg::IsEnabledResponse = from_json(&res).unwrap();
+    let value: crate::msg::IsEnabledResponse = from_json(res).unwrap();
     assert!(!value.enabled);
 }
