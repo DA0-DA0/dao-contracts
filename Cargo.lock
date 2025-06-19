@@ -2268,6 +2268,7 @@ dependencies = [
  "dao-testing",
  "dao-voting 2.7.0",
  "dao-voting-cw4 2.7.0",
+ "jsonfilter",
  "serde_json",
  "thiserror",
 ]
@@ -3418,6 +3419,17 @@ dependencies = [
  "pest",
  "pest_derive",
  "serde",
+]
+
+[[package]]
+name = "jsonfilter"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1e46f0c1b9ad5f49d868ccd9210aa5739361d110902169c441cacc1ec2f090b"
+dependencies = [
+ "regex",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
