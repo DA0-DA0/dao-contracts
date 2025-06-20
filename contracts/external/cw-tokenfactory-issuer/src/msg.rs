@@ -7,17 +7,20 @@ pub use dao_interface::token::{DenomUnit, Metadata};
 /// The message used to create a new instance of this smart contract.
 #[cw_serde]
 pub enum InstantiateMsg {
-    /// `NewToken` will create a new token when instantiate the contract.
-    /// Newly created token will have full denom as `factory/<contract_address>/<subdenom>`.
-    /// It will be attached to the contract setup the beforesend listener automatically.
+    /// `NewToken` will create a new token when instantiate the contract. Newly
+    /// created token will have full denom as
+    /// `factory/<contract_address>/<subdenom>` (typical),
+    /// `x/<contract_address>/<subdenom>` (Thorchain), or whatever the chain
+    /// uses. It will be attached to the contract setup the beforesend listener
+    /// automatically.
     #[cfg(not(feature = "thorchain_tokenfactory"))]
     NewToken {
-        /// component of fulldenom (`factory/<contract_address>/<subdenom>`).
+        /// Component of fulldenom.
         subdenom: String,
     },
     #[cfg(feature = "thorchain_tokenfactory")]
     NewToken {
-        /// component of fulldenom (`factory/<contract_address>/<subdenom>`).
+        /// Component of fulldenom.
         subdenom: String,
         metadata: Metadata,
     },
@@ -203,7 +206,8 @@ pub struct IsFrozenResponse {
 }
 
 /// Returns the full denomination for the Token Factory token. For example:
-/// `factory/{contract address}/{subdenom}`
+/// `factory/{contract address}/{subdenom}` (typical), `x/{subdenom}`
+/// (Thorchain), or whatever the chain uses for its denom format.
 #[cw_serde]
 pub struct DenomResponse {
     pub denom: String,

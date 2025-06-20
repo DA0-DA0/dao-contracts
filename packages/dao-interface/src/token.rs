@@ -35,9 +35,11 @@ pub struct NewTokenInfo {
     /// Optionally instantiate the cw-tokenfactory-issuer contract with
     /// instantiate2 using this salt.
     pub token_issuer_salt: Option<Binary>,
-    /// The subdenom of the token to create, will also be used as an alias
-    /// for the denom. The Token Factory denom will have the format of
-    /// factory/{contract_address}/{subdenom}
+    /// The subdenom of the token to create, will also be used as an alias for
+    /// the denom. The Token Factory denom will have the format of
+    /// `factory/{contract_address}/{subdenom}` (typical),
+    /// `x/{contract_address}/{subdenom}` (Thorchain), or whatever the chain
+    /// uses.
     pub subdenom: String,
     /// Optional metadata for the token, this can additionally be set later.
     pub metadata: Option<NewDenomMetadata>,

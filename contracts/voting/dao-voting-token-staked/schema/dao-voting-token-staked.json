@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-voting-token-staked",
-  "contract_version": "2.7.0",
+  "contract_version": "2.7.1",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -254,7 +254,7 @@
             ]
           },
           "subdenom": {
-            "description": "The subdenom of the token to create, will also be used as an alias for the denom. The Token Factory denom will have the format of factory/{contract_address}/{subdenom}",
+            "description": "The subdenom of the token to create, will also be used as an alias for the denom. The Token Factory denom will have the format of `factory/{contract_address}/{subdenom}` (typical), `x/{contract_address}/{subdenom}` (Thorchain), or whatever the chain uses.",
             "type": "string"
           },
           "token_issuer_code_id": {
