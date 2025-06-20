@@ -8,7 +8,7 @@
     "description": "The message used to create a new instance of this smart contract.",
     "oneOf": [
       {
-        "description": "`NewToken` will create a new token when instantiate the contract. Newly created token will have full denom as `factory/<contract_address>/<subdenom>`. It will be attached to the contract setup the beforesend listener automatically.",
+        "description": "`NewToken` will create a new token when instantiate the contract. Newly created token will have full denom as `factory/<contract_address>/<subdenom>` (typical), `x/<contract_address>/<subdenom>` (Thorchain), or whatever the chain uses. It will be attached to the contract setup the beforesend listener automatically.",
         "type": "object",
         "required": [
           "new_token"
@@ -21,7 +21,7 @@
             ],
             "properties": {
               "subdenom": {
-                "description": "component of fulldenom (`factory/<contract_address>/<subdenom>`).",
+                "description": "Component of fulldenom.",
                 "type": "string"
               }
             },
@@ -986,7 +986,7 @@
     "denom": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "DenomResponse",
-      "description": "Returns the full denomination for the Token Factory token. For example: `factory/{contract address}/{subdenom}`",
+      "description": "Returns the full denomination for the Token Factory token. For example: `factory/{contract address}/{subdenom}` (typical), `x/{subdenom}` (Thorchain), or whatever the chain uses for its denom format.",
       "type": "object",
       "required": [
         "denom"

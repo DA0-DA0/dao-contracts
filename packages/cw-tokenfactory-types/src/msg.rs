@@ -175,7 +175,7 @@ mod tokenfactory_msg {
 #[cfg(feature = "thorchain_tokenfactory")]
 mod tokenfactory_msg {
     use crate::cosmos::{Coin, DenomUnit as ThorchainDenomUnit, Metadata as ThorchainMetadata};
-    use crate::thorchain::{MsgBurnTokens, MsgChangeDenomAdmin, MsgCreateDenom, MsgMintTokens};
+    use crate::thorchain::{MsgBurnTokens, MsgCreateDenom, MsgMintTokens, MsgSetDenomAdmin};
 
     pub use crate::thorchain::MsgCreateDenomResponse;
     pub use dao_interface::token::Metadata;
@@ -235,12 +235,8 @@ mod tokenfactory_msg {
         }
     }
 
-    pub fn msg_change_admin(
-        sender: String,
-        denom: String,
-        new_admin: String,
-    ) -> MsgChangeDenomAdmin {
-        MsgChangeDenomAdmin {
+    pub fn msg_change_admin(sender: String, denom: String, new_admin: String) -> MsgSetDenomAdmin {
+        MsgSetDenomAdmin {
             sender,
             denom,
             new_admin,

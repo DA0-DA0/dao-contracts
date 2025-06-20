@@ -116,8 +116,8 @@ pub struct MsgBurnTokens {
 #[proto_message(type_url = "/thorchain.denom.v1.MsgBurnTokensResponse")]
 pub struct MsgBurnTokensResponse {}
 
-/// MsgChangeAdmin is the sdk.Msg type for allowing an admin account to reassign
-/// adminship of a denom to a new account
+/// MsgSetDenomAdmin is the sdk.Msg type for allowing an admin account to
+/// reassign adminship of a denom to a new account
 #[derive(
     Clone,
     PartialEq,
@@ -128,8 +128,8 @@ pub struct MsgBurnTokensResponse {}
     ::schemars::JsonSchema,
     CosmwasmExt,
 )]
-#[proto_message(type_url = "/thorchain.denom.v1.MsgChangeDenomAdmin")]
-pub struct MsgChangeDenomAdmin {
+#[proto_message(type_url = "/thorchain.denom.v1.MsgSetDenomAdmin")]
+pub struct MsgSetDenomAdmin {
     #[prost(string, tag = "1")]
     pub sender: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
@@ -138,8 +138,8 @@ pub struct MsgChangeDenomAdmin {
     pub new_admin: ::prost::alloc::string::String,
 }
 
-// MsgChangeAdminResponse defines the response structure for an executed
-// MsgChangeAdmin message.
+// MsgSetDenomAdminResponse defines the response structure for an executed
+// MsgSetDenomAdmin message.
 #[derive(
     Clone,
     PartialEq,
@@ -150,5 +150,5 @@ pub struct MsgChangeDenomAdmin {
     ::schemars::JsonSchema,
     CosmwasmExt,
 )]
-#[proto_message(type_url = "/thorchain.denom.v1.MsgChangeDenomAdminResponse")]
-pub struct MsgChangeDenomAdminResponse {}
+#[proto_message(type_url = "/thorchain.denom.v1.MsgSetDenomAdminResponse")]
+pub struct MsgSetDenomAdminResponse {}

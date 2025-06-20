@@ -356,7 +356,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             let issuer_addr = parse_reply_instantiate_data(msg)?.contract_address;
 
             // Format the denom
-            let denom = format!("factory/{}/{}", &issuer_addr, token.subdenom);
+            let denom = format!("factory/{}/{}", issuer_addr, token.subdenom);
 
             let initial_supply = token
                 .initial_balances

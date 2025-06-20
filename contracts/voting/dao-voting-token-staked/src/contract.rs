@@ -117,6 +117,7 @@ pub fn instantiate(
             // Save new token info for use in reply
             TOKEN_INSTANTIATION_INFO.save(deps.storage, &msg.token_info)?;
 
+            // Metadata must be set on creation for Thorchain.
             #[cfg(feature = "thorchain_tokenfactory")]
             let msg = if let Some(metadata) = &token.metadata {
                 // If the salt is not provided, use a default salt so that
@@ -138,7 +139,12 @@ pub fn instantiate(
                     &token_issuer_salt.clone().unwrap(),
                 )?)?;
 
-                let denom = format!("factory/{}/{}", &issuer_addr, token.subdenom);
+                // Thorchain does not insert the contract address automatically,
+                // leaving it up to the caller to avoid collisions. To allow
+                // DAOs to use the same denom/ticker, we insert the contract
+                // address into the subdenom to ensure uniqueness.
+                let subdenom = format!("{}/{}", issuer_addr, subdenom);
+                let denom = format!("x/{}", subdenom);
 
                 // The first denom_unit must be the same as the tf and base
                 // denom. It must have an exponent of 0. This the smallest
@@ -147,6 +153,8 @@ pub fn instantiate(
                 let mut denom_units = vec![DenomUnit {
                     denom: denom.clone(),
                     exponent: 0,
+                    // Use provided subdenom, not the one with the issuer
+                    // address.
                     aliases: vec![token.subdenom.clone()],
                 }];
 
@@ -652,8 +660,15 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     // Load the DAO address
                     let dao = DAO.load(deps.storage)?;
 
-                    // Format the denom and save it
-                    let denom = format!("factory/{}/{}", &issuer_addr, token.subdenom);
+                    // Format the denom and save it. Thorchain uses x/denom
+                    // format, and we inserted the issuer address into the
+                    // subdenom to ensure uniqueness. Other chains use
+                    // factory/issuer_addr/subdenom format, with the issuer
+                    // address automatically inserted.
+                    #[cfg(feature = "thorchain_tokenfactory")]
+                    let denom = format!("x/{}/{}", issuer_addr, token.subdenom);
+                    #[cfg(not(feature = "thorchain_tokenfactory"))]
+                    let denom = format!("factory/{}/{}", issuer_addr, token.subdenom);
 
                     DENOM.save(deps.storage, &denom)?;
 
