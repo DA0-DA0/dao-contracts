@@ -1,6 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, CosmosMsg, Deps, DepsMut};
-use jsonfilter::{try_matches, FilterError};
+use cw_jsonfilter::{test, FilterResult};
 
 use crate::{
     helpers::get_next_id,
@@ -131,37 +131,51 @@ impl Authorization {
         Ok(())
     }
 
+    /// Whether or not the filter allows the given message. If
+    /// `ignore_filter_error` is true, then the function will simply return
+    /// false when a filter error occurs as if the filter failed. Otherwise,
+    /// errors will be returned whenever a filter error occurs instead of
+    /// returning false.
+    pub fn filter_allows(
+        filter: &serde_json::Value,
+        msg: &CosmosMsg,
+        ignore_filter_error: bool,
+    ) -> Result<bool, ContractError> {
+        let msg_value = serde_json::to_value(msg)
+            .map_err(|e| ContractError::JsonSerialization { err: e.to_string() })?;
+        let result = test(filter, &msg_value);
+
+        if ignore_filter_error {
+            // Treat filter errors as failures.
+            Ok(result.is_pass())
+        } else {
+            // Pass through filter errors.
+            match result {
+                FilterResult::Pass => Ok(true),
+                FilterResult::Fail(error) => Err(ContractError::MsgNotAllowedByFilter {
+                    err: error.to_string(),
+                }),
+                FilterResult::Fatal(error) => Err(ContractError::FilterInvalid {
+                    err: error.to_string(),
+                }),
+            }
+        }
+    }
+
     /// Whether or not the authorization allows the given message. If
     /// `ignore_filter_error` is true, then the function will simply return
-    /// false when a filter error occurs as if the filter failed. This does NOT
-    /// check if the authorization is enabled—that is the caller's
-    /// responsibility.
+    /// false when a filter error occurs as if the filter failed (otherwise an
+    /// error is always returned on failure). This does NOT check if the
+    /// authorization is enabled—that is the caller's responsibility.
     pub fn allows(
         &self,
         msg: &CosmosMsg,
         ignore_filter_error: bool,
     ) -> Result<bool, ContractError> {
-        match &self.filter {
-            Some(filter) => {
-                let msg_value = serde_json::to_value(msg)
-                    .map_err(|e| ContractError::JsonMsgSerialization { err: e.to_string() })?;
-                let result = try_matches(filter, &msg_value);
-
-                if ignore_filter_error {
-                    // Treat filter errors as failures.
-                    Ok(result.unwrap_or(false))
-                } else {
-                    // Pass through filter errors.
-                    result.map_err(|e| ContractError::JsonFilter {
-                        err: match e {
-                            FilterError::InvalidFilter => "Invalid filter".to_string(),
-                            FilterError::UnknownOperator => "Unknown operator".to_string(),
-                            FilterError::KeyNotFound => "Key not found".to_string(),
-                        },
-                    })
-                }
-            }
-            None => Ok(false),
+        match (&self.filter, ignore_filter_error) {
+            (Some(filter), _) => Authorization::filter_allows(filter, msg, ignore_filter_error),
+            (None, true) => Ok(false),
+            (None, false) => Err(ContractError::NoAuthorizationFilterSet {}),
         }
     }
 }

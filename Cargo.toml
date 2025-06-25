@@ -37,6 +37,7 @@ overflow-checks = true
 [workspace.dependencies]
 anyhow = { version = "1.0" }
 assert_matches = "1.5"
+base64 = "0.22.1"
 bech32 = "0.9.1"
 cosm-orc = { version = "4.0" }
 cosm-tome = "0.2"
@@ -56,7 +57,6 @@ cw4-group = "1.1"
 cw721 = "0.18"
 cw721-base = "0.18"
 env_logger = "0.10"
-jsonfilter = "0.2.1"
 once_cell = "1.18"
 omniflix-std = "0.1.8"
 osmosis-std = "0.20.1"
@@ -68,6 +68,7 @@ prost-types = { version = "=0.12.3", default-features = false }
 prost-derive = "=0.12.3"
 quote = "1.0"
 rand = "0.8"
+regex = "1.11.1"
 schemars = "0.8"
 semver = "1.0.20"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
@@ -92,6 +93,7 @@ cw-admin-factory = { path = "./contracts/external/cw-admin-factory", version = "
 cw-denom = { path = "./packages/cw-denom", version = "2.7.1" }
 cw-fund-distributor = { path = "./contracts/distribution/cw-fund-distributor", version = "2.7.1" }
 cw-hooks = { path = "./packages/cw-hooks", version = "2.7.1" }
+cw-jsonfilter = { path = "./packages/cw-jsonfilter", version = "2.7.1" }
 cw-paginate-storage = { path = "./packages/cw-paginate-storage", version = "2.7.1" }
 cw-payroll-factory = { path = "./contracts/external/cw-payroll-factory", version = "2.7.1" }
 cw-snapshot-vector-map = { path = "./packages/cw-snapshot-vector-map", version = "2.7.1" }
@@ -122,6 +124,7 @@ dao-proposal-hook-counter = { path = "./contracts/test/dao-proposal-hook-counter
 dao-proposal-multiple = { path = "./contracts/proposal/dao-proposal-multiple", version = "2.7.1" }
 dao-proposal-single = { path = "./contracts/proposal/dao-proposal-single", version = "2.7.1" }
 dao-proposal-sudo = { path = "./contracts/test/dao-proposal-sudo", version = "2.7.1" }
+dao-rbam = { path = "./contracts/external/dao-rbam", version = "2.7.1" }
 dao-rewards-distributor = { path = "./contracts/distribution/dao-rewards-distributor", version = "2.7.1" }
 dao-test-custom-factory = { path = "./contracts/test/dao-test-custom-factory", version = "2.7.1" }
 dao-testing = { path = "./packages/dao-testing", version = "2.7.1" }

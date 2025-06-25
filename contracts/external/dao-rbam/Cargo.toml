@@ -31,7 +31,7 @@ cw-utils = { workspace = true }
 cw-ownable = { workspace = true }
 serde_json = { workspace = true }
 cw2 = { workspace = true }
-jsonfilter = { workspace = true }
+cw-jsonfilter = { workspace = true }
 
 [dev-dependencies]
 bech32 = { workspace = true }
@@ -39,6 +39,8 @@ cosmwasm-schema = { workspace = true }
 cw-multi-test = { workspace = true }
 dao-interface = { workspace = true }
 dao-proposal-single = { workspace = true }
+dao-rbam = { workspace = true }
 dao-testing = { workspace = true }
 dao-voting = { workspace = true }
 dao-voting-cw4 = { workspace = true }
+cw4 = { workspace = true }

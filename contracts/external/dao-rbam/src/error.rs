@@ -15,14 +15,17 @@ pub enum ContractError {
     #[error(transparent)]
     Ownership(#[from] OwnershipError),
 
-    #[error("JSON msg serialization error: {err}")]
-    JsonMsgSerialization { err: String },
-
-    #[error("JSON filter error: {err}")]
-    JsonFilter { err: String },
-
     #[error("Unauthorized")]
     Unauthorized {},
+
+    #[error("JSON serialization error: {err}")]
+    JsonSerialization { err: String },
+
+    #[error("Invalid filter: {err}")]
+    FilterInvalid { err: String },
+
+    #[error("Message not allowed by filter: {err}")]
+    MsgNotAllowedByFilter { err: String },
 
     #[error("RBAM system is disabled")]
     SystemDisabled {},
@@ -48,6 +51,27 @@ pub enum ContractError {
     #[error("Address {addr} is already assigned role {role_id}")]
     RoleAlreadyAssigned { addr: String, role_id: u64 },
 
-    #[error("Action execution not authorized")]
-    ActionNotAuthorized {},
+    #[error("Action not found with ID: {id}")]
+    ActionNotFound { id: u64 },
+
+    #[error("No authorization filter set")]
+    NoAuthorizationFilterSet {},
+
+    #[error("No actions to execute")]
+    NoActions {},
+
+    #[error("No roles provided")]
+    NoRoles {},
+
+    #[error("Pagination limit reached")]
+    LimitReached {},
+
+    #[error("No more authorizations to check")]
+    NoMoreAuthorizations {},
+}
+
+impl From<ContractError> for String {
+    fn from(err: ContractError) -> Self {
+        err.to_string()
+    }
 }

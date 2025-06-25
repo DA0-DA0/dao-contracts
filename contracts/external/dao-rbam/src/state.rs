@@ -8,6 +8,9 @@ use crate::{
     role::{Authorization, Role},
 };
 
+/// The address of the DAO.
+pub const DAO: Item<Addr> = Item::new("dao");
+
 /// Whether or not actions can be performed.
 pub const ENABLED: Item<bool> = Item::new("enabled");
 
@@ -43,11 +46,11 @@ pub const AUTHORIZATIONS: IndexedMap<u64, Authorization, AuthorizationsIndexes<'
 /// - check if an address has a specific role (map lookup)
 /// - list all roles assigned to a specific address (prefixed range query)
 /// - list all addresses assigned a specific role (secondary index range query)
-pub const ASSIGNMENTS: IndexedMap<Assignment, Addr, AssignmentsIndexes<'_>> = IndexedMap::new(
+pub const ASSIGNMENTS: IndexedMap<AssignmentPair, Addr, AssignmentsIndexes<'_>> = IndexedMap::new(
     "assignments",
     AssignmentsIndexes {
         role_id: MultiIndex::new(
-            |pk: &[u8], _d: &Addr| Assignment::from_slice(pk).unwrap().1,
+            |pk: &[u8], _d: &Addr| AssignmentPair::from_slice(pk).unwrap().1,
             "assignments",
             "assignments__role_id",
         ),
@@ -89,12 +92,12 @@ impl IndexList<Authorization> for AuthorizationsIndexes<'_> {
 }
 
 /// A pair of (address, role_id), the key for the ASSIGNMENTS map.
-pub type Assignment = (Addr, u64);
+type AssignmentPair = (Addr, u64);
 
 /// Secondary indexes for assignments to look up/iterate over all addresses
 /// assigned to a role as well as all addresses with a role assigned at all.
 pub struct AssignmentsIndexes<'a> {
-    pub role_id: MultiIndex<'a, u64, Addr, Assignment>,
+    pub role_id: MultiIndex<'a, u64, Addr, AssignmentPair>,
 }
 impl IndexList<Addr> for AssignmentsIndexes<'_> {
     fn get_indexes(&self) -> Box<dyn Iterator<Item = &dyn Index<Addr>> + '_> {

@@ -80,21 +80,22 @@ impl ActionToExecute {
             authorization_id,
         } = self;
 
+        // Ensure the role and authorization exist.
         let role = Role::load(&deps.as_ref(), role_id)?;
-
-        // Ensure user has the role assigned.
-        if !Role::is_assigned(&deps.as_ref(), sender, role_id) {
-            return Err(ContractError::RoleNotAssigned {
-                addr: sender.to_string(),
-                role_id,
-            });
-        }
-
         let authorization = Authorization::load(&deps.as_ref(), authorization_id)?;
 
         // Ensure authorization belongs to the role.
         if authorization.role_id != role.id {
             return Err(ContractError::AuthorizationRoleMismatch {});
+        }
+
+        // Ensure address has the role assigned.
+        let assigned = Role::is_assigned(&deps.as_ref(), sender, role_id);
+        if !assigned {
+            return Err(ContractError::RoleNotAssigned {
+                addr: sender.to_string(),
+                role_id,
+            });
         }
 
         // Ensure role is enabled.
@@ -109,8 +110,11 @@ impl ActionToExecute {
 
         // Ensure message is allowed.
         let allowed = authorization.allows(&msg, false)?;
+        // should never happen since ignore_filter_error is false
         if !allowed {
-            return Err(ContractError::ActionNotAuthorized {});
+            return Err(ContractError::MsgNotAllowedByFilter {
+                err: "unknown reason".to_string(),
+            });
         }
 
         // Save and return the action.

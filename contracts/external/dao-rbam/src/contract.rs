@@ -3,7 +3,8 @@ use std::collections::HashSet;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError, StdResult,
+    to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError,
+    StdResult, WasmMsg,
 };
 use cw_storage_plus::Bound;
 
@@ -16,19 +17,21 @@ use crate::action::{Action, ActionToExecute};
 use crate::error::ContractError;
 use crate::helpers::ensure_enabled;
 use crate::msg::{
-    ActionResponse, AssignmentPair, AuthorizationResponse, ExecuteMsg, InitialAuthorization,
-    InitialRole, InstantiateMsg, IsAssignedRoleResponse, IsEnabledResponse,
-    IsMsgAuthorizedResponse, ListActionsResponse, ListAddressesWithRoleResponse,
-    ListAssignmentsResponse, ListAuthorizationsResponse, ListRolesForAddressResponse,
-    ListRolesResponse, MigrateMsg, QueryMsg, RoleResponse,
+    ActionResponse, Assignment, AuthorizationResponse, DaoResponse, ExecuteMsg,
+    InitialAuthorization, InitialRole, InstantiateMsg, IsAssignedRoleResponse, IsEnabledResponse,
+    IsMsgAuthorizedByResponse, IsMsgAuthorizedByRoleResponse, IsMsgAuthorizedResponse,
+    ListActionsResponse, ListAddressesWithRoleResponse, ListAssignmentsResponse,
+    ListAuthorizationsResponse, ListRolesForAddressResponse, ListRolesResponse, MigrateMsg,
+    QueryMsg, RoleResponse, TestFilterResponse,
 };
 use crate::role::{Authorization, Role};
-use crate::state::{ASSIGNMENTS, AUTHORIZATIONS, ENABLED, LOG, NEXT_ID, ROLES};
+use crate::state::{ASSIGNMENTS, AUTHORIZATIONS, DAO, ENABLED, LOG, NEXT_ID, ROLES};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-rbam";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const DEFAULT_LIMIT: u32 = 10;
+const DEFAULT_LIMIT: u32 = 30;
+const DEFAULT_LIMIT_IS_MSG_AUTHORIZED: u32 = 30;
 const MAX_LIMIT: u32 = 100;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -40,10 +43,17 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let owner = msg.owner.map_or_else(
+    // Default the DAO to the instantiator.
+    let dao = msg.dao.map_or_else(
         || Ok(info.sender.clone()),
-        |owner| deps.api.addr_validate(&owner),
+        |dao| deps.api.addr_validate(&dao),
     )?;
+    DAO.save(deps.storage, &dao)?;
+
+    // Default the owner to the DAO.
+    let owner = msg
+        .owner
+        .map_or_else(|| Ok(dao.clone()), |owner| deps.api.addr_validate(&owner))?;
     initialize_owner(deps.storage, deps.api, Some(owner.as_str()))?;
 
     // Initialize enabled state (default to true).
@@ -54,7 +64,7 @@ pub fn instantiate(
     NEXT_ID.save(deps.storage, &1)?;
 
     let mut response = Response::new()
-        .add_attribute("method", "instantiate")
+        .add_attribute("action", "instantiate")
         .add_attribute("creator", info.sender.as_str())
         .add_attribute("enabled", enabled.to_string());
 
@@ -115,12 +125,23 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::UpdateOwnership(action) => execute_update_ownership(deps, info, env, action),
+        ExecuteMsg::UpdateDao { dao } => execute_update_dao(deps, info, dao),
         ExecuteMsg::SetEnabled { enabled } => execute_set_enabled(deps, info, enabled),
         ExecuteMsg::CreateRole {
             name,
             metadata,
             enabled,
-        } => execute_create_role(deps, info, name, metadata, enabled),
+            authorizations,
+            assignments,
+        } => execute_create_role(
+            deps,
+            info,
+            name,
+            metadata,
+            enabled,
+            authorizations,
+            assignments,
+        ),
         ExecuteMsg::UpdateRole {
             role_id,
             name,
@@ -151,7 +172,7 @@ pub fn execute(
         ),
         ExecuteMsg::Assign { assign } => execute_assign(deps, info, assign),
         ExecuteMsg::Revoke { revoke } => execute_revoke(deps, info, revoke),
-        ExecuteMsg::ExecuteActions { actions } => execute_actions(deps, env, info, actions),
+        ExecuteMsg::ExecuteActions { actions } => execute_execute_actions(deps, env, info, actions),
     }
 }
 
@@ -164,8 +185,24 @@ fn execute_update_ownership(
     nonpayable(&info)?;
     let ownership = cw_ownable::update_ownership(deps, &env.block, &info.sender, action)?;
     Ok(Response::new()
-        .add_attribute("method", "update_ownership")
+        .add_attribute("action", "update_ownership")
         .add_attributes(ownership.into_attributes()))
+}
+
+fn execute_update_dao(
+    deps: DepsMut,
+    info: MessageInfo,
+    dao: String,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    let dao = deps.api.addr_validate(&dao)?;
+    DAO.save(deps.storage, &dao)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "update_dao")
+        .add_attribute("dao", dao.to_string()))
 }
 
 fn execute_set_enabled(
@@ -179,27 +216,55 @@ fn execute_set_enabled(
     ENABLED.save(deps.storage, &enabled)?;
 
     Ok(Response::new()
-        .add_attribute("method", "set_enabled")
+        .add_attribute("action", "set_enabled")
         .add_attribute("enabled", enabled.to_string()))
 }
 
 fn execute_create_role(
-    deps: DepsMut,
+    mut deps: DepsMut,
     info: MessageInfo,
     name: String,
     metadata: Option<String>,
     enabled: Option<bool>,
+    authorizations: Option<Vec<InitialAuthorization>>,
+    assignments: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     let enabled = enabled.unwrap_or(true);
-    let role = Role::create(deps, name, metadata, enabled)?;
+    let role = Role::create(deps.branch(), name, metadata, enabled)?;
 
-    Ok(Response::new()
-        .add_attribute("method", "create_role")
+    let mut response = Response::new()
+        .add_attribute("action", "create_role")
         .add_attribute("role_id", role.id.to_string())
-        .add_attribute("role_name", role.name))
+        .add_attribute("role_name", role.name);
+
+    // Create initial authorizations for role.
+    if let Some(authorizations) = authorizations {
+        for InitialAuthorization {
+            name,
+            metadata,
+            filter,
+            enabled,
+        } in authorizations
+        {
+            let enabled = enabled.unwrap_or(true);
+            let authorization =
+                Authorization::create(deps.branch(), role.id, name, metadata, filter, enabled)?;
+            response = response.add_attribute("authorization_id", authorization.id.to_string());
+        }
+    }
+
+    // Assign role.
+    if let Some(assignments) = assignments {
+        for addr in assignments {
+            let addr = deps.api.addr_validate(&addr)?;
+            Role::assign(deps.branch(), &addr, role.id)?;
+        }
+    }
+
+    Ok(response)
 }
 
 fn execute_update_role(
@@ -230,7 +295,7 @@ fn execute_update_role(
     role.save(deps)?;
 
     Ok(Response::new()
-        .add_attribute("method", "update_role")
+        .add_attribute("action", "update_role")
         .add_attribute("role_id", role_id.to_string())
         .add_attribute("role_name", role.name))
 }
@@ -253,7 +318,7 @@ fn execute_create_authorization(
     let authorization = Authorization::create(deps, role_id, name, metadata, filter, enabled)?;
 
     Ok(Response::new()
-        .add_attribute("method", "create_authorization")
+        .add_attribute("action", "create_authorization")
         .add_attribute("role_id", authorization.role_id.to_string())
         .add_attribute("authorization_id", authorization.id.to_string())
         .add_attribute("authorization_name", authorization.name))
@@ -292,7 +357,7 @@ fn execute_update_authorization(
     authorization.save(deps)?;
 
     Ok(Response::new()
-        .add_attribute("method", "update_authorization")
+        .add_attribute("action", "update_authorization")
         .add_attribute("authorization_id", authorization.id.to_string())
         .add_attribute("authorization_name", authorization.name))
 }
@@ -300,14 +365,18 @@ fn execute_update_authorization(
 fn execute_assign(
     mut deps: DepsMut,
     info: MessageInfo,
-    assign: Vec<AssignmentPair>,
+    assign: Vec<Assignment>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
+    if assign.is_empty() {
+        return Err(ContractError::NoRoles {});
+    }
+
     let mut role_exists: HashSet<u64> = HashSet::new();
 
-    for AssignmentPair { addr, role_id } in assign {
+    for Assignment { addr, role_id } in assign {
         // Verify role existence once per role.
         if !role_exists.contains(&role_id) {
             Role::ensure_exists(&deps.as_ref(), role_id)?;
@@ -327,18 +396,22 @@ fn execute_assign(
         Role::assign(deps.branch(), &addr, role_id)?;
     }
 
-    Ok(Response::new().add_attribute("method", "assign"))
+    Ok(Response::new().add_attribute("action", "assign"))
 }
 
 fn execute_revoke(
     mut deps: DepsMut,
     info: MessageInfo,
-    revoke: Vec<AssignmentPair>,
+    revoke: Vec<Assignment>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
-    for AssignmentPair { addr, role_id } in revoke {
+    if revoke.is_empty() {
+        return Err(ContractError::NoRoles {});
+    }
+
+    for Assignment { addr, role_id } in revoke {
         let addr = deps.api.addr_validate(&addr)?;
 
         // Ensure assigned.
@@ -352,16 +425,20 @@ fn execute_revoke(
         Role::revoke(deps.branch(), &addr, role_id)?;
     }
 
-    Ok(Response::new().add_attribute("method", "revoke"))
+    Ok(Response::new().add_attribute("action", "revoke"))
 }
 
-fn execute_actions(
+fn execute_execute_actions(
     mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     actions: Vec<ActionToExecute>,
 ) -> Result<Response, ContractError> {
     ensure_enabled(deps.branch())?;
+
+    if actions.is_empty() {
+        return Err(ContractError::NoActions {});
+    }
 
     let (msgs, action_ids): (Vec<_>, Vec<_>) = actions
         .into_iter()
@@ -373,9 +450,18 @@ fn execute_actions(
         .into_iter()
         .unzip();
 
+    // Execute messages via proposal hook.
+    let dao = DAO.load(deps.storage)?;
+    let dao_execute_msg = WasmMsg::Execute {
+        contract_addr: dao.to_string(),
+        msg: to_json_binary(&dao_interface::msg::ExecuteMsg::ExecuteProposalHook { msgs })?,
+        funds: vec![],
+    };
+
     Ok(Response::new()
-        .add_messages(msgs)
-        .add_attribute("method", "execute_actions")
+        .add_message(dao_execute_msg)
+        .add_attribute("action", "execute_actions")
+        .add_attribute("rbam", "true")
         .add_attribute("action_ids", action_ids.join(",")))
 }
 
@@ -383,12 +469,13 @@ fn execute_actions(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
+        QueryMsg::Dao {} => to_json_binary(&query_get_dao(deps)?),
         QueryMsg::IsEnabled {} => to_json_binary(&query_is_enabled(deps)?),
-        QueryMsg::GetRole { id } => to_json_binary(&query_get_role(deps, id)?),
+        QueryMsg::Role { id } => to_json_binary(&query_get_role(deps, id)?),
         QueryMsg::ListRoles { start_after, limit } => {
             to_json_binary(&query_list_roles(deps, start_after, limit)?)
         }
-        QueryMsg::GetAuthorization { id } => to_json_binary(&query_get_authorization(deps, id)?),
+        QueryMsg::Authorization { id } => to_json_binary(&query_get_authorization(deps, id)?),
         QueryMsg::ListAuthorizations { start_after, limit } => {
             to_json_binary(&query_list_authorizations(deps, start_after, limit)?)
         }
@@ -428,7 +515,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
-        QueryMsg::GetAction { addr, id } => to_json_binary(&query_get_action(deps, addr, id)?),
+        QueryMsg::Action { addr, id } => to_json_binary(&query_get_action(deps, addr, id)?),
         QueryMsg::ListActions {
             start_after,
             limit,
@@ -482,7 +569,39 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
+        QueryMsg::IsMsgAuthorizedByRole {
+            addr,
+            role_id,
+            msg,
+            start_after,
+            limit,
+        } => to_json_binary(&query_is_msg_authorized_by_role(
+            deps,
+            addr,
+            role_id,
+            msg,
+            start_after,
+            limit,
+        )?),
+        QueryMsg::IsMsgAuthorizedBy {
+            addr,
+            role_id,
+            authorization_id,
+            msg,
+        } => to_json_binary(&query_is_msg_authorized_by(
+            deps,
+            addr,
+            role_id,
+            authorization_id,
+            msg,
+        )?),
+        QueryMsg::TestFilter { filter, msg } => to_json_binary(&query_test_filter(filter, msg)?),
     }
+}
+
+fn query_get_dao(deps: Deps) -> StdResult<DaoResponse> {
+    let dao = DAO.load(deps.storage)?;
+    Ok(DaoResponse { dao })
 }
 
 fn query_is_enabled(deps: Deps) -> StdResult<IsEnabledResponse> {
@@ -562,7 +681,7 @@ fn query_is_assigned_role(
     role_id: u64,
 ) -> StdResult<IsAssignedRoleResponse> {
     let addr = deps.api.addr_validate(&addr)?;
-    let assigned = ASSIGNMENTS.has(deps.storage, (addr, role_id));
+    let assigned = Role::is_assigned(&deps, &addr, role_id);
     Ok(IsAssignedRoleResponse { assigned })
 }
 
@@ -583,6 +702,12 @@ fn query_list_assignments(
     let assignments = ASSIGNMENTS
         .keys(deps.storage, start, None, Order::Ascending)
         .take(limit)
+        .map(|item| {
+            item.map(|(addr, role_id)| Assignment {
+                addr: addr.to_string(),
+                role_id,
+            })
+        })
         .collect::<StdResult<Vec<_>>>()?;
 
     Ok(ListAssignmentsResponse { assignments })
@@ -636,7 +761,9 @@ fn query_list_assignments_by_address(
 
 fn query_get_action(deps: Deps, addr: String, action_id: u64) -> StdResult<ActionResponse> {
     let addr = deps.api.addr_validate(&addr)?;
-    let action = LOG.load(deps.storage, (addr, action_id))?;
+    let action = LOG.load(deps.storage, (addr, action_id)).map_err(|_| {
+        StdError::generic_err(ContractError::ActionNotFound { id: action_id }.to_string())
+    })?;
     Ok(ActionResponse { action })
 }
 
@@ -764,12 +891,12 @@ fn query_list_actions_by_address(
 fn query_is_msg_authorized(
     deps: Deps,
     addr: String,
-    msg: cosmwasm_std::CosmosMsg,
+    msg: CosmosMsg,
     start_after: Option<(u64, u64)>,
     limit: Option<u32>,
 ) -> StdResult<IsMsgAuthorizedResponse> {
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let addr = deps.api.addr_validate(&addr)?;
+    let mut remaining_to_check = limit.unwrap_or(DEFAULT_LIMIT_IS_MSG_AUTHORIZED) as usize;
 
     // Determine which role to start checking from.
     let start_role = start_after.map(|(role_id, _)| Bound::exclusive(role_id));
@@ -796,24 +923,40 @@ fn query_is_msg_authorized(
             last_checked.map(|(_, auth_id)| auth_id).unwrap_or_default(),
         ));
 
-        let role = ROLES.load(deps.storage, role_id)?;
+        // Should not error since this role ID is assigned.
+        let role = Role::load(&deps, role_id).map_err(|e| StdError::generic_err(e.to_string()))?;
         // Skip if the role is disabled.
         if !role.enabled {
             continue;
         }
 
         // Get authorizations for this role.
-        let authorizations = AUTHORIZATIONS
-            .idx
-            .role_id
-            .prefix(role.id)
-            .range(deps.storage, start_auth, None, Order::Ascending)
-            .take(limit)
-            .map(|item| item.map(|(_, authorization)| authorization))
-            .collect::<StdResult<Vec<_>>>()?;
+        let authorizations = AUTHORIZATIONS.idx.role_id.prefix(role.id).range(
+            deps.storage,
+            start_auth,
+            None,
+            Order::Ascending,
+        );
 
-        for authorization in authorizations {
+        for result in authorizations {
+            // If we've reached the limit in the past iteration and we have
+            // another to check, return error. This ensures we only ever return
+            // "limit reached" if we haven't checked all authorizations. If we
+            // happen to run out of the limit on the last authorization, and it
+            // doesn't match, we don't want to return "limit reached".
+            if remaining_to_check == 0 {
+                return Ok(IsMsgAuthorizedResponse::Unauthorized {
+                    reason: ContractError::LimitReached {}.to_string(),
+                    last_checked,
+                });
+            }
+
+            let (_, authorization) = result?;
+            // Update last_checked to the current authorization so the next
+            // query knows where to start from. Make sure this happens after the
+            // limit check.
             last_checked = Some((role.id, authorization.id));
+            remaining_to_check -= 1;
 
             // Skip if the authorization is disabled.
             if !authorization.enabled {
@@ -823,6 +966,7 @@ fn query_is_msg_authorized(
             // Check if the authorization allows the message.
             let allowed = authorization
                 .allows(&msg, true)
+                // Should not happen since we ignore filter errors.
                 .map_err(|e| StdError::generic_err(e.to_string()))?;
 
             if allowed {
@@ -840,7 +984,217 @@ fn query_is_msg_authorized(
         start_auth = None;
     }
 
-    Ok(IsMsgAuthorizedResponse::Unauthorized { last_checked })
+    Ok(IsMsgAuthorizedResponse::Unauthorized {
+        reason: ContractError::NoMoreAuthorizations {}.to_string(),
+        last_checked,
+    })
+}
+
+fn query_is_msg_authorized_by_role(
+    deps: Deps,
+    addr: String,
+    role_id: u64,
+    msg: CosmosMsg,
+    start_after: Option<u64>,
+    limit: Option<u32>,
+) -> StdResult<IsMsgAuthorizedByRoleResponse> {
+    let addr = deps.api.addr_validate(&addr)?;
+    let mut remaining_to_check = limit.unwrap_or(DEFAULT_LIMIT_IS_MSG_AUTHORIZED) as usize;
+    let start = start_after.map(Bound::exclusive);
+
+    // Ensure the role exists.
+    let role = match Role::load(&deps, role_id) {
+        Ok(role) => role,
+        Err(e) => {
+            return Ok(IsMsgAuthorizedByRoleResponse::Unauthorized {
+                reason: e.to_string(),
+                last_checked: None,
+            })
+        }
+    };
+
+    // Ensure the address is assigned the role.
+    let assigned = Role::is_assigned(&deps, &addr, role_id);
+    if !assigned {
+        return Ok(IsMsgAuthorizedByRoleResponse::Unauthorized {
+            reason: ContractError::RoleNotAssigned {
+                addr: addr.to_string(),
+                role_id,
+            }
+            .to_string(),
+            last_checked: None,
+        });
+    }
+
+    // Ensure role is enabled.
+    if !role.enabled {
+        return Ok(IsMsgAuthorizedByRoleResponse::Unauthorized {
+            reason: ContractError::RoleDisabled {}.to_string(),
+            last_checked: None,
+        });
+    }
+
+    // Get authorizations for this role.
+    let authorizations = AUTHORIZATIONS.idx.role_id.prefix(role_id).range(
+        deps.storage,
+        start,
+        None,
+        Order::Ascending,
+    );
+
+    let mut last_checked: Option<u64> = None;
+
+    for result in authorizations {
+        // If we've reached the limit in the past iteration and we have another
+        // to check, return error. This ensures we only ever return "limit
+        // reached" if we haven't checked all authorizations. If we happen to
+        // run out of the limit on the last authorization, and it doesn't match,
+        // we don't want to return "limit reached".
+        if remaining_to_check == 0 {
+            return Ok(IsMsgAuthorizedByRoleResponse::Unauthorized {
+                reason: ContractError::LimitReached {}.to_string(),
+                last_checked,
+            });
+        }
+
+        let (_, authorization) = result?;
+        // Update last_checked to the current authorization so the next query
+        // knows where to start from. Make sure this happens after the limit
+        // check.
+        last_checked = Some(authorization.id);
+        remaining_to_check -= 1;
+
+        // Skip if the authorization is disabled.
+        if !authorization.enabled {
+            continue;
+        }
+
+        // Check if the authorization allows the message.
+        let allowed = authorization
+            .allows(&msg, true)
+            // Should not happen since we ignore filter errors.
+            .map_err(|e| StdError::generic_err(e.to_string()))?;
+
+        if allowed {
+            return Ok(IsMsgAuthorizedByRoleResponse::Authorized {
+                role,
+                authorization,
+            });
+        }
+    }
+
+    Ok(IsMsgAuthorizedByRoleResponse::Unauthorized {
+        reason: ContractError::NoMoreAuthorizations {}.to_string(),
+        last_checked,
+    })
+}
+
+fn query_is_msg_authorized_by(
+    deps: Deps,
+    addr: String,
+    role_id: u64,
+    authorization_id: u64,
+    msg: CosmosMsg,
+) -> StdResult<IsMsgAuthorizedByResponse> {
+    let addr = deps.api.addr_validate(&addr)?;
+
+    // Ensure the role and authorization exist.
+    let role = match Role::load(&deps, role_id) {
+        Ok(role) => role,
+        Err(e) => {
+            return Ok(IsMsgAuthorizedByResponse::Unauthorized {
+                reason: e.to_string(),
+            });
+        }
+    };
+    let authorization = match Authorization::load(&deps, authorization_id) {
+        Ok(authorization) => authorization,
+        Err(e) => {
+            return Ok(IsMsgAuthorizedByResponse::Unauthorized {
+                reason: e.to_string(),
+            });
+        }
+    };
+
+    // Ensure the authorization belongs to the role.
+    if authorization.role_id != role_id {
+        return Ok(IsMsgAuthorizedByResponse::Unauthorized {
+            reason: ContractError::AuthorizationRoleMismatch {}.to_string(),
+        });
+    }
+
+    // Ensure address has the role assigned.
+    let assigned = Role::is_assigned(&deps, &addr, role_id);
+    if !assigned {
+        return Ok(IsMsgAuthorizedByResponse::Unauthorized {
+            reason: ContractError::RoleNotAssigned {
+                addr: addr.to_string(),
+                role_id,
+            }
+            .to_string(),
+        });
+    }
+
+    // Ensure role is enabled.
+    if !role.enabled {
+        return Ok(IsMsgAuthorizedByResponse::Unauthorized {
+            reason: ContractError::RoleDisabled {}.to_string(),
+        });
+    }
+
+    // Ensure authorization is enabled.
+    if !authorization.enabled {
+        return Ok(IsMsgAuthorizedByResponse::Unauthorized {
+            reason: ContractError::AuthorizationDisabled {}.to_string(),
+        });
+    }
+
+    // Check if the authorization allows the message.
+    let allowed = match authorization.allows(&msg, false) {
+        Ok(allowed) => allowed,
+        Err(e) => {
+            return Ok(IsMsgAuthorizedByResponse::Unauthorized {
+                reason: e.to_string(),
+            });
+        }
+    };
+
+    if allowed {
+        return Ok(IsMsgAuthorizedByResponse::Authorized {
+            role,
+            authorization,
+        });
+    }
+
+    Ok(IsMsgAuthorizedByResponse::Unauthorized {
+        reason: ContractError::MsgNotAllowedByFilter {
+            err: "unknown reason".to_string(),
+        }
+        .to_string(),
+    })
+}
+
+fn query_test_filter(filter: serde_json::Value, msg: CosmosMsg) -> StdResult<TestFilterResponse> {
+    let check = Authorization::filter_allows(&filter, &msg, false);
+
+    // Handle filter errors appropriately.
+    let response = check.map_or_else(
+        |e| TestFilterResponse::Fail {
+            reason: e.to_string(),
+        },
+        |allowed| match allowed {
+            true => TestFilterResponse::Pass {},
+            // should never happen since ignore_filter_error is false
+            false => TestFilterResponse::Fail {
+                reason: ContractError::MsgNotAllowedByFilter {
+                    err: "unknown reason".to_string(),
+                }
+                .to_string(),
+            },
+        },
+    );
+
+    Ok(response)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

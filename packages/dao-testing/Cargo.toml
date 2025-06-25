@@ -63,6 +63,7 @@ dao-proposal-condorcet = { workspace = true }
 dao-proposal-single = { workspace = true }
 dao-proposal-multiple = { workspace = true }
 dao-proposal-sudo = { workspace = true }
+dao-rbam = { workspace = true }
 dao-rewards-distributor = { workspace = true }
 dao-test-custom-factory = { workspace = true }
 dao-voting = { workspace = true }

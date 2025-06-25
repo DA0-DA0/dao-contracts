@@ -1,12 +1,19 @@
 {
   "contract_name": "dao-rbam",
-  "contract_version": "2.7.0",
+  "contract_version": "2.7.1",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
     "properties": {
+      "dao": {
+        "description": "The address of the DAO to execute actions on.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "enabled": {
         "description": "Whether the RBAM system starts enabled. Defaults to true.",
         "type": [
@@ -25,7 +32,7 @@
         }
       },
       "owner": {
-        "description": "The address of the initial owner of the contract. Defaults to the instantiator.",
+        "description": "The address of the initial owner of the contract. Defaults to the DAO.",
         "type": [
           "string",
           "null"
@@ -102,6 +109,28 @@
     "title": "ExecuteMsg",
     "oneOf": [
       {
+        "description": "Update the DAO to execute actions on. Make sure to add this module to the DAO's proposal modules list so it is authorized to execute actions.",
+        "type": "object",
+        "required": [
+          "update_dao"
+        ],
+        "properties": {
+          "update_dao": {
+            "type": "object",
+            "required": [
+              "dao"
+            ],
+            "properties": {
+              "dao": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "description": "Enable or disable the RBAM system globally",
         "type": "object",
         "required": [
@@ -136,6 +165,24 @@
               "name"
             ],
             "properties": {
+              "assignments": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "authorizations": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "$ref": "#/definitions/InitialAuthorization"
+                }
+              },
               "enabled": {
                 "type": [
                   "boolean",
@@ -296,7 +343,7 @@
               "assign": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/definitions/AssignmentPair"
+                  "$ref": "#/definitions/Assignment"
                 }
               }
             },
@@ -320,7 +367,7 @@
               "revoke": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/definitions/AssignmentPair"
+                  "$ref": "#/definitions/Assignment"
                 }
               }
             },
@@ -444,7 +491,7 @@
         },
         "additionalProperties": false
       },
-      "AssignmentPair": {
+      "Assignment": {
         "type": "object",
         "required": [
           "addr",
@@ -975,6 +1022,31 @@
           }
         }
       },
+      "InitialAuthorization": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "filter": true,
+          "metadata": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "OptionalUpdate_for_AnyValue": {
         "description": "An update type that allows partial updates of optional fields.",
         "anyOf": [
@@ -1402,6 +1474,19 @@
         "description": "System queries",
         "type": "object",
         "required": [
+          "dao"
+        ],
+        "properties": {
+          "dao": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
           "is_enabled"
         ],
         "properties": {
@@ -1416,10 +1501,10 @@
         "description": "Role queries",
         "type": "object",
         "required": [
-          "get_role"
+          "role"
         ],
         "properties": {
-          "get_role": {
+          "role": {
             "type": "object",
             "required": [
               "id"
@@ -1471,10 +1556,10 @@
         "description": "Authorization queries",
         "type": "object",
         "required": [
-          "get_authorization"
+          "authorization"
         ],
         "properties": {
-          "get_authorization": {
+          "authorization": {
             "type": "object",
             "required": [
               "id"
@@ -1716,10 +1801,10 @@
         "description": "Action/Log queries",
         "type": "object",
         "required": [
-          "get_action"
+          "action"
         ],
         "properties": {
-          "get_action": {
+          "action": {
             "type": "object",
             "required": [
               "addr",
@@ -1960,10 +2045,11 @@
             ],
             "properties": {
               "addr": {
+                "description": "The address to check authorization for.",
                 "type": "string"
               },
               "limit": {
-                "description": "The maximum number of authorizations to return. Defaults to 10, max is 100.",
+                "description": "The maximum number of authorizations to check. Defaults to 30.",
                 "type": [
                   "integer",
                   "null"
@@ -1999,6 +2085,130 @@
                 ],
                 "maxItems": 2,
                 "minItems": 2
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "is_msg_authorized_by_role"
+        ],
+        "properties": {
+          "is_msg_authorized_by_role": {
+            "type": "object",
+            "required": [
+              "addr",
+              "msg",
+              "role_id"
+            ],
+            "properties": {
+              "addr": {
+                "description": "The address to check authorization for.",
+                "type": "string"
+              },
+              "limit": {
+                "description": "The maximum number of authorizations to check. Defaults to 30.",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "msg": {
+                "description": "The message to check authorization for.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/CosmosMsg_for_Empty"
+                  }
+                ]
+              },
+              "role_id": {
+                "description": "The role to check authorization for.",
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "description": "The authorization_id to start after. If not provided, the query will start from the beginning.",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "is_msg_authorized_by"
+        ],
+        "properties": {
+          "is_msg_authorized_by": {
+            "type": "object",
+            "required": [
+              "addr",
+              "authorization_id",
+              "msg",
+              "role_id"
+            ],
+            "properties": {
+              "addr": {
+                "description": "The address to check authorization for.",
+                "type": "string"
+              },
+              "authorization_id": {
+                "description": "The authorization to check authorization for.",
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "msg": {
+                "description": "The message to check authorization for.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/CosmosMsg_for_Empty"
+                  }
+                ]
+              },
+              "role_id": {
+                "description": "The role to check authorization for.",
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "test_filter"
+        ],
+        "properties": {
+          "test_filter": {
+            "type": "object",
+            "required": [
+              "filter",
+              "msg"
+            ],
+            "properties": {
+              "filter": true,
+              "msg": {
+                "$ref": "#/definitions/CosmosMsg_for_Empty"
               }
             },
             "additionalProperties": false
@@ -2851,7 +3061,7 @@
   },
   "sudo": null,
   "responses": {
-    "get_action": {
+    "action": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ActionResponse",
       "type": "object",
@@ -3753,7 +3963,7 @@
         }
       }
     },
-    "get_authorization": {
+    "authorization": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AuthorizationResponse",
       "type": "object",
@@ -3811,51 +4021,23 @@
         }
       }
     },
-    "get_role": {
+    "dao": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "RoleResponse",
+      "title": "DaoResponse",
       "type": "object",
       "required": [
-        "role"
+        "dao"
       ],
       "properties": {
-        "role": {
-          "$ref": "#/definitions/Role"
+        "dao": {
+          "$ref": "#/definitions/Addr"
         }
       },
       "additionalProperties": false,
       "definitions": {
-        "Role": {
-          "type": "object",
-          "required": [
-            "enabled",
-            "id",
-            "name"
-          ],
-          "properties": {
-            "enabled": {
-              "description": "Whether or not the role and all its authorizations are enabled.",
-              "type": "boolean"
-            },
-            "id": {
-              "description": "Autoincrementing ID.",
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            },
-            "metadata": {
-              "description": "Optional metadata for the role. This should either be a JSON object or IPFS hash.",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "name": {
-              "description": "Name for the role (ideally unique, but not enforced).",
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
         }
       }
     },
@@ -3934,6 +4116,9 @@
           "properties": {
             "unauthorized": {
               "type": "object",
+              "required": [
+                "reason"
+              ],
               "properties": {
                 "last_checked": {
                   "description": "The last role and authorization that was checked, if any existed. If this is set, use it as the start_after for the next query.",
@@ -3955,6 +4140,277 @@
                   ],
                   "maxItems": 2,
                   "minItems": 2
+                },
+                "reason": {
+                  "description": "The reason for the authorization failure.",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ],
+      "definitions": {
+        "Authorization": {
+          "type": "object",
+          "required": [
+            "enabled",
+            "id",
+            "name",
+            "role_id"
+          ],
+          "properties": {
+            "enabled": {
+              "description": "Whether or not the authorization is enabled.",
+              "type": "boolean"
+            },
+            "filter": {
+              "description": "Optional `jsonfilter` filter. If no filter is provided, no messages will be allowed, making it simply a symbolic authorization (which may be useful for external systems)."
+            },
+            "id": {
+              "description": "Autoincrementing ID.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "metadata": {
+              "description": "Optional metadata for the authorization. This should either be a JSON object or IPFS hash.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "name": {
+              "description": "Name for the authorization (ideally unique, but not enforced).",
+              "type": "string"
+            },
+            "role_id": {
+              "description": "Role ID.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        },
+        "Role": {
+          "type": "object",
+          "required": [
+            "enabled",
+            "id",
+            "name"
+          ],
+          "properties": {
+            "enabled": {
+              "description": "Whether or not the role and all its authorizations are enabled.",
+              "type": "boolean"
+            },
+            "id": {
+              "description": "Autoincrementing ID.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "metadata": {
+              "description": "Optional metadata for the role. This should either be a JSON object or IPFS hash.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "name": {
+              "description": "Name for the role (ideally unique, but not enforced).",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "is_msg_authorized_by": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "IsMsgAuthorizedByResponse",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "authorized"
+          ],
+          "properties": {
+            "authorized": {
+              "type": "object",
+              "required": [
+                "authorization",
+                "role"
+              ],
+              "properties": {
+                "authorization": {
+                  "$ref": "#/definitions/Authorization"
+                },
+                "role": {
+                  "$ref": "#/definitions/Role"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "unauthorized"
+          ],
+          "properties": {
+            "unauthorized": {
+              "type": "object",
+              "required": [
+                "reason"
+              ],
+              "properties": {
+                "reason": {
+                  "description": "The reason for the authorization failure.",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ],
+      "definitions": {
+        "Authorization": {
+          "type": "object",
+          "required": [
+            "enabled",
+            "id",
+            "name",
+            "role_id"
+          ],
+          "properties": {
+            "enabled": {
+              "description": "Whether or not the authorization is enabled.",
+              "type": "boolean"
+            },
+            "filter": {
+              "description": "Optional `jsonfilter` filter. If no filter is provided, no messages will be allowed, making it simply a symbolic authorization (which may be useful for external systems)."
+            },
+            "id": {
+              "description": "Autoincrementing ID.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "metadata": {
+              "description": "Optional metadata for the authorization. This should either be a JSON object or IPFS hash.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "name": {
+              "description": "Name for the authorization (ideally unique, but not enforced).",
+              "type": "string"
+            },
+            "role_id": {
+              "description": "Role ID.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        },
+        "Role": {
+          "type": "object",
+          "required": [
+            "enabled",
+            "id",
+            "name"
+          ],
+          "properties": {
+            "enabled": {
+              "description": "Whether or not the role and all its authorizations are enabled.",
+              "type": "boolean"
+            },
+            "id": {
+              "description": "Autoincrementing ID.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "metadata": {
+              "description": "Optional metadata for the role. This should either be a JSON object or IPFS hash.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "name": {
+              "description": "Name for the role (ideally unique, but not enforced).",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "is_msg_authorized_by_role": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "IsMsgAuthorizedByRoleResponse",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "authorized"
+          ],
+          "properties": {
+            "authorized": {
+              "type": "object",
+              "required": [
+                "authorization",
+                "role"
+              ],
+              "properties": {
+                "authorization": {
+                  "$ref": "#/definitions/Authorization"
+                },
+                "role": {
+                  "$ref": "#/definitions/Role"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "unauthorized"
+          ],
+          "properties": {
+            "unauthorized": {
+              "type": "object",
+              "required": [
+                "reason"
+              ],
+              "properties": {
+                "last_checked": {
+                  "description": "The last authorization that was checked, if any existed. If this is set, use it as the start_after for the next query.",
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "reason": {
+                  "description": "The reason for the authorization failure.",
+                  "type": "string"
                 }
               },
               "additionalProperties": false
@@ -7694,27 +8150,29 @@
         "assignments": {
           "type": "array",
           "items": {
-            "type": "array",
-            "items": [
-              {
-                "$ref": "#/definitions/Addr"
-              },
-              {
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              }
-            ],
-            "maxItems": 2,
-            "minItems": 2
+            "$ref": "#/definitions/Assignment"
           }
         }
       },
       "additionalProperties": false,
       "definitions": {
-        "Addr": {
-          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
-          "type": "string"
+        "Assignment": {
+          "type": "object",
+          "required": [
+            "addr",
+            "role_id"
+          ],
+          "properties": {
+            "addr": {
+              "type": "string"
+            },
+            "role_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
         }
       }
     },
@@ -8004,6 +8462,95 @@
           "type": "string"
         }
       }
+    },
+    "role": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "RoleResponse",
+      "type": "object",
+      "required": [
+        "role"
+      ],
+      "properties": {
+        "role": {
+          "$ref": "#/definitions/Role"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Role": {
+          "type": "object",
+          "required": [
+            "enabled",
+            "id",
+            "name"
+          ],
+          "properties": {
+            "enabled": {
+              "description": "Whether or not the role and all its authorizations are enabled.",
+              "type": "boolean"
+            },
+            "id": {
+              "description": "Autoincrementing ID.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "metadata": {
+              "description": "Optional metadata for the role. This should either be a JSON object or IPFS hash.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "name": {
+              "description": "Name for the role (ideally unique, but not enforced).",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "test_filter": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TestFilterResponse",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "pass"
+          ],
+          "properties": {
+            "pass": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "fail"
+          ],
+          "properties": {
+            "fail": {
+              "type": "object",
+              "required": [
+                "reason"
+              ],
+              "properties": {
+                "reason": {
+                  "description": "The reason for the filter failing.",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     }
   }
 }

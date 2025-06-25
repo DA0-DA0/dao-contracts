@@ -1,19 +1,19 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, CosmosMsg};
 pub use cw_ownable::Ownership;
 use cw_ownable::{cw_ownable_execute, cw_ownable_query};
 use dao_interface::helpers::OptionalUpdate;
 
 use crate::action::{Action, ActionToExecute};
 use crate::role::{Authorization, Role};
-use crate::state::Assignment;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    /// The address of the initial owner of the contract. Defaults to the
-    /// instantiator.
+    /// The address of the initial owner of the contract. Defaults to the DAO.
     pub owner: Option<String>,
+    /// The address of the DAO to execute actions on.
+    pub dao: Option<String>,
     /// Whether the RBAM system starts enabled. Defaults to true.
     pub enabled: Option<bool>,
     /// Initial roles to create.
@@ -37,7 +37,7 @@ pub struct InitialAuthorization {
 }
 
 #[cw_serde]
-pub struct AssignmentPair {
+pub struct Assignment {
     pub addr: String,
     pub role_id: u64,
 }
@@ -45,6 +45,11 @@ pub struct AssignmentPair {
 #[cw_ownable_execute]
 #[cw_serde]
 pub enum ExecuteMsg {
+    /// Update the DAO to execute actions on. Make sure to add this module to
+    /// the DAO's proposal modules list so it is authorized to execute actions.
+    UpdateDao {
+        dao: String,
+    },
     /// Enable or disable the RBAM system globally
     SetEnabled {
         enabled: bool,
@@ -55,6 +60,8 @@ pub enum ExecuteMsg {
         name: String,
         metadata: Option<String>,
         enabled: Option<bool>,
+        authorizations: Option<Vec<InitialAuthorization>>,
+        assignments: Option<Vec<String>>,
     },
     UpdateRole {
         role_id: u64,
@@ -81,10 +88,10 @@ pub enum ExecuteMsg {
 
     /// Assignment management
     Assign {
-        assign: Vec<AssignmentPair>,
+        assign: Vec<Assignment>,
     },
     Revoke {
-        revoke: Vec<AssignmentPair>,
+        revoke: Vec<Assignment>,
     },
 
     /// Action execution
@@ -98,12 +105,14 @@ pub enum ExecuteMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     /// System queries
+    #[returns(DaoResponse)]
+    Dao {},
     #[returns(IsEnabledResponse)]
     IsEnabled {},
 
     /// Role queries
     #[returns(RoleResponse)]
-    GetRole { id: u64 },
+    Role { id: u64 },
     #[returns(ListRolesResponse)]
     ListRoles {
         start_after: Option<u64>,
@@ -112,7 +121,7 @@ pub enum QueryMsg {
 
     /// Authorization queries
     #[returns(AuthorizationResponse)]
-    GetAuthorization { id: u64 },
+    Authorization { id: u64 },
     #[returns(ListAuthorizationsResponse)]
     ListAuthorizations {
         start_after: Option<u64>,
@@ -161,7 +170,7 @@ pub enum QueryMsg {
 
     /// Action/Log queries
     #[returns(ActionResponse)]
-    GetAction { addr: String, id: u64 },
+    Action { addr: String, id: u64 },
     #[returns(ListActionsResponse)]
     ListActions {
         /// The action ID to start after. If not provided, the query will start
@@ -220,15 +229,47 @@ pub enum QueryMsg {
     /// Authorization validation queries
     #[returns(IsMsgAuthorizedResponse)]
     IsMsgAuthorized {
+        /// The address to check authorization for.
         addr: String,
         /// The message to check authorization for.
-        msg: cosmwasm_std::CosmosMsg,
+        msg: CosmosMsg,
         /// The (role_id, authorization_id) to start after. If not provided, the
         /// query will start from the beginning.
         start_after: Option<(u64, u64)>,
-        /// The maximum number of authorizations to return. Defaults to 10, max
-        /// is 100.
+        /// The maximum number of authorizations to check. Defaults to 30.
         limit: Option<u32>,
+    },
+    #[returns(IsMsgAuthorizedByRoleResponse)]
+    IsMsgAuthorizedByRole {
+        /// The address to check authorization for.
+        addr: String,
+        /// The role to check authorization for.
+        role_id: u64,
+        /// The message to check authorization for.
+        msg: CosmosMsg,
+        /// The authorization_id to start after. If not provided, the query will
+        /// start from the beginning.
+        start_after: Option<u64>,
+        /// The maximum number of authorizations to check. Defaults to 30.
+        limit: Option<u32>,
+    },
+    #[returns(IsMsgAuthorizedByResponse)]
+    IsMsgAuthorizedBy {
+        /// The address to check authorization for.
+        addr: String,
+        /// The role to check authorization for.
+        role_id: u64,
+        /// The authorization to check authorization for.
+        authorization_id: u64,
+        /// The message to check authorization for.
+        msg: CosmosMsg,
+    },
+
+    // Helpers
+    #[returns(TestFilterResponse)]
+    TestFilter {
+        filter: serde_json::Value,
+        msg: CosmosMsg,
     },
 }
 
@@ -236,6 +277,11 @@ pub enum QueryMsg {
 pub struct MigrateMsg {}
 
 // Response types
+#[cw_serde]
+pub struct DaoResponse {
+    pub dao: Addr,
+}
+
 #[cw_serde]
 pub struct IsEnabledResponse {
     pub enabled: bool,
@@ -300,8 +346,46 @@ pub enum IsMsgAuthorizedResponse {
         authorization: Authorization,
     },
     Unauthorized {
+        /// The reason for the authorization failure.
+        reason: String,
         /// The last role and authorization that was checked, if any existed. If
         /// this is set, use it as the start_after for the next query.
         last_checked: Option<(u64, u64)>,
+    },
+}
+
+#[cw_serde]
+pub enum IsMsgAuthorizedByRoleResponse {
+    Authorized {
+        role: Role,
+        authorization: Authorization,
+    },
+    Unauthorized {
+        /// The reason for the authorization failure.
+        reason: String,
+        /// The last authorization that was checked, if any existed. If this is
+        /// set, use it as the start_after for the next query.
+        last_checked: Option<u64>,
+    },
+}
+
+#[cw_serde]
+pub enum IsMsgAuthorizedByResponse {
+    Authorized {
+        role: Role,
+        authorization: Authorization,
+    },
+    Unauthorized {
+        /// The reason for the authorization failure.
+        reason: String,
+    },
+}
+
+#[cw_serde]
+pub enum TestFilterResponse {
+    Pass {},
+    Fail {
+        /// The reason for the filter failing.
+        reason: String,
     },
 }
