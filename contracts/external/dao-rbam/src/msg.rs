@@ -22,80 +22,141 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub struct InitialRole {
+    /// The name for the role.
     pub name: String,
+    /// Optionally set metadata for the role.
     pub metadata: Option<String>,
+    /// Optionally create authorizations for the role.
     pub authorizations: Option<Vec<InitialAuthorization>>,
+    /// Optionally assign the role to addresses immediately.
     pub assignments: Option<Vec<String>>,
 }
 
 #[cw_serde]
 pub struct InitialAuthorization {
+    /// The name for the authorization.
     pub name: String,
+    /// Optionally set metadata for the authorization.
     pub metadata: Option<String>,
+    /// Optionally set the filter for the authorization.
     pub filter: Option<serde_json::Value>,
+    /// Optionally set whether the authorization is enabled.
     pub enabled: Option<bool>,
 }
 
 #[cw_serde]
 pub struct Assignment {
+    /// The address to assign the role to.
     pub addr: String,
+    /// The role ID to assign.
     pub role_id: u64,
 }
 
 #[cw_ownable_execute]
 #[cw_serde]
 pub enum ExecuteMsg {
+    // System management
     /// Update the DAO to execute actions on. Make sure to add this module to
     /// the DAO's proposal modules list so it is authorized to execute actions.
     UpdateDao {
+        /// The address of the DAO to execute actions on.
         dao: String,
     },
     /// Enable or disable the RBAM system globally
     SetEnabled {
+        /// Whether actions are allowed to be executed.
         enabled: bool,
     },
 
-    /// Role management
+    // Role management
+    /// Create a new role.
     CreateRole {
+        /// The name for the role.
         name: String,
+        /// Optionally set metadata for the role.
         metadata: Option<String>,
+        /// Optionally set whether the role is enabled.
         enabled: Option<bool>,
+        /// Optionally create authorizations for the role.
         authorizations: Option<Vec<InitialAuthorization>>,
+        /// Optionally assign the role to addresses immediately.
         assignments: Option<Vec<String>>,
     },
+    /// Update a role.
     UpdateRole {
+        /// The role ID to update.
         role_id: u64,
+        /// Optionally update the name for the role.
         name: Option<String>,
+        /// Optionally update the metadata for the role.
         metadata: OptionalUpdate<String>,
+        /// Optionally update whether the role is enabled.
         enabled: Option<bool>,
     },
 
-    /// Authorization management
+    // Authorization management
+    /// Create a new authorization.
     CreateAuthorization {
+        /// The role ID to create the authorization for.
         role_id: u64,
+        /// The name for the authorization.
         name: String,
+        /// Optionally set metadata for the authorization.
         metadata: Option<String>,
+        /// Optionally set the filter for the authorization.
         filter: Option<serde_json::Value>,
+        /// Optionally set whether the authorization is enabled.
         enabled: Option<bool>,
     },
+    /// Update an authorization.
     UpdateAuthorization {
+        /// The authorization ID to update.
         authorization_id: u64,
+        /// Optionally update the name for the authorization.
         name: Option<String>,
+        /// Optionally update the metadata for the authorization.
         metadata: OptionalUpdate<String>,
+        /// Optionally update the filter for the authorization.
         filter: OptionalUpdate<serde_json::Value>,
+        /// Optionally update whether the authorization is enabled.
         enabled: Option<bool>,
     },
 
-    /// Assignment management
+    // Assignment management
+    /// Assign roles to addresses.
     Assign {
+        /// The assignments to create.
         assign: Vec<Assignment>,
     },
+    /// Revoke roles from addresses.
     Revoke {
+        /// The assignments to revoke.
         revoke: Vec<Assignment>,
     },
 
-    /// Action execution
+    // Protobuf management
+    /// Register protobuf file descriptor sets.
+    RegisterProtobufs {
+        /// The protobuf file descriptor sets to register. This will override
+        /// existing files with the same names.
+        file_descriptor_sets: Vec<Vec<u8>>,
+    },
+    /// Unregister protobuf files and their message descriptors.
+    UnregisterProtobufs {
+        /// The names of the protobuf files to unregister.
+        file_names: Vec<String>,
+        /// The maximum number of message descriptors to unregister. If not
+        /// provided, it will attempt to unregister all message descriptors,
+        /// running out of gas if there are too many. If the limit is too low
+        /// such that we never progress to and delete the last file, it will
+        /// return an error.
+        message_limit: Option<u32>,
+    },
+
+    // Action execution
+    /// Execute actions on behalf of the DAO.
     ExecuteActions {
+        /// The actions to execute.
         actions: Vec<ActionToExecute>,
     },
 }
@@ -104,39 +165,62 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    /// System queries
+    // System queries
     #[returns(DaoResponse)]
     Dao {},
     #[returns(IsEnabledResponse)]
     IsEnabled {},
 
-    /// Role queries
+    // Role queries
     #[returns(RoleResponse)]
-    Role { id: u64 },
+    Role {
+        /// The role ID.
+        id: u64,
+    },
     #[returns(ListRolesResponse)]
     ListRoles {
+        /// The role ID to start after. If not provided, the query will start
+        /// from the beginning.
         start_after: Option<u64>,
+        /// The maximum number of roles to return. Defaults to 10, max is 100.
         limit: Option<u32>,
     },
 
-    /// Authorization queries
+    // Authorization queries
     #[returns(AuthorizationResponse)]
-    Authorization { id: u64 },
+    Authorization {
+        /// The authorization ID.
+        id: u64,
+    },
     #[returns(ListAuthorizationsResponse)]
     ListAuthorizations {
+        /// The authorization ID to start after. If not provided, the query will
+        /// start from the beginning.
         start_after: Option<u64>,
+        /// The maximum number of authorizations to return. Defaults to 10, max
+        /// is 100.
         limit: Option<u32>,
     },
     #[returns(ListAuthorizationsResponse)]
     ListAuthorizationsByRole {
+        /// The role ID to list authorizations for.
         role_id: u64,
+        /// The authorization ID to start after. If not provided, the query will
+        /// start from the beginning.
         start_after: Option<u64>,
+        /// The maximum number of authorizations to return. Defaults to 10, max
+        /// is 100.
         limit: Option<u32>,
     },
 
-    /// Assignment queries
+    // Assignment queries
     #[returns(IsAssignedRoleResponse)]
-    IsAssignedRole { addr: String, role_id: u64 },
+    IsAssignedRole {
+        /// The address to check assignment for.
+        addr: String,
+        /// The role ID to check assignment for.
+        role_id: u64,
+    },
     #[returns(ListAssignmentsResponse)]
     ListAssignments {
         /// The (addr, role_id) to start after. If not provided, the query will
@@ -168,9 +252,44 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
 
-    /// Action/Log queries
+    // Protobuf queries
+    #[returns(ListProtobufFilesResponse)]
+    ListProtobufFiles {
+        /// The file name to start after. If not provided, the query will start
+        /// from the beginning.
+        start_after: Option<String>,
+        /// The maximum number of files to return. Defaults to 10, max is 100.
+        limit: Option<u32>,
+    },
+    #[returns(ListProtobufMessagesResponse)]
+    ListProtobufMessages {
+        /// The message name to start after. If not provided, the query will
+        /// start from the beginning.
+        start_after: Option<String>,
+        /// The maximum number of messages to return. Defaults to 10, max is
+        /// 100.
+        limit: Option<u32>,
+    },
+    #[returns(ListProtobufMessagesResponse)]
+    ListProtobufMessagesByFile {
+        /// The file name to list messages for.
+        file_name: String,
+        /// The messages name to start after. If not provided, the query will
+        /// start from the beginning.
+        start_after: Option<String>,
+        /// The maximum number of messages to return. Defaults to 10, max is
+        /// 100.
+        limit: Option<u32>,
+    },
+
+    // Action/Log queries
     #[returns(ActionResponse)]
-    Action { addr: String, id: u64 },
+    Action {
+        /// The address of the action.
+        addr: String,
+        /// The action ID.
+        id: u64,
+    },
     #[returns(ListActionsResponse)]
     ListActions {
         /// The action ID to start after. If not provided, the query will start
@@ -226,7 +345,7 @@ pub enum QueryMsg {
         reverse: Option<bool>,
     },
 
-    /// Authorization validation queries
+    // Authorization validation queries
     #[returns(IsMsgAuthorizedResponse)]
     IsMsgAuthorized {
         /// The address to check authorization for.
@@ -328,6 +447,16 @@ pub struct ListRolesForAddressResponse {
 }
 
 #[cw_serde]
+pub struct ListProtobufFilesResponse {
+    pub files: Vec<String>,
+}
+
+#[cw_serde]
+pub struct ListProtobufMessagesResponse {
+    pub messages: Vec<String>,
+}
+
+#[cw_serde]
 pub struct ActionResponse {
     pub action: Action,
 }
@@ -357,7 +486,9 @@ pub enum IsMsgAuthorizedResponse {
 #[cw_serde]
 pub enum IsMsgAuthorizedByRoleResponse {
     Authorized {
+        /// The role that matched.
         role: Role,
+        /// The authorization that matched.
         authorization: Authorization,
     },
     Unauthorized {
@@ -372,7 +503,9 @@ pub enum IsMsgAuthorizedByRoleResponse {
 #[cw_serde]
 pub enum IsMsgAuthorizedByResponse {
     Authorized {
+        /// The role that matched.
         role: Role,
+        /// The authorization that matched.
         authorization: Authorization,
     },
     Unauthorized {

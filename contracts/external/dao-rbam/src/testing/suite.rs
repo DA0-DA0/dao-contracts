@@ -12,8 +12,9 @@ use crate::{
         InitialAuthorization, InitialRole, InstantiateMsg, IsAssignedRoleResponse,
         IsEnabledResponse, IsMsgAuthorizedByResponse, IsMsgAuthorizedByRoleResponse,
         IsMsgAuthorizedResponse, ListActionsResponse, ListAddressesWithRoleResponse,
-        ListAssignmentsResponse, ListAuthorizationsResponse, ListRolesForAddressResponse,
-        ListRolesResponse, QueryMsg, RoleResponse, TestFilterResponse,
+        ListAssignmentsResponse, ListAuthorizationsResponse, ListProtobufFilesResponse,
+        ListProtobufMessagesResponse, ListRolesForAddressResponse, ListRolesResponse, QueryMsg,
+        RoleResponse, TestFilterResponse,
     },
 };
 
@@ -267,6 +268,56 @@ impl Suite {
                 self.rbam_addr.clone(),
                 &QueryMsg::ListRolesForAddress {
                     addr,
+                    start_after,
+                    limit,
+                },
+            )
+            .unwrap()
+    }
+
+    pub fn list_protobuf_files(
+        &mut self,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    ) -> ListProtobufFilesResponse {
+        self.base
+            .app
+            .wrap()
+            .query_wasm_smart(
+                self.rbam_addr.clone(),
+                &QueryMsg::ListProtobufFiles { start_after, limit },
+            )
+            .unwrap()
+    }
+
+    pub fn list_protobuf_messages(
+        &mut self,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    ) -> ListProtobufMessagesResponse {
+        self.base
+            .app
+            .wrap()
+            .query_wasm_smart(
+                self.rbam_addr.clone(),
+                &QueryMsg::ListProtobufMessages { start_after, limit },
+            )
+            .unwrap()
+    }
+
+    pub fn list_protobuf_messages_by_file(
+        &mut self,
+        file_name: String,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    ) -> ListProtobufMessagesResponse {
+        self.base
+            .app
+            .wrap()
+            .query_wasm_smart(
+                self.rbam_addr.clone(),
+                &QueryMsg::ListProtobufMessagesByFile {
+                    file_name,
                     start_after,
                     limit,
                 },
@@ -636,6 +687,21 @@ impl Suite {
         let response = self.list_assignments(None, None);
         assert_eq!(response.assignments.len(), expected);
     }
+
+    pub fn assert_protobuf_files(&mut self, expected: Vec<String>) {
+        let response = self.list_protobuf_files(None, None);
+        assert_eq!(response.files, expected);
+    }
+
+    pub fn assert_protobuf_messages(&mut self, expected: Vec<String>) {
+        let response = self.list_protobuf_messages(None, None);
+        assert_eq!(response.messages, expected);
+    }
+
+    pub fn assert_protobuf_messages_by_file(&mut self, file_name: &str, expected: Vec<String>) {
+        let response = self.list_protobuf_messages_by_file(file_name.to_string(), None, None);
+        assert_eq!(response.messages, expected);
+    }
 }
 
 // SUITE ACTIONS
@@ -775,6 +841,38 @@ impl Suite {
             .execute_smart_ok(sender, &self.rbam_addr, &ExecuteMsg::Revoke { revoke }, &[]);
     }
 
+    pub fn register_protobufs(
+        &mut self,
+        sender: impl Into<String>,
+        file_descriptor_sets: Vec<Vec<u8>>,
+    ) {
+        self.base.execute_smart_ok(
+            sender,
+            &self.rbam_addr,
+            &ExecuteMsg::RegisterProtobufs {
+                file_descriptor_sets,
+            },
+            &[],
+        );
+    }
+
+    pub fn unregister_protobufs(
+        &mut self,
+        sender: impl Into<String>,
+        file_names: Vec<String>,
+        message_limit: Option<u32>,
+    ) {
+        self.base.execute_smart_ok(
+            sender,
+            &self.rbam_addr,
+            &ExecuteMsg::UnregisterProtobufs {
+                file_names,
+                message_limit,
+            },
+            &[],
+        );
+    }
+
     pub fn execute_actions(&mut self, sender: impl Into<String>, actions: Vec<ActionToExecute>) {
         self.base.execute_smart_ok(
             sender,
@@ -857,6 +955,23 @@ impl Suite {
     ) -> ContractError {
         self.base
             .execute_smart_err(sender, &self.rbam_addr, &ExecuteMsg::Revoke { revoke }, &[])
+    }
+
+    pub fn unregister_protobufs_err(
+        &mut self,
+        sender: impl Into<String>,
+        file_names: Vec<String>,
+        message_limit: Option<u32>,
+    ) -> ContractError {
+        self.base.execute_smart_err(
+            sender,
+            &self.rbam_addr,
+            &ExecuteMsg::UnregisterProtobufs {
+                file_names,
+                message_limit,
+            },
+            &[],
+        )
     }
 
     pub fn execute_actions_err(

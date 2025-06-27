@@ -1,7 +1,8 @@
 use base64::Engine;
 use cw_jsonfilter::{CwJsonFilter, FilterResult, BASE64_ENGINE};
-use prost::Message;
-use prost_reflect::{prost_types::FileDescriptorSet, DescriptorPool, DynamicMessage};
+use prost_reflect::{
+    prost::Message, prost_types::FileDescriptorSet, DescriptorPool, DynamicMessage,
+};
 use serde_json::{json, Deserializer, Value};
 
 fn main() {

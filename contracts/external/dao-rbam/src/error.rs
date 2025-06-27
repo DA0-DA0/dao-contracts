@@ -1,4 +1,5 @@
 use cosmwasm_std::StdError;
+use prost_reflect::prost::DecodeError;
 use thiserror::Error;
 
 pub use cw_ownable::OwnershipError;
@@ -14,6 +15,9 @@ pub enum ContractError {
 
     #[error(transparent)]
     Ownership(#[from] OwnershipError),
+
+    #[error(transparent)]
+    Prost(#[from] DecodeError),
 
     #[error("Unauthorized")]
     Unauthorized {},
@@ -68,6 +72,26 @@ pub enum ContractError {
 
     #[error("No more authorizations to check")]
     NoMoreAuthorizations {},
+
+    #[error("No files provided")]
+    NoFiles {},
+
+    #[error(
+        "File descriptor {file_descriptor_index} missing name in set {file_descriptor_set_index}"
+    )]
+    FileDescriptorMissingName {
+        file_descriptor_index: usize,
+        file_descriptor_set_index: usize,
+    },
+
+    #[error("Message descriptor {message_descriptor_index} missing name in file {file_name}")]
+    MessageDescriptorMissingName {
+        message_descriptor_index: usize,
+        file_name: String,
+    },
+
+    #[error("Message limit reached before all files were unregistered ({unregistered}/{total}). Increase the limit or unregister fewer files.")]
+    ProtobufMessageLimitReached { unregistered: usize, total: usize },
 }
 
 impl From<ContractError> for String {

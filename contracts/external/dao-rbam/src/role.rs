@@ -143,6 +143,8 @@ impl Authorization {
     ) -> Result<bool, ContractError> {
         let msg_value = serde_json::to_value(msg)
             .map_err(|e| ContractError::JsonSerialization { err: e.to_string() })?;
+
+        // TODO: use list of protobufs referenced by the filter to provide file descriptor sets
         let result = CwJsonFilter::check(filter, &msg_value);
 
         if ignore_filter_error {

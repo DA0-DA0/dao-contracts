@@ -48,19 +48,24 @@
         ],
         "properties": {
           "enabled": {
+            "description": "Optionally set whether the authorization is enabled.",
             "type": [
               "boolean",
               "null"
             ]
           },
-          "filter": true,
+          "filter": {
+            "description": "Optionally set the filter for the authorization."
+          },
           "metadata": {
+            "description": "Optionally set metadata for the authorization.",
             "type": [
               "string",
               "null"
             ]
           },
           "name": {
+            "description": "The name for the authorization.",
             "type": "string"
           }
         },
@@ -73,6 +78,7 @@
         ],
         "properties": {
           "assignments": {
+            "description": "Optionally assign the role to addresses immediately.",
             "type": [
               "array",
               "null"
@@ -82,6 +88,7 @@
             }
           },
           "authorizations": {
+            "description": "Optionally create authorizations for the role.",
             "type": [
               "array",
               "null"
@@ -91,12 +98,14 @@
             }
           },
           "metadata": {
+            "description": "Optionally set metadata for the role.",
             "type": [
               "string",
               "null"
             ]
           },
           "name": {
+            "description": "The name for the role.",
             "type": "string"
           }
         },
@@ -122,6 +131,7 @@
             ],
             "properties": {
               "dao": {
+                "description": "The address of the DAO to execute actions on.",
                 "type": "string"
               }
             },
@@ -144,6 +154,7 @@
             ],
             "properties": {
               "enabled": {
+                "description": "Whether actions are allowed to be executed.",
                 "type": "boolean"
               }
             },
@@ -153,7 +164,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Role management",
+        "description": "Create a new role.",
         "type": "object",
         "required": [
           "create_role"
@@ -166,6 +177,7 @@
             ],
             "properties": {
               "assignments": {
+                "description": "Optionally assign the role to addresses immediately.",
                 "type": [
                   "array",
                   "null"
@@ -175,6 +187,7 @@
                 }
               },
               "authorizations": {
+                "description": "Optionally create authorizations for the role.",
                 "type": [
                   "array",
                   "null"
@@ -184,18 +197,21 @@
                 }
               },
               "enabled": {
+                "description": "Optionally set whether the role is enabled.",
                 "type": [
                   "boolean",
                   "null"
                 ]
               },
               "metadata": {
+                "description": "Optionally set metadata for the role.",
                 "type": [
                   "string",
                   "null"
                 ]
               },
               "name": {
+                "description": "The name for the role.",
                 "type": "string"
               }
             },
@@ -205,6 +221,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Update a role.",
         "type": "object",
         "required": [
           "update_role"
@@ -218,21 +235,29 @@
             ],
             "properties": {
               "enabled": {
+                "description": "Optionally update whether the role is enabled.",
                 "type": [
                   "boolean",
                   "null"
                 ]
               },
               "metadata": {
-                "$ref": "#/definitions/OptionalUpdate_for_String"
+                "description": "Optionally update the metadata for the role.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/OptionalUpdate_for_String"
+                  }
+                ]
               },
               "name": {
+                "description": "Optionally update the name for the role.",
                 "type": [
                   "string",
                   "null"
                 ]
               },
               "role_id": {
+                "description": "The role ID to update.",
                 "type": "integer",
                 "format": "uint64",
                 "minimum": 0.0
@@ -244,7 +269,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Authorization management",
+        "description": "Create a new authorization.",
         "type": "object",
         "required": [
           "create_authorization"
@@ -258,22 +283,28 @@
             ],
             "properties": {
               "enabled": {
+                "description": "Optionally set whether the authorization is enabled.",
                 "type": [
                   "boolean",
                   "null"
                 ]
               },
-              "filter": true,
+              "filter": {
+                "description": "Optionally set the filter for the authorization."
+              },
               "metadata": {
+                "description": "Optionally set metadata for the authorization.",
                 "type": [
                   "string",
                   "null"
                 ]
               },
               "name": {
+                "description": "The name for the authorization.",
                 "type": "string"
               },
               "role_id": {
+                "description": "The role ID to create the authorization for.",
                 "type": "integer",
                 "format": "uint64",
                 "minimum": 0.0
@@ -285,6 +316,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Update an authorization.",
         "type": "object",
         "required": [
           "update_authorization"
@@ -299,23 +331,36 @@
             ],
             "properties": {
               "authorization_id": {
+                "description": "The authorization ID to update.",
                 "type": "integer",
                 "format": "uint64",
                 "minimum": 0.0
               },
               "enabled": {
+                "description": "Optionally update whether the authorization is enabled.",
                 "type": [
                   "boolean",
                   "null"
                 ]
               },
               "filter": {
-                "$ref": "#/definitions/OptionalUpdate_for_AnyValue"
+                "description": "Optionally update the filter for the authorization.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/OptionalUpdate_for_AnyValue"
+                  }
+                ]
               },
               "metadata": {
-                "$ref": "#/definitions/OptionalUpdate_for_String"
+                "description": "Optionally update the metadata for the authorization.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/OptionalUpdate_for_String"
+                  }
+                ]
               },
               "name": {
+                "description": "Optionally update the name for the authorization.",
                 "type": [
                   "string",
                   "null"
@@ -328,7 +373,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Assignment management",
+        "description": "Assign roles to addresses.",
         "type": "object",
         "required": [
           "assign"
@@ -341,6 +386,7 @@
             ],
             "properties": {
               "assign": {
+                "description": "The assignments to create.",
                 "type": "array",
                 "items": {
                   "$ref": "#/definitions/Assignment"
@@ -353,6 +399,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Revoke roles from addresses.",
         "type": "object",
         "required": [
           "revoke"
@@ -365,6 +412,7 @@
             ],
             "properties": {
               "revoke": {
+                "description": "The assignments to revoke.",
                 "type": "array",
                 "items": {
                   "$ref": "#/definitions/Assignment"
@@ -377,7 +425,73 @@
         "additionalProperties": false
       },
       {
-        "description": "Action execution",
+        "description": "Register protobuf file descriptor sets.",
+        "type": "object",
+        "required": [
+          "register_protobufs"
+        ],
+        "properties": {
+          "register_protobufs": {
+            "type": "object",
+            "required": [
+              "file_descriptor_sets"
+            ],
+            "properties": {
+              "file_descriptor_sets": {
+                "description": "The protobuf file descriptor sets to register. This will override existing files with the same names.",
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "uint8",
+                    "minimum": 0.0
+                  }
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Unregister protobuf files and their message descriptors.",
+        "type": "object",
+        "required": [
+          "unregister_protobufs"
+        ],
+        "properties": {
+          "unregister_protobufs": {
+            "type": "object",
+            "required": [
+              "file_names"
+            ],
+            "properties": {
+              "file_names": {
+                "description": "The names of the protobuf files to unregister.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "message_limit": {
+                "description": "The maximum number of message descriptors to unregister. If not provided, it will attempt to unregister all message descriptors, running out of gas if there are too many. If the limit is too low such that we never progress to and delete the last file, it will return an error.",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Execute actions on behalf of the DAO.",
         "type": "object",
         "required": [
           "execute_actions"
@@ -390,6 +504,7 @@
             ],
             "properties": {
               "actions": {
+                "description": "The actions to execute.",
                 "type": "array",
                 "items": {
                   "$ref": "#/definitions/ActionToExecute"
@@ -499,9 +614,11 @@
         ],
         "properties": {
           "addr": {
+            "description": "The address to assign the role to.",
             "type": "string"
           },
           "role_id": {
+            "description": "The role ID to assign.",
             "type": "integer",
             "format": "uint64",
             "minimum": 0.0
@@ -1029,19 +1146,24 @@
         ],
         "properties": {
           "enabled": {
+            "description": "Optionally set whether the authorization is enabled.",
             "type": [
               "boolean",
               "null"
             ]
           },
-          "filter": true,
+          "filter": {
+            "description": "Optionally set the filter for the authorization."
+          },
           "metadata": {
+            "description": "Optionally set metadata for the authorization.",
             "type": [
               "string",
               "null"
             ]
           },
           "name": {
+            "description": "The name for the authorization.",
             "type": "string"
           }
         },
@@ -1471,7 +1593,6 @@
     "title": "QueryMsg",
     "oneOf": [
       {
-        "description": "System queries",
         "type": "object",
         "required": [
           "dao"
@@ -1498,7 +1619,6 @@
         "additionalProperties": false
       },
       {
-        "description": "Role queries",
         "type": "object",
         "required": [
           "role"
@@ -1511,6 +1631,7 @@
             ],
             "properties": {
               "id": {
+                "description": "The role ID.",
                 "type": "integer",
                 "format": "uint64",
                 "minimum": 0.0
@@ -1531,6 +1652,7 @@
             "type": "object",
             "properties": {
               "limit": {
+                "description": "The maximum number of roles to return. Defaults to 10, max is 100.",
                 "type": [
                   "integer",
                   "null"
@@ -1539,6 +1661,7 @@
                 "minimum": 0.0
               },
               "start_after": {
+                "description": "The role ID to start after. If not provided, the query will start from the beginning.",
                 "type": [
                   "integer",
                   "null"
@@ -1553,7 +1676,6 @@
         "additionalProperties": false
       },
       {
-        "description": "Authorization queries",
         "type": "object",
         "required": [
           "authorization"
@@ -1566,6 +1688,7 @@
             ],
             "properties": {
               "id": {
+                "description": "The authorization ID.",
                 "type": "integer",
                 "format": "uint64",
                 "minimum": 0.0
@@ -1586,6 +1709,7 @@
             "type": "object",
             "properties": {
               "limit": {
+                "description": "The maximum number of authorizations to return. Defaults to 10, max is 100.",
                 "type": [
                   "integer",
                   "null"
@@ -1594,6 +1718,7 @@
                 "minimum": 0.0
               },
               "start_after": {
+                "description": "The authorization ID to start after. If not provided, the query will start from the beginning.",
                 "type": [
                   "integer",
                   "null"
@@ -1620,6 +1745,7 @@
             ],
             "properties": {
               "limit": {
+                "description": "The maximum number of authorizations to return. Defaults to 10, max is 100.",
                 "type": [
                   "integer",
                   "null"
@@ -1628,11 +1754,13 @@
                 "minimum": 0.0
               },
               "role_id": {
+                "description": "The role ID to list authorizations for.",
                 "type": "integer",
                 "format": "uint64",
                 "minimum": 0.0
               },
               "start_after": {
+                "description": "The authorization ID to start after. If not provided, the query will start from the beginning.",
                 "type": [
                   "integer",
                   "null"
@@ -1647,7 +1775,6 @@
         "additionalProperties": false
       },
       {
-        "description": "Assignment queries",
         "type": "object",
         "required": [
           "is_assigned_role"
@@ -1661,9 +1788,11 @@
             ],
             "properties": {
               "addr": {
+                "description": "The address to check assignment for.",
                 "type": "string"
               },
               "role_id": {
+                "description": "The role ID to check assignment for.",
                 "type": "integer",
                 "format": "uint64",
                 "minimum": 0.0
@@ -1798,7 +1927,106 @@
         "additionalProperties": false
       },
       {
-        "description": "Action/Log queries",
+        "type": "object",
+        "required": [
+          "list_protobuf_files"
+        ],
+        "properties": {
+          "list_protobuf_files": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "description": "The maximum number of files to return. Defaults to 10, max is 100.",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "description": "The file name to start after. If not provided, the query will start from the beginning.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "list_protobuf_messages"
+        ],
+        "properties": {
+          "list_protobuf_messages": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "description": "The maximum number of messages to return. Defaults to 10, max is 100.",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "description": "The message name to start after. If not provided, the query will start from the beginning.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "list_protobuf_messages_by_file"
+        ],
+        "properties": {
+          "list_protobuf_messages_by_file": {
+            "type": "object",
+            "required": [
+              "file_name"
+            ],
+            "properties": {
+              "file_name": {
+                "description": "The file name to list messages for.",
+                "type": "string"
+              },
+              "limit": {
+                "description": "The maximum number of messages to return. Defaults to 10, max is 100.",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "description": "The messages name to start after. If not provided, the query will start from the beginning.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "type": "object",
         "required": [
           "action"
@@ -1812,9 +2040,11 @@
             ],
             "properties": {
               "addr": {
+                "description": "The address of the action.",
                 "type": "string"
               },
               "id": {
+                "description": "The action ID.",
                 "type": "integer",
                 "format": "uint64",
                 "minimum": 0.0
@@ -2031,7 +2261,6 @@
         "additionalProperties": false
       },
       {
-        "description": "Authorization validation queries",
         "type": "object",
         "required": [
           "is_msg_authorized"
@@ -4247,10 +4476,20 @@
               ],
               "properties": {
                 "authorization": {
-                  "$ref": "#/definitions/Authorization"
+                  "description": "The authorization that matched.",
+                  "allOf": [
+                    {
+                      "$ref": "#/definitions/Authorization"
+                    }
+                  ]
                 },
                 "role": {
-                  "$ref": "#/definitions/Role"
+                  "description": "The role that matched.",
+                  "allOf": [
+                    {
+                      "$ref": "#/definitions/Role"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -4376,10 +4615,20 @@
               ],
               "properties": {
                 "authorization": {
-                  "$ref": "#/definitions/Authorization"
+                  "description": "The authorization that matched.",
+                  "allOf": [
+                    {
+                      "$ref": "#/definitions/Authorization"
+                    }
+                  ]
                 },
                 "role": {
-                  "$ref": "#/definitions/Role"
+                  "description": "The role that matched.",
+                  "allOf": [
+                    {
+                      "$ref": "#/definitions/Role"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -8164,9 +8413,11 @@
           ],
           "properties": {
             "addr": {
+              "description": "The address to assign the role to.",
               "type": "string"
             },
             "role_id": {
+              "description": "The role ID to assign.",
               "type": "integer",
               "format": "uint64",
               "minimum": 0.0
@@ -8297,6 +8548,57 @@
           "additionalProperties": false
         }
       }
+    },
+    "list_protobuf_files": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ListProtobufFilesResponse",
+      "type": "object",
+      "required": [
+        "files"
+      ],
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "list_protobuf_messages": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ListProtobufMessagesResponse",
+      "type": "object",
+      "required": [
+        "messages"
+      ],
+      "properties": {
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "list_protobuf_messages_by_file": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ListProtobufMessagesResponse",
+      "type": "object",
+      "required": [
+        "messages"
+      ],
+      "properties": {
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
     },
     "list_roles": {
       "$schema": "http://json-schema.org/draft-07/schema#",

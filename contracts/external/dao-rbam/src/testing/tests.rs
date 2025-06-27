@@ -1650,3 +1650,57 @@ fn test_update_owner() {
     let owner = suite.get_ownership().owner.unwrap();
     assert_eq!(owner, new_owner);
 }
+
+#[test]
+fn test_protobuf_management() {
+    let mut suite = SuiteBuilder::base().build();
+    let dao = suite.core_addr.clone();
+
+    // Create a protobuf file descriptor set
+    let crate_root = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
+    let proto_path = std::path::Path::new(&crate_root).join("proto/string_bool_value.pb");
+    let file_descriptor_set = std::fs::read(proto_path).unwrap();
+
+    suite.register_protobufs(&dao, vec![file_descriptor_set]);
+
+    suite.assert_protobuf_files(vec!["google/protobuf/wrappers.proto".to_string()]);
+    suite.assert_protobuf_messages(vec!["BoolValue".to_string(), "StringValue".to_string()]);
+    suite.assert_protobuf_messages_by_file(
+        "google/protobuf/wrappers.proto",
+        vec!["BoolValue".to_string(), "StringValue".to_string()],
+    );
+
+    // Errors when partially unregistering messages from multiple files and
+    // doesn't reach the final file name before the limit is reached.
+    let err = suite.unregister_protobufs_err(
+        &dao,
+        vec!["google/protobuf/wrappers.proto".to_string(), "".to_string()],
+        Some(1),
+    );
+    assert_eq!(
+        err,
+        ContractError::ProtobufMessageLimitReached {
+            unregistered: 1,
+            total: 2,
+        }
+    );
+
+    // Allows partial unregistering of messages from a single file.
+    suite.unregister_protobufs(
+        &dao,
+        vec!["google/protobuf/wrappers.proto".to_string()],
+        Some(1),
+    );
+
+    // File removed, but some messages remain.
+    suite.assert_protobuf_files(vec![]);
+    suite.assert_protobuf_messages(vec!["StringValue".to_string()]);
+
+    // Finishing unregistering the file removes all messages.
+    suite.unregister_protobufs(
+        &dao,
+        vec!["google/protobuf/wrappers.proto".to_string()],
+        None,
+    );
+    suite.assert_protobuf_messages(vec![]);
+}

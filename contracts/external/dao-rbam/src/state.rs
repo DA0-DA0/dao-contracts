@@ -20,6 +20,28 @@ pub const NEXT_ID: Item<u64> = Item::new("next_id");
 /// Map role_id -> role
 pub const ROLES: Map<u64, Role> = Map::new("roles");
 
+/// Map protobuf file name -> protobuf file descriptor proto data.
+pub const PROTOBUF_FILES: Map<String, Vec<u8>> = Map::new("pb_files");
+
+/// Map protobuf message descriptor name -> protobuf file name that contains it.
+/// Secondary index on file_name to look up/iterate by file. This supports the
+/// following queries:
+/// - get a specific protobuf message by name (map lookup)
+/// - list all protobuf messages (range query)
+/// - list all protobuf messages in a specific file (secondary index range
+///   query)
+pub const PROTOBUF_MESSAGES: IndexedMap<String, String, ProtobufMessagesIndexes<'_>> =
+    IndexedMap::new(
+        "pb_messages",
+        ProtobufMessagesIndexes {
+            file_name: MultiIndex::new(
+                |_pk, file_name| file_name.clone(),
+                "pb_messages",
+                "pb_messages__file_name",
+            ),
+        },
+    );
+
 /// Map authorization_id -> authorization. Secondary index on role_id to look
 /// up/iterate by role. This supports the following queries:
 /// - get a specific authorization by ID (map lookup)
@@ -30,7 +52,7 @@ pub const AUTHORIZATIONS: IndexedMap<u64, Authorization, AuthorizationsIndexes<'
         "authorizations",
         AuthorizationsIndexes {
             role_id: MultiIndex::new(
-                |_pk: &[u8], a: &Authorization| a.role_id,
+                |_pk, a| a.role_id,
                 "authorizations",
                 "authorizations__role_id",
             ),
@@ -50,7 +72,7 @@ pub const ASSIGNMENTS: IndexedMap<AssignmentPair, Addr, AssignmentsIndexes<'_>> 
     "assignments",
     AssignmentsIndexes {
         role_id: MultiIndex::new(
-            |pk: &[u8], _d: &Addr| AssignmentPair::from_slice(pk).unwrap().1,
+            |pk: &[u8], _d| AssignmentPair::from_slice(pk).unwrap().1,
             "assignments",
             "assignments__role_id",
         ),
@@ -70,15 +92,26 @@ pub const ASSIGNMENTS: IndexedMap<AssignmentPair, Addr, AssignmentsIndexes<'_>> 
 pub const LOG: IndexedMap<LogPairKey, Action, LogIndexes<'_>> = IndexedMap::new(
     "log",
     LogIndexes {
-        action_id: UniqueIndex::new(|a: &Action| a.id, "log__action_id"),
-        role_id: MultiIndex::new(|_pk: &[u8], a: &Action| a.role_id, "log", "log__role_id"),
+        action_id: UniqueIndex::new(|a| a.id, "log__action_id"),
+        role_id: MultiIndex::new(|_pk, a| a.role_id, "log", "log__role_id"),
         authorization_id: MultiIndex::new(
-            |_pk: &[u8], a: &Action| a.authorization_id,
+            |_pk, a| a.authorization_id,
             "log",
             "log__authorization_id",
         ),
     },
 );
+
+/// Secondary index for protobuf descriptors to look up/iterate by file name.
+pub struct ProtobufMessagesIndexes<'a> {
+    pub file_name: MultiIndex<'a, String, String, String>,
+}
+impl IndexList<String> for ProtobufMessagesIndexes<'_> {
+    fn get_indexes(&self) -> Box<dyn Iterator<Item = &dyn Index<String>> + '_> {
+        let v: Vec<&dyn Index<String>> = vec![&self.file_name];
+        Box::new(v.into_iter())
+    }
+}
 
 /// Secondary index for authorizations to look up/iterate by role.
 pub struct AuthorizationsIndexes<'a> {

@@ -6,12 +6,14 @@ use cosmwasm_std::{
     to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError,
     StdResult, WasmMsg,
 };
+use cw_jsonfilter::FileDescriptorSet;
 use cw_storage_plus::Bound;
 
 use cw2::set_contract_version;
 use cw_ownable::initialize_owner;
 use cw_utils::nonpayable;
 use dao_interface::helpers::OptionalUpdate;
+use prost_reflect::prost::Message;
 
 use crate::action::{Action, ActionToExecute};
 use crate::error::ContractError;
@@ -21,11 +23,15 @@ use crate::msg::{
     InitialAuthorization, InitialRole, InstantiateMsg, IsAssignedRoleResponse, IsEnabledResponse,
     IsMsgAuthorizedByResponse, IsMsgAuthorizedByRoleResponse, IsMsgAuthorizedResponse,
     ListActionsResponse, ListAddressesWithRoleResponse, ListAssignmentsResponse,
-    ListAuthorizationsResponse, ListRolesForAddressResponse, ListRolesResponse, MigrateMsg,
-    QueryMsg, RoleResponse, TestFilterResponse,
+    ListAuthorizationsResponse, ListProtobufFilesResponse, ListProtobufMessagesResponse,
+    ListRolesForAddressResponse, ListRolesResponse, MigrateMsg, QueryMsg, RoleResponse,
+    TestFilterResponse,
 };
 use crate::role::{Authorization, Role};
-use crate::state::{ASSIGNMENTS, AUTHORIZATIONS, DAO, ENABLED, LOG, NEXT_ID, ROLES};
+use crate::state::{
+    ASSIGNMENTS, AUTHORIZATIONS, DAO, ENABLED, LOG, NEXT_ID, PROTOBUF_FILES, PROTOBUF_MESSAGES,
+    ROLES,
+};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-rbam";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -172,6 +178,13 @@ pub fn execute(
         ),
         ExecuteMsg::Assign { assign } => execute_assign(deps, info, assign),
         ExecuteMsg::Revoke { revoke } => execute_revoke(deps, info, revoke),
+        ExecuteMsg::RegisterProtobufs {
+            file_descriptor_sets,
+        } => execute_register_protobufs(deps, info, file_descriptor_sets),
+        ExecuteMsg::UnregisterProtobufs {
+            file_names,
+            message_limit,
+        } => execute_unregister_protobufs(deps, info, file_names, message_limit),
         ExecuteMsg::ExecuteActions { actions } => execute_execute_actions(deps, env, info, actions),
     }
 }
@@ -428,6 +441,124 @@ fn execute_revoke(
     Ok(Response::new().add_attribute("action", "revoke"))
 }
 
+fn execute_register_protobufs(
+    deps: DepsMut,
+    info: MessageInfo,
+    file_descriptor_sets: Vec<Vec<u8>>,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    if file_descriptor_sets.is_empty() {
+        return Err(ContractError::NoFiles {});
+    }
+
+    let mut file_count = 0;
+    let mut message_count = 0;
+
+    for (file_descriptor_set_index, file_descriptor_set) in file_descriptor_sets.iter().enumerate()
+    {
+        let file_descriptor_set = FileDescriptorSet::decode(file_descriptor_set.as_slice())?;
+
+        for (file_descriptor_index, file_descriptor) in file_descriptor_set.file.iter().enumerate()
+        {
+            let file_name =
+                file_descriptor
+                    .name
+                    .clone()
+                    .ok_or(ContractError::FileDescriptorMissingName {
+                        file_descriptor_index,
+                        file_descriptor_set_index,
+                    })?;
+
+            // Get all message descriptors in file.
+            for (message_descriptor_index, message_descriptor) in
+                file_descriptor.message_type.iter().enumerate()
+            {
+                let message_type_name = message_descriptor.name.clone().ok_or_else(|| {
+                    ContractError::MessageDescriptorMissingName {
+                        message_descriptor_index,
+                        file_name: file_name.clone(),
+                    }
+                })?;
+
+                PROTOBUF_MESSAGES.save(deps.storage, message_type_name, &file_name)?;
+
+                message_count += 1;
+            }
+
+            let file_descriptor_data = file_descriptor.encode_to_vec();
+            PROTOBUF_FILES.save(deps.storage, file_name, &file_descriptor_data)?;
+
+            file_count += 1;
+        }
+    }
+
+    Ok(Response::new()
+        .add_attribute("action", "register_protobuf")
+        .add_attribute("file_count", file_count.to_string())
+        .add_attribute("message_count", message_count.to_string()))
+}
+
+fn execute_unregister_protobufs(
+    deps: DepsMut,
+    info: MessageInfo,
+    file_names: Vec<String>,
+    message_limit: Option<u32>,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    if file_names.is_empty() {
+        return Err(ContractError::NoFiles {});
+    }
+
+    let message_limit = message_limit.unwrap_or(u32::MAX);
+    let mut unregistered_message_count = 0;
+
+    for (file_index, file_name) in file_names.iter().enumerate() {
+        let remaining = (message_limit - unregistered_message_count) as usize;
+
+        // If we've reached the limit of messages to unregister before we start
+        // unregistering this file, return an error. The message limit must be
+        // large enough to unregister all messages in all files except the last
+        // one, which can be partially unregistered. This ensures that you can
+        // partially unregister messages from a single file in case there are
+        // too many to unregister in a single TX, while still minimizing the
+        // number of files that are partially unregistered.
+        if remaining == 0 {
+            return Err(ContractError::ProtobufMessageLimitReached {
+                unregistered: file_index,
+                total: file_names.len(),
+            });
+        }
+
+        let messages = PROTOBUF_MESSAGES
+            .idx
+            .file_name
+            .prefix(file_name.to_string())
+            .keys(deps.storage, None, None, Order::Ascending)
+            .take(remaining)
+            .collect::<StdResult<Vec<_>>>()?;
+
+        // Unregister messages.
+        unregistered_message_count += messages.len() as u32;
+        for message in messages {
+            PROTOBUF_MESSAGES.remove(deps.storage, message)?;
+        }
+
+        // Unregister file.
+        PROTOBUF_FILES.remove(deps.storage, file_name.to_string());
+    }
+
+    Ok(Response::new()
+        .add_attribute("action", "unregister_protobuf")
+        .add_attribute(
+            "unregistered_message_count",
+            unregistered_message_count.to_string(),
+        ))
+}
+
 fn execute_execute_actions(
     mut deps: DepsMut,
     env: Env,
@@ -512,6 +643,22 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         } => to_json_binary(&query_list_assignments_by_address(
             deps,
             addr,
+            start_after,
+            limit,
+        )?),
+        QueryMsg::ListProtobufFiles { start_after, limit } => {
+            to_json_binary(&query_list_protobuf_files(deps, start_after, limit)?)
+        }
+        QueryMsg::ListProtobufMessages { start_after, limit } => {
+            to_json_binary(&query_list_protobuf_messages(deps, start_after, limit)?)
+        }
+        QueryMsg::ListProtobufMessagesByFile {
+            file_name,
+            start_after,
+            limit,
+        } => to_json_binary(&query_list_protobuf_messages_by_file(
+            deps,
+            file_name,
             start_after,
             limit,
         )?),
@@ -757,6 +904,58 @@ fn query_list_assignments_by_address(
         .collect::<StdResult<Vec<_>>>()?;
 
     Ok(ListRolesForAddressResponse { role_ids })
+}
+
+fn query_list_protobuf_files(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<ListProtobufFilesResponse> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(Bound::exclusive);
+
+    let files = PROTOBUF_FILES
+        .keys(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(ListProtobufFilesResponse { files })
+}
+
+fn query_list_protobuf_messages(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<ListProtobufMessagesResponse> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(Bound::exclusive);
+
+    let messages = PROTOBUF_MESSAGES
+        .keys(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(ListProtobufMessagesResponse { messages })
+}
+
+fn query_list_protobuf_messages_by_file(
+    deps: Deps,
+    file_name: String,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<ListProtobufMessagesResponse> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(Bound::exclusive);
+
+    let messages = PROTOBUF_MESSAGES
+        .idx
+        .file_name
+        .prefix(file_name)
+        .keys(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(ListProtobufMessagesResponse { messages })
 }
 
 fn query_get_action(deps: Deps, addr: String, action_id: u64) -> StdResult<ActionResponse> {

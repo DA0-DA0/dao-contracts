@@ -896,7 +896,6 @@ name = "cw-jsonfilter"
 version = "2.7.1"
 dependencies = [
  "base64 0.22.1",
- "prost 0.12.3",
  "prost-reflect",
  "regex",
  "serde",
@@ -2289,6 +2288,7 @@ dependencies = [
  "dao-testing",
  "dao-voting 2.7.1",
  "dao-voting-cw4 2.7.1",
+ "prost-reflect",
  "serde_json",
  "thiserror",
 ]

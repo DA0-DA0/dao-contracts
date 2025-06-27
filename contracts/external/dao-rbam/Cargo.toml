@@ -32,6 +32,7 @@ cw-ownable = { workspace = true }
 serde_json = { workspace = true }
 cw2 = { workspace = true }
 cw-jsonfilter = { workspace = true }
+prost-reflect = { workspace = true, features = ["serde"] }
 
 [dev-dependencies]
 bech32 = { workspace = true }
