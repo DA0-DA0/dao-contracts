@@ -1,6 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, CosmosMsg, Deps, DepsMut};
-use cw_jsonfilter::{test, FilterResult};
+use cw_jsonfilter::{CwJsonFilter, FilterResult};
 
 use crate::{
     helpers::get_next_id,
@@ -143,7 +143,7 @@ impl Authorization {
     ) -> Result<bool, ContractError> {
         let msg_value = serde_json::to_value(msg)
             .map_err(|e| ContractError::JsonSerialization { err: e.to_string() })?;
-        let result = test(filter, &msg_value);
+        let result = CwJsonFilter::check(filter, &msg_value);
 
         if ignore_filter_error {
             // Treat filter errors as failures.

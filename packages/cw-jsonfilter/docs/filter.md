@@ -363,6 +363,36 @@ string.
 { "token": { "#base64": { "#contains": "user_id" } } }
 ```
 
+### `#proto`
+
+Decodes a binary string with a protobuf type and applies the filter to the
+decoded value. Specify the type of the protobuf value in the `type` field, and
+the value filter to apply to the decoded value in the `value` field.
+
+```json
+{
+  "proto_data": {
+    "#proto": {
+      "type": "google.protobuf.StringValue",
+      "value": "John"
+    }
+  }
+}
+{
+  "protobuf_field": {
+    "#proto": {
+      "type": "cosmos.bank.v1beta1.MsgSend",
+      "value": {"amount": [{"denom": "uatom", "amount": "1000"}]}
+    }
+  }
+}
+```
+
+#### Registering Protobuf Types
+
+See [protobuf.md](protobuf.md) for more information on how to register protobuf
+types.
+
 ## Complex Examples
 
 ### Nested Filters with Multiple Operators

@@ -1,4 +1,4 @@
-use cw_jsonfilter::{test, FilterResult};
+use cw_jsonfilter::{CwJsonFilter, FilterResult};
 use serde_json::{json, Value};
 
 fn main() {
@@ -36,7 +36,7 @@ fn main() {
 }
 
 fn match_objects(filter: &Value, obj: &Value) {
-    match test(filter, obj) {
+    match CwJsonFilter::check(filter, obj) {
         FilterResult::Pass => println!("Filter matches the object"),
         FilterResult::Fail(err) => println!("Filter does not match the object: {:?}", err),
         FilterResult::Fatal(err) => println!("Fatal error: {:?}", err),
