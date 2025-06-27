@@ -1,11 +1,10 @@
 #[cfg(test)]
 mod tests {
-    use crate::{CwJsonFilter, BASE64_ENGINE};
-    use base64::Engine;
-    use prost_reflect::{
-        prost::Message, prost_types::FileDescriptorSet, DescriptorPool, DynamicMessage,
-    };
-    use serde_json::{json, Deserializer};
+    use std::collections::HashSet;
+
+    use crate::{base64_encode_protobuf, get_protobuf_messages, CwJsonFilter};
+    use prost_reflect::{prost::Message, prost_types::FileDescriptorSet};
+    use serde_json::json;
 
     #[test]
     fn array_element_match() {
@@ -1364,9 +1363,9 @@ mod tests {
 
         let string_filter = json!({"someProto": {"#proto": {"type": "google.protobuf.StringValue", "value": "pass"}}});
         let base64_encoded_pass =
-            encode_protobuf_base64(&pool, "google.protobuf.StringValue", &json!("pass"));
+            base64_encode_protobuf(&pool, "google.protobuf.StringValue", &json!("pass"));
         let base64_encoded_not_pass =
-            encode_protobuf_base64(&pool, "google.protobuf.StringValue", &json!("not_test"));
+            base64_encode_protobuf(&pool, "google.protobuf.StringValue", &json!("not_test"));
 
         assert!(cwjf
             .matches(&string_filter, &json!({"someProto": base64_encoded_pass}))
@@ -1383,9 +1382,9 @@ mod tests {
         let bool_filter =
             json!({"someProto": {"#proto": {"type": "google.protobuf.BoolValue", "value": true}}});
         let base64_encoded_pass =
-            encode_protobuf_base64(&pool, "google.protobuf.BoolValue", &json!(true));
+            base64_encode_protobuf(&pool, "google.protobuf.BoolValue", &json!(true));
         let base64_encoded_not_pass =
-            encode_protobuf_base64(&pool, "google.protobuf.BoolValue", &json!(false));
+            base64_encode_protobuf(&pool, "google.protobuf.BoolValue", &json!(false));
 
         assert!(cwjf
             .matches(&bool_filter, &json!({"someProto": base64_encoded_pass}))
@@ -1395,20 +1394,28 @@ mod tests {
             .is_fail());
     }
 
-    fn encode_protobuf_base64(
-        pool: &DescriptorPool,
-        message_name: &str,
-        value: &serde_json::Value,
-    ) -> String {
-        let value_str = value.to_string();
-        let message_descriptor = pool.get_message_by_name(message_name).unwrap();
+    #[test]
+    fn test_get_protobuf_messages() {
+        let filter = json!({"someProto": {"#proto": {"type": "google.protobuf.StringValue", "value": "pass"}}});
+        assert_eq!(
+            get_protobuf_messages(&filter),
+            HashSet::from(["google.protobuf.StringValue".to_string()])
+        );
 
-        let mut deserializer = Deserializer::from_str(&value_str);
-        let dynamic_message =
-            DynamicMessage::deserialize(message_descriptor, &mut deserializer).unwrap();
-        deserializer.end().unwrap();
+        let nested_filter = json!({"someProto": {"#proto": {"type": "google.protobuf.StringValue", "value": "pass"}, "someOtherProto": {"#proto": {"type": "google.protobuf.StringValue", "value": "pass"}}}});
+        assert_eq!(
+            get_protobuf_messages(&nested_filter),
+            HashSet::from(["google.protobuf.StringValue".to_string(),])
+        );
 
-        // Encode the message data to bytes and then base64 encode it.
-        BASE64_ENGINE.encode(dynamic_message.encode_to_vec())
+        let multiple_types_filter = json!({"someProto": {"#proto": {"type": "google.protobuf.StringValue", "value": "pass"}}, "someOtherProto": {"#proto": {"type": "google.protobuf.BoolValue", "value": true}}, "deeplyNested": {"somewhereFarFarAway": {"#proto": {"type": "another.proto.SomeMessage", "value": "pass"}}}, "invalidProto": {"#proto": {"noType": "getsIgnored"}}});
+        assert_eq!(
+            get_protobuf_messages(&multiple_types_filter),
+            HashSet::from([
+                "google.protobuf.StringValue".to_string(),
+                "google.protobuf.BoolValue".to_string(),
+                "another.proto.SomeMessage".to_string(),
+            ])
+        );
     }
 }

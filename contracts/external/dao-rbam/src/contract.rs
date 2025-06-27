@@ -6,7 +6,6 @@ use cosmwasm_std::{
     to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError,
     StdResult, WasmMsg,
 };
-use cw_jsonfilter::FileDescriptorSet;
 use cw_storage_plus::Bound;
 
 use cw2::set_contract_version;
@@ -14,6 +13,7 @@ use cw_ownable::initialize_owner;
 use cw_utils::nonpayable;
 use dao_interface::helpers::OptionalUpdate;
 use prost_reflect::prost::Message;
+use prost_reflect::prost_types::FileDescriptorSet;
 
 use crate::action::{Action, ActionToExecute};
 use crate::error::ContractError;
@@ -359,9 +359,11 @@ fn execute_update_authorization(
         authorization.metadata = value;
     });
 
-    filter.maybe_update(|value| {
+    filter.maybe_update_result(|value| -> Result<(), ContractError> {
         authorization.filter = value;
-    });
+        authorization.sync_protobuf_messages(&deps.as_ref())?;
+        Ok(())
+    })?;
 
     if let Some(enabled) = enabled {
         authorization.enabled = enabled;
@@ -470,6 +472,13 @@ fn execute_register_protobufs(
                         file_descriptor_index,
                         file_descriptor_set_index,
                     })?;
+            let file_package = file_descriptor.package.clone().ok_or(
+                ContractError::FileDescriptorMissingPackage {
+                    file_descriptor_index,
+                    file_descriptor_name: file_name.clone(),
+                    file_descriptor_set_index,
+                },
+            )?;
 
             // Get all message descriptors in file.
             for (message_descriptor_index, message_descriptor) in
@@ -479,10 +488,12 @@ fn execute_register_protobufs(
                     ContractError::MessageDescriptorMissingName {
                         message_descriptor_index,
                         file_name: file_name.clone(),
+                        file_package: file_package.clone(),
                     }
                 })?;
+                let message_full_name = format!("{}.{}", file_package, message_type_name);
 
-                PROTOBUF_MESSAGES.save(deps.storage, message_type_name, &file_name)?;
+                PROTOBUF_MESSAGES.save(deps.storage, message_full_name, &file_name)?;
 
                 message_count += 1;
             }
@@ -742,7 +753,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             authorization_id,
             msg,
         )?),
-        QueryMsg::TestFilter { filter, msg } => to_json_binary(&query_test_filter(filter, msg)?),
+        QueryMsg::TestFilter { filter, msg } => {
+            to_json_binary(&query_test_filter(deps, filter, msg)?)
+        }
     }
 }
 
@@ -1164,7 +1177,7 @@ fn query_is_msg_authorized(
 
             // Check if the authorization allows the message.
             let allowed = authorization
-                .allows(&msg, true)
+                .allows(&deps, &msg, true)
                 // Should not happen since we ignore filter errors.
                 .map_err(|e| StdError::generic_err(e.to_string()))?;
 
@@ -1270,7 +1283,7 @@ fn query_is_msg_authorized_by_role(
 
         // Check if the authorization allows the message.
         let allowed = authorization
-            .allows(&msg, true)
+            .allows(&deps, &msg, true)
             // Should not happen since we ignore filter errors.
             .map_err(|e| StdError::generic_err(e.to_string()))?;
 
@@ -1349,7 +1362,7 @@ fn query_is_msg_authorized_by(
     }
 
     // Check if the authorization allows the message.
-    let allowed = match authorization.allows(&msg, false) {
+    let allowed = match authorization.allows(&deps, &msg, false) {
         Ok(allowed) => allowed,
         Err(e) => {
             return Ok(IsMsgAuthorizedByResponse::Unauthorized {
@@ -1373,8 +1386,12 @@ fn query_is_msg_authorized_by(
     })
 }
 
-fn query_test_filter(filter: serde_json::Value, msg: CosmosMsg) -> StdResult<TestFilterResponse> {
-    let check = Authorization::filter_allows(&filter, &msg, false);
+fn query_test_filter(
+    deps: Deps,
+    filter: serde_json::Value,
+    msg: CosmosMsg,
+) -> StdResult<TestFilterResponse> {
+    let check = Authorization::filter_allows(&deps, &filter, None, &msg, false);
 
     // Handle filter errors appropriately.
     let response = check.map_or_else(

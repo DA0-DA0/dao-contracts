@@ -109,7 +109,7 @@ impl ActionToExecute {
         }
 
         // Ensure message is allowed.
-        let allowed = authorization.allows(&msg, false)?;
+        let allowed = authorization.allows(&deps.as_ref(), &msg, false)?;
         // should never happen since ignore_filter_error is false
         if !allowed {
             return Err(ContractError::MsgNotAllowedByFilter {

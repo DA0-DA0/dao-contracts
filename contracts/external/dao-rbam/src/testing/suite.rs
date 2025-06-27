@@ -545,18 +545,20 @@ impl Suite {
 
     pub fn assert_msg_authorized(&mut self, addr: &str, msg: &CosmosMsg) {
         let response = self.is_msg_authorized(addr.to_string(), msg, None, None);
-        assert!(matches!(
-            response,
-            IsMsgAuthorizedResponse::Authorized { .. }
-        ));
+        assert!(
+            matches!(response, IsMsgAuthorizedResponse::Authorized { .. }),
+            "expected Authorized, got {:?}",
+            response
+        );
     }
 
     pub fn assert_msg_authorized_by_role(&mut self, addr: &str, role_id: u64, msg: &CosmosMsg) {
         let response = self.is_msg_authorized_by_role(addr.to_string(), role_id, msg, None, None);
-        assert!(matches!(
-            response,
-            IsMsgAuthorizedByRoleResponse::Authorized { .. }
-        ));
+        assert!(
+            matches!(response, IsMsgAuthorizedByRoleResponse::Authorized { .. }),
+            "expected Authorized, got {:?}",
+            response
+        );
     }
 
     pub fn assert_msg_authorized_by(
@@ -567,10 +569,11 @@ impl Suite {
         msg: &CosmosMsg,
     ) {
         let response = self.is_msg_authorized_by(addr.to_string(), role_id, authorization_id, msg);
-        assert!(matches!(
-            response,
-            IsMsgAuthorizedByResponse::Authorized { .. }
-        ));
+        assert!(
+            matches!(response, IsMsgAuthorizedByResponse::Authorized { .. }),
+            "expected Authorized, got {:?}",
+            response
+        );
     }
 
     pub fn assert_msg_unauthorized(
@@ -581,10 +584,11 @@ impl Suite {
         limit: Option<u32>,
     ) {
         let response = self.is_msg_authorized(addr.to_string(), msg, None, limit);
-        assert!(matches!(
-            response,
-            IsMsgAuthorizedResponse::Unauthorized { .. }
-        ));
+        assert!(
+            matches!(response, IsMsgAuthorizedResponse::Unauthorized { .. }),
+            "expected Unauthorized, got {:?}",
+            response
+        );
         if let Some(expected) = reason {
             match response {
                 IsMsgAuthorizedResponse::Unauthorized { reason, .. } => {
@@ -605,10 +609,11 @@ impl Suite {
         limit: Option<u32>,
     ) {
         let response = self.is_msg_authorized_by_role(addr.to_string(), role_id, msg, None, limit);
-        assert!(matches!(
-            response,
-            IsMsgAuthorizedByRoleResponse::Unauthorized { .. }
-        ));
+        assert!(
+            matches!(response, IsMsgAuthorizedByRoleResponse::Unauthorized { .. }),
+            "expected Unauthorized, got {:?}",
+            response
+        );
         if let Some(expected) = reason {
             match response {
                 IsMsgAuthorizedByRoleResponse::Unauthorized { reason, .. } => {
@@ -629,10 +634,11 @@ impl Suite {
         reason: Option<impl Into<String>>,
     ) {
         let response = self.is_msg_authorized_by(addr.to_string(), role_id, authorization_id, msg);
-        assert!(matches!(
-            response,
-            IsMsgAuthorizedByResponse::Unauthorized { .. }
-        ));
+        assert!(
+            matches!(response, IsMsgAuthorizedByResponse::Unauthorized { .. }),
+            "expected Unauthorized, got {:?}",
+            response
+        );
         if let Some(expected) = reason {
             match response {
                 IsMsgAuthorizedByResponse::Unauthorized { reason, .. } => {
@@ -646,7 +652,11 @@ impl Suite {
 
     pub fn assert_filter_passes(&mut self, filter: &serde_json::Value, msg: &CosmosMsg) {
         let response = self.test_filter(filter, msg);
-        assert!(matches!(response, TestFilterResponse::Pass { .. }));
+        assert!(
+            matches!(response, TestFilterResponse::Pass { .. }),
+            "expected Pass, got {:?}",
+            response
+        );
     }
 
     pub fn assert_filter_fails(
@@ -656,7 +666,11 @@ impl Suite {
         reason: Option<impl Into<String>>,
     ) {
         let response = self.test_filter(filter, msg);
-        assert!(matches!(response, TestFilterResponse::Fail { .. }));
+        assert!(
+            matches!(response, TestFilterResponse::Fail { .. }),
+            "expected Fail, got {:?}",
+            response
+        );
         if let Some(expected) = reason {
             match response {
                 TestFilterResponse::Fail { reason, .. } => {
@@ -934,6 +948,29 @@ impl Suite {
                 enabled,
                 authorizations,
                 assignments,
+            },
+            &[],
+        )
+    }
+
+    pub fn create_authorization_err(
+        &mut self,
+        sender: impl Into<String>,
+        role_id: u64,
+        name: String,
+        metadata: Option<String>,
+        filter: Option<serde_json::Value>,
+        enabled: Option<bool>,
+    ) -> ContractError {
+        self.base.execute_smart_err(
+            sender,
+            &self.rbam_addr,
+            &ExecuteMsg::CreateAuthorization {
+                role_id,
+                name,
+                metadata,
+                filter,
+                enabled,
             },
             &[],
         )

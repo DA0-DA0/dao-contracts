@@ -1,9 +1,6 @@
-use base64::Engine;
-use cw_jsonfilter::{CwJsonFilter, FilterResult, BASE64_ENGINE};
-use prost_reflect::{
-    prost::Message, prost_types::FileDescriptorSet, DescriptorPool, DynamicMessage,
-};
-use serde_json::{json, Deserializer, Value};
+use cw_jsonfilter::{base64_encode_protobuf, CwJsonFilter, FilterResult};
+use prost_reflect::{prost::Message, prost_types::FileDescriptorSet};
+use serde_json::{json, Value};
 
 fn main() {
     let crate_root = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
@@ -20,9 +17,9 @@ fn main() {
     let string_filter =
         json!({"someProto": {"#proto": {"type": "google.protobuf.StringValue", "value": "pass"}}});
     let base64_encoded_pass =
-        encode_protobuf_base64(&pool, "google.protobuf.StringValue", &json!("pass"));
+        base64_encode_protobuf(&pool, "google.protobuf.StringValue", &json!("pass"));
     let base64_encoded_not_pass =
-        encode_protobuf_base64(&pool, "google.protobuf.StringValue", &json!("not_test"));
+        base64_encode_protobuf(&pool, "google.protobuf.StringValue", &json!("not_test"));
 
     let obj1 = json!({"someProto": base64_encoded_pass});
     let obj2 = json!({"someProto": base64_encoded_not_pass});
@@ -43,9 +40,9 @@ fn main() {
         json!({"someProto": {"#proto": {"type": "google.protobuf.BoolValue", "value": true}}});
 
     let base64_encoded_true =
-        encode_protobuf_base64(&pool, "google.protobuf.BoolValue", &json!(true));
+        base64_encode_protobuf(&pool, "google.protobuf.BoolValue", &json!(true));
     let base64_encoded_false =
-        encode_protobuf_base64(&pool, "google.protobuf.BoolValue", &json!(false));
+        base64_encode_protobuf(&pool, "google.protobuf.BoolValue", &json!(false));
     let obj1 = json!({"someProto": base64_encoded_true});
     let obj2 = json!({"someProto": base64_encoded_false});
 
@@ -65,17 +62,4 @@ fn match_objects(cwjf: &CwJsonFilter, filter: &Value, obj: &Value) {
         FilterResult::Fail(err) => println!("Filter does not match the object: {:?}", err),
         FilterResult::Fatal(err) => println!("Fatal error: {:?}", err),
     }
-}
-
-fn encode_protobuf_base64(pool: &DescriptorPool, message_name: &str, value: &Value) -> String {
-    let value_str = value.to_string();
-    let message_descriptor = pool.get_message_by_name(message_name).unwrap();
-
-    let mut deserializer = Deserializer::from_str(&value_str);
-    let dynamic_message =
-        DynamicMessage::deserialize(message_descriptor, &mut deserializer).unwrap();
-    deserializer.end().unwrap();
-
-    // Encode the message data to bytes and then base64 encode it.
-    BASE64_ENGINE.encode(dynamic_message.encode_to_vec())
 }

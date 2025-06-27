@@ -1,8 +1,10 @@
-use cosmwasm_std::{to_json_binary, BankMsg, Coin, CosmosMsg, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Uint128, WasmMsg};
+use cw_jsonfilter::base64_encode_protobuf;
 use cw_ownable::OwnershipError;
 use dao_interface::helpers::{OptionalUpdate, Update};
 use dao_rbam::ContractError;
 use dao_testing::{ADDR0, ADDR1, ADDR2, DENOM};
+use prost_reflect::{prost::Message, prost_types::FileDescriptorSet, DescriptorPool};
 
 use crate::{
     action::ActionToExecute,
@@ -1664,10 +1666,16 @@ fn test_protobuf_management() {
     suite.register_protobufs(&dao, vec![file_descriptor_set]);
 
     suite.assert_protobuf_files(vec!["google/protobuf/wrappers.proto".to_string()]);
-    suite.assert_protobuf_messages(vec!["BoolValue".to_string(), "StringValue".to_string()]);
+    suite.assert_protobuf_messages(vec![
+        "google.protobuf.BoolValue".to_string(),
+        "google.protobuf.StringValue".to_string(),
+    ]);
     suite.assert_protobuf_messages_by_file(
         "google/protobuf/wrappers.proto",
-        vec!["BoolValue".to_string(), "StringValue".to_string()],
+        vec![
+            "google.protobuf.BoolValue".to_string(),
+            "google.protobuf.StringValue".to_string(),
+        ],
     );
 
     // Errors when partially unregistering messages from multiple files and
@@ -1694,7 +1702,7 @@ fn test_protobuf_management() {
 
     // File removed, but some messages remain.
     suite.assert_protobuf_files(vec![]);
-    suite.assert_protobuf_messages(vec!["StringValue".to_string()]);
+    suite.assert_protobuf_messages(vec!["google.protobuf.StringValue".to_string()]);
 
     // Finishing unregistering the file removes all messages.
     suite.unregister_protobufs(
@@ -1703,4 +1711,142 @@ fn test_protobuf_management() {
         None,
     );
     suite.assert_protobuf_messages(vec![]);
+}
+
+#[test]
+fn test_protobuf_filter() {
+    let mut suite = SuiteBuilder::base().build();
+    let dao = suite.core_addr.clone();
+
+    // Register the protobuf file descriptor set.
+
+    let crate_root = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
+    let proto_path = std::path::Path::new(&crate_root).join("proto/string_bool_value.pb");
+    let file_descriptor_set = std::fs::read(proto_path).unwrap();
+
+    // Create a role with an authorization that allows a true BoolValue.
+    let role_id = suite.create_role(
+        &dao,
+        "test_role".to_string(),
+        None,
+        None,
+        None,
+        Some(vec![ADDR0.to_string()]),
+    );
+
+    // Error if no messages are registered.
+    let err = suite.create_authorization_err(
+        &dao,
+        role_id,
+        "test_auth".to_string(),
+        None,
+        Some(serde_json::json!({"#proto": {"type": "google.protobuf.BoolValue", "value": true}})),
+        None,
+    );
+    assert_eq!(
+        err,
+        ContractError::ProtobufMessageNotFound {
+            message: "google.protobuf.BoolValue".to_string()
+        }
+    );
+
+    // Register the protobuf file descriptor set.
+    suite.register_protobufs(&dao, vec![file_descriptor_set.clone()]);
+    suite.assert_protobuf_files(vec!["google/protobuf/wrappers.proto".to_string()]);
+    suite.assert_protobuf_messages(vec![
+        "google.protobuf.BoolValue".to_string(),
+        "google.protobuf.StringValue".to_string(),
+    ]);
+
+    // Successfully create an authorization that allows a true BoolValue.
+    let authorization_id = suite.create_authorization(
+        &dao,
+        role_id,
+        "test_auth".to_string(),
+        None,
+        Some(serde_json::json!({"#proto": {"type": "google.protobuf.BoolValue", "value": true}})),
+        Some(true),
+    );
+    // Ensure the authorization has the correct protobuf message.
+    let authorization = suite.get_authorization(authorization_id);
+    assert_eq!(
+        authorization.authorization.protobuf_messages,
+        vec!["google.protobuf.BoolValue".to_string()]
+    );
+
+    // Update the authorization to include a StringValue.
+    suite.update_authorization(
+        &dao,
+        authorization_id,
+        None,
+        OptionalUpdate(None),
+        OptionalUpdate(Some(Update::Set(
+            serde_json::json!({"#proto": {"type": "google.protobuf.StringValue", "value": "test"}}),
+        ))),
+        None,
+    );
+    // Ensure the authorization has the new message and not the old one.
+    let authorization = suite.get_authorization(authorization_id);
+    assert_eq!(
+        authorization.authorization.protobuf_messages,
+        vec!["google.protobuf.StringValue".to_string()]
+    );
+
+    // Test that the protobuf filter works.
+    suite.update_authorization(
+        &dao,
+        authorization_id,
+        None,
+        OptionalUpdate(None),
+        OptionalUpdate(Some(Update::Set(
+            serde_json::json!({"stargate": {"type_url": "google.protobuf.StringValue", "value": {"#proto": {"type": "google.protobuf.StringValue", "value": "pass"}}}}),
+        ))),
+        None,
+    );
+
+    let pool = DescriptorPool::from_file_descriptor_set(
+        FileDescriptorSet::decode(file_descriptor_set.as_slice()).unwrap(),
+    )
+    .unwrap();
+
+    let base64_encoded_pass = base64_encode_protobuf(
+        &pool,
+        "google.protobuf.StringValue",
+        &serde_json::json!("pass"),
+    );
+    suite.assert_msg_authorized_by(
+        ADDR0,
+        role_id,
+        authorization_id,
+        &CosmosMsg::Stargate {
+            type_url: "google.protobuf.StringValue".to_string(),
+            value: Binary::from_base64(&base64_encoded_pass).unwrap(),
+        },
+    );
+
+    let base64_encoded_not_pass = base64_encode_protobuf(
+        &pool,
+        "google.protobuf.StringValue",
+        &serde_json::json!("not_pass"),
+    );
+    suite.assert_msg_unauthorized_by(
+        ADDR0,
+        role_id,
+        authorization_id,
+        &CosmosMsg::Stargate {
+            type_url: "google.protobuf.StringValue".to_string(),
+            value: Binary::from_base64(&base64_encoded_not_pass).unwrap(),
+        },
+        Some(ContractError::MsgNotAllowedByFilter {
+            err: cw_jsonfilter::FilterResult::operator_failed(
+                "implicit equality check",
+                "value does not match filter",
+                "@.stargate.value.#proto",
+                "@.stargate.value.#proto",
+            )
+            .as_fail()
+            .unwrap()
+            .to_string(),
+        }),
+    );
 }
