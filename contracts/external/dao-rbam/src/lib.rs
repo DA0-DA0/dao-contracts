@@ -5,7 +5,9 @@ pub mod contract;
 mod error;
 pub mod helpers;
 pub mod msg;
+mod protobuf;
 pub mod role;
+pub mod shim;
 pub mod state;
 
 #[cfg(test)]

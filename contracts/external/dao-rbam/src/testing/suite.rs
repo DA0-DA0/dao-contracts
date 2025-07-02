@@ -732,7 +732,7 @@ impl Suite {
     pub fn create_role(
         &mut self,
         sender: impl Into<String>,
-        name: String,
+        name: impl Into<String>,
         metadata: Option<String>,
         enabled: Option<bool>,
         authorizations: Option<Vec<InitialAuthorization>>,
@@ -742,7 +742,7 @@ impl Suite {
             sender,
             &self.rbam_addr,
             &ExecuteMsg::CreateRole {
-                name,
+                name: name.into(),
                 metadata,
                 enabled,
                 authorizations,
@@ -790,7 +790,7 @@ impl Suite {
         &mut self,
         sender: impl Into<String>,
         role_id: u64,
-        name: String,
+        name: impl Into<String>,
         metadata: Option<String>,
         filter: Option<serde_json::Value>,
         enabled: Option<bool>,
@@ -800,7 +800,7 @@ impl Suite {
             &self.rbam_addr,
             &ExecuteMsg::CreateAuthorization {
                 role_id,
-                name,
+                name: name.into(),
                 metadata,
                 filter,
                 enabled,
@@ -933,7 +933,7 @@ impl Suite {
     pub fn create_role_err(
         &mut self,
         sender: impl Into<String>,
-        name: String,
+        name: impl Into<String>,
         metadata: Option<String>,
         enabled: Option<bool>,
         authorizations: Option<Vec<InitialAuthorization>>,
@@ -943,7 +943,7 @@ impl Suite {
             sender,
             &self.rbam_addr,
             &ExecuteMsg::CreateRole {
-                name,
+                name: name.into(),
                 metadata,
                 enabled,
                 authorizations,
@@ -957,7 +957,7 @@ impl Suite {
         &mut self,
         sender: impl Into<String>,
         role_id: u64,
-        name: String,
+        name: impl Into<String>,
         metadata: Option<String>,
         filter: Option<serde_json::Value>,
         enabled: Option<bool>,
@@ -967,7 +967,7 @@ impl Suite {
             &self.rbam_addr,
             &ExecuteMsg::CreateAuthorization {
                 role_id,
-                name,
+                name: name.into(),
                 metadata,
                 filter,
                 enabled,

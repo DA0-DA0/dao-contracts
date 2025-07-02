@@ -1,5 +1,6 @@
 use base64::Engine as _;
 use prost_reflect::{prost_types::FileDescriptorSet, DescriptorPool, DynamicMessage};
+use serde_json::json;
 
 use crate::{gt_json, lt_json, FilterResult, BASE64_ENGINE};
 
@@ -16,8 +17,9 @@ impl Default for CwJsonFilter {
 
 impl CwJsonFilter {
     /// Create a new filter, optionally providing protobuf types to use for
-    /// decoding with the #proto transformer. If no file descriptor sets are
-    /// provided, the filter will not be able to use the #proto transformer.
+    /// decoding with the #proto/#stargate transformer. If no file descriptor
+    /// sets are provided, the filter will not be able to use protobuf
+    /// transformers.
     ///
     /// Warning: duplicately-named file descriptor sets will be ignored—only the
     /// first one will be used. Make sure to resolve file name conflicts.
@@ -71,7 +73,7 @@ impl CwJsonFilter {
     /// ```
     #[must_use]
     pub fn matches(&self, filter: &serde_json::Value, obj: &serde_json::Value) -> FilterResult {
-        self.inner_matches(filter, Some(&obj), "@", "@")
+        self.inner_matches(filter, Some(obj), "@", "@")
     }
 
     fn inner_matches(
@@ -914,7 +916,7 @@ impl CwJsonFilter {
                     "#to_string" => match value {
                         // pass through if value is already a string
                         serde_json::Value::String(_) => {
-                            self.inner_matches(operator_arg, Some(&value), filter_path, obj_path)
+                            self.inner_matches(operator_arg, Some(value), filter_path, obj_path)
                         }
                         _ => self.inner_matches(
                             operator_arg,
@@ -1244,6 +1246,67 @@ impl CwJsonFilter {
                             filter_path,
                             obj_path,
                         ),
+                        _ => FilterResult::fatal_invalid_filter(
+                            format!("{} argument must be an object", operator),
+                            filter_path,
+                            obj_path,
+                        ),
+                    },
+                    "#stargate" => match operator_arg {
+                        serde_json::Value::Object(op_arg) => {
+                            let type_url = match op_arg.get("type_url") {
+                                Some(serde_json::Value::String(type_url)) => type_url,
+                                _ => {
+                                    return FilterResult::fatal_invalid_filter(
+                                        format!("{} argument `type_url` not specified", operator),
+                                        filter_path,
+                                        obj_path,
+                                    )
+                                }
+                            };
+
+                            let type_without_prefix = match type_url.strip_prefix('/') {
+                                Some(t) => t,
+                                None => {
+                                    return FilterResult::fatal_invalid_filter(
+                                        format!(
+                                            "{} argument `type_url` must be a full type URL (starts with `/`)",
+                                            operator
+                                        ),
+                                        filter_path,
+                                        obj_path,
+                                    )
+                                }
+                            };
+
+                            let filter_value = match op_arg.get("value") {
+                                Some(v) => v,
+                                None => {
+                                    return FilterResult::fatal_invalid_filter(
+                                        format!("{} argument `value` not specified", operator),
+                                        filter_path,
+                                        obj_path,
+                                    )
+                                }
+                            };
+
+                            self.inner_matches(
+                                &json!({
+                                    "stargate": {
+                                        "type_url": type_url,
+                                        "value": {
+                                            "#proto": {
+                                                "type": type_without_prefix,
+                                                "value": filter_value,
+                                            }
+                                        }
+                                    }
+                                }),
+                                Some(value),
+                                filter_path,
+                                obj_path,
+                            )
+                        }
                         _ => FilterResult::fatal_invalid_filter(
                             format!("{} argument must be an object", operator),
                             filter_path,

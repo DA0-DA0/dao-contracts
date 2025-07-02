@@ -93,6 +93,13 @@ pub enum ContractError {
         file_descriptor_set_index: usize,
     },
 
+    #[error("File descriptor package changed from {file_package} to {new_file_package} for file {file_name}")]
+    FileDescriptorPackageChanged {
+        file_name: String,
+        file_package: String,
+        new_file_package: String,
+    },
+
     #[error("Message descriptor {message_descriptor_index} missing name in file {file_name} (package: {file_package})")]
     MessageDescriptorMissingName {
         message_descriptor_index: usize,
@@ -105,6 +112,9 @@ pub enum ContractError {
 
     #[error("Protobuf message `{message}` not registered")]
     ProtobufMessageNotFound { message: String },
+
+    #[error("Internal error: {msg}")]
+    InternalError { msg: String },
 }
 
 impl From<ContractError> for String {

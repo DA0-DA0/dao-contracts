@@ -1422,6 +1422,54 @@ mod tests {
         assert!(cwjf
             .matches(&bool_filter, &json!({"someProto": base64_encoded_not_pass}))
             .is_fail());
+
+        // Stargate shorthand
+
+        let stargate_filter =
+            json!({"#stargate": {"type_url": "/google.protobuf.StringValue", "value": "pass"}});
+        let base64_encoded_pass =
+            base64_encode_protobuf(&pool, "google.protobuf.StringValue", &json!("pass"));
+        let base64_encoded_not_pass =
+            base64_encode_protobuf(&pool, "google.protobuf.StringValue", &json!("not_test"));
+
+        assert!(cwjf
+            .matches(
+                &stargate_filter,
+                &json!({"stargate": {
+                    "type_url": "/google.protobuf.StringValue",
+                    "value": base64_encoded_pass
+                }})
+            )
+            .is_pass());
+        // missing / prefix
+        assert!(cwjf
+            .matches(
+                &stargate_filter,
+                &json!({"stargate": {
+                    "type_url": "google.protobuf.StringValue",
+                    "value": base64_encoded_pass
+                }})
+            )
+            .is_fail());
+        // wrong type URL
+        assert!(cwjf
+            .matches(
+                &stargate_filter,
+                &json!({"stargate": {
+                    "type_url": "/google.protobuf.WRONG.StringValue",
+                    "value": base64_encoded_pass
+                }})
+            )
+            .is_fail());
+        assert!(cwjf
+            .matches(
+                &stargate_filter,
+                &json!({"stargate": {
+                    "type_url": "/google.protobuf.StringValue",
+                    "value": base64_encoded_not_pass
+                }})
+            )
+            .is_fail());
     }
 
     #[test]
@@ -1441,6 +1489,32 @@ mod tests {
         let multiple_types_filter = json!({"someProto": {"#proto": {"type": "google.protobuf.StringValue", "value": "pass"}}, "someOtherProto": {"#proto": {"type": "google.protobuf.BoolValue", "value": true}}, "deeplyNested": {"somewhereFarFarAway": {"#proto": {"type": "another.proto.SomeMessage", "value": "pass"}}}, "invalidProto": {"#proto": {"noType": "getsIgnored"}}});
         assert_eq!(
             get_protobuf_messages(&multiple_types_filter),
+            HashSet::from([
+                "google.protobuf.StringValue".to_string(),
+                "google.protobuf.BoolValue".to_string(),
+                "another.proto.SomeMessage".to_string(),
+            ])
+        );
+
+        let stargate_filter =
+            json!({"#stargate": {"type_url": "/google.protobuf.StringValue", "value": "pass"}});
+        assert_eq!(
+            get_protobuf_messages(&stargate_filter),
+            HashSet::from(["google.protobuf.StringValue".to_string()])
+        );
+
+        let nested_stargate_filter = json!({"#stargate": {"type_url": "/google.protobuf.StringValue", "value": "pass"}, "someOtherProto": {"#stargate": {"type_url": "/google.protobuf.BoolValue", "value": true}}});
+        assert_eq!(
+            get_protobuf_messages(&nested_stargate_filter),
+            HashSet::from([
+                "google.protobuf.StringValue".to_string(),
+                "google.protobuf.BoolValue".to_string()
+            ])
+        );
+
+        let multiple_stargate_types_filter = json!({"#stargate": {"type_url": "/google.protobuf.StringValue", "value": "pass"}, "someOtherProto": {"#stargate": {"type_url": "/google.protobuf.BoolValue", "value": true}, "deeplyNested": {"somewhereFarFarAway": {"#stargate": {"type_url": "/another.proto.SomeMessage", "value": "pass"}}}, "invalidProto": {"#stargate": {"noType": "getsIgnored"}}, "invalidProtoUrl": {"#stargate": {"type_url": "no.slash.prefix", "value": "getsIgnored"}}}});
+        assert_eq!(
+            get_protobuf_messages(&multiple_stargate_types_filter),
             HashSet::from([
                 "google.protobuf.StringValue".to_string(),
                 "google.protobuf.BoolValue".to_string(),

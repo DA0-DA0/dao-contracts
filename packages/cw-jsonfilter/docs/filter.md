@@ -453,6 +453,46 @@ the value filter to apply to the decoded value in the `value` field.
 }
 ```
 
+### `#stargate`
+
+This is shorthand for the `#proto` transformation that wraps a CosmWasm Stargate
+message. Specify the type of the protobuf value in the `type_url` field prefixed
+with a `/`, and the value filter to apply to the decoded value in the `value`
+field.
+
+```json
+{
+  "#stargate": {
+    "type_url": "/cosmos.bank.v1beta1.MsgSend",
+    "value": {
+      "from_address": "cosmos1...",
+      "to_address": "cosmos1...",
+      "amount": [{ "denom": "uatom", "amount": "1000" }]
+    }
+  }
+}
+```
+
+This is the same as:
+
+```json
+{
+  "stargate": {
+    "type_url": "/cosmos.bank.v1beta1.MsgSend",
+    "value": {
+      "#proto": {
+        "type": "cosmos.bank.v1beta1.MsgSend",
+        "value": {
+          "from_address": "cosmos1...",
+          "to_address": "cosmos1...",
+          "amount": [{ "denom": "uatom", "amount": "1000" }]
+        }
+      }
+    }
+  }
+}
+```
+
 #### Registering Protobuf Types
 
 See [protobuf.md](protobuf.md) for more information on how to register protobuf

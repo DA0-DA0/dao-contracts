@@ -14,36 +14,28 @@ by the broader dao-contracts repository, which is [BSD-3-Clause](../../LICENSE).
 
 ## Usage
 
-To use `cw-jsonfilter`, add it to your `Cargo.toml` and add the following to your Rust code:
+To use `cw-jsonfilter`, add it to your `Cargo.toml` and add the following to
+your Rust code:
 
 ```rust
-use cw_jsonfilter::{order, matches};
+use cw_jsonfilter::CwJsonFilter;
 ```
 
-### Comparing JSON Values
+### Filtering
 
-You can compare two JSON values using the `order` function:
+To check if a JSON object matches a filter, use the `CwJsonFilter` struct:
 
 ```rust
 use serde_json::json;
-use std::cmp::Ordering;
-use cw_jsonfilter::order;
-
-let a = json!(10);
-let b = json!(5);
-assert_eq!(order(&a, &b), Ordering::Greater);
-```
-
-### Matching Filters
-
-To check if a JSON object matches a filter, use the `matches` function:
-
-```rust
-use serde_json::json;
-use cw_jsonfilter::matches;
+use cw_jsonfilter::CwJsonFilter;
 
 let filter = json!({"name": "John", "age": 30});
 let obj = json!({"name": "John", "age": 30, "city": "New York"});
 
-assert!(matches(&filter, &obj));
+assert!(CwJsonFilter::check(&filter, &obj));
 ```
+
+### Protobuf
+
+This crate supports complex protobuf decoding and filtering. See the [Protobuf
+Documentation](./docs/protobuf.md) for more details.

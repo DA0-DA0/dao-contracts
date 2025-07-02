@@ -17,13 +17,26 @@ pub fn get_protobuf_messages(filter: &serde_json::Value) -> HashSet<String> {
 fn inner_get_protobuf_messages(filter: &serde_json::Value, messages: &mut HashSet<String>) {
     if let serde_json::Value::Object(filter_map) = filter {
         for (key, value) in filter_map {
-            // If the key is the #proto transformer, add the key to the set.
+            // If the key is the #proto transformer, add the type to the set.
             if key == "#proto" {
                 if let Some(serde_json::Value::String(proto_type)) = value
                     .as_object()
                     .and_then(|proto_arg| proto_arg.get("type"))
                 {
                     messages.insert(proto_type.clone());
+                }
+            }
+
+            // If the key is the #stargate transformer, add the type to the set,
+            // stripping the `/` prefix from the type URL.
+            if key == "#stargate" {
+                if let Some(serde_json::Value::String(type_url)) = value
+                    .as_object()
+                    .and_then(|stargate_arg| stargate_arg.get("type_url"))
+                {
+                    if let Some(stripped_type_url) = type_url.strip_prefix('/') {
+                        messages.insert(stripped_type_url.to_string());
+                    }
                 }
             }
 

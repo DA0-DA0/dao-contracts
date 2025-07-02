@@ -59,6 +59,10 @@ pub const AUTHORIZATIONS: IndexedMap<u64, Authorization, AuthorizationsIndexes<'
         },
     );
 
+/// Map authorization_id -> file descriptor set that contains the exact files
+/// with the exact messages/enums needed to decode the authorization's filter.
+pub const AUTHORIZATION_FILE_DESCRIPTOR_SETS: Map<u64, Vec<u8>> = Map::new("authorization_fds");
+
 /// Map (address, role_id) -> address. Secondary index on role_id to look
 /// up/iterate over addresses by role. Indexes point to values stored in the
 /// map, so we must redundantly store the address in both the key and the map.

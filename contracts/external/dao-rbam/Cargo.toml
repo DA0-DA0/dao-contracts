@@ -22,6 +22,7 @@ test-tube = []
 # default = ["test-tube"]
 
 [dependencies]
+chrono = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["cosmwasm_1_2"] }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
@@ -29,14 +30,18 @@ dao-interface = { workspace = true }
 thiserror = { workspace = true }
 cw-utils = { workspace = true }
 cw-ownable = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
 serde_json = { workspace = true }
 cw2 = { workspace = true }
 cw-jsonfilter = { workspace = true }
+prost = { workspace = true }
+prost-derive = { workspace = true }
 prost-reflect = { workspace = true, features = ["serde"] }
+prost-types = { workspace = true }
 
 [dev-dependencies]
 bech32 = { workspace = true }
-cosmwasm-schema = { workspace = true }
 cw-multi-test = { workspace = true }
 dao-interface = { workspace = true }
 dao-proposal-single = { workspace = true }
@@ -45,3 +50,5 @@ dao-testing = { workspace = true }
 dao-voting = { workspace = true }
 dao-voting-cw4 = { workspace = true }
 cw4 = { workspace = true }
+osmosis-std = { workspace = true }
+osmosis-std-derive = { workspace = true }

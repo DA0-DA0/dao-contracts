@@ -14,6 +14,7 @@ use cw_utils::nonpayable;
 use dao_interface::helpers::OptionalUpdate;
 use prost_reflect::prost::Message;
 use prost_reflect::prost_types::FileDescriptorSet;
+use prost_types::FileDescriptorProto;
 
 use crate::action::{Action, ActionToExecute};
 use crate::error::ContractError;
@@ -27,6 +28,7 @@ use crate::msg::{
     ListRolesForAddressResponse, ListRolesResponse, MigrateMsg, QueryMsg, RoleResponse,
     TestFilterResponse,
 };
+use crate::protobuf::create_file_descriptor_set_for_messages;
 use crate::role::{Authorization, Role};
 use crate::state::{
     ASSIGNMENTS, AUTHORIZATIONS, DAO, ENABLED, LOG, NEXT_ID, PROTOBUF_FILES, PROTOBUF_MESSAGES,
@@ -338,7 +340,7 @@ fn execute_create_authorization(
 }
 
 fn execute_update_authorization(
-    deps: DepsMut,
+    mut deps: DepsMut,
     info: MessageInfo,
     authorization_id: u64,
     name: Option<String>,
@@ -361,7 +363,7 @@ fn execute_update_authorization(
 
     filter.maybe_update_result(|value| -> Result<(), ContractError> {
         authorization.filter = value;
-        authorization.sync_protobuf_messages(&deps.as_ref())?;
+        authorization.sync_protobuf_messages(&mut deps)?;
         Ok(())
     })?;
 
@@ -389,7 +391,7 @@ fn execute_assign(
         return Err(ContractError::NoRoles {});
     }
 
-    let mut role_exists: HashSet<u64> = HashSet::new();
+    let mut role_exists: HashSet<u64> = HashSet::with_capacity(assign.len());
 
     for Assignment { addr, role_id } in assign {
         // Verify role existence once per role.
@@ -458,31 +460,34 @@ fn execute_register_protobufs(
     let mut file_count = 0;
     let mut message_count = 0;
 
-    for (file_descriptor_set_index, file_descriptor_set) in file_descriptor_sets.iter().enumerate()
+    for (file_descriptor_set_index, file_descriptor_set) in
+        file_descriptor_sets.into_iter().enumerate()
     {
         let file_descriptor_set = FileDescriptorSet::decode(file_descriptor_set.as_slice())?;
-
-        for (file_descriptor_index, file_descriptor) in file_descriptor_set.file.iter().enumerate()
-        {
+        for (new_fd_index, new_fd) in file_descriptor_set.file.into_iter().enumerate() {
             let file_name =
-                file_descriptor
+                new_fd
                     .name
                     .clone()
                     .ok_or(ContractError::FileDescriptorMissingName {
-                        file_descriptor_index,
+                        file_descriptor_index: new_fd_index,
                         file_descriptor_set_index,
                     })?;
-            let file_package = file_descriptor.package.clone().ok_or(
-                ContractError::FileDescriptorMissingPackage {
-                    file_descriptor_index,
-                    file_descriptor_name: file_name.clone(),
-                    file_descriptor_set_index,
-                },
-            )?;
+            let file_package =
+                new_fd
+                    .package
+                    .clone()
+                    .ok_or(ContractError::FileDescriptorMissingPackage {
+                        file_descriptor_index: new_fd_index,
+                        file_descriptor_name: file_name.clone(),
+                        file_descriptor_set_index,
+                    })?;
 
-            // Get all message descriptors in file.
+            // Store map of messages' full names to their file names so their
+            // files can be looked up later when messages are referenced in
+            // filters.
             for (message_descriptor_index, message_descriptor) in
-                file_descriptor.message_type.iter().enumerate()
+                new_fd.message_type.iter().enumerate()
             {
                 let message_type_name = message_descriptor.name.clone().ok_or_else(|| {
                     ContractError::MessageDescriptorMissingName {
@@ -498,8 +503,64 @@ fn execute_register_protobufs(
                 message_count += 1;
             }
 
-            let file_descriptor_data = file_descriptor.encode_to_vec();
-            PROTOBUF_FILES.save(deps.storage, file_name, &file_descriptor_data)?;
+            // Get existing file descriptor data.
+            let existing_file_descriptor_data =
+                PROTOBUF_FILES.may_load(deps.storage, file_name.clone())?;
+
+            // If file is already registered, merge the files.
+            if let Some(existing_fd_data) = existing_file_descriptor_data {
+                let mut existing_fd = FileDescriptorProto::decode(existing_fd_data.as_slice())?;
+
+                // If the file package changed, error.
+                if existing_fd.package.as_ref() != Some(&file_package) {
+                    return Err(ContractError::FileDescriptorPackageChanged {
+                        file_name,
+                        file_package: existing_fd.package.clone().unwrap_or_default(),
+                        new_file_package: file_package,
+                    });
+                }
+
+                // Add new or overwrite existing dependencies/messages/enums.
+
+                for dependency in new_fd.dependency {
+                    if !existing_fd.dependency.contains(&dependency) {
+                        existing_fd.dependency.push(dependency);
+                    }
+                }
+
+                for mut new_message in new_fd.message_type {
+                    if let Some(existing_message) = existing_fd
+                        .message_type
+                        .iter_mut()
+                        .find(|m| m.name == new_message.name)
+                    {
+                        // Replace with new message.
+                        std::mem::swap(existing_message, &mut new_message);
+                    } else {
+                        // Add new message.
+                        existing_fd.message_type.push(new_message);
+                    }
+                }
+
+                for mut new_enum in new_fd.enum_type {
+                    if let Some(existing_enum_type) = existing_fd
+                        .enum_type
+                        .iter_mut()
+                        .find(|e| e.name == new_enum.name)
+                    {
+                        // Replace with new enum.
+                        std::mem::swap(existing_enum_type, &mut new_enum);
+                    } else {
+                        // Add new enum.
+                        existing_fd.enum_type.push(new_enum);
+                    }
+                }
+
+                PROTOBUF_FILES.save(deps.storage, file_name, &existing_fd.encode_to_vec())?;
+            } else {
+                let file_descriptor_data = new_fd.encode_to_vec();
+                PROTOBUF_FILES.save(deps.storage, file_name, &file_descriptor_data)?;
+            }
 
             file_count += 1;
         }
@@ -1391,7 +1452,25 @@ fn query_test_filter(
     filter: serde_json::Value,
     msg: CosmosMsg,
 ) -> StdResult<TestFilterResponse> {
-    let check = Authorization::filter_allows(&deps, &filter, None, &msg, false);
+    // Get the protobuf messages referenced by the filter.
+    let protobuf_messages =
+        Authorization::extract_protobuf_messages(&deps, &filter).map_err(|e| {
+            StdError::generic_err(format!("Failed to extract protobuf messages: {}", e))
+        })?;
+
+    // Compute the file descriptor set.
+    let file_descriptor_set = if protobuf_messages.is_empty() {
+        None
+    } else {
+        Some(
+            create_file_descriptor_set_for_messages(&deps, &protobuf_messages).map_err(|e| {
+                StdError::generic_err(format!("Failed to create file descriptor set: {}", e))
+            })?,
+        )
+    };
+
+    // Test the filter.
+    let check = Authorization::filter_allows(&filter, file_descriptor_set, &msg, false);
 
     // Handle filter errors appropriately.
     let response = check.map_or_else(

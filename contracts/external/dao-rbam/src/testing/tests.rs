@@ -4,7 +4,9 @@ use cw_ownable::OwnershipError;
 use dao_interface::helpers::{OptionalUpdate, Update};
 use dao_rbam::ContractError;
 use dao_testing::{ADDR0, ADDR1, ADDR2, DENOM};
-use prost_reflect::{prost::Message, prost_types::FileDescriptorSet, DescriptorPool};
+use prost::Message;
+use prost_reflect::DescriptorPool;
+use prost_types::FileDescriptorSet;
 
 use crate::{
     action::ActionToExecute,
@@ -164,9 +166,7 @@ fn test_authorization_management() {
                 "msg": {
                     "$exists": true
                 },
-                "funds": {
-                    "#len": 0
-                }
+                "funds": []
             }
         }
     });
@@ -1303,24 +1303,22 @@ fn test_action_execution_with_multiple_actions() {
         "wasm_auth".to_string(),
         None,
         Some(serde_json::json!({
-          "wasm": {
-              "execute": {
-                  "contract_addr": dao.to_string(),
-                  "msg": {
-                      "$exists": true,
-                      "#base64": {
-                        "update_config": {
-                            "config": {
-                                "name": { "$contains": "new" }
+            "wasm": {
+                "execute": {
+                    "contract_addr": dao.to_string(),
+                    "msg": {
+                        "$exists": true,
+                        "#base64": {
+                            "update_config": {
+                                "config": {
+                                    "name": { "$contains": "new" }
+                                }
                             }
                         }
-                      }
-                  },
-                  "funds": {
-                      "#size": 0
-                  }
-              }
-          }
+                    },
+                    "funds": []
+                }
+            }
         })),
         Some(true),
     );
