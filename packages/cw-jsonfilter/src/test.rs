@@ -7,6 +7,24 @@ mod tests {
     use serde_json::json;
 
     #[test]
+    fn array_match() {
+        assert!(
+            CwJsonFilter::check(&json!({ "a": [1, 2, 3, 4]}), &json!({ "a": [1, 2, 3, 4]}))
+                .is_pass()
+        );
+
+        assert!(
+            CwJsonFilter::check(&json!({ "a": [1, 2, 3, 4]}), &json!({ "a": [1, 2, 3]})).is_fail()
+        );
+
+        assert!(CwJsonFilter::check(
+            &json!({ "a": [1, 2, 3, 4]}),
+            &json!({ "a": [1, 2, 3, 4, 5]})
+        )
+        .is_fail());
+    }
+
+    #[test]
     fn array_element_match() {
         assert!(CwJsonFilter::check(
             &json!(
@@ -457,6 +475,18 @@ mod tests {
             })
         )
         .is_fail());
+        assert!(CwJsonFilter::check(
+            &json!({
+                "key": {
+                    "$or": [
+                        { "$exists": true },
+                        { "$exists": false }
+                    ]
+                }
+            }),
+            &json!({})
+        )
+        .is_pass());
     }
 
     #[test]
@@ -1417,5 +1447,31 @@ mod tests {
                 "another.proto.SomeMessage".to_string(),
             ])
         );
+    }
+
+    #[test]
+    fn test_to_string() {
+        let filter = json!({"score": {"#to_string": "100"}});
+        assert!(CwJsonFilter::check(&filter, &json!({"score": "100"})).is_pass());
+        assert!(CwJsonFilter::check(&filter, &json!({"score": 100})).is_pass());
+        assert!(CwJsonFilter::check(&filter, &json!({"score": 99})).is_fail());
+        assert!(CwJsonFilter::check(&filter, &json!({"score": "99"})).is_fail());
+    }
+
+    #[test]
+    fn test_to_number() {
+        let filter = json!({"score": {"#to_number": {"$between": [25, 75]}}});
+        assert!(CwJsonFilter::check(&filter, &json!({"score": "50"})).is_pass());
+        assert!(CwJsonFilter::check(&filter, &json!({"score": 50})).is_pass());
+        assert!(CwJsonFilter::check(&filter, &json!({"score": 99})).is_fail());
+        assert!(CwJsonFilter::check(&filter, &json!({"score": "99"})).is_fail());
+    }
+
+    #[test]
+    fn test_replace() {
+        let filter = json!({"duration": {"#replace": {"pattern": "^(\\d+)s$", "replacement": "$1", "filter": {"#to_number": {"$gt": 0}}}}});
+        assert!(CwJsonFilter::check(&filter, &json!({"duration": "1000s"})).is_pass());
+        assert!(CwJsonFilter::check(&filter, &json!({"duration": "1000"})).is_pass());
+        assert!(CwJsonFilter::check(&filter, &json!({"duration": "1000ms"})).is_fail());
     }
 }

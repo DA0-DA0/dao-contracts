@@ -24,6 +24,21 @@ This filter would match against an object like:
 }
 ```
 
+Arrays match each item in order and require the same number of items. This
+filter:
+
+```json
+{ "a": [1, 2, 3, 4] }
+```
+
+would NOT match any of these:
+
+```json
+{ "a": [1, 2, 3] }
+{ "a": [1, 2, 3, 6] }
+{ "a": [1, 2, 3, 4, 5] }
+```
+
 ## Advanced Filtering with Operators
 
 Operators enable complex filtering by allowing operations on keys and values.
@@ -316,6 +331,25 @@ Get the length/size of a string or array, then apply the filter to that number.
 { "tags": { "#len": { "$range": [1, 5] } } }
 ```
 
+### `#to_string`
+
+Convert any value to a string (likely a number), then apply the filter.
+
+If already a string, value is passed through. All other values are stringified.
+
+```json
+{ "score": { "#to_string": { "$eq": "100" } } }
+```
+
+### `#to_number`
+
+Convert a string to a number, then apply the filter.
+
+```json
+{ "score_str": { "#to_number": { "$gte": 50 } } }
+{ "score_str": { "#to_number": { "$between": [25, 75] } } }
+```
+
 ### `#lower`
 
 Convert string to lowercase, then apply the filter.
@@ -350,6 +384,37 @@ Get object values as an array, then apply the filter.
 ```json
 { "scores": { "#values": { "$any": { "$gt": 95 } } } }
 { "settings": { "#values": { "$all": { "$type": "string" } } } }
+```
+
+### `#replace`
+
+Replace all occurrences of a regex pattern with a replacement string, then apply
+the filter. If the regex pattern is not found, the value is passed through
+unchanged.
+
+To replace a duration with an `s` suffix before applying a numeric filter:
+
+```json
+{
+  "duration": {
+    "#replace": {
+      "pattern": "^(\\d+)s$",
+      "replacement": "$1",
+      "filter": { "#to_number": { "$gt": 0 } }
+    }
+  }
+}
+```
+
+This replacement results in:
+
+```json
+// Replaced
+{ "duration": "1000s" } -> { "duration": 1000 }
+{ "duration": "1000" } -> { "duration": 1000 }
+
+// Not replaced
+{ "duration": "1000ms" } -> { "duration": "1000ms" }
 ```
 
 ### `#base64`

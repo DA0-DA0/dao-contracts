@@ -71,34 +71,19 @@ impl CwJsonFilter {
     /// ```
     #[must_use]
     pub fn matches(&self, filter: &serde_json::Value, obj: &serde_json::Value) -> FilterResult {
-        self.inner_matches(filter, obj, "@", "@")
+        self.inner_matches(filter, Some(&obj), "@", "@")
     }
 
     fn inner_matches(
         &self,
         filter: &serde_json::Value,
-        obj: &serde_json::Value,
+        obj: Option<&serde_json::Value>,
         filter_path: &str,
         obj_path: &str,
     ) -> FilterResult {
         match filter {
-            // Arrays are implicitly an $and operation.
-            serde_json::Value::Array(filter_list) => {
-                for (i, sub_filter) in filter_list.iter().enumerate() {
-                    let filter_path = &format!("{}[{}]", filter_path, i);
-                    match self.inner_matches(sub_filter, obj, filter_path, obj_path) {
-                        // If success, continue to next filter.
-                        FilterResult::Pass => continue,
-                        // If failure, return the error.
-                        failure_result => return failure_result,
-                    }
-                }
-
-                // Passes if all filters matched or there are no filters.
-                FilterResult::Pass
-            }
-            // Objects match each key recursively, also implicitly an $and
-            // operation.
+            // Objects process each key present in the filter, behaving like an
+            // $and operation for all keys.
             serde_json::Value::Object(filter_obj) => {
                 for (filter_key, filter_val) in filter_obj {
                     let filter_path = &format!("{}.{}", filter_path, filter_key);
@@ -115,7 +100,7 @@ impl CwJsonFilter {
                         match self.inner_matches_operator(
                             filter_key,
                             filter_val,
-                            Some(obj),
+                            obj,
                             filter_path,
                             &obj_path,
                         ) {
@@ -126,37 +111,67 @@ impl CwJsonFilter {
                         }
                     } else {
                         let obj_path = &format!("{}.{}", obj_path, filter_key);
-                        match obj.get(filter_key) {
-                            Some(value) => {
-                                match self.inner_matches(filter_val, value, filter_path, obj_path) {
-                                    // If success, continue to next key.
-                                    FilterResult::Pass => continue,
-                                    // If failure, return the error.
-                                    failure_result => return failure_result,
-                                }
-                            }
-                            // If value not found in object, return error.
-                            None => return FilterResult::key_not_found(filter_path, obj_path),
-                        };
+                        let value = obj.and_then(|o| o.get(filter_key));
+                        match self.inner_matches(filter_val, value, filter_path, obj_path) {
+                            // If success, continue to next key.
+                            FilterResult::Pass => continue,
+                            // If failure, return the error.
+                            failure_result => return failure_result,
+                        }
                     }
                 }
 
                 // Passes if all keys matched or there are no keys.
                 FilterResult::Pass
             }
-            // Match primitive values directly.
-            _ => {
-                if filter == obj {
+            // Arrays implicitly match each item in order, behaving like an $and
+            // operation for all items, while also matching the array as a
+            // whole (exact same number of items).
+            serde_json::Value::Array(filter_list) => match obj {
+                Some(serde_json::Value::Array(obj_list)) => {
+                    if filter_list.len() != obj_list.len() {
+                        return FilterResult::operator_failed(
+                            "[...]",
+                            "array length does not match filter array length",
+                            filter_path,
+                            obj_path,
+                        );
+                    }
+
+                    for (i, sub_filter) in filter_list.iter().enumerate() {
+                        let filter_path = &format!("{}[{}]", filter_path, i);
+                        let obj_path = &format!("{}[{}]", obj_path, i);
+                        match self.inner_matches(sub_filter, obj_list.get(i), filter_path, obj_path)
+                        {
+                            // If success, continue to next item.
+                            FilterResult::Pass => continue,
+                            // If failure, return the error.
+                            failure_result => return failure_result,
+                        };
+                    }
+
+                    // Passes if all filters matched or there are no filters.
                     FilterResult::Pass
-                } else {
-                    FilterResult::operator_failed(
-                        "implicit equality check",
-                        "value does not match filter",
-                        filter_path,
-                        obj_path,
-                    )
                 }
-            }
+                Some(_) => FilterResult::operator_failed(
+                    "[...]",
+                    "value is not an array",
+                    filter_path,
+                    obj_path,
+                ),
+                None => FilterResult::key_not_found(filter_path, obj_path),
+            },
+            // Match primitive values directly.
+            _ => match obj.map(|o| o == filter) {
+                Some(true) => FilterResult::Pass,
+                Some(false) => FilterResult::operator_failed(
+                    "implicit equality check",
+                    "value does not match filter",
+                    filter_path,
+                    obj_path,
+                ),
+                None => FilterResult::key_not_found(filter_path, obj_path),
+            },
         }
     }
 
@@ -202,7 +217,7 @@ impl CwJsonFilter {
         }
 
         match operator {
-            // Existence operator (does not require a value)
+            // Existence operator
             "$exists" => match operator_arg {
                 serde_json::Value::Bool(exists) => FilterResult::from_bool(
                     *exists == value.is_some(),
@@ -220,6 +235,141 @@ impl CwJsonFilter {
                     obj_path,
                 ),
             },
+            // Logical operators
+            "$and" => match operator_arg {
+                serde_json::Value::Array(and_arg) => {
+                    for (i, sub_filter) in and_arg.iter().enumerate() {
+                        let filter_path = &format!("{}[{}]", filter_path, i);
+                        match self.inner_matches(sub_filter, value, filter_path, obj_path) {
+                            // Continue on success.
+                            FilterResult::Pass => continue,
+                            // Early return the first failure.
+                            failure_result => return failure_result,
+                        }
+                    }
+                    // Passes if all filters passed or there are no
+                    // filters.
+                    FilterResult::Pass
+                }
+                _ => FilterResult::fatal_invalid_filter(
+                    format!("{} arg must be an array", operator),
+                    filter_path,
+                    obj_path,
+                ),
+            },
+            "$or" => match operator_arg {
+                serde_json::Value::Array(or_arg) => {
+                    for (i, sub_filter) in or_arg.iter().enumerate() {
+                        let filter_path = &format!("{}[{}]", filter_path, i);
+                        match self.inner_matches(sub_filter, value, filter_path, obj_path) {
+                            // Early return passed on first success.
+                            FilterResult::Pass => return FilterResult::Pass,
+                            // Ignore non-fatal errors.
+                            FilterResult::Fail(_) => continue,
+                            // Return fatal errors immediately.
+                            FilterResult::Fatal(e) => return FilterResult::Fatal(e),
+                        }
+                    }
+                    // Fails if all filters failed or there are no
+                    // filters.
+                    FilterResult::operator_failed(
+                        operator,
+                        "all filters failed",
+                        filter_path,
+                        obj_path,
+                    )
+                }
+                _ => FilterResult::fatal_invalid_filter(
+                    format!("{} arg must be an array", operator),
+                    filter_path,
+                    obj_path,
+                ),
+            },
+            "$nor" => match operator_arg {
+                serde_json::Value::Array(nor_arg) => {
+                    for (i, sub_filter) in nor_arg.iter().enumerate() {
+                        let filter_path = &format!("{}[{}]", filter_path, i);
+                        match self.inner_matches(sub_filter, value, filter_path, obj_path) {
+                            // Early return failed on first success.
+                            FilterResult::Pass => {
+                                return FilterResult::operator_failed(
+                                    operator,
+                                    "a filter passed",
+                                    filter_path,
+                                    obj_path,
+                                )
+                            }
+                            // Ignore non-fatal errors.
+                            FilterResult::Fail(_) => continue,
+                            // Return fatal errors immediately.
+                            FilterResult::Fatal(e) => return FilterResult::Fatal(e),
+                        }
+                    }
+                    // Passes if all filters failed or there are no
+                    // filters.
+                    FilterResult::Pass
+                }
+                _ => FilterResult::fatal_invalid_filter(
+                    format!("{} arg must be an array", operator),
+                    filter_path,
+                    obj_path,
+                ),
+            },
+            "$xor" => match operator_arg {
+                serde_json::Value::Array(xor_arg) => {
+                    let mut passed = 0;
+                    for (i, sub_filter) in xor_arg.iter().enumerate() {
+                        let filter_path = &format!("{}[{}]", filter_path, i);
+                        match self.inner_matches(sub_filter, value, filter_path, obj_path) {
+                            FilterResult::Pass => {
+                                passed += 1;
+                                // Early return failed on second
+                                // success.
+                                if passed > 1 {
+                                    return FilterResult::operator_failed(
+                                        operator,
+                                        "a filter passed",
+                                        filter_path,
+                                        obj_path,
+                                    );
+                                }
+                            }
+                            // Ignore non-fatal errors.
+                            FilterResult::Fail(_) => continue,
+                            // Return fatal errors immediately.
+                            FilterResult::Fatal(e) => return FilterResult::Fatal(e),
+                        }
+                    }
+                    // Passes if exactly one filter passed.
+                    FilterResult::from_bool(
+                        passed == 1,
+                        operator,
+                        format!("{} filters passed, expected exactly 1", passed),
+                        filter_path,
+                        obj_path,
+                    )
+                }
+                _ => FilterResult::fatal_invalid_filter(
+                    format!("{} arg must be an array", operator),
+                    filter_path,
+                    obj_path,
+                ),
+            },
+            "$not" => {
+                match self.inner_matches(operator_arg, value, filter_path, obj_path) {
+                    // Passes if the filter fails.
+                    FilterResult::Pass => FilterResult::operator_failed(
+                        operator,
+                        "filter passed",
+                        filter_path,
+                        obj_path,
+                    ),
+                    // Fails if the filter passes.
+                    FilterResult::Fail(_) => FilterResult::Pass,
+                    // Pass fatal errors through.
+                    FilterResult::Fatal(e) => FilterResult::Fatal(e),
+                }
+            }
             // The rest of the operators require a value.
             _ => {
                 let value = match value {
@@ -228,142 +378,6 @@ impl CwJsonFilter {
                 };
 
                 match operator {
-                    // Logical operators
-                    "$and" => match operator_arg {
-                        serde_json::Value::Array(and_arg) => {
-                            for (i, sub_filter) in and_arg.iter().enumerate() {
-                                let filter_path = &format!("{}[{}]", filter_path, i);
-                                match self.inner_matches(sub_filter, value, filter_path, obj_path) {
-                                    // Continue on success.
-                                    FilterResult::Pass => continue,
-                                    // Early return the first failure.
-                                    failure_result => return failure_result,
-                                }
-                            }
-                            // Passes if all filters passed or there are no
-                            // filters.
-                            FilterResult::Pass
-                        }
-                        _ => FilterResult::fatal_invalid_filter(
-                            format!("{} arg must be an array", operator),
-                            filter_path,
-                            obj_path,
-                        ),
-                    },
-                    "$or" => match operator_arg {
-                        serde_json::Value::Array(or_arg) => {
-                            for (i, sub_filter) in or_arg.iter().enumerate() {
-                                let filter_path = &format!("{}[{}]", filter_path, i);
-                                match self.inner_matches(sub_filter, value, filter_path, obj_path) {
-                                    // Early return passed on first success.
-                                    FilterResult::Pass => return FilterResult::Pass,
-                                    // Ignore non-fatal errors.
-                                    FilterResult::Fail(_) => continue,
-                                    // Return fatal errors immediately.
-                                    FilterResult::Fatal(e) => return FilterResult::Fatal(e),
-                                }
-                            }
-                            // Fails if all filters failed or there are no
-                            // filters.
-                            FilterResult::operator_failed(
-                                operator,
-                                "all filters failed",
-                                filter_path,
-                                obj_path,
-                            )
-                        }
-                        _ => FilterResult::fatal_invalid_filter(
-                            format!("{} arg must be an array", operator),
-                            filter_path,
-                            obj_path,
-                        ),
-                    },
-                    "$nor" => match operator_arg {
-                        serde_json::Value::Array(nor_arg) => {
-                            for (i, sub_filter) in nor_arg.iter().enumerate() {
-                                let filter_path = &format!("{}[{}]", filter_path, i);
-                                match self.inner_matches(sub_filter, value, filter_path, obj_path) {
-                                    // Early return failed on first success.
-                                    FilterResult::Pass => {
-                                        return FilterResult::operator_failed(
-                                            operator,
-                                            "a filter passed",
-                                            filter_path,
-                                            obj_path,
-                                        )
-                                    }
-                                    // Ignore non-fatal errors.
-                                    FilterResult::Fail(_) => continue,
-                                    // Return fatal errors immediately.
-                                    FilterResult::Fatal(e) => return FilterResult::Fatal(e),
-                                }
-                            }
-                            // Passes if all filters failed or there are no
-                            // filters.
-                            FilterResult::Pass
-                        }
-                        _ => FilterResult::fatal_invalid_filter(
-                            format!("{} arg must be an array", operator),
-                            filter_path,
-                            obj_path,
-                        ),
-                    },
-                    "$xor" => match operator_arg {
-                        serde_json::Value::Array(xor_arg) => {
-                            let mut passed = 0;
-                            for (i, sub_filter) in xor_arg.iter().enumerate() {
-                                let filter_path = &format!("{}[{}]", filter_path, i);
-                                match self.inner_matches(sub_filter, value, filter_path, obj_path) {
-                                    FilterResult::Pass => {
-                                        passed += 1;
-                                        // Early return failed on second
-                                        // success.
-                                        if passed > 1 {
-                                            return FilterResult::operator_failed(
-                                                operator,
-                                                "a filter passed",
-                                                filter_path,
-                                                obj_path,
-                                            );
-                                        }
-                                    }
-                                    // Ignore non-fatal errors.
-                                    FilterResult::Fail(_) => continue,
-                                    // Return fatal errors immediately.
-                                    FilterResult::Fatal(e) => return FilterResult::Fatal(e),
-                                }
-                            }
-                            // Passes if exactly one filter passed.
-                            FilterResult::from_bool(
-                                passed == 1,
-                                operator,
-                                format!("{} filters passed, expected exactly 1", passed),
-                                filter_path,
-                                obj_path,
-                            )
-                        }
-                        _ => FilterResult::fatal_invalid_filter(
-                            format!("{} arg must be an array", operator),
-                            filter_path,
-                            obj_path,
-                        ),
-                    },
-                    "$not" => {
-                        match self.inner_matches(operator_arg, value, filter_path, obj_path) {
-                            // Passes if the filter fails.
-                            FilterResult::Pass => FilterResult::operator_failed(
-                                operator,
-                                "filter passed",
-                                filter_path,
-                                obj_path,
-                            ),
-                            // Fails if the filter passes.
-                            FilterResult::Fail(_) => FilterResult::Pass,
-                            // Pass fatal errors through.
-                            FilterResult::Fatal(e) => FilterResult::Fatal(e),
-                        }
-                    }
-
                     // Comparison operators
                     "$eq" => FilterResult::from_bool(
                         value == operator_arg,
@@ -739,8 +753,12 @@ impl CwJsonFilter {
                         serde_json::Value::Array(value_list) => {
                             for (i, item) in value_list.iter().enumerate() {
                                 let obj_path = &format!("{}[{}]", obj_path, i);
-                                match self.inner_matches(operator_arg, item, filter_path, obj_path)
-                                {
+                                match self.inner_matches(
+                                    operator_arg,
+                                    Some(item),
+                                    filter_path,
+                                    obj_path,
+                                ) {
                                     // Early return passed on first success.
                                     FilterResult::Pass => return FilterResult::Pass,
                                     // Ignore non-fatal errors.
@@ -768,8 +786,12 @@ impl CwJsonFilter {
                         serde_json::Value::Array(value_list) => {
                             for (i, item) in value_list.iter().enumerate() {
                                 let obj_path = &format!("{}[{}]", obj_path, i);
-                                match self.inner_matches(operator_arg, item, filter_path, obj_path)
-                                {
+                                match self.inner_matches(
+                                    operator_arg,
+                                    Some(item),
+                                    filter_path,
+                                    obj_path,
+                                ) {
                                     // Continue on success.
                                     FilterResult::Pass => continue,
                                     // Early return the first failure.
@@ -878,7 +900,7 @@ impl CwJsonFilter {
                     ) {
                         Some(len) => self.inner_matches(
                             operator_arg,
-                            &serde_json::Value::Number(len.into()),
+                            Some(&serde_json::Value::Number(len.into())),
                             filter_path,
                             obj_path,
                         ),
@@ -889,10 +911,50 @@ impl CwJsonFilter {
                             obj_path,
                         ),
                     },
+                    "#to_string" => match value {
+                        // pass through if value is already a string
+                        serde_json::Value::String(_) => {
+                            self.inner_matches(operator_arg, Some(&value), filter_path, obj_path)
+                        }
+                        _ => self.inner_matches(
+                            operator_arg,
+                            Some(&serde_json::Value::String(value.to_string())),
+                            filter_path,
+                            obj_path,
+                        ),
+                    },
+                    "#to_number" => match value {
+                        // pass through if value is already a number
+                        serde_json::Value::Number(_) => {
+                            self.inner_matches(operator_arg, Some(value), filter_path, obj_path)
+                        }
+                        serde_json::Value::String(value_str) => self.inner_matches(
+                            operator_arg,
+                            Some(&serde_json::Value::Number(match value_str.parse() {
+                                Ok(num) => num,
+                                Err(e) => {
+                                    return FilterResult::operator_failed(
+                                        operator,
+                                        format!("failed to convert string to number: {}", e),
+                                        filter_path,
+                                        obj_path,
+                                    )
+                                }
+                            })),
+                            filter_path,
+                            obj_path,
+                        ),
+                        _ => FilterResult::operator_failed(
+                            operator,
+                            "value is neither a string nor number",
+                            filter_path,
+                            obj_path,
+                        ),
+                    },
                     "#lower" => match value {
                         serde_json::Value::String(value_str) => self.inner_matches(
                             operator_arg,
-                            &serde_json::Value::String(value_str.to_lowercase()),
+                            Some(&serde_json::Value::String(value_str.to_lowercase())),
                             filter_path,
                             obj_path,
                         ),
@@ -906,7 +968,7 @@ impl CwJsonFilter {
                     "#upper" => match value {
                         serde_json::Value::String(value_str) => self.inner_matches(
                             operator_arg,
-                            &serde_json::Value::String(value_str.to_uppercase()),
+                            Some(&serde_json::Value::String(value_str.to_uppercase())),
                             filter_path,
                             obj_path,
                         ),
@@ -920,12 +982,12 @@ impl CwJsonFilter {
                     "#keys" => match value {
                         serde_json::Value::Object(value_obj) => self.inner_matches(
                             operator_arg,
-                            &serde_json::Value::Array(
+                            Some(&serde_json::Value::Array(
                                 value_obj
                                     .keys()
                                     .map(|k| serde_json::Value::String(k.clone()))
                                     .collect(),
-                            ),
+                            )),
                             filter_path,
                             obj_path,
                         ),
@@ -939,13 +1001,79 @@ impl CwJsonFilter {
                     "#values" => match value {
                         serde_json::Value::Object(value_obj) => self.inner_matches(
                             operator_arg,
-                            &serde_json::Value::Array(value_obj.values().cloned().collect()),
+                            Some(&serde_json::Value::Array(
+                                value_obj.values().cloned().collect(),
+                            )),
                             filter_path,
                             obj_path,
                         ),
                         _ => FilterResult::operator_failed(
                             operator,
                             "value is not an object",
+                            filter_path,
+                            obj_path,
+                        ),
+                    },
+                    "#replace" => match (operator_arg, value) {
+                        (
+                            serde_json::Value::Object(op_arg),
+                            serde_json::Value::String(value_str),
+                        ) => {
+                            let pattern = match op_arg.get("pattern") {
+                                Some(serde_json::Value::String(pattern)) => pattern,
+                                _ => {
+                                    return FilterResult::fatal_invalid_filter(
+                                        format!("{} pattern must be a string", operator),
+                                        filter_path,
+                                        obj_path,
+                                    )
+                                }
+                            };
+
+                            let replacement = match op_arg.get("replacement") {
+                                Some(serde_json::Value::String(replacement)) => replacement,
+                                _ => {
+                                    return FilterResult::fatal_invalid_filter(
+                                        format!("{} replacement must be a string", operator),
+                                        filter_path,
+                                        obj_path,
+                                    )
+                                }
+                            };
+
+                            let filter = match op_arg.get("filter") {
+                                Some(v) => v,
+                                None => {
+                                    return FilterResult::fatal_invalid_filter(
+                                        format!("{} filter must be provided", operator),
+                                        filter_path,
+                                        obj_path,
+                                    )
+                                }
+                            };
+
+                            let regex = match regex::Regex::new(pattern) {
+                                Ok(r) => r,
+                                Err(e) => {
+                                    return FilterResult::fatal_invalid_filter(
+                                        format!("invalid regex: {}", e),
+                                        filter_path,
+                                        obj_path,
+                                    )
+                                }
+                            };
+
+                            let replaced = regex.replace_all(value_str, replacement.as_str());
+                            self.inner_matches(
+                                filter,
+                                Some(&serde_json::Value::String(replaced.into_owned())),
+                                filter_path,
+                                obj_path,
+                            )
+                        }
+                        _ => FilterResult::operator_failed(
+                            operator,
+                            format!("{} arg is not an object or value is not a string", operator),
                             filter_path,
                             obj_path,
                         ),
@@ -989,7 +1117,7 @@ impl CwJsonFilter {
 
                             self.inner_matches(
                                 operator_arg,
-                                &decoded_value_json,
+                                Some(&decoded_value_json),
                                 filter_path,
                                 obj_path,
                             )
@@ -1105,7 +1233,7 @@ impl CwJsonFilter {
 
                             self.inner_matches(
                                 proto_value,
-                                &dynamic_message_json,
+                                Some(&dynamic_message_json),
                                 filter_path,
                                 obj_path,
                             )
