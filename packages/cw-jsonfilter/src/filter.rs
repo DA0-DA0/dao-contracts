@@ -2,11 +2,13 @@ use base64::Engine as _;
 use prost_reflect::{prost_types::FileDescriptorSet, DescriptorPool, DynamicMessage};
 use serde_json::json;
 
-use crate::{gt_json, lt_json, FilterResult, BASE64_ENGINE};
+use crate::{gt_json, lt_json, regex::RegexCache, FilterResult, BASE64_ENGINE};
 
 pub struct CwJsonFilter {
     /// Optional pool of protobuf types.
     pub pool: Option<DescriptorPool>,
+    /// Regex cache to avoid recompilation
+    regex_cache: std::cell::RefCell<RegexCache>,
 }
 
 impl Default for CwJsonFilter {
@@ -34,7 +36,10 @@ impl CwJsonFilter {
             Some(pool)
         };
 
-        Self { pool }
+        Self {
+            pool,
+            regex_cache: std::cell::RefCell::new(RegexCache::default()),
+        }
     }
 
     /// Static convenience function for the default filter with no protobuf
@@ -88,14 +93,14 @@ impl CwJsonFilter {
             // $and operation for all keys.
             serde_json::Value::Object(filter_obj) => {
                 for (filter_key, filter_val) in filter_obj {
-                    let filter_path = &format!("{}.{}", filter_path, filter_key);
+                    let filter_path = &append_path(filter_path, filter_key);
                     let is_operator = filter_key.starts_with('$');
                     let is_transformer = filter_key.starts_with('#');
                     if is_operator || is_transformer {
                         // only apply transformers to the object path—not
                         // operators
                         let obj_path = match is_transformer {
-                            true => format!("{}.{}", obj_path, filter_key),
+                            true => append_path(obj_path, filter_key),
                             false => obj_path.to_string(),
                         };
 
@@ -112,7 +117,7 @@ impl CwJsonFilter {
                             failure_result => return failure_result,
                         }
                     } else {
-                        let obj_path = &format!("{}.{}", obj_path, filter_key);
+                        let obj_path = &append_path(obj_path, filter_key);
                         let value = obj.and_then(|o| o.get(filter_key));
                         match self.inner_matches(filter_val, value, filter_path, obj_path) {
                             // If success, continue to next key.
@@ -141,8 +146,8 @@ impl CwJsonFilter {
                     }
 
                     for (i, sub_filter) in filter_list.iter().enumerate() {
-                        let filter_path = &format!("{}[{}]", filter_path, i);
-                        let obj_path = &format!("{}[{}]", obj_path, i);
+                        let filter_path = &append_array_path(filter_path, i);
+                        let obj_path = &append_array_path(obj_path, i);
                         match self.inner_matches(sub_filter, obj_list.get(i), filter_path, obj_path)
                         {
                             // If success, continue to next item.
@@ -241,7 +246,7 @@ impl CwJsonFilter {
             "$and" => match operator_arg {
                 serde_json::Value::Array(and_arg) => {
                     for (i, sub_filter) in and_arg.iter().enumerate() {
-                        let filter_path = &format!("{}[{}]", filter_path, i);
+                        let filter_path = &append_array_path(filter_path, i);
                         match self.inner_matches(sub_filter, value, filter_path, obj_path) {
                             // Continue on success.
                             FilterResult::Pass => continue,
@@ -262,7 +267,7 @@ impl CwJsonFilter {
             "$or" => match operator_arg {
                 serde_json::Value::Array(or_arg) => {
                     for (i, sub_filter) in or_arg.iter().enumerate() {
-                        let filter_path = &format!("{}[{}]", filter_path, i);
+                        let filter_path = &append_array_path(filter_path, i);
                         match self.inner_matches(sub_filter, value, filter_path, obj_path) {
                             // Early return passed on first success.
                             FilterResult::Pass => return FilterResult::Pass,
@@ -290,7 +295,7 @@ impl CwJsonFilter {
             "$nor" => match operator_arg {
                 serde_json::Value::Array(nor_arg) => {
                     for (i, sub_filter) in nor_arg.iter().enumerate() {
-                        let filter_path = &format!("{}[{}]", filter_path, i);
+                        let filter_path = &append_array_path(filter_path, i);
                         match self.inner_matches(sub_filter, value, filter_path, obj_path) {
                             // Early return failed on first success.
                             FilterResult::Pass => {
@@ -321,7 +326,7 @@ impl CwJsonFilter {
                 serde_json::Value::Array(xor_arg) => {
                     let mut passed = 0;
                     for (i, sub_filter) in xor_arg.iter().enumerate() {
-                        let filter_path = &format!("{}[{}]", filter_path, i);
+                        let filter_path = &append_array_path(filter_path, i);
                         match self.inner_matches(sub_filter, value, filter_path, obj_path) {
                             FilterResult::Pass => {
                                 passed += 1;
@@ -754,7 +759,7 @@ impl CwJsonFilter {
                     "$any" => match value {
                         serde_json::Value::Array(value_list) => {
                             for (i, item) in value_list.iter().enumerate() {
-                                let obj_path = &format!("{}[{}]", obj_path, i);
+                                let obj_path = &append_array_path(obj_path, i);
                                 match self.inner_matches(
                                     operator_arg,
                                     Some(item),
@@ -787,7 +792,7 @@ impl CwJsonFilter {
                     "$all" => match value {
                         serde_json::Value::Array(value_list) => {
                             for (i, item) in value_list.iter().enumerate() {
-                                let obj_path = &format!("{}[{}]", obj_path, i);
+                                let obj_path = &append_array_path(obj_path, i);
                                 match self.inner_matches(
                                     operator_arg,
                                     Some(item),
@@ -817,19 +822,21 @@ impl CwJsonFilter {
                             serde_json::Value::String(regex_pattern),
                             serde_json::Value::String(value_str),
                         ) => {
-                            let pattern = match regex::Regex::new(regex_pattern) {
-                                Ok(pattern) => pattern,
-                                Err(e) => {
-                                    return FilterResult::fatal_invalid_filter(
-                                        format!("invalid regex: {}", e),
-                                        filter_path,
-                                        obj_path,
-                                    )
-                                }
-                            };
+                            // Use the cached regex and compute result in one step
+                            let is_match =
+                                match self.regex_cache.borrow_mut().get_or_compile(regex_pattern) {
+                                    Ok(pattern) => pattern.is_match(value_str),
+                                    Err(e) => {
+                                        return FilterResult::fatal_invalid_filter(
+                                            format!("invalid regex: {}", e),
+                                            filter_path,
+                                            obj_path,
+                                        )
+                                    }
+                                };
 
                             FilterResult::from_bool(
-                                pattern.is_match(value_str),
+                                is_match,
                                 operator,
                                 "value does not match regex",
                                 filter_path,
@@ -1054,18 +1061,17 @@ impl CwJsonFilter {
                                 }
                             };
 
-                            let regex = match regex::Regex::new(pattern) {
-                                Ok(r) => r,
-                                Err(e) => {
-                                    return FilterResult::fatal_invalid_filter(
-                                        format!("invalid regex: {}", e),
-                                        filter_path,
-                                        obj_path,
-                                    )
-                                }
-                            };
-
-                            let replaced = regex.replace_all(value_str, replacement.as_str());
+                            let replaced =
+                                match self.regex_cache.borrow_mut().get_or_compile(pattern) {
+                                    Ok(regex) => regex.replace_all(value_str, replacement.as_str()),
+                                    Err(e) => {
+                                        return FilterResult::fatal_invalid_filter(
+                                            format!("invalid regex: {}", e),
+                                            filter_path,
+                                            obj_path,
+                                        )
+                                    }
+                                };
                             self.inner_matches(
                                 filter,
                                 Some(&serde_json::Value::String(replaced.into_owned())),
@@ -1319,4 +1325,24 @@ impl CwJsonFilter {
             }
         }
     }
+}
+
+// Helper to reduce path allocations
+#[inline]
+fn append_path(base: &str, segment: &str) -> String {
+    let mut path = String::with_capacity(base.len() + segment.len() + 1);
+    path.push_str(base);
+    path.push('.');
+    path.push_str(segment);
+    path
+}
+
+#[inline]
+fn append_array_path(base: &str, index: usize) -> String {
+    let mut path = String::with_capacity(base.len() + 10); // reasonable for most indices
+    path.push_str(base);
+    path.push('[');
+    path.push_str(&index.to_string());
+    path.push(']');
+    path
 }

@@ -1,6 +1,7 @@
 pub mod filter;
 pub mod math;
 pub mod protobuf;
+pub mod regex;
 pub mod result;
 mod test;
 
