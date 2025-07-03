@@ -12,6 +12,7 @@ use cw2::set_contract_version;
 use cw_ownable::initialize_owner;
 use cw_utils::nonpayable;
 use dao_interface::helpers::OptionalUpdate;
+use dao_interface::proposal::InfoResponse;
 use prost_reflect::prost::Message;
 use prost_reflect::prost_types::FileDescriptorSet;
 use prost_types::FileDescriptorProto;
@@ -672,6 +673,7 @@ fn execute_execute_actions(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
+        QueryMsg::Info {} => to_json_binary(&query_get_info(deps)?),
         QueryMsg::Dao {} => to_json_binary(&query_get_dao(deps)?),
         QueryMsg::IsEnabled {} => to_json_binary(&query_is_enabled(deps)?),
         QueryMsg::Role { id } => to_json_binary(&query_get_role(deps, id)?),
@@ -818,6 +820,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&query_test_filter(deps, filter, msg)?)
         }
     }
+}
+
+fn query_get_info(deps: Deps) -> StdResult<InfoResponse> {
+    let info = cw2::get_contract_version(deps.storage)?;
+    Ok(InfoResponse { info })
 }
 
 fn query_get_dao(deps: Deps) -> StdResult<DaoResponse> {

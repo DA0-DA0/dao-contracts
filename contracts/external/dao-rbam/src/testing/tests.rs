@@ -1008,6 +1008,14 @@ fn test_role_with_initial_authorizations_and_assignments() {
 }
 
 #[test]
+fn test_info() {
+    let mut suite = SuiteBuilder::base().build();
+    let info = suite.get_info();
+    assert_eq!(info.info.contract, "crates.io:dao-rbam");
+    assert_eq!(info.info.version, env!("CARGO_PKG_VERSION"));
+}
+
+#[test]
 fn test_update_dao() {
     let mut suite = SuiteBuilder::base().build();
     let dao = suite.core_addr.clone();

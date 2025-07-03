@@ -1,7 +1,7 @@
 use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Timestamp};
 use cw4::Member;
 use cw_ownable::Action;
-use dao_interface::helpers::OptionalUpdate;
+use dao_interface::{helpers::OptionalUpdate, proposal::InfoResponse};
 use dao_rbam::ContractError;
 use dao_testing::{DaoTestingSuite, DaoTestingSuiteBase, ADDR0, ADDR1, ADDR2};
 
@@ -124,6 +124,14 @@ impl Suite {
             .app
             .wrap()
             .query_wasm_smart(self.rbam_addr.clone(), &QueryMsg::Ownership {})
+            .unwrap()
+    }
+
+    pub fn get_info(&mut self) -> InfoResponse {
+        self.base
+            .app
+            .wrap()
+            .query_wasm_smart(self.rbam_addr.clone(), &QueryMsg::Info {})
             .unwrap()
     }
 

@@ -4,6 +4,7 @@ use cosmwasm_std::{Addr, CosmosMsg};
 pub use cw_ownable::Ownership;
 use cw_ownable::{cw_ownable_execute, cw_ownable_query};
 use dao_interface::helpers::OptionalUpdate;
+use dao_interface::proposal::InfoResponse;
 
 use crate::action::{Action, ActionToExecute};
 use crate::role::{Authorization, Role};
@@ -166,6 +167,8 @@ pub enum ExecuteMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     // System queries
+    #[returns(InfoResponse)]
+    Info {},
     #[returns(DaoResponse)]
     Dao {},
     #[returns(IsEnabledResponse)]
