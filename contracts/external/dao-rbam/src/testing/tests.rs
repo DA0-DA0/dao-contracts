@@ -1,7 +1,10 @@
-use cosmwasm_std::{to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, BankMsg, Binary, Coin, CosmosMsg, StdError, Uint128, WasmMsg};
 use cw_jsonfilter::base64_encode_protobuf;
 use cw_ownable::OwnershipError;
-use dao_interface::helpers::{OptionalUpdate, Update};
+use dao_interface::{
+    helpers::{OptionalUpdate, Update},
+    state::ModuleInstantiateInfo,
+};
 use dao_rbam::ContractError;
 use dao_testing::{ADDR0, ADDR1, ADDR2, DENOM};
 use prost::Message;
@@ -10,7 +13,7 @@ use prost_types::FileDescriptorSet;
 
 use crate::{
     action::ActionToExecute,
-    msg::{Assignment, InitialAuthorization, InitialRole},
+    msg::{Assignment, InitialAuthorization, InitialRole, ProtobufRegistry},
     testing::suite::SuiteBuilder,
 };
 
@@ -1034,6 +1037,46 @@ fn test_update_dao() {
 }
 
 #[test]
+fn test_update_protobuf_registry() {
+    let mut suite = SuiteBuilder::base().build();
+    let dao = suite.core_addr.clone();
+
+    suite.assert_protobuf_registry(Some(suite.protobuf_registry_addr.clone()));
+
+    suite.update_protobuf_registry(&dao, None);
+    suite.assert_protobuf_registry(None);
+
+    suite.update_protobuf_registry(
+        &dao,
+        Some(ProtobufRegistry::New(ModuleInstantiateInfo {
+            code_id: suite.base.cw_protobuf_registry_id,
+            msg: to_json_binary(&cw_protobuf_registry::msg::InstantiateMsg {
+                owner: Some(dao.to_string()),
+            })
+            .unwrap(),
+            admin: Some(dao_interface::state::Admin::CoreModule {}),
+            funds: None,
+            label: "new_protobuf_registry".to_string(),
+            salt: None,
+        })),
+    );
+    let new_protobuf_registry_addr = suite.get_protobuf_registry().protobuf_registry;
+    assert!(new_protobuf_registry_addr.is_some());
+    assert_ne!(
+        new_protobuf_registry_addr,
+        Some(suite.protobuf_registry_addr.clone())
+    );
+
+    suite.update_protobuf_registry(
+        &dao,
+        Some(ProtobufRegistry::Existing {
+            address: suite.protobuf_registry_addr.to_string(),
+        }),
+    );
+    suite.assert_protobuf_registry(Some(suite.protobuf_registry_addr.clone()));
+}
+
+#[test]
 fn test_bulk_role_assignments() {
     let mut suite = SuiteBuilder::base().build();
     let dao = suite.core_addr.clone();
@@ -1693,7 +1736,7 @@ fn test_protobuf_management() {
     );
     assert_eq!(
         err,
-        ContractError::ProtobufMessageLimitReached {
+        cw_protobuf_registry::ContractError::ProtobufMessageLimitReached {
             unregistered: 1,
             total: 2,
         }
@@ -1751,9 +1794,15 @@ fn test_protobuf_filter() {
     );
     assert_eq!(
         err,
-        ContractError::ProtobufMessageNotFound {
-            message: "google.protobuf.BoolValue".to_string()
-        }
+        ContractError::Std(StdError::generic_err(format!(
+            "Querier contract error: {}",
+            StdError::generic_err(
+                cw_protobuf_registry::ContractError::ProtobufMessageNotFound {
+                    message: "google.protobuf.BoolValue".to_string(),
+                }
+                .to_string()
+            )
+        )))
     );
 
     // Register the protobuf file descriptor set.

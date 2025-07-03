@@ -554,46 +554,6 @@ mod tests {
     }
 
     #[test]
-    fn regex_match() {
-        assert!(CwJsonFilter::check(
-            &json!({
-                "key": { "$regex": "hello (world|json)"}
-            }),
-            &json!({
-                "key": "hello world"
-            })
-        )
-        .is_pass());
-        assert!(CwJsonFilter::check(
-            &json!({
-                "key": { "$regex": "hello (world|json)"}
-            }),
-            &json!({
-                "key": "hello json"
-            })
-        )
-        .is_pass());
-        assert!(CwJsonFilter::check(
-            &json!({
-                "key": { "$regex": "hello (world|json)"}
-            }),
-            &json!({
-                "key": "hello rust"
-            })
-        )
-        .is_fail());
-        assert!(CwJsonFilter::check(
-            &json!({
-                "key": { "$regex": "hello (world|json)"}
-            }),
-            &json!({
-                "key": "hello world!"
-            })
-        )
-        .is_pass());
-    }
-
-    #[test]
     fn multiple_mask() {
         assert!(CwJsonFilter::check(
             &json!({
@@ -959,27 +919,6 @@ mod tests {
     }
 
     #[test]
-    fn match_op() {
-        assert!(CwJsonFilter::check(
-            &json!({"phone": {"$match": "^\\+?[1-9]\\d{1,14}$"}}),
-            &json!({"phone": "+1234567890"})
-        )
-        .is_pass());
-
-        assert!(CwJsonFilter::check(
-            &json!({"phone": {"$match": "^\\+?[1-9]\\d{1,14}$"}}),
-            &json!({"phone": "1234567890"})
-        )
-        .is_pass());
-
-        assert!(CwJsonFilter::check(
-            &json!({"phone": {"$match": "^\\+?[1-9]\\d{1,14}$"}}),
-            &json!({"phone": "invalid-phone"})
-        )
-        .is_fail());
-    }
-
-    #[test]
     fn size_op() {
         assert!(CwJsonFilter::check(
             &json!({"items": {"#size": 3}}),
@@ -1216,33 +1155,6 @@ mod tests {
     }
 
     #[test]
-    fn string_transformation_with_regex() {
-        let filter = json!({
-            "email": {
-                "#lower": {
-                    "$regex": "^[a-z0-9._%+-]+@company\\.com$"
-                }
-            }
-        });
-
-        assert!(CwJsonFilter::check(
-            &filter,
-            &json!({
-                "email": "USER@Company.Com"
-            })
-        )
-        .is_pass());
-
-        assert!(CwJsonFilter::check(
-            &filter,
-            &json!({
-                "email": "user@gmail.com"
-            })
-        )
-        .is_fail());
-    }
-
-    #[test]
     fn complex_validation() {
         let filter = json!({
             "$and": [
@@ -1250,7 +1162,6 @@ mod tests {
                 {"age": {"$range": [13, 120]}},
                 {"name": {"$type": "string"}},
                 {"name": {"#len": {"$range": [1, 100]}}},
-                {"email": {"#lower": {"$regex": "^[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$"}}}
             ]
         });
 
@@ -1259,10 +1170,27 @@ mod tests {
             &json!({
                 "age": 25,
                 "name": "John Doe",
-                "email": "john.doe@Example.Com"
             })
         )
         .is_pass());
+
+        // Invalid name
+        assert!(CwJsonFilter::check(
+            &filter,
+            &json!({
+                "age": 25,
+                "name": 123,
+            })
+        )
+        .is_fail());
+        assert!(CwJsonFilter::check(
+            &filter,
+            &json!({
+                "age": 25,
+                "name": "",
+            })
+        )
+        .is_fail());
 
         // Invalid age
         assert!(CwJsonFilter::check(
@@ -1270,18 +1198,14 @@ mod tests {
             &json!({
                 "age": 150,
                 "name": "John Doe",
-                "email": "john.doe@example.com"
             })
         )
         .is_fail());
-
-        // Invalid email format
         assert!(CwJsonFilter::check(
             &filter,
             &json!({
-                "age": 25,
+                "age": "50",
                 "name": "John Doe",
-                "email": "invalid-email"
             })
         )
         .is_fail());
@@ -1543,7 +1467,7 @@ mod tests {
 
     #[test]
     fn test_replace() {
-        let filter = json!({"duration": {"#replace": {"pattern": "^(\\d+)s$", "replacement": "$1", "filter": {"#to_number": {"$gt": 0}}}}});
+        let filter = json!({"duration": {"#replace": {"find": "s", "replace": "", "filter": {"#to_number": {"$gt": 0}}}}});
         assert!(CwJsonFilter::check(&filter, &json!({"duration": "1000s"})).is_pass());
         assert!(CwJsonFilter::check(&filter, &json!({"duration": "1000"})).is_pass());
         assert!(CwJsonFilter::check(&filter, &json!({"duration": "1000ms"})).is_fail());

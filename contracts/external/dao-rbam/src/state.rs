@@ -11,6 +11,9 @@ use crate::{
 /// The address of the DAO.
 pub const DAO: Item<Addr> = Item::new("dao");
 
+/// The address of the protobuf registry, if any.
+pub const PROTOBUF_REGISTRY: Item<Addr> = Item::new("protobuf_registry");
+
 /// Whether or not actions can be performed.
 pub const ENABLED: Item<bool> = Item::new("enabled");
 
@@ -19,28 +22,6 @@ pub const NEXT_ID: Item<u64> = Item::new("next_id");
 
 /// Map role_id -> role
 pub const ROLES: Map<u64, Role> = Map::new("roles");
-
-/// Map protobuf file name -> protobuf file descriptor proto data.
-pub const PROTOBUF_FILES: Map<String, Vec<u8>> = Map::new("pb_files");
-
-/// Map protobuf message descriptor name -> protobuf file name that contains it.
-/// Secondary index on file_name to look up/iterate by file. This supports the
-/// following queries:
-/// - get a specific protobuf message by name (map lookup)
-/// - list all protobuf messages (range query)
-/// - list all protobuf messages in a specific file (secondary index range
-///   query)
-pub const PROTOBUF_MESSAGES: IndexedMap<String, String, ProtobufMessagesIndexes<'_>> =
-    IndexedMap::new(
-        "pb_messages",
-        ProtobufMessagesIndexes {
-            file_name: MultiIndex::new(
-                |_pk, file_name| file_name.clone(),
-                "pb_messages",
-                "pb_messages__file_name",
-            ),
-        },
-    );
 
 /// Map authorization_id -> authorization. Secondary index on role_id to look
 /// up/iterate by role. This supports the following queries:
@@ -105,17 +86,6 @@ pub const LOG: IndexedMap<LogPairKey, Action, LogIndexes<'_>> = IndexedMap::new(
         ),
     },
 );
-
-/// Secondary index for protobuf descriptors to look up/iterate by file name.
-pub struct ProtobufMessagesIndexes<'a> {
-    pub file_name: MultiIndex<'a, String, String, String>,
-}
-impl IndexList<String> for ProtobufMessagesIndexes<'_> {
-    fn get_indexes(&self) -> Box<dyn Iterator<Item = &dyn Index<String>> + '_> {
-        let v: Vec<&dyn Index<String>> = vec![&self.file_name];
-        Box::new(v.into_iter())
-    }
-}
 
 /// Secondary index for authorizations to look up/iterate by role.
 pub struct AuthorizationsIndexes<'a> {

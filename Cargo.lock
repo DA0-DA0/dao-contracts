@@ -917,7 +917,6 @@ version = "2.7.1"
 dependencies = [
  "base64 0.22.1",
  "prost-reflect",
- "regex",
  "serde",
  "serde_json",
 ]
@@ -1045,6 +1044,28 @@ dependencies = [
  "serde",
  "thiserror",
  "vote-hooks",
+]
+
+[[package]]
+name = "cw-protobuf-registry"
+version = "2.7.1"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-ownable",
+ "cw-protobuf-registry",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "dao-interface 2.7.1",
+ "dao-testing",
+ "prost 0.12.3",
+ "prost-reflect",
+ "prost-types 0.12.3",
+ "schemars",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]
@@ -2292,23 +2313,20 @@ dependencies = [
 name = "dao-rbam"
 version = "2.7.1"
 dependencies = [
- "bech32",
  "chrono",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-jsonfilter",
  "cw-multi-test",
  "cw-ownable",
+ "cw-protobuf-registry",
  "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
  "cw4 1.1.2",
  "dao-interface 2.7.1",
- "dao-proposal-single 2.7.1",
  "dao-rbam",
  "dao-testing",
- "dao-voting 2.7.1",
- "dao-voting-cw4 2.7.1",
  "osmosis-std",
  "osmosis-std-derive",
  "prost 0.12.3",
@@ -2386,6 +2404,7 @@ dependencies = [
  "cw-multi-test",
  "cw-payroll-factory",
  "cw-proposal-single",
+ "cw-protobuf-registry",
  "cw-token-swap",
  "cw-tokenfactory-issuer",
  "cw-utils 1.0.3",

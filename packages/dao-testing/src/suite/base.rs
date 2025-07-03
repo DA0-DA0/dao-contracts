@@ -46,6 +46,7 @@ pub struct DaoTestingSuiteBase {
     pub cw20_stake_id: u64,
     pub rewards_distributor_id: u64,
     pub rbam_id: u64,
+    pub cw_protobuf_registry_id: u64,
     // External stuff
     pub cw4_group_id: u64,
     pub cw20_base_id: u64,
@@ -207,8 +208,9 @@ impl DaoTestingSuiteBase {
         let voting_cw721_staked_id = app.store_code(dao_voting_cw721_staked_contract());
         let voting_token_staked_id = app.store_code(dao_voting_token_staked_contract());
         let cw20_stake_id = app.store_code(cw20_stake_contract());
-        let rbam_id = app.store_code(dao_rbam_contract());
         let rewards_distributor_id = app.store_code(dao_rewards_distributor_contract());
+        let rbam_id = app.store_code(dao_rbam_contract());
+        let cw_protobuf_registry_id = app.store_code(cw_protobuf_registry_contract());
 
         let cw4_group_id = app.store_code(cw4_group_contract());
         let cw20_base_id = app.store_code(cw20_base_contract());
@@ -243,8 +245,9 @@ impl DaoTestingSuiteBase {
             voting_cw721_staked_id,
             voting_token_staked_id,
             cw20_stake_id,
-            rbam_id,
             rewards_distributor_id,
+            rbam_id,
+            cw_protobuf_registry_id,
             cw4_group_id,
             cw20_base_id,
             cw721_base_id,

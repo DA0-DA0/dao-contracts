@@ -1,7 +1,7 @@
 [package]
-name = "dao-rbam"
+name = "cw-protobuf-registry"
 authors = ["Noah Saso <noah@daodao.zone>"]
-description = "Roles-based Authorization Module (RBAM) lets DAOs configure organization-wide roles and authorization policies."
+description = "A protobuf registry that lets you generate minimal file descriptor sets needed for decoding specific protobuf messages."
 edition = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
@@ -17,7 +17,6 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-chrono = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["cosmwasm_1_2"] }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
@@ -27,20 +26,12 @@ cw-utils = { workspace = true }
 cw-ownable = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
 cw2 = { workspace = true }
-cw-jsonfilter = { workspace = true }
 prost = { workspace = true }
-prost-derive = { workspace = true }
 prost-reflect = { workspace = true, features = ["serde"] }
 prost-types = { workspace = true }
-cw-protobuf-registry = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
-dao-interface = { workspace = true }
-dao-rbam = { workspace = true }
+cw-protobuf-registry = { workspace = true }
 dao-testing = { workspace = true }
-cw4 = { workspace = true }
-osmosis-std = { workspace = true }
-osmosis-std-derive = { workspace = true }

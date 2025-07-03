@@ -3,37 +3,32 @@ use std::collections::HashSet;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError,
-    StdResult, WasmMsg,
+    to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
+    Response, StdError, StdResult, SubMsg, WasmMsg,
 };
+use cw_jsonfilter::get_protobuf_messages;
 use cw_storage_plus::Bound;
 
 use cw2::set_contract_version;
 use cw_ownable::initialize_owner;
-use cw_utils::nonpayable;
+use cw_utils::{nonpayable, parse_reply_instantiate_data};
 use dao_interface::helpers::OptionalUpdate;
 use dao_interface::proposal::InfoResponse;
-use prost_reflect::prost::Message;
-use prost_reflect::prost_types::FileDescriptorSet;
-use prost_types::FileDescriptorProto;
 
 use crate::action::{Action, ActionToExecute};
 use crate::error::ContractError;
-use crate::helpers::ensure_enabled;
+use crate::helpers::{ensure_enabled, get_file_descriptor_set};
 use crate::msg::{
     ActionResponse, Assignment, AuthorizationResponse, DaoResponse, ExecuteMsg,
     InitialAuthorization, InitialRole, InstantiateMsg, IsAssignedRoleResponse, IsEnabledResponse,
     IsMsgAuthorizedByResponse, IsMsgAuthorizedByRoleResponse, IsMsgAuthorizedResponse,
     ListActionsResponse, ListAddressesWithRoleResponse, ListAssignmentsResponse,
-    ListAuthorizationsResponse, ListProtobufFilesResponse, ListProtobufMessagesResponse,
-    ListRolesForAddressResponse, ListRolesResponse, MigrateMsg, QueryMsg, RoleResponse,
-    TestFilterResponse,
+    ListAuthorizationsResponse, ListRolesForAddressResponse, ListRolesResponse, MigrateMsg,
+    ProtobufRegistry, ProtobufRegistryResponse, QueryMsg, RoleResponse, TestFilterResponse,
 };
-use crate::protobuf::create_file_descriptor_set_for_messages;
 use crate::role::{Authorization, Role};
 use crate::state::{
-    ASSIGNMENTS, AUTHORIZATIONS, DAO, ENABLED, LOG, NEXT_ID, PROTOBUF_FILES, PROTOBUF_MESSAGES,
-    ROLES,
+    ASSIGNMENTS, AUTHORIZATIONS, DAO, ENABLED, LOG, NEXT_ID, PROTOBUF_REGISTRY, ROLES,
 };
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-rbam";
@@ -42,6 +37,8 @@ pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const DEFAULT_LIMIT: u32 = 30;
 const DEFAULT_LIMIT_IS_MSG_AUTHORIZED: u32 = 30;
 const MAX_LIMIT: u32 = 100;
+
+const INSTANTIATE_PROTOBUF_REGISTRY_REPLY_ID: u64 = 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -65,6 +62,24 @@ pub fn instantiate(
         .map_or_else(|| Ok(dao.clone()), |owner| deps.api.addr_validate(&owner))?;
     initialize_owner(deps.storage, deps.api, Some(owner.as_str()))?;
 
+    // Initialize protobuf registry by either creating it or using an existing
+    // one.
+    let protobuf_registry_message: Vec<SubMsg<Empty>> = match msg.protobuf_registry {
+        Some(ProtobufRegistry::New(info)) => {
+            let info = info.into_wasm_msg(owner);
+            vec![SubMsg::reply_on_success(
+                info,
+                INSTANTIATE_PROTOBUF_REGISTRY_REPLY_ID,
+            )]
+        }
+        Some(ProtobufRegistry::Existing { address }) => {
+            let address = deps.api.addr_validate(&address)?;
+            PROTOBUF_REGISTRY.save(deps.storage, &address)?;
+            vec![]
+        }
+        None => vec![],
+    };
+
     // Initialize enabled state (default to true).
     let enabled = msg.enabled.unwrap_or(true);
     ENABLED.save(deps.storage, &enabled)?;
@@ -73,6 +88,7 @@ pub fn instantiate(
     NEXT_ID.save(deps.storage, &1)?;
 
     let mut response = Response::new()
+        .add_submessages(protobuf_registry_message)
         .add_attribute("action", "instantiate")
         .add_attribute("creator", info.sender.as_str())
         .add_attribute("enabled", enabled.to_string());
@@ -135,6 +151,9 @@ pub fn execute(
     match msg {
         ExecuteMsg::UpdateOwnership(action) => execute_update_ownership(deps, info, env, action),
         ExecuteMsg::UpdateDao { dao } => execute_update_dao(deps, info, dao),
+        ExecuteMsg::UpdateProtobufRegistry { protobuf_registry } => {
+            execute_update_protobuf_registry(deps, info, protobuf_registry)
+        }
         ExecuteMsg::SetEnabled { enabled } => execute_set_enabled(deps, info, enabled),
         ExecuteMsg::CreateRole {
             name,
@@ -181,13 +200,6 @@ pub fn execute(
         ),
         ExecuteMsg::Assign { assign } => execute_assign(deps, info, assign),
         ExecuteMsg::Revoke { revoke } => execute_revoke(deps, info, revoke),
-        ExecuteMsg::RegisterProtobufs {
-            file_descriptor_sets,
-        } => execute_register_protobufs(deps, info, file_descriptor_sets),
-        ExecuteMsg::UnregisterProtobufs {
-            file_names,
-            message_limit,
-        } => execute_unregister_protobufs(deps, info, file_names, message_limit),
         ExecuteMsg::ExecuteActions { actions } => execute_execute_actions(deps, env, info, actions),
     }
 }
@@ -219,6 +231,42 @@ fn execute_update_dao(
     Ok(Response::new()
         .add_attribute("action", "update_dao")
         .add_attribute("dao", dao.to_string()))
+}
+
+fn execute_update_protobuf_registry(
+    deps: DepsMut,
+    info: MessageInfo,
+    protobuf_registry: Option<ProtobufRegistry>,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    let protobuf_registry_message: Vec<SubMsg<Empty>> = match protobuf_registry {
+        Some(ProtobufRegistry::New(info)) => {
+            // Use owner if set, otherwise use DAO, as admin.
+            let owner = cw_ownable::get_ownership(deps.storage)?
+                .owner
+                .map_or_else(|| DAO.load(deps.storage), Ok)?;
+            let info = info.into_wasm_msg(owner);
+            vec![SubMsg::reply_on_success(
+                info,
+                INSTANTIATE_PROTOBUF_REGISTRY_REPLY_ID,
+            )]
+        }
+        Some(ProtobufRegistry::Existing { address }) => {
+            let address = deps.api.addr_validate(&address)?;
+            PROTOBUF_REGISTRY.save(deps.storage, &address)?;
+            vec![]
+        }
+        None => {
+            PROTOBUF_REGISTRY.remove(deps.storage);
+            vec![]
+        }
+    };
+
+    Ok(Response::new()
+        .add_submessages(protobuf_registry_message)
+        .add_attribute("action", "update_protobuf_registry"))
 }
 
 fn execute_set_enabled(
@@ -446,192 +494,6 @@ fn execute_revoke(
     Ok(Response::new().add_attribute("action", "revoke"))
 }
 
-fn execute_register_protobufs(
-    deps: DepsMut,
-    info: MessageInfo,
-    file_descriptor_sets: Vec<Vec<u8>>,
-) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
-    cw_ownable::assert_owner(deps.storage, &info.sender)?;
-
-    if file_descriptor_sets.is_empty() {
-        return Err(ContractError::NoFiles {});
-    }
-
-    let mut file_count = 0;
-    let mut message_count = 0;
-
-    for (file_descriptor_set_index, file_descriptor_set) in
-        file_descriptor_sets.into_iter().enumerate()
-    {
-        let file_descriptor_set = FileDescriptorSet::decode(file_descriptor_set.as_slice())?;
-        for (new_fd_index, new_fd) in file_descriptor_set.file.into_iter().enumerate() {
-            let file_name =
-                new_fd
-                    .name
-                    .clone()
-                    .ok_or(ContractError::FileDescriptorMissingName {
-                        file_descriptor_index: new_fd_index,
-                        file_descriptor_set_index,
-                    })?;
-            let file_package =
-                new_fd
-                    .package
-                    .clone()
-                    .ok_or(ContractError::FileDescriptorMissingPackage {
-                        file_descriptor_index: new_fd_index,
-                        file_descriptor_name: file_name.clone(),
-                        file_descriptor_set_index,
-                    })?;
-
-            // Store map of messages' full names to their file names so their
-            // files can be looked up later when messages are referenced in
-            // filters.
-            for (message_descriptor_index, message_descriptor) in
-                new_fd.message_type.iter().enumerate()
-            {
-                let message_type_name = message_descriptor.name.clone().ok_or_else(|| {
-                    ContractError::MessageDescriptorMissingName {
-                        message_descriptor_index,
-                        file_name: file_name.clone(),
-                        file_package: file_package.clone(),
-                    }
-                })?;
-                let message_full_name = format!("{}.{}", file_package, message_type_name);
-
-                PROTOBUF_MESSAGES.save(deps.storage, message_full_name, &file_name)?;
-
-                message_count += 1;
-            }
-
-            // Get existing file descriptor data.
-            let existing_file_descriptor_data =
-                PROTOBUF_FILES.may_load(deps.storage, file_name.clone())?;
-
-            // If file is already registered, merge the files.
-            if let Some(existing_fd_data) = existing_file_descriptor_data {
-                let mut existing_fd = FileDescriptorProto::decode(existing_fd_data.as_slice())?;
-
-                // If the file package changed, error.
-                if existing_fd.package.as_ref() != Some(&file_package) {
-                    return Err(ContractError::FileDescriptorPackageChanged {
-                        file_name,
-                        file_package: existing_fd.package.clone().unwrap_or_default(),
-                        new_file_package: file_package,
-                    });
-                }
-
-                // Add new or overwrite existing dependencies/messages/enums.
-
-                for dependency in new_fd.dependency {
-                    if !existing_fd.dependency.contains(&dependency) {
-                        existing_fd.dependency.push(dependency);
-                    }
-                }
-
-                for mut new_message in new_fd.message_type {
-                    if let Some(existing_message) = existing_fd
-                        .message_type
-                        .iter_mut()
-                        .find(|m| m.name == new_message.name)
-                    {
-                        // Replace with new message.
-                        std::mem::swap(existing_message, &mut new_message);
-                    } else {
-                        // Add new message.
-                        existing_fd.message_type.push(new_message);
-                    }
-                }
-
-                for mut new_enum in new_fd.enum_type {
-                    if let Some(existing_enum_type) = existing_fd
-                        .enum_type
-                        .iter_mut()
-                        .find(|e| e.name == new_enum.name)
-                    {
-                        // Replace with new enum.
-                        std::mem::swap(existing_enum_type, &mut new_enum);
-                    } else {
-                        // Add new enum.
-                        existing_fd.enum_type.push(new_enum);
-                    }
-                }
-
-                PROTOBUF_FILES.save(deps.storage, file_name, &existing_fd.encode_to_vec())?;
-            } else {
-                let file_descriptor_data = new_fd.encode_to_vec();
-                PROTOBUF_FILES.save(deps.storage, file_name, &file_descriptor_data)?;
-            }
-
-            file_count += 1;
-        }
-    }
-
-    Ok(Response::new()
-        .add_attribute("action", "register_protobuf")
-        .add_attribute("file_count", file_count.to_string())
-        .add_attribute("message_count", message_count.to_string()))
-}
-
-fn execute_unregister_protobufs(
-    deps: DepsMut,
-    info: MessageInfo,
-    file_names: Vec<String>,
-    message_limit: Option<u32>,
-) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
-    cw_ownable::assert_owner(deps.storage, &info.sender)?;
-
-    if file_names.is_empty() {
-        return Err(ContractError::NoFiles {});
-    }
-
-    let message_limit = message_limit.unwrap_or(u32::MAX);
-    let mut unregistered_message_count = 0;
-
-    for (file_index, file_name) in file_names.iter().enumerate() {
-        let remaining = (message_limit - unregistered_message_count) as usize;
-
-        // If we've reached the limit of messages to unregister before we start
-        // unregistering this file, return an error. The message limit must be
-        // large enough to unregister all messages in all files except the last
-        // one, which can be partially unregistered. This ensures that you can
-        // partially unregister messages from a single file in case there are
-        // too many to unregister in a single TX, while still minimizing the
-        // number of files that are partially unregistered.
-        if remaining == 0 {
-            return Err(ContractError::ProtobufMessageLimitReached {
-                unregistered: file_index,
-                total: file_names.len(),
-            });
-        }
-
-        let messages = PROTOBUF_MESSAGES
-            .idx
-            .file_name
-            .prefix(file_name.to_string())
-            .keys(deps.storage, None, None, Order::Ascending)
-            .take(remaining)
-            .collect::<StdResult<Vec<_>>>()?;
-
-        // Unregister messages.
-        unregistered_message_count += messages.len() as u32;
-        for message in messages {
-            PROTOBUF_MESSAGES.remove(deps.storage, message)?;
-        }
-
-        // Unregister file.
-        PROTOBUF_FILES.remove(deps.storage, file_name.to_string());
-    }
-
-    Ok(Response::new()
-        .add_attribute("action", "unregister_protobuf")
-        .add_attribute(
-            "unregistered_message_count",
-            unregistered_message_count.to_string(),
-        ))
-}
-
 fn execute_execute_actions(
     mut deps: DepsMut,
     env: Env,
@@ -673,8 +535,9 @@ fn execute_execute_actions(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
-        QueryMsg::Info {} => to_json_binary(&query_get_info(deps)?),
-        QueryMsg::Dao {} => to_json_binary(&query_get_dao(deps)?),
+        QueryMsg::Info {} => to_json_binary(&query_info(deps)?),
+        QueryMsg::Dao {} => to_json_binary(&query_dao(deps)?),
+        QueryMsg::ProtobufRegistry {} => to_json_binary(&query_protobuf_registry(deps)?),
         QueryMsg::IsEnabled {} => to_json_binary(&query_is_enabled(deps)?),
         QueryMsg::Role { id } => to_json_binary(&query_get_role(deps, id)?),
         QueryMsg::ListRoles { start_after, limit } => {
@@ -717,22 +580,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         } => to_json_binary(&query_list_assignments_by_address(
             deps,
             addr,
-            start_after,
-            limit,
-        )?),
-        QueryMsg::ListProtobufFiles { start_after, limit } => {
-            to_json_binary(&query_list_protobuf_files(deps, start_after, limit)?)
-        }
-        QueryMsg::ListProtobufMessages { start_after, limit } => {
-            to_json_binary(&query_list_protobuf_messages(deps, start_after, limit)?)
-        }
-        QueryMsg::ListProtobufMessagesByFile {
-            file_name,
-            start_after,
-            limit,
-        } => to_json_binary(&query_list_protobuf_messages_by_file(
-            deps,
-            file_name,
             start_after,
             limit,
         )?),
@@ -822,14 +669,19 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-fn query_get_info(deps: Deps) -> StdResult<InfoResponse> {
+fn query_info(deps: Deps) -> StdResult<InfoResponse> {
     let info = cw2::get_contract_version(deps.storage)?;
     Ok(InfoResponse { info })
 }
 
-fn query_get_dao(deps: Deps) -> StdResult<DaoResponse> {
+fn query_dao(deps: Deps) -> StdResult<DaoResponse> {
     let dao = DAO.load(deps.storage)?;
     Ok(DaoResponse { dao })
+}
+
+fn query_protobuf_registry(deps: Deps) -> StdResult<ProtobufRegistryResponse> {
+    let protobuf_registry = PROTOBUF_REGISTRY.may_load(deps.storage)?;
+    Ok(ProtobufRegistryResponse { protobuf_registry })
 }
 
 fn query_is_enabled(deps: Deps) -> StdResult<IsEnabledResponse> {
@@ -985,58 +837,6 @@ fn query_list_assignments_by_address(
         .collect::<StdResult<Vec<_>>>()?;
 
     Ok(ListRolesForAddressResponse { role_ids })
-}
-
-fn query_list_protobuf_files(
-    deps: Deps,
-    start_after: Option<String>,
-    limit: Option<u32>,
-) -> StdResult<ListProtobufFilesResponse> {
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start = start_after.map(Bound::exclusive);
-
-    let files = PROTOBUF_FILES
-        .keys(deps.storage, start, None, Order::Ascending)
-        .take(limit)
-        .collect::<StdResult<Vec<_>>>()?;
-
-    Ok(ListProtobufFilesResponse { files })
-}
-
-fn query_list_protobuf_messages(
-    deps: Deps,
-    start_after: Option<String>,
-    limit: Option<u32>,
-) -> StdResult<ListProtobufMessagesResponse> {
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start = start_after.map(Bound::exclusive);
-
-    let messages = PROTOBUF_MESSAGES
-        .keys(deps.storage, start, None, Order::Ascending)
-        .take(limit)
-        .collect::<StdResult<Vec<_>>>()?;
-
-    Ok(ListProtobufMessagesResponse { messages })
-}
-
-fn query_list_protobuf_messages_by_file(
-    deps: Deps,
-    file_name: String,
-    start_after: Option<String>,
-    limit: Option<u32>,
-) -> StdResult<ListProtobufMessagesResponse> {
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start = start_after.map(Bound::exclusive);
-
-    let messages = PROTOBUF_MESSAGES
-        .idx
-        .file_name
-        .prefix(file_name)
-        .keys(deps.storage, start, None, Order::Ascending)
-        .take(limit)
-        .collect::<StdResult<Vec<_>>>()?;
-
-    Ok(ListProtobufMessagesResponse { messages })
 }
 
 fn query_get_action(deps: Deps, addr: String, action_id: u64) -> StdResult<ActionResponse> {
@@ -1460,20 +1260,17 @@ fn query_test_filter(
     msg: CosmosMsg,
 ) -> StdResult<TestFilterResponse> {
     // Get the protobuf messages referenced by the filter.
-    let protobuf_messages =
-        Authorization::extract_protobuf_messages(&deps, &filter).map_err(|e| {
-            StdError::generic_err(format!("Failed to extract protobuf messages: {}", e))
-        })?;
+    let protobuf_messages = get_protobuf_messages(&filter)
+        .into_iter()
+        .collect::<Vec<_>>();
 
-    // Compute the file descriptor set.
-    let file_descriptor_set = if protobuf_messages.is_empty() {
-        None
-    } else {
-        Some(
-            create_file_descriptor_set_for_messages(&deps, &protobuf_messages).map_err(|e| {
-                StdError::generic_err(format!("Failed to create file descriptor set: {}", e))
-            })?,
-        )
+    // Query for the file descriptor set.
+    let file_descriptor_set = match protobuf_messages.is_empty() {
+        true => None,
+        false => Some(
+            get_file_descriptor_set(&deps, protobuf_messages)
+                .map_err(|e| StdError::generic_err(e.to_string()))?,
+        ),
     };
 
     // Test the filter.
@@ -1504,4 +1301,20 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     // Set contract to version to latest
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(Response::default())
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    match msg.id {
+        INSTANTIATE_PROTOBUF_REGISTRY_REPLY_ID => {
+            let res = parse_reply_instantiate_data(msg)?;
+            let addr = deps.api.addr_validate(&res.contract_address)?;
+
+            PROTOBUF_REGISTRY.save(deps.storage, &addr)?;
+
+            Ok(Response::default().add_attribute("protobuf_registry", addr))
+        }
+
+        _ => Err(ContractError::UnknownReplyID { id: msg.id }),
+    }
 }

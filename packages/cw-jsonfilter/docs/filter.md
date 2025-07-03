@@ -43,27 +43,6 @@ would NOT match any of these:
 
 Operators enable complex filtering by allowing operations on keys and values.
 
-### **Example**: Logical Chaining and Regex
-
-```json
-{
-  "$or": [{ "key": { "$regex": "^L" } }, { "key": { "$regex": "in$" } }]
-}
-```
-
-This filter would match all of these objects:
-
-```json
-{ "key": "Login" }
-{ "key": "Lenin" }
-```
-
-but not:
-
-```json
-{ "key": "lol" }
-```
-
 ## Logical Operators
 
 ### `$and`
@@ -289,15 +268,6 @@ Evaluates to `true` if all array elements match the filter.
 
 ## String Operators
 
-### `$regex` & `$match`
-
-Evaluates to `true` if the value matches the regular expression pattern.
-
-```json
-{ "email": { "$regex": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$" } }
-{ "phone": { "$match": "^\\+?[1-9]\\d{1,14}$" } }
-```
-
 ### `$startsWith`
 
 Evaluates to `true` if the string starts with the specified prefix.
@@ -388,9 +358,8 @@ Get object values as an array, then apply the filter.
 
 ### `#replace`
 
-Replace all occurrences of a regex pattern with a replacement string, then apply
-the filter. If the regex pattern is not found, the value is passed through
-unchanged.
+Replace all occurrences of a substring with a replacement string, then apply
+the filter.
 
 To replace a duration with an `s` suffix before applying a numeric filter:
 
@@ -398,8 +367,8 @@ To replace a duration with an `s` suffix before applying a numeric filter:
 {
   "duration": {
     "#replace": {
-      "pattern": "^(\\d+)s$",
-      "replacement": "$1",
+      "find": "s",
+      "replace": "",
       "filter": { "#to_number": { "$gt": 0 } }
     }
   }
@@ -414,7 +383,7 @@ This replacement results in:
 { "duration": "1000" } -> { "duration": 1000 }
 
 // Not replaced
-{ "duration": "1000ms" } -> { "duration": "1000ms" }
+{ "duration": "1000m" } -> { "duration": "1000m" }
 ```
 
 ### `#base64`
@@ -529,18 +498,6 @@ types.
 }
 ```
 
-### String Transformations with Regex
-
-```json
-{
-  "email": {
-    "#lower": {
-      "$regex": "^[a-z0-9._%+-]+@company\\.com$"
-    }
-  }
-}
-```
-
 ### Complex Validation
 
 ```json
@@ -549,12 +506,7 @@ types.
     { "age": { "$type": "number" } },
     { "age": { "$range": [13, 120] } },
     { "name": { "$type": "string" } },
-    { "name": { "#len": { "$range": [1, 100] } } },
-    {
-      "email": {
-        "#lower": { "$regex": "^[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$" }
-      }
-    }
+    { "name": { "#len": { "$range": [1, 100] } } }
   ]
 }
 ```

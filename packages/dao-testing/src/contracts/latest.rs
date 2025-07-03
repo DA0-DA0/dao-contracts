@@ -249,6 +249,16 @@ pub fn dao_rbam_contract() -> Box<dyn Contract<Empty>> {
         dao_rbam::contract::execute,
         dao_rbam::contract::instantiate,
         dao_rbam::contract::query,
+    )
+    .with_reply(dao_rbam::contract::reply);
+    Box::new(contract)
+}
+
+pub fn cw_protobuf_registry_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw_protobuf_registry::contract::execute,
+        cw_protobuf_registry::contract::instantiate,
+        cw_protobuf_registry::contract::query,
     );
     Box::new(contract)
 }

@@ -26,7 +26,7 @@ For example:
       "amount": [
         {
           "denom": "uatom",
-          "amount": { "#to_number": { "$between_inclusive": [1000, 2000] } }
+          "amount": { "#to_number": { "$between": [1000, 2000] } }
         }
       ]
     }

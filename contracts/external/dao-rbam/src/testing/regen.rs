@@ -1,4 +1,4 @@
-use cosmwasm_std::{Binary, CosmosMsg};
+use cosmwasm_std::{Binary, CosmosMsg, StdError};
 use cw_jsonfilter::base64_encode_protobuf;
 use dao_testing::ADDR0;
 use osmosis_std_derive::CosmwasmExt;
@@ -122,14 +122,15 @@ fn test_regen_protobuf_filter() {
                         "creditTypeAbbrev": "C",
                         "allowedClasses": ["C-1", "C-2"],
                         "dateCriteria": {
-                            // Between 2025-07-01 and 2025-07-31
+                            // In July 2025
                             "minStartDate": {
-                                "$regex": "^2025-07-[0-3][0-9]T.+"
+                                "$startsWith": "2025-07-"
                             },
                             "startDateWindow": {
                                 "#replace": {
-                                    "pattern": "^(\\d+)s$",
-                                    "replacement": "$1",
+                                    // Remove seconds suffix
+                                    "find": "s",
+                                    "replace": "",
                                     "filter": {
                                         "#to_number": {
                                             // Between 0 and 30 days
@@ -167,9 +168,15 @@ fn test_regen_protobuf_filter() {
     );
     assert_eq!(
         err,
-        ContractError::ProtobufMessageNotFound {
-            message: "regen.ecocredit.basket.v1.MsgCreate".to_string()
-        }
+        ContractError::Std(StdError::generic_err(format!(
+            "Querier contract error: {}",
+            StdError::generic_err(
+                cw_protobuf_registry::ContractError::ProtobufMessageNotFound {
+                    message: "regen.ecocredit.basket.v1.MsgCreate".to_string(),
+                }
+                .to_string()
+            )
+        )))
     );
 
     // Register the protobuf file descriptor set.
@@ -250,9 +257,9 @@ fn test_regen_protobuf_filter() {
         },
         Some(ContractError::MsgNotAllowedByFilter {
             err: cw_jsonfilter::FilterResult::operator_failed(
-                "$regex",
-                "value does not match regex",
-                "@.stargate.value.#proto.dateCriteria.minStartDate.$regex",
+                "$startsWith",
+                "value does not start with filter value",
+                "@.stargate.value.#proto.dateCriteria.minStartDate.$startsWith",
                 "@.stargate.value.#proto.dateCriteria.minStartDate",
             )
             .as_fail()

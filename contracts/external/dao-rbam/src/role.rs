@@ -5,11 +5,8 @@ use prost::Message;
 use prost_reflect::prost_types::FileDescriptorSet;
 
 use crate::{
-    helpers::get_next_id,
-    protobuf::create_file_descriptor_set_for_messages,
-    state::{
-        ASSIGNMENTS, AUTHORIZATIONS, AUTHORIZATION_FILE_DESCRIPTOR_SETS, PROTOBUF_MESSAGES, ROLES,
-    },
+    helpers::{get_encoded_file_descriptor_set, get_next_id},
+    state::{ASSIGNMENTS, AUTHORIZATIONS, AUTHORIZATION_FILE_DESCRIPTOR_SETS, ROLES},
     ContractError,
 };
 
@@ -137,28 +134,6 @@ impl Authorization {
             .map_err(|_| ContractError::AuthorizationNotFound { id })
     }
 
-    /// Extract the protobuf messages referenced by the filter and ensure that
-    /// all are registered.
-    pub fn extract_protobuf_messages(
-        deps: &Deps,
-        filter: &serde_json::Value,
-    ) -> Result<Vec<String>, ContractError> {
-        let protobuf_messages = get_protobuf_messages(filter)
-            .into_iter()
-            .collect::<Vec<_>>();
-
-        // Ensure all protobuf messages are registered.
-        for message in protobuf_messages.iter() {
-            if !PROTOBUF_MESSAGES.has(deps.storage, message.clone()) {
-                return Err(ContractError::ProtobufMessageNotFound {
-                    message: message.clone(),
-                });
-            }
-        }
-
-        Ok(protobuf_messages)
-    }
-
     /// Whether or not the filter allows the given message.
     ///
     /// If `ignore_filter_error` is true, then the function will simply return
@@ -210,31 +185,33 @@ impl Authorization {
     pub fn sync_protobuf_messages(&mut self, deps: &mut DepsMut) -> Result<(), ContractError> {
         if let Some(filter) = &self.filter {
             // Get the protobuf messages referenced by the filter.
-            let protobuf_messages =
-                Authorization::extract_protobuf_messages(&deps.as_ref(), filter)?;
+            let protobuf_messages = get_protobuf_messages(filter)
+                .into_iter()
+                .collect::<Vec<_>>();
 
             // If the protobuf messages haven't changed, do nothing.
             if protobuf_messages == self.protobuf_messages {
                 return Ok(());
             }
 
-            // If there are no protobuf messages, remove the file descriptor set
-            // if it exists. Otherwise, compute and save it.
-            if protobuf_messages.is_empty() {
-                AUTHORIZATION_FILE_DESCRIPTOR_SETS.remove(deps.storage, self.id);
-            } else {
-                // Compute and save the file descriptor set.
-                let file_descriptor_set =
-                    create_file_descriptor_set_for_messages(&deps.as_ref(), &protobuf_messages)?;
-                AUTHORIZATION_FILE_DESCRIPTOR_SETS.save(
-                    deps.storage,
-                    self.id,
-                    &file_descriptor_set.encode_to_vec(),
-                )?;
-            }
-
             // Update the protobuf messages.
             self.protobuf_messages = protobuf_messages;
+
+            // If there are no protobuf messages, remove the file descriptor set
+            // if it exists. Otherwise, compute and save it.
+            match self.protobuf_messages.is_empty() {
+                true => {
+                    AUTHORIZATION_FILE_DESCRIPTOR_SETS.remove(deps.storage, self.id);
+                }
+                false => {
+                    // Query for and save the file descriptor set.
+                    let fds = get_encoded_file_descriptor_set(
+                        &deps.as_ref(),
+                        self.protobuf_messages.clone(),
+                    )?;
+                    AUTHORIZATION_FILE_DESCRIPTOR_SETS.save(deps.storage, self.id, &fds)?;
+                }
+            };
         }
         Ok(())
     }

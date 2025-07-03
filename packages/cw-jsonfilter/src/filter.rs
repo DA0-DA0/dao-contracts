@@ -2,13 +2,11 @@ use base64::Engine as _;
 use prost_reflect::{prost_types::FileDescriptorSet, DescriptorPool, DynamicMessage};
 use serde_json::json;
 
-use crate::{gt_json, lt_json, regex::RegexCache, FilterResult, BASE64_ENGINE};
+use crate::{gt_json, lt_json, FilterResult, BASE64_ENGINE};
 
 pub struct CwJsonFilter {
     /// Optional pool of protobuf types.
     pub pool: Option<DescriptorPool>,
-    /// Regex cache to avoid recompilation
-    regex_cache: std::cell::RefCell<RegexCache>,
 }
 
 impl Default for CwJsonFilter {
@@ -36,10 +34,7 @@ impl CwJsonFilter {
             Some(pool)
         };
 
-        Self {
-            pool,
-            regex_cache: std::cell::RefCell::new(RegexCache::default()),
-        }
+        Self { pool }
     }
 
     /// Static convenience function for the default filter with no protobuf
@@ -817,44 +812,6 @@ impl CwJsonFilter {
                     },
 
                     // String operators
-                    "$regex" | "$match" => match (operator_arg, value) {
-                        (
-                            serde_json::Value::String(regex_pattern),
-                            serde_json::Value::String(value_str),
-                        ) => {
-                            // Use the cached regex and compute result in one step
-                            let is_match =
-                                match self.regex_cache.borrow_mut().get_or_compile(regex_pattern) {
-                                    Ok(pattern) => pattern.is_match(value_str),
-                                    Err(e) => {
-                                        return FilterResult::fatal_invalid_filter(
-                                            format!("invalid regex: {}", e),
-                                            filter_path,
-                                            obj_path,
-                                        )
-                                    }
-                                };
-
-                            FilterResult::from_bool(
-                                is_match,
-                                operator,
-                                "value does not match regex",
-                                filter_path,
-                                obj_path,
-                            )
-                        }
-                        (serde_json::Value::String(_), _) => FilterResult::operator_failed(
-                            operator,
-                            "value is not a string",
-                            filter_path,
-                            obj_path,
-                        ),
-                        _ => FilterResult::fatal_invalid_filter(
-                            format!("{} arg must be a string", operator),
-                            filter_path,
-                            obj_path,
-                        ),
-                    },
                     "$startsWith" => match (operator_arg, value) {
                         (
                             serde_json::Value::String(op_arg),
@@ -1028,22 +985,22 @@ impl CwJsonFilter {
                             serde_json::Value::Object(op_arg),
                             serde_json::Value::String(value_str),
                         ) => {
-                            let pattern = match op_arg.get("pattern") {
-                                Some(serde_json::Value::String(pattern)) => pattern,
+                            let substring = match op_arg.get("find") {
+                                Some(serde_json::Value::String(str)) => str,
                                 _ => {
                                     return FilterResult::fatal_invalid_filter(
-                                        format!("{} pattern must be a string", operator),
+                                        format!("{} find must be a string", operator),
                                         filter_path,
                                         obj_path,
                                     )
                                 }
                             };
 
-                            let replacement = match op_arg.get("replacement") {
-                                Some(serde_json::Value::String(replacement)) => replacement,
+                            let replace = match op_arg.get("replace") {
+                                Some(serde_json::Value::String(str)) => str,
                                 _ => {
                                     return FilterResult::fatal_invalid_filter(
-                                        format!("{} replacement must be a string", operator),
+                                        format!("{} replace must be a string", operator),
                                         filter_path,
                                         obj_path,
                                     )
@@ -1061,20 +1018,11 @@ impl CwJsonFilter {
                                 }
                             };
 
-                            let replaced =
-                                match self.regex_cache.borrow_mut().get_or_compile(pattern) {
-                                    Ok(regex) => regex.replace_all(value_str, replacement.as_str()),
-                                    Err(e) => {
-                                        return FilterResult::fatal_invalid_filter(
-                                            format!("invalid regex: {}", e),
-                                            filter_path,
-                                            obj_path,
-                                        )
-                                    }
-                                };
+                            let replaced = value_str.replace(substring, replace.as_str());
+
                             self.inner_matches(
                                 filter,
-                                Some(&serde_json::Value::String(replaced.into_owned())),
+                                Some(&serde_json::Value::String(replaced)),
                                 filter_path,
                                 obj_path,
                             )
@@ -1319,7 +1267,6 @@ impl CwJsonFilter {
                             obj_path,
                         ),
                     },
-
                     _ => FilterResult::fatal_unknown_operator(operator, filter_path, obj_path),
                 }
             }

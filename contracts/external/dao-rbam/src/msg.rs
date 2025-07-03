@@ -5,6 +5,7 @@ pub use cw_ownable::Ownership;
 use cw_ownable::{cw_ownable_execute, cw_ownable_query};
 use dao_interface::helpers::OptionalUpdate;
 use dao_interface::proposal::InfoResponse;
+use dao_interface::state::ModuleInstantiateInfo;
 
 use crate::action::{Action, ActionToExecute};
 use crate::role::{Authorization, Role};
@@ -15,10 +16,21 @@ pub struct InstantiateMsg {
     pub owner: Option<String>,
     /// The address of the DAO to execute actions on.
     pub dao: Option<String>,
+    /// The protobuf registry to use.
+    pub protobuf_registry: Option<ProtobufRegistry>,
     /// Whether the RBAM system starts enabled. Defaults to true.
     pub enabled: Option<bool>,
     /// Initial roles to create.
     pub initial_roles: Option<Vec<InitialRole>>,
+}
+
+#[cw_serde]
+pub enum ProtobufRegistry {
+    New(ModuleInstantiateInfo),
+    Existing {
+        /// The existing address of the protobuf registry.
+        address: String,
+    },
 }
 
 #[cw_serde]
@@ -62,6 +74,10 @@ pub enum ExecuteMsg {
     UpdateDao {
         /// The address of the DAO to execute actions on.
         dao: String,
+    },
+    /// Update the protobuf registry.
+    UpdateProtobufRegistry {
+        protobuf_registry: Option<ProtobufRegistry>,
     },
     /// Enable or disable the RBAM system globally
     SetEnabled {
@@ -135,25 +151,6 @@ pub enum ExecuteMsg {
         revoke: Vec<Assignment>,
     },
 
-    // Protobuf management
-    /// Register protobuf file descriptor sets.
-    RegisterProtobufs {
-        /// The protobuf file descriptor sets to register. This will override
-        /// existing files with the same names.
-        file_descriptor_sets: Vec<Vec<u8>>,
-    },
-    /// Unregister protobuf files and their message descriptors.
-    UnregisterProtobufs {
-        /// The names of the protobuf files to unregister.
-        file_names: Vec<String>,
-        /// The maximum number of message descriptors to unregister. If not
-        /// provided, it will attempt to unregister all message descriptors,
-        /// running out of gas if there are too many. If the limit is too low
-        /// such that we never progress to and delete the last file, it will
-        /// return an error.
-        message_limit: Option<u32>,
-    },
-
     // Action execution
     /// Execute actions on behalf of the DAO.
     ExecuteActions {
@@ -171,6 +168,8 @@ pub enum QueryMsg {
     Info {},
     #[returns(DaoResponse)]
     Dao {},
+    #[returns(ProtobufRegistryResponse)]
+    ProtobufRegistry {},
     #[returns(IsEnabledResponse)]
     IsEnabled {},
 
@@ -252,36 +251,6 @@ pub enum QueryMsg {
         /// from the beginning.
         start_after: Option<u64>,
         /// The maximum number of roles to return. Defaults to 10, max is 100.
-        limit: Option<u32>,
-    },
-
-    // Protobuf queries
-    #[returns(ListProtobufFilesResponse)]
-    ListProtobufFiles {
-        /// The file name to start after. If not provided, the query will start
-        /// from the beginning.
-        start_after: Option<String>,
-        /// The maximum number of files to return. Defaults to 10, max is 100.
-        limit: Option<u32>,
-    },
-    #[returns(ListProtobufMessagesResponse)]
-    ListProtobufMessages {
-        /// The message name to start after. If not provided, the query will
-        /// start from the beginning.
-        start_after: Option<String>,
-        /// The maximum number of messages to return. Defaults to 10, max is
-        /// 100.
-        limit: Option<u32>,
-    },
-    #[returns(ListProtobufMessagesResponse)]
-    ListProtobufMessagesByFile {
-        /// The file name to list messages for.
-        file_name: String,
-        /// The messages name to start after. If not provided, the query will
-        /// start from the beginning.
-        start_after: Option<String>,
-        /// The maximum number of messages to return. Defaults to 10, max is
-        /// 100.
         limit: Option<u32>,
     },
 
@@ -405,6 +374,12 @@ pub struct DaoResponse {
 }
 
 #[cw_serde]
+pub struct ProtobufRegistryResponse {
+    /// The address of the protobuf registry, if set.
+    pub protobuf_registry: Option<Addr>,
+}
+
+#[cw_serde]
 pub struct IsEnabledResponse {
     pub enabled: bool,
 }
@@ -447,16 +422,6 @@ pub struct ListAddressesWithRoleResponse {
 #[cw_serde]
 pub struct ListRolesForAddressResponse {
     pub role_ids: Vec<u64>,
-}
-
-#[cw_serde]
-pub struct ListProtobufFilesResponse {
-    pub files: Vec<String>,
-}
-
-#[cw_serde]
-pub struct ListProtobufMessagesResponse {
-    pub messages: Vec<String>,
 }
 
 #[cw_serde]

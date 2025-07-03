@@ -8,7 +8,7 @@ use prost_reflect::{
 use prost_types::{field_descriptor_proto, FieldDescriptorProto};
 
 use crate::{
-    state::{PROTOBUF_FILES, PROTOBUF_MESSAGES},
+    state::{FILES, MESSAGES},
     ContractError,
 };
 
@@ -25,7 +25,11 @@ pub fn create_file_descriptor_set_for_messages(
     let mut file_cache = HashMap::<String, FileDescriptorProto>::new();
 
     for message in messages {
-        let file_name = PROTOBUF_MESSAGES.load(deps.storage, message.clone())?;
+        let file_name = MESSAGES
+            .may_load(deps.storage, message.clone())?
+            .ok_or_else(|| ContractError::ProtobufMessageNotFound {
+                message: message.to_string(),
+            })?;
 
         // Load file and its dependency tree into cache.
         load_file_into_cache(deps, &file_name, &mut file_cache)?;
@@ -58,7 +62,7 @@ fn load_file_into_cache(
         }
 
         // Load file and its dependency tree into cache.
-        let file_data = PROTOBUF_FILES.load(deps.storage, file_name.clone())?;
+        let file_data = FILES.load(deps.storage, file_name.clone())?;
         let file_descriptor = FileDescriptorProto::decode(file_data.as_slice())?;
 
         // Add dependencies to stack for processing if not in cache.
@@ -89,6 +93,8 @@ struct DependencyToLoad {
     package: String,
     /// Name of the dependency.
     name: String,
+    /// Full name of the dependency.
+    full_name: String,
     /// Whether the dependency is a message (otherwise it is an enum).
     is_message: bool,
 }
@@ -102,6 +108,7 @@ impl DependencyToLoad {
                 file_name: file_name.to_string(),
                 package,
                 name,
+                full_name: full_name.to_string(),
                 is_message,
             }
         } else {
@@ -109,6 +116,7 @@ impl DependencyToLoad {
                 file_name: file_name.to_string(),
                 package: String::new(),
                 name: full_name.to_string(),
+                full_name: full_name.to_string(),
                 is_message,
             }
         }
@@ -188,7 +196,7 @@ impl DependencyToLoad {
                     .iter()
                     .find(|m| m.name.as_ref() == Some(&self.name))
                     .ok_or(ContractError::InternalError {
-                        msg: "message descriptor not found".to_string(),
+                        msg: format!("message descriptor not found for {}", self.full_name),
                     })?
                     .clone(),
             );
@@ -198,7 +206,7 @@ impl DependencyToLoad {
                     .iter()
                     .find(|e| e.name.as_ref() == Some(&self.name))
                     .ok_or(ContractError::InternalError {
-                        msg: "enum descriptor not found".to_string(),
+                        msg: format!("enum descriptor not found for {}", self.full_name),
                     })?
                     .clone(),
             );

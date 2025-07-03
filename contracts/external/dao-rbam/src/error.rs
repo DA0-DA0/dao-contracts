@@ -1,4 +1,5 @@
 use cosmwasm_std::StdError;
+use cw_utils::ParseReplyError;
 use prost_reflect::prost::DecodeError;
 use thiserror::Error;
 
@@ -19,8 +20,14 @@ pub enum ContractError {
     #[error(transparent)]
     Prost(#[from] DecodeError),
 
+    #[error(transparent)]
+    ParseReply(#[from] ParseReplyError),
+
     #[error("Unauthorized")]
     Unauthorized {},
+
+    #[error("Unknown reply ID: {id}")]
+    UnknownReplyID { id: u64 },
 
     #[error("JSON serialization error: {err}")]
     JsonSerialization { err: String },
@@ -73,45 +80,8 @@ pub enum ContractError {
     #[error("No more authorizations to check")]
     NoMoreAuthorizations {},
 
-    #[error("No files provided")]
-    NoFiles {},
-
-    #[error(
-        "File descriptor {file_descriptor_index} missing name in set {file_descriptor_set_index}"
-    )]
-    FileDescriptorMissingName {
-        file_descriptor_index: usize,
-        file_descriptor_set_index: usize,
-    },
-
-    #[error(
-        "File descriptor {file_descriptor_index} (name: {file_descriptor_name}) missing package in set {file_descriptor_set_index}"
-    )]
-    FileDescriptorMissingPackage {
-        file_descriptor_index: usize,
-        file_descriptor_name: String,
-        file_descriptor_set_index: usize,
-    },
-
-    #[error("File descriptor package changed from {file_package} to {new_file_package} for file {file_name}")]
-    FileDescriptorPackageChanged {
-        file_name: String,
-        file_package: String,
-        new_file_package: String,
-    },
-
-    #[error("Message descriptor {message_descriptor_index} missing name in file {file_name} (package: {file_package})")]
-    MessageDescriptorMissingName {
-        message_descriptor_index: usize,
-        file_name: String,
-        file_package: String,
-    },
-
-    #[error("Message limit reached before all files were unregistered ({unregistered}/{total}). Increase the limit or unregister fewer files.")]
-    ProtobufMessageLimitReached { unregistered: usize, total: usize },
-
-    #[error("Protobuf message `{message}` not registered")]
-    ProtobufMessageNotFound { message: String },
+    #[error("Missing protobuf registry")]
+    MissingProtobufRegistry {},
 
     #[error("Internal error: {msg}")]
     InternalError { msg: String },
