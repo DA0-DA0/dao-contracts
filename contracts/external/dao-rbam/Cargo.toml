@@ -31,8 +31,6 @@ serde_json = { workspace = true }
 cw2 = { workspace = true }
 cw-jsonfilter = { workspace = true }
 prost = { workspace = true }
-prost-derive = { workspace = true }
-prost-reflect = { workspace = true, features = ["serde"] }
 prost-types = { workspace = true }
 cw-protobuf-registry = { workspace = true, features = ["library"] }
 
@@ -44,3 +42,5 @@ dao-testing = { workspace = true }
 cw4 = { workspace = true }
 osmosis-std = { workspace = true }
 osmosis-std-derive = { workspace = true }
+prost-derive = { workspace = true }
+prost-reflect = { workspace = true, features = ["serde"] }

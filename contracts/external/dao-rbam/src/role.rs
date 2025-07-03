@@ -2,7 +2,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, CosmosMsg, Deps, DepsMut};
 use cw_jsonfilter::{get_protobuf_messages, CwJsonFilter, FilterResult};
 use prost::Message;
-use prost_reflect::prost_types::FileDescriptorSet;
+use prost_types::FileDescriptorSet;
 
 use crate::{
     helpers::{get_encoded_file_descriptor_set, get_next_id},

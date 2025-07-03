@@ -2,6 +2,8 @@ pub mod filter;
 pub mod math;
 pub mod protobuf;
 pub mod result;
+
+#[cfg(test)]
 mod test;
 
 pub use filter::CwJsonFilter;

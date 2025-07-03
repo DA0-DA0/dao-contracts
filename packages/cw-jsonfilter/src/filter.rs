@@ -1,4 +1,4 @@
-use base64::Engine as _;
+use base64::Engine;
 use prost_reflect::{prost_types::FileDescriptorSet, DescriptorPool, DynamicMessage};
 use serde_json::json;
 

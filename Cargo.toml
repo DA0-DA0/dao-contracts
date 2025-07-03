@@ -98,6 +98,7 @@ cw-hooks = { path = "./packages/cw-hooks", version = "2.7.1" }
 cw-jsonfilter = { path = "./packages/cw-jsonfilter", version = "2.7.1" }
 cw-paginate-storage = { path = "./packages/cw-paginate-storage", version = "2.7.1" }
 cw-payroll-factory = { path = "./contracts/external/cw-payroll-factory", version = "2.7.1" }
+cw-protobuf-registry = { path = "./contracts/external/cw-protobuf-registry", version = "2.7.1" }
 cw-snapshot-vector-map = { path = "./packages/cw-snapshot-vector-map", version = "2.7.1" }
 cw-stake-tracker = { path = "./packages/cw-stake-tracker", version = "2.7.1" }
 cw-token-swap = { path = "./contracts/external/cw-token-swap", version = "2.7.1" }

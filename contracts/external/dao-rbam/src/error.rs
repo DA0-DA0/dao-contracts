@@ -1,6 +1,6 @@
 use cosmwasm_std::StdError;
 use cw_utils::ParseReplyError;
-use prost_reflect::prost::DecodeError;
+use prost::DecodeError;
 use thiserror::Error;
 
 pub use cw_ownable::OwnershipError;
