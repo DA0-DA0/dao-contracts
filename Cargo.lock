@@ -1052,6 +1052,7 @@ version = "2.7.1"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-jsonfilter",
  "cw-multi-test",
  "cw-ownable",
  "cw-protobuf-registry",
@@ -1065,6 +1066,7 @@ dependencies = [
  "prost-types 0.12.3",
  "schemars",
  "serde",
+ "serde_json",
  "thiserror",
 ]
 

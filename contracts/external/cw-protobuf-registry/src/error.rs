@@ -64,6 +64,15 @@ pub enum ContractError {
 
     #[error("Internal error: {msg}")]
     InternalError { msg: String },
+
+    #[error("JSON serialization error: {err}")]
+    JsonSerialization { err: String },
+
+    #[error("Filter error: {err}")]
+    FilterError { err: String },
+
+    #[error("Message not allowed by filter: {err}")]
+    MsgNotAllowedByFilter { err: String },
 }
 
 impl From<ContractError> for String {

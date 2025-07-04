@@ -20,12 +20,14 @@ library = []
 cosmwasm-std = { workspace = true, features = ["cosmwasm_1_2"] }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
+cw-jsonfilter = { workspace = true }
 dao-interface = { workspace = true }
 thiserror = { workspace = true }
 cw-utils = { workspace = true }
 cw-ownable = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 cw2 = { workspace = true }
 prost = { workspace = true }
 prost-reflect = { workspace = true, features = ["serde"] }

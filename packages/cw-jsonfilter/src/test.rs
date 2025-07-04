@@ -709,10 +709,12 @@ fn implied_and() {
 #[test]
 fn nor_op() {
     let filter = json!({
-        "$nor": [
-            { "status": "banned" },
-            { "status": "suspended" }
-        ]
+        "$not": {
+            "$or": [
+                { "status": "banned" },
+                { "status": "suspended" }
+            ]
+        }
     });
 
     assert!(CwJsonFilter::check(&filter, &json!({"status": "active"})).is_pass());
@@ -801,56 +803,6 @@ fn between_exclusive_op() {
     // Boundaries should fail (exclusive)
     assert!(CwJsonFilter::check(&filter, &json!({"percentage": 0})).is_fail());
     assert!(CwJsonFilter::check(&filter, &json!({"percentage": 1})).is_fail());
-}
-
-#[test]
-fn empty_op() {
-    // Array
-    assert!(
-        CwJsonFilter::check(&json!({"tags": {"$empty": true}}), &json!({"tags": []})).is_pass()
-    );
-
-    assert!(CwJsonFilter::check(
-        &json!({"tags": {"$empty": false}}),
-        &json!({"tags": ["tag1"]})
-    )
-    .is_pass());
-
-    assert!(CwJsonFilter::check(
-        &json!({"tags": {"$empty": true}}),
-        &json!({"tags": ["tag1"]})
-    )
-    .is_fail());
-
-    // String
-    assert!(CwJsonFilter::check(
-        &json!({"description": {"$empty": true}}),
-        &json!({"description": ""})
-    )
-    .is_pass());
-
-    assert!(CwJsonFilter::check(
-        &json!({"description": {"$empty": false}}),
-        &json!({"description": "hello"})
-    )
-    .is_pass());
-
-    // Object
-    assert!(CwJsonFilter::check(
-        &json!({"metadata": {"$empty": true}}),
-        &json!({"metadata": {}})
-    )
-    .is_pass());
-
-    assert!(CwJsonFilter::check(
-        &json!({"metadata": {"$empty": false}}),
-        &json!({"metadata": {"key": "value"}})
-    )
-    .is_pass());
-
-    assert!(
-        CwJsonFilter::check(&json!({"value": {"$empty": true}}), &json!({"value": null})).is_fail()
-    );
 }
 
 #[test]

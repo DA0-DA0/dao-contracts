@@ -1,5 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
+use cosmwasm_std::CosmosMsg;
 pub use cw_ownable::Ownership;
 use cw_ownable::{cw_ownable_execute, cw_ownable_query};
 use dao_interface::proposal::InfoResponse;
@@ -72,6 +73,11 @@ pub enum QueryMsg {
         /// The messages to include in the file descriptor set.
         messages: Vec<String>,
     },
+    #[returns(TestFilterResponse)]
+    TestFilter {
+        filter: serde_json::Value,
+        msg: CosmosMsg,
+    },
 }
 
 #[cw_serde]
@@ -92,4 +98,13 @@ pub struct ListProtobufMessagesResponse {
 #[cw_serde]
 pub struct FileDescriptorSetResponse {
     pub file_descriptor_set: Vec<u8>,
+}
+
+#[cw_serde]
+pub enum TestFilterResponse {
+    Pass {},
+    Fail {
+        /// The reason for the filter failing.
+        reason: String,
+    },
 }

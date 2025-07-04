@@ -287,36 +287,6 @@ impl CwJsonFilter {
                     obj_path,
                 ),
             },
-            "$nor" => match operator_arg {
-                serde_json::Value::Array(nor_arg) => {
-                    for (i, sub_filter) in nor_arg.iter().enumerate() {
-                        let filter_path = &append_array_path(filter_path, i);
-                        match self.inner_matches(sub_filter, value, filter_path, obj_path) {
-                            // Early return failed on first success.
-                            FilterResult::Pass => {
-                                return FilterResult::operator_failed(
-                                    operator,
-                                    "a filter passed",
-                                    filter_path,
-                                    obj_path,
-                                )
-                            }
-                            // Ignore non-fatal errors.
-                            FilterResult::Fail(_) => continue,
-                            // Return fatal errors immediately.
-                            FilterResult::Fatal(e) => return FilterResult::Fatal(e),
-                        }
-                    }
-                    // Passes if all filters failed or there are no
-                    // filters.
-                    FilterResult::Pass
-                }
-                _ => FilterResult::fatal_invalid_filter(
-                    format!("{} arg must be an array", operator),
-                    filter_path,
-                    obj_path,
-                ),
-            },
             "$xor" => match operator_arg {
                 serde_json::Value::Array(xor_arg) => {
                     let mut passed = 0;
@@ -395,7 +365,7 @@ impl CwJsonFilter {
                         filter_path,
                         obj_path,
                     ),
-                    "$lt" => lt_json(value, operator_arg).map_or_else(
+                    "$lt" | "$lte" => lt_json(value, operator_arg).map_or_else(
                         || {
                             FilterResult::operator_failed(
                                 operator,
@@ -409,39 +379,19 @@ impl CwJsonFilter {
                         },
                         |lt| {
                             FilterResult::from_bool(
-                                lt,
+                                lt || (operator == "$lte" && value == operator_arg),
                                 operator,
-                                "value >= filter",
+                                if operator == "$lt" {
+                                    "value >= filter"
+                                } else {
+                                    "value > filter"
+                                },
                                 filter_path,
                                 obj_path,
                             )
                         },
                     ),
-                    // Check less than before equality to ensure JSON types are
-                    // compatible.
-                    "$lte" => lt_json(value, operator_arg).map_or_else(
-                        || {
-                            FilterResult::operator_failed(
-                                operator,
-                                format!(
-                                    "{} arg and value are not both numbers or both strings",
-                                    operator
-                                ),
-                                filter_path,
-                                obj_path,
-                            )
-                        },
-                        |lt| {
-                            FilterResult::from_bool(
-                                lt || value == operator_arg,
-                                operator,
-                                "value > filter",
-                                filter_path,
-                                obj_path,
-                            )
-                        },
-                    ),
-                    "$gt" => gt_json(value, operator_arg).map_or_else(
+                    "$gt" | "$gte" => gt_json(value, operator_arg).map_or_else(
                         || {
                             FilterResult::operator_failed(
                                 operator,
@@ -455,33 +405,13 @@ impl CwJsonFilter {
                         },
                         |gt| {
                             FilterResult::from_bool(
-                                gt,
+                                gt || (operator == "$gte" && value == operator_arg),
                                 operator,
-                                "value <= filter",
-                                filter_path,
-                                obj_path,
-                            )
-                        },
-                    ),
-                    // Check greater than before equality to ensure JSON types
-                    // are compatible.
-                    "$gte" => gt_json(value, operator_arg).map_or_else(
-                        || {
-                            FilterResult::operator_failed(
-                                operator,
-                                format!(
-                                    "{} arg and value are not both numbers or both strings",
-                                    operator
-                                ),
-                                filter_path,
-                                obj_path,
-                            )
-                        },
-                        |gt| {
-                            FilterResult::from_bool(
-                                gt || value == operator_arg,
-                                operator,
-                                "value < filter",
+                                if operator == "$gt" {
+                                    "value <= filter"
+                                } else {
+                                    "value < filter"
+                                },
                                 filter_path,
                                 obj_path,
                             )
@@ -519,42 +449,42 @@ impl CwJsonFilter {
                                 let inclusive = !operator.ends_with("_exclusive");
 
                                 let min_passes = match gt_json(value, min) {
-                                Some(true) => true,
-                                // If not greater than the min, check if
-                                // inclusive and equal to the min.
-                                Some(false) => inclusive && value == min,
-                                // If the types are incompatible, fail.
-                                None => {
-                                    return FilterResult::operator_failed(
-                                        operator,
-                                        format!(
-                                        "{} arg minimum and value are not both numbers or both strings",
-                                        operator
-                                    ),
-                                        filter_path,
-                                        obj_path,
-                                    )
-                                }
-                            };
+                                    Some(true) => true,
+                                    // If not greater than the min, check if
+                                    // inclusive and equal to the min.
+                                    Some(false) => inclusive && value == min,
+                                    // If the types are incompatible, fail.
+                                    None => {
+                                        return FilterResult::operator_failed(
+                                            operator,
+                                            format!(
+                                            "{} arg minimum and value are not both numbers or both strings",
+                                            operator
+                                        ),
+                                            filter_path,
+                                            obj_path,
+                                        )
+                                    }
+                                };
 
                                 let max_passes = match lt_json(value, max) {
-                                Some(true) => true,
-                                // If not less than the max, check if inclusive
-                                // and equal to the max.
-                                Some(false) => inclusive && value == max,
-                                // If the types are incompatible, fail.
-                                None => {
-                                    return FilterResult::operator_failed(
-                                        operator,
-                                        format!(
-                                        "{} arg maximum and value are not both numbers or both strings",
-                                        operator
-                                    ),
-                                        filter_path,
-                                        obj_path,
-                                    )
-                                }
-                            };
+                                    Some(true) => true,
+                                    // If not less than the max, check if inclusive
+                                    // and equal to the max.
+                                    Some(false) => inclusive && value == max,
+                                    // If the types are incompatible, fail.
+                                    None => {
+                                        return FilterResult::operator_failed(
+                                            operator,
+                                            format!(
+                                            "{} arg maximum and value are not both numbers or both strings",
+                                            operator
+                                        ),
+                                            filter_path,
+                                            obj_path,
+                                        )
+                                    }
+                                };
 
                                 FilterResult::from_bool(
                                     min_passes && max_passes,
@@ -582,55 +512,23 @@ impl CwJsonFilter {
                     }
                     "$type" => match operator_arg {
                         serde_json::Value::String(type_str) => {
-                            match type_str.to_lowercase().as_str() {
-                                "null" => FilterResult::from_bool(
-                                    value.is_null(),
-                                    operator,
-                                    "value is not null",
-                                    filter_path,
-                                    obj_path,
-                                ),
-                                "boolean" => FilterResult::from_bool(
-                                    value.is_boolean(),
-                                    operator,
-                                    "value is not a boolean",
-                                    filter_path,
-                                    obj_path,
-                                ),
-                                "number" => FilterResult::from_bool(
-                                    value.is_number(),
-                                    operator,
-                                    "value is not a number",
-                                    filter_path,
-                                    obj_path,
-                                ),
-                                "string" => FilterResult::from_bool(
-                                    value.is_string(),
-                                    operator,
-                                    "value is not a string",
-                                    filter_path,
-                                    obj_path,
-                                ),
-                                "array" => FilterResult::from_bool(
-                                    value.is_array(),
-                                    operator,
-                                    "value is not an array",
-                                    filter_path,
-                                    obj_path,
-                                ),
-                                "object" => FilterResult::from_bool(
-                                    value.is_object(),
-                                    operator,
-                                    "value is not an object",
-                                    filter_path,
-                                    obj_path,
-                                ),
-                                _ => FilterResult::fatal_invalid_filter(
-                                    format!("invalid type: `{}`", type_str),
-                                    filter_path,
-                                    obj_path,
-                                ),
-                            }
+                            let (check, reason) = match type_str.to_lowercase().as_str() {
+                                "null" => (value.is_null(), "value is not null"),
+                                "boolean" => (value.is_boolean(), "value is not a boolean"),
+                                "number" => (value.is_number(), "value is not a number"),
+                                "string" => (value.is_string(), "value is not a string"),
+                                "array" => (value.is_array(), "value is not an array"),
+                                "object" => (value.is_object(), "value is not an object"),
+                                _ => {
+                                    return FilterResult::fatal_invalid_filter(
+                                        format!("invalid type: `{}`", type_str),
+                                        filter_path,
+                                        obj_path,
+                                    );
+                                }
+                            };
+
+                            FilterResult::from_bool(check, operator, reason, filter_path, obj_path)
                         }
                         _ => FilterResult::fatal_invalid_filter(
                             format!("{} arg must be a string", operator),
@@ -673,55 +571,6 @@ impl CwJsonFilter {
                         _ => FilterResult::operator_failed(
                             operator,
                             "value not a string nor array",
-                            filter_path,
-                            obj_path,
-                        ),
-                    },
-                    "$empty" => match (operator_arg, value) {
-                        (serde_json::Value::Bool(empty), serde_json::Value::Array(value_list)) => {
-                            FilterResult::from_bool(
-                                *empty == value_list.is_empty(),
-                                operator,
-                                match value_list.is_empty() {
-                                    true => "value is empty",
-                                    false => "value is not empty",
-                                },
-                                filter_path,
-                                obj_path,
-                            )
-                        }
-                        (serde_json::Value::Bool(empty), serde_json::Value::Object(value_map)) => {
-                            FilterResult::from_bool(
-                                *empty == value_map.is_empty(),
-                                operator,
-                                match value_map.is_empty() {
-                                    true => "value is empty",
-                                    false => "value is not empty",
-                                },
-                                filter_path,
-                                obj_path,
-                            )
-                        }
-                        (serde_json::Value::Bool(empty), serde_json::Value::String(value_str)) => {
-                            FilterResult::from_bool(
-                                *empty == value_str.is_empty(),
-                                operator,
-                                match value_str.is_empty() {
-                                    true => "value is empty",
-                                    false => "value is not empty",
-                                },
-                                filter_path,
-                                obj_path,
-                            )
-                        }
-                        (serde_json::Value::Bool(_), _) => FilterResult::operator_failed(
-                            operator,
-                            "value not a string, array, or object",
-                            filter_path,
-                            obj_path,
-                        ),
-                        (_, _) => FilterResult::fatal_invalid_filter(
-                            format!("{} arg must be a boolean", operator),
                             filter_path,
                             obj_path,
                         ),
@@ -812,37 +661,22 @@ impl CwJsonFilter {
                     },
 
                     // String operators
-                    "$startsWith" => match (operator_arg, value) {
+                    "$startsWith" | "$endsWith" => match (operator_arg, value) {
                         (
                             serde_json::Value::String(op_arg),
                             serde_json::Value::String(value_str),
                         ) => FilterResult::from_bool(
-                            value_str.starts_with(op_arg),
+                            if operator == "$startsWith" {
+                                value_str.starts_with(op_arg)
+                            } else {
+                                value_str.ends_with(op_arg)
+                            },
                             operator,
-                            "value does not start with filter value",
-                            filter_path,
-                            obj_path,
-                        ),
-                        (serde_json::Value::String(_), _) => FilterResult::operator_failed(
-                            operator,
-                            "value is not a string",
-                            filter_path,
-                            obj_path,
-                        ),
-                        _ => FilterResult::fatal_invalid_filter(
-                            format!("{} arg must be a string", operator),
-                            filter_path,
-                            obj_path,
-                        ),
-                    },
-                    "$endsWith" => match (operator_arg, value) {
-                        (
-                            serde_json::Value::String(op_arg),
-                            serde_json::Value::String(value_str),
-                        ) => FilterResult::from_bool(
-                            value_str.ends_with(op_arg),
-                            operator,
-                            "value does not end with filter value",
+                            if operator == "$startsWith" {
+                                "value does not start with filter value"
+                            } else {
+                                "value does not end with filter value"
+                            },
                             filter_path,
                             obj_path,
                         ),
@@ -861,7 +695,12 @@ impl CwJsonFilter {
 
                     // Value transformers
                     "#len" | "#size" => match value.as_array().map_or_else(
-                        || value.as_str().map(|value_str| value_str.len()),
+                        || {
+                            value.as_str().map_or_else(
+                                || value.as_object().map(|value_obj| value_obj.len()),
+                                |value_str| Some(value_str.len()),
+                            )
+                        },
                         |value_array| Some(value_array.len()),
                     ) {
                         Some(len) => self.inner_matches(
@@ -872,7 +711,7 @@ impl CwJsonFilter {
                         ),
                         _ => FilterResult::operator_failed(
                             operator,
-                            "value is not a string nor array",
+                            "value is not a string, array, or object",
                             filter_path,
                             obj_path,
                         ),

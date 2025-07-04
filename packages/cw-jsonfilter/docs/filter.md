@@ -94,17 +94,6 @@ Chain multiple filters together. At least one must evaluate to `true`.
 }
 ```
 
-### `$nor`
-
-Chain multiple filters together. None must evaluate to `true` (opposite of
-`$or`).
-
-```json
-{
-  "$nor": [{ "status": "banned" }, { "status": "suspended" }]
-}
-```
-
 ### `$xor`
 
 Chain multiple filters together. Exactly one must evaluate to `true`.
@@ -137,22 +126,6 @@ is the same as:
 
 ```json
 { "key": "value" }
-```
-
-### `$ne` & `$neq`
-
-Evaluates to `true` if the value is not equal to the specified value.
-
-```json
-{ "key": { "$ne": "value" } }
-{ "key": { "$neq": "value" } }
-```
-
-is the same as:
-
-```json
-{ "key": { "$not": { "$eq": "value" } } }
-{ "key": { "$not": "value" } }
 ```
 
 ### `$lt` & `$lte`
@@ -228,16 +201,6 @@ For strings: Evaluates to `true` if the string contains the specified substring.
 { "tags": { "$contains": "programming" } }
 { "description": { "$contains": "rust" } }
 { "numbers": { "$in": 42 } }
-```
-
-### `$empty`
-
-Evaluates to `true` if the array, object, or string is empty.
-
-```json
-{ "tags": { "$empty": true } }
-{ "description": { "$empty": false } }
-{ "metadata": { "$empty": true } }
 ```
 
 ### `$overlap`

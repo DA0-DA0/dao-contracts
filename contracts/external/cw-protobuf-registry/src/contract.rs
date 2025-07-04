@@ -1,8 +1,10 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError, StdResult,
+    to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError,
+    StdResult,
 };
+use cw_jsonfilter::{get_protobuf_messages, CwJsonFilter, FilterResult};
 use cw_storage_plus::Bound;
 
 use cw2::set_contract_version;
@@ -16,7 +18,7 @@ use prost_types::FileDescriptorProto;
 use crate::error::ContractError;
 use crate::msg::{
     ExecuteMsg, FileDescriptorSetResponse, InstantiateMsg, ListProtobufFilesResponse,
-    ListProtobufMessagesResponse, MigrateMsg, QueryMsg,
+    ListProtobufMessagesResponse, MigrateMsg, QueryMsg, TestFilterResponse,
 };
 use crate::protobuf::create_file_descriptor_set_for_messages;
 use crate::state::{FILES, MESSAGES};
@@ -288,6 +290,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::FileDescriptorSet { messages } => {
             to_json_binary(&query_file_descriptor_set(deps, messages)?)
         }
+        QueryMsg::TestFilter { filter, msg } => {
+            to_json_binary(&query_test_filter(deps, filter, msg)?)
+        }
     }
 }
 
@@ -358,6 +363,62 @@ fn query_file_descriptor_set(
     Ok(FileDescriptorSetResponse {
         file_descriptor_set,
     })
+}
+
+fn query_test_filter(
+    deps: Deps,
+    filter: serde_json::Value,
+    msg: CosmosMsg,
+) -> StdResult<TestFilterResponse> {
+    // Get the protobuf messages referenced by the filter.
+    let protobuf_messages = get_protobuf_messages(&filter)
+        .into_iter()
+        .collect::<Vec<_>>();
+
+    // Query for the file descriptor set.
+    let file_descriptor_set = match protobuf_messages.is_empty() {
+        true => None,
+        false => Some(
+            create_file_descriptor_set_for_messages(&deps, &protobuf_messages)
+                .map_err(|e| StdError::generic_err(e.to_string()))?,
+        ),
+    };
+
+    let msg_value = serde_json::to_value(msg).map_err(|e| {
+        StdError::generic_err(ContractError::JsonSerialization { err: e.to_string() })
+    })?;
+
+    let fds = file_descriptor_set.map(|fd| vec![fd]).unwrap_or_default();
+    let result = CwJsonFilter::new(fds).matches(&filter, &msg_value);
+
+    let check = match result {
+        FilterResult::Pass => Ok(true),
+        FilterResult::Fail(error) => Err(ContractError::MsgNotAllowedByFilter {
+            err: error.to_string(),
+        }),
+        FilterResult::Fatal(error) => Err(ContractError::FilterError {
+            err: error.to_string(),
+        }),
+    };
+
+    // Handle filter errors appropriately.
+    let response = check.map_or_else(
+        |e| TestFilterResponse::Fail {
+            reason: e.to_string(),
+        },
+        |allowed| match allowed {
+            true => TestFilterResponse::Pass {},
+            // should never happen since ignore_filter_error is false
+            false => TestFilterResponse::Fail {
+                reason: ContractError::MsgNotAllowedByFilter {
+                    err: "unknown reason".to_string(),
+                }
+                .to_string(),
+            },
+        },
+    );
+
+    Ok(response)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
