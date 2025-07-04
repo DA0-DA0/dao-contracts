@@ -435,17 +435,11 @@ fn query_file_descriptor_set(
 fn query_decode(deps: Deps, message_name: String, value: Vec<u8>) -> StdResult<DecodeResponse> {
     let file_descriptor_set =
         create_file_descriptor_set_for_messages(&deps, &[message_name.clone()]).map_err(|e| {
-            StdError::generic_err(format!(
-                "failed to create file descriptor set: {}",
-                e.to_string()
-            ))
+            StdError::generic_err(format!("failed to create file descriptor set: {}", e))
         })?;
 
     let pool = DescriptorPool::from_file_descriptor_set(file_descriptor_set).map_err(|e| {
-        StdError::generic_err(format!(
-            "failed to create descriptor pool from FDS: {}",
-            e.to_string()
-        ))
+        StdError::generic_err(format!("failed to create descriptor pool from FDS: {}", e))
     })?;
 
     let message_descriptor = pool.get_message_by_name(&message_name).ok_or_else(|| {
@@ -461,7 +455,7 @@ fn query_decode(deps: Deps, message_name: String, value: Vec<u8>) -> StdResult<D
     let json = serde_json::to_value(message).map_err(|e| {
         StdError::generic_err(format!(
             "failed to serialize decoded protobuf value as JSON: {}",
-            e.to_string()
+            e
         ))
     })?;
 

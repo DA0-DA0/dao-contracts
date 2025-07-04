@@ -3,10 +3,11 @@ use serde_json::json;
 
 use crate::{gt_json, lt_json, FilterResult, BASE64_ENGINE};
 
+pub type ProtobufDecoder<'a> = dyn Fn(String, Vec<u8>) -> Result<serde_json::Value, String> + 'a;
+
 pub struct CwJsonFilter<'a> {
     /// Optional method to decode a protobuf message into JSON.
-    pub decode_protobuf:
-        Option<Box<dyn Fn(String, Vec<u8>) -> Result<serde_json::Value, String> + 'a>>,
+    pub decode_protobuf: Option<Box<ProtobufDecoder<'a>>>,
 }
 
 impl Default for CwJsonFilter<'_> {
@@ -19,11 +20,7 @@ impl<'a> CwJsonFilter<'a> {
     /// Create a new filter, optionally providing a protobuf decoder to use with
     /// the #proto/#stargate transformer. If not provided, the filter will not
     /// be able to use protobuf transformers.
-    pub fn new(
-        decode_protobuf: Option<
-            Box<dyn Fn(String, Vec<u8>) -> Result<serde_json::Value, String> + 'a>,
-        >,
-    ) -> Self {
+    pub fn new(decode_protobuf: Option<Box<ProtobufDecoder<'a>>>) -> Self {
         Self { decode_protobuf }
     }
 

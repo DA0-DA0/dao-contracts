@@ -459,6 +459,7 @@ fn execute_update_role(
         .add_attribute("role_name", role.name))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn execute_create_authorization(
     deps: DepsMut,
     info: MessageInfo,
@@ -493,6 +494,7 @@ fn execute_create_authorization(
         .add_attribute("authorization_name", authorization.name))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn execute_update_authorization(
     mut deps: DepsMut,
     info: MessageInfo,
@@ -1483,7 +1485,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             match msg.result.into_result() {
                 Err(reason) => {
                     // TODO: stop printing whole stacktrace? or maybe that's only in tests
-                    return Err(ContractError::ProtobufRegistryPrepareFailed { reason });
+                    Err(ContractError::ProtobufRegistryPrepareFailed { reason })
                 }
                 // Should not happen since we only reply on error.
                 Ok(_) => Ok(Response::default()),

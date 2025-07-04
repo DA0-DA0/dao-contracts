@@ -432,7 +432,7 @@ pub fn decode_protobuf(
     let pool = DescriptorPool::from_file_descriptor_set(fds).map_err(|e| {
         format!(
             "failed to create descriptor pool from file descriptor set: {}",
-            e.to_string()
+            e
         )
     })?;
 
@@ -445,14 +445,10 @@ pub fn decode_protobuf(
     })?;
 
     let dynamic_message = DynamicMessage::decode(message_descriptor, value.as_slice())
-        .map_err(|e| format!("failed to decode protobuf value: {}", e.to_string()))?;
+        .map_err(|e| format!("failed to decode protobuf value: {}", e))?;
 
-    let json = serde_json::to_value(dynamic_message).map_err(|e| {
-        format!(
-            "failed to serialize decoded protobuf value as JSON: {}",
-            e.to_string()
-        )
-    })?;
+    let json = serde_json::to_value(dynamic_message)
+        .map_err(|e| format!("failed to serialize decoded protobuf value as JSON: {}", e))?;
 
     Ok(json)
 }
