@@ -6,6 +6,9 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
+    "required": [
+      "filter_code_id"
+    ],
     "properties": {
       "dao": {
         "description": "The address of the DAO to execute actions on.",
@@ -19,6 +22,23 @@
         "type": [
           "boolean",
           "null"
+        ]
+      },
+      "filter_code_id": {
+        "description": "The filter code ID to instantiate.",
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
+      },
+      "filter_salt": {
+        "description": "The filter salt to use for instantiate2.",
+        "anyOf": [
+          {
+            "$ref": "#/definitions/Binary"
+          },
+          {
+            "type": "null"
+          }
         ]
       },
       "initial_roles": {
@@ -38,11 +58,20 @@
           "null"
         ]
       },
-      "protobuf_registry": {
-        "description": "The protobuf registry to use.",
+      "protobuf_registry_code_id": {
+        "description": "The protobuf registry code ID to instantiate.",
+        "type": [
+          "integer",
+          "null"
+        ],
+        "format": "uint64",
+        "minimum": 0.0
+      },
+      "protobuf_registry_salt": {
+        "description": "The protobuf registry salt to use for instantiate.",
         "anyOf": [
           {
-            "$ref": "#/definitions/ProtobufRegistry"
+            "$ref": "#/definitions/Binary"
           },
           {
             "type": "null"
@@ -52,65 +81,9 @@
     },
     "additionalProperties": false,
     "definitions": {
-      "Admin": {
-        "description": "Information about the CosmWasm level admin of a contract. Used in conjunction with `ModuleInstantiateInfo` to instantiate modules.",
-        "oneOf": [
-          {
-            "description": "Set the admin to a specified address.",
-            "type": "object",
-            "required": [
-              "address"
-            ],
-            "properties": {
-              "address": {
-                "type": "object",
-                "required": [
-                  "addr"
-                ],
-                "properties": {
-                  "addr": {
-                    "type": "string"
-                  }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "description": "Sets the admin as the core module address.",
-            "type": "object",
-            "required": [
-              "core_module"
-            ],
-            "properties": {
-              "core_module": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          }
-        ]
-      },
       "Binary": {
         "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
         "type": "string"
-      },
-      "Coin": {
-        "type": "object",
-        "required": [
-          "amount",
-          "denom"
-        ],
-        "properties": {
-          "amount": {
-            "$ref": "#/definitions/Uint128"
-          },
-          "denom": {
-            "type": "string"
-          }
-        }
       },
       "InitialAuthorization": {
         "type": "object",
@@ -138,6 +111,13 @@
           "name": {
             "description": "The name for the authorization.",
             "type": "string"
+          },
+          "skip_prepare": {
+            "description": "Optionally skip preparing the protobuf messages, if any. Defaults to false, meaning it will prepare the protobuf messages.",
+            "type": [
+              "boolean",
+              "null"
+            ]
           }
         },
         "additionalProperties": false
@@ -181,110 +161,6 @@
           }
         },
         "additionalProperties": false
-      },
-      "ModuleInstantiateInfo": {
-        "description": "Information needed to instantiate a module.",
-        "type": "object",
-        "required": [
-          "code_id",
-          "label",
-          "msg"
-        ],
-        "properties": {
-          "admin": {
-            "description": "CosmWasm level admin of the instantiated contract. See: <https://docs.cosmwasm.com/docs/1.0/smart-contracts/migration>",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Admin"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "code_id": {
-            "description": "Code ID of the contract to be instantiated.",
-            "type": "integer",
-            "format": "uint64",
-            "minimum": 0.0
-          },
-          "funds": {
-            "description": "Funds to be sent to the instantiated contract.",
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/definitions/Coin"
-            }
-          },
-          "label": {
-            "description": "Label for the instantiated contract.",
-            "type": "string"
-          },
-          "msg": {
-            "description": "Instantiate message to be used to create the contract.",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Binary"
-              }
-            ]
-          },
-          "salt": {
-            "description": "Salt to use with instantiate2, if defined. Otherwise uses normal instantiate.",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Binary"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "additionalProperties": false
-      },
-      "ProtobufRegistry": {
-        "oneOf": [
-          {
-            "type": "object",
-            "required": [
-              "new"
-            ],
-            "properties": {
-              "new": {
-                "$ref": "#/definitions/ModuleInstantiateInfo"
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "existing"
-            ],
-            "properties": {
-              "existing": {
-                "type": "object",
-                "required": [
-                  "address"
-                ],
-                "properties": {
-                  "address": {
-                    "description": "The existing address of the protobuf registry.",
-                    "type": "string"
-                  }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          }
-        ]
-      },
-      "Uint128": {
-        "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
-        "type": "string"
       }
     }
   },
@@ -316,7 +192,29 @@
         "additionalProperties": false
       },
       {
-        "description": "Update the protobuf registry.",
+        "description": "Update the filter contract.",
+        "type": "object",
+        "required": [
+          "update_filter"
+        ],
+        "properties": {
+          "update_filter": {
+            "type": "object",
+            "required": [
+              "filter"
+            ],
+            "properties": {
+              "filter": {
+                "$ref": "#/definitions/ModuleUpdate"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Update the protobuf registry contract.",
         "type": "object",
         "required": [
           "update_protobuf_registry"
@@ -328,7 +226,7 @@
               "protobuf_registry": {
                 "anyOf": [
                   {
-                    "$ref": "#/definitions/ProtobufRegistry"
+                    "$ref": "#/definitions/ModuleUpdate"
                   },
                   {
                     "type": "null"
@@ -360,6 +258,19 @@
               }
             },
             "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Execute actions on the protobuf registry contract (assuming this contract is the owner).",
+        "type": "object",
+        "required": [
+          "execute_protobuf_registry"
+        ],
+        "properties": {
+          "execute_protobuf_registry": {
+            "$ref": "#/definitions/ExecuteMsg"
           }
         },
         "additionalProperties": false
@@ -509,6 +420,13 @@
                 "type": "integer",
                 "format": "uint64",
                 "minimum": 0.0
+              },
+              "skip_prepare": {
+                "description": "Optionally skip preparing the protobuf messages, if any. Defaults to false, meaning it will prepare the protobuf messages.",
+                "type": [
+                  "boolean",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -564,6 +482,13 @@
                 "description": "Optionally update the name for the authorization.",
                 "type": [
                   "string",
+                  "null"
+                ]
+              },
+              "skip_prepare": {
+                "description": "Optionally skip preparing the protobuf messages, if they changed. Defaults to false, meaning it will prepare the protobuf messages.",
+                "type": [
+                  "boolean",
                   "null"
                 ]
               }
@@ -1048,6 +973,141 @@
         "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
         "type": "object"
       },
+      "ExecuteMsg": {
+        "oneOf": [
+          {
+            "description": "Register protobuf file descriptor sets.",
+            "type": "object",
+            "required": [
+              "register"
+            ],
+            "properties": {
+              "register": {
+                "type": "object",
+                "required": [
+                  "file_descriptor_sets"
+                ],
+                "properties": {
+                  "file_descriptor_sets": {
+                    "description": "The protobuf file descriptor sets to register. This will override existing files with the same names.",
+                    "type": "array",
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "format": "uint8",
+                        "minimum": 0.0
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Unregister protobuf files and their message descriptors.",
+            "type": "object",
+            "required": [
+              "unregister"
+            ],
+            "properties": {
+              "unregister": {
+                "type": "object",
+                "required": [
+                  "file_names"
+                ],
+                "properties": {
+                  "file_names": {
+                    "description": "The names of the protobuf files to unregister.",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "message_limit": {
+                    "description": "The maximum number of message descriptors to unregister. If not provided, it will attempt to unregister all message descriptors, running out of gas if there are too many. If the limit is too low such that we never progress to and delete the last file, it will return an error.",
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "format": "uint32",
+                    "minimum": 0.0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Prepare a file descriptor set for each message to make decoding faster.",
+            "type": "object",
+            "required": [
+              "prepare"
+            ],
+            "properties": {
+              "prepare": {
+                "type": "object",
+                "required": [
+                  "messages"
+                ],
+                "properties": {
+                  "messages": {
+                    "description": "The messages to prepare file descriptor sets for.",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Unprepare a file descriptor set for each message to clean up space.",
+            "type": "object",
+            "required": [
+              "unprepare"
+            ],
+            "properties": {
+              "unprepare": {
+                "type": "object",
+                "required": [
+                  "messages"
+                ],
+                "properties": {
+                  "messages": {
+                    "description": "The messages to unprepare file descriptor sets for.",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Update the contract's ownership. The `action` to be provided can be either to propose transferring ownership to an account, accept a pending ownership transfer, or renounce the ownership permanently.",
+            "type": "object",
+            "required": [
+              "update_ownership"
+            ],
+            "properties": {
+              "update_ownership": {
+                "$ref": "#/definitions/Action"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
       "Expiration": {
         "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
         "oneOf": [
@@ -1341,6 +1401,13 @@
           "name": {
             "description": "The name for the authorization.",
             "type": "string"
+          },
+          "skip_prepare": {
+            "description": "Optionally skip preparing the protobuf messages, if any. Defaults to false, meaning it will prepare the protobuf messages.",
+            "type": [
+              "boolean",
+              "null"
+            ]
           }
         },
         "additionalProperties": false
@@ -1407,29 +1474,8 @@
         },
         "additionalProperties": false
       },
-      "OptionalUpdate_for_AnyValue": {
-        "description": "An update type that allows partial updates of optional fields.",
-        "anyOf": [
-          {
-            "$ref": "#/definitions/Update_for_AnyValue"
-          },
-          {
-            "type": "null"
-          }
-        ]
-      },
-      "OptionalUpdate_for_String": {
-        "description": "An update type that allows partial updates of optional fields.",
-        "anyOf": [
-          {
-            "$ref": "#/definitions/Update_for_String"
-          },
-          {
-            "type": "null"
-          }
-        ]
-      },
-      "ProtobufRegistry": {
+      "ModuleUpdate": {
+        "description": "A module update, either a new module or an existing module.",
         "oneOf": [
           {
             "type": "object",
@@ -1456,7 +1502,7 @@
                 ],
                 "properties": {
                   "address": {
-                    "description": "The existing address of the protobuf registry.",
+                    "description": "The existing address of the module.",
                     "type": "string"
                   }
                 },
@@ -1464,6 +1510,28 @@
               }
             },
             "additionalProperties": false
+          }
+        ]
+      },
+      "OptionalUpdate_for_AnyValue": {
+        "description": "An update type that allows partial updates of optional fields.",
+        "anyOf": [
+          {
+            "$ref": "#/definitions/Update_for_AnyValue"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "OptionalUpdate_for_String": {
+        "description": "An update type that allows partial updates of optional fields.",
+        "anyOf": [
+          {
+            "$ref": "#/definitions/Update_for_String"
+          },
+          {
+            "type": "null"
           }
         ]
       },
@@ -1888,6 +1956,19 @@
         ],
         "properties": {
           "dao": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "filter"
+        ],
+        "properties": {
+          "filter": {
             "type": "object",
             "additionalProperties": false
           }
@@ -4469,6 +4550,26 @@
       ],
       "properties": {
         "dao": {
+          "$ref": "#/definitions/Addr"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        }
+      }
+    },
+    "filter": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FilterResponse",
+      "type": "object",
+      "required": [
+        "filter"
+      ],
+      "properties": {
+        "filter": {
           "$ref": "#/definitions/Addr"
         }
       },

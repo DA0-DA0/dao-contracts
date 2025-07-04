@@ -1,6 +1,5 @@
 use cosmwasm_std::StdError;
 use cw_utils::ParseReplyError;
-use prost::DecodeError;
 use thiserror::Error;
 
 pub use cw_ownable::OwnershipError;
@@ -18,9 +17,6 @@ pub enum ContractError {
     Ownership(#[from] OwnershipError),
 
     #[error(transparent)]
-    Prost(#[from] DecodeError),
-
-    #[error(transparent)]
     ParseReply(#[from] ParseReplyError),
 
     #[error("Unauthorized")]
@@ -28,9 +24,6 @@ pub enum ContractError {
 
     #[error("Unknown reply ID: {id}")]
     UnknownReplyID { id: u64 },
-
-    #[error("JSON serialization error: {err}")]
-    JsonSerialization { err: String },
 
     #[error("Filter error: {err}")]
     FilterError { err: String },
@@ -83,8 +76,8 @@ pub enum ContractError {
     #[error("Missing protobuf registry")]
     MissingProtobufRegistry {},
 
-    #[error("Internal error: {msg}")]
-    InternalError { msg: String },
+    #[error("Protobuf registry prepare failed: {reason}")]
+    ProtobufRegistryPrepareFailed { reason: String },
 }
 
 impl From<ContractError> for String {

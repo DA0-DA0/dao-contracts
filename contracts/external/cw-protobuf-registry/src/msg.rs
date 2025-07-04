@@ -1,6 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
-use cosmwasm_std::CosmosMsg;
 pub use cw_ownable::Ownership;
 use cw_ownable::{cw_ownable_execute, cw_ownable_query};
 use dao_interface::proposal::InfoResponse;
@@ -31,6 +30,16 @@ pub enum ExecuteMsg {
         /// such that we never progress to and delete the last file, it will
         /// return an error.
         message_limit: Option<u32>,
+    },
+    /// Prepare a file descriptor set for each message to make decoding faster.
+    Prepare {
+        /// The messages to prepare file descriptor sets for.
+        messages: Vec<String>,
+    },
+    /// Unprepare a file descriptor set for each message to clean up space.
+    Unprepare {
+        /// The messages to unprepare file descriptor sets for.
+        messages: Vec<String>,
     },
 }
 
@@ -68,15 +77,31 @@ pub enum QueryMsg {
         /// 100.
         limit: Option<u32>,
     },
+    #[returns(ListPreparedResponse)]
+    ListPrepared {
+        /// The message name to start after. If not provided, the query will
+        /// start from the beginning.
+        start_after: Option<String>,
+        /// The maximum number of messages to return. Defaults to 10, max is
+        /// 100.
+        limit: Option<u32>,
+    },
+    #[returns(PreparedResponse)]
+    Prepared {
+        /// The message name to check.
+        message_name: String,
+    },
     #[returns(FileDescriptorSetResponse)]
     FileDescriptorSet {
         /// The messages to include in the file descriptor set.
         messages: Vec<String>,
     },
-    #[returns(TestFilterResponse)]
-    TestFilter {
-        filter: serde_json::Value,
-        msg: CosmosMsg,
+    #[returns(DecodeResponse)]
+    Decode {
+        /// The name of the message to decode.
+        message_name: String,
+        /// The value to decode.
+        value: Vec<u8>,
     },
 }
 
@@ -96,15 +121,21 @@ pub struct ListProtobufMessagesResponse {
 }
 
 #[cw_serde]
+pub struct ListPreparedResponse {
+    pub messages: Vec<String>,
+}
+
+#[cw_serde]
+pub struct PreparedResponse {
+    pub prepared: bool,
+}
+
+#[cw_serde]
 pub struct FileDescriptorSetResponse {
     pub file_descriptor_set: Vec<u8>,
 }
 
 #[cw_serde]
-pub enum TestFilterResponse {
-    Pass {},
-    Fail {
-        /// The reason for the filter failing.
-        reason: String,
-    },
+pub struct DecodeResponse {
+    pub value: serde_json::Value,
 }

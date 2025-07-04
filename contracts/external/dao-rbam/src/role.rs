@@ -1,12 +1,11 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, CosmosMsg, Deps, DepsMut};
-use cw_jsonfilter::{get_protobuf_messages, CwJsonFilter, FilterResult};
-use prost::Message;
-use prost_types::FileDescriptorSet;
+use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Deps, DepsMut, SubMsg, WasmMsg};
+use cw_protobuf_registry::protobuf::get_protobuf_messages;
 
 use crate::{
-    helpers::{get_encoded_file_descriptor_set, get_next_id},
-    state::{ASSIGNMENTS, AUTHORIZATIONS, AUTHORIZATION_FILE_DESCRIPTOR_SETS, ROLES},
+    contract::PREPARE_PROTOBUF_REGISTRY_REPLY_ID,
+    helpers::get_next_id,
+    state::{ASSIGNMENTS, AUTHORIZATIONS, FILTER, PROTOBUF_REGISTRY, ROLES},
     ContractError,
 };
 
@@ -104,6 +103,8 @@ impl Role {
 }
 
 impl Authorization {
+    // The cosmos messages returned should be executed to prepare the protobuf
+    // messages for decoding.
     pub fn create(
         mut deps: DepsMut,
         role_id: u64,
@@ -111,7 +112,7 @@ impl Authorization {
         metadata: Option<String>,
         filter: Option<serde_json::Value>,
         enabled: bool,
-    ) -> Result<Authorization, ContractError> {
+    ) -> Result<(Authorization, Vec<SubMsg>), ContractError> {
         let mut authorization = Authorization {
             id: get_next_id(deps.branch())?,
             role_id,
@@ -121,11 +122,11 @@ impl Authorization {
             protobuf_messages: vec![],
             enabled,
         };
-        authorization.sync_protobuf_messages(&mut deps)?;
+        let messages = authorization.sync_protobuf_messages(&mut deps)?;
 
         AUTHORIZATIONS.save(deps.storage, authorization.id, &authorization)?;
 
-        Ok(authorization)
+        Ok((authorization, messages))
     }
 
     pub fn load(deps: &Deps, id: u64) -> Result<Authorization, ContractError> {
@@ -136,39 +137,38 @@ impl Authorization {
 
     /// Whether or not the filter allows the given message.
     ///
-    /// If `ignore_filter_error` is true, then the function will simply return
-    /// false when a filter error occurs as if the filter failed. Otherwise,
-    /// errors will be returned whenever a filter error occurs instead of
-    /// returning false.
-    ///
-    /// If `protobuf_messages` is provided, then the function will prepare the
-    /// specified protobuf messages for decoding. Otherwise, it will extract the
-    /// protobuf messages referenced by the filter.
+    /// If `ignore_filter_error` is true, the function will simply return false
+    /// when the filter errors as if it failed. Otherwise, specific errors will
+    /// be returned whenever a filter fails or errors, and the only Ok value
+    /// will be true if the filter passes.
     pub fn filter_allows(
-        filter: &serde_json::Value,
-        file_descriptor_set: Option<FileDescriptorSet>,
-        msg: &CosmosMsg,
+        deps: &Deps,
+        filter: serde_json::Value,
+        msg: CosmosMsg,
         ignore_filter_error: bool,
     ) -> Result<bool, ContractError> {
-        let msg_value = serde_json::to_value(msg)
-            .map_err(|e| ContractError::JsonSerialization { err: e.to_string() })?;
+        let filter_contract = FILTER.load(deps.storage)?;
 
-        let fds = file_descriptor_set.map(|fd| vec![fd]).unwrap_or_default();
-        let result = CwJsonFilter::new(fds).matches(filter, &msg_value);
+        let result = deps
+            .querier
+            .query_wasm_smart::<cw_filter::msg::FilterResponse>(
+                &filter_contract,
+                &cw_filter::msg::QueryMsg::Filter { filter, msg },
+            )?;
 
+        // Treat filter errors as failures, just returning a boolean.
         if ignore_filter_error {
-            // Treat filter errors as failures.
-            Ok(result.is_pass())
+            Ok(result == cw_filter::msg::FilterResponse::Pass {})
         } else {
-            // Pass through filter errors.
+            // Pass through errors, only returning true or an error.
             match result {
-                FilterResult::Pass => Ok(true),
-                FilterResult::Fail(error) => Err(ContractError::MsgNotAllowedByFilter {
-                    err: error.to_string(),
-                }),
-                FilterResult::Fatal(error) => Err(ContractError::FilterError {
-                    err: error.to_string(),
-                }),
+                cw_filter::msg::FilterResponse::Pass {} => Ok(true),
+                cw_filter::msg::FilterResponse::Fail { reason } => {
+                    Err(ContractError::MsgNotAllowedByFilter { err: reason })
+                }
+                cw_filter::msg::FilterResponse::Fatal { reason } => {
+                    Err(ContractError::FilterError { err: reason })
+                }
             }
         }
     }
@@ -178,11 +178,13 @@ impl Authorization {
         Ok(())
     }
 
-    /// Sync the protobuf messages referenced by the filter, ensuring that all
-    /// protobuf messages are registered, and compute the needed file descriptor
-    /// set. This is used when testing for message matches to provide the filter
-    /// with the necessary protobuf descriptors for decoding.
-    pub fn sync_protobuf_messages(&mut self, deps: &mut DepsMut) -> Result<(), ContractError> {
+    /// Sync the protobuf messages referenced by the filter and prepare them for
+    /// decoding. This is used when testing for message matches to provide the
+    /// filter with the necessary protobuf descriptors for decoding.
+    pub fn sync_protobuf_messages(
+        &mut self,
+        deps: &mut DepsMut,
+    ) -> Result<Vec<SubMsg>, ContractError> {
         if let Some(filter) = &self.filter {
             // Get the protobuf messages referenced by the filter.
             let protobuf_messages = get_protobuf_messages(filter)
@@ -191,29 +193,31 @@ impl Authorization {
 
             // If the protobuf messages haven't changed, do nothing.
             if protobuf_messages == self.protobuf_messages {
-                return Ok(());
+                return Ok(vec![]);
             }
 
             // Update the protobuf messages.
             self.protobuf_messages = protobuf_messages;
 
-            // If there are no protobuf messages, remove the file descriptor set
-            // if it exists. Otherwise, compute and save it.
-            match self.protobuf_messages.is_empty() {
-                true => {
-                    AUTHORIZATION_FILE_DESCRIPTOR_SETS.remove(deps.storage, self.id);
-                }
-                false => {
-                    // Query for and save the file descriptor set.
-                    let fds = get_encoded_file_descriptor_set(
-                        &deps.as_ref(),
-                        self.protobuf_messages.clone(),
-                    )?;
-                    AUTHORIZATION_FILE_DESCRIPTOR_SETS.save(deps.storage, self.id, &fds)?;
+            // If there are protobuf messages and the protobuf registry is
+            // registered, prepare them.
+            if !self.protobuf_messages.is_empty() {
+                if let Some(protobuf_registry) = PROTOBUF_REGISTRY.may_load(deps.storage)? {
+                    return Ok(vec![SubMsg::reply_on_error(
+                        WasmMsg::Execute {
+                            contract_addr: protobuf_registry.to_string(),
+                            msg: to_json_binary(&cw_protobuf_registry::msg::ExecuteMsg::Prepare {
+                                messages: self.protobuf_messages.clone(),
+                            })?,
+                            funds: vec![],
+                        },
+                        PREPARE_PROTOBUF_REGISTRY_REPLY_ID,
+                    )]);
                 }
             };
         }
-        Ok(())
+
+        Ok(vec![])
     }
 
     /// Whether or not the authorization allows the given message. If
@@ -224,22 +228,12 @@ impl Authorization {
     pub fn allows(
         &self,
         deps: &Deps,
-        msg: &CosmosMsg,
+        msg: CosmosMsg,
         ignore_filter_error: bool,
     ) -> Result<bool, ContractError> {
         match (&self.filter, ignore_filter_error) {
             (Some(filter), _) => {
-                let file_descriptor_set = if !self.protobuf_messages.is_empty() {
-                    Some(FileDescriptorSet::decode(
-                        AUTHORIZATION_FILE_DESCRIPTOR_SETS
-                            .load(deps.storage, self.id)?
-                            .as_slice(),
-                    )?)
-                } else {
-                    None
-                };
-
-                Authorization::filter_allows(filter, file_descriptor_set, msg, ignore_filter_error)
+                Authorization::filter_allows(deps, filter.clone(), msg, ignore_filter_error)
             }
             (None, true) => Ok(false),
             (None, false) => Err(ContractError::NoAuthorizationFilterSet {}),

@@ -1,5 +1,5 @@
 use cosmwasm_std::{Binary, CosmosMsg, StdError};
-use cw_jsonfilter::base64_encode_protobuf;
+use cw_protobuf_registry::protobuf::base64_encode_protobuf;
 use dao_testing::ADDR0;
 use osmosis_std_derive::CosmwasmExt;
 use prost::Message;

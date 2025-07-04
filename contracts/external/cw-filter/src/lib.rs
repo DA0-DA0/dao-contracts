@@ -3,7 +3,6 @@
 pub mod contract;
 mod error;
 pub mod msg;
-pub mod protobuf;
 pub mod state;
 
 #[cfg(test)]

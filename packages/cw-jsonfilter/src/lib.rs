@@ -1,6 +1,5 @@
 pub mod filter;
 pub mod math;
-pub mod protobuf;
 pub mod result;
 
 #[cfg(test)]
@@ -8,7 +7,6 @@ mod test;
 
 pub use filter::CwJsonFilter;
 pub use math::{gt_json, lt_json};
-pub use protobuf::{base64_encode_protobuf, get_protobuf_messages};
 pub use result::{FilterFailure, FilterFatalError, FilterResult};
 
 pub use prost_reflect;

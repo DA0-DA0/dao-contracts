@@ -1,22 +1,19 @@
 use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Timestamp};
 use cw4::Member;
 use cw_ownable::Action;
-use dao_interface::{
-    helpers::OptionalUpdate, proposal::InfoResponse, state::ModuleInstantiateInfo,
-};
+use dao_interface::{helpers::OptionalUpdate, proposal::InfoResponse, state::ModuleUpdate};
 use dao_rbam::ContractError;
 use dao_testing::{DaoTestingSuite, DaoTestingSuiteBase, ADDR0, ADDR1, ADDR2};
 
 use crate::{
     action::ActionToExecute,
     msg::{
-        ActionResponse, Assignment, AuthorizationResponse, DaoResponse, ExecuteMsg,
+        ActionResponse, Assignment, AuthorizationResponse, DaoResponse, ExecuteMsg, FilterResponse,
         InitialAuthorization, InitialRole, InstantiateMsg, IsAssignedRoleResponse,
         IsEnabledResponse, IsMsgAuthorizedByResponse, IsMsgAuthorizedByRoleResponse,
         IsMsgAuthorizedResponse, ListActionsResponse, ListAddressesWithRoleResponse,
         ListAssignmentsResponse, ListAuthorizationsResponse, ListRolesForAddressResponse,
-        ListRolesResponse, ProtobufRegistry, ProtobufRegistryResponse, QueryMsg, RoleResponse,
-        TestFilterResponse,
+        ListRolesResponse, QueryMsg, RoleResponse, TestFilterResponse,
     },
 };
 
@@ -59,6 +56,7 @@ impl SuiteBuilder {
             base,
             core_addr: dao.core_addr.clone(),
             rbam_addr: Addr::unchecked(""),
+            filter_addr: Addr::unchecked(""),
             protobuf_registry_addr: Addr::unchecked(""),
         };
 
@@ -78,17 +76,10 @@ impl SuiteBuilder {
                     msg: to_json_binary(&InstantiateMsg {
                         owner: None,
                         dao: None,
-                        protobuf_registry: Some(ProtobufRegistry::New(ModuleInstantiateInfo {
-                            code_id: suite.base.cw_protobuf_registry_id,
-                            msg: to_json_binary(&cw_protobuf_registry::msg::InstantiateMsg {
-                                owner: Some(suite.core_addr.to_string()),
-                            })
-                            .unwrap(),
-                            admin: Some(dao_interface::state::Admin::CoreModule {}),
-                            funds: None,
-                            label: "protobuf_registry".to_string(),
-                            salt: None,
-                        })),
+                        filter_code_id: suite.base.filter_id,
+                        filter_salt: None,
+                        protobuf_registry_code_id: Some(suite.base.protobuf_registry_id),
+                        protobuf_registry_salt: None,
                         enabled: None,
                         initial_roles: if self.initial_roles.is_empty() {
                             None
@@ -121,7 +112,18 @@ impl SuiteBuilder {
                 .clone(),
         );
 
-        suite.protobuf_registry_addr = suite.get_protobuf_registry().protobuf_registry.unwrap();
+        suite.filter_addr = suite.get_filter().filter;
+        suite.protobuf_registry_addr = suite
+            .base
+            .app
+            .wrap()
+            .query_wasm_smart::<cw_filter::msg::ProtobufRegistryResponse>(
+                suite.filter_addr.clone(),
+                &cw_filter::msg::QueryMsg::ProtobufRegistry {},
+            )
+            .unwrap()
+            .protobuf_registry
+            .unwrap();
 
         suite
     }
@@ -131,6 +133,7 @@ pub struct Suite {
     pub base: DaoTestingSuiteBase,
     pub core_addr: Addr,
     pub rbam_addr: Addr,
+    pub filter_addr: Addr,
     pub protobuf_registry_addr: Addr,
 }
 
@@ -160,11 +163,11 @@ impl Suite {
             .unwrap()
     }
 
-    pub fn get_protobuf_registry(&mut self) -> ProtobufRegistryResponse {
+    pub fn get_filter(&mut self) -> FilterResponse {
         self.base
             .app
             .wrap()
-            .query_wasm_smart(self.rbam_addr.clone(), &QueryMsg::ProtobufRegistry {})
+            .query_wasm_smart(self.rbam_addr.clone(), &QueryMsg::Filter {})
             .unwrap()
     }
 
@@ -546,9 +549,9 @@ impl Suite {
         assert_eq!(response.enabled, expected);
     }
 
-    pub fn assert_protobuf_registry(&mut self, expected: Option<Addr>) {
-        let response = self.get_protobuf_registry();
-        assert_eq!(response.protobuf_registry, expected);
+    pub fn assert_filter(&mut self, expected: Addr) {
+        let response = self.get_filter();
+        assert_eq!(response.filter, expected);
     }
 
     pub fn assert_role_name(&mut self, id: u64, expected_name: &str) {
@@ -767,6 +770,32 @@ impl Suite {
         );
     }
 
+    pub fn execute_protobuf_registry(
+        &mut self,
+        sender: impl Into<String>,
+        msg: cw_protobuf_registry::msg::ExecuteMsg,
+    ) {
+        self.base.execute_smart_ok(
+            sender,
+            &self.rbam_addr,
+            &ExecuteMsg::ExecuteProtobufRegistry(msg),
+            &[],
+        );
+    }
+
+    pub fn execute_protobuf_registry_err(
+        &mut self,
+        sender: impl Into<String>,
+        msg: cw_protobuf_registry::msg::ExecuteMsg,
+    ) -> cw_protobuf_registry::ContractError {
+        self.base.execute_smart_err(
+            sender,
+            &self.rbam_addr,
+            &ExecuteMsg::ExecuteProtobufRegistry(msg),
+            &[],
+        )
+    }
+
     pub fn create_role(
         &mut self,
         sender: impl Into<String>,
@@ -842,6 +871,7 @@ impl Suite {
                 metadata,
                 filter,
                 enabled,
+                skip_prepare: None,
             },
             &[],
         );
@@ -878,6 +908,7 @@ impl Suite {
                 metadata,
                 filter,
                 enabled,
+                skip_prepare: None,
             },
             &[],
         );
@@ -898,13 +929,11 @@ impl Suite {
         sender: impl Into<String>,
         file_descriptor_sets: Vec<Vec<u8>>,
     ) {
-        self.base.execute_smart_ok(
+        self.execute_protobuf_registry(
             sender,
-            &self.protobuf_registry_addr,
-            &cw_protobuf_registry::msg::ExecuteMsg::Register {
+            cw_protobuf_registry::msg::ExecuteMsg::Register {
                 file_descriptor_sets,
             },
-            &[],
         );
     }
 
@@ -914,14 +943,12 @@ impl Suite {
         file_names: Vec<String>,
         message_limit: Option<u32>,
     ) {
-        self.base.execute_smart_ok(
+        self.execute_protobuf_registry(
             sender,
-            &self.protobuf_registry_addr,
-            &cw_protobuf_registry::msg::ExecuteMsg::Unregister {
+            cw_protobuf_registry::msg::ExecuteMsg::Unregister {
                 file_names,
                 message_limit,
             },
-            &[],
         );
     }
 
@@ -958,15 +985,11 @@ impl Suite {
             .execute_smart_ok(sender, &self.rbam_addr, &ExecuteMsg::UpdateDao { dao }, &[]);
     }
 
-    pub fn update_protobuf_registry(
-        &mut self,
-        sender: impl Into<String>,
-        protobuf_registry: Option<ProtobufRegistry>,
-    ) {
+    pub fn update_filter(&mut self, sender: impl Into<String>, filter: ModuleUpdate) {
         self.base.execute_smart_ok(
             sender,
             &self.rbam_addr,
-            &ExecuteMsg::UpdateProtobufRegistry { protobuf_registry },
+            &ExecuteMsg::UpdateFilter { filter },
             &[],
         );
     }
@@ -1022,6 +1045,7 @@ impl Suite {
                 metadata,
                 filter,
                 enabled,
+                skip_prepare: None,
             },
             &[],
         )
@@ -1051,14 +1075,12 @@ impl Suite {
         file_names: Vec<String>,
         message_limit: Option<u32>,
     ) -> cw_protobuf_registry::ContractError {
-        self.base.execute_smart_err(
+        self.execute_protobuf_registry_err(
             sender,
-            &self.protobuf_registry_addr,
-            &cw_protobuf_registry::msg::ExecuteMsg::Unregister {
+            cw_protobuf_registry::msg::ExecuteMsg::Unregister {
                 file_names,
                 message_limit,
             },
-            &[],
         )
     }
 

@@ -1,16 +1,21 @@
-use cw_jsonfilter::{base64_encode_protobuf, CwJsonFilter, FilterResult};
-use prost_reflect::{prost::Message, prost_types::FileDescriptorSet};
+use cw_jsonfilter::{CwJsonFilter, FilterResult};
+use cw_protobuf_registry::protobuf::{base64_encode_protobuf, decode_protobuf};
+use prost_reflect::{prost::Message, prost_types::FileDescriptorSet, DescriptorPool};
 use serde_json::{json, Value};
 
 fn main() {
     let crate_root = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
     let proto_path = std::path::Path::new(&crate_root).join("proto/string_bool_value.pb");
 
-    let file_descriptor_sets =
-        vec![FileDescriptorSet::decode(std::fs::read(proto_path).unwrap().as_slice()).unwrap()];
+    let file_descriptor_set =
+        FileDescriptorSet::decode(std::fs::read(proto_path).unwrap().as_slice()).unwrap();
+    let pool = DescriptorPool::from_file_descriptor_set(file_descriptor_set.clone()).unwrap();
 
-    let cwjf = CwJsonFilter::new(file_descriptor_sets);
-    let pool = cwjf.pool.clone().unwrap();
+    let cwjf = CwJsonFilter::new(Some(Box::new(
+        move |message_name: String, value: Vec<u8>| {
+            decode_protobuf(file_descriptor_set.clone(), message_name, value)
+        },
+    )));
 
     // String filter
 

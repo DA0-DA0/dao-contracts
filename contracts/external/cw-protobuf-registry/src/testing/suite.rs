@@ -7,8 +7,8 @@ use prost::Message;
 use prost_types::FileDescriptorSet;
 
 use crate::msg::{
-    ExecuteMsg, FileDescriptorSetResponse, InstantiateMsg, ListProtobufFilesResponse,
-    ListProtobufMessagesResponse, QueryMsg,
+    DecodeResponse, ExecuteMsg, FileDescriptorSetResponse, InstantiateMsg, ListPreparedResponse,
+    ListProtobufFilesResponse, ListProtobufMessagesResponse, PreparedResponse, QueryMsg,
 };
 
 pub struct SuiteBuilder {}
@@ -21,7 +21,7 @@ impl SuiteBuilder {
     pub fn build(self) -> Suite {
         let mut suite = Suite {
             base: DaoTestingSuiteBase::base(),
-            rbam_protobuf_addr: Addr::unchecked(""),
+            registry_addr: Addr::unchecked(""),
         };
 
         // start at 0 height and time
@@ -31,12 +31,12 @@ impl SuiteBuilder {
         });
 
         // initialize the contract
-        suite.rbam_protobuf_addr = suite.base.instantiate(
-            suite.base.cw_protobuf_registry_id,
+        suite.registry_addr = suite.base.instantiate(
+            suite.base.protobuf_registry_id,
             OWNER,
             &InstantiateMsg { owner: None },
             &[],
-            "rbam-protobuf",
+            "protobuf-registry",
             None,
         );
 
@@ -46,7 +46,7 @@ impl SuiteBuilder {
 
 pub struct Suite {
     pub base: DaoTestingSuiteBase,
-    pub rbam_protobuf_addr: Addr,
+    pub registry_addr: Addr,
 }
 
 // SUITE QUERIES
@@ -55,7 +55,7 @@ impl Suite {
         self.base
             .app
             .wrap()
-            .query_wasm_smart(self.rbam_protobuf_addr.clone(), &QueryMsg::Ownership {})
+            .query_wasm_smart(self.registry_addr.clone(), &QueryMsg::Ownership {})
             .unwrap()
     }
 
@@ -63,7 +63,7 @@ impl Suite {
         self.base
             .app
             .wrap()
-            .query_wasm_smart(self.rbam_protobuf_addr.clone(), &QueryMsg::Info {})
+            .query_wasm_smart(self.registry_addr.clone(), &QueryMsg::Info {})
             .unwrap()
     }
 
@@ -76,7 +76,7 @@ impl Suite {
             .app
             .wrap()
             .query_wasm_smart(
-                self.rbam_protobuf_addr.clone(),
+                self.registry_addr.clone(),
                 &QueryMsg::ListFiles { start_after, limit },
             )
             .unwrap()
@@ -91,7 +91,7 @@ impl Suite {
             .app
             .wrap()
             .query_wasm_smart(
-                self.rbam_protobuf_addr.clone(),
+                self.registry_addr.clone(),
                 &QueryMsg::ListMessages { start_after, limit },
             )
             .unwrap()
@@ -107,7 +107,7 @@ impl Suite {
             .app
             .wrap()
             .query_wasm_smart(
-                self.rbam_protobuf_addr.clone(),
+                self.registry_addr.clone(),
                 &QueryMsg::ListMessagesByFile {
                     file_name,
                     start_after,
@@ -117,13 +117,67 @@ impl Suite {
             .unwrap()
     }
 
+    pub fn list_prepared(
+        &mut self,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    ) -> ListPreparedResponse {
+        self.base
+            .app
+            .wrap()
+            .query_wasm_smart(
+                self.registry_addr.clone(),
+                &QueryMsg::ListPrepared { start_after, limit },
+            )
+            .unwrap()
+    }
+
+    pub fn prepared(&mut self, message_name: String) -> PreparedResponse {
+        self.base
+            .app
+            .wrap()
+            .query_wasm_smart(
+                self.registry_addr.clone(),
+                &QueryMsg::Prepared { message_name },
+            )
+            .unwrap()
+    }
+
+    pub fn decode(&mut self, message_name: impl Into<String>, value: Vec<u8>) -> DecodeResponse {
+        self.base
+            .app
+            .wrap()
+            .query_wasm_smart(
+                self.registry_addr.clone(),
+                &QueryMsg::Decode {
+                    message_name: message_name.into(),
+                    value,
+                },
+            )
+            .unwrap()
+    }
+
+    pub fn decode_err(&mut self, message_name: impl Into<String>, value: Vec<u8>) -> StdError {
+        self.base
+            .app
+            .wrap()
+            .query_wasm_smart::<DecodeResponse>(
+                self.registry_addr.clone(),
+                &QueryMsg::Decode {
+                    message_name: message_name.into(),
+                    value,
+                },
+            )
+            .unwrap_err()
+    }
+
     pub fn file_descriptor_set(&mut self, messages: Vec<String>) -> FileDescriptorSet {
         let response: FileDescriptorSetResponse = self
             .base
             .app
             .wrap()
             .query_wasm_smart(
-                self.rbam_protobuf_addr.clone(),
+                self.registry_addr.clone(),
                 &QueryMsg::FileDescriptorSet { messages },
             )
             .unwrap();
@@ -136,7 +190,7 @@ impl Suite {
             .app
             .wrap()
             .query_wasm_smart::<FileDescriptorSetResponse>(
-                self.rbam_protobuf_addr.clone(),
+                self.registry_addr.clone(),
                 &QueryMsg::FileDescriptorSet { messages },
             )
             .unwrap_err()
@@ -159,10 +213,49 @@ impl Suite {
         let response = self.list_protobuf_messages_by_file(file_name.to_string(), None, None);
         assert_eq!(response.messages, expected);
     }
+
+    pub fn assert_prepared(&mut self, message_name: &str, expected: bool) {
+        let response = self.prepared(message_name.to_string());
+        assert_eq!(response.prepared, expected);
+    }
+
+    pub fn assert_list_prepared(&mut self, expected: Vec<String>) {
+        let response = self.list_prepared(None, None);
+        assert_eq!(response.messages, expected);
+    }
+
+    pub fn assert_decode(
+        &mut self,
+        message_name: &str,
+        value: Vec<u8>,
+        expected: serde_json::Value,
+    ) {
+        let response = self.decode(message_name.to_string(), value);
+        assert_eq!(response.value, expected);
+    }
 }
 
 // SUITE ACTIONS
 impl Suite {
+    pub fn update_owner(&mut self, old_owner: impl Into<String>, new_owner: impl Into<String>) {
+        let new_owner = new_owner.into();
+
+        let msg = ExecuteMsg::UpdateOwnership(Action::TransferOwnership {
+            new_owner: new_owner.clone(),
+            expiry: None,
+        });
+
+        self.base
+            .execute_smart_ok(old_owner, &self.registry_addr, &msg, &[]);
+
+        self.base.execute_smart_ok(
+            new_owner,
+            &self.registry_addr,
+            &ExecuteMsg::UpdateOwnership(Action::AcceptOwnership {}),
+            &[],
+        );
+    }
+
     pub fn register_protobufs(
         &mut self,
         sender: impl Into<String>,
@@ -170,7 +263,7 @@ impl Suite {
     ) {
         self.base.execute_smart_ok(
             sender,
-            &self.rbam_protobuf_addr,
+            &self.registry_addr,
             &ExecuteMsg::Register {
                 file_descriptor_sets,
             },
@@ -186,30 +279,11 @@ impl Suite {
     ) {
         self.base.execute_smart_ok(
             sender,
-            &self.rbam_protobuf_addr,
+            &self.registry_addr,
             &ExecuteMsg::Unregister {
                 file_names,
                 message_limit,
             },
-            &[],
-        );
-    }
-
-    pub fn update_owner(&mut self, old_owner: impl Into<String>, new_owner: impl Into<String>) {
-        let new_owner = new_owner.into();
-
-        let msg = ExecuteMsg::UpdateOwnership(Action::TransferOwnership {
-            new_owner: new_owner.clone(),
-            expiry: None,
-        });
-
-        self.base
-            .execute_smart_ok(old_owner, &self.rbam_protobuf_addr, &msg, &[]);
-
-        self.base.execute_smart_ok(
-            new_owner,
-            &self.rbam_protobuf_addr,
-            &ExecuteMsg::UpdateOwnership(Action::AcceptOwnership {}),
             &[],
         );
     }
@@ -222,12 +296,30 @@ impl Suite {
     ) -> ContractError {
         self.base.execute_smart_err(
             sender,
-            &self.rbam_protobuf_addr,
+            &self.registry_addr,
             &ExecuteMsg::Unregister {
                 file_names,
                 message_limit,
             },
             &[],
         )
+    }
+
+    pub fn prepare(&mut self, sender: impl Into<String>, messages: Vec<String>) {
+        self.base.execute_smart_ok(
+            sender,
+            &self.registry_addr,
+            &ExecuteMsg::Prepare { messages },
+            &[],
+        );
+    }
+
+    pub fn unprepare(&mut self, sender: impl Into<String>, messages: Vec<String>) {
+        self.base.execute_smart_ok(
+            sender,
+            &self.registry_addr,
+            &ExecuteMsg::Unprepare { messages },
+            &[],
+        );
     }
 }

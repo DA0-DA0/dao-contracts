@@ -1,11 +1,11 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
-use cosmwasm_std::{Addr, CosmosMsg};
+use cosmwasm_std::{Addr, Binary, CosmosMsg};
 pub use cw_ownable::Ownership;
 use cw_ownable::{cw_ownable_execute, cw_ownable_query};
 use dao_interface::helpers::OptionalUpdate;
 use dao_interface::proposal::InfoResponse;
-use dao_interface::state::ModuleInstantiateInfo;
+use dao_interface::state::ModuleUpdate;
 
 use crate::action::{Action, ActionToExecute};
 use crate::role::{Authorization, Role};
@@ -16,21 +16,18 @@ pub struct InstantiateMsg {
     pub owner: Option<String>,
     /// The address of the DAO to execute actions on.
     pub dao: Option<String>,
-    /// The protobuf registry to use.
-    pub protobuf_registry: Option<ProtobufRegistry>,
+    /// The filter code ID to instantiate.
+    pub filter_code_id: u64,
+    /// The filter salt to use for instantiate2.
+    pub filter_salt: Option<Binary>,
+    /// The protobuf registry code ID to instantiate.
+    pub protobuf_registry_code_id: Option<u64>,
+    /// The protobuf registry salt to use for instantiate.
+    pub protobuf_registry_salt: Option<Binary>,
     /// Whether the RBAM system starts enabled. Defaults to true.
     pub enabled: Option<bool>,
     /// Initial roles to create.
     pub initial_roles: Option<Vec<InitialRole>>,
-}
-
-#[cw_serde]
-pub enum ProtobufRegistry {
-    New(ModuleInstantiateInfo),
-    Existing {
-        /// The existing address of the protobuf registry.
-        address: String,
-    },
 }
 
 #[cw_serde]
@@ -55,6 +52,9 @@ pub struct InitialAuthorization {
     pub filter: Option<serde_json::Value>,
     /// Optionally set whether the authorization is enabled.
     pub enabled: Option<bool>,
+    /// Optionally skip preparing the protobuf messages, if any. Defaults to
+    /// false, meaning it will prepare the protobuf messages.
+    pub skip_prepare: Option<bool>,
 }
 
 #[cw_serde]
@@ -75,15 +75,20 @@ pub enum ExecuteMsg {
         /// The address of the DAO to execute actions on.
         dao: String,
     },
-    /// Update the protobuf registry.
+    /// Update the filter contract.
+    UpdateFilter { filter: ModuleUpdate },
+    /// Update the protobuf registry contract.
     UpdateProtobufRegistry {
-        protobuf_registry: Option<ProtobufRegistry>,
+        protobuf_registry: Option<ModuleUpdate>,
     },
     /// Enable or disable the RBAM system globally
     SetEnabled {
         /// Whether actions are allowed to be executed.
         enabled: bool,
     },
+    /// Execute actions on the protobuf registry contract (assuming this
+    /// contract is the owner).
+    ExecuteProtobufRegistry(cw_protobuf_registry::msg::ExecuteMsg),
 
     // Role management
     /// Create a new role.
@@ -124,6 +129,9 @@ pub enum ExecuteMsg {
         filter: Option<serde_json::Value>,
         /// Optionally set whether the authorization is enabled.
         enabled: Option<bool>,
+        /// Optionally skip preparing the protobuf messages, if any. Defaults to
+        /// false, meaning it will prepare the protobuf messages.
+        skip_prepare: Option<bool>,
     },
     /// Update an authorization.
     UpdateAuthorization {
@@ -137,6 +145,9 @@ pub enum ExecuteMsg {
         filter: OptionalUpdate<serde_json::Value>,
         /// Optionally update whether the authorization is enabled.
         enabled: Option<bool>,
+        /// Optionally skip preparing the protobuf messages, if they changed.
+        /// Defaults to false, meaning it will prepare the protobuf messages.
+        skip_prepare: Option<bool>,
     },
 
     // Assignment management
@@ -168,6 +179,8 @@ pub enum QueryMsg {
     Info {},
     #[returns(DaoResponse)]
     Dao {},
+    #[returns(FilterResponse)]
+    Filter {},
     #[returns(ProtobufRegistryResponse)]
     ProtobufRegistry {},
     #[returns(IsEnabledResponse)]
@@ -368,9 +381,15 @@ pub enum QueryMsg {
 pub struct MigrateMsg {}
 
 // Response types
+
 #[cw_serde]
 pub struct DaoResponse {
     pub dao: Addr,
+}
+
+#[cw_serde]
+pub struct FilterResponse {
+    pub filter: Addr,
 }
 
 #[cw_serde]

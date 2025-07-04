@@ -1,10 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError,
-    StdResult,
+    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError, StdResult,
 };
-use cw_jsonfilter::{get_protobuf_messages, CwJsonFilter, FilterResult};
 use cw_storage_plus::Bound;
 
 use cw2::set_contract_version;
@@ -13,15 +11,17 @@ use cw_utils::nonpayable;
 use dao_interface::proposal::InfoResponse;
 use prost_reflect::prost::Message;
 use prost_reflect::prost_types::FileDescriptorSet;
+use prost_reflect::{DescriptorPool, DynamicMessage};
 use prost_types::FileDescriptorProto;
 
 use crate::error::ContractError;
 use crate::msg::{
-    ExecuteMsg, FileDescriptorSetResponse, InstantiateMsg, ListProtobufFilesResponse,
-    ListProtobufMessagesResponse, MigrateMsg, QueryMsg, TestFilterResponse,
+    DecodeResponse, ExecuteMsg, FileDescriptorSetResponse, InstantiateMsg, ListPreparedResponse,
+    ListProtobufFilesResponse, ListProtobufMessagesResponse, MigrateMsg, PreparedResponse,
+    QueryMsg,
 };
 use crate::protobuf::create_file_descriptor_set_for_messages;
-use crate::state::{FILES, MESSAGES};
+use crate::state::{FILES, MESSAGES, PREPARED};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-protobuf-registry";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -68,6 +68,8 @@ pub fn execute(
             file_names,
             message_limit,
         } => execute_unregister_protobufs(deps, info, file_names, message_limit),
+        ExecuteMsg::Prepare { messages } => execute_prepare(deps, info, messages),
+        ExecuteMsg::Unprepare { messages } => execute_unprepare(deps, info, messages),
     }
 }
 
@@ -266,6 +268,36 @@ fn execute_unregister_protobufs(
         ))
 }
 
+fn execute_prepare(
+    deps: DepsMut,
+    info: MessageInfo,
+    messages: Vec<String>,
+) -> Result<Response, ContractError> {
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    for message in messages {
+        let fds = create_file_descriptor_set_for_messages(&deps.as_ref(), &[message.clone()])?
+            .encode_to_vec();
+        PREPARED.save(deps.storage, message, &fds)?;
+    }
+
+    Ok(Response::new().add_attribute("action", "prepare"))
+}
+
+fn execute_unprepare(
+    deps: DepsMut,
+    info: MessageInfo,
+    messages: Vec<String>,
+) -> Result<Response, ContractError> {
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    for message in messages {
+        PREPARED.remove(deps.storage, message);
+    }
+
+    Ok(Response::new().add_attribute("action", "unprepare"))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -287,12 +319,17 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
+        QueryMsg::ListPrepared { start_after, limit } => {
+            to_json_binary(&query_list_prepared(deps, start_after, limit)?)
+        }
+        QueryMsg::Prepared { message_name } => to_json_binary(&query_prepared(deps, message_name)?),
         QueryMsg::FileDescriptorSet { messages } => {
             to_json_binary(&query_file_descriptor_set(deps, messages)?)
         }
-        QueryMsg::TestFilter { filter, msg } => {
-            to_json_binary(&query_test_filter(deps, filter, msg)?)
-        }
+        QueryMsg::Decode {
+            message_name,
+            value,
+        } => to_json_binary(&query_decode(deps, message_name, value)?),
     }
 }
 
@@ -353,72 +390,82 @@ fn query_list_protobuf_messages_by_file(
     Ok(ListProtobufMessagesResponse { messages })
 }
 
+pub fn query_list_prepared(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<ListPreparedResponse> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(Bound::exclusive);
+
+    let messages = PREPARED
+        .keys(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(ListPreparedResponse { messages })
+}
+
+fn query_prepared(deps: Deps, message_name: String) -> StdResult<PreparedResponse> {
+    let prepared = PREPARED.has(deps.storage, message_name);
+    Ok(PreparedResponse { prepared })
+}
+
 fn query_file_descriptor_set(
     deps: Deps,
     messages: Vec<String>,
 ) -> StdResult<FileDescriptorSetResponse> {
-    let file_descriptor_set = create_file_descriptor_set_for_messages(&deps, &messages)
-        .map_err(|e| StdError::generic_err(e.to_string()))?
-        .encode_to_vec();
+    // If one message is provided and it is already prepared, use the prepared
+    // file descriptor set. Otherwise, create a file descriptor set for all
+    // messages.
+    let file_descriptor_set =
+        if messages.len() == 1 && PREPARED.has(deps.storage, messages[0].clone()) {
+            PREPARED.load(deps.storage, messages[0].clone())?
+        } else {
+            create_file_descriptor_set_for_messages(&deps, &messages)
+                .map_err(|e| StdError::generic_err(e.to_string()))?
+                .encode_to_vec()
+        };
+
     Ok(FileDescriptorSetResponse {
         file_descriptor_set,
     })
 }
 
-fn query_test_filter(
-    deps: Deps,
-    filter: serde_json::Value,
-    msg: CosmosMsg,
-) -> StdResult<TestFilterResponse> {
-    // Get the protobuf messages referenced by the filter.
-    let protobuf_messages = get_protobuf_messages(&filter)
-        .into_iter()
-        .collect::<Vec<_>>();
+fn query_decode(deps: Deps, message_name: String, value: Vec<u8>) -> StdResult<DecodeResponse> {
+    let file_descriptor_set =
+        create_file_descriptor_set_for_messages(&deps, &[message_name.clone()]).map_err(|e| {
+            StdError::generic_err(format!(
+                "failed to create file descriptor set: {}",
+                e.to_string()
+            ))
+        })?;
 
-    // Query for the file descriptor set.
-    let file_descriptor_set = match protobuf_messages.is_empty() {
-        true => None,
-        false => Some(
-            create_file_descriptor_set_for_messages(&deps, &protobuf_messages)
-                .map_err(|e| StdError::generic_err(e.to_string()))?,
-        ),
-    };
-
-    let msg_value = serde_json::to_value(msg).map_err(|e| {
-        StdError::generic_err(ContractError::JsonSerialization { err: e.to_string() })
+    let pool = DescriptorPool::from_file_descriptor_set(file_descriptor_set).map_err(|e| {
+        StdError::generic_err(format!(
+            "failed to create descriptor pool from FDS: {}",
+            e.to_string()
+        ))
     })?;
 
-    let fds = file_descriptor_set.map(|fd| vec![fd]).unwrap_or_default();
-    let result = CwJsonFilter::new(fds).matches(&filter, &msg_value);
+    let message_descriptor = pool.get_message_by_name(&message_name).ok_or_else(|| {
+        StdError::generic_err(format!(
+            "message descriptor not found for name: {}",
+            message_name
+        ))
+    })?;
 
-    let check = match result {
-        FilterResult::Pass => Ok(true),
-        FilterResult::Fail(error) => Err(ContractError::MsgNotAllowedByFilter {
-            err: error.to_string(),
-        }),
-        FilterResult::Fatal(error) => Err(ContractError::FilterError {
-            err: error.to_string(),
-        }),
-    };
+    let message = DynamicMessage::decode(message_descriptor, value.as_slice())
+        .map_err(|e| StdError::generic_err(e.to_string()))?;
 
-    // Handle filter errors appropriately.
-    let response = check.map_or_else(
-        |e| TestFilterResponse::Fail {
-            reason: e.to_string(),
-        },
-        |allowed| match allowed {
-            true => TestFilterResponse::Pass {},
-            // should never happen since ignore_filter_error is false
-            false => TestFilterResponse::Fail {
-                reason: ContractError::MsgNotAllowedByFilter {
-                    err: "unknown reason".to_string(),
-                }
-                .to_string(),
-            },
-        },
-    );
+    let json = serde_json::to_value(message).map_err(|e| {
+        StdError::generic_err(format!(
+            "failed to serialize decoded protobuf value as JSON: {}",
+            e.to_string()
+        ))
+    })?;
 
-    Ok(response)
+    Ok(DecodeResponse { value: json })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

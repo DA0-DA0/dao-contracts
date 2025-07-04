@@ -869,6 +869,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-filter"
+version = "2.7.1"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-jsonfilter",
+ "cw-multi-test",
+ "cw-ownable",
+ "cw-protobuf-registry",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "dao-interface 2.7.1",
+ "dao-testing",
+ "prost 0.12.3",
+ "prost-reflect",
+ "prost-types 0.12.3",
+ "schemars",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "cw-fund-distributor"
 version = "2.7.1"
 dependencies = [
@@ -916,6 +940,7 @@ name = "cw-jsonfilter"
 version = "2.7.1"
 dependencies = [
  "base64 0.22.1",
+ "cw-protobuf-registry",
  "prost-reflect",
  "serde",
  "serde_json",
@@ -1050,9 +1075,9 @@ dependencies = [
 name = "cw-protobuf-registry"
 version = "2.7.1"
 dependencies = [
+ "base64 0.22.1",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-jsonfilter",
  "cw-multi-test",
  "cw-ownable",
  "cw-protobuf-registry",
@@ -1852,6 +1877,7 @@ version = "2.7.1"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-storage-plus 1.2.0",
  "cw-utils 1.0.3",
  "cw2 1.1.2",
  "cw20 1.1.2",
@@ -2318,6 +2344,7 @@ dependencies = [
  "chrono",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-filter",
  "cw-jsonfilter",
  "cw-multi-test",
  "cw-ownable",
@@ -2332,7 +2359,6 @@ dependencies = [
  "osmosis-std",
  "osmosis-std-derive",
  "prost 0.12.3",
- "prost-derive 0.12.3",
  "prost-reflect",
  "prost-types 0.12.3",
  "schemars",
@@ -2402,6 +2428,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-admin-factory",
  "cw-core",
+ "cw-filter",
  "cw-hooks 2.7.1",
  "cw-multi-test",
  "cw-payroll-factory",

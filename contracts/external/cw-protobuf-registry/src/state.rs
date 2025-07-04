@@ -31,3 +31,7 @@ impl IndexList<String> for MessagesIndexes<'_> {
         Box::new(v.into_iter())
     }
 }
+
+/// Map message name -> file descriptor set that contains the exact files with
+/// the exact messages/enums needed to decode the message.
+pub const PREPARED: Map<String, Vec<u8>> = Map::new("prepared");

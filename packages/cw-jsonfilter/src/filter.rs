@@ -1,44 +1,34 @@
 use base64::Engine;
-use prost_reflect::{prost_types::FileDescriptorSet, DescriptorPool, DynamicMessage};
 use serde_json::json;
 
 use crate::{gt_json, lt_json, FilterResult, BASE64_ENGINE};
 
-pub struct CwJsonFilter {
-    /// Optional pool of protobuf types.
-    pub pool: Option<DescriptorPool>,
+pub struct CwJsonFilter<'a> {
+    /// Optional method to decode a protobuf message into JSON.
+    pub decode_protobuf:
+        Option<Box<dyn Fn(String, Vec<u8>) -> Result<serde_json::Value, String> + 'a>>,
 }
 
-impl Default for CwJsonFilter {
+impl Default for CwJsonFilter<'_> {
     fn default() -> Self {
-        Self::new(vec![])
+        Self::new(None)
     }
 }
 
-impl CwJsonFilter {
-    /// Create a new filter, optionally providing protobuf types to use for
-    /// decoding with the #proto/#stargate transformer. If no file descriptor
-    /// sets are provided, the filter will not be able to use protobuf
-    /// transformers.
-    ///
-    /// Warning: duplicately-named file descriptor sets will be ignored—only the
-    /// first one will be used. Make sure to resolve file name conflicts.
-    pub fn new(file_descriptor_sets: Vec<FileDescriptorSet>) -> Self {
-        let pool = if file_descriptor_sets.is_empty() {
-            None
-        } else {
-            let mut pool = DescriptorPool::new();
-            for file_descriptor_set in file_descriptor_sets {
-                pool.add_file_descriptor_set(file_descriptor_set).unwrap();
-            }
-            Some(pool)
-        };
-
-        Self { pool }
+impl<'a> CwJsonFilter<'a> {
+    /// Create a new filter, optionally providing a protobuf decoder to use with
+    /// the #proto/#stargate transformer. If not provided, the filter will not
+    /// be able to use protobuf transformers.
+    pub fn new(
+        decode_protobuf: Option<
+            Box<dyn Fn(String, Vec<u8>) -> Result<serde_json::Value, String> + 'a>,
+        >,
+    ) -> Self {
+        Self { decode_protobuf }
     }
 
     /// Static convenience function for the default filter with no protobuf
-    /// types.
+    /// decoder.
     pub fn check(filter: &serde_json::Value, obj: &serde_json::Value) -> FilterResult {
         let cwjf = CwJsonFilter::default();
         cwjf.matches(filter, obj)
@@ -952,28 +942,12 @@ impl CwJsonFilter {
                                 }
                             };
 
-                            // Ensure the pool exists.
-                            let pool = match &self.pool {
-                                Some(pool) => pool,
+                            // Ensure the protobuf decoder is provided.
+                            let decode_protobuf = match &self.decode_protobuf {
+                                Some(decode_protobuf) => decode_protobuf,
                                 None => {
                                     return FilterResult::fatal_invalid_filter(
-                                        format!("{} file descriptor sets not provided", operator),
-                                        filter_path,
-                                        obj_path,
-                                    )
-                                }
-                            };
-
-                            // Attempt to get the message descriptor for the
-                            // given type.
-                            let message_descriptor = match pool.get_message_by_name(proto_type) {
-                                Some(message) => message,
-                                None => {
-                                    return FilterResult::fatal_invalid_filter(
-                                        format!(
-                                            "{} message descriptor not found in pool for `{}`",
-                                            operator, proto_type
-                                        ),
+                                        format!("{} protobuf decoder not provided", operator),
                                         filter_path,
                                         obj_path,
                                     )
@@ -993,33 +967,16 @@ impl CwJsonFilter {
                                 }
                             };
 
-                            // Attempt to decode the proto value.
-                            let dynamic_message = match DynamicMessage::decode(
-                                message_descriptor,
-                                proto_value_encoded.as_slice(),
+                            // Decode the protobuf value.
+                            let proto_value_json = match decode_protobuf(
+                                proto_type.to_string(),
+                                proto_value_encoded,
                             ) {
-                                Ok(dynamic_message) => dynamic_message,
-                                Err(e) => {
-                                    return FilterResult::operator_failed(
-                                        operator,
-                                        format!("failed to decode protobuf value: {}", e),
-                                        filter_path,
-                                        obj_path,
-                                    )
-                                }
-                            };
-
-                            // Attempt to serialize the dynamic message into
-                            // JSON so we can apply the filter to it.
-                            let dynamic_message_json = match serde_json::to_value(dynamic_message) {
                                 Ok(json) => json,
                                 Err(e) => {
                                     return FilterResult::operator_failed(
                                         operator,
-                                        format!(
-                                        "failed to serialize decoded protobuf value as JSON: {}",
-                                        e
-                                    ),
+                                        e,
                                         filter_path,
                                         obj_path,
                                     )
@@ -1028,7 +985,7 @@ impl CwJsonFilter {
 
                             self.inner_matches(
                                 proto_value,
-                                Some(&dynamic_message_json),
+                                Some(&proto_value_json),
                                 filter_path,
                                 obj_path,
                             )

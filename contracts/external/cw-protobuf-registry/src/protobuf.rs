@@ -1,11 +1,18 @@
 use std::collections::{HashMap, HashSet};
 
+use base64::{
+    alphabet,
+    engine::{DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig},
+    Engine,
+};
 use cosmwasm_std::Deps;
 use prost_reflect::{
     prost::Message,
     prost_types::{FileDescriptorProto, FileDescriptorSet},
+    DescriptorPool, DynamicMessage,
 };
 use prost_types::{field_descriptor_proto, FieldDescriptorProto};
+use serde_json::Deserializer;
 
 use crate::{
     state::{FILES, MESSAGES},
@@ -320,4 +327,132 @@ fn add_dependency(
     }
 
     Ok(())
+}
+
+/// Get the protobuf messages referenced by a filter.
+pub fn get_protobuf_messages(filter: &serde_json::Value) -> HashSet<String> {
+    let mut messages = HashSet::new();
+    inner_get_protobuf_messages(filter, &mut messages);
+    messages
+}
+
+/// Get the protobuf messages referenced by a filter, recursively.
+fn inner_get_protobuf_messages(filter: &serde_json::Value, messages: &mut HashSet<String>) {
+    if let serde_json::Value::Object(filter_map) = filter {
+        for (key, value) in filter_map {
+            // If the key is the #proto transformer, add the type to the set.
+            if key == "#proto" {
+                if let Some(serde_json::Value::String(proto_type)) = value
+                    .as_object()
+                    .and_then(|proto_arg| proto_arg.get("type"))
+                {
+                    messages.insert(proto_type.clone());
+                }
+            }
+
+            // If the key is the #stargate transformer, add the type to the set,
+            // stripping the `/` prefix from the type URL.
+            if key == "#stargate" {
+                if let Some(serde_json::Value::String(type_url)) = value
+                    .as_object()
+                    .and_then(|stargate_arg| stargate_arg.get("type_url"))
+                {
+                    if let Some(stripped_type_url) = type_url.strip_prefix('/') {
+                        messages.insert(stripped_type_url.to_string());
+                    }
+                }
+            }
+
+            // Recurse on the value.
+            inner_get_protobuf_messages(value, messages);
+        }
+    }
+}
+
+/// Base64 decoding engine
+pub const BASE64_ENGINE: GeneralPurpose = GeneralPurpose::new(
+    &alphabet::STANDARD,
+    GeneralPurposeConfig::new()
+        .with_decode_allow_trailing_bits(true)
+        .with_decode_padding_mode(DecodePaddingMode::Indifferent),
+);
+
+/// Encode a protobuf message to bytes.
+///
+/// # Arguments
+///
+/// * `pool` - The descriptor pool to use to get the message descriptor.
+/// * `message_name` - The name of the message to encode.
+/// * `value` - The value to encode.
+///
+/// # Returns
+///
+/// The encoded protobuf message bytes.
+pub fn encode_protobuf(
+    pool: &DescriptorPool,
+    message_name: impl Into<String>,
+    value: &serde_json::Value,
+) -> Vec<u8> {
+    let value_str = value.to_string();
+    let message_descriptor = pool.get_message_by_name(&message_name.into()).unwrap();
+
+    let mut deserializer = Deserializer::from_str(&value_str);
+    let dynamic_message =
+        DynamicMessage::deserialize(message_descriptor, &mut deserializer).unwrap();
+    deserializer.end().unwrap();
+
+    dynamic_message.encode_to_vec()
+}
+
+/// Encode a protobuf message to base64.
+///
+/// # Arguments
+///
+/// * `pool` - The descriptor pool to use to get the message descriptor.
+/// * `message_name` - The name of the message to encode.
+/// * `value` - The value to encode.
+///
+/// # Returns
+///
+/// The base64 encoded protobuf message value.
+pub fn base64_encode_protobuf(
+    pool: &DescriptorPool,
+    message_name: impl Into<String>,
+    value: &serde_json::Value,
+) -> String {
+    BASE64_ENGINE.encode(encode_protobuf(pool, message_name, value))
+}
+
+/// Decode a protobuf message with a file descriptor set.
+pub fn decode_protobuf(
+    fds: FileDescriptorSet,
+    message_name: impl Into<String>,
+    value: Vec<u8>,
+) -> Result<serde_json::Value, String> {
+    let pool = DescriptorPool::from_file_descriptor_set(fds).map_err(|e| {
+        format!(
+            "failed to create descriptor pool from file descriptor set: {}",
+            e.to_string()
+        )
+    })?;
+
+    let message_name = message_name.into();
+    let message_descriptor = pool.get_message_by_name(&message_name).ok_or_else(|| {
+        format!(
+            "message descriptor not found in pool for `{}`",
+            message_name
+        )
+    })?;
+
+    let dynamic_message = DynamicMessage::decode(message_descriptor, value.as_slice())
+        .map_err(|e| format!("failed to decode protobuf value: {}", e.to_string()))?;
+
+    let json = serde_json::to_value(dynamic_message).map_err(|e| {
+        format!(
+            "failed to serialize decoded protobuf value as JSON: {}",
+            e.to_string()
+        )
+    })?;
+
+    Ok(json)
 }

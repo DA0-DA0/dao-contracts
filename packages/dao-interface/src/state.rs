@@ -1,5 +1,6 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary, Coin, CosmosMsg, WasmMsg};
+use cosmwasm_std::{Addr, Binary, Coin, CosmosMsg, DepsMut, Empty, StdResult, SubMsg, WasmMsg};
+use cw_storage_plus::Item;
 
 /// Top level config type for core module.
 #[cw_serde]
@@ -70,10 +71,10 @@ pub struct ModuleInstantiateInfo {
 }
 
 impl ModuleInstantiateInfo {
-    pub fn into_wasm_msg(self, dao: impl Into<String>) -> WasmMsg {
+    pub fn into_wasm_msg(self, core_module_admin: impl Into<String>) -> WasmMsg {
         let admin = self.admin.map(|admin| match admin {
             Admin::Address { addr } => addr,
-            Admin::CoreModule {} => dao.into(),
+            Admin::CoreModule {} => core_module_admin.into(),
         });
 
         match self.salt {
@@ -95,8 +96,8 @@ impl ModuleInstantiateInfo {
         }
     }
 
-    pub fn into_cosmos_msg(self, dao: impl Into<String>) -> CosmosMsg {
-        self.into_wasm_msg(dao).into()
+    pub fn into_cosmos_msg(self, core_module_admin: impl Into<String>) -> CosmosMsg {
+        self.into_wasm_msg(core_module_admin).into()
     }
 }
 
@@ -106,11 +107,50 @@ pub struct ModuleInstantiateCallback {
     pub msgs: Vec<CosmosMsg>,
 }
 
+/// A module update, either a new module or an existing module.
+#[cw_serde]
+pub enum ModuleUpdate {
+    New(ModuleInstantiateInfo),
+    Existing {
+        /// The existing address of the module.
+        address: String,
+    },
+}
+
+impl ModuleUpdate {
+    /// Process the module update, returning a list of submessages with a single
+    /// message that instantiates the module and replies on success, if needed.
+    /// Otherwise updates the module state and returns an empty vector.
+    ///
+    /// The return of this should be passed to `response.add_submessages`.
+    ///
+    /// Make sure to handle the reply by updating the state manually.
+    pub fn update(
+        self,
+        deps: DepsMut,
+        state: &Item<Addr>,
+        reply_id: u64,
+        owner: impl Into<String>,
+    ) -> StdResult<Vec<SubMsg<Empty>>> {
+        match self {
+            ModuleUpdate::New(info) => {
+                let info = info.into_wasm_msg(owner);
+                Ok(vec![SubMsg::reply_on_success(info, reply_id)])
+            }
+            ModuleUpdate::Existing { address } => {
+                let address = deps.api.addr_validate(&address)?;
+                state.save(deps.storage, &address)?;
+                Ok(vec![])
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    use cosmwasm_std::{coins, to_json_binary, Addr, Uint128, WasmMsg};
+    use cosmwasm_std::{coins, testing::mock_dependencies, to_json_binary, Addr, Uint128, WasmMsg};
 
     #[test]
     fn test_module_instantiate_admin_none() {
@@ -255,5 +295,62 @@ mod tests {
                 salt: to_json_binary("test_salt").unwrap()
             }
         )
+    }
+
+    #[test]
+    fn test_module_update_new() {
+        let mut deps = mock_dependencies();
+        let item = Item::new("module");
+        let update = ModuleUpdate::New(ModuleInstantiateInfo {
+            code_id: 42,
+            msg: to_json_binary("foo").unwrap(),
+            admin: Some(Admin::CoreModule {}),
+            label: "bar".to_string(),
+            funds: Some(coins(100, "uatom")),
+            salt: None,
+        });
+
+        let submessages = update.update(deps.as_mut(), &item, 1, "ekez").unwrap();
+
+        // Submessage is correct.
+        assert_eq!(
+            submessages,
+            vec![SubMsg::reply_on_success(
+                WasmMsg::Instantiate {
+                    admin: Some("ekez".to_string()),
+                    code_id: 42,
+                    msg: to_json_binary("foo").unwrap(),
+                    funds: vec![Coin {
+                        denom: "uatom".to_string(),
+                        amount: Uint128::from(100u64),
+                    }],
+                    label: "bar".to_string(),
+                },
+                1,
+            )]
+        );
+
+        // Item not updated.
+        assert_eq!(item.may_load(deps.as_mut().storage).unwrap(), None);
+    }
+
+    #[test]
+    fn test_module_update_existing() {
+        let mut deps = mock_dependencies();
+        let item = Item::new("module");
+        let update = ModuleUpdate::Existing {
+            address: "ekez".to_string(),
+        };
+
+        let submessages = update.update(deps.as_mut(), &item, 1, "unused").unwrap();
+
+        // Submessage is empty.
+        assert_eq!(submessages, vec![]);
+
+        // Item updated.
+        assert_eq!(
+            item.may_load(deps.as_mut().storage).unwrap(),
+            Some(Addr::unchecked("ekez"))
+        );
     }
 }

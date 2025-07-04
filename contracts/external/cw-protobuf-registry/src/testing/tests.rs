@@ -1,8 +1,11 @@
 use cosmwasm_std::StdError;
 use cw_protobuf_registry::ContractError;
 use dao_testing::OWNER;
+use prost::Message;
+use prost_reflect::DescriptorPool;
+use prost_types::FileDescriptorSet;
 
-use crate::testing::suite::SuiteBuilder;
+use crate::{protobuf::encode_protobuf, testing::suite::SuiteBuilder};
 
 #[test]
 fn test_instantiate() {
@@ -54,6 +57,35 @@ fn test_protobuf_management() {
             "google.protobuf.StringValue".to_string(),
         ],
     );
+
+    // No messages are prepared.
+    suite.assert_list_prepared(vec![]);
+    suite.assert_prepared("google.protobuf.BoolValue", false);
+    suite.assert_prepared("google.protobuf.StringValue", false);
+
+    suite.prepare(OWNER, vec!["google.protobuf.BoolValue".to_string()]);
+    suite.assert_list_prepared(vec!["google.protobuf.BoolValue".to_string()]);
+    suite.assert_prepared("google.protobuf.BoolValue", true);
+    suite.assert_prepared("google.protobuf.StringValue", false);
+
+    suite.prepare(OWNER, vec!["google.protobuf.StringValue".to_string()]);
+    suite.assert_list_prepared(vec![
+        "google.protobuf.BoolValue".to_string(),
+        "google.protobuf.StringValue".to_string(),
+    ]);
+    suite.assert_prepared("google.protobuf.BoolValue", true);
+    suite.assert_prepared("google.protobuf.StringValue", true);
+
+    suite.unprepare(
+        OWNER,
+        vec![
+            "google.protobuf.BoolValue".to_string(),
+            "google.protobuf.StringValue".to_string(),
+        ],
+    );
+    suite.assert_list_prepared(vec![]);
+    suite.assert_prepared("google.protobuf.BoolValue", false);
+    suite.assert_prepared("google.protobuf.StringValue", false);
 
     // Errors when partially unregistering messages from multiple files and
     // doesn't reach the final file name before the limit is reached.
@@ -169,5 +201,109 @@ fn test_regen_protobuf_filter() {
     assert_eq!(
         fds.file[4].message_type[0].name.as_ref().unwrap(),
         "MsgCreate"
+    );
+}
+
+#[test]
+fn test_prepare_and_decode() {
+    let mut suite = SuiteBuilder::base().build();
+
+    // Register the protobuf file descriptor set.
+
+    let crate_root = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
+    let proto_path = std::path::Path::new(&crate_root).join("proto/regen_ecocredit.pb");
+    let file_descriptor_set = std::fs::read(proto_path).unwrap();
+
+    let pool = DescriptorPool::from_file_descriptor_set(
+        FileDescriptorSet::decode(file_descriptor_set.as_slice()).unwrap(),
+    )
+    .unwrap();
+
+    let encoded_coin = encode_protobuf(
+        &pool,
+        "cosmos.base.v1beta1.Coin",
+        &serde_json::json!({
+            "amount": "123",
+            "denom": "abc"
+        }),
+    );
+
+    // not yet registered
+    let err = suite.decode_err("cosmos.base.v1beta1.Coin", encoded_coin.clone());
+    assert_eq!(
+        err,
+        StdError::generic_err(format!(
+            "Querier contract error: {}",
+            StdError::generic_err(format!(
+                "failed to create file descriptor set: {}",
+                ContractError::ProtobufMessageNotFound {
+                    message: "cosmos.base.v1beta1.Coin".to_string()
+                }
+            ))
+        ))
+    );
+
+    // Register the protobuf file descriptor set.
+    suite.register_protobufs(OWNER, vec![file_descriptor_set.clone()]);
+
+    // works when registered even if not prepared (tho less efficient)
+    suite.assert_decode(
+        "cosmos.base.v1beta1.Coin",
+        encoded_coin.clone(),
+        serde_json::json!({"amount": "123", "denom": "abc"}),
+    );
+
+    suite.prepare(
+        OWNER,
+        vec![
+            "regen.ecocredit.basket.v1.MsgCreate".to_string(),
+            "cosmos.base.v1beta1.Coin".to_string(),
+        ],
+    );
+
+    // works when prepared
+    suite.assert_decode(
+        "cosmos.base.v1beta1.Coin",
+        encoded_coin.clone(),
+        serde_json::json!({"amount": "123", "denom": "abc"}),
+    );
+
+    suite.assert_list_prepared(vec![
+        "cosmos.base.v1beta1.Coin".to_string(),
+        "regen.ecocredit.basket.v1.MsgCreate".to_string(),
+    ]);
+    suite.assert_prepared("regen.ecocredit.basket.v1.MsgCreate", true);
+    suite.assert_prepared("regen.ecocredit.basket.v1.DateCriteria", false);
+    suite.assert_prepared("cosmos.base.v1beta1.Coin", true);
+    suite.assert_prepared("google.protobuf.Duration", false);
+    suite.assert_prepared("google.protobuf.Timestamp", false);
+
+    let err = suite.decode_err("wrong_message", encoded_coin.clone());
+    assert_eq!(
+        err,
+        StdError::generic_err(format!(
+            "Querier contract error: {}",
+            StdError::generic_err(format!(
+                "failed to create file descriptor set: {}",
+                ContractError::ProtobufMessageNotFound {
+                    message: "wrong_message".to_string()
+                }
+            ))
+        ))
+    );
+
+    let err = suite.decode_err("cosmos.base.v1beta1.Coin", vec![0x1, 0x2, 0x3]);
+    assert_eq!(
+        err,
+        StdError::generic_err(format!(
+            "Querier contract error: {}",
+            StdError::generic_err("failed to decode Protobuf message: invalid tag value: 0")
+        ))
+    );
+
+    suite.assert_decode(
+        "cosmos.base.v1beta1.Coin",
+        encoded_coin,
+        serde_json::json!({"amount": "123", "denom": "abc"}),
     );
 }

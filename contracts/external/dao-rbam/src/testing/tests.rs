@@ -1,9 +1,9 @@
-use cosmwasm_std::{to_json_binary, BankMsg, Binary, Coin, CosmosMsg, StdError, Uint128, WasmMsg};
-use cw_jsonfilter::base64_encode_protobuf;
+use cosmwasm_std::{to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Uint128, WasmMsg};
 use cw_ownable::OwnershipError;
+use cw_protobuf_registry::protobuf::base64_encode_protobuf;
 use dao_interface::{
     helpers::{OptionalUpdate, Update},
-    state::ModuleInstantiateInfo,
+    state::{ModuleInstantiateInfo, ModuleUpdate},
 };
 use dao_rbam::ContractError;
 use dao_testing::{ADDR0, ADDR1, ADDR2, DENOM};
@@ -13,7 +13,7 @@ use prost_types::FileDescriptorSet;
 
 use crate::{
     action::ActionToExecute,
-    msg::{Assignment, InitialAuthorization, InitialRole, ProtobufRegistry},
+    msg::{Assignment, InitialAuthorization, InitialRole},
     testing::suite::SuiteBuilder,
 };
 
@@ -41,6 +41,7 @@ fn test_instantiate_with_initial_roles() {
             metadata: Some("All permissions".to_string()),
             filter: Some(serde_json::json!({})), // Allow all messages
             enabled: Some(true),
+            skip_prepare: None,
         }]),
         assignments: Some(vec![ADDR0.to_string()]),
     };
@@ -981,12 +982,14 @@ fn test_role_with_initial_authorizations_and_assignments() {
                 metadata: None,
                 filter: Some(serde_json::json!({"type": "auth1"})),
                 enabled: Some(true),
+                skip_prepare: None,
             },
             InitialAuthorization {
                 name: "auth2".to_string(),
                 metadata: None,
                 filter: Some(serde_json::json!({"type": "auth2"})),
                 enabled: Some(false), // Disabled
+                skip_prepare: None,
             },
         ]),
         assignments: Some(vec![ADDR0.to_string(), ADDR1.to_string()]),
@@ -1037,43 +1040,37 @@ fn test_update_dao() {
 }
 
 #[test]
-fn test_update_protobuf_registry() {
+fn test_update_filter() {
     let mut suite = SuiteBuilder::base().build();
     let dao = suite.core_addr.clone();
 
-    suite.assert_protobuf_registry(Some(suite.protobuf_registry_addr.clone()));
+    suite.assert_filter(suite.filter_addr.clone());
 
-    suite.update_protobuf_registry(&dao, None);
-    suite.assert_protobuf_registry(None);
-
-    suite.update_protobuf_registry(
+    suite.update_filter(
         &dao,
-        Some(ProtobufRegistry::New(ModuleInstantiateInfo {
-            code_id: suite.base.cw_protobuf_registry_id,
-            msg: to_json_binary(&cw_protobuf_registry::msg::InstantiateMsg {
+        ModuleUpdate::New(ModuleInstantiateInfo {
+            code_id: suite.base.filter_id,
+            msg: to_json_binary(&cw_filter::msg::InstantiateMsg {
                 owner: Some(dao.to_string()),
+                protobuf_registry: None,
             })
             .unwrap(),
             admin: Some(dao_interface::state::Admin::CoreModule {}),
             funds: None,
             label: "new_protobuf_registry".to_string(),
             salt: None,
-        })),
-    );
-    let new_protobuf_registry_addr = suite.get_protobuf_registry().protobuf_registry;
-    assert!(new_protobuf_registry_addr.is_some());
-    assert_ne!(
-        new_protobuf_registry_addr,
-        Some(suite.protobuf_registry_addr.clone())
-    );
-
-    suite.update_protobuf_registry(
-        &dao,
-        Some(ProtobufRegistry::Existing {
-            address: suite.protobuf_registry_addr.to_string(),
         }),
     );
-    suite.assert_protobuf_registry(Some(suite.protobuf_registry_addr.clone()));
+    let new_filter_addr = suite.get_filter().filter;
+    assert_ne!(new_filter_addr, suite.filter_addr.clone());
+
+    suite.update_filter(
+        &dao,
+        ModuleUpdate::Existing {
+            address: suite.filter_addr.to_string(),
+        },
+    );
+    suite.assert_filter(suite.filter_addr.clone());
 }
 
 #[test]
@@ -1792,18 +1789,16 @@ fn test_protobuf_filter() {
         Some(serde_json::json!({"#proto": {"type": "google.protobuf.BoolValue", "value": true}})),
         None,
     );
-    assert_eq!(
+    assert!(matches!(
         err,
-        ContractError::Std(StdError::generic_err(format!(
-            "Querier contract error: {}",
-            StdError::generic_err(
-                cw_protobuf_registry::ContractError::ProtobufMessageNotFound {
-                    message: "google.protobuf.BoolValue".to_string(),
-                }
-                .to_string()
-            )
-        )))
-    );
+        ContractError::ProtobufRegistryPrepareFailed { .. }
+    ));
+    assert!(err.to_string().contains(
+        &cw_protobuf_registry::ContractError::ProtobufMessageNotFound {
+            message: "google.protobuf.BoolValue".to_string(),
+        }
+        .to_string()
+    ));
 
     // Register the protobuf file descriptor set.
     suite.register_protobufs(&dao, vec![file_descriptor_set.clone()]);

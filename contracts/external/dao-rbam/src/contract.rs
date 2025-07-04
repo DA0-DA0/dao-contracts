@@ -3,10 +3,9 @@ use std::collections::HashSet;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
-    Response, StdError, StdResult, SubMsg, WasmMsg,
+    to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Reply, Response,
+    StdError, StdResult, SubMsg, WasmMsg,
 };
-use cw_jsonfilter::get_protobuf_messages;
 use cw_storage_plus::Bound;
 
 use cw2::set_contract_version;
@@ -14,21 +13,23 @@ use cw_ownable::initialize_owner;
 use cw_utils::{nonpayable, parse_reply_instantiate_data};
 use dao_interface::helpers::OptionalUpdate;
 use dao_interface::proposal::InfoResponse;
+use dao_interface::state::{Admin, ModuleInstantiateInfo, ModuleUpdate};
 
 use crate::action::{Action, ActionToExecute};
 use crate::error::ContractError;
-use crate::helpers::{ensure_enabled, get_file_descriptor_set};
+use crate::helpers::ensure_enabled;
 use crate::msg::{
-    ActionResponse, Assignment, AuthorizationResponse, DaoResponse, ExecuteMsg,
+    ActionResponse, Assignment, AuthorizationResponse, DaoResponse, ExecuteMsg, FilterResponse,
     InitialAuthorization, InitialRole, InstantiateMsg, IsAssignedRoleResponse, IsEnabledResponse,
     IsMsgAuthorizedByResponse, IsMsgAuthorizedByRoleResponse, IsMsgAuthorizedResponse,
     ListActionsResponse, ListAddressesWithRoleResponse, ListAssignmentsResponse,
     ListAuthorizationsResponse, ListRolesForAddressResponse, ListRolesResponse, MigrateMsg,
-    ProtobufRegistry, ProtobufRegistryResponse, QueryMsg, RoleResponse, TestFilterResponse,
+    ProtobufRegistryResponse, QueryMsg, RoleResponse, TestFilterResponse,
 };
 use crate::role::{Authorization, Role};
 use crate::state::{
-    ASSIGNMENTS, AUTHORIZATIONS, DAO, ENABLED, LOG, NEXT_ID, PROTOBUF_REGISTRY, ROLES,
+    ASSIGNMENTS, AUTHORIZATIONS, DAO, ENABLED, FILTER, FILTER_CODE_ID, FILTER_SALT, LOG, NEXT_ID,
+    PROTOBUF_REGISTRY, ROLES,
 };
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-rbam";
@@ -38,12 +39,15 @@ const DEFAULT_LIMIT: u32 = 30;
 const DEFAULT_LIMIT_IS_MSG_AUTHORIZED: u32 = 30;
 const MAX_LIMIT: u32 = 100;
 
-const INSTANTIATE_PROTOBUF_REGISTRY_REPLY_ID: u64 = 1;
+const INSTANTIATE_FILTER_REPLY_ID: u64 = 1;
+const INSTANTIATE_PROTOBUF_REGISTRY_REPLY_ID: u64 = 2;
+
+pub const PREPARE_PROTOBUF_REGISTRY_REPLY_ID: u64 = 3;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     mut deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -62,22 +66,62 @@ pub fn instantiate(
         .map_or_else(|| Ok(dao.clone()), |owner| deps.api.addr_validate(&owner))?;
     initialize_owner(deps.storage, deps.api, Some(owner.as_str()))?;
 
-    // Initialize protobuf registry by either creating it or using an existing
-    // one.
-    let protobuf_registry_message: Vec<SubMsg<Empty>> = match msg.protobuf_registry {
-        Some(ProtobufRegistry::New(info)) => {
-            let info = info.into_wasm_msg(owner);
-            vec![SubMsg::reply_on_success(
-                info,
+    let last_6_address_chars = env
+        .contract
+        .address
+        .to_string()
+        .chars()
+        .rev()
+        .take(6)
+        .collect::<String>();
+    let first_init_submsg = match msg.protobuf_registry_code_id {
+        Some(protobuf_registry_code_id) => {
+            // Save filter code ID so we can instantiate it in the reply handler
+            // after the protobuf registry is instantiated.
+            FILTER_CODE_ID.save(deps.storage, &msg.filter_code_id)?;
+            if let Some(filter_salt) = msg.filter_salt {
+                FILTER_SALT.save(deps.storage, &filter_salt)?;
+            }
+
+            SubMsg::reply_on_success(
+                ModuleInstantiateInfo {
+                    code_id: protobuf_registry_code_id,
+                    // Set this RBAM as owner so we can prepare protobuf messages.
+                    msg: to_json_binary(&cw_protobuf_registry::msg::InstantiateMsg {
+                        owner: Some(env.contract.address.to_string()),
+                    })?,
+                    // Set RBAM's owner as the admin so they can upgrade it.
+                    admin: Some(Admin::Address {
+                        addr: owner.to_string(),
+                    }),
+                    salt: msg.protobuf_registry_salt,
+                    funds: None,
+                    label: format!("rbam-{}-protobuf-registry", last_6_address_chars),
+                }
+                .into_cosmos_msg(""),
                 INSTANTIATE_PROTOBUF_REGISTRY_REPLY_ID,
-            )]
+            )
         }
-        Some(ProtobufRegistry::Existing { address }) => {
-            let address = deps.api.addr_validate(&address)?;
-            PROTOBUF_REGISTRY.save(deps.storage, &address)?;
-            vec![]
-        }
-        None => vec![],
+        None => SubMsg::reply_on_success(
+            ModuleInstantiateInfo {
+                code_id: msg.filter_code_id,
+                // Set RBAM's owner as owner.
+                msg: to_json_binary(&cw_filter::msg::InstantiateMsg {
+                    owner: Some(owner.to_string()),
+                    // No protobuf registry in use.
+                    protobuf_registry: None,
+                })?,
+                // Set RBAM's owner as the admin so they can upgrade it.
+                admin: Some(Admin::Address {
+                    addr: owner.to_string(),
+                }),
+                salt: msg.filter_salt,
+                funds: None,
+                label: format!("rbam-{}-filter", last_6_address_chars),
+            }
+            .into_cosmos_msg(""),
+            INSTANTIATE_FILTER_REPLY_ID,
+        ),
     };
 
     // Initialize enabled state (default to true).
@@ -88,7 +132,7 @@ pub fn instantiate(
     NEXT_ID.save(deps.storage, &1)?;
 
     let mut response = Response::new()
-        .add_submessages(protobuf_registry_message)
+        .add_submessage(first_init_submsg)
         .add_attribute("action", "instantiate")
         .add_attribute("creator", info.sender.as_str())
         .add_attribute("enabled", enabled.to_string());
@@ -112,10 +156,11 @@ pub fn instantiate(
                     metadata,
                     filter,
                     enabled,
+                    skip_prepare,
                 } in authorizations
                 {
                     let enabled = enabled.unwrap_or(true);
-                    let authorization = Authorization::create(
+                    let (authorization, protobuf_prepare_messages) = Authorization::create(
                         deps.branch(),
                         role.id,
                         name,
@@ -125,6 +170,9 @@ pub fn instantiate(
                     )?;
                     response =
                         response.add_attribute("authorization_id", authorization.id.to_string());
+                    if !skip_prepare.unwrap_or_default() {
+                        response = response.add_submessages(protobuf_prepare_messages);
+                    }
                 }
             }
 
@@ -151,10 +199,14 @@ pub fn execute(
     match msg {
         ExecuteMsg::UpdateOwnership(action) => execute_update_ownership(deps, info, env, action),
         ExecuteMsg::UpdateDao { dao } => execute_update_dao(deps, info, dao),
+        ExecuteMsg::UpdateFilter { filter } => execute_update_filter(deps, info, filter),
         ExecuteMsg::UpdateProtobufRegistry { protobuf_registry } => {
             execute_update_protobuf_registry(deps, info, protobuf_registry)
         }
         ExecuteMsg::SetEnabled { enabled } => execute_set_enabled(deps, info, enabled),
+        ExecuteMsg::ExecuteProtobufRegistry(msg) => {
+            execute_execute_protobuf_registry(deps, info, msg)
+        }
         ExecuteMsg::CreateRole {
             name,
             metadata,
@@ -182,13 +234,24 @@ pub fn execute(
             metadata,
             filter,
             enabled,
-        } => execute_create_authorization(deps, info, role_id, name, metadata, filter, enabled),
+            skip_prepare,
+        } => execute_create_authorization(
+            deps,
+            info,
+            role_id,
+            name,
+            metadata,
+            filter,
+            enabled,
+            skip_prepare,
+        ),
         ExecuteMsg::UpdateAuthorization {
             authorization_id,
             name,
             metadata,
             filter,
             enabled,
+            skip_prepare,
         } => execute_update_authorization(
             deps,
             info,
@@ -197,6 +260,7 @@ pub fn execute(
             metadata,
             filter,
             enabled,
+            skip_prepare,
         ),
         ExecuteMsg::Assign { assign } => execute_assign(deps, info, assign),
         ExecuteMsg::Revoke { revoke } => execute_revoke(deps, info, revoke),
@@ -233,40 +297,67 @@ fn execute_update_dao(
         .add_attribute("dao", dao.to_string()))
 }
 
-fn execute_update_protobuf_registry(
+fn execute_update_filter(
     deps: DepsMut,
     info: MessageInfo,
-    protobuf_registry: Option<ProtobufRegistry>,
+    filter: ModuleUpdate,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
-    let protobuf_registry_message: Vec<SubMsg<Empty>> = match protobuf_registry {
-        Some(ProtobufRegistry::New(info)) => {
-            // Use owner if set, otherwise use DAO, as admin.
-            let owner = cw_ownable::get_ownership(deps.storage)?
-                .owner
-                .map_or_else(|| DAO.load(deps.storage), Ok)?;
-            let info = info.into_wasm_msg(owner);
-            vec![SubMsg::reply_on_success(
-                info,
+    let filter_message = filter.update(deps, &FILTER, INSTANTIATE_FILTER_REPLY_ID, info.sender)?;
+
+    Ok(Response::new()
+        .add_submessages(filter_message)
+        .add_attribute("action", "update_filter"))
+}
+
+fn execute_update_protobuf_registry(
+    deps: DepsMut,
+    info: MessageInfo,
+    protobuf_registry: Option<ModuleUpdate>,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    let protobuf_registry_message = protobuf_registry.map_or_else(
+        || Ok(vec![]),
+        |protobuf_registry| {
+            protobuf_registry.update(
+                deps,
+                &PROTOBUF_REGISTRY,
                 INSTANTIATE_PROTOBUF_REGISTRY_REPLY_ID,
-            )]
-        }
-        Some(ProtobufRegistry::Existing { address }) => {
-            let address = deps.api.addr_validate(&address)?;
-            PROTOBUF_REGISTRY.save(deps.storage, &address)?;
-            vec![]
-        }
-        None => {
-            PROTOBUF_REGISTRY.remove(deps.storage);
-            vec![]
-        }
-    };
+                info.sender,
+            )
+        },
+    )?;
 
     Ok(Response::new()
         .add_submessages(protobuf_registry_message)
         .add_attribute("action", "update_protobuf_registry"))
+}
+
+fn execute_execute_protobuf_registry(
+    deps: DepsMut,
+    info: MessageInfo,
+    msg: cw_protobuf_registry::msg::ExecuteMsg,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    let protobuf_registry = PROTOBUF_REGISTRY
+        .load(deps.storage)
+        .map_err(|_| ContractError::MissingProtobufRegistry {})?;
+
+    let message = WasmMsg::Execute {
+        contract_addr: protobuf_registry.to_string(),
+        msg: to_json_binary(&msg)?,
+        funds: info.funds,
+    };
+
+    Ok(Response::new()
+        .add_message(message)
+        .add_attribute("action", "execute_protobuf_registry"))
 }
 
 fn execute_set_enabled(
@@ -311,12 +402,16 @@ fn execute_create_role(
             metadata,
             filter,
             enabled,
+            skip_prepare,
         } in authorizations
         {
             let enabled = enabled.unwrap_or(true);
-            let authorization =
+            let (authorization, messages) =
                 Authorization::create(deps.branch(), role.id, name, metadata, filter, enabled)?;
             response = response.add_attribute("authorization_id", authorization.id.to_string());
+            if !skip_prepare.unwrap_or_default() {
+                response = response.add_submessages(messages);
+            }
         }
     }
 
@@ -372,6 +467,7 @@ fn execute_create_authorization(
     metadata: Option<String>,
     filter: Option<serde_json::Value>,
     enabled: Option<bool>,
+    skip_prepare: Option<bool>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
@@ -379,9 +475,18 @@ fn execute_create_authorization(
     Role::ensure_exists(&deps.as_ref(), role_id)?;
 
     let enabled = enabled.unwrap_or(true);
-    let authorization = Authorization::create(deps, role_id, name, metadata, filter, enabled)?;
+    let (authorization, protobuf_prepare_messages) =
+        Authorization::create(deps, role_id, name, metadata, filter, enabled)?;
+
+    // If skip_prepare is true, don't prepare the protobuf messages.
+    let messages = if skip_prepare.unwrap_or_default() {
+        vec![]
+    } else {
+        protobuf_prepare_messages
+    };
 
     Ok(Response::new()
+        .add_submessages(messages)
         .add_attribute("action", "create_authorization")
         .add_attribute("role_id", authorization.role_id.to_string())
         .add_attribute("authorization_id", authorization.id.to_string())
@@ -396,6 +501,7 @@ fn execute_update_authorization(
     metadata: OptionalUpdate<String>,
     filter: OptionalUpdate<serde_json::Value>,
     enabled: Option<bool>,
+    skip_prepare: Option<bool>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
@@ -410,11 +516,13 @@ fn execute_update_authorization(
         authorization.metadata = value;
     });
 
-    filter.maybe_update_result(|value| -> Result<(), ContractError> {
-        authorization.filter = value;
-        authorization.sync_protobuf_messages(&mut deps)?;
-        Ok(())
-    })?;
+    let protobuf_prepare_messages = filter.maybe_update_result_with_value(
+        |value| {
+            authorization.filter = value;
+            authorization.sync_protobuf_messages(&mut deps)
+        },
+        vec![],
+    )?;
 
     if let Some(enabled) = enabled {
         authorization.enabled = enabled;
@@ -422,7 +530,15 @@ fn execute_update_authorization(
 
     authorization.save(deps)?;
 
+    // If skip_prepare is true, don't prepare the protobuf messages.
+    let messages = if skip_prepare.unwrap_or_default() {
+        vec![]
+    } else {
+        protobuf_prepare_messages
+    };
+
     Ok(Response::new()
+        .add_submessages(messages)
         .add_attribute("action", "update_authorization")
         .add_attribute("authorization_id", authorization.id.to_string())
         .add_attribute("authorization_name", authorization.name))
@@ -537,6 +653,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
         QueryMsg::Info {} => to_json_binary(&query_info(deps)?),
         QueryMsg::Dao {} => to_json_binary(&query_dao(deps)?),
+        QueryMsg::Filter {} => to_json_binary(&query_filter(deps)?),
         QueryMsg::ProtobufRegistry {} => to_json_binary(&query_protobuf_registry(deps)?),
         QueryMsg::IsEnabled {} => to_json_binary(&query_is_enabled(deps)?),
         QueryMsg::Role { id } => to_json_binary(&query_get_role(deps, id)?),
@@ -677,6 +794,11 @@ fn query_info(deps: Deps) -> StdResult<InfoResponse> {
 fn query_dao(deps: Deps) -> StdResult<DaoResponse> {
     let dao = DAO.load(deps.storage)?;
     Ok(DaoResponse { dao })
+}
+
+fn query_filter(deps: Deps) -> StdResult<FilterResponse> {
+    let filter = FILTER.load(deps.storage)?;
+    Ok(FilterResponse { filter })
 }
 
 fn query_protobuf_registry(deps: Deps) -> StdResult<ProtobufRegistryResponse> {
@@ -1045,7 +1167,7 @@ fn query_is_msg_authorized(
 
             // Check if the authorization allows the message.
             let allowed = authorization
-                .allows(&deps, &msg, true)
+                .allows(&deps, msg.clone(), true)
                 // Should not happen since we ignore filter errors.
                 .map_err(|e| StdError::generic_err(e.to_string()))?;
 
@@ -1151,7 +1273,7 @@ fn query_is_msg_authorized_by_role(
 
         // Check if the authorization allows the message.
         let allowed = authorization
-            .allows(&deps, &msg, true)
+            .allows(&deps, msg.clone(), true)
             // Should not happen since we ignore filter errors.
             .map_err(|e| StdError::generic_err(e.to_string()))?;
 
@@ -1230,7 +1352,7 @@ fn query_is_msg_authorized_by(
     }
 
     // Check if the authorization allows the message.
-    let allowed = match authorization.allows(&deps, &msg, false) {
+    let allowed = match authorization.allows(&deps, msg, false) {
         Ok(allowed) => allowed,
         Err(e) => {
             return Ok(IsMsgAuthorizedByResponse::Unauthorized {
@@ -1259,25 +1381,11 @@ fn query_test_filter(
     filter: serde_json::Value,
     msg: CosmosMsg,
 ) -> StdResult<TestFilterResponse> {
-    // Get the protobuf messages referenced by the filter.
-    let protobuf_messages = get_protobuf_messages(&filter)
-        .into_iter()
-        .collect::<Vec<_>>();
-
-    // Query for the file descriptor set.
-    let file_descriptor_set = match protobuf_messages.is_empty() {
-        true => None,
-        false => Some(
-            get_file_descriptor_set(&deps, protobuf_messages)
-                .map_err(|e| StdError::generic_err(e.to_string()))?,
-        ),
-    };
-
     // Test the filter.
-    let check = Authorization::filter_allows(&filter, file_descriptor_set, &msg, false);
+    let result = Authorization::filter_allows(&deps, filter, msg, false);
 
     // Handle filter errors appropriately.
-    let response = check.map_or_else(
+    let response = result.map_or_else(
         |e| TestFilterResponse::Fail {
             reason: e.to_string(),
         },
@@ -1304,15 +1412,82 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
+        INSTANTIATE_FILTER_REPLY_ID => {
+            let res = parse_reply_instantiate_data(msg)?;
+            let addr = deps.api.addr_validate(&res.contract_address)?;
+
+            FILTER.save(deps.storage, &addr)?;
+
+            Ok(Response::default().add_attribute("filter", addr))
+        }
         INSTANTIATE_PROTOBUF_REGISTRY_REPLY_ID => {
             let res = parse_reply_instantiate_data(msg)?;
             let addr = deps.api.addr_validate(&res.contract_address)?;
 
             PROTOBUF_REGISTRY.save(deps.storage, &addr)?;
 
-            Ok(Response::default().add_attribute("protobuf_registry", addr))
+            // If filter code ID is set from instantiate, create it.
+            let submsgs = match FILTER_CODE_ID.may_load(deps.storage)? {
+                None => vec![],
+                Some(filter_code_id) => {
+                    let filter_salt = FILTER_SALT.may_load(deps.storage)?;
+                    let owner = cw_ownable::get_ownership(deps.storage)?.owner.unwrap();
+
+                    // Remove the code ID and salt from storage.
+                    FILTER_CODE_ID.remove(deps.storage);
+                    FILTER_SALT.remove(deps.storage);
+
+                    let last_6_address_chars = env
+                        .contract
+                        .address
+                        .to_string()
+                        .chars()
+                        .rev()
+                        .take(6)
+                        .collect::<String>();
+
+                    vec![SubMsg::reply_on_success(
+                        ModuleInstantiateInfo {
+                            code_id: filter_code_id,
+                            // Set RBAM's owner as owner.
+                            msg: to_json_binary(&cw_filter::msg::InstantiateMsg {
+                                owner: Some(owner.to_string()),
+                                // Set protobuf registry to the one we just
+                                // created.
+                                protobuf_registry: Some(ModuleUpdate::Existing {
+                                    address: addr.to_string(),
+                                }),
+                            })?,
+                            // Set RBAM's owner as the admin so they can upgrade
+                            // it.
+                            admin: Some(Admin::Address {
+                                addr: owner.to_string(),
+                            }),
+                            funds: None,
+                            label: format!("rbam-{}-filter", last_6_address_chars),
+                            salt: filter_salt,
+                        }
+                        .into_cosmos_msg(""),
+                        INSTANTIATE_FILTER_REPLY_ID,
+                    )]
+                }
+            };
+
+            Ok(Response::default()
+                .add_submessages(submsgs)
+                .add_attribute("protobuf_registry", addr))
+        }
+        PREPARE_PROTOBUF_REGISTRY_REPLY_ID => {
+            match msg.result.into_result() {
+                Err(reason) => {
+                    // TODO: stop printing whole stacktrace? or maybe that's only in tests
+                    return Err(ContractError::ProtobufRegistryPrepareFailed { reason });
+                }
+                // Should not happen since we only reply on error.
+                Ok(_) => Ok(Response::default()),
+            }
         }
 
         _ => Err(ContractError::UnknownReplyID { id: msg.id }),

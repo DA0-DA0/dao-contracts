@@ -1,4 +1,4 @@
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Binary};
 use cw_storage_plus::{
     Index, IndexList, IndexedMap, Item, KeyDeserialize, Map, MultiIndex, UniqueIndex,
 };
@@ -10,6 +10,15 @@ use crate::{
 
 /// The address of the DAO.
 pub const DAO: Item<Addr> = Item::new("dao");
+
+/// The address of the filter contract.
+pub const FILTER: Item<Addr> = Item::new("filter");
+/// The code ID of the filter contract, stored temporarily if creating the
+/// protobuf registry first.
+pub const FILTER_CODE_ID: Item<u64> = Item::new("filter_code_id");
+/// The salt of the filter contract, stored temporarily if creating the
+/// protobuf registry first.
+pub const FILTER_SALT: Item<Binary> = Item::new("filter_salt");
 
 /// The address of the protobuf registry, if any.
 pub const PROTOBUF_REGISTRY: Item<Addr> = Item::new("protobuf_registry");
@@ -39,10 +48,6 @@ pub const AUTHORIZATIONS: IndexedMap<u64, Authorization, AuthorizationsIndexes<'
             ),
         },
     );
-
-/// Map authorization_id -> file descriptor set that contains the exact files
-/// with the exact messages/enums needed to decode the authorization's filter.
-pub const AUTHORIZATION_FILE_DESCRIPTOR_SETS: Map<u64, Vec<u8>> = Map::new("authorization_fds");
 
 /// Map (address, role_id) -> address. Secondary index on role_id to look
 /// up/iterate over addresses by role. Indexes point to values stored in the
