@@ -342,7 +342,6 @@
           "update_role": {
             "type": "object",
             "required": [
-              "metadata",
               "role_id"
             ],
             "properties": {
@@ -355,9 +354,12 @@
               },
               "metadata": {
                 "description": "Optionally update the metadata for the role.",
-                "allOf": [
+                "anyOf": [
                   {
-                    "$ref": "#/definitions/OptionalUpdate_for_String"
+                    "$ref": "#/definitions/Update_for_String"
+                  },
+                  {
+                    "type": "null"
                   }
                 ]
               },
@@ -444,9 +446,7 @@
           "update_authorization": {
             "type": "object",
             "required": [
-              "authorization_id",
-              "filter",
-              "metadata"
+              "authorization_id"
             ],
             "properties": {
               "authorization_id": {
@@ -464,17 +464,23 @@
               },
               "filter": {
                 "description": "Optionally update the filter for the authorization.",
-                "allOf": [
+                "anyOf": [
                   {
-                    "$ref": "#/definitions/OptionalUpdate_for_AnyValue"
+                    "$ref": "#/definitions/Update_for_AnyValue"
+                  },
+                  {
+                    "type": "null"
                   }
                 ]
               },
               "metadata": {
                 "description": "Optionally update the metadata for the authorization.",
-                "allOf": [
+                "anyOf": [
                   {
-                    "$ref": "#/definitions/OptionalUpdate_for_String"
+                    "$ref": "#/definitions/Update_for_String"
+                  },
+                  {
+                    "type": "null"
                   }
                 ]
               },
@@ -1510,28 +1516,6 @@
               }
             },
             "additionalProperties": false
-          }
-        ]
-      },
-      "OptionalUpdate_for_AnyValue": {
-        "description": "An update type that allows partial updates of optional fields.",
-        "anyOf": [
-          {
-            "$ref": "#/definitions/Update_for_AnyValue"
-          },
-          {
-            "type": "null"
-          }
-        ]
-      },
-      "OptionalUpdate_for_String": {
-        "description": "An update type that allows partial updates of optional fields.",
-        "anyOf": [
-          {
-            "$ref": "#/definitions/Update_for_String"
-          },
-          {
-            "type": "null"
           }
         ]
       },

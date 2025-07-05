@@ -8,6 +8,7 @@ pub enum Update<T> {
 
 /// An update type that allows partial updates of optional fields.
 #[cw_serde]
+#[serde(transparent)]
 pub struct OptionalUpdate<T>(pub Option<Update<T>>);
 
 impl<T> OptionalUpdate<T> {

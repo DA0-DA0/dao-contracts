@@ -323,6 +323,13 @@
           "list_messages": {
             "type": "object",
             "properties": {
+              "file_name": {
+                "description": "Optionally list messages by file name.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
               "limit": {
                 "description": "The maximum number of messages to return. Defaults to 10, max is 100.",
                 "type": [
@@ -334,44 +341,6 @@
               },
               "start_after": {
                 "description": "The message name to start after. If not provided, the query will start from the beginning.",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "list_messages_by_file"
-        ],
-        "properties": {
-          "list_messages_by_file": {
-            "type": "object",
-            "required": [
-              "file_name"
-            ],
-            "properties": {
-              "file_name": {
-                "description": "The file name to list messages for.",
-                "type": "string"
-              },
-              "limit": {
-                "description": "The maximum number of messages to return. Defaults to 10, max is 100.",
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              "start_after": {
-                "description": "The messages name to start after. If not provided, the query will start from the beginning.",
                 "type": [
                   "string",
                   "null"
@@ -584,7 +553,7 @@
     },
     "list_files": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ListProtobufFilesResponse",
+      "title": "ListFilesResponse",
       "type": "object",
       "required": [
         "files"
@@ -601,24 +570,7 @@
     },
     "list_messages": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ListProtobufMessagesResponse",
-      "type": "object",
-      "required": [
-        "messages"
-      ],
-      "properties": {
-        "messages": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    "list_messages_by_file": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ListProtobufMessagesResponse",
+      "title": "ListMessagesResponse",
       "type": "object",
       "required": [
         "messages"
@@ -635,7 +587,7 @@
     },
     "list_prepared": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ListPreparedResponse",
+      "title": "ListMessagesResponse",
       "type": "object",
       "required": [
         "messages"
