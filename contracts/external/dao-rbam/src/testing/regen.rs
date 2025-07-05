@@ -1,4 +1,4 @@
-use cosmwasm_std::{Binary, CosmosMsg, StdError};
+use cosmwasm_std::{Binary, CosmosMsg};
 use cw_protobuf_registry::protobuf::base64_encode_protobuf;
 use dao_testing::ADDR0;
 use osmosis_std_derive::CosmwasmExt;
@@ -106,53 +106,48 @@ fn test_regen_protobuf_filter() {
     );
 
     let filter = Some(serde_json::json!({
-        "stargate": {
+        "#stargate": {
             "type_url": "/regen.ecocredit.basket.v1.MsgCreate",
             "value": {
-                "#proto": {
-                    "type": "regen.ecocredit.basket.v1.MsgCreate",
-                    "value": {
-                        "curator": dao.to_string(),
-                        "disableAutoRetire": {
-                            "$or": [
-                                { "$exists": false },
-                                false,
-                            ],
-                        },
-                        "creditTypeAbbrev": "C",
-                        "allowedClasses": ["C-1", "C-2"],
-                        "dateCriteria": {
-                            // In July 2025
-                            "minStartDate": {
-                                "$startsWith": "2025-07-"
-                            },
-                            "startDateWindow": {
-                                "#replace": {
-                                    // Remove seconds suffix
-                                    "find": "s",
-                                    "replace": "",
-                                    "filter": {
-                                        "#to_number": {
-                                            // Between 0 and 30 days
-                                            "$between": [0, 2592000]
-                                        }
-                                    }
+                "curator": dao.to_string(),
+                "disableAutoRetire": {
+                    "$or": [
+                        { "$exists": false },
+                        false,
+                    ],
+                },
+                "creditTypeAbbrev": "C",
+                "allowedClasses": ["C-1", "C-2"],
+                "dateCriteria": {
+                    // In July 2025
+                    "minStartDate": {
+                        "$startsWith": "2025-07-"
+                    },
+                    "startDateWindow": {
+                        "#replace": {
+                            // Remove seconds suffix
+                            "find": "s",
+                            "replace": "",
+                            "filter": {
+                                "#to_number": {
+                                    // Between 0 and 30 days
+                                    "$between": [0, 2592000]
                                 }
-                            },
-                            "yearsInThePast": {
-                                "$or": [
-                                    0,
-                                    { "$exists": false },
-                                ]
-                            },
-                        },
-                        // The current basket creation fee.
-                        "fee": [{
-                            "denom": "uregen",
-                            "amount": "1000000000"
-                        }]
-                    }
-                }
+                            }
+                        }
+                    },
+                    "yearsInThePast": {
+                        "$or": [
+                            0,
+                            { "$exists": false },
+                        ]
+                    },
+                },
+                // The current basket creation fee.
+                "fee": [{
+                    "denom": "uregen",
+                    "amount": "1000000000"
+                }]
             }
         }
     }));
@@ -166,18 +161,16 @@ fn test_regen_protobuf_filter() {
         filter.clone(),
         Some(true),
     );
-    assert_eq!(
+    assert!(matches!(
         err,
-        ContractError::Std(StdError::generic_err(format!(
-            "Querier contract error: {}",
-            StdError::generic_err(
-                cw_protobuf_registry::ContractError::MessageNotFound {
-                    message: "regen.ecocredit.basket.v1.MsgCreate".to_string(),
-                }
-                .to_string()
-            )
-        )))
-    );
+        ContractError::ProtobufRegistryPrepareFailed { .. }
+    ));
+    assert!(err.to_string().contains(
+        &cw_protobuf_registry::ContractError::MessageNotFound {
+            message: "regen.ecocredit.basket.v1.MsgCreate".to_string(),
+        }
+        .to_string()
+    ));
 
     // Register the protobuf file descriptor set.
     suite.register_protobufs(&dao, vec![file_descriptor_set.clone()]);
@@ -259,8 +252,8 @@ fn test_regen_protobuf_filter() {
             err: cw_jsonfilter::FilterResult::operator_failed(
                 "$startsWith",
                 "value does not start with filter value",
-                "@.stargate.value.#proto.dateCriteria.minStartDate.$startsWith",
-                "@.stargate.value.#proto.dateCriteria.minStartDate",
+                "@.#stargate.stargate.value.#proto.dateCriteria.minStartDate.$startsWith",
+                "@.#stargate.stargate.value.#proto.dateCriteria.minStartDate",
             )
             .as_fail()
             .unwrap()
