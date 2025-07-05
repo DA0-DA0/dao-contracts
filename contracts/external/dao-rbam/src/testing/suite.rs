@@ -315,7 +315,7 @@ impl Suite {
         &mut self,
         start_after: Option<String>,
         limit: Option<u32>,
-    ) -> cw_protobuf_registry::msg::ListProtobufFilesResponse {
+    ) -> cw_protobuf_registry::msg::ListFilesResponse {
         self.base
             .app
             .wrap()
@@ -330,13 +330,17 @@ impl Suite {
         &mut self,
         start_after: Option<String>,
         limit: Option<u32>,
-    ) -> cw_protobuf_registry::msg::ListProtobufMessagesResponse {
+    ) -> cw_protobuf_registry::msg::ListMessagesResponse {
         self.base
             .app
             .wrap()
             .query_wasm_smart(
                 self.protobuf_registry_addr.clone(),
-                &cw_protobuf_registry::msg::QueryMsg::ListMessages { start_after, limit },
+                &cw_protobuf_registry::msg::QueryMsg::ListMessages {
+                    file_name: None,
+                    start_after,
+                    limit,
+                },
             )
             .unwrap()
     }
@@ -346,14 +350,14 @@ impl Suite {
         file_name: String,
         start_after: Option<String>,
         limit: Option<u32>,
-    ) -> cw_protobuf_registry::msg::ListProtobufMessagesResponse {
+    ) -> cw_protobuf_registry::msg::ListMessagesResponse {
         self.base
             .app
             .wrap()
             .query_wasm_smart(
                 self.protobuf_registry_addr.clone(),
-                &cw_protobuf_registry::msg::QueryMsg::ListMessagesByFile {
-                    file_name,
+                &cw_protobuf_registry::msg::QueryMsg::ListMessages {
+                    file_name: Some(file_name),
                     start_after,
                     limit,
                 },

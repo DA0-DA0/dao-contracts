@@ -171,7 +171,7 @@ fn test_regen_protobuf_filter() {
         ContractError::Std(StdError::generic_err(format!(
             "Querier contract error: {}",
             StdError::generic_err(
-                cw_protobuf_registry::ContractError::ProtobufMessageNotFound {
+                cw_protobuf_registry::ContractError::MessageNotFound {
                     message: "regen.ecocredit.basket.v1.MsgCreate".to_string(),
                 }
                 .to_string()

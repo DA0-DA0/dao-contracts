@@ -1733,7 +1733,7 @@ fn test_protobuf_management() {
     );
     assert_eq!(
         err,
-        cw_protobuf_registry::ContractError::ProtobufMessageLimitReached {
+        cw_protobuf_registry::ContractError::MessageLimitReached {
             unregistered: 1,
             total: 2,
         }
@@ -1794,7 +1794,7 @@ fn test_protobuf_filter() {
         ContractError::ProtobufRegistryPrepareFailed { .. }
     ));
     assert!(err.to_string().contains(
-        &cw_protobuf_registry::ContractError::ProtobufMessageNotFound {
+        &cw_protobuf_registry::ContractError::MessageNotFound {
             message: "google.protobuf.BoolValue".to_string(),
         }
         .to_string()

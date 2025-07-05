@@ -17,7 +17,6 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-chrono = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["cosmwasm_1_2"] }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
@@ -33,6 +32,7 @@ cw-filter = { workspace = true, features = ["library"] }
 cw-protobuf-registry = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
+chrono = { workspace = true }
 cw-multi-test = { workspace = true }
 dao-interface = { workspace = true }
 dao-rbam = { workspace = true }

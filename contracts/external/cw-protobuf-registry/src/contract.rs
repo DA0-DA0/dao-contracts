@@ -14,9 +14,8 @@ use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 use crate::error::ContractError;
 use crate::msg::{
-    DecodeResponse, ExecuteMsg, FileDescriptorSetResponse, InstantiateMsg, ListPreparedResponse,
-    ListProtobufFilesResponse, ListProtobufMessagesResponse, MigrateMsg, PreparedResponse,
-    QueryMsg,
+    DecodeResponse, ExecuteMsg, FileDescriptorSetResponse, InstantiateMsg, ListFilesResponse,
+    ListMessagesResponse, MigrateMsg, PreparedResponse, QueryMsg,
 };
 use crate::protobuf::create_file_descriptor_set_for_messages;
 use crate::state::{FILES, MESSAGES, PREPARED};
@@ -61,11 +60,11 @@ pub fn execute(
         ExecuteMsg::UpdateOwnership(action) => execute_update_ownership(deps, info, env, action),
         ExecuteMsg::Register {
             file_descriptor_sets,
-        } => execute_register_protobufs(deps, info, file_descriptor_sets),
+        } => execute_register(deps, info, file_descriptor_sets),
         ExecuteMsg::Unregister {
             file_names,
             message_limit,
-        } => execute_unregister_protobufs(deps, info, file_names, message_limit),
+        } => execute_unregister(deps, info, file_names, message_limit),
         ExecuteMsg::Prepare { messages } => execute_prepare(deps, info, messages),
         ExecuteMsg::Unprepare { messages } => execute_unprepare(deps, info, messages),
     }
@@ -83,7 +82,7 @@ fn execute_update_ownership(
         .add_attributes(ownership.into_attributes()))
 }
 
-fn execute_register_protobufs(
+fn execute_register(
     deps: DepsMut,
     info: MessageInfo,
     file_descriptor_sets: Vec<Vec<u8>>,
@@ -203,12 +202,12 @@ fn execute_register_protobufs(
     }
 
     Ok(Response::new()
-        .add_attribute("action", "register_protobuf")
+        .add_attribute("action", "register")
         .add_attribute("file_count", file_count.to_string())
         .add_attribute("message_count", message_count.to_string()))
 }
 
-fn execute_unregister_protobufs(
+fn execute_unregister(
     deps: DepsMut,
     info: MessageInfo,
     file_names: Vec<String>,
@@ -235,7 +234,7 @@ fn execute_unregister_protobufs(
         // too many to unregister in a single TX, while still minimizing the
         // number of files that are partially unregistered.
         if remaining == 0 {
-            return Err(ContractError::ProtobufMessageLimitReached {
+            return Err(ContractError::MessageLimitReached {
                 unregistered: file_index,
                 total: total_files,
             });
@@ -260,7 +259,7 @@ fn execute_unregister_protobufs(
     }
 
     Ok(Response::new()
-        .add_attribute("action", "unregister_protobuf")
+        .add_attribute("action", "unregister")
         .add_attribute(
             "unregistered_message_count",
             unregistered_message_count.to_string(),
@@ -303,21 +302,13 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
         QueryMsg::Info {} => to_json_binary(&query_info(deps)?),
         QueryMsg::ListFiles { start_after, limit } => {
-            to_json_binary(&query_list_protobuf_files(deps, start_after, limit)?)
+            to_json_binary(&query_list_files(deps, start_after, limit)?)
         }
-        QueryMsg::ListMessages { start_after, limit } => {
-            to_json_binary(&query_list_protobuf_messages(deps, start_after, limit)?)
-        }
-        QueryMsg::ListMessagesByFile {
+        QueryMsg::ListMessages {
             file_name,
             start_after,
             limit,
-        } => to_json_binary(&query_list_protobuf_messages_by_file(
-            deps,
-            file_name,
-            start_after,
-            limit,
-        )?),
+        } => to_json_binary(&query_list_messages(deps, file_name, start_after, limit)?),
         QueryMsg::ListPrepared { start_after, limit } => {
             to_json_binary(&query_list_prepared(deps, start_after, limit)?)
         }
@@ -337,11 +328,11 @@ fn query_info(deps: Deps) -> StdResult<InfoResponse> {
     Ok(InfoResponse { info })
 }
 
-fn query_list_protobuf_files(
+fn query_list_files(
     deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> StdResult<ListProtobufFilesResponse> {
+) -> StdResult<ListFilesResponse> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after.map(Bound::exclusive);
 
@@ -350,50 +341,38 @@ fn query_list_protobuf_files(
         .take(limit)
         .collect::<StdResult<Vec<_>>>()?;
 
-    Ok(ListProtobufFilesResponse { files })
+    Ok(ListFilesResponse { files })
 }
 
-fn query_list_protobuf_messages(
+fn query_list_messages(
     deps: Deps,
+    file_name: Option<String>,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> StdResult<ListProtobufMessagesResponse> {
+) -> StdResult<ListMessagesResponse> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after.map(Bound::exclusive);
 
-    let messages = MESSAGES
-        .keys(deps.storage, start, None, Order::Ascending)
-        .take(limit)
-        .collect::<StdResult<Vec<_>>>()?;
+    let keys = if let Some(file_name) = file_name {
+        MESSAGES
+            .idx
+            .file_name
+            .prefix(file_name)
+            .keys(deps.storage, start, None, Order::Ascending)
+    } else {
+        MESSAGES.keys(deps.storage, start, None, Order::Ascending)
+    };
 
-    Ok(ListProtobufMessagesResponse { messages })
-}
+    let messages = keys.take(limit).collect::<StdResult<Vec<_>>>()?;
 
-fn query_list_protobuf_messages_by_file(
-    deps: Deps,
-    file_name: String,
-    start_after: Option<String>,
-    limit: Option<u32>,
-) -> StdResult<ListProtobufMessagesResponse> {
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start = start_after.map(Bound::exclusive);
-
-    let messages = MESSAGES
-        .idx
-        .file_name
-        .prefix(file_name)
-        .keys(deps.storage, start, None, Order::Ascending)
-        .take(limit)
-        .collect::<StdResult<Vec<_>>>()?;
-
-    Ok(ListProtobufMessagesResponse { messages })
+    Ok(ListMessagesResponse { messages })
 }
 
 pub fn query_list_prepared(
     deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> StdResult<ListPreparedResponse> {
+) -> StdResult<ListMessagesResponse> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after.map(Bound::exclusive);
 
@@ -402,7 +381,7 @@ pub fn query_list_prepared(
         .take(limit)
         .collect::<StdResult<Vec<_>>>()?;
 
-    Ok(ListPreparedResponse { messages })
+    Ok(ListMessagesResponse { messages })
 }
 
 fn query_prepared(deps: Deps, message_name: String) -> StdResult<PreparedResponse> {

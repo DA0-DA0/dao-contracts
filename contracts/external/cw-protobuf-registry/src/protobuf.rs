@@ -11,24 +11,13 @@ use serde_json::Deserializer;
 
 use cosmwasm_std::Deps;
 use prost::Message;
-use prost_types::{
-    field_descriptor_proto, FieldDescriptorProto, FileDescriptorProto, FileDescriptorSet,
-};
+use prost_types::{field_descriptor_proto, FileDescriptorProto, FileDescriptorSet};
 use std::collections::{HashMap, HashSet};
 
 use crate::{
     state::{FILES, MESSAGES},
     ContractError,
 };
-
-/// Base64 decoding engine
-#[cfg(any(feature = "library", test))]
-pub const BASE64_ENGINE: GeneralPurpose = GeneralPurpose::new(
-    &alphabet::STANDARD,
-    GeneralPurposeConfig::new()
-        .with_decode_allow_trailing_bits(true)
-        .with_decode_padding_mode(DecodePaddingMode::Indifferent),
-);
 
 /// Create a file descriptor set that contains the exact files with the exact
 /// messages/enums needed to decode a set of messages.
@@ -45,7 +34,7 @@ pub fn create_file_descriptor_set_for_messages(
     for message in messages {
         let file_name = MESSAGES
             .may_load(deps.storage, message.clone())?
-            .ok_or_else(|| ContractError::ProtobufMessageNotFound {
+            .ok_or_else(|| ContractError::MessageNotFound {
                 message: message.to_string(),
             })?;
 
@@ -142,7 +131,7 @@ impl DependencyToLoad {
 
     /// Create a dependency with a full type name that may be in one of the
     /// provided files. If not found, return `None`.
-    fn new_from_files(
+    fn from_files(
         potential_files: &[&FileDescriptorProto],
         full_name: &str,
         is_message: bool,
@@ -151,7 +140,18 @@ impl DependencyToLoad {
 
         // Find dependency containing this type. If found, set the file name and
         // return it.
-        let dependency_source = dep.find_file_descriptor(potential_files);
+        let dependency_source = potential_files.iter().find(|f| {
+            f.package.as_ref() == Some(&dep.package)
+                && ((dep.is_message
+                    && f.message_type
+                        .iter()
+                        .any(|m| m.name.as_ref() == Some(&dep.name)))
+                    || (!dep.is_message
+                        && f.enum_type
+                            .iter()
+                            .any(|e| e.name.as_ref() == Some(&dep.name))))
+        });
+
         if let Some(dependency_source) = dependency_source {
             dep.file_name = dependency_source
                 .name
@@ -165,41 +165,6 @@ impl DependencyToLoad {
         } else {
             Ok(None)
         }
-    }
-
-    /// Find the file descriptor containing the message or enum from a set of
-    /// file descriptors.
-    fn find_file_descriptor<'b>(
-        &self,
-        file_descriptor: &'b [&'b FileDescriptorProto],
-    ) -> Option<&'b &'b FileDescriptorProto> {
-        file_descriptor.iter().find(|f| {
-            f.package.as_ref() == Some(&self.package)
-                && ((self.is_message
-                    && f.message_type
-                        .iter()
-                        .any(|m| m.name.as_ref() == Some(&self.name)))
-                    || (!self.is_message
-                        && f.enum_type
-                            .iter()
-                            .any(|e| e.name.as_ref() == Some(&self.name))))
-        })
-    }
-
-    /// Get the fields of the message descriptor, if found. Enums have no
-    /// fields.
-    fn get_message_descriptor_fields<'a>(
-        &self,
-        file: &'a FileDescriptorProto,
-    ) -> Option<Vec<&'a FieldDescriptorProto>> {
-        if !self.is_message {
-            return Some(vec![]);
-        }
-
-        file.message_type
-            .iter()
-            .find(|m| m.name.as_ref() == Some(&self.name))
-            .map(|m| m.field.iter().collect::<Vec<_>>())
     }
 
     /// Add the message/enum to the file descriptor.
@@ -254,12 +219,19 @@ fn add_dependency(
                 msg: "source file descriptor not found".to_string(),
             })?;
 
-    // Get message descriptor fields for this dependency.
-    let fields = dependency
-        .get_message_descriptor_fields(source_file)
-        .ok_or_else(|| ContractError::InternalError {
-            msg: "message descriptor fields not found".to_string(),
-        })?;
+    // Get message descriptor fields for this dependency, if it is a message.
+    let fields = if dependency.is_message {
+        source_file
+            .message_type
+            .iter()
+            .find(|m| m.name.as_ref() == Some(&dependency.name))
+            .map(|m| m.field.iter().collect::<Vec<_>>())
+            .ok_or_else(|| ContractError::InternalError {
+                msg: "message descriptor fields not found".to_string(),
+            })?
+    } else {
+        vec![]
+    };
 
     // Get all files that may contain referenced messages/enums.
     let mut potential_sources = Vec::new();
@@ -287,7 +259,7 @@ fn add_dependency(
         // message/enum reference. Strip the prefix to get the full type name.
         if let Some(full_type_name) = field.type_name.as_ref().and_then(|s| s.strip_prefix('.')) {
             let found_dependency =
-                DependencyToLoad::new_from_files(&potential_sources, full_type_name, is_message)?;
+                DependencyToLoad::from_files(&potential_sources, full_type_name, is_message)?;
 
             if let Some(dep) = found_dependency {
                 // Mark dependency as used so we keep it in the set.
@@ -340,6 +312,15 @@ fn add_dependency(
     Ok(())
 }
 
+/// Base64 decoding engine
+#[cfg(any(feature = "library", test))]
+pub const BASE64_ENGINE: GeneralPurpose = GeneralPurpose::new(
+    &alphabet::STANDARD,
+    GeneralPurposeConfig::new()
+        .with_decode_allow_trailing_bits(true)
+        .with_decode_padding_mode(DecodePaddingMode::Indifferent),
+);
+
 /// Get the protobuf messages referenced by a filter.
 #[cfg(any(feature = "library", test))]
 pub fn get_protobuf_messages(filter: &serde_json::Value) -> HashSet<String> {
@@ -352,31 +333,29 @@ pub fn get_protobuf_messages(filter: &serde_json::Value) -> HashSet<String> {
 #[cfg(any(feature = "library", test))]
 fn inner_get_protobuf_messages(filter: &serde_json::Value, messages: &mut HashSet<String>) {
     if let serde_json::Value::Object(filter_map) = filter {
-        for (key, value) in filter_map {
-            // If the key is the #proto transformer, add the type to the set.
-            if key == "#proto" {
-                if let Some(serde_json::Value::String(proto_type)) = value
-                    .as_object()
-                    .and_then(|proto_arg| proto_arg.get("type"))
-                {
-                    messages.insert(proto_type.clone());
-                }
-            }
+        // Extract #proto types
+        if let Some(proto_type) = filter_map
+            .get("#proto")
+            .and_then(|v| v.as_object())
+            .and_then(|proto_arg| proto_arg.get("type"))
+            .and_then(|v| v.as_str())
+        {
+            messages.insert(proto_type.to_string());
+        }
 
-            // If the key is the #stargate transformer, add the type to the set,
-            // stripping the `/` prefix from the type URL.
-            if key == "#stargate" {
-                if let Some(serde_json::Value::String(type_url)) = value
-                    .as_object()
-                    .and_then(|stargate_arg| stargate_arg.get("type_url"))
-                {
-                    if let Some(stripped_type_url) = type_url.strip_prefix('/') {
-                        messages.insert(stripped_type_url.to_string());
-                    }
-                }
-            }
+        // Extract #stargate types
+        if let Some(stripped_type_url) = filter_map
+            .get("#stargate")
+            .and_then(|v| v.as_object())
+            .and_then(|stargate_arg| stargate_arg.get("type_url"))
+            .and_then(|v| v.as_str())
+            .and_then(|v| v.strip_prefix('/'))
+        {
+            messages.insert(stripped_type_url.to_string());
+        }
 
-            // Recurse on the value.
+        // Recurse on all values.
+        for value in filter_map.values() {
             inner_get_protobuf_messages(value, messages);
         }
     }

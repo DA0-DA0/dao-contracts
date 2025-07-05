@@ -19,9 +19,6 @@ pub enum ContractError {
     #[error(transparent)]
     Prost(#[from] DecodeError),
 
-    #[error("Unauthorized")]
-    Unauthorized {},
-
     #[error("No files provided")]
     NoFiles {},
 
@@ -57,22 +54,13 @@ pub enum ContractError {
     },
 
     #[error("Message limit reached before all files were unregistered ({unregistered}/{total}). Increase the limit or unregister fewer files.")]
-    ProtobufMessageLimitReached { unregistered: usize, total: usize },
+    MessageLimitReached { unregistered: usize, total: usize },
 
     #[error("Protobuf message not found: {message}")]
-    ProtobufMessageNotFound { message: String },
+    MessageNotFound { message: String },
 
     #[error("Internal error: {msg}")]
     InternalError { msg: String },
-
-    #[error("JSON serialization error: {err}")]
-    JsonSerialization { err: String },
-
-    #[error("Filter error: {err}")]
-    FilterError { err: String },
-
-    #[error("Message not allowed by filter: {err}")]
-    MsgNotAllowedByFilter { err: String },
 }
 
 impl From<ContractError> for String {

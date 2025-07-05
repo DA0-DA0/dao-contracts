@@ -49,7 +49,7 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(InfoResponse)]
     Info {},
-    #[returns(ListProtobufFilesResponse)]
+    #[returns(ListFilesResponse)]
     ListFiles {
         /// The file name to start after. If not provided, the query will start
         /// from the beginning.
@@ -57,8 +57,10 @@ pub enum QueryMsg {
         /// The maximum number of files to return. Defaults to 10, max is 100.
         limit: Option<u32>,
     },
-    #[returns(ListProtobufMessagesResponse)]
+    #[returns(ListMessagesResponse)]
     ListMessages {
+        /// Optionally list messages by file name.
+        file_name: Option<String>,
         /// The message name to start after. If not provided, the query will
         /// start from the beginning.
         start_after: Option<String>,
@@ -66,18 +68,7 @@ pub enum QueryMsg {
         /// 100.
         limit: Option<u32>,
     },
-    #[returns(ListProtobufMessagesResponse)]
-    ListMessagesByFile {
-        /// The file name to list messages for.
-        file_name: String,
-        /// The messages name to start after. If not provided, the query will
-        /// start from the beginning.
-        start_after: Option<String>,
-        /// The maximum number of messages to return. Defaults to 10, max is
-        /// 100.
-        limit: Option<u32>,
-    },
-    #[returns(ListPreparedResponse)]
+    #[returns(ListMessagesResponse)]
     ListPrepared {
         /// The message name to start after. If not provided, the query will
         /// start from the beginning.
@@ -111,17 +102,12 @@ pub struct MigrateMsg {}
 // Response types
 
 #[cw_serde]
-pub struct ListProtobufFilesResponse {
+pub struct ListFilesResponse {
     pub files: Vec<String>,
 }
 
 #[cw_serde]
-pub struct ListProtobufMessagesResponse {
-    pub messages: Vec<String>,
-}
-
-#[cw_serde]
-pub struct ListPreparedResponse {
+pub struct ListMessagesResponse {
     pub messages: Vec<String>,
 }
 

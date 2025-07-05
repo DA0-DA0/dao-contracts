@@ -7,8 +7,8 @@ use prost::Message;
 use prost_types::FileDescriptorSet;
 
 use crate::msg::{
-    DecodeResponse, ExecuteMsg, FileDescriptorSetResponse, InstantiateMsg, ListPreparedResponse,
-    ListProtobufFilesResponse, ListProtobufMessagesResponse, PreparedResponse, QueryMsg,
+    DecodeResponse, ExecuteMsg, FileDescriptorSetResponse, InstantiateMsg, ListFilesResponse,
+    ListMessagesResponse, PreparedResponse, QueryMsg,
 };
 
 pub struct SuiteBuilder {}
@@ -71,7 +71,7 @@ impl Suite {
         &mut self,
         start_after: Option<String>,
         limit: Option<u32>,
-    ) -> ListProtobufFilesResponse {
+    ) -> ListFilesResponse {
         self.base
             .app
             .wrap()
@@ -86,13 +86,17 @@ impl Suite {
         &mut self,
         start_after: Option<String>,
         limit: Option<u32>,
-    ) -> ListProtobufMessagesResponse {
+    ) -> ListMessagesResponse {
         self.base
             .app
             .wrap()
             .query_wasm_smart(
                 self.registry_addr.clone(),
-                &QueryMsg::ListMessages { start_after, limit },
+                &QueryMsg::ListMessages {
+                    file_name: None,
+                    start_after,
+                    limit,
+                },
             )
             .unwrap()
     }
@@ -102,14 +106,14 @@ impl Suite {
         file_name: String,
         start_after: Option<String>,
         limit: Option<u32>,
-    ) -> ListProtobufMessagesResponse {
+    ) -> ListMessagesResponse {
         self.base
             .app
             .wrap()
             .query_wasm_smart(
                 self.registry_addr.clone(),
-                &QueryMsg::ListMessagesByFile {
-                    file_name,
+                &QueryMsg::ListMessages {
+                    file_name: Some(file_name),
                     start_after,
                     limit,
                 },
@@ -121,7 +125,7 @@ impl Suite {
         &mut self,
         start_after: Option<String>,
         limit: Option<u32>,
-    ) -> ListPreparedResponse {
+    ) -> ListMessagesResponse {
         self.base
             .app
             .wrap()

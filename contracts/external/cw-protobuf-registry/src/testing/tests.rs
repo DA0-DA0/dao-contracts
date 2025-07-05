@@ -96,7 +96,7 @@ fn test_protobuf_management() {
     );
     assert_eq!(
         err,
-        ContractError::ProtobufMessageLimitReached {
+        ContractError::MessageLimitReached {
             unregistered: 1,
             total: 2,
         }
@@ -134,7 +134,7 @@ fn test_regen_protobuf_filter() {
         StdError::generic_err(format!(
             "Querier contract error: {}",
             StdError::generic_err(
-                ContractError::ProtobufMessageNotFound {
+                ContractError::MessageNotFound {
                     message: "regen.ecocredit.basket.v1.MsgCreate".to_string(),
                 }
                 .to_string()
@@ -236,7 +236,7 @@ fn test_prepare_and_decode() {
             "Querier contract error: {}",
             StdError::generic_err(format!(
                 "failed to create file descriptor set: {}",
-                ContractError::ProtobufMessageNotFound {
+                ContractError::MessageNotFound {
                     message: "cosmos.base.v1beta1.Coin".to_string()
                 }
             ))
@@ -285,7 +285,7 @@ fn test_prepare_and_decode() {
             "Querier contract error: {}",
             StdError::generic_err(format!(
                 "failed to create file descriptor set: {}",
-                ContractError::ProtobufMessageNotFound {
+                ContractError::MessageNotFound {
                     message: "wrong_message".to_string()
                 }
             ))
