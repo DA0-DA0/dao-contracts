@@ -79,19 +79,12 @@ impl<'a> CwJsonFilter<'a> {
                     let is_operator = filter_key.starts_with('$');
                     let is_transformer = filter_key.starts_with('#');
                     if is_operator || is_transformer {
-                        // only apply transformers to the object path—not
-                        // operators
-                        let obj_path = match is_transformer {
-                            true => append_path(obj_path, filter_key),
-                            false => obj_path.to_string(),
-                        };
-
                         match self.inner_matches_operator(
                             filter_key,
                             filter_val,
                             obj,
                             filter_path,
-                            &obj_path,
+                            obj_path,
                         ) {
                             // If success, continue to next key.
                             FilterResult::Pass => continue,
@@ -118,10 +111,15 @@ impl<'a> CwJsonFilter<'a> {
             // whole (exact same number of items).
             serde_json::Value::Array(filter_list) => match obj {
                 Some(serde_json::Value::Array(obj_list)) => {
-                    if filter_list.len() != obj_list.len() {
+                    let filter_len = filter_list.len();
+                    let obj_len = obj_list.len();
+                    if filter_len != obj_len {
                         return FilterResult::operator_failed(
                             "[...]",
-                            "array length does not match filter array length",
+                            format!(
+                                "value array length ({}) != filter array length ({})",
+                                obj_len, filter_len
+                            ),
                             filter_path,
                             obj_path,
                         );
@@ -287,7 +285,7 @@ impl<'a> CwJsonFilter<'a> {
                                 if passed > 1 {
                                     return FilterResult::operator_failed(
                                         operator,
-                                        "a filter passed",
+                                        "more than one filter passed",
                                         filter_path,
                                         obj_path,
                                     );
@@ -319,7 +317,7 @@ impl<'a> CwJsonFilter<'a> {
                     // Passes if the filter fails.
                     FilterResult::Pass => FilterResult::operator_failed(
                         operator,
-                        "filter passed",
+                        "filter needed to fail, but it passed",
                         filter_path,
                         obj_path,
                     ),
@@ -356,10 +354,7 @@ impl<'a> CwJsonFilter<'a> {
                         || {
                             FilterResult::operator_failed(
                                 operator,
-                                format!(
-                                    "{} arg and value are not both numbers or both strings",
-                                    operator
-                                ),
+                                "filter and value are not both numbers or both strings",
                                 filter_path,
                                 obj_path,
                             )
@@ -382,10 +377,7 @@ impl<'a> CwJsonFilter<'a> {
                         || {
                             FilterResult::operator_failed(
                                 operator,
-                                format!(
-                                    "{} arg and value are not both numbers or both strings",
-                                    operator
-                                ),
+                                "filter and value are not both numbers or both strings",
                                 filter_path,
                                 obj_path,
                             )
@@ -444,10 +436,7 @@ impl<'a> CwJsonFilter<'a> {
                                     None => {
                                         return FilterResult::operator_failed(
                                             operator,
-                                            format!(
-                                            "{} arg minimum and value are not both numbers or both strings",
-                                            operator
-                                        ),
+                                            "filter minimum and value are not both numbers or both strings",
                                             filter_path,
                                             obj_path,
                                         )
@@ -463,10 +452,7 @@ impl<'a> CwJsonFilter<'a> {
                                     None => {
                                         return FilterResult::operator_failed(
                                             operator,
-                                            format!(
-                                            "{} arg maximum and value are not both numbers or both strings",
-                                            operator
-                                        ),
+                                            "filter maximum and value are not both numbers or both strings",
                                             filter_path,
                                             obj_path,
                                         )
@@ -477,11 +463,14 @@ impl<'a> CwJsonFilter<'a> {
                                     min_passes && max_passes,
                                     operator,
                                     format!(
-                                        "value not {} min and max",
+                                        "value ({}) not between {} min ({}) and max ({})",
+                                        value,
                                         match inclusive {
-                                            true => "between (inclusive)",
-                                            false => "between (exclusive)",
-                                        }
+                                            true => "(inclusive)",
+                                            false => "(exclusive)",
+                                        },
+                                        min,
+                                        max,
                                     ),
                                     filter_path,
                                     obj_path,

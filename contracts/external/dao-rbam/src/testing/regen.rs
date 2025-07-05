@@ -253,7 +253,7 @@ fn test_regen_protobuf_filter() {
                 "$startsWith",
                 "value does not start with filter value",
                 "@.#stargate.stargate.value.#proto.dateCriteria.minStartDate.$startsWith",
-                "@.#stargate.stargate.value.#proto.dateCriteria.minStartDate",
+                "@.stargate.value.dateCriteria.minStartDate",
             )
             .as_fail()
             .unwrap()

@@ -962,7 +962,7 @@ fn test_complex_authorization_filters() {
                 "implicit equality check",
                 "value does not match filter",
                 "@.wasm.execute.msg.#base64.method",
-                "@.wasm.execute.msg.#base64.method",
+                "@.wasm.execute.msg.method",
             )
             .as_fail()
             .unwrap()
@@ -1490,7 +1490,7 @@ fn test_action_execution_with_multiple_actions() {
                 "$contains",
                 "string value does not contain filter value",
                 "@.wasm.execute.msg.#base64.update_config.config.name.$contains",
-                "@.wasm.execute.msg.#base64.update_config.config.name",
+                "@.wasm.execute.msg.update_config.config.name",
             )
             .as_fail()
             .unwrap()
@@ -1892,7 +1892,7 @@ fn test_protobuf_filter() {
                 "implicit equality check",
                 "value does not match filter",
                 "@.stargate.value.#proto",
-                "@.stargate.value.#proto",
+                "@.stargate.value",
             )
             .as_fail()
             .unwrap()
