@@ -34,6 +34,9 @@ rpath = false
 # all workspace members to stop working. Overflows should be errors.
 overflow-checks = true
 
+[profile.release.package.cw-protobuf-registry]
+opt-level = "z"
+
 [workspace.dependencies]
 anyhow = { version = "1.0" }
 assert_matches = "1.5"
@@ -66,7 +69,6 @@ osmosis-test-tube = "20.1.1"
 proc-macro2 = "1.0"
 prost = { version = "=0.12.3", features = ["prost-derive"] }
 prost-types = { version = "=0.12.3", default-features = false }
-prost-derive = "=0.12.3"
 prost-reflect = { version = "=0.12.0", features = ["serde"] }
 quote = "1.0"
 rand = "0.8"

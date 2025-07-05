@@ -1,8 +1,8 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-
-pub use cw_ownable::Ownership;
 use cw_ownable::{cw_ownable_execute, cw_ownable_query};
 use dao_interface::proposal::InfoResponse;
+
+pub use cw_ownable::Ownership;
 
 #[cw_serde]
 pub struct InstantiateMsg {

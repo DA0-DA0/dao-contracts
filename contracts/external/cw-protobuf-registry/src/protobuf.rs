@@ -1,23 +1,34 @@
-use std::collections::{HashMap, HashSet};
-
+#[cfg(any(feature = "library", test))]
 use base64::{
     alphabet,
     engine::{DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig},
     Engine,
 };
-use cosmwasm_std::Deps;
-use prost_reflect::{
-    prost::Message,
-    prost_types::{FileDescriptorProto, FileDescriptorSet},
-    DescriptorPool, DynamicMessage,
-};
-use prost_types::{field_descriptor_proto, FieldDescriptorProto};
+#[cfg(any(feature = "library", test))]
+use prost_reflect::{DescriptorPool, DynamicMessage};
+#[cfg(any(feature = "library", test))]
 use serde_json::Deserializer;
+
+use cosmwasm_std::Deps;
+use prost::Message;
+use prost_types::{
+    field_descriptor_proto, FieldDescriptorProto, FileDescriptorProto, FileDescriptorSet,
+};
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     state::{FILES, MESSAGES},
     ContractError,
 };
+
+/// Base64 decoding engine
+#[cfg(any(feature = "library", test))]
+pub const BASE64_ENGINE: GeneralPurpose = GeneralPurpose::new(
+    &alphabet::STANDARD,
+    GeneralPurposeConfig::new()
+        .with_decode_allow_trailing_bits(true)
+        .with_decode_padding_mode(DecodePaddingMode::Indifferent),
+);
 
 /// Create a file descriptor set that contains the exact files with the exact
 /// messages/enums needed to decode a set of messages.
@@ -330,6 +341,7 @@ fn add_dependency(
 }
 
 /// Get the protobuf messages referenced by a filter.
+#[cfg(any(feature = "library", test))]
 pub fn get_protobuf_messages(filter: &serde_json::Value) -> HashSet<String> {
     let mut messages = HashSet::new();
     inner_get_protobuf_messages(filter, &mut messages);
@@ -337,6 +349,7 @@ pub fn get_protobuf_messages(filter: &serde_json::Value) -> HashSet<String> {
 }
 
 /// Get the protobuf messages referenced by a filter, recursively.
+#[cfg(any(feature = "library", test))]
 fn inner_get_protobuf_messages(filter: &serde_json::Value, messages: &mut HashSet<String>) {
     if let serde_json::Value::Object(filter_map) = filter {
         for (key, value) in filter_map {
@@ -369,14 +382,6 @@ fn inner_get_protobuf_messages(filter: &serde_json::Value, messages: &mut HashSe
     }
 }
 
-/// Base64 decoding engine
-pub const BASE64_ENGINE: GeneralPurpose = GeneralPurpose::new(
-    &alphabet::STANDARD,
-    GeneralPurposeConfig::new()
-        .with_decode_allow_trailing_bits(true)
-        .with_decode_padding_mode(DecodePaddingMode::Indifferent),
-);
-
 /// Encode a protobuf message to bytes.
 ///
 /// # Arguments
@@ -388,6 +393,7 @@ pub const BASE64_ENGINE: GeneralPurpose = GeneralPurpose::new(
 /// # Returns
 ///
 /// The encoded protobuf message bytes.
+#[cfg(any(feature = "library", test))]
 pub fn encode_protobuf(
     pool: &DescriptorPool,
     message_name: impl Into<String>,
@@ -415,6 +421,7 @@ pub fn encode_protobuf(
 /// # Returns
 ///
 /// The base64 encoded protobuf message value.
+#[cfg(any(feature = "library", test))]
 pub fn base64_encode_protobuf(
     pool: &DescriptorPool,
     message_name: impl Into<String>,
@@ -424,6 +431,7 @@ pub fn base64_encode_protobuf(
 }
 
 /// Decode a protobuf message with a file descriptor set.
+#[cfg(any(feature = "library", test))]
 pub fn decode_protobuf(
     fds: FileDescriptorSet,
     message_name: impl Into<String>,

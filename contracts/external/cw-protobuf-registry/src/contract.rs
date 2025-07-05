@@ -3,16 +3,14 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError, StdResult,
 };
-use cw_storage_plus::Bound;
-
 use cw2::set_contract_version;
 use cw_ownable::initialize_owner;
+use cw_storage_plus::Bound;
 use cw_utils::nonpayable;
 use dao_interface::proposal::InfoResponse;
-use prost_reflect::prost::Message;
-use prost_reflect::prost_types::FileDescriptorSet;
+use prost::Message;
 use prost_reflect::{DescriptorPool, DynamicMessage};
-use prost_types::FileDescriptorProto;
+use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 use crate::error::ContractError;
 use crate::msg::{
@@ -96,8 +94,8 @@ fn execute_register_protobufs(
         return Err(ContractError::NoFiles {});
     }
 
-    let mut file_count = 0;
-    let mut message_count = 0;
+    let mut file_count = 0u32;
+    let mut message_count = 0u32;
 
     for (file_descriptor_set_index, file_descriptor_set) in
         file_descriptor_sets.into_iter().enumerate()
@@ -225,7 +223,8 @@ fn execute_unregister_protobufs(
     let message_limit = message_limit.unwrap_or(u32::MAX);
     let mut unregistered_message_count = 0;
 
-    for (file_index, file_name) in file_names.iter().enumerate() {
+    let total_files = file_names.len();
+    for (file_index, file_name) in file_names.into_iter().enumerate() {
         let remaining = (message_limit - unregistered_message_count) as usize;
 
         // If we've reached the limit of messages to unregister before we start
@@ -238,14 +237,14 @@ fn execute_unregister_protobufs(
         if remaining == 0 {
             return Err(ContractError::ProtobufMessageLimitReached {
                 unregistered: file_index,
-                total: file_names.len(),
+                total: total_files,
             });
         }
 
         let messages = MESSAGES
             .idx
             .file_name
-            .prefix(file_name.to_string())
+            .prefix(file_name.clone())
             .keys(deps.storage, None, None, Order::Ascending)
             .take(remaining)
             .collect::<StdResult<Vec<_>>>()?;
@@ -257,7 +256,7 @@ fn execute_unregister_protobufs(
         }
 
         // Unregister file.
-        FILES.remove(deps.storage, file_name.to_string());
+        FILES.remove(deps.storage, file_name);
     }
 
     Ok(Response::new()
