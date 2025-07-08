@@ -13,8 +13,9 @@ use crate::{
         IsEnabledResponse, IsMsgAuthorizedByResponse, IsMsgAuthorizedByRoleResponse,
         IsMsgAuthorizedResponse, ListActionsResponse, ListAddressesWithRoleResponse,
         ListAssignmentsResponse, ListAuthorizationsResponse, ListRolesForAddressResponse,
-        ListRolesResponse, QueryMsg, RoleResponse, TestFilterResponse,
+        ListRolesResponse, ProtobufRegistryResponse, QueryMsg, RoleResponse, TestFilterResponse,
     },
+    role::Role,
 };
 
 pub struct SuiteBuilder {
@@ -52,12 +53,23 @@ impl SuiteBuilder {
         let mut base = DaoTestingSuiteBase::base();
         let dao = base.cw4().with_members(self.cw4_members).dao();
 
+        let crate_root = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
+        let google_string_bool_fds =
+            std::fs::read(std::path::Path::new(&crate_root).join("proto/string_bool_value.pb"))
+                .unwrap();
+        let regen_ecocredit_basket_fds =
+            std::fs::read(std::path::Path::new(&crate_root).join("proto/regen_ecocredit.pb"))
+                .unwrap();
+
         let mut suite = Suite {
             base,
             core_addr: dao.core_addr.clone(),
             rbam_addr: Addr::unchecked(""),
             filter_addr: Addr::unchecked(""),
             protobuf_registry_addr: Addr::unchecked(""),
+
+            google_string_bool_fds,
+            regen_ecocredit_basket_fds,
         };
 
         // start at 0 height and time
@@ -112,7 +124,7 @@ impl SuiteBuilder {
                 .clone(),
         );
 
-        suite.filter_addr = suite.get_filter().filter;
+        suite.filter_addr = suite.get_filter();
         suite.protobuf_registry_addr = suite
             .base
             .app
@@ -135,6 +147,10 @@ pub struct Suite {
     pub rbam_addr: Addr,
     pub filter_addr: Addr,
     pub protobuf_registry_addr: Addr,
+
+    // file descriptor sets
+    pub google_string_bool_fds: Vec<u8>,
+    pub regen_ecocredit_basket_fds: Vec<u8>,
 }
 
 // SUITE QUERIES
@@ -155,36 +171,52 @@ impl Suite {
             .unwrap()
     }
 
-    pub fn get_dao(&mut self) -> DaoResponse {
+    pub fn get_dao(&mut self) -> Addr {
         self.base
             .app
             .wrap()
-            .query_wasm_smart(&self.rbam_addr, &QueryMsg::Dao {})
+            .query_wasm_smart::<DaoResponse>(&self.rbam_addr, &QueryMsg::Dao {})
             .unwrap()
+            .dao
     }
 
-    pub fn get_filter(&mut self) -> FilterResponse {
+    pub fn get_filter(&mut self) -> Addr {
         self.base
             .app
             .wrap()
-            .query_wasm_smart(self.rbam_addr.clone(), &QueryMsg::Filter {})
+            .query_wasm_smart::<FilterResponse>(self.rbam_addr.clone(), &QueryMsg::Filter {})
             .unwrap()
+            .filter
     }
 
-    pub fn get_is_enabled(&mut self) -> IsEnabledResponse {
+    pub fn get_protobuf_registry(&mut self) -> Option<Addr> {
         self.base
             .app
             .wrap()
-            .query_wasm_smart(self.rbam_addr.clone(), &QueryMsg::IsEnabled {})
+            .query_wasm_smart::<ProtobufRegistryResponse>(
+                self.rbam_addr.clone(),
+                &QueryMsg::ProtobufRegistry {},
+            )
             .unwrap()
+            .protobuf_registry
     }
 
-    pub fn get_role(&mut self, id: u64) -> RoleResponse {
+    pub fn get_is_enabled(&mut self) -> bool {
         self.base
             .app
             .wrap()
-            .query_wasm_smart(self.rbam_addr.clone(), &QueryMsg::Role { id })
+            .query_wasm_smart::<IsEnabledResponse>(self.rbam_addr.clone(), &QueryMsg::IsEnabled {})
             .unwrap()
+            .enabled
+    }
+
+    pub fn get_role(&mut self, id: u64) -> Role {
+        self.base
+            .app
+            .wrap()
+            .query_wasm_smart::<RoleResponse>(self.rbam_addr.clone(), &QueryMsg::Role { id })
+            .unwrap()
+            .role
     }
 
     pub fn list_roles(
@@ -304,60 +336,6 @@ impl Suite {
                 self.rbam_addr.clone(),
                 &QueryMsg::ListRolesForAddress {
                     addr,
-                    start_after,
-                    limit,
-                },
-            )
-            .unwrap()
-    }
-
-    pub fn list_protobuf_files(
-        &mut self,
-        start_after: Option<String>,
-        limit: Option<u32>,
-    ) -> cw_protobuf_registry::msg::ListFilesResponse {
-        self.base
-            .app
-            .wrap()
-            .query_wasm_smart(
-                self.protobuf_registry_addr.clone(),
-                &cw_protobuf_registry::msg::QueryMsg::ListFiles { start_after, limit },
-            )
-            .unwrap()
-    }
-
-    pub fn list_protobuf_messages(
-        &mut self,
-        start_after: Option<String>,
-        limit: Option<u32>,
-    ) -> cw_protobuf_registry::msg::ListMessagesResponse {
-        self.base
-            .app
-            .wrap()
-            .query_wasm_smart(
-                self.protobuf_registry_addr.clone(),
-                &cw_protobuf_registry::msg::QueryMsg::ListMessages {
-                    file_name: None,
-                    start_after,
-                    limit,
-                },
-            )
-            .unwrap()
-    }
-
-    pub fn list_protobuf_messages_by_file(
-        &mut self,
-        file_name: String,
-        start_after: Option<String>,
-        limit: Option<u32>,
-    ) -> cw_protobuf_registry::msg::ListMessagesResponse {
-        self.base
-            .app
-            .wrap()
-            .query_wasm_smart(
-                self.protobuf_registry_addr.clone(),
-                &cw_protobuf_registry::msg::QueryMsg::ListMessages {
-                    file_name: Some(file_name),
                     start_after,
                     limit,
                 },
@@ -544,28 +522,53 @@ impl Suite {
             )
             .unwrap()
     }
+
+    // whether or not the protobuf registry has the message prepared
+    pub fn protobuf_message_prepared(&mut self, message: impl Into<String>) -> bool {
+        self.base
+            .app
+            .wrap()
+            .query_wasm_smart::<cw_protobuf_registry::msg::PreparedResponse>(
+                &self.protobuf_registry_addr,
+                &cw_protobuf_registry::msg::QueryMsg::Prepared {
+                    message_name: message.into(),
+                },
+            )
+            .unwrap()
+            .prepared
+    }
 }
 
 // SUITE ASSERTIONS
 impl Suite {
     pub fn assert_enabled(&mut self, expected: bool) {
         let response = self.get_is_enabled();
-        assert_eq!(response.enabled, expected);
+        assert_eq!(response, expected);
     }
 
     pub fn assert_filter(&mut self, expected: Addr) {
         let response = self.get_filter();
-        assert_eq!(response.filter, expected);
+        assert_eq!(response, expected);
+    }
+
+    pub fn assert_protobuf_registry(&mut self, expected: Option<Addr>) {
+        let response = self.get_protobuf_registry();
+        assert_eq!(response, expected);
     }
 
     pub fn assert_role_name(&mut self, id: u64, expected_name: &str) {
         let response = self.get_role(id);
-        assert_eq!(response.role.name, expected_name);
+        assert_eq!(response.name, expected_name);
+    }
+
+    pub fn assert_role_metadata(&mut self, id: u64, expected: Option<String>) {
+        let response = self.get_role(id);
+        assert_eq!(response.metadata, expected);
     }
 
     pub fn assert_role_enabled(&mut self, id: u64, expected: bool) {
         let response = self.get_role(id);
-        assert_eq!(response.role.enabled, expected);
+        assert_eq!(response.enabled, expected);
     }
 
     pub fn assert_authorization_name(&mut self, id: u64, expected_name: &str) {
@@ -747,24 +750,90 @@ impl Suite {
         assert_eq!(response.assignments.len(), expected);
     }
 
-    pub fn assert_protobuf_files(&mut self, expected: Vec<String>) {
-        let response = self.list_protobuf_files(None, None);
-        assert_eq!(response.files, expected);
-    }
-
-    pub fn assert_protobuf_messages(&mut self, expected: Vec<String>) {
-        let response = self.list_protobuf_messages(None, None);
-        assert_eq!(response.messages, expected);
-    }
-
-    pub fn assert_protobuf_messages_by_file(&mut self, file_name: &str, expected: Vec<String>) {
-        let response = self.list_protobuf_messages_by_file(file_name.to_string(), None, None);
-        assert_eq!(response.messages, expected);
+    pub fn assert_protobuf_message_prepared(&mut self, message: impl Into<String>, prepared: bool) {
+        assert_eq!(self.protobuf_message_prepared(message), prepared);
     }
 }
 
 // SUITE ACTIONS
 impl Suite {
+    pub fn update_owner(&mut self, old_owner: impl Into<String>, new_owner: impl Into<String>) {
+        let new_owner = new_owner.into();
+
+        let msg = ExecuteMsg::UpdateOwnership(Action::TransferOwnership {
+            new_owner: new_owner.clone(),
+            expiry: None,
+        });
+
+        self.base
+            .execute_smart_ok(old_owner, &self.rbam_addr, &msg, &[]);
+
+        self.base.execute_smart_ok(
+            new_owner,
+            &self.rbam_addr,
+            &ExecuteMsg::UpdateOwnership(Action::AcceptOwnership {}),
+            &[],
+        );
+    }
+
+    pub fn update_dao(&mut self, sender: impl Into<String>, dao: String) {
+        self.base
+            .execute_smart_ok(sender, &self.rbam_addr, &ExecuteMsg::UpdateDao { dao }, &[]);
+    }
+
+    pub fn update_dao_err(&mut self, sender: impl Into<String>, dao: String) -> ContractError {
+        self.base
+            .execute_smart_err(sender, &self.rbam_addr, &ExecuteMsg::UpdateDao { dao }, &[])
+    }
+
+    pub fn update_filter(&mut self, sender: impl Into<String>, filter: ModuleUpdate) {
+        self.base.execute_smart_ok(
+            sender,
+            &self.rbam_addr,
+            &ExecuteMsg::UpdateFilter { filter },
+            &[],
+        );
+    }
+
+    pub fn update_filter_err(
+        &mut self,
+        sender: impl Into<String>,
+        filter: ModuleUpdate,
+    ) -> ContractError {
+        self.base.execute_smart_err(
+            sender,
+            &self.rbam_addr,
+            &ExecuteMsg::UpdateFilter { filter },
+            &[],
+        )
+    }
+
+    pub fn update_protobuf_registry(
+        &mut self,
+        sender: impl Into<String>,
+        protobuf_registry: Option<ModuleUpdate>,
+    ) {
+        self.base.execute_smart_ok(
+            sender,
+            &self.rbam_addr,
+            &ExecuteMsg::UpdateProtobufRegistry { protobuf_registry },
+            &[],
+        );
+    }
+
+    pub fn update_protobuf_registry_err(
+        &mut self,
+        sender: impl Into<String>,
+        protobuf_registry: Option<ModuleUpdate>,
+    ) -> ContractError {
+        self.base.execute_smart_err(
+            sender,
+            &self.rbam_addr,
+            &ExecuteMsg::UpdateProtobufRegistry { protobuf_registry },
+            &[],
+        )
+    }
+
     pub fn set_enabled(&mut self, sender: impl Into<String>, enabled: bool) {
         self.base.execute_smart_ok(
             sender,
@@ -772,6 +841,15 @@ impl Suite {
             &ExecuteMsg::SetEnabled { enabled },
             &[],
         );
+    }
+
+    pub fn set_enabled_err(&mut self, sender: impl Into<String>, enabled: bool) -> ContractError {
+        self.base.execute_smart_err(
+            sender,
+            &self.rbam_addr,
+            &ExecuteMsg::SetEnabled { enabled },
+            &[],
+        )
     }
 
     pub fn execute_protobuf_registry(
@@ -787,7 +865,20 @@ impl Suite {
         );
     }
 
-    pub fn execute_protobuf_registry_err(
+    pub fn execute_protobuf_registry_our_err(
+        &mut self,
+        sender: impl Into<String>,
+        msg: cw_protobuf_registry::msg::ExecuteMsg,
+    ) -> ContractError {
+        self.base.execute_smart_err(
+            sender,
+            &self.rbam_addr,
+            &ExecuteMsg::ExecuteProtobufRegistry(msg),
+            &[],
+        )
+    }
+
+    pub fn execute_protobuf_registry_their_err(
         &mut self,
         sender: impl Into<String>,
         msg: cw_protobuf_registry::msg::ExecuteMsg,
@@ -836,178 +927,6 @@ impl Suite {
             .unwrap()
     }
 
-    pub fn update_role(
-        &mut self,
-        sender: impl Into<String>,
-        role_id: u64,
-        name: Option<String>,
-        metadata: OptionalUpdate<String>,
-        enabled: Option<bool>,
-    ) {
-        self.base.execute_smart_ok(
-            sender,
-            &self.rbam_addr,
-            &ExecuteMsg::UpdateRole {
-                role_id,
-                name,
-                metadata,
-                enabled,
-            },
-            &[],
-        );
-    }
-
-    pub fn create_authorization(
-        &mut self,
-        sender: impl Into<String>,
-        role_id: u64,
-        name: impl Into<String>,
-        metadata: Option<String>,
-        filter: Option<serde_json::Value>,
-        enabled: Option<bool>,
-    ) -> u64 {
-        let response = self.base.execute_smart_ok(
-            sender,
-            &self.rbam_addr,
-            &ExecuteMsg::CreateAuthorization {
-                role_id,
-                name: name.into(),
-                metadata,
-                filter,
-                enabled,
-                skip_prepare: None,
-            },
-            &[],
-        );
-
-        response
-            .events
-            .iter()
-            .find(|e| e.ty == "wasm" && e.attributes.iter().any(|a| a.key == "authorization_id"))
-            .unwrap()
-            .attributes
-            .iter()
-            .find(|a| a.key == "authorization_id")
-            .unwrap()
-            .value
-            .parse::<u64>()
-            .unwrap()
-    }
-
-    pub fn update_authorization(
-        &mut self,
-        sender: impl Into<String>,
-        authorization_id: u64,
-        name: Option<String>,
-        metadata: OptionalUpdate<String>,
-        filter: OptionalUpdate<serde_json::Value>,
-        enabled: Option<bool>,
-    ) {
-        self.base.execute_smart_ok(
-            sender,
-            &self.rbam_addr,
-            &ExecuteMsg::UpdateAuthorization {
-                authorization_id,
-                name,
-                metadata,
-                filter,
-                enabled,
-                skip_prepare: None,
-            },
-            &[],
-        );
-    }
-
-    pub fn assign_roles(&mut self, sender: impl Into<String>, assign: Vec<Assignment>) {
-        self.base
-            .execute_smart_ok(sender, &self.rbam_addr, &ExecuteMsg::Assign { assign }, &[]);
-    }
-
-    pub fn revoke_roles(&mut self, sender: impl Into<String>, revoke: Vec<Assignment>) {
-        self.base
-            .execute_smart_ok(sender, &self.rbam_addr, &ExecuteMsg::Revoke { revoke }, &[]);
-    }
-
-    pub fn register_protobufs(
-        &mut self,
-        sender: impl Into<String>,
-        file_descriptor_sets: Vec<Vec<u8>>,
-    ) {
-        self.execute_protobuf_registry(
-            sender,
-            cw_protobuf_registry::msg::ExecuteMsg::Register {
-                file_descriptor_sets,
-            },
-        );
-    }
-
-    pub fn unregister_protobufs(
-        &mut self,
-        sender: impl Into<String>,
-        file_names: Vec<String>,
-        message_limit: Option<u32>,
-    ) {
-        self.execute_protobuf_registry(
-            sender,
-            cw_protobuf_registry::msg::ExecuteMsg::Unregister {
-                file_names,
-                message_limit,
-            },
-        );
-    }
-
-    pub fn execute_actions(&mut self, sender: impl Into<String>, actions: Vec<ActionToExecute>) {
-        self.base.execute_smart_ok(
-            sender,
-            &self.rbam_addr,
-            &ExecuteMsg::ExecuteActions { actions },
-            &[],
-        );
-    }
-
-    pub fn update_owner(&mut self, old_owner: impl Into<String>, new_owner: impl Into<String>) {
-        let new_owner = new_owner.into();
-
-        let msg = ExecuteMsg::UpdateOwnership(Action::TransferOwnership {
-            new_owner: new_owner.clone(),
-            expiry: None,
-        });
-
-        self.base
-            .execute_smart_ok(old_owner, &self.rbam_addr, &msg, &[]);
-
-        self.base.execute_smart_ok(
-            new_owner,
-            &self.rbam_addr,
-            &ExecuteMsg::UpdateOwnership(Action::AcceptOwnership {}),
-            &[],
-        );
-    }
-
-    pub fn update_dao(&mut self, sender: impl Into<String>, dao: String) {
-        self.base
-            .execute_smart_ok(sender, &self.rbam_addr, &ExecuteMsg::UpdateDao { dao }, &[]);
-    }
-
-    pub fn update_filter(&mut self, sender: impl Into<String>, filter: ModuleUpdate) {
-        self.base.execute_smart_ok(
-            sender,
-            &self.rbam_addr,
-            &ExecuteMsg::UpdateFilter { filter },
-            &[],
-        );
-    }
-
-    // Error-expected versions of actions
-    pub fn set_enabled_err(&mut self, sender: impl Into<String>, enabled: bool) -> ContractError {
-        self.base.execute_smart_err(
-            sender,
-            &self.rbam_addr,
-            &ExecuteMsg::SetEnabled { enabled },
-            &[],
-        )
-    }
-
     pub fn create_role_err(
         &mut self,
         sender: impl Into<String>,
@@ -1029,6 +948,87 @@ impl Suite {
             },
             &[],
         )
+    }
+
+    pub fn update_role(
+        &mut self,
+        sender: impl Into<String>,
+        role_id: u64,
+        name: Option<String>,
+        metadata: OptionalUpdate<String>,
+        enabled: Option<bool>,
+    ) {
+        self.base.execute_smart_ok(
+            sender,
+            &self.rbam_addr,
+            &ExecuteMsg::UpdateRole {
+                role_id,
+                name,
+                metadata,
+                enabled,
+            },
+            &[],
+        );
+    }
+
+    pub fn update_role_err(
+        &mut self,
+        sender: impl Into<String>,
+        role_id: u64,
+        name: Option<String>,
+        metadata: OptionalUpdate<String>,
+        enabled: Option<bool>,
+    ) -> ContractError {
+        self.base.execute_smart_err(
+            sender,
+            &self.rbam_addr,
+            &ExecuteMsg::UpdateRole {
+                role_id,
+                name,
+                metadata,
+                enabled,
+            },
+            &[],
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn create_authorization(
+        &mut self,
+        sender: impl Into<String>,
+        role_id: u64,
+        name: impl Into<String>,
+        metadata: Option<String>,
+        filter: Option<serde_json::Value>,
+        enabled: Option<bool>,
+        skip_prepare: Option<bool>,
+    ) -> u64 {
+        let response = self.base.execute_smart_ok(
+            sender,
+            &self.rbam_addr,
+            &ExecuteMsg::CreateAuthorization {
+                role_id,
+                name: name.into(),
+                metadata,
+                filter,
+                enabled,
+                skip_prepare,
+            },
+            &[],
+        );
+
+        response
+            .events
+            .iter()
+            .find(|e| e.ty == "wasm" && e.attributes.iter().any(|a| a.key == "authorization_id"))
+            .unwrap()
+            .attributes
+            .iter()
+            .find(|a| a.key == "authorization_id")
+            .unwrap()
+            .value
+            .parse::<u64>()
+            .unwrap()
     }
 
     pub fn create_authorization_err(
@@ -1055,7 +1055,62 @@ impl Suite {
         )
     }
 
-    pub fn assign_roles_err(
+    #[allow(clippy::too_many_arguments)]
+    pub fn update_authorization(
+        &mut self,
+        sender: impl Into<String>,
+        authorization_id: u64,
+        name: Option<String>,
+        metadata: OptionalUpdate<String>,
+        filter: OptionalUpdate<serde_json::Value>,
+        enabled: Option<bool>,
+        skip_prepare: Option<bool>,
+    ) {
+        self.base.execute_smart_ok(
+            sender,
+            &self.rbam_addr,
+            &ExecuteMsg::UpdateAuthorization {
+                authorization_id,
+                name,
+                metadata,
+                filter,
+                enabled,
+                skip_prepare,
+            },
+            &[],
+        );
+    }
+
+    pub fn update_authorization_err(
+        &mut self,
+        sender: impl Into<String>,
+        authorization_id: u64,
+        name: Option<String>,
+        metadata: OptionalUpdate<String>,
+        filter: OptionalUpdate<serde_json::Value>,
+        enabled: Option<bool>,
+    ) -> ContractError {
+        self.base.execute_smart_err(
+            sender,
+            &self.rbam_addr,
+            &ExecuteMsg::UpdateAuthorization {
+                authorization_id,
+                name,
+                metadata,
+                filter,
+                enabled,
+                skip_prepare: None,
+            },
+            &[],
+        )
+    }
+
+    pub fn assign(&mut self, sender: impl Into<String>, assign: Vec<Assignment>) {
+        self.base
+            .execute_smart_ok(sender, &self.rbam_addr, &ExecuteMsg::Assign { assign }, &[]);
+    }
+
+    pub fn assign_err(
         &mut self,
         sender: impl Into<String>,
         assign: Vec<Assignment>,
@@ -1064,7 +1119,12 @@ impl Suite {
             .execute_smart_err(sender, &self.rbam_addr, &ExecuteMsg::Assign { assign }, &[])
     }
 
-    pub fn revoke_roles_err(
+    pub fn revoke(&mut self, sender: impl Into<String>, revoke: Vec<Assignment>) {
+        self.base
+            .execute_smart_ok(sender, &self.rbam_addr, &ExecuteMsg::Revoke { revoke }, &[]);
+    }
+
+    pub fn revoke_err(
         &mut self,
         sender: impl Into<String>,
         revoke: Vec<Assignment>,
@@ -1073,19 +1133,39 @@ impl Suite {
             .execute_smart_err(sender, &self.rbam_addr, &ExecuteMsg::Revoke { revoke }, &[])
     }
 
-    pub fn unregister_protobufs_err(
+    pub fn register_protobufs(
         &mut self,
         sender: impl Into<String>,
-        file_names: Vec<String>,
-        message_limit: Option<u32>,
-    ) -> cw_protobuf_registry::ContractError {
-        self.execute_protobuf_registry_err(
+        file_descriptor_sets: Vec<Vec<u8>>,
+    ) {
+        self.execute_protobuf_registry(
             sender,
-            cw_protobuf_registry::msg::ExecuteMsg::Unregister {
-                file_names,
-                message_limit,
+            cw_protobuf_registry::msg::ExecuteMsg::Register {
+                file_descriptor_sets,
             },
-        )
+        );
+    }
+
+    pub fn unprepare_protobuf_message(
+        &mut self,
+        sender: impl Into<String>,
+        message: impl Into<String>,
+    ) {
+        self.execute_protobuf_registry(
+            sender,
+            cw_protobuf_registry::msg::ExecuteMsg::Unprepare {
+                messages: vec![message.into()],
+            },
+        );
+    }
+
+    pub fn execute_actions(&mut self, sender: impl Into<String>, actions: Vec<ActionToExecute>) {
+        self.base.execute_smart_ok(
+            sender,
+            &self.rbam_addr,
+            &ExecuteMsg::ExecuteActions { actions },
+            &[],
+        );
     }
 
     pub fn execute_actions_err(

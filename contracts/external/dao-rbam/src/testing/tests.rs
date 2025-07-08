@@ -10,6 +10,7 @@ use dao_testing::{ADDR0, ADDR1, ADDR2, DENOM};
 use prost::Message;
 use prost_reflect::DescriptorPool;
 use prost_types::FileDescriptorSet;
+use serde_json::json;
 
 use crate::{
     action::ActionToExecute,
@@ -23,6 +24,8 @@ fn test_instantiate_basic() {
 
     // Should start enabled by default
     suite.assert_enabled(true);
+    suite.assert_filter(suite.filter_addr.clone());
+    suite.assert_protobuf_registry(Some(suite.protobuf_registry_addr.clone()));
 
     // Should have no roles initially
     suite.assert_role_count(0);
@@ -54,7 +57,7 @@ fn test_instantiate_with_initial_roles() {
     suite.assert_assignment_count(1);
 
     // Check role details
-    let role = suite.get_role(1).role;
+    let role = suite.get_role(1);
     assert_eq!(role.name, "admin");
     assert_eq!(role.metadata, Some("Admin role".to_string()));
     assert!(role.enabled);
@@ -81,6 +84,198 @@ fn test_instantiate_with_initial_roles() {
 }
 
 #[test]
+fn test_auth() {
+    let mut suite = SuiteBuilder::base().build();
+    let not_owner = "not_owner";
+
+    let err = suite.update_dao_err(not_owner, "new_dao".to_string());
+    assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
+
+    let err = suite.update_filter_err(
+        not_owner,
+        ModuleUpdate::Existing {
+            address: "new_filter".to_string(),
+        },
+    );
+    assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
+
+    let err = suite.update_protobuf_registry_err(
+        not_owner,
+        Some(ModuleUpdate::Existing {
+            address: "new_protobuf_registry".to_string(),
+        }),
+    );
+    assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
+
+    let err = suite.set_enabled_err(not_owner, false);
+    assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
+
+    let err = suite.execute_protobuf_registry_our_err(
+        not_owner,
+        cw_protobuf_registry::msg::ExecuteMsg::Register {
+            file_descriptor_sets: vec![],
+        },
+    );
+    assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
+
+    let err = suite.create_role_err(not_owner, "new_role".to_string(), None, None, None, None);
+    assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
+
+    let err = suite.update_role_err(
+        not_owner,
+        1,
+        Some("new_role".to_string()),
+        OptionalUpdate(None),
+        None,
+    );
+    assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
+
+    let err =
+        suite.create_authorization_err(not_owner, 1, "new_auth".to_string(), None, None, None);
+    assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
+
+    let err = suite.update_authorization_err(
+        not_owner,
+        1,
+        Some("new_auth".to_string()),
+        OptionalUpdate(None),
+        OptionalUpdate(None),
+        None,
+    );
+    assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
+
+    let err = suite.assign_err(
+        not_owner,
+        vec![Assignment {
+            addr: ADDR0.to_string(),
+            role_id: 1,
+        }],
+    );
+    assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
+
+    let err = suite.revoke_err(
+        not_owner,
+        vec![Assignment {
+            addr: ADDR0.to_string(),
+            role_id: 1,
+        }],
+    );
+    assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
+}
+
+#[test]
+fn test_update_owner() {
+    let mut suite = SuiteBuilder::base().build();
+
+    let existing_owner = suite.get_ownership().owner.unwrap();
+    assert_eq!(existing_owner, suite.core_addr);
+
+    let new_owner = "new_owner";
+    suite.update_owner(existing_owner, new_owner);
+
+    let owner = suite.get_ownership().owner.unwrap();
+    assert_eq!(owner, new_owner);
+}
+
+#[test]
+fn test_info() {
+    let mut suite = SuiteBuilder::base().build();
+    let info = suite.get_info();
+    assert_eq!(info.info.contract, "crates.io:dao-rbam");
+    assert_eq!(info.info.version, env!("CARGO_PKG_VERSION"));
+}
+
+#[test]
+fn test_update_dao() {
+    let mut suite = SuiteBuilder::base().build();
+    let dao = suite.core_addr.clone();
+
+    // Get current DAO
+    let current_dao = suite.get_dao();
+
+    // Update to a new DAO address
+    let new_dao = "new_dao_address";
+    suite.update_dao(&dao, new_dao.to_string());
+
+    // Verify the DAO was updated
+    let updated_dao = suite.get_dao();
+    assert_eq!(updated_dao, new_dao);
+    assert_ne!(updated_dao, current_dao);
+}
+
+#[test]
+fn test_update_filter() {
+    let mut suite = SuiteBuilder::base().build();
+    let dao = suite.core_addr.clone();
+
+    suite.assert_filter(suite.filter_addr.clone());
+
+    suite.update_filter(
+        &dao,
+        ModuleUpdate::New(ModuleInstantiateInfo {
+            code_id: suite.base.filter_id,
+            msg: to_json_binary(&cw_filter::msg::InstantiateMsg {
+                owner: Some(dao.to_string()),
+                protobuf_registry: None,
+            })
+            .unwrap(),
+            admin: Some(dao_interface::state::Admin::CoreModule {}),
+            funds: None,
+            label: "new_protobuf_registry".to_string(),
+            salt: None,
+        }),
+    );
+    let new_filter_addr = suite.get_filter();
+    assert_ne!(new_filter_addr, suite.filter_addr.clone());
+
+    suite.update_filter(
+        &dao,
+        ModuleUpdate::Existing {
+            address: suite.filter_addr.to_string(),
+        },
+    );
+    suite.assert_filter(suite.filter_addr.clone());
+}
+
+#[test]
+fn test_update_protobuf_registry() {
+    let mut suite = SuiteBuilder::base().build();
+    let dao = suite.core_addr.clone();
+
+    suite.assert_protobuf_registry(Some(suite.protobuf_registry_addr.clone()));
+
+    suite.update_protobuf_registry(&dao, None);
+    suite.assert_protobuf_registry(None);
+
+    suite.update_protobuf_registry(
+        &dao,
+        Some(ModuleUpdate::New(ModuleInstantiateInfo {
+            code_id: suite.base.protobuf_registry_id,
+            msg: to_json_binary(&cw_protobuf_registry::msg::InstantiateMsg { owner: None })
+                .unwrap(),
+            admin: Some(dao_interface::state::Admin::CoreModule {}),
+            funds: None,
+            label: "new_protobuf_registry".to_string(),
+            salt: None,
+        })),
+    );
+    let new_protobuf_registry_addr = suite.get_protobuf_registry();
+    assert!(new_protobuf_registry_addr.is_some());
+    assert_ne!(
+        new_protobuf_registry_addr,
+        Some(suite.protobuf_registry_addr.clone())
+    );
+
+    suite.update_protobuf_registry(
+        &dao,
+        Some(ModuleUpdate::Existing {
+            address: suite.protobuf_registry_addr.to_string(),
+        }),
+    );
+    suite.assert_protobuf_registry(Some(suite.protobuf_registry_addr.clone()));
+}
+
+#[test]
 fn test_set_enabled() {
     let mut suite = SuiteBuilder::base().build();
     let dao = suite.core_addr.clone();
@@ -98,12 +293,28 @@ fn test_set_enabled() {
 }
 
 #[test]
-fn test_set_enabled_unauthorized() {
+fn test_execute_protobuf_registry_err() {
     let mut suite = SuiteBuilder::base().build();
+    let dao = suite.core_addr.clone();
 
-    // Non-owner should not be able to set enabled
-    let err = suite.set_enabled_err(ADDR0, false);
-    assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner));
+    let err = suite.execute_protobuf_registry_their_err(
+        &dao,
+        cw_protobuf_registry::msg::ExecuteMsg::Register {
+            file_descriptor_sets: vec![],
+        },
+    );
+    assert_eq!(err, cw_protobuf_registry::ContractError::NoFiles {});
+
+    suite.update_protobuf_registry(&dao, None);
+    suite.assert_protobuf_registry(None);
+
+    let err = suite.execute_protobuf_registry_our_err(
+        &dao,
+        cw_protobuf_registry::msg::ExecuteMsg::Register {
+            file_descriptor_sets: vec![],
+        },
+    );
+    assert_eq!(err, ContractError::MissingProtobufRegistry {});
 }
 
 #[test]
@@ -143,15 +354,234 @@ fn test_role_management() {
     suite.assert_role_count(2);
     suite.assert_role_name(role_id2, "role2");
     suite.assert_role_enabled(role_id2, true); // Should default to true
+
+    // create a role with authorizations and assignments
+    let role_id3 = suite.create_role(
+        &dao,
+        "role3".to_string(),
+        None,
+        None,
+        Some(vec![InitialAuthorization {
+            name: "auth3".to_string(),
+            metadata: None,
+            filter: None,
+            enabled: None,
+            skip_prepare: None,
+        }]),
+        Some(vec![ADDR0.to_string(), ADDR1.to_string()]),
+    );
+    let auth_id = role_id3 + 1;
+    suite.assert_role_count(3);
+    suite.assert_role_name(role_id3, "role3");
+    suite.assert_role_enabled(role_id3, true);
+
+    suite.assert_authorization_count(1);
+    suite.assert_authorization_name(auth_id, "auth3");
+    suite.assert_authorization_enabled(auth_id, true);
+
+    suite.assert_assignment_count(2);
+    suite.assert_assigned_role(ADDR0, role_id3, true);
+    suite.assert_assigned_role(ADDR1, role_id3, true);
+    suite.assert_assigned_role(ADDR2, role_id3, false);
+
+    // update the role
+    suite.update_role(
+        &dao,
+        role_id3,
+        Some("updated_role".to_string()),
+        OptionalUpdate(Some(Update::Set("Updated metadata".to_string()))),
+        Some(false),
+    );
+    suite.assert_role_name(role_id3, "updated_role");
+    suite.assert_role_metadata(role_id3, Some("Updated metadata".to_string()));
+    suite.assert_role_enabled(role_id3, false);
 }
 
 #[test]
-fn test_role_management_unauthorized() {
+fn test_auto_prepare() {
     let mut suite = SuiteBuilder::base().build();
+    let dao = suite.core_addr.clone();
 
-    // Non-owner should not be able to create roles
-    let err = suite.create_role_err(ADDR0, "test_role".to_string(), None, None, None, None);
-    assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner));
+    let filter = json!({
+        "#proto": {
+            "type": "google.protobuf.BoolValue",
+            "value": true
+        }
+    });
+    let message_name = "google.protobuf.BoolValue";
+
+    // creating role errors since protobuf registry does not have the message
+    let err = suite.create_role_err(
+        &dao,
+        "test_role".to_string(),
+        None,
+        None,
+        Some(vec![InitialAuthorization {
+            name: "auth3".to_string(),
+            metadata: None,
+            filter: Some(filter.clone()),
+            enabled: None,
+            skip_prepare: None,
+        }]),
+        None,
+    );
+    assert!(matches!(
+        err,
+        ContractError::ProtobufRegistryPrepareFailed { .. }
+    ));
+
+    // creating role errors since protobuf registry does not have the message
+    let err = suite.create_role_err(
+        &dao,
+        "test_role".to_string(),
+        None,
+        None,
+        Some(vec![InitialAuthorization {
+            name: "auth3".to_string(),
+            metadata: None,
+            filter: Some(filter.clone()),
+            enabled: None,
+            skip_prepare: Some(false),
+        }]),
+        None,
+    );
+    assert!(matches!(
+        err,
+        ContractError::ProtobufRegistryPrepareFailed { .. }
+    ));
+
+    // does not error since skip_prepare is true
+    let role_id = suite.create_role(
+        &dao,
+        "test_role".to_string(),
+        None,
+        None,
+        Some(vec![InitialAuthorization {
+            name: "auth3".to_string(),
+            metadata: None,
+            filter: Some(filter.clone()),
+            enabled: None,
+            skip_prepare: Some(true),
+        }]),
+        None,
+    );
+
+    // not prepared
+    suite.assert_protobuf_message_prepared(message_name, false);
+
+    // creating auth errors since protobuf registry does not have the message
+    let err = suite.create_authorization_err(
+        &dao,
+        role_id,
+        "test_auth".to_string(),
+        None,
+        Some(filter.clone()),
+        None,
+    );
+    assert!(matches!(
+        err,
+        ContractError::ProtobufRegistryPrepareFailed { .. }
+    ));
+
+    // creating auth does not error since skip_prepare is true
+    let authorization_id = suite.create_authorization(
+        &dao,
+        role_id,
+        "test_auth".to_string(),
+        None,
+        Some(filter.clone()),
+        None,
+        Some(true),
+    );
+
+    // not prepared
+    suite.assert_protobuf_message_prepared(message_name, false);
+
+    // updating auth errors since protobuf registry does not have the message
+    let err = suite.update_authorization_err(
+        &dao,
+        authorization_id,
+        None,
+        OptionalUpdate(None),
+        OptionalUpdate(Some(Update::Set(filter.clone()))),
+        Some(true),
+    );
+    assert!(matches!(
+        err,
+        ContractError::ProtobufRegistryPrepareFailed { .. }
+    ));
+
+    // updating auth does not error since skip_prepare is true
+    suite.update_authorization(
+        &dao,
+        authorization_id,
+        None,
+        OptionalUpdate(None),
+        OptionalUpdate(Some(Update::Set(filter.clone()))),
+        Some(true),
+        Some(true),
+    );
+
+    // not prepared
+    suite.assert_protobuf_message_prepared(message_name, false);
+
+    // register the protobuf messages
+    suite.register_protobufs(&dao, vec![suite.google_string_bool_fds.clone()]);
+
+    // creating role succeeds since message is registered
+    let role_id = suite.create_role(
+        &dao,
+        "test_role".to_string(),
+        None,
+        None,
+        Some(vec![InitialAuthorization {
+            name: "auth3".to_string(),
+            metadata: None,
+            filter: Some(filter.clone()),
+            enabled: None,
+            skip_prepare: Some(false),
+        }]),
+        None,
+    );
+
+    // message is prepared
+    suite.assert_protobuf_message_prepared(message_name, true);
+
+    // unprepare for next test
+    suite.unprepare_protobuf_message(&dao, message_name);
+    suite.assert_protobuf_message_prepared(message_name, false);
+
+    // creating authorization succeeds since message is registered
+    let authorization_id = suite.create_authorization(
+        &dao,
+        role_id,
+        "test_auth".to_string(),
+        None,
+        Some(filter.clone()),
+        None,
+        Some(false),
+    );
+
+    // message is prepared
+    suite.assert_protobuf_message_prepared(message_name, true);
+
+    // unprepare for next test
+    suite.unprepare_protobuf_message(&dao, message_name);
+    suite.assert_protobuf_message_prepared(message_name, false);
+
+    // updating authorization succeeds since message is registered
+    suite.update_authorization(
+        &dao,
+        authorization_id,
+        None,
+        OptionalUpdate(None),
+        OptionalUpdate(Some(Update::Set(filter.clone()))),
+        Some(false),
+        Some(false),
+    );
+
+    // message is prepared
+    suite.assert_protobuf_message_prepared(message_name, true);
 }
 
 #[test]
@@ -182,6 +612,7 @@ fn test_authorization_management() {
         Some("Test authorization".to_string()),
         Some(filter.clone()),
         Some(true),
+        None,
     );
 
     suite.assert_authorization_count(1);
@@ -190,7 +621,7 @@ fn test_authorization_management() {
     suite.assert_authorization_role(authorization_id, role_id);
 
     // Assign the role to ADDR0
-    suite.assign_roles(
+    suite.assign(
         &dao,
         vec![Assignment {
             addr: ADDR0.to_string(),
@@ -215,6 +646,7 @@ fn test_authorization_management() {
         OptionalUpdate(Some(Update::Set("Updated metadata".to_string()))),
         OptionalUpdate(Some(Update::Clear)),
         Some(false),
+        None,
     );
 
     suite.assert_authorization_name(authorization_id, "updated_auth");
@@ -251,7 +683,7 @@ fn test_assignment_management() {
     let role_id = suite.create_role(&dao, "test_role".to_string(), None, None, None, None);
 
     // Assign the role
-    suite.assign_roles(
+    suite.assign(
         &dao,
         vec![Assignment {
             addr: ADDR0.to_string(),
@@ -263,7 +695,7 @@ fn test_assignment_management() {
     suite.assert_assignment_count(1);
 
     // Assign to another address
-    suite.assign_roles(
+    suite.assign(
         &dao,
         vec![Assignment {
             addr: ADDR1.to_string(),
@@ -275,7 +707,7 @@ fn test_assignment_management() {
     suite.assert_assignment_count(2);
 
     // Revoke assignment
-    suite.revoke_roles(
+    suite.revoke(
         &dao,
         vec![Assignment {
             addr: ADDR0.to_string(),
@@ -297,7 +729,7 @@ fn test_assignment_errors() {
     let role_id = suite.create_role(&dao, "test_role".to_string(), None, None, None, None);
 
     // Assign the role
-    suite.assign_roles(
+    suite.assign(
         &dao,
         vec![Assignment {
             addr: ADDR0.to_string(),
@@ -306,7 +738,7 @@ fn test_assignment_errors() {
     );
 
     // Try to assign again - should fail
-    let err = suite.assign_roles_err(
+    let err = suite.assign_err(
         &dao,
         vec![Assignment {
             addr: ADDR0.to_string(),
@@ -316,7 +748,7 @@ fn test_assignment_errors() {
     assert!(matches!(err, ContractError::RoleAlreadyAssigned { .. }));
 
     // Try to revoke non-assigned role - should fail
-    let err = suite.revoke_roles_err(
+    let err = suite.revoke_err(
         &dao,
         vec![Assignment {
             addr: ADDR1.to_string(),
@@ -326,7 +758,7 @@ fn test_assignment_errors() {
     assert!(matches!(err, ContractError::RoleNotAssigned { .. }));
 
     // Try to assign non-existent role - should fail
-    let err = suite.assign_roles_err(
+    let err = suite.assign_err(
         &dao,
         vec![Assignment {
             addr: ADDR0.to_string(),
@@ -360,10 +792,11 @@ fn test_action_execution() {
         None,
         Some(filter),
         Some(true),
+        None,
     );
 
     // Assign the role to ADDR0
-    suite.assign_roles(
+    suite.assign(
         &dao,
         vec![Assignment {
             addr: ADDR0.to_string(),
@@ -410,6 +843,11 @@ fn test_action_execution() {
     assert_eq!(action.role_id, role_id);
     assert_eq!(action.authorization_id, authorization_id);
     assert_eq!(action.msg, action_msg);
+
+    // Ensure that the config was updated
+    let config = suite.base.get_config(&dao);
+    assert_eq!(config.name, "new_name");
+    assert_eq!(config.description, "new_description");
 }
 
 #[test]
@@ -426,6 +864,7 @@ fn test_action_execution_errors() {
         None,
         None,
         Some(true),
+        None,
     );
 
     let action = ActionToExecute {
@@ -443,7 +882,7 @@ fn test_action_execution_errors() {
     assert!(matches!(err, ContractError::RoleNotAssigned { .. }));
 
     // Assign the role but disable it
-    suite.assign_roles(
+    suite.assign(
         &dao,
         vec![Assignment {
             addr: ADDR0.to_string(),
@@ -465,6 +904,7 @@ fn test_action_execution_errors() {
         OptionalUpdate(None),
         OptionalUpdate(None),
         Some(false),
+        None,
     );
 
     // Try to execute with disabled authorization - should fail
@@ -486,8 +926,9 @@ fn test_action_execution_disabled_system() {
         None,
         None,
         Some(true),
+        None,
     );
-    suite.assign_roles(
+    suite.assign(
         &dao,
         vec![Assignment {
             addr: ADDR0.to_string(),
@@ -546,6 +987,7 @@ fn test_message_authorization_queries() {
         None,
         Some(filter.clone()),
         Some(true),
+        None,
     );
     let disabled_authorization_id = suite.create_authorization(
         &dao,
@@ -554,6 +996,7 @@ fn test_message_authorization_queries() {
         None,
         Some(filter.clone()),
         Some(false),
+        None,
     );
     let enabled_authorization_id = suite.create_authorization(
         &dao,
@@ -562,11 +1005,12 @@ fn test_message_authorization_queries() {
         None,
         Some(filter.clone()),
         Some(true),
+        None,
     );
     let invalid_authorization_id = 999;
 
     // Assign the role
-    suite.assign_roles(
+    suite.assign(
         &dao,
         vec![
             Assignment {
@@ -762,17 +1206,31 @@ fn test_list_queries() {
     let role_id3 = suite.create_role(&dao, "role3".to_string(), None, None, None, None);
 
     // Create authorizations for each role
-    let auth_id1_1 =
-        suite.create_authorization(&dao, role_id1, "auth1_1".to_string(), None, None, None);
-    let auth_id1_2 =
-        suite.create_authorization(&dao, role_id1, "auth1_2".to_string(), None, None, None);
+    let auth_id1_1 = suite.create_authorization(
+        &dao,
+        role_id1,
+        "auth1_1".to_string(),
+        None,
+        None,
+        None,
+        None,
+    );
+    let auth_id1_2 = suite.create_authorization(
+        &dao,
+        role_id1,
+        "auth1_2".to_string(),
+        None,
+        None,
+        None,
+        None,
+    );
     let auth_id2 =
-        suite.create_authorization(&dao, role_id2, "auth2".to_string(), None, None, None);
+        suite.create_authorization(&dao, role_id2, "auth2".to_string(), None, None, None, None);
     let auth_id3 =
-        suite.create_authorization(&dao, role_id3, "auth3".to_string(), None, None, None);
+        suite.create_authorization(&dao, role_id3, "auth3".to_string(), None, None, None, None);
 
     // Create assignments
-    suite.assign_roles(
+    suite.assign(
         &dao,
         vec![
             Assignment {
@@ -922,9 +1380,10 @@ fn test_complex_authorization_filters() {
         None,
         Some(complex_filter.clone()),
         Some(true),
+        None,
     );
 
-    suite.assign_roles(
+    suite.assign(
         &dao,
         vec![Assignment {
             addr: ADDR0.to_string(),
@@ -1014,66 +1473,6 @@ fn test_role_with_initial_authorizations_and_assignments() {
 }
 
 #[test]
-fn test_info() {
-    let mut suite = SuiteBuilder::base().build();
-    let info = suite.get_info();
-    assert_eq!(info.info.contract, "crates.io:dao-rbam");
-    assert_eq!(info.info.version, env!("CARGO_PKG_VERSION"));
-}
-
-#[test]
-fn test_update_dao() {
-    let mut suite = SuiteBuilder::base().build();
-    let dao = suite.core_addr.clone();
-
-    // Get current DAO
-    let current_dao = suite.get_dao();
-
-    // Update to a new DAO address
-    let new_dao = "new_dao_address";
-    suite.update_dao(&dao, new_dao.to_string());
-
-    // Verify the DAO was updated
-    let updated_dao = suite.get_dao();
-    assert_eq!(updated_dao.dao, new_dao);
-    assert_ne!(updated_dao.dao, current_dao.dao);
-}
-
-#[test]
-fn test_update_filter() {
-    let mut suite = SuiteBuilder::base().build();
-    let dao = suite.core_addr.clone();
-
-    suite.assert_filter(suite.filter_addr.clone());
-
-    suite.update_filter(
-        &dao,
-        ModuleUpdate::New(ModuleInstantiateInfo {
-            code_id: suite.base.filter_id,
-            msg: to_json_binary(&cw_filter::msg::InstantiateMsg {
-                owner: Some(dao.to_string()),
-                protobuf_registry: None,
-            })
-            .unwrap(),
-            admin: Some(dao_interface::state::Admin::CoreModule {}),
-            funds: None,
-            label: "new_protobuf_registry".to_string(),
-            salt: None,
-        }),
-    );
-    let new_filter_addr = suite.get_filter().filter;
-    assert_ne!(new_filter_addr, suite.filter_addr.clone());
-
-    suite.update_filter(
-        &dao,
-        ModuleUpdate::Existing {
-            address: suite.filter_addr.to_string(),
-        },
-    );
-    suite.assert_filter(suite.filter_addr.clone());
-}
-
-#[test]
 fn test_bulk_role_assignments() {
     let mut suite = SuiteBuilder::base().build();
     let dao = suite.core_addr.clone();
@@ -1084,7 +1483,7 @@ fn test_bulk_role_assignments() {
     let role_id3 = suite.create_role(&dao, "role3".to_string(), None, None, None, None);
 
     // Bulk assign multiple roles to multiple addresses
-    suite.assign_roles(
+    suite.assign(
         &dao,
         vec![
             Assignment {
@@ -1116,7 +1515,7 @@ fn test_bulk_role_assignments() {
     suite.assert_assignment_count(4);
 
     // Bulk revoke some assignments
-    suite.revoke_roles(
+    suite.revoke(
         &dao,
         vec![
             Assignment {
@@ -1154,6 +1553,7 @@ fn test_authorization_filter_edge_cases() {
         None,
         Some(serde_json::json!({})),
         Some(true),
+        None,
     );
 
     // Test null filter (should allow all)
@@ -1164,6 +1564,7 @@ fn test_authorization_filter_edge_cases() {
         None,
         None,
         Some(true),
+        None,
     );
 
     // Test very specific filter
@@ -1190,9 +1591,10 @@ fn test_authorization_filter_edge_cases() {
         None,
         Some(specific_filter),
         Some(true),
+        None,
     );
 
-    suite.assign_roles(
+    suite.assign(
         &dao,
         vec![Assignment {
             addr: ADDR0.to_string(),
@@ -1250,6 +1652,7 @@ fn test_multiple_roles_multiple_authorizations() {
         None,
         Some(filter_a),
         Some(true),
+        None,
     );
 
     // Role 2: Can execute on contract B
@@ -1267,10 +1670,11 @@ fn test_multiple_roles_multiple_authorizations() {
         None,
         Some(filter_b),
         Some(true),
+        None,
     );
 
     // ADDR0 gets both roles
-    suite.assign_roles(
+    suite.assign(
         &dao,
         vec![
             Assignment {
@@ -1285,7 +1689,7 @@ fn test_multiple_roles_multiple_authorizations() {
     );
 
     // ADDR1 gets only role 1
-    suite.assign_roles(
+    suite.assign(
         &dao,
         vec![Assignment {
             addr: ADDR1.to_string(),
@@ -1369,8 +1773,9 @@ fn test_action_execution_with_multiple_actions() {
             }
         })),
         Some(true),
+        None,
     );
-    suite.assign_roles(
+    suite.assign(
         &dao,
         vec![Assignment {
             addr: ADDR0.to_string(),
@@ -1524,6 +1929,7 @@ fn test_comprehensive_list_queries_with_filtering() {
         None,
         Some(serde_json::json!({})), // Allow all
         Some(true),
+        None,
     );
     suite.create_authorization(
         &dao,
@@ -1532,6 +1938,7 @@ fn test_comprehensive_list_queries_with_filtering() {
         None,
         Some(serde_json::json!({})), // Allow all
         Some(true),
+        None,
     );
     let authorization_id3 = suite.create_authorization(
         &dao,
@@ -1540,10 +1947,11 @@ fn test_comprehensive_list_queries_with_filtering() {
         None,
         Some(serde_json::json!({})), // Allow all
         Some(true),
+        None,
     );
 
     // Complex assignments
-    suite.assign_roles(
+    suite.assign(
         &dao,
         vec![
             Assignment {
@@ -1616,10 +2024,10 @@ fn test_edge_case_empty_operations() {
     let dao = suite.core_addr.clone();
 
     // Test empty assign/revoke operations
-    let err = suite.assign_roles_err(&dao, vec![]);
+    let err = suite.assign_err(&dao, vec![]);
     assert_eq!(err, ContractError::NoRoles {});
 
-    let err = suite.revoke_roles_err(&dao, vec![]);
+    let err = suite.revoke_err(&dao, vec![]);
     assert_eq!(err, ContractError::NoRoles {});
 
     // Test empty action execution
@@ -1654,6 +2062,7 @@ fn test_role_and_authorization_metadata_updates() {
         Some("Initial auth metadata".to_string()),
         None,
         None,
+        None,
     );
 
     // Test metadata updates using OptionalUpdate variants
@@ -1675,100 +2084,21 @@ fn test_role_and_authorization_metadata_updates() {
         OptionalUpdate(Some(Update::Clear)),
         OptionalUpdate(None),
         None,
+        None,
     );
 
     // Verify updates by checking the stored values
     let role = suite.get_role(role_id);
-    assert_eq!(role.role.metadata, Some("Updated metadata".to_string()));
+    assert_eq!(role.metadata, Some("Updated metadata".to_string()));
 
     let auth = suite.get_authorization(authorization_id);
     assert_eq!(auth.authorization.metadata, None);
 }
 
 #[test]
-fn test_update_owner() {
-    let mut suite = SuiteBuilder::base().build();
-
-    let existing_owner = suite.get_ownership().owner.unwrap();
-    assert_eq!(existing_owner, suite.core_addr);
-
-    let new_owner = "new_owner";
-    suite.update_owner(existing_owner, new_owner);
-
-    let owner = suite.get_ownership().owner.unwrap();
-    assert_eq!(owner, new_owner);
-}
-
-#[test]
-fn test_protobuf_management() {
-    let mut suite = SuiteBuilder::base().build();
-    let dao = suite.core_addr.clone();
-
-    // Create a protobuf file descriptor set
-    let crate_root = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
-    let proto_path = std::path::Path::new(&crate_root).join("proto/string_bool_value.pb");
-    let file_descriptor_set = std::fs::read(proto_path).unwrap();
-
-    suite.register_protobufs(&dao, vec![file_descriptor_set]);
-
-    suite.assert_protobuf_files(vec!["google/protobuf/wrappers.proto".to_string()]);
-    suite.assert_protobuf_messages(vec![
-        "google.protobuf.BoolValue".to_string(),
-        "google.protobuf.StringValue".to_string(),
-    ]);
-    suite.assert_protobuf_messages_by_file(
-        "google/protobuf/wrappers.proto",
-        vec![
-            "google.protobuf.BoolValue".to_string(),
-            "google.protobuf.StringValue".to_string(),
-        ],
-    );
-
-    // Errors when partially unregistering messages from multiple files and
-    // doesn't reach the final file name before the limit is reached.
-    let err = suite.unregister_protobufs_err(
-        &dao,
-        vec!["google/protobuf/wrappers.proto".to_string(), "".to_string()],
-        Some(1),
-    );
-    assert_eq!(
-        err,
-        cw_protobuf_registry::ContractError::MessageLimitReached {
-            unregistered: 1,
-            total: 2,
-        }
-    );
-
-    // Allows partial unregistering of messages from a single file.
-    suite.unregister_protobufs(
-        &dao,
-        vec!["google/protobuf/wrappers.proto".to_string()],
-        Some(1),
-    );
-
-    // File removed, but some messages remain.
-    suite.assert_protobuf_files(vec![]);
-    suite.assert_protobuf_messages(vec!["google.protobuf.StringValue".to_string()]);
-
-    // Finishing unregistering the file removes all messages.
-    suite.unregister_protobufs(
-        &dao,
-        vec!["google/protobuf/wrappers.proto".to_string()],
-        None,
-    );
-    suite.assert_protobuf_messages(vec![]);
-}
-
-#[test]
 fn test_protobuf_filter() {
     let mut suite = SuiteBuilder::base().build();
     let dao = suite.core_addr.clone();
-
-    // Register the protobuf file descriptor set.
-
-    let crate_root = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
-    let proto_path = std::path::Path::new(&crate_root).join("proto/string_bool_value.pb");
-    let file_descriptor_set = std::fs::read(proto_path).unwrap();
 
     // Create a role with an authorization that allows a true BoolValue.
     let role_id = suite.create_role(
@@ -1801,12 +2131,7 @@ fn test_protobuf_filter() {
     ));
 
     // Register the protobuf file descriptor set.
-    suite.register_protobufs(&dao, vec![file_descriptor_set.clone()]);
-    suite.assert_protobuf_files(vec!["google/protobuf/wrappers.proto".to_string()]);
-    suite.assert_protobuf_messages(vec![
-        "google.protobuf.BoolValue".to_string(),
-        "google.protobuf.StringValue".to_string(),
-    ]);
+    suite.register_protobufs(&dao, vec![suite.google_string_bool_fds.clone()]);
 
     // Successfully create an authorization that allows a true BoolValue.
     let authorization_id = suite.create_authorization(
@@ -1816,12 +2141,7 @@ fn test_protobuf_filter() {
         None,
         Some(serde_json::json!({"#proto": {"type": "google.protobuf.BoolValue", "value": true}})),
         Some(true),
-    );
-    // Ensure the authorization has the correct protobuf message.
-    let authorization = suite.get_authorization(authorization_id);
-    assert_eq!(
-        authorization.authorization.protobuf_messages,
-        vec!["google.protobuf.BoolValue".to_string()]
+        None,
     );
 
     // Update the authorization to include a StringValue.
@@ -1834,12 +2154,7 @@ fn test_protobuf_filter() {
             serde_json::json!({"#proto": {"type": "google.protobuf.StringValue", "value": "test"}}),
         ))),
         None,
-    );
-    // Ensure the authorization has the new message and not the old one.
-    let authorization = suite.get_authorization(authorization_id);
-    assert_eq!(
-        authorization.authorization.protobuf_messages,
-        vec!["google.protobuf.StringValue".to_string()]
+        None,
     );
 
     // Test that the protobuf filter works.
@@ -1852,10 +2167,11 @@ fn test_protobuf_filter() {
             serde_json::json!({"stargate": {"type_url": "google.protobuf.StringValue", "value": {"#proto": {"type": "google.protobuf.StringValue", "value": "pass"}}}}),
         ))),
         None,
+        None,
     );
 
     let pool = DescriptorPool::from_file_descriptor_set(
-        FileDescriptorSet::decode(file_descriptor_set.as_slice()).unwrap(),
+        FileDescriptorSet::decode(suite.google_string_bool_fds.as_slice()).unwrap(),
     )
     .unwrap();
 

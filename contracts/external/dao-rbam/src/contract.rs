@@ -196,6 +196,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     match msg {
         ExecuteMsg::UpdateOwnership(action) => execute_update_ownership(deps, info, env, action),
         ExecuteMsg::UpdateDao { dao } => execute_update_dao(deps, info, dao),
@@ -274,7 +275,6 @@ fn execute_update_ownership(
     env: Env,
     action: cw_ownable::Action,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
     let ownership = cw_ownable::update_ownership(deps, &env.block, &info.sender, action)?;
     Ok(Response::new()
         .add_attribute("action", "update_ownership")
@@ -286,7 +286,6 @@ fn execute_update_dao(
     info: MessageInfo,
     dao: String,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     let dao = deps.api.addr_validate(&dao)?;
@@ -302,7 +301,6 @@ fn execute_update_filter(
     info: MessageInfo,
     filter: ModuleUpdate,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     let filter_message = filter.update(deps, &FILTER, INSTANTIATE_FILTER_REPLY_ID, info.sender)?;
@@ -317,20 +315,20 @@ fn execute_update_protobuf_registry(
     info: MessageInfo,
     protobuf_registry: Option<ModuleUpdate>,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
-    let protobuf_registry_message = protobuf_registry.map_or_else(
-        || Ok(vec![]),
-        |protobuf_registry| {
-            protobuf_registry.update(
-                deps,
-                &PROTOBUF_REGISTRY,
-                INSTANTIATE_PROTOBUF_REGISTRY_REPLY_ID,
-                info.sender,
-            )
-        },
-    )?;
+    let protobuf_registry_message = match protobuf_registry {
+        Some(protobuf_registry) => protobuf_registry.update(
+            deps,
+            &PROTOBUF_REGISTRY,
+            INSTANTIATE_PROTOBUF_REGISTRY_REPLY_ID,
+            &info.sender,
+        ),
+        None => {
+            PROTOBUF_REGISTRY.remove(deps.storage);
+            Ok(vec![])
+        }
+    }?;
 
     Ok(Response::new()
         .add_submessages(protobuf_registry_message)
@@ -342,7 +340,6 @@ fn execute_execute_protobuf_registry(
     info: MessageInfo,
     msg: cw_protobuf_registry::msg::ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     let protobuf_registry = PROTOBUF_REGISTRY
@@ -352,7 +349,7 @@ fn execute_execute_protobuf_registry(
     let message = WasmMsg::Execute {
         contract_addr: protobuf_registry.to_string(),
         msg: to_json_binary(&msg)?,
-        funds: info.funds,
+        funds: vec![],
     };
 
     Ok(Response::new()
@@ -365,7 +362,6 @@ fn execute_set_enabled(
     info: MessageInfo,
     enabled: bool,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     ENABLED.save(deps.storage, &enabled)?;
@@ -384,7 +380,6 @@ fn execute_create_role(
     authorizations: Option<Vec<InitialAuthorization>>,
     assignments: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     let enabled = enabled.unwrap_or(true);
@@ -434,7 +429,6 @@ fn execute_update_role(
     metadata: OptionalUpdate<String>,
     enabled: Option<bool>,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     let mut role = Role::load(&deps.as_ref(), role_id)?;
@@ -443,8 +437,8 @@ fn execute_update_role(
         role.name = name;
     }
 
-    metadata.maybe_update(|value| {
-        role.metadata = value;
+    metadata.maybe_update(|metadata| {
+        role.metadata = metadata;
     });
 
     if let Some(enabled) = enabled {
@@ -470,8 +464,8 @@ fn execute_create_authorization(
     enabled: Option<bool>,
     skip_prepare: Option<bool>,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
     // Ensure role exists.
     Role::ensure_exists(&deps.as_ref(), role_id)?;
 
@@ -496,7 +490,7 @@ fn execute_create_authorization(
 
 #[allow(clippy::too_many_arguments)]
 fn execute_update_authorization(
-    mut deps: DepsMut,
+    deps: DepsMut,
     info: MessageInfo,
     authorization_id: u64,
     name: Option<String>,
@@ -505,7 +499,6 @@ fn execute_update_authorization(
     enabled: Option<bool>,
     skip_prepare: Option<bool>,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     let mut authorization = Authorization::load(&deps.as_ref(), authorization_id)?;
@@ -521,7 +514,7 @@ fn execute_update_authorization(
     let protobuf_prepare_messages = filter.maybe_update_result_with_value(
         |value| {
             authorization.filter = value;
-            authorization.sync_protobuf_messages(&mut deps)
+            authorization.get_protobuf_message_preparation_submsgs(&deps.as_ref())
         },
         vec![],
     )?;
@@ -551,7 +544,6 @@ fn execute_assign(
     info: MessageInfo,
     assign: Vec<Assignment>,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     if assign.is_empty() {
@@ -588,7 +580,6 @@ fn execute_revoke(
     info: MessageInfo,
     revoke: Vec<Assignment>,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     if revoke.is_empty() {

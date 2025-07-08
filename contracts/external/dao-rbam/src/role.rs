@@ -37,10 +37,6 @@ pub struct Authorization {
     /// will be allowed, making it simply a symbolic authorization (which may be
     /// useful for external systems).
     pub filter: Option<serde_json::Value>,
-    /// Protobuf messages that are referenced by the filter and need to be
-    /// included when testing for message matches. This is internally managed
-    /// and updated automatically when the filter is set.
-    pub protobuf_messages: Vec<String>,
     /// Whether or not the authorization is enabled.
     pub enabled: bool,
 }
@@ -113,16 +109,15 @@ impl Authorization {
         filter: Option<serde_json::Value>,
         enabled: bool,
     ) -> Result<(Authorization, Vec<SubMsg>), ContractError> {
-        let mut authorization = Authorization {
+        let authorization = Authorization {
             id: get_next_id(deps.branch())?,
             role_id,
             name,
             metadata,
             filter,
-            protobuf_messages: vec![],
             enabled,
         };
-        let messages = authorization.sync_protobuf_messages(&mut deps)?;
+        let messages = authorization.get_protobuf_message_preparation_submsgs(&deps.as_ref())?;
 
         AUTHORIZATIONS.save(deps.storage, authorization.id, &authorization)?;
 
@@ -178,12 +173,12 @@ impl Authorization {
         Ok(())
     }
 
-    /// Sync the protobuf messages referenced by the filter and prepare them for
-    /// decoding. This is used when testing for message matches to provide the
-    /// filter with the necessary protobuf descriptors for decoding.
-    pub fn sync_protobuf_messages(
-        &mut self,
-        deps: &mut DepsMut,
+    /// Get the submessages to prepare protobufs for future decoding, if
+    /// necessary. Preparing makes the protobuf registry more efficient when
+    /// decoding protobufs during matching.
+    pub fn get_protobuf_message_preparation_submsgs(
+        &self,
+        deps: &Deps,
     ) -> Result<Vec<SubMsg>, ContractError> {
         if let Some(filter) = &self.filter {
             // Get the protobuf messages referenced by the filter.
@@ -191,23 +186,15 @@ impl Authorization {
                 .into_iter()
                 .collect::<Vec<_>>();
 
-            // If the protobuf messages haven't changed, do nothing.
-            if protobuf_messages == self.protobuf_messages {
-                return Ok(vec![]);
-            }
-
-            // Update the protobuf messages.
-            self.protobuf_messages = protobuf_messages;
-
             // If there are protobuf messages and the protobuf registry is
             // registered, prepare them.
-            if !self.protobuf_messages.is_empty() {
+            if !protobuf_messages.is_empty() {
                 if let Some(protobuf_registry) = PROTOBUF_REGISTRY.may_load(deps.storage)? {
                     return Ok(vec![SubMsg::reply_on_error(
                         WasmMsg::Execute {
                             contract_addr: protobuf_registry.to_string(),
                             msg: to_json_binary(&cw_protobuf_registry::msg::ExecuteMsg::Prepare {
-                                messages: self.protobuf_messages.clone(),
+                                messages: protobuf_messages,
                             })?,
                             funds: vec![],
                         },

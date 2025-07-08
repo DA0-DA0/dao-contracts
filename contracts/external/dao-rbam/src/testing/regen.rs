@@ -89,12 +89,6 @@ fn test_regen_protobuf_filter() {
     let mut suite = SuiteBuilder::base().build();
     let dao = suite.core_addr.clone();
 
-    // Register the protobuf file descriptor set.
-
-    let crate_root = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
-    let proto_path = std::path::Path::new(&crate_root).join("proto/regen_ecocredit.pb");
-    let file_descriptor_set = std::fs::read(proto_path).unwrap();
-
     // Create a role with an authorization that allows a true BoolValue.
     let role_id = suite.create_role(
         &dao,
@@ -173,22 +167,22 @@ fn test_regen_protobuf_filter() {
     ));
 
     // Register the protobuf file descriptor set.
-    suite.register_protobufs(&dao, vec![file_descriptor_set.clone()]);
+    suite.register_protobufs(&dao, vec![suite.regen_ecocredit_basket_fds.clone()]);
 
     // Successfully create an authorization that allows creating a basket with
     // specific parameter restrictions.
-    let authorization_id =
-        suite.create_authorization(&dao, role_id, "create basket", None, filter, Some(true));
-
-    // Ensure the authorization has the correct protobuf message.
-    let authorization = suite.get_authorization(authorization_id);
-    assert_eq!(
-        authorization.authorization.protobuf_messages,
-        vec!["regen.ecocredit.basket.v1.MsgCreate".to_string()]
+    let authorization_id = suite.create_authorization(
+        &dao,
+        role_id,
+        "create basket",
+        None,
+        filter,
+        Some(true),
+        None,
     );
 
     let pool = DescriptorPool::from_file_descriptor_set(
-        FileDescriptorSet::decode(file_descriptor_set.as_slice()).unwrap(),
+        FileDescriptorSet::decode(suite.regen_ecocredit_basket_fds.as_slice()).unwrap(),
     )
     .unwrap();
 

@@ -1,7 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 use cosmwasm_std::{Addr, Binary, CosmosMsg};
-pub use cw_ownable::Ownership;
 use cw_ownable::{cw_ownable_execute, cw_ownable_query};
 use dao_interface::helpers::OptionalUpdate;
 use dao_interface::proposal::InfoResponse;
@@ -9,6 +8,8 @@ use dao_interface::state::ModuleUpdate;
 
 use crate::action::{Action, ActionToExecute};
 use crate::role::{Authorization, Role};
+
+pub use cw_ownable::Ownership;
 
 #[cw_serde]
 pub struct InstantiateMsg {
