@@ -4479,7 +4479,6 @@
             "enabled",
             "id",
             "name",
-            "protobuf_messages",
             "role_id"
           ],
           "properties": {
@@ -4506,13 +4505,6 @@
             "name": {
               "description": "Name for the authorization (ideally unique, but not enforced).",
               "type": "string"
-            },
-            "protobuf_messages": {
-              "description": "Protobuf messages that are referenced by the filter and need to be included when testing for message matches. This is internally managed and updated automatically when the filter is set.",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
             },
             "role_id": {
               "description": "Role ID.",
@@ -4717,7 +4709,6 @@
             "enabled",
             "id",
             "name",
-            "protobuf_messages",
             "role_id"
           ],
           "properties": {
@@ -4744,13 +4735,6 @@
             "name": {
               "description": "Name for the authorization (ideally unique, but not enforced).",
               "type": "string"
-            },
-            "protobuf_messages": {
-              "description": "Protobuf messages that are referenced by the filter and need to be included when testing for message matches. This is internally managed and updated automatically when the filter is set.",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
             },
             "role_id": {
               "description": "Role ID.",
@@ -4864,7 +4848,6 @@
             "enabled",
             "id",
             "name",
-            "protobuf_messages",
             "role_id"
           ],
           "properties": {
@@ -4891,13 +4874,6 @@
             "name": {
               "description": "Name for the authorization (ideally unique, but not enforced).",
               "type": "string"
-            },
-            "protobuf_messages": {
-              "description": "Protobuf messages that are referenced by the filter and need to be included when testing for message matches. This is internally managed and updated automatically when the filter is set.",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
             },
             "role_id": {
               "description": "Role ID.",
@@ -5020,7 +4996,6 @@
             "enabled",
             "id",
             "name",
-            "protobuf_messages",
             "role_id"
           ],
           "properties": {
@@ -5047,13 +5022,6 @@
             "name": {
               "description": "Name for the authorization (ideally unique, but not enforced).",
               "type": "string"
-            },
-            "protobuf_messages": {
-              "description": "Protobuf messages that are referenced by the filter and need to be included when testing for message matches. This is internally managed and updated automatically when the filter is set.",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
             },
             "role_id": {
               "description": "Role ID.",
@@ -8803,7 +8771,6 @@
             "enabled",
             "id",
             "name",
-            "protobuf_messages",
             "role_id"
           ],
           "properties": {
@@ -8830,13 +8797,6 @@
             "name": {
               "description": "Name for the authorization (ideally unique, but not enforced).",
               "type": "string"
-            },
-            "protobuf_messages": {
-              "description": "Protobuf messages that are referenced by the filter and need to be included when testing for message matches. This is internally managed and updated automatically when the filter is set.",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
             },
             "role_id": {
               "description": "Role ID.",
@@ -8872,7 +8832,6 @@
             "enabled",
             "id",
             "name",
-            "protobuf_messages",
             "role_id"
           ],
           "properties": {
@@ -8899,13 +8858,6 @@
             "name": {
               "description": "Name for the authorization (ideally unique, but not enforced).",
               "type": "string"
-            },
-            "protobuf_messages": {
-              "description": "Protobuf messages that are referenced by the filter and need to be included when testing for message matches. This is internally managed and updated automatically when the filter is set.",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
             },
             "role_id": {
               "description": "Role ID.",
