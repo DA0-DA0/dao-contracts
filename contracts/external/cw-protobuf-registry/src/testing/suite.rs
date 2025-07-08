@@ -260,11 +260,7 @@ impl Suite {
         );
     }
 
-    pub fn register_protobufs(
-        &mut self,
-        sender: impl Into<String>,
-        file_descriptor_sets: Vec<Vec<u8>>,
-    ) {
+    pub fn register(&mut self, sender: impl Into<String>, file_descriptor_sets: Vec<Vec<u8>>) {
         self.base.execute_smart_ok(
             sender,
             &self.registry_addr,
@@ -275,7 +271,22 @@ impl Suite {
         );
     }
 
-    pub fn unregister_protobufs(
+    pub fn register_err(
+        &mut self,
+        sender: impl Into<String>,
+        file_descriptor_sets: Vec<Vec<u8>>,
+    ) -> ContractError {
+        self.base.execute_smart_err(
+            sender,
+            &self.registry_addr,
+            &ExecuteMsg::Register {
+                file_descriptor_sets,
+            },
+            &[],
+        )
+    }
+
+    pub fn unregister(
         &mut self,
         sender: impl Into<String>,
         file_names: Vec<String>,
@@ -292,7 +303,7 @@ impl Suite {
         );
     }
 
-    pub fn unregister_protobufs_err(
+    pub fn unregister_err(
         &mut self,
         sender: impl Into<String>,
         file_names: Vec<String>,
@@ -318,6 +329,19 @@ impl Suite {
         );
     }
 
+    pub fn prepare_err(
+        &mut self,
+        sender: impl Into<String>,
+        messages: Vec<String>,
+    ) -> ContractError {
+        self.base.execute_smart_err(
+            sender,
+            &self.registry_addr,
+            &ExecuteMsg::Prepare { messages },
+            &[],
+        )
+    }
+
     pub fn unprepare(&mut self, sender: impl Into<String>, messages: Vec<String>) {
         self.base.execute_smart_ok(
             sender,
@@ -325,5 +349,18 @@ impl Suite {
             &ExecuteMsg::Unprepare { messages },
             &[],
         );
+    }
+
+    pub fn unprepare_err(
+        &mut self,
+        sender: impl Into<String>,
+        messages: Vec<String>,
+    ) -> ContractError {
+        self.base.execute_smart_err(
+            sender,
+            &self.registry_addr,
+            &ExecuteMsg::Unprepare { messages },
+            &[],
+        )
     }
 }

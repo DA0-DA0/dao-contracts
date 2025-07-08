@@ -1,4 +1,6 @@
 use cosmwasm_std::{coins, to_json_binary, BankMsg, CosmosMsg};
+use cw_filter::ContractError;
+use cw_ownable::OwnershipError;
 use dao_interface::state::{ModuleInstantiateInfo, ModuleUpdate};
 use dao_testing::OWNER;
 use serde_json::json;
@@ -6,7 +8,6 @@ use serde_json::json;
 use crate::{
     msg::{FilterResponse, InstantiateMsg},
     testing::suite::SuiteBuilder,
-    ContractError,
 };
 
 #[test]
@@ -105,6 +106,10 @@ fn test_no_protobuf_registry() {
 #[test]
 fn test_update_protobuf_registry() {
     let mut suite = SuiteBuilder::base().build();
+
+    // only the owner can update the protobuf registry
+    let err = suite.update_protobuf_registry_err("not_owner", None);
+    assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
 
     suite.assert_protobuf_registry(Some(suite.protobuf_registry_addr.clone()));
 

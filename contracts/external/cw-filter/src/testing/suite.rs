@@ -1,4 +1,5 @@
 use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Timestamp};
+use cw_filter::ContractError;
 use cw_ownable::Action;
 use dao_interface::{
     proposal::InfoResponse,
@@ -146,5 +147,18 @@ impl Suite {
             &ExecuteMsg::UpdateProtobufRegistry { protobuf_registry },
             &[],
         );
+    }
+
+    pub fn update_protobuf_registry_err(
+        &mut self,
+        owner: impl Into<String>,
+        protobuf_registry: Option<ModuleUpdate>,
+    ) -> ContractError {
+        self.base.execute_smart_err(
+            owner,
+            &self.filter_addr,
+            &ExecuteMsg::UpdateProtobufRegistry { protobuf_registry },
+            &[],
+        )
     }
 }

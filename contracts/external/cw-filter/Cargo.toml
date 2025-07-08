@@ -32,6 +32,7 @@ cw2 = { workspace = true }
 cw-protobuf-registry = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
+cw-filter = { workspace = true, features = ["library"] }
 cw-multi-test = { workspace = true }
 dao-testing = { workspace = true }
 prost = { workspace = true }

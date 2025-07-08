@@ -873,6 +873,7 @@ version = "2.7.1"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-filter",
  "cw-jsonfilter",
  "cw-multi-test",
  "cw-ownable",

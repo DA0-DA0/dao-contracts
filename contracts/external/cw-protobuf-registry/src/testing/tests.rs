@@ -1,4 +1,5 @@
 use cosmwasm_std::StdError;
+use cw_ownable::OwnershipError;
 use cw_protobuf_registry::ContractError;
 use dao_testing::OWNER;
 use prost::Message;
@@ -50,6 +51,28 @@ fn test_info() {
 }
 
 #[test]
+fn test_auth() {
+    let mut suite = SuiteBuilder::base().build();
+    let not_owner = "not_owner";
+
+    // only the owner can register
+    let err = suite.register_err(not_owner, vec![]);
+    assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
+
+    // only the owner can unregister
+    let err = suite.unregister_err(not_owner, vec![], None);
+    assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
+
+    // only the owner can prepare
+    let err = suite.prepare_err(not_owner, vec![]);
+    assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
+
+    // only the owner can unprepare
+    let err = suite.unprepare_err(not_owner, vec![]);
+    assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
+}
+
+#[test]
 fn test_protobuf_management() {
     let mut suite = SuiteBuilder::base().build();
 
@@ -58,7 +81,7 @@ fn test_protobuf_management() {
     let proto_path = std::path::Path::new(&crate_root).join("proto/string_bool_value.pb");
     let file_descriptor_set = std::fs::read(proto_path).unwrap();
 
-    suite.register_protobufs(OWNER, vec![file_descriptor_set]);
+    suite.register(OWNER, vec![file_descriptor_set]);
 
     suite.assert_files(vec!["google/protobuf/wrappers.proto".to_string()]);
     suite.assert_messages(vec![
@@ -104,7 +127,7 @@ fn test_protobuf_management() {
 
     // Errors when partially unregistering messages from multiple files and
     // doesn't reach the final file name before the limit is reached.
-    let err = suite.unregister_protobufs_err(
+    let err = suite.unregister_err(
         OWNER,
         vec!["google/protobuf/wrappers.proto".to_string(), "".to_string()],
         Some(1),
@@ -118,7 +141,7 @@ fn test_protobuf_management() {
     );
 
     // Allows partial unregistering of messages from a single file.
-    suite.unregister_protobufs(
+    suite.unregister(
         OWNER,
         vec!["google/protobuf/wrappers.proto".to_string()],
         Some(1),
@@ -129,7 +152,7 @@ fn test_protobuf_management() {
     suite.assert_messages(vec!["google.protobuf.StringValue".to_string()]);
 
     // Finishing unregistering the file removes all messages.
-    suite.unregister_protobufs(
+    suite.unregister(
         OWNER,
         vec!["google/protobuf/wrappers.proto".to_string()],
         None,
@@ -164,7 +187,7 @@ fn test_regen_protobuf_filter() {
     let file_descriptor_set = std::fs::read(proto_path).unwrap();
 
     // Register the protobuf file descriptor set.
-    suite.register_protobufs(OWNER, vec![file_descriptor_set.clone()]);
+    suite.register(OWNER, vec![file_descriptor_set.clone()]);
 
     // Get the file descriptor set for a message, and ensure it contains exactly
     // the files and messages necessary and nothing more.
@@ -259,7 +282,7 @@ fn test_prepare_and_decode() {
     );
 
     // Register the protobuf file descriptor set.
-    suite.register_protobufs(OWNER, vec![file_descriptor_set.clone()]);
+    suite.register(OWNER, vec![file_descriptor_set.clone()]);
 
     // decode works when registered even if not prepared (less efficient)
     suite.assert_decode(
