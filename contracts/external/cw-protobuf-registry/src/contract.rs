@@ -420,6 +420,8 @@ fn query_decode(deps: Deps, message_name: String, value: Vec<u8>) -> StdResult<D
         StdError::generic_err(format!("failed to create descriptor pool from FDS: {}", e))
     })?;
 
+    // should never error since we created the FDS from the message name, but
+    // check just in case.
     let message_descriptor = pool.get_message_by_name(&message_name).ok_or_else(|| {
         StdError::generic_err(format!(
             "message descriptor not found for name: {}",

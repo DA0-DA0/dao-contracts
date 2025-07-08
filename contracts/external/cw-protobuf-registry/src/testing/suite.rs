@@ -67,7 +67,7 @@ impl Suite {
             .unwrap()
     }
 
-    pub fn list_protobuf_files(
+    pub fn list_files(
         &mut self,
         start_after: Option<String>,
         limit: Option<u32>,
@@ -82,7 +82,7 @@ impl Suite {
             .unwrap()
     }
 
-    pub fn list_protobuf_messages(
+    pub fn list_messages(
         &mut self,
         start_after: Option<String>,
         limit: Option<u32>,
@@ -101,7 +101,7 @@ impl Suite {
             .unwrap()
     }
 
-    pub fn list_protobuf_messages_by_file(
+    pub fn list_messages_by_file(
         &mut self,
         file_name: String,
         start_after: Option<String>,
@@ -147,6 +147,31 @@ impl Suite {
             .unwrap()
     }
 
+    pub fn file_descriptor_set(&mut self, messages: Vec<String>) -> FileDescriptorSet {
+        let response: FileDescriptorSetResponse = self
+            .base
+            .app
+            .wrap()
+            .query_wasm_smart(
+                self.registry_addr.clone(),
+                &QueryMsg::FileDescriptorSet { messages },
+            )
+            .unwrap();
+
+        FileDescriptorSet::decode(response.file_descriptor_set.as_slice()).unwrap()
+    }
+
+    pub fn file_descriptor_set_err(&mut self, messages: Vec<String>) -> StdError {
+        self.base
+            .app
+            .wrap()
+            .query_wasm_smart::<FileDescriptorSetResponse>(
+                self.registry_addr.clone(),
+                &QueryMsg::FileDescriptorSet { messages },
+            )
+            .unwrap_err()
+    }
+
     pub fn decode(&mut self, message_name: impl Into<String>, value: Vec<u8>) -> DecodeResponse {
         self.base
             .app
@@ -174,47 +199,22 @@ impl Suite {
             )
             .unwrap_err()
     }
-
-    pub fn file_descriptor_set(&mut self, messages: Vec<String>) -> FileDescriptorSet {
-        let response: FileDescriptorSetResponse = self
-            .base
-            .app
-            .wrap()
-            .query_wasm_smart(
-                self.registry_addr.clone(),
-                &QueryMsg::FileDescriptorSet { messages },
-            )
-            .unwrap();
-
-        FileDescriptorSet::decode(response.file_descriptor_set.as_slice()).unwrap()
-    }
-
-    pub fn file_descriptor_set_err(&mut self, messages: Vec<String>) -> StdError {
-        self.base
-            .app
-            .wrap()
-            .query_wasm_smart::<FileDescriptorSetResponse>(
-                self.registry_addr.clone(),
-                &QueryMsg::FileDescriptorSet { messages },
-            )
-            .unwrap_err()
-    }
 }
 
 // SUITE ASSERTIONS
 impl Suite {
-    pub fn assert_protobuf_files(&mut self, expected: Vec<String>) {
-        let response = self.list_protobuf_files(None, None);
+    pub fn assert_files(&mut self, expected: Vec<String>) {
+        let response = self.list_files(None, None);
         assert_eq!(response.files, expected);
     }
 
-    pub fn assert_protobuf_messages(&mut self, expected: Vec<String>) {
-        let response = self.list_protobuf_messages(None, None);
+    pub fn assert_messages(&mut self, expected: Vec<String>) {
+        let response = self.list_messages(None, None);
         assert_eq!(response.messages, expected);
     }
 
-    pub fn assert_protobuf_messages_by_file(&mut self, file_name: &str, expected: Vec<String>) {
-        let response = self.list_protobuf_messages_by_file(file_name.to_string(), None, None);
+    pub fn assert_messages_by_file(&mut self, file_name: &str, expected: Vec<String>) {
+        let response = self.list_messages_by_file(file_name.to_string(), None, None);
         assert_eq!(response.messages, expected);
     }
 

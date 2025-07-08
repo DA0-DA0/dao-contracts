@@ -5,11 +5,26 @@ use prost::Message;
 use prost_reflect::DescriptorPool;
 use prost_types::FileDescriptorSet;
 
-use crate::{protobuf::encode_protobuf, testing::suite::SuiteBuilder};
+use crate::{msg::InstantiateMsg, protobuf::encode_protobuf, testing::suite::SuiteBuilder};
 
 #[test]
-fn test_instantiate() {
-    SuiteBuilder::base().build();
+fn test_init_with_owner() {
+    let mut suite = SuiteBuilder::base().build();
+    let other_owner = "other_owner";
+
+    suite.registry_addr = suite.base.instantiate(
+        suite.base.protobuf_registry_id,
+        OWNER,
+        &InstantiateMsg {
+            owner: Some(other_owner.to_string()),
+        },
+        &[],
+        "protobuf-registry",
+        None,
+    );
+
+    let owner = suite.get_ownership().owner.unwrap();
+    assert_eq!(owner, other_owner);
 }
 
 #[test]
@@ -45,12 +60,12 @@ fn test_protobuf_management() {
 
     suite.register_protobufs(OWNER, vec![file_descriptor_set]);
 
-    suite.assert_protobuf_files(vec!["google/protobuf/wrappers.proto".to_string()]);
-    suite.assert_protobuf_messages(vec![
+    suite.assert_files(vec!["google/protobuf/wrappers.proto".to_string()]);
+    suite.assert_messages(vec![
         "google.protobuf.BoolValue".to_string(),
         "google.protobuf.StringValue".to_string(),
     ]);
-    suite.assert_protobuf_messages_by_file(
+    suite.assert_messages_by_file(
         "google/protobuf/wrappers.proto",
         vec![
             "google.protobuf.BoolValue".to_string(),
@@ -110,8 +125,8 @@ fn test_protobuf_management() {
     );
 
     // File removed, but some messages remain.
-    suite.assert_protobuf_files(vec![]);
-    suite.assert_protobuf_messages(vec!["google.protobuf.StringValue".to_string()]);
+    suite.assert_files(vec![]);
+    suite.assert_messages(vec!["google.protobuf.StringValue".to_string()]);
 
     // Finishing unregistering the file removes all messages.
     suite.unregister_protobufs(
@@ -119,7 +134,7 @@ fn test_protobuf_management() {
         vec!["google/protobuf/wrappers.proto".to_string()],
         None,
     );
-    suite.assert_protobuf_messages(vec![]);
+    suite.assert_messages(vec![]);
 }
 
 #[test]
@@ -246,26 +261,30 @@ fn test_prepare_and_decode() {
     // Register the protobuf file descriptor set.
     suite.register_protobufs(OWNER, vec![file_descriptor_set.clone()]);
 
-    // works when registered even if not prepared (tho less efficient)
+    // decode works when registered even if not prepared (less efficient)
     suite.assert_decode(
         "cosmos.base.v1beta1.Coin",
         encoded_coin.clone(),
         serde_json::json!({"amount": "123", "denom": "abc"}),
     );
 
+    // file descriptor set works when unprepared
+    let fds = suite.file_descriptor_set(vec!["cosmos.base.v1beta1.Coin".to_string()]);
+    assert_eq!(fds.file.len(), 1);
+    assert_eq!(
+        fds.file[0].name.as_ref().unwrap(),
+        "cosmos/base/v1beta1/coin.proto"
+    );
+    assert_eq!(fds.file[0].message_type.len(), 1);
+    assert_eq!(fds.file[0].message_type[0].name.as_ref().unwrap(), "Coin");
+
+    // prepare so future decodes are faster
     suite.prepare(
         OWNER,
         vec![
             "regen.ecocredit.basket.v1.MsgCreate".to_string(),
             "cosmos.base.v1beta1.Coin".to_string(),
         ],
-    );
-
-    // works when prepared
-    suite.assert_decode(
-        "cosmos.base.v1beta1.Coin",
-        encoded_coin.clone(),
-        serde_json::json!({"amount": "123", "denom": "abc"}),
     );
 
     suite.assert_list_prepared(vec![
@@ -277,6 +296,23 @@ fn test_prepare_and_decode() {
     suite.assert_prepared("cosmos.base.v1beta1.Coin", true);
     suite.assert_prepared("google.protobuf.Duration", false);
     suite.assert_prepared("google.protobuf.Timestamp", false);
+
+    // decode works when prepared
+    suite.assert_decode(
+        "cosmos.base.v1beta1.Coin",
+        encoded_coin.clone(),
+        serde_json::json!({"amount": "123", "denom": "abc"}),
+    );
+
+    // file descriptor set works when prepared
+    let fds = suite.file_descriptor_set(vec!["cosmos.base.v1beta1.Coin".to_string()]);
+    assert_eq!(fds.file.len(), 1);
+    assert_eq!(
+        fds.file[0].name.as_ref().unwrap(),
+        "cosmos/base/v1beta1/coin.proto"
+    );
+    assert_eq!(fds.file[0].message_type.len(), 1);
+    assert_eq!(fds.file[0].message_type[0].name.as_ref().unwrap(), "Coin");
 
     let err = suite.decode_err("wrong_message", encoded_coin.clone());
     assert_eq!(
@@ -301,6 +337,16 @@ fn test_prepare_and_decode() {
         ))
     );
 
+    suite.assert_decode(
+        "cosmos.base.v1beta1.Coin",
+        encoded_coin.clone(),
+        serde_json::json!({"amount": "123", "denom": "abc"}),
+    );
+
+    // unprepare so future decodes are less efficient
+    suite.unprepare(OWNER, vec!["cosmos.base.v1beta1.Coin".to_string()]);
+
+    // works when unprepared
     suite.assert_decode(
         "cosmos.base.v1beta1.Coin",
         encoded_coin,
