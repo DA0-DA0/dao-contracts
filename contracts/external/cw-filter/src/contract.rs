@@ -168,9 +168,16 @@ fn query_filter(
         FilterResult::Fail(error) => FilterResponse::Fail {
             reason: error.to_string(),
         },
-        FilterResult::Fatal(error) => FilterResponse::Fatal {
-            reason: error.to_string(),
-        },
+        FilterResult::Fatal(error) => {
+            let reason = error.to_string();
+            if reason.contains("protobuf decoder not provided") {
+                FilterResponse::Fatal {
+                    reason: ContractError::MissingProtobufRegistry {}.to_string(),
+                }
+            } else {
+                FilterResponse::Fatal { reason }
+            }
+        }
     };
 
     Ok(response)

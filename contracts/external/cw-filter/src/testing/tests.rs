@@ -3,7 +3,11 @@ use dao_interface::state::{ModuleInstantiateInfo, ModuleUpdate};
 use dao_testing::OWNER;
 use serde_json::json;
 
-use crate::{msg::FilterResponse, testing::suite::SuiteBuilder};
+use crate::{
+    msg::{FilterResponse, InstantiateMsg},
+    testing::suite::SuiteBuilder,
+    ContractError,
+};
 
 #[test]
 fn test_instantiate() {
@@ -30,6 +34,72 @@ fn test_info() {
     let info = suite.get_info();
     assert_eq!(info.info.contract, "crates.io:cw-filter");
     assert_eq!(info.info.version, env!("CARGO_PKG_VERSION"));
+}
+
+#[test]
+fn test_init_owner() {
+    let mut suite = SuiteBuilder::base().build();
+    let other_owner = "other_owner";
+
+    suite.filter_addr = suite.base.instantiate(
+        suite.base.filter_id,
+        OWNER,
+        &InstantiateMsg {
+            owner: Some(other_owner.to_string()),
+            protobuf_registry: Some(ModuleUpdate::Existing {
+                address: suite.protobuf_registry_addr.to_string(),
+            }),
+        },
+        &[],
+        "new filter",
+        None,
+    );
+
+    let owner = suite.get_ownership().owner.unwrap();
+    assert_eq!(owner, other_owner);
+
+    let protobuf_registry_addr = suite.get_protobuf_registry();
+    assert_eq!(protobuf_registry_addr, Some(suite.protobuf_registry_addr));
+}
+
+#[test]
+fn test_no_protobuf_registry() {
+    let mut suite = SuiteBuilder::base().build();
+
+    suite.filter_addr = suite.base.instantiate(
+        suite.base.filter_id,
+        OWNER,
+        &InstantiateMsg {
+            owner: None,
+            protobuf_registry: None,
+        },
+        &[],
+        "new filter",
+        None,
+    );
+
+    let protobuf_registry_addr = suite.get_protobuf_registry();
+    assert_eq!(protobuf_registry_addr, None);
+
+    // filter with #stargate fails
+    suite.assert_filter(
+        json!({
+            "#stargate": {
+                "type_url": "/does.not.exist",
+                "value": "test"
+            }
+        }),
+        CosmosMsg::Stargate {
+            type_url: "/does.not.exist".to_string(),
+            value: to_json_binary(&json!({
+                "test": "value"
+            }))
+            .unwrap(),
+        },
+        FilterResponse::Fatal {
+            reason: ContractError::MissingProtobufRegistry {}.to_string(),
+        },
+    );
 }
 
 #[test]
@@ -133,6 +203,29 @@ fn test_filter() {
         }),
         FilterResponse::Fail {
             reason: "Operator failed: `implicit equality check` at filter path: `@.bank.send.amount[0].amount` and object path: `@.bank.send.amount[0].amount` with reason: `value does not match filter`".to_string(),
+        },
+    );
+
+    suite.assert_filter(
+        json!({
+            "bank": {
+                "send": {
+                    "amount": [
+                        {
+                            "amount": {
+                                "$between": [10, 5]
+                            }
+                        }
+                    ]
+                }
+            }
+        }),
+        CosmosMsg::Bank(BankMsg::Send {
+            to_address: "recipient".to_string(),
+            amount: coins(7, "ucosm"),
+        }),
+        FilterResponse::Fatal {
+            reason: "Invalid filter: `$between args must be in ascending order` at filter path: `@.bank.send.amount[0].amount.$between` and object path: `@.bank.send.amount[0].amount`".to_string(),
         },
     );
 }

@@ -71,6 +71,14 @@ impl Suite {
             .unwrap()
     }
 
+    pub fn get_info(&mut self) -> InfoResponse {
+        self.base
+            .app
+            .wrap()
+            .query_wasm_smart(self.filter_addr.clone(), &QueryMsg::Info {})
+            .unwrap()
+    }
+
     pub fn get_protobuf_registry(&mut self) -> Option<Addr> {
         self.base
             .app
@@ -81,14 +89,6 @@ impl Suite {
             )
             .unwrap()
             .protobuf_registry
-    }
-
-    pub fn get_info(&mut self) -> InfoResponse {
-        self.base
-            .app
-            .wrap()
-            .query_wasm_smart(self.filter_addr.clone(), &QueryMsg::Info {})
-            .unwrap()
     }
 
     pub fn filter(&mut self, filter: serde_json::Value, msg: CosmosMsg) -> FilterResponse {
