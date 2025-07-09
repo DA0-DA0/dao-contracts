@@ -62,9 +62,3 @@ pub enum ContractError {
     #[error("Internal error: {msg}")]
     InternalError { msg: String },
 }
-
-impl From<ContractError> for String {
-    fn from(err: ContractError) -> Self {
-        err.to_string()
-    }
-}

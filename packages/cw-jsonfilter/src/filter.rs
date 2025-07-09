@@ -70,15 +70,30 @@ impl<'a> CwJsonFilter<'a> {
         filter_path: &str,
         obj_path: &str,
     ) -> FilterResult {
+        // If the filter is an empty object and the object is not present, the
+        // parent key is not found. This base case is required to be handled
+        // here since the existence operator (and logical operators) can
+        // operator on the absence of an object, meaning there is a condition
+        // where a nonexistent object matches the filter. The operator matcher
+        // checks existence of the object when necessary, and so do the other
+        // types of filters below (object key/value, array, and primitive). Thus
+        // this is the only case that needs to be specifically handled.
+        if filter.as_object().map(|o| o.is_empty()).unwrap_or_default() && obj.is_none() {
+            return FilterResult::key_not_found(filter_path, obj_path);
+        }
+
         match filter {
             // Objects process each key present in the filter, behaving like an
             // $and operation for all keys.
             serde_json::Value::Object(filter_obj) => {
                 for (filter_key, filter_val) in filter_obj {
-                    let filter_path = &append_path(filter_path, filter_key);
                     let is_operator = filter_key.starts_with('$');
                     let is_transformer = filter_key.starts_with('#');
+                    // The object doesn't have to exist at this point, since the
+                    // existence operator (and logical operators) can operate on
+                    // the absence of an object.
                     if is_operator || is_transformer {
+                        let filter_path = &append_path(filter_path, filter_key);
                         match self.inner_matches_operator(
                             filter_key,
                             filter_val,
@@ -92,13 +107,38 @@ impl<'a> CwJsonFilter<'a> {
                             failure_result => return failure_result,
                         }
                     } else {
-                        let obj_path = &append_path(obj_path, filter_key);
-                        let value = obj.and_then(|o| o.get(filter_key));
-                        match self.inner_matches(filter_val, value, filter_path, obj_path) {
-                            // If success, continue to next key.
-                            FilterResult::Pass => continue,
-                            // If failure, return the error.
-                            failure_result => return failure_result,
+                        // The object must be present at this point since we
+                        // need to dig deeper into the object.
+                        let obj = match obj {
+                            Some(o) => o,
+                            None => return FilterResult::key_not_found(filter_path, obj_path),
+                        };
+
+                        // If the key is a stringified number and the object is
+                        // an array, index into the array.
+                        match (filter_key.parse::<usize>(), obj.as_array()) {
+                            (Ok(index), Some(obj_array)) => {
+                                let filter_path = &append_array_path(filter_path, index);
+                                let obj_path = &append_array_path(obj_path, index);
+                                let value = obj_array.get(index);
+                                match self.inner_matches(filter_val, value, filter_path, obj_path) {
+                                    // If success, continue to next key.
+                                    FilterResult::Pass => continue,
+                                    // If failure, return the error.
+                                    failure_result => return failure_result,
+                                }
+                            }
+                            _ => {
+                                let filter_path = &append_path(filter_path, filter_key);
+                                let obj_path = &append_path(obj_path, filter_key);
+                                let value = obj.get(filter_key);
+                                match self.inner_matches(filter_val, value, filter_path, obj_path) {
+                                    // If success, continue to next key.
+                                    FilterResult::Pass => continue,
+                                    // If failure, return the error.
+                                    failure_result => return failure_result,
+                                }
+                            }
                         }
                     }
                 }

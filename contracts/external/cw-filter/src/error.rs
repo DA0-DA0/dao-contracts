@@ -31,9 +31,3 @@ pub enum ContractError {
     #[error("Missing protobuf registry")]
     MissingProtobufRegistry {},
 }
-
-impl From<ContractError> for String {
-    fn from(err: ContractError) -> Self {
-        err.to_string()
-    }
-}

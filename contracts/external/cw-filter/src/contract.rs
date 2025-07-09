@@ -158,7 +158,7 @@ fn query_filter(
     );
 
     let msg_value = serde_json::to_value(msg).map_err(|e| {
-        StdError::generic_err(ContractError::JsonSerialization { err: e.to_string() })
+        StdError::generic_err(ContractError::JsonSerialization { err: e.to_string() }.to_string())
     })?;
 
     let result = CwJsonFilter::new(decode_protobuf).matches(&filter, &msg_value);

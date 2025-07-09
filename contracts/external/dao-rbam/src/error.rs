@@ -78,6 +78,9 @@ pub enum ContractError {
 
     #[error("Protobuf registry prepare failed: {reason}")]
     ProtobufRegistryPrepareFailed { reason: String },
+
+    #[error("Filter contract query error: {error}")]
+    FilterContractQueryError { error: String },
 }
 
 impl From<ContractError> for String {

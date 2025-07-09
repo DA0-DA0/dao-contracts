@@ -12,7 +12,7 @@ use std::fmt::Display;
 /// To put it more explicitly: a fatal error should only occur when a filter is
 /// malformed—it should not be dependent on the value passed in at all. Only
 /// non-fatal errors should be dependent on the value passed in.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum FilterResult {
     /// The filter passed.
     Pass,
@@ -22,7 +22,7 @@ pub enum FilterResult {
     Fatal(FilterFatalError),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 /// Represents errors that indicate that the filter failed.
 pub enum FilterFailure {
     /// Indicates that a key was not found in the object being filtered.
@@ -64,7 +64,7 @@ impl Display for FilterFailure {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 /// Represents errors that are fatal and prevent a filter/operator from running.
 pub enum FilterFatalError {
     /// Indicates that the schema of the filter is invalid.

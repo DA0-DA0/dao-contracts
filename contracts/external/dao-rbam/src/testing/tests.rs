@@ -955,6 +955,8 @@ fn test_action_execution_errors() {
         Some(true),
         None,
     );
+    let incorrect_role_id =
+        suite.create_role(&dao, "incorrect_role".to_string(), None, None, None, None);
 
     let action = ActionToExecute {
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
@@ -965,6 +967,21 @@ fn test_action_execution_errors() {
         role_id,
         authorization_id,
     };
+
+    // Try to execute with incorrect role/authorization match - should fail
+    let err = suite.execute_actions_err(
+        ADDR0,
+        vec![ActionToExecute {
+            msg: CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "test_contract".to_string(),
+                msg: to_json_binary(&"test_msg").unwrap(),
+                funds: vec![],
+            }),
+            role_id: incorrect_role_id,
+            authorization_id,
+        }],
+    );
+    assert_eq!(err, ContractError::AuthorizationRoleMismatch {});
 
     // Try to execute without role assignment - should fail
     let err = suite.execute_actions_err(ADDR0, vec![action.clone()]);
@@ -999,6 +1016,25 @@ fn test_action_execution_errors() {
     // Try to execute with disabled authorization - should fail
     let err = suite.execute_actions_err(ADDR0, vec![action.clone()]);
     assert!(matches!(err, ContractError::AuthorizationDisabled {}));
+
+    // Enable authorization.
+    suite.update_authorization(
+        &dao,
+        authorization_id,
+        None,
+        OptionalUpdate(None),
+        OptionalUpdate(None),
+        Some(true),
+        None,
+    );
+
+    // Try to execute with enabled authorization - should fail because no
+    // filter is set.
+    let err = suite.execute_actions_err(ADDR0, vec![action.clone()]);
+    assert!(matches!(
+        err,
+        ContractError::NoAuthorizationFilterSet { .. }
+    ));
 }
 
 #[test]
@@ -1990,7 +2026,7 @@ fn test_action_execution_with_multiple_actions() {
     };
 
     // Execute the action
-    let err = suite.execute_actions_err(ADDR0, vec![action]);
+    let err = suite.execute_actions_err(ADDR0, vec![action.clone()]);
     assert_eq!(
         err,
         ContractError::MsgNotAllowedByFilter {
@@ -2010,6 +2046,50 @@ fn test_action_execution_with_multiple_actions() {
     let config = suite.base.get_config(&dao);
     assert_eq!(config.name, "new_name3");
     assert_eq!(config.description, "new_description3");
+
+    // Update to an invalid filter.
+    suite.update_authorization(
+        &dao,
+        authorization_id,
+        None,
+        OptionalUpdate(None),
+        OptionalUpdate(Some(Update::Set(serde_json::json!({
+            "$invalidOperator": {}
+        })))),
+        Some(true),
+        None,
+    );
+
+    // Try to execute with invalid filter - should fail.
+    let err = suite.execute_actions_err(ADDR0, vec![action.clone()]);
+    assert_eq!(
+        err,
+        ContractError::FilterError {
+            err: cw_jsonfilter::FilterResult::fatal_unknown_operator(
+                "$invalidOperator",
+                "@.$invalidOperator",
+                "@",
+            )
+            .as_fatal()
+            .unwrap()
+            .to_string(),
+        }
+    );
+
+    // Set filter contract to invalid address.
+    suite.update_filter(
+        &dao,
+        ModuleUpdate::Existing {
+            address: "invalid_address".to_string(),
+        },
+    );
+
+    // Try to execute with invalid filter - should fail.
+    let err = suite.execute_actions_err(ADDR0, vec![action]);
+    assert!(matches!(
+        err,
+        ContractError::FilterContractQueryError { .. }
+    ));
 }
 
 #[test]

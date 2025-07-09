@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::CwJsonFilter;
+use crate::{CwJsonFilter, FilterFailure, FilterFatalError};
 use cw_protobuf_registry::protobuf::{
     base64_encode_protobuf, decode_protobuf, get_protobuf_messages,
 };
@@ -166,7 +166,7 @@ fn greater_than() {
                 "$gt": 5
             }
         }),
-        &json!({ "key": 4})
+        &json!({ "key": 4 })
     )
     .is_fail());
     assert!(CwJsonFilter::check(
@@ -175,7 +175,7 @@ fn greater_than() {
                 "$gt": 5
             }
         }),
-        &json!({ "key": 5})
+        &json!({ "key": 5 })
     )
     .is_fail());
     assert!(CwJsonFilter::check(
@@ -184,9 +184,54 @@ fn greater_than() {
                 "$gte": 5
             }
         }),
-        &json!({ "key": 5})
+        &json!({ "key": 5 })
     )
     .is_pass());
+    assert!(CwJsonFilter::check(
+        &json!({
+            "key": {
+                "$gte": "def"
+            }
+        }),
+        &json!({ "key": "abc" })
+    )
+    .is_fail());
+    assert!(CwJsonFilter::check(
+        &json!({
+            "key": {
+                "$gte": "def"
+            }
+        }),
+        &json!({ "key": "def" })
+    )
+    .is_pass());
+    assert!(CwJsonFilter::check(
+        &json!({
+            "key": {
+                "$gt": "def"
+            }
+        }),
+        &json!({ "key": "def" })
+    )
+    .is_fail());
+    assert!(CwJsonFilter::check(
+        &json!({
+            "key": {
+                "$gte": "def"
+            }
+        }),
+        &json!({ "key": "ghi" })
+    )
+    .is_pass());
+    assert!(CwJsonFilter::check(
+        &json!({
+            "key": {
+                "$gte": "def"
+            }
+        }),
+        &json!({ "key": 123 })
+    )
+    .is_fail());
 }
 
 #[test]
@@ -197,7 +242,7 @@ fn less_than() {
                 "$lt": 5
             }
         }),
-        &json!({ "key": 6})
+        &json!({ "key": 6 })
     )
     .is_fail());
     assert!(CwJsonFilter::check(
@@ -206,7 +251,7 @@ fn less_than() {
                 "$lt": 5
             }
         }),
-        &json!({ "key": 5})
+        &json!({ "key": 5 })
     )
     .is_fail());
     assert!(CwJsonFilter::check(
@@ -215,9 +260,54 @@ fn less_than() {
                 "$lte": 5
             }
         }),
-        &json!({ "key": 5})
+        &json!({ "key": 5 })
     )
     .is_pass());
+    assert!(CwJsonFilter::check(
+        &json!({
+            "key": {
+                "$lte": "def"
+            }
+        }),
+        &json!({ "key": "abc" })
+    )
+    .is_pass());
+    assert!(CwJsonFilter::check(
+        &json!({
+            "key": {
+                "$lte": "def"
+            }
+        }),
+        &json!({ "key": "def" })
+    )
+    .is_pass());
+    assert!(CwJsonFilter::check(
+        &json!({
+            "key": {
+                "$lt": "def"
+            }
+        }),
+        &json!({ "key": "def" })
+    )
+    .is_fail());
+    assert!(CwJsonFilter::check(
+        &json!({
+            "key": {
+                "$lte": "def"
+            }
+        }),
+        &json!({ "key": "ghi" })
+    )
+    .is_fail());
+    assert!(CwJsonFilter::check(
+        &json!({
+            "key": {
+                "$lte": "abc"
+            }
+        }),
+        &json!({ "key": 123 })
+    )
+    .is_fail());
 }
 
 #[test]
@@ -1239,6 +1329,26 @@ fn edge_cases() {
         &json!({"active": true})
     )
     .is_pass());
+
+    // Empty object
+    assert!(CwJsonFilter::check(&json!({"anObject": {}}), &json!({})).is_fail());
+    assert!(CwJsonFilter::check(
+        &json!({"anObject": {
+            "another": {}
+        }}),
+        &json!({})
+    )
+    .is_fail());
+    assert!(CwJsonFilter::check(
+        &json!({"anObject": {
+            "another": {}
+        }}),
+        &json!({ "anObject": {}})
+    )
+    .is_fail());
+
+    // Empty array
+    assert!(CwJsonFilter::check(&json!({"anArray": []}), &json!({})).is_fail());
 }
 
 #[test]
@@ -1417,4 +1527,45 @@ fn test_replace() {
     assert!(CwJsonFilter::check(&filter, &json!({"duration": "1000s"})).is_pass());
     assert!(CwJsonFilter::check(&filter, &json!({"duration": "1000"})).is_pass());
     assert!(CwJsonFilter::check(&filter, &json!({"duration": "1000ms"})).is_fail());
+}
+
+#[test]
+fn specific_array_filter() {
+    let filter = json!({"anArray": {"1": "pass", "3": {
+        "$or": [
+            {"$exists": false },
+            "item_4"
+        ]
+    }}});
+    assert!(CwJsonFilter::check(&filter, &json!({"anArray": [1, 2, 3]})).is_fail());
+    assert!(CwJsonFilter::check(&filter, &json!({"anArray": [1, 2, 3, "pass"]})).is_fail());
+    assert!(CwJsonFilter::check(&filter, &json!({"anArray": [1, "pass", 3]})).is_pass());
+    assert!(CwJsonFilter::check(&filter, &json!({"anArray": [1, "pass", 3, "item_4"]})).is_pass());
+}
+
+#[test]
+fn key_not_found() {
+    let filter = json!({"anObject": {}});
+    assert_eq!(
+        CwJsonFilter::check(&filter, &json!({})).as_fail().unwrap(),
+        &FilterFailure::KeyNotFound {
+            filter_path: "@.anObject".to_string(),
+            obj_path: "@.anObject".to_string()
+        }
+    );
+}
+
+#[test]
+fn unknown_operator() {
+    let filter = json!({"anObject": {"$unknownOperator": "pass"}});
+    let result = CwJsonFilter::check(&filter, &json!({"anObject": "pass"}));
+    assert!(result.is_fatal());
+    assert_eq!(
+        result.as_fatal().unwrap(),
+        &FilterFatalError::UnknownOperator {
+            operator: "$unknownOperator".to_string(),
+            filter_path: "@.anObject.$unknownOperator".to_string(),
+            obj_path: "@.anObject".to_string()
+        }
+    );
 }

@@ -31,12 +31,24 @@ filter:
 { "a": [1, 2, 3, 4] }
 ```
 
-would NOT match any of these:
+ONLY matches the exact same array, and does NOT match any of these:
 
 ```json
 { "a": [1, 2, 3] }
 { "a": [1, 2, 3, 6] }
 { "a": [1, 2, 3, 4, 5] }
+```
+
+You can also match specific array elements by indexing into the array:
+
+```json
+{ "a": { "1": "two" } }
+```
+
+would match:
+
+```json
+{ "a": [1, "two", 3, 4] }
 ```
 
 ## Advanced Filtering with Operators

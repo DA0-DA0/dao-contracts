@@ -76,11 +76,19 @@ fn test_auth() {
 fn test_protobuf_management() {
     let mut suite = SuiteBuilder::base().build();
 
+    let err = suite.register_err(OWNER, vec![]);
+    assert_eq!(err, ContractError::NoFiles {});
+
+    let err = suite.unregister_err(OWNER, vec![], None);
+    assert_eq!(err, ContractError::NoFiles {});
+
     // Create a protobuf file descriptor set
     let crate_root = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
     let proto_path = std::path::Path::new(&crate_root).join("proto/string_bool_value.pb");
     let file_descriptor_set = std::fs::read(proto_path).unwrap();
 
+    suite.register(OWNER, vec![file_descriptor_set.clone()]);
+    // Registering the same file descriptor set again should be a no-op.
     suite.register(OWNER, vec![file_descriptor_set]);
 
     suite.assert_files(vec!["google/protobuf/wrappers.proto".to_string()]);

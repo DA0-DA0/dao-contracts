@@ -149,7 +149,10 @@ impl Authorization {
             .query_wasm_smart::<cw_filter::msg::FilterResponse>(
                 &filter_contract,
                 &cw_filter::msg::QueryMsg::Filter { filter, msg },
-            )?;
+            )
+            .map_err(|e| ContractError::FilterContractQueryError {
+                error: e.to_string(),
+            })?;
 
         // Treat filter errors as failures, just returning a boolean.
         if ignore_filter_error {
