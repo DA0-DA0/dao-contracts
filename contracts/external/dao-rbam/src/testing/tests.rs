@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Uint128, WasmMsg};
 use cw_ownable::OwnershipError;
 use cw_protobuf_registry::protobuf::base64_encode_protobuf;
 use dao_interface::{
@@ -14,7 +14,10 @@ use serde_json::json;
 
 use crate::{
     action::ActionToExecute,
-    msg::{Assignment, InitialAuthorization, InitialRole},
+    msg::{
+        Assignment, FilterResponse, InitialAuthorization, InitialRole, InstantiateMsg,
+        ProtobufRegistryResponse, QueryMsg,
+    },
     testing::suite::SuiteBuilder,
 };
 
@@ -32,6 +35,85 @@ fn test_instantiate_basic() {
     suite.assert_authorization_count(0);
     suite.assert_assignment_count(0);
     suite.assert_action_count(0);
+}
+
+#[test]
+fn test_instantiate_no_protobuf_registry() {
+    let mut suite = SuiteBuilder::base().build();
+
+    let response = suite.base.execute_smart_ok(
+        &suite.core_addr,
+        &suite.core_addr,
+        &dao_interface::msg::ExecuteMsg::UpdateProposalModules {
+            to_add: vec![dao_interface::state::ModuleInstantiateInfo {
+                code_id: suite.base.rbam_id,
+                msg: to_json_binary(&InstantiateMsg {
+                    owner: None,
+                    dao: None,
+                    filter_code_id: suite.base.filter_id,
+                    filter_salt: None,
+                    protobuf_registry_code_id: None,
+                    protobuf_registry_salt: None,
+                    enabled: None,
+                    initial_roles: None,
+                })
+                .unwrap(),
+                admin: Some(dao_interface::state::Admin::CoreModule {}),
+                funds: None,
+                label: "rbam no protobuf registry".to_string(),
+                salt: None,
+            }],
+            to_disable: vec![],
+        },
+        &[],
+    );
+
+    let rbam_addr = Addr::unchecked(
+        response
+            .events
+            .iter()
+            .find(|e| e.ty == "instantiate")
+            .unwrap()
+            .attributes
+            .iter()
+            .find(|a| a.key == "_contract_address")
+            .unwrap()
+            .value
+            .clone(),
+    );
+
+    let protobuf_registry = suite
+        .base
+        .app
+        .wrap()
+        .query_wasm_smart::<ProtobufRegistryResponse>(
+            rbam_addr.clone(),
+            &QueryMsg::ProtobufRegistry {},
+        )
+        .unwrap()
+        .protobuf_registry;
+    assert!(protobuf_registry.is_none());
+
+    let filter = suite
+        .base
+        .app
+        .wrap()
+        .query_wasm_smart::<FilterResponse>(rbam_addr, &QueryMsg::Filter {})
+        .unwrap()
+        .filter;
+
+    // check that filter has no protobuf registry
+    let filter_protobuf_registry = suite
+        .base
+        .app
+        .wrap()
+        .query_wasm_smart::<cw_filter::msg::ProtobufRegistryResponse>(
+            filter,
+            &cw_filter::msg::QueryMsg::ProtobufRegistry {},
+        )
+        .unwrap()
+        .protobuf_registry;
+    assert!(filter_protobuf_registry.is_none());
 }
 
 #[test]
@@ -848,6 +930,13 @@ fn test_action_execution() {
     let config = suite.base.get_config(&dao);
     assert_eq!(config.name, "new_name");
     assert_eq!(config.description, "new_description");
+
+    let err = suite.get_action_err(ADDR0.to_string(), 100);
+    assert!(err.to_string().contains(
+        ContractError::ActionNotFound { id: 100 }
+            .to_string()
+            .as_str()
+    ));
 }
 
 #[test]
@@ -1285,6 +1374,15 @@ fn test_list_queries() {
     // Test list assignments
     let assignments = suite.list_assignments(None, None);
     assert_eq!(assignments.assignments.len(), 3);
+
+    let assignments_with_start_after = suite.list_assignments(
+        Some((
+            assignments.assignments[0].addr.clone(),
+            assignments.assignments[0].role_id,
+        )),
+        None,
+    );
+    assert_eq!(assignments_with_start_after.assignments.len(), 2);
 
     let assignments_with_limit = suite.list_assignments(None, Some(1));
     assert_eq!(assignments_with_limit.assignments.len(), 1);
@@ -1850,15 +1948,20 @@ fn test_action_execution_with_multiple_actions() {
     // Verify all actions were logged
     suite.assert_action_count(3);
 
-    let logged_actions = suite.list_actions(None, None, None);
+    let mut logged_actions = suite.list_actions(None, None, None);
     assert_eq!(logged_actions.actions.len(), 3);
 
     // Verify they're all from ADDR0 with role 1 and auth 1
-    for action in logged_actions.actions {
+    for action in &logged_actions.actions {
         assert_eq!(action.addr, ADDR0);
         assert_eq!(action.role_id, role_id);
         assert_eq!(action.authorization_id, authorization_id);
     }
+
+    let reversed_actions = suite.list_actions(None, None, Some(true));
+    assert_eq!(reversed_actions.actions.len(), 3);
+    logged_actions.actions.reverse();
+    assert_eq!(logged_actions.actions, reversed_actions.actions);
 
     // Verify the config has been updated from the the last action.
     let config = suite.base.get_config(&dao);
@@ -1992,27 +2095,98 @@ fn test_comprehensive_list_queries_with_filtering() {
         role_id: role_id2,
         authorization_id: authorization_id3,
     };
+    let action3 = ActionToExecute {
+        msg: CosmosMsg::Bank(BankMsg::Send {
+            to_address: ADDR1.to_string(),
+            amount: vec![Coin {
+                denom: DENOM.to_string(),
+                amount: Uint128::from(1u128),
+            }],
+        }),
+        role_id: role_id2,
+        authorization_id: authorization_id3,
+    };
 
     suite.execute_actions(ADDR0, vec![action1]);
-    suite.execute_actions(ADDR0, vec![action2]);
+    suite.execute_actions(ADDR0, vec![action2, action3]);
 
     // Test list actions by role
     let role1_actions = suite.list_actions_by_role(role_id1, None, None, None);
     assert_eq!(role1_actions.actions.len(), 1);
 
-    let role2_actions = suite.list_actions_by_role(role_id2, None, None, None);
-    assert_eq!(role2_actions.actions.len(), 1);
+    let mut role2_actions = suite.list_actions_by_role(role_id2, None, None, None);
+    assert_eq!(role2_actions.actions.len(), 2);
+
+    let role2_actions_start_after = suite.list_actions_by_role(
+        role_id2,
+        Some((
+            role2_actions.actions[0].addr.to_string(),
+            role2_actions.actions[0].id,
+        )),
+        None,
+        None,
+    );
+    assert_eq!(role2_actions_start_after.actions.len(), 1);
+    assert_eq!(
+        role2_actions_start_after.actions[0].id,
+        role2_actions.actions[1].id
+    );
+
+    let role2_actions_reversed = suite.list_actions_by_role(role_id2, None, None, Some(true));
+    assert_eq!(role2_actions_reversed.actions.len(), 2);
+    role2_actions.actions.reverse();
+    assert_eq!(role2_actions_reversed.actions, role2_actions.actions);
 
     // Test list actions by authorization
     let auth1_actions = suite.list_actions_by_authorization(authorization_id1, None, None, None);
     assert_eq!(auth1_actions.actions.len(), 1);
 
-    let auth3_actions = suite.list_actions_by_authorization(authorization_id3, None, None, None);
-    assert_eq!(auth3_actions.actions.len(), 1);
+    let mut auth3_actions =
+        suite.list_actions_by_authorization(authorization_id3, None, None, None);
+    assert_eq!(auth3_actions.actions.len(), 2);
+
+    let auth3_actions_start_after = suite.list_actions_by_authorization(
+        authorization_id3,
+        Some((
+            auth3_actions.actions[0].addr.to_string(),
+            auth3_actions.actions[0].id,
+        )),
+        None,
+        None,
+    );
+    assert_eq!(auth3_actions_start_after.actions.len(), 1);
+    assert_eq!(
+        auth3_actions_start_after.actions[0].id,
+        auth3_actions.actions[1].id
+    );
+
+    let auth3_actions_reversed =
+        suite.list_actions_by_authorization(authorization_id3, None, None, Some(true));
+    assert_eq!(auth3_actions_reversed.actions.len(), 2);
+    auth3_actions.actions.reverse();
+    assert_eq!(auth3_actions_reversed.actions, auth3_actions.actions);
 
     // Test list actions by address
-    let addr0_actions = suite.list_actions_by_address(ADDR0.to_string(), None, None, None);
-    assert_eq!(addr0_actions.actions.len(), 2);
+    let mut addr0_actions = suite.list_actions_by_address(ADDR0.to_string(), None, None, None);
+    assert_eq!(addr0_actions.actions.len(), 3);
+
+    let addr0_actions_start_after = suite.list_actions_by_address(
+        ADDR0.to_string(),
+        Some(addr0_actions.actions[0].id),
+        None,
+        None,
+    );
+    assert_eq!(addr0_actions_start_after.actions.len(), 2);
+    assert_eq!(
+        addr0_actions_start_after.actions[0].id,
+        addr0_actions.actions[1].id
+    );
+
+    let addr0_reversed_actions =
+        suite.list_actions_by_address(ADDR0.to_string(), None, None, Some(true));
+    assert_eq!(addr0_reversed_actions.actions.len(), 3);
+    addr0_actions.actions.reverse();
+    assert_eq!(addr0_reversed_actions.actions, addr0_actions.actions);
 
     let addr1_actions = suite.list_actions_by_address(ADDR1.to_string(), None, None, None);
     assert_eq!(addr1_actions.actions.len(), 0);

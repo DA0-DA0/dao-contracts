@@ -1354,6 +1354,8 @@ fn query_is_msg_authorized_by(
         }
     };
 
+    // should always be true since ignore_filter_error is false. the error above
+    // would have returned an error.
     if allowed {
         return Ok(IsMsgAuthorizedByResponse::Authorized {
             role,
@@ -1361,6 +1363,8 @@ fn query_is_msg_authorized_by(
         });
     }
 
+    // should never happen since ignore_filter_error is false. allowed should
+    // always be true, otherwise `allows` would have returned an error.
     Ok(IsMsgAuthorizedByResponse::Unauthorized {
         reason: ContractError::MsgNotAllowedByFilter {
             err: "unknown reason".to_string(),

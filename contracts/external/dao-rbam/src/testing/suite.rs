@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Timestamp};
+use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, StdError, Timestamp};
 use cw4::Member;
 use cw_ownable::Action;
 use dao_interface::{helpers::OptionalUpdate, proposal::InfoResponse, state::ModuleUpdate};
@@ -349,6 +349,17 @@ impl Suite {
             .wrap()
             .query_wasm_smart(self.rbam_addr.clone(), &QueryMsg::Action { addr, id })
             .unwrap()
+    }
+
+    pub fn get_action_err(&mut self, addr: String, id: u64) -> StdError {
+        self.base
+            .app
+            .wrap()
+            .query_wasm_smart::<ActionResponse>(
+                self.rbam_addr.clone(),
+                &QueryMsg::Action { addr, id },
+            )
+            .unwrap_err()
     }
 
     pub fn list_actions(
