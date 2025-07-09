@@ -1,7 +1,7 @@
 [package]
 name = "dao-rbam"
 authors = ["Noah Saso <noah@daodao.zone>"]
-description = "Roles-based Authorization Module (RBAM) lets DAOs configure organization-wide roles and authorization policies."
+description = "Role-based Authorization Module (RBAM) lets DAOs configure organization-wide roles and authorization policies."
 edition = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
