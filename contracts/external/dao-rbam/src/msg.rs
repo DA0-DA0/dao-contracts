@@ -37,6 +37,8 @@ pub struct InitialRole {
     pub name: String,
     /// Optionally set metadata for the role.
     pub metadata: Option<String>,
+    /// Optionally set whether the role is enabled.
+    pub enabled: Option<bool>,
     /// Optionally create authorizations for the role.
     pub authorizations: Option<Vec<InitialAuthorization>>,
     /// Optionally assign the role to addresses immediately.
@@ -82,8 +84,8 @@ pub enum ExecuteMsg {
     UpdateProtobufRegistry {
         protobuf_registry: Option<ModuleUpdate>,
     },
-    /// Enable or disable the RBAM system globally
-    SetEnabled {
+    /// Enable or disable the RBAM system globally.
+    UpdateEnabled {
         /// Whether actions are allowed to be executed.
         enabled: bool,
     },
@@ -184,8 +186,8 @@ pub enum QueryMsg {
     Filter {},
     #[returns(ProtobufRegistryResponse)]
     ProtobufRegistry {},
-    #[returns(IsEnabledResponse)]
-    IsEnabled {},
+    #[returns(EnabledResponse)]
+    Enabled {},
 
     // Role queries
     #[returns(RoleResponse)]
@@ -230,8 +232,8 @@ pub enum QueryMsg {
     },
 
     // Assignment queries
-    #[returns(IsAssignedRoleResponse)]
-    IsAssignedRole {
+    #[returns(AssignedResponse)]
+    Assigned {
         /// The address to check assignment for.
         addr: String,
         /// The role ID to check assignment for.
@@ -332,8 +334,8 @@ pub enum QueryMsg {
     },
 
     // Authorization validation queries
-    #[returns(IsMsgAuthorizedResponse)]
-    IsMsgAuthorized {
+    #[returns(AuthorizedResponse)]
+    Authorized {
         /// The address to check authorization for.
         addr: String,
         /// The message to check authorization for.
@@ -344,8 +346,8 @@ pub enum QueryMsg {
         /// The maximum number of authorizations to check. Defaults to 30.
         limit: Option<u32>,
     },
-    #[returns(IsMsgAuthorizedByRoleResponse)]
-    IsMsgAuthorizedByRole {
+    #[returns(AuthorizedByRoleResponse)]
+    AuthorizedByRole {
         /// The address to check authorization for.
         addr: String,
         /// The role to check authorization for.
@@ -358,12 +360,10 @@ pub enum QueryMsg {
         /// The maximum number of authorizations to check. Defaults to 30.
         limit: Option<u32>,
     },
-    #[returns(IsMsgAuthorizedByResponse)]
-    IsMsgAuthorizedBy {
+    #[returns(AuthorizedByResponse)]
+    AuthorizedBy {
         /// The address to check authorization for.
         addr: String,
-        /// The role to check authorization for.
-        role_id: u64,
         /// The authorization to check authorization for.
         authorization_id: u64,
         /// The message to check authorization for.
@@ -400,7 +400,7 @@ pub struct ProtobufRegistryResponse {
 }
 
 #[cw_serde]
-pub struct IsEnabledResponse {
+pub struct EnabledResponse {
     pub enabled: bool,
 }
 
@@ -425,7 +425,7 @@ pub struct ListAuthorizationsResponse {
 }
 
 #[cw_serde]
-pub struct IsAssignedRoleResponse {
+pub struct AssignedResponse {
     pub assigned: bool,
 }
 
@@ -455,7 +455,7 @@ pub struct ListActionsResponse {
 }
 
 #[cw_serde]
-pub enum IsMsgAuthorizedResponse {
+pub enum AuthorizedResponse {
     Authorized {
         /// The role that matched.
         role: Role,
@@ -472,7 +472,7 @@ pub enum IsMsgAuthorizedResponse {
 }
 
 #[cw_serde]
-pub enum IsMsgAuthorizedByRoleResponse {
+pub enum AuthorizedByRoleResponse {
     Authorized {
         /// The role that matched.
         role: Role,
@@ -489,7 +489,7 @@ pub enum IsMsgAuthorizedByRoleResponse {
 }
 
 #[cw_serde]
-pub enum IsMsgAuthorizedByResponse {
+pub enum AuthorizedByResponse {
     Authorized {
         /// The role that matched.
         role: Role,

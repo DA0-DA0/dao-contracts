@@ -18,7 +18,8 @@ pub enum FilterResult {
     Pass,
     /// The filter failed due to a value not passing the filter.
     Fail(FilterFailure),
-    /// The filter encountered a fatal error due to a malformed filter.
+    /// The filter encountered a fatal error due to a malformed filter, not
+    /// dependent on the value passed in whatsoever.
     Fatal(FilterFatalError),
 }
 

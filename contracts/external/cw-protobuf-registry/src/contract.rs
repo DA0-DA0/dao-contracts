@@ -274,9 +274,12 @@ fn execute_prepare(
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     for message in messages {
-        let fds = create_file_descriptor_set_for_messages(&deps.as_ref(), &[message.clone()])?
-            .encode_to_vec();
-        PREPARED.save(deps.storage, message, &fds)?;
+        // Only prepare messages that are not already prepared.
+        if !PREPARED.has(deps.storage, message.clone()) {
+            let fds = create_file_descriptor_set_for_messages(&deps.as_ref(), &[message.clone()])?
+                .encode_to_vec();
+            PREPARED.save(deps.storage, message, &fds)?;
+        }
     }
 
     Ok(Response::new().add_attribute("action", "prepare"))
@@ -411,10 +414,26 @@ fn query_file_descriptor_set(
 }
 
 fn query_decode(deps: Deps, message_name: String, value: Vec<u8>) -> StdResult<DecodeResponse> {
-    let file_descriptor_set =
-        create_file_descriptor_set_for_messages(&deps, &[message_name.clone()]).map_err(|e| {
-            StdError::generic_err(format!("failed to create file descriptor set: {}", e))
-        })?;
+    // If the message is already prepared, use the prepared file descriptor set.
+    // Otherwise, create a file descriptor set for the message.
+    let file_descriptor_set = PREPARED
+        .may_load(deps.storage, message_name.clone())?
+        .map_or_else(
+            || {
+                create_file_descriptor_set_for_messages(&deps, &[message_name.clone()]).map_err(
+                    |e| {
+                        StdError::generic_err(format!(
+                            "failed to create file descriptor set: {}",
+                            e
+                        ))
+                    },
+                )
+            },
+            |fds| {
+                FileDescriptorSet::decode(fds.as_slice())
+                    .map_err(|e| StdError::generic_err(e.to_string()))
+            },
+        )?;
 
     let pool = DescriptorPool::from_file_descriptor_set(file_descriptor_set).map_err(|e| {
         StdError::generic_err(format!("failed to create descriptor pool from FDS: {}", e))

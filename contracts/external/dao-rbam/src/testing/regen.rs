@@ -205,9 +205,8 @@ fn test_regen_protobuf_filter() {
             }]
         }),
     );
-    suite.assert_msg_authorized_by(
+    suite.assert_authorized_by(
         ADDR0,
-        role_id,
         authorization_id,
         &CosmosMsg::Stargate {
             type_url: "/regen.ecocredit.basket.v1.MsgCreate".to_string(),
@@ -234,9 +233,8 @@ fn test_regen_protobuf_filter() {
             }]
         }),
     );
-    suite.assert_msg_unauthorized_by(
+    suite.assert_unauthorized_by(
         ADDR0,
-        role_id,
         authorization_id,
         &CosmosMsg::Stargate {
             type_url: "/regen.ecocredit.basket.v1.MsgCreate".to_string(),

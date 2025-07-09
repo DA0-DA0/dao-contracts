@@ -1,24 +1,40 @@
-# Registering Protobuf Types
+# Protobuf Types in Filters
 
-To use the `#proto` or `#stargate` transformation, you need to register the
-protobuf messages that you want to use. This is done by providing a list of
-`FileDescriptorSet`s that contain the protobuf messages and all their
-dependencies.
-
-```rust
-use cw_jsonfilter::CwJsonFilter;
-let cwjf = CwJsonFilter::new(vec![some_file_descriptor_set, another_file_descriptor_set]);
-```
-
-## Using Protobuf Types in Filters
-
-In CosmWasm messages, protobuf types are represented as base64-encoded strings.
+To use the `#proto` or `#stargate` transformation, you need to register a
+protobuf decoder function that can decode a protobuf message into a JSON value
+with only its name and the protobuf encoded bytes.
 
 ```rust
 use serde_json::json;
 use cw_jsonfilter::CwJsonFilter;
+use prost_reflect::{prost::Message, prost_types::FileDescriptorSet, DescriptorPool, DynamicMessage};
 
-let cwjf = CwJsonFilter::new(vec![google_file_descriptor_set]);
+let proto_fds_path = "path/to/proto/file.pb";
+let file_descriptor_set =
+  FileDescriptorSet::decode(std::fs::read(proto_fds_path).unwrap().as_slice()).unwrap();
+let pool = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap();
+
+let cwjf = CwJsonFilter::new(Some(Box::new(
+  move |message_name: String, value: Vec<u8>| {
+    let message_descriptor =
+      pool.get_message_by_name(&message_name)
+        .ok_or_else(|| {
+          format!(
+              "message descriptor not found in pool for `{}`",
+              message_name
+          )
+        })?;
+
+    let dynamic_message =
+      DynamicMessage::decode(message_descriptor, value.as_slice())
+        .map_err(|e| format!("failed to decode protobuf value: {}", e))?;
+
+    let json = serde_json::to_value(dynamic_message)
+        .map_err(|e| format!("failed to serialize decoded protobuf value as JSON: {}", e))?;
+
+    Ok(json)
+  },
+)));
 
 // To check if a JSON object matches a filter:
 let filter = json!({"proto_data": { "#proto": { "type": "google.protobuf.StringValue", "value": "Hello, world!" } }});
@@ -72,6 +88,7 @@ let filter = json!({
   }
 });
 
+// Message that will pass the filter using `osmosis-std`'s protobuf types:
 let msg = CosmosMsg::Stargate {
   type_url: "/cosmos.bank.v1beta1.MsgSend".to_string(),
   value: osmosis_std::types::cosmos::bank::v1beta1::MsgSend {

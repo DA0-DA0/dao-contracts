@@ -46,9 +46,6 @@ pub enum ContractError {
     #[error("Authorization is disabled")]
     AuthorizationDisabled {},
 
-    #[error("Authorization does not belong to the specified role")]
-    AuthorizationRoleMismatch {},
-
     #[error("Address {addr} is not assigned role {role_id}")]
     RoleNotAssigned { addr: String, role_id: u64 },
 

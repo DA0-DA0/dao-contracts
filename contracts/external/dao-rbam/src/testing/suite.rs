@@ -8,12 +8,12 @@ use dao_testing::{DaoTestingSuite, DaoTestingSuiteBase, ADDR0, ADDR1, ADDR2};
 use crate::{
     action::ActionToExecute,
     msg::{
-        ActionResponse, Assignment, AuthorizationResponse, DaoResponse, ExecuteMsg, FilterResponse,
-        InitialAuthorization, InitialRole, InstantiateMsg, IsAssignedRoleResponse,
-        IsEnabledResponse, IsMsgAuthorizedByResponse, IsMsgAuthorizedByRoleResponse,
-        IsMsgAuthorizedResponse, ListActionsResponse, ListAddressesWithRoleResponse,
-        ListAssignmentsResponse, ListAuthorizationsResponse, ListRolesForAddressResponse,
-        ListRolesResponse, ProtobufRegistryResponse, QueryMsg, RoleResponse, TestFilterResponse,
+        ActionResponse, AssignedResponse, Assignment, AuthorizationResponse, AuthorizedByResponse,
+        AuthorizedByRoleResponse, AuthorizedResponse, DaoResponse, EnabledResponse, ExecuteMsg,
+        FilterResponse, InitialAuthorization, InitialRole, InstantiateMsg, ListActionsResponse,
+        ListAddressesWithRoleResponse, ListAssignmentsResponse, ListAuthorizationsResponse,
+        ListRolesForAddressResponse, ListRolesResponse, ProtobufRegistryResponse, QueryMsg,
+        RoleResponse, TestFilterResponse,
     },
     role::Role,
 };
@@ -201,11 +201,11 @@ impl Suite {
             .protobuf_registry
     }
 
-    pub fn get_is_enabled(&mut self) -> bool {
+    pub fn get_enabled(&mut self) -> bool {
         self.base
             .app
             .wrap()
-            .query_wasm_smart::<IsEnabledResponse>(self.rbam_addr.clone(), &QueryMsg::IsEnabled {})
+            .query_wasm_smart::<EnabledResponse>(self.rbam_addr.clone(), &QueryMsg::Enabled {})
             .unwrap()
             .enabled
     }
@@ -277,13 +277,13 @@ impl Suite {
             .unwrap()
     }
 
-    pub fn is_assigned_role(&mut self, addr: String, role_id: u64) -> IsAssignedRoleResponse {
+    pub fn assigned(&mut self, addr: String, role_id: u64) -> AssignedResponse {
         self.base
             .app
             .wrap()
             .query_wasm_smart(
                 self.rbam_addr.clone(),
-                &QueryMsg::IsAssignedRole { addr, role_id },
+                &QueryMsg::Assigned { addr, role_id },
             )
             .unwrap()
     }
@@ -448,19 +448,19 @@ impl Suite {
             .unwrap()
     }
 
-    pub fn is_msg_authorized(
+    pub fn authorized(
         &mut self,
         addr: String,
         msg: &CosmosMsg,
         start_after: Option<(u64, u64)>,
         limit: Option<u32>,
-    ) -> IsMsgAuthorizedResponse {
+    ) -> AuthorizedResponse {
         self.base
             .app
             .wrap()
             .query_wasm_smart(
                 &self.rbam_addr,
-                &QueryMsg::IsMsgAuthorized {
+                &QueryMsg::Authorized {
                     addr,
                     msg: msg.clone(),
                     start_after,
@@ -470,20 +470,20 @@ impl Suite {
             .unwrap()
     }
 
-    pub fn is_msg_authorized_by_role(
+    pub fn authorized_by_role(
         &mut self,
         addr: String,
         role_id: u64,
         msg: &CosmosMsg,
         start_after: Option<u64>,
         limit: Option<u32>,
-    ) -> IsMsgAuthorizedByRoleResponse {
+    ) -> AuthorizedByRoleResponse {
         self.base
             .app
             .wrap()
             .query_wasm_smart(
                 &self.rbam_addr,
-                &QueryMsg::IsMsgAuthorizedByRole {
+                &QueryMsg::AuthorizedByRole {
                     addr,
                     role_id,
                     msg: msg.clone(),
@@ -494,21 +494,19 @@ impl Suite {
             .unwrap()
     }
 
-    pub fn is_msg_authorized_by(
+    pub fn authorized_by(
         &mut self,
         addr: String,
-        role_id: u64,
         authorization_id: u64,
         msg: &CosmosMsg,
-    ) -> IsMsgAuthorizedByResponse {
+    ) -> AuthorizedByResponse {
         self.base
             .app
             .wrap()
             .query_wasm_smart(
                 &self.rbam_addr,
-                &QueryMsg::IsMsgAuthorizedBy {
+                &QueryMsg::AuthorizedBy {
                     addr,
-                    role_id,
                     authorization_id,
                     msg: msg.clone(),
                 },
@@ -553,7 +551,7 @@ impl Suite {
 // SUITE ASSERTIONS
 impl Suite {
     pub fn assert_enabled(&mut self, expected: bool) {
-        let response = self.get_is_enabled();
+        let response = self.get_enabled();
         assert_eq!(response, expected);
     }
 
@@ -597,60 +595,54 @@ impl Suite {
         assert_eq!(response.authorization.role_id, expected_role_id);
     }
 
-    pub fn assert_assigned_role(&mut self, addr: &str, role_id: u64, expected: bool) {
-        let response = self.is_assigned_role(addr.to_string(), role_id);
+    pub fn assert_assigned(&mut self, addr: &str, role_id: u64, expected: bool) {
+        let response = self.assigned(addr.to_string(), role_id);
         assert_eq!(response.assigned, expected);
     }
 
-    pub fn assert_msg_authorized(&mut self, addr: &str, msg: &CosmosMsg) {
-        let response = self.is_msg_authorized(addr.to_string(), msg, None, None);
+    pub fn assert_authorized(&mut self, addr: &str, msg: &CosmosMsg) {
+        let response = self.authorized(addr.to_string(), msg, None, None);
         assert!(
-            matches!(response, IsMsgAuthorizedResponse::Authorized { .. }),
+            matches!(response, AuthorizedResponse::Authorized { .. }),
             "expected Authorized, got {:?}",
             response
         );
     }
 
-    pub fn assert_msg_authorized_by_role(&mut self, addr: &str, role_id: u64, msg: &CosmosMsg) {
-        let response = self.is_msg_authorized_by_role(addr.to_string(), role_id, msg, None, None);
+    pub fn assert_authorized_by_role(&mut self, addr: &str, role_id: u64, msg: &CosmosMsg) {
+        let response = self.authorized_by_role(addr.to_string(), role_id, msg, None, None);
         assert!(
-            matches!(response, IsMsgAuthorizedByRoleResponse::Authorized { .. }),
+            matches!(response, AuthorizedByRoleResponse::Authorized { .. }),
             "expected Authorized, got {:?}",
             response
         );
     }
 
-    pub fn assert_msg_authorized_by(
-        &mut self,
-        addr: &str,
-        role_id: u64,
-        authorization_id: u64,
-        msg: &CosmosMsg,
-    ) {
-        let response = self.is_msg_authorized_by(addr.to_string(), role_id, authorization_id, msg);
+    pub fn assert_authorized_by(&mut self, addr: &str, authorization_id: u64, msg: &CosmosMsg) {
+        let response = self.authorized_by(addr.to_string(), authorization_id, msg);
         assert!(
-            matches!(response, IsMsgAuthorizedByResponse::Authorized { .. }),
+            matches!(response, AuthorizedByResponse::Authorized { .. }),
             "expected Authorized, got {:?}",
             response
         );
     }
 
-    pub fn assert_msg_unauthorized(
+    pub fn assert_unauthorized(
         &mut self,
         addr: &str,
         msg: &CosmosMsg,
         reason: Option<impl Into<String>>,
         limit: Option<u32>,
     ) {
-        let response = self.is_msg_authorized(addr.to_string(), msg, None, limit);
+        let response = self.authorized(addr.to_string(), msg, None, limit);
         assert!(
-            matches!(response, IsMsgAuthorizedResponse::Unauthorized { .. }),
+            matches!(response, AuthorizedResponse::Unauthorized { .. }),
             "expected Unauthorized, got {:?}",
             response
         );
         if let Some(expected) = reason {
             match response {
-                IsMsgAuthorizedResponse::Unauthorized { reason, .. } => {
+                AuthorizedResponse::Unauthorized { reason, .. } => {
                     assert_eq!(reason, expected.into());
                 }
                 // should never happen
@@ -659,7 +651,7 @@ impl Suite {
         }
     }
 
-    pub fn assert_msg_unauthorized_by_role(
+    pub fn assert_unauthorized_by_role(
         &mut self,
         addr: &str,
         role_id: u64,
@@ -667,15 +659,15 @@ impl Suite {
         reason: Option<impl Into<String>>,
         limit: Option<u32>,
     ) {
-        let response = self.is_msg_authorized_by_role(addr.to_string(), role_id, msg, None, limit);
+        let response = self.authorized_by_role(addr.to_string(), role_id, msg, None, limit);
         assert!(
-            matches!(response, IsMsgAuthorizedByRoleResponse::Unauthorized { .. }),
+            matches!(response, AuthorizedByRoleResponse::Unauthorized { .. }),
             "expected Unauthorized, got {:?}",
             response
         );
         if let Some(expected) = reason {
             match response {
-                IsMsgAuthorizedByRoleResponse::Unauthorized { reason, .. } => {
+                AuthorizedByRoleResponse::Unauthorized { reason, .. } => {
                     assert_eq!(reason, expected.into());
                 }
                 // should never happen
@@ -684,23 +676,22 @@ impl Suite {
         }
     }
 
-    pub fn assert_msg_unauthorized_by(
+    pub fn assert_unauthorized_by(
         &mut self,
         addr: &str,
-        role_id: u64,
         authorization_id: u64,
         msg: &CosmosMsg,
         reason: Option<impl Into<String>>,
     ) {
-        let response = self.is_msg_authorized_by(addr.to_string(), role_id, authorization_id, msg);
+        let response = self.authorized_by(addr.to_string(), authorization_id, msg);
         assert!(
-            matches!(response, IsMsgAuthorizedByResponse::Unauthorized { .. }),
+            matches!(response, AuthorizedByResponse::Unauthorized { .. }),
             "expected Unauthorized, got {:?}",
             response
         );
         if let Some(expected) = reason {
             match response {
-                IsMsgAuthorizedByResponse::Unauthorized { reason, .. } => {
+                AuthorizedByResponse::Unauthorized { reason, .. } => {
                     assert_eq!(reason, expected.into());
                 }
                 // should never happen
@@ -845,20 +836,24 @@ impl Suite {
         )
     }
 
-    pub fn set_enabled(&mut self, sender: impl Into<String>, enabled: bool) {
+    pub fn update_enabled(&mut self, sender: impl Into<String>, enabled: bool) {
         self.base.execute_smart_ok(
             sender,
             &self.rbam_addr,
-            &ExecuteMsg::SetEnabled { enabled },
+            &ExecuteMsg::UpdateEnabled { enabled },
             &[],
         );
     }
 
-    pub fn set_enabled_err(&mut self, sender: impl Into<String>, enabled: bool) -> ContractError {
+    pub fn update_enabled_err(
+        &mut self,
+        sender: impl Into<String>,
+        enabled: bool,
+    ) -> ContractError {
         self.base.execute_smart_err(
             sender,
             &self.rbam_addr,
-            &ExecuteMsg::SetEnabled { enabled },
+            &ExecuteMsg::UpdateEnabled { enabled },
             &[],
         )
     }

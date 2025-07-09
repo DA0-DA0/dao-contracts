@@ -116,8 +116,8 @@ impl<'a> CwJsonFilter<'a> {
 
                         // If the key is a stringified number and the object is
                         // an array, index into the array.
-                        match (filter_key.parse::<usize>(), obj.as_array()) {
-                            (Ok(index), Some(obj_array)) => {
+                        match (obj.as_array(), filter_key.parse::<usize>()) {
+                            (Some(obj_array), Ok(index)) => {
                                 let filter_path = &append_array_path(filter_path, index);
                                 let obj_path = &append_array_path(obj_path, index);
                                 let value = obj_array.get(index);

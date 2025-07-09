@@ -148,6 +148,13 @@
               "$ref": "#/definitions/InitialAuthorization"
             }
           },
+          "enabled": {
+            "description": "Optionally set whether the role is enabled.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "metadata": {
             "description": "Optionally set metadata for the role.",
             "type": [
@@ -240,13 +247,13 @@
         "additionalProperties": false
       },
       {
-        "description": "Enable or disable the RBAM system globally",
+        "description": "Enable or disable the RBAM system globally.",
         "type": "object",
         "required": [
-          "set_enabled"
+          "update_enabled"
         ],
         "properties": {
-          "set_enabled": {
+          "update_enabled": {
             "type": "object",
             "required": [
               "enabled"
@@ -652,8 +659,7 @@
         "type": "object",
         "required": [
           "authorization_id",
-          "msg",
-          "role_id"
+          "msg"
         ],
         "properties": {
           "authorization_id": {
@@ -663,11 +669,6 @@
           },
           "msg": {
             "$ref": "#/definitions/CosmosMsg_for_Empty"
-          },
-          "role_id": {
-            "type": "integer",
-            "format": "uint64",
-            "minimum": 0.0
           }
         },
         "additionalProperties": false
@@ -1975,10 +1976,10 @@
       {
         "type": "object",
         "required": [
-          "is_enabled"
+          "enabled"
         ],
         "properties": {
-          "is_enabled": {
+          "enabled": {
             "type": "object",
             "additionalProperties": false
           }
@@ -2144,10 +2145,10 @@
       {
         "type": "object",
         "required": [
-          "is_assigned_role"
+          "assigned"
         ],
         "properties": {
-          "is_assigned_role": {
+          "assigned": {
             "type": "object",
             "required": [
               "addr",
@@ -2530,10 +2531,10 @@
       {
         "type": "object",
         "required": [
-          "is_msg_authorized"
+          "authorized"
         ],
         "properties": {
-          "is_msg_authorized": {
+          "authorized": {
             "type": "object",
             "required": [
               "addr",
@@ -2591,10 +2592,10 @@
       {
         "type": "object",
         "required": [
-          "is_msg_authorized_by_role"
+          "authorized_by_role"
         ],
         "properties": {
-          "is_msg_authorized_by_role": {
+          "authorized_by_role": {
             "type": "object",
             "required": [
               "addr",
@@ -2647,16 +2648,15 @@
       {
         "type": "object",
         "required": [
-          "is_msg_authorized_by"
+          "authorized_by"
         ],
         "properties": {
-          "is_msg_authorized_by": {
+          "authorized_by": {
             "type": "object",
             "required": [
               "addr",
               "authorization_id",
-              "msg",
-              "role_id"
+              "msg"
             ],
             "properties": {
               "addr": {
@@ -2676,12 +2676,6 @@
                     "$ref": "#/definitions/CosmosMsg_for_Empty"
                   }
                 ]
-              },
-              "role_id": {
-                "description": "The role to check authorization for.",
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
               }
             },
             "additionalProperties": false
@@ -4459,6 +4453,20 @@
         }
       }
     },
+    "assigned": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AssignedResponse",
+      "type": "object",
+      "required": [
+        "assigned"
+      ],
+      "properties": {
+        "assigned": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
     "authorization": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AuthorizationResponse",
@@ -4517,111 +4525,9 @@
         }
       }
     },
-    "dao": {
+    "authorized": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "DaoResponse",
-      "type": "object",
-      "required": [
-        "dao"
-      ],
-      "properties": {
-        "dao": {
-          "$ref": "#/definitions/Addr"
-        }
-      },
-      "additionalProperties": false,
-      "definitions": {
-        "Addr": {
-          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
-          "type": "string"
-        }
-      }
-    },
-    "filter": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "FilterResponse",
-      "type": "object",
-      "required": [
-        "filter"
-      ],
-      "properties": {
-        "filter": {
-          "$ref": "#/definitions/Addr"
-        }
-      },
-      "additionalProperties": false,
-      "definitions": {
-        "Addr": {
-          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
-          "type": "string"
-        }
-      }
-    },
-    "info": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "InfoResponse",
-      "type": "object",
-      "required": [
-        "info"
-      ],
-      "properties": {
-        "info": {
-          "$ref": "#/definitions/ContractVersion"
-        }
-      },
-      "additionalProperties": false,
-      "definitions": {
-        "ContractVersion": {
-          "type": "object",
-          "required": [
-            "contract",
-            "version"
-          ],
-          "properties": {
-            "contract": {
-              "description": "contract is the crate name of the implementing contract, eg. `crate:cw20-base` we will use other prefixes for other languages, and their standard global namespacing",
-              "type": "string"
-            },
-            "version": {
-              "description": "version is any string that this implementation knows. It may be simple counter \"1\", \"2\". or semantic version on release tags \"v0.7.0\", or some custom feature flag list. the only code that needs to understand the version parsing is code that knows how to migrate from the given contract (and is tied to it's implementation somehow)",
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        }
-      }
-    },
-    "is_assigned_role": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "IsAssignedRoleResponse",
-      "type": "object",
-      "required": [
-        "assigned"
-      ],
-      "properties": {
-        "assigned": {
-          "type": "boolean"
-        }
-      },
-      "additionalProperties": false
-    },
-    "is_enabled": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "IsEnabledResponse",
-      "type": "object",
-      "required": [
-        "enabled"
-      ],
-      "properties": {
-        "enabled": {
-          "type": "boolean"
-        }
-      },
-      "additionalProperties": false
-    },
-    "is_msg_authorized": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "IsMsgAuthorizedResponse",
+      "title": "AuthorizedResponse",
       "oneOf": [
         {
           "type": "object",
@@ -4779,9 +4685,9 @@
         }
       }
     },
-    "is_msg_authorized_by": {
+    "authorized_by": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "IsMsgAuthorizedByResponse",
+      "title": "AuthorizedByResponse",
       "oneOf": [
         {
           "type": "object",
@@ -4918,9 +4824,9 @@
         }
       }
     },
-    "is_msg_authorized_by_role": {
+    "authorized_by_role": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "IsMsgAuthorizedByRoleResponse",
+      "title": "AuthorizedByRoleResponse",
       "oneOf": [
         {
           "type": "object",
@@ -5059,6 +4965,94 @@
             },
             "name": {
               "description": "Name for the role (ideally unique, but not enforced).",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "dao": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DaoResponse",
+      "type": "object",
+      "required": [
+        "dao"
+      ],
+      "properties": {
+        "dao": {
+          "$ref": "#/definitions/Addr"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        }
+      }
+    },
+    "enabled": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "EnabledResponse",
+      "type": "object",
+      "required": [
+        "enabled"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "filter": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FilterResponse",
+      "type": "object",
+      "required": [
+        "filter"
+      ],
+      "properties": {
+        "filter": {
+          "$ref": "#/definitions/Addr"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        }
+      }
+    },
+    "info": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "InfoResponse",
+      "type": "object",
+      "required": [
+        "info"
+      ],
+      "properties": {
+        "info": {
+          "$ref": "#/definitions/ContractVersion"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "ContractVersion": {
+          "type": "object",
+          "required": [
+            "contract",
+            "version"
+          ],
+          "properties": {
+            "contract": {
+              "description": "contract is the crate name of the implementing contract, eg. `crate:cw20-base` we will use other prefixes for other languages, and their standard global namespacing",
+              "type": "string"
+            },
+            "version": {
+              "description": "version is any string that this implementation knows. It may be simple counter \"1\", \"2\". or semantic version on release tags \"v0.7.0\", or some custom feature flag list. the only code that needs to understand the version parsing is code that knows how to migrate from the given contract (and is tied to it's implementation somehow)",
               "type": "string"
             }
           },

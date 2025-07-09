@@ -60,7 +60,6 @@ impl Action {
 #[cw_serde]
 pub struct ActionToExecute {
     pub msg: CosmosMsg,
-    pub role_id: u64,
     pub authorization_id: u64,
 }
 
@@ -76,25 +75,19 @@ impl ActionToExecute {
     ) -> Result<Action, ContractError> {
         let ActionToExecute {
             msg,
-            role_id,
             authorization_id,
         } = self;
 
         // Ensure the role and authorization exist.
-        let role = Role::load(&deps.as_ref(), role_id)?;
         let authorization = Authorization::load(&deps.as_ref(), authorization_id)?;
-
-        // Ensure authorization belongs to the role.
-        if authorization.role_id != role.id {
-            return Err(ContractError::AuthorizationRoleMismatch {});
-        }
+        let role = Role::load(&deps.as_ref(), authorization.role_id)?;
 
         // Ensure address has the role assigned.
-        let assigned = Role::is_assigned(&deps.as_ref(), sender, role_id);
+        let assigned = Role::is_assigned(&deps.as_ref(), sender, role.id);
         if !assigned {
             return Err(ContractError::RoleNotAssigned {
                 addr: sender.to_string(),
-                role_id,
+                role_id: role.id,
             });
         }
 
@@ -123,8 +116,8 @@ impl ActionToExecute {
             env,
             sender.clone(),
             msg,
-            role_id,
-            authorization_id,
+            role.id,
+            authorization.id,
         )
     }
 }

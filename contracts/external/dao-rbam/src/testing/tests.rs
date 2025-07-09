@@ -121,6 +121,7 @@ fn test_instantiate_with_initial_roles() {
     let initial_role = InitialRole {
         name: "admin".to_string(),
         metadata: Some("Admin role".to_string()),
+        enabled: Some(true),
         authorizations: Some(vec![InitialAuthorization {
             name: "all_permissions".to_string(),
             metadata: Some("All permissions".to_string()),
@@ -151,8 +152,8 @@ fn test_instantiate_with_initial_roles() {
     assert!(auth.enabled);
 
     // Check assignment
-    suite.assert_assigned_role(ADDR0, role.id, true);
-    suite.assert_assigned_role(ADDR1, role.id, false);
+    suite.assert_assigned(ADDR0, role.id, true);
+    suite.assert_assigned(ADDR1, role.id, false);
 
     // Ensure authorization allows a message
     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -160,9 +161,9 @@ fn test_instantiate_with_initial_roles() {
         msg: to_json_binary(&"test_msg").unwrap(),
         funds: vec![],
     });
-    suite.assert_msg_authorized(ADDR0, &msg);
-    suite.assert_msg_authorized_by_role(ADDR0, role.id, &msg);
-    suite.assert_msg_authorized_by(ADDR0, role.id, auth.id, &msg);
+    suite.assert_authorized(ADDR0, &msg);
+    suite.assert_authorized_by_role(ADDR0, role.id, &msg);
+    suite.assert_authorized_by(ADDR0, auth.id, &msg);
 }
 
 #[test]
@@ -189,7 +190,7 @@ fn test_auth() {
     );
     assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
 
-    let err = suite.set_enabled_err(not_owner, false);
+    let err = suite.update_enabled_err(not_owner, false);
     assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
 
     let err = suite.execute_protobuf_registry_our_err(
@@ -358,7 +359,7 @@ fn test_update_protobuf_registry() {
 }
 
 #[test]
-fn test_set_enabled() {
+fn test_update_enabled() {
     let mut suite = SuiteBuilder::base().build();
     let dao = suite.core_addr.clone();
 
@@ -366,11 +367,11 @@ fn test_set_enabled() {
     suite.assert_enabled(true);
 
     // Disable the system
-    suite.set_enabled(&dao, false);
+    suite.update_enabled(&dao, false);
     suite.assert_enabled(false);
 
     // Enable the system
-    suite.set_enabled(&dao, true);
+    suite.update_enabled(&dao, true);
     suite.assert_enabled(true);
 }
 
@@ -462,9 +463,9 @@ fn test_role_management() {
     suite.assert_authorization_enabled(auth_id, true);
 
     suite.assert_assignment_count(2);
-    suite.assert_assigned_role(ADDR0, role_id3, true);
-    suite.assert_assigned_role(ADDR1, role_id3, true);
-    suite.assert_assigned_role(ADDR2, role_id3, false);
+    suite.assert_assigned(ADDR0, role_id3, true);
+    suite.assert_assigned(ADDR1, role_id3, true);
+    suite.assert_assigned(ADDR2, role_id3, false);
 
     // update the role
     suite.update_role(
@@ -716,9 +717,9 @@ fn test_authorization_management() {
         msg: to_json_binary(&"test_msg").unwrap(),
         funds: vec![],
     });
-    suite.assert_msg_authorized(ADDR0, &msg);
-    suite.assert_msg_authorized_by_role(ADDR0, role_id, &msg);
-    suite.assert_msg_authorized_by(ADDR0, role_id, authorization_id, &msg);
+    suite.assert_authorized(ADDR0, &msg);
+    suite.assert_authorized_by_role(ADDR0, role_id, &msg);
+    suite.assert_authorized_by(ADDR0, authorization_id, &msg);
 
     // Update the authorization
     suite.update_authorization(
@@ -734,22 +735,21 @@ fn test_authorization_management() {
     suite.assert_authorization_name(authorization_id, "updated_auth");
     suite.assert_authorization_enabled(authorization_id, false);
 
-    suite.assert_msg_unauthorized(
+    suite.assert_unauthorized(
         ADDR0,
         &msg,
         Some(ContractError::NoMoreAuthorizations {}),
         None,
     );
-    suite.assert_msg_unauthorized_by_role(
+    suite.assert_unauthorized_by_role(
         ADDR0,
         role_id,
         &msg,
         Some(ContractError::NoMoreAuthorizations {}),
         None,
     );
-    suite.assert_msg_unauthorized_by(
+    suite.assert_unauthorized_by(
         ADDR0,
-        role_id,
         authorization_id,
         &msg,
         Some(ContractError::AuthorizationDisabled {}),
@@ -773,7 +773,7 @@ fn test_assignment_management() {
         }],
     );
 
-    suite.assert_assigned_role(ADDR0, role_id, true);
+    suite.assert_assigned(ADDR0, role_id, true);
     suite.assert_assignment_count(1);
 
     // Assign to another address
@@ -785,7 +785,7 @@ fn test_assignment_management() {
         }],
     );
 
-    suite.assert_assigned_role(ADDR1, role_id, true);
+    suite.assert_assigned(ADDR1, role_id, true);
     suite.assert_assignment_count(2);
 
     // Revoke assignment
@@ -797,8 +797,8 @@ fn test_assignment_management() {
         }],
     );
 
-    suite.assert_assigned_role(ADDR0, role_id, false);
-    suite.assert_assigned_role(ADDR1, role_id, true);
+    suite.assert_assigned(ADDR0, role_id, false);
+    suite.assert_assigned(ADDR1, role_id, true);
     suite.assert_assignment_count(1);
 }
 
@@ -904,7 +904,6 @@ fn test_action_execution() {
     });
     let action = ActionToExecute {
         msg: action_msg.clone(),
-        role_id,
         authorization_id,
     };
 
@@ -955,8 +954,6 @@ fn test_action_execution_errors() {
         Some(true),
         None,
     );
-    let incorrect_role_id =
-        suite.create_role(&dao, "incorrect_role".to_string(), None, None, None, None);
 
     let action = ActionToExecute {
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
@@ -964,24 +961,8 @@ fn test_action_execution_errors() {
             msg: to_json_binary(&"test_msg").unwrap(),
             funds: vec![],
         }),
-        role_id,
         authorization_id,
     };
-
-    // Try to execute with incorrect role/authorization match - should fail
-    let err = suite.execute_actions_err(
-        ADDR0,
-        vec![ActionToExecute {
-            msg: CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: "test_contract".to_string(),
-                msg: to_json_binary(&"test_msg").unwrap(),
-                funds: vec![],
-            }),
-            role_id: incorrect_role_id,
-            authorization_id,
-        }],
-    );
-    assert_eq!(err, ContractError::AuthorizationRoleMismatch {});
 
     // Try to execute without role assignment - should fail
     let err = suite.execute_actions_err(ADDR0, vec![action.clone()]);
@@ -1062,7 +1043,7 @@ fn test_action_execution_disabled_system() {
     );
 
     // Disable the system
-    suite.set_enabled(&dao, false);
+    suite.update_enabled(&dao, false);
 
     let action = ActionToExecute {
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
@@ -1070,7 +1051,6 @@ fn test_action_execution_disabled_system() {
             msg: to_json_binary(&"test_msg").unwrap(),
             funds: vec![],
         }),
-        role_id,
         authorization_id,
     };
 
@@ -1155,18 +1135,18 @@ fn test_message_authorization_queries() {
         msg: to_json_binary(&"test").unwrap(),
         funds: vec![],
     });
-    suite.assert_msg_authorized(ADDR0, &allowed_msg);
-    suite.assert_msg_authorized_by_role(ADDR0, role_id, &allowed_msg);
-    suite.assert_msg_authorized_by(ADDR0, role_id, authorization_id, &allowed_msg);
+    suite.assert_authorized(ADDR0, &allowed_msg);
+    suite.assert_authorized_by_role(ADDR0, role_id, &allowed_msg);
+    suite.assert_authorized_by(ADDR0, authorization_id, &allowed_msg);
 
     // Test invalid parameters
-    suite.assert_msg_unauthorized(
+    suite.assert_unauthorized(
         ADDR0,
         &allowed_msg,
         Some(ContractError::LimitReached {}),
         Some(0),
     );
-    suite.assert_msg_unauthorized_by_role(
+    suite.assert_unauthorized_by_role(
         ADDR0,
         invalid_role_id,
         &allowed_msg,
@@ -1175,7 +1155,7 @@ fn test_message_authorization_queries() {
         }),
         None,
     );
-    suite.assert_msg_unauthorized_by_role(
+    suite.assert_unauthorized_by_role(
         ADDR1,
         role_id,
         &allowed_msg,
@@ -1185,48 +1165,30 @@ fn test_message_authorization_queries() {
         }),
         None,
     );
-    suite.assert_msg_unauthorized_by_role(
+    suite.assert_unauthorized_by_role(
         ADDR0,
         disabled_role_id,
         &allowed_msg,
         Some(ContractError::RoleDisabled {}),
         None,
     );
-    suite.assert_msg_unauthorized_by_role(
+    suite.assert_unauthorized_by_role(
         ADDR0,
         role_id,
         &allowed_msg,
         Some(ContractError::LimitReached {}),
         Some(0),
     );
-    suite.assert_msg_unauthorized_by(
+    suite.assert_unauthorized_by(
         ADDR0,
-        invalid_role_id,
-        authorization_id,
-        &allowed_msg,
-        Some(ContractError::RoleNotFound {
-            id: invalid_role_id,
-        }),
-    );
-    suite.assert_msg_unauthorized_by(
-        ADDR0,
-        role_id,
         invalid_authorization_id,
         &allowed_msg,
         Some(ContractError::AuthorizationNotFound {
             id: invalid_authorization_id,
         }),
     );
-    suite.assert_msg_unauthorized_by(
-        ADDR0,
-        role_id,
-        enabled_authorization_id,
-        &allowed_msg,
-        Some(ContractError::AuthorizationRoleMismatch {}),
-    );
-    suite.assert_msg_unauthorized_by(
+    suite.assert_unauthorized_by(
         ADDR1,
-        role_id,
         authorization_id,
         &allowed_msg,
         Some(ContractError::RoleNotAssigned {
@@ -1234,16 +1196,14 @@ fn test_message_authorization_queries() {
             role_id,
         }),
     );
-    suite.assert_msg_unauthorized_by(
+    suite.assert_unauthorized_by(
         ADDR0,
-        disabled_role_id,
         enabled_authorization_id,
         &allowed_msg,
         Some(ContractError::RoleDisabled {}),
     );
-    suite.assert_msg_unauthorized_by(
+    suite.assert_unauthorized_by(
         ADDR0,
-        role_id,
         disabled_authorization_id,
         &allowed_msg,
         Some(ContractError::AuthorizationDisabled {}),
@@ -1255,22 +1215,21 @@ fn test_message_authorization_queries() {
         msg: to_json_binary(&"test").unwrap(),
         funds: vec![],
     });
-    suite.assert_msg_unauthorized(
+    suite.assert_unauthorized(
         ADDR0,
         &disallowed_msg,
         Some(ContractError::NoMoreAuthorizations {}),
         None,
     );
-    suite.assert_msg_unauthorized_by_role(
+    suite.assert_unauthorized_by_role(
         ADDR0,
         role_id,
         &disallowed_msg,
         Some(ContractError::NoMoreAuthorizations {}),
         None,
     );
-    suite.assert_msg_unauthorized_by(
+    suite.assert_unauthorized_by(
         ADDR0,
-        role_id,
         authorization_id,
         &disallowed_msg,
         Some(ContractError::MsgNotAllowedByFilter {
@@ -1292,13 +1251,13 @@ fn test_message_authorization_queries() {
         msg: to_json_binary(&"test").unwrap(),
         funds: vec![],
     });
-    suite.assert_msg_unauthorized(
+    suite.assert_unauthorized(
         ADDR1,
         &test_msg,
         Some(ContractError::NoMoreAuthorizations {}),
         None,
     );
-    suite.assert_msg_unauthorized_by_role(
+    suite.assert_unauthorized_by_role(
         ADDR1,
         role_id,
         &test_msg,
@@ -1308,9 +1267,8 @@ fn test_message_authorization_queries() {
         }),
         None,
     );
-    suite.assert_msg_unauthorized_by(
+    suite.assert_unauthorized_by(
         ADDR1,
-        role_id,
         authorization_id,
         &test_msg,
         Some(ContractError::RoleNotAssigned {
@@ -1538,8 +1496,8 @@ fn test_complex_authorization_filters() {
         funds: vec![],
     });
 
-    suite.assert_msg_authorized(ADDR0, &allowed_msg);
-    suite.assert_msg_unauthorized(
+    suite.assert_authorized(ADDR0, &allowed_msg);
+    suite.assert_unauthorized(
         ADDR0,
         &disallowed_msg,
         Some(ContractError::NoMoreAuthorizations {}),
@@ -1569,6 +1527,7 @@ fn test_role_with_initial_authorizations_and_assignments() {
     let initial_role = InitialRole {
         name: "multi_auth_role".to_string(),
         metadata: None,
+        enabled: None, // default to true
         authorizations: Some(vec![
             InitialAuthorization {
                 name: "auth1".to_string(),
@@ -1601,9 +1560,9 @@ fn test_role_with_initial_authorizations_and_assignments() {
     suite.assert_authorization_enabled(3, false);
 
     // Check assignments
-    suite.assert_assigned_role(ADDR0, 1, true);
-    suite.assert_assigned_role(ADDR1, 1, true);
-    suite.assert_assigned_role(ADDR2, 1, false);
+    suite.assert_assigned(ADDR0, 1, true);
+    suite.assert_assigned(ADDR1, 1, true);
+    suite.assert_assigned(ADDR2, 1, false);
 }
 
 #[test]
@@ -1640,12 +1599,12 @@ fn test_bulk_role_assignments() {
     );
 
     // Verify all assignments
-    suite.assert_assigned_role(ADDR0, role_id1, true);
-    suite.assert_assigned_role(ADDR0, role_id2, true);
-    suite.assert_assigned_role(ADDR0, role_id3, false);
-    suite.assert_assigned_role(ADDR1, role_id1, false);
-    suite.assert_assigned_role(ADDR1, role_id2, true);
-    suite.assert_assigned_role(ADDR1, role_id3, true);
+    suite.assert_assigned(ADDR0, role_id1, true);
+    suite.assert_assigned(ADDR0, role_id2, true);
+    suite.assert_assigned(ADDR0, role_id3, false);
+    suite.assert_assigned(ADDR1, role_id1, false);
+    suite.assert_assigned(ADDR1, role_id2, true);
+    suite.assert_assigned(ADDR1, role_id3, true);
     suite.assert_assignment_count(4);
 
     // Bulk revoke some assignments
@@ -1664,10 +1623,10 @@ fn test_bulk_role_assignments() {
     );
 
     // Verify revocations
-    suite.assert_assigned_role(ADDR0, role_id1, false);
-    suite.assert_assigned_role(ADDR0, role_id2, true);
-    suite.assert_assigned_role(ADDR1, role_id2, true);
-    suite.assert_assigned_role(ADDR1, role_id3, false);
+    suite.assert_assigned(ADDR0, role_id1, false);
+    suite.assert_assigned(ADDR0, role_id2, true);
+    suite.assert_assigned(ADDR1, role_id2, true);
+    suite.assert_assigned(ADDR1, role_id3, false);
     suite.assert_assignment_count(2);
 }
 
@@ -1756,10 +1715,10 @@ fn test_authorization_filter_edge_cases() {
     });
 
     // Any message should be authorized (empty and null filters allow all)
-    suite.assert_msg_authorized(ADDR0, &any_msg);
+    suite.assert_authorized(ADDR0, &any_msg);
 
     // Specific message should be authorized by specific filter
-    suite.assert_msg_authorized(ADDR0, &specific_msg);
+    suite.assert_authorized(ADDR0, &specific_msg);
 }
 
 #[test]
@@ -1851,9 +1810,9 @@ fn test_multiple_roles_multiple_authorizations() {
     });
 
     // ADDR0 should be authorized for both A and B
-    suite.assert_msg_authorized(ADDR0, &msg_a);
-    suite.assert_msg_authorized(ADDR0, &msg_b);
-    suite.assert_msg_unauthorized(
+    suite.assert_authorized(ADDR0, &msg_a);
+    suite.assert_authorized(ADDR0, &msg_b);
+    suite.assert_unauthorized(
         ADDR0,
         &msg_c,
         Some(ContractError::NoMoreAuthorizations {}),
@@ -1861,14 +1820,14 @@ fn test_multiple_roles_multiple_authorizations() {
     );
 
     // ADDR1 should only be authorized for A
-    suite.assert_msg_authorized(ADDR1, &msg_a);
-    suite.assert_msg_unauthorized(
+    suite.assert_authorized(ADDR1, &msg_a);
+    suite.assert_unauthorized(
         ADDR1,
         &msg_b,
         Some(ContractError::NoMoreAuthorizations {}),
         None,
     );
-    suite.assert_msg_unauthorized(
+    suite.assert_unauthorized(
         ADDR1,
         &msg_c,
         Some(ContractError::NoMoreAuthorizations {}),
@@ -1935,7 +1894,6 @@ fn test_action_execution_with_multiple_actions() {
                 .unwrap(),
                 funds: vec![],
             }),
-            role_id,
             authorization_id,
         },
         ActionToExecute {
@@ -1954,7 +1912,6 @@ fn test_action_execution_with_multiple_actions() {
                 .unwrap(),
                 funds: vec![],
             }),
-            role_id,
             authorization_id,
         },
         ActionToExecute {
@@ -1973,7 +1930,6 @@ fn test_action_execution_with_multiple_actions() {
                 .unwrap(),
                 funds: vec![],
             }),
-            role_id,
             authorization_id,
         },
     ];
@@ -2021,7 +1977,6 @@ fn test_action_execution_with_multiple_actions() {
             .unwrap(),
             funds: vec![],
         }),
-        role_id,
         authorization_id,
     };
 
@@ -2161,7 +2116,6 @@ fn test_comprehensive_list_queries_with_filtering() {
                 amount: Uint128::from(50u128),
             }],
         }),
-        role_id: role_id1,
         authorization_id: authorization_id1,
     };
     let action2 = ActionToExecute {
@@ -2172,7 +2126,6 @@ fn test_comprehensive_list_queries_with_filtering() {
                 amount: Uint128::from(25u128),
             }],
         }),
-        role_id: role_id2,
         authorization_id: authorization_id3,
     };
     let action3 = ActionToExecute {
@@ -2183,7 +2136,6 @@ fn test_comprehensive_list_queries_with_filtering() {
                 amount: Uint128::from(1u128),
             }],
         }),
-        role_id: role_id2,
         authorization_id: authorization_id3,
     };
 
@@ -2434,9 +2386,8 @@ fn test_protobuf_filter() {
         "google.protobuf.StringValue",
         &serde_json::json!("pass"),
     );
-    suite.assert_msg_authorized_by(
+    suite.assert_authorized_by(
         ADDR0,
-        role_id,
         authorization_id,
         &CosmosMsg::Stargate {
             type_url: "google.protobuf.StringValue".to_string(),
@@ -2449,9 +2400,8 @@ fn test_protobuf_filter() {
         "google.protobuf.StringValue",
         &serde_json::json!("not_pass"),
     );
-    suite.assert_msg_unauthorized_by(
+    suite.assert_unauthorized_by(
         ADDR0,
-        role_id,
         authorization_id,
         &CosmosMsg::Stargate {
             type_url: "google.protobuf.StringValue".to_string(),
