@@ -2,7 +2,8 @@ use cw_jsonfilter::{CwJsonFilter, FilterResult};
 use serde_json::{json, Value};
 
 fn main() {
-    let filter = json!({"$or": [{"tags": {"$in": "programming"}},{"tags": {"$in": "rust"}}]});
+    let filter =
+        json!({"$or": [{"tags": {"$contains": "programming"}},{"tags": {"$contains": "rust"}}]});
 
     let obj1 = json!({"name": "John Doe", "tags": ["rust", "programming", "development"]});
     let obj2 = json!({"name": "Alice Smith", "tags": ["web", "development", "javascript"]});

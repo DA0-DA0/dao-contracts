@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::{CwJsonFilter, FilterFailure, FilterFatalError};
+use crate::{CwJsonFilter, FilterFailure, FilterFatalError, FilterResult};
 use cw_protobuf_registry::protobuf::{
     base64_encode_protobuf, decode_protobuf, get_protobuf_messages,
 };
@@ -9,6 +9,12 @@ use serde_json::json;
 
 #[test]
 fn array_match() {
+    assert!(CwJsonFilter::check(
+        &json!({ "a": [1, 2, 3, 4] }),
+        &json!({ "a": "not_an_array" })
+    )
+    .is_fail());
+
     assert!(
         CwJsonFilter::check(&json!({ "a": [1, 2, 3, 4]}), &json!({ "a": [1, 2, 3, 4]})).is_pass()
     );
@@ -422,11 +428,11 @@ fn in_array_contains() {
 }
 
 #[test]
-fn in_array() {
+fn array_contains() {
     assert!(CwJsonFilter::check(
         &json!({
             "key": {
-                "$in": 3
+                "$contains": 3
             }
         }),
         &json!({
@@ -439,7 +445,7 @@ fn in_array() {
         &json!({
             "key": {
                 "$not": {
-                    "$in": 3
+                    "$contains": 3
                 }
             }
         }),
@@ -581,7 +587,7 @@ fn exists() {
 fn len() {
     assert!(CwJsonFilter::check(
         &json!({
-            "list": { "#len": 3}
+            "list": { "#len": 3 }
         }),
         &json!({
             "list": [1,2,3]
@@ -590,10 +596,54 @@ fn len() {
     .is_pass());
     assert!(CwJsonFilter::check(
         &json!({
-            "list": { "#size": 5}
+            "obj": { "#len": 3 }
+        }),
+        &json!({
+            "obj": {
+                "first": 1,
+                "second": 2,
+                "third": 3
+            }
+        })
+    )
+    .is_pass());
+    assert!(CwJsonFilter::check(
+        &json!({
+            "str": { "#len": 3 }
+        }),
+        &json!({
+            "str": "123"
+        })
+    )
+    .is_pass());
+    assert!(CwJsonFilter::check(
+        &json!({
+            "list": { "#size": 5 }
         }),
         &json!({
             "list": [1,2,3]
+        })
+    )
+    .is_fail());
+    assert!(CwJsonFilter::check(
+        &json!({
+            "obj": { "#size": 5 }
+        }),
+        &json!({
+            "obj": {
+                "first": 1,
+                "second": 2,
+                "third": 3
+            }
+        })
+    )
+    .is_fail());
+    assert!(CwJsonFilter::check(
+        &json!({
+            "str": { "#len": 5 }
+        }),
+        &json!({
+            "str": "123"
         })
     )
     .is_fail());
@@ -1527,6 +1577,12 @@ fn test_replace() {
     assert!(CwJsonFilter::check(&filter, &json!({"duration": "1000s"})).is_pass());
     assert!(CwJsonFilter::check(&filter, &json!({"duration": "1000"})).is_pass());
     assert!(CwJsonFilter::check(&filter, &json!({"duration": "1000ms"})).is_fail());
+
+    assert!(CwJsonFilter::check(
+        &json!({ "key": { "#replace": { "find": "test", "replace": "tEsT", "filter": "atEsT" } } }),
+        &json!({ "key": "atest" })
+    )
+    .is_pass());
 }
 
 #[test]
@@ -1553,6 +1609,12 @@ fn key_not_found() {
             obj_path: "@.anObject".to_string()
         }
     );
+
+    // operators require a value
+    assert_eq!(
+        CwJsonFilter::check(&json!({ "key": { "$eq": "abc" } }), &json!({})),
+        FilterResult::key_not_found("@.key.$eq", "@.key")
+    );
 }
 
 #[test]
@@ -1567,5 +1629,495 @@ fn unknown_operator() {
             filter_path: "@.anObject.$unknownOperator".to_string(),
             obj_path: "@.anObject".to_string()
         }
+    );
+}
+
+#[test]
+fn invalid_operator_arg() {
+    // $exists operator should be a boolean
+    assert_eq!(
+        CwJsonFilter::check(&json!({ "$exists": "abc" }), &json!({})),
+        FilterResult::fatal_invalid_filter("$exists arg must be a boolean", "@.$exists", "@")
+    );
+
+    // $and operator should be an array
+    assert_eq!(
+        CwJsonFilter::check(&json!({ "$and": "abc" }), &json!({})),
+        FilterResult::fatal_invalid_filter("$and arg must be an array", "@.$and", "@")
+    );
+
+    // $or operator should be an array
+    assert_eq!(
+        CwJsonFilter::check(&json!({ "$or": "abc" }), &json!({})),
+        FilterResult::fatal_invalid_filter("$or arg must be an array", "@.$or", "@")
+    );
+
+    // $not operator should be an object
+    assert_eq!(
+        CwJsonFilter::check(&json!({ "$xor": "abc" }), &json!({})),
+        FilterResult::fatal_invalid_filter("$xor arg must be an array", "@.$xor", "@")
+    );
+
+    // $xor operator should be an array
+    assert_eq!(
+        CwJsonFilter::check(&json!({ "$xor": "abc" }), &json!({})),
+        FilterResult::fatal_invalid_filter("$xor arg must be an array", "@.$xor", "@")
+    );
+
+    // $range operator requires the same types
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "$range": [1, "abc"] } }),
+            &json!({ "key": 1 })
+        ),
+        FilterResult::fatal_invalid_filter(
+            "$range args must be both numbers or both strings",
+            "@.key.$range",
+            "@.key"
+        )
+    );
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "$range": [1, 3] } }),
+            &json!({ "key": true })
+        ),
+        FilterResult::operator_failed(
+            "$range",
+            "filter bounds and value are not all numbers or all strings",
+            "@.key.$range",
+            "@.key"
+        )
+    );
+    assert_eq!(
+        CwJsonFilter::check(&json!({ "key": { "$range": true } }), &json!({ "key": 1 })),
+        FilterResult::fatal_invalid_filter(
+            "$range arg must be an array of two numbers or two strings",
+            "@.key.$range",
+            "@.key"
+        )
+    );
+
+    // $type requires valid type
+    assert_eq!(
+        CwJsonFilter::check(&json!({ "key": { "$type": true } }), &json!({ "key": 1 })),
+        FilterResult::fatal_invalid_filter("$type arg must be a string", "@.key.$type", "@.key")
+    );
+    assert_eq!(
+        CwJsonFilter::check(&json!({ "key": { "$type": "abc" } }), &json!({ "key": 1 })),
+        FilterResult::fatal_invalid_filter(
+            "$type arg must be a valid type, got `abc`",
+            "@.key.$type",
+            "@.key"
+        )
+    );
+
+    // $contains operator
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "$contains": 123 } }),
+            &json!({ "key": "abc" })
+        ),
+        FilterResult::operator_failed(
+            "$contains",
+            "$contains arg must be a string when applied to a string value",
+            "@.key.$contains",
+            "@.key"
+        )
+    );
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "$contains": 1 } }),
+            &json!({ "key": true })
+        ),
+        FilterResult::operator_failed(
+            "$contains",
+            "value is not a string or an array",
+            "@.key.$contains",
+            "@.key"
+        )
+    );
+
+    // $overlap operator
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "$overlap": [1, 2, 3] } }),
+            &json!({ "key": "abc" })
+        ),
+        FilterResult::operator_failed(
+            "$overlap",
+            "value is not an array",
+            "@.key.$overlap",
+            "@.key"
+        )
+    );
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "$overlap": "abc" } }),
+            &json!({ "key": "abc" })
+        ),
+        FilterResult::fatal_invalid_filter(
+            "$overlap arg must be an array",
+            "@.key.$overlap",
+            "@.key"
+        )
+    );
+
+    // $any operator
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "$any": "abc" } }),
+            &json!({ "key": "abc" })
+        ),
+        FilterResult::operator_failed("$any", "value is not an array", "@.key.$any", "@.key")
+    );
+
+    // $all operator
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "$all": "abc" } }),
+            &json!({ "key": "abc" })
+        ),
+        FilterResult::operator_failed("$all", "value is not an array", "@.key.$all", "@.key")
+    );
+
+    // $startsWith/$endsWith operator
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "$startsWith": "1" } }),
+            &json!({ "key": 123 })
+        ),
+        FilterResult::operator_failed(
+            "$startsWith",
+            "value is not a string",
+            "@.key.$startsWith",
+            "@.key"
+        )
+    );
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "$endsWith": "3" } }),
+            &json!({ "key": 123 })
+        ),
+        FilterResult::operator_failed(
+            "$endsWith",
+            "value is not a string",
+            "@.key.$endsWith",
+            "@.key"
+        )
+    );
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "$startsWith": 1 } }),
+            &json!({ "key": "123" })
+        ),
+        FilterResult::fatal_invalid_filter(
+            "$startsWith arg must be a string",
+            "@.key.$startsWith",
+            "@.key"
+        )
+    );
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "$endsWith": 3 } }),
+            &json!({ "key": "123" })
+        ),
+        FilterResult::fatal_invalid_filter(
+            "$endsWith arg must be a string",
+            "@.key.$endsWith",
+            "@.key"
+        )
+    );
+
+    // #len transformation
+    assert_eq!(
+        CwJsonFilter::check(&json!({ "key": { "#len": 3 } }), &json!({ "key": 123 })),
+        FilterResult::operator_failed(
+            "#len",
+            "value is not a string, array, or object",
+            "@.key.#len",
+            "@.key"
+        )
+    );
+
+    // #to_number transformation
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "#to_number": 3 } }),
+            &json!({ "key": true })
+        ),
+        FilterResult::operator_failed(
+            "#to_number",
+            "value is not a string or number",
+            "@.key.#to_number",
+            "@.key"
+        )
+    );
+
+    // #lower/#upper transformations
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "#lower": "test" } }),
+            &json!({ "key": 123 })
+        ),
+        FilterResult::operator_failed("#lower", "value is not a string", "@.key.#lower", "@.key")
+    );
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "#upper": "TEST" } }),
+            &json!({ "key": 123 })
+        ),
+        FilterResult::operator_failed("#upper", "value is not a string", "@.key.#upper", "@.key")
+    );
+
+    // #keys transformation
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "#keys": "test" } }),
+            &json!({ "key": 123 })
+        ),
+        FilterResult::operator_failed("#keys", "value is not an object", "@.key.#keys", "@.key")
+    );
+
+    // #values transformation
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "#values": "test" } }),
+            &json!({ "key": 123 })
+        ),
+        FilterResult::operator_failed(
+            "#values",
+            "value is not an object",
+            "@.key.#values",
+            "@.key"
+        )
+    );
+
+    // #replace transformation
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "#replace": { "find": 1, "replace": "test", "filter": { "$eq": 1 } } } }),
+            &json!({ "key": "test" })
+        ),
+        FilterResult::fatal_invalid_filter(
+            "#replace arg `find` must be a string",
+            "@.key.#replace",
+            "@.key"
+        )
+    );
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "#replace": { "find": "test", "replace": 1, "filter": { "$eq": 1 } } } }),
+            &json!({ "key": "test" })
+        ),
+        FilterResult::fatal_invalid_filter(
+            "#replace arg `replace` must be a string",
+            "@.key.#replace",
+            "@.key"
+        )
+    );
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "#replace": { "find": "test", "replace": "tEsT" } } }),
+            &json!({ "key": "test" })
+        ),
+        FilterResult::fatal_invalid_filter(
+            "#replace arg `filter` must be provided",
+            "@.key.#replace",
+            "@.key"
+        )
+    );
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "#replace": { "find": "test", "replace": "tEsT", "filter": "atEsT" } } }),
+            &json!({ "key": 123 })
+        ),
+        FilterResult::operator_failed(
+            "#replace",
+            "value is not a string",
+            "@.key.#replace",
+            "@.key"
+        )
+    );
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "#replace": true } }),
+            &json!({ "key": "test" })
+        ),
+        FilterResult::fatal_invalid_filter(
+            "#replace arg must be an object",
+            "@.key.#replace",
+            "@.key"
+        )
+    );
+
+    // #base64 transformation
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "#base64": 123 } }),
+            &json!({ "key": "%" })
+        ),
+        FilterResult::operator_failed(
+            "#base64",
+            "failed to decode base64: Invalid symbol 37, offset 0.",
+            "@.key.#base64",
+            "@.key"
+        )
+    );
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "#base64": 123 } }),
+            &json!({ "key": "test" })
+        ),
+        FilterResult::operator_failed(
+            "#base64",
+            "failed to parse decoded base64 value as utf-8 string: invalid utf-8 sequence of 1 bytes from index 0",
+            "@.key.#base64",
+            "@.key"
+        )
+    );
+    assert_eq!(
+        CwJsonFilter::check(
+            // "test" -> "dGVzdA=="
+            &json!({ "key": { "#base64": "dGVzdA==" } }),
+            &json!({ "key": 123 })
+        ),
+        FilterResult::operator_failed("#base64", "value is not a string", "@.key.#base64", "@.key")
+    );
+
+    // #proto transformation
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "#proto": {
+                "value": "test"
+            } } }),
+            &json!({ "key": "test" })
+        ),
+        FilterResult::fatal_invalid_filter(
+            "#proto arg `type` not specified",
+            "@.key.#proto",
+            "@.key"
+        )
+    );
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "#proto": {
+                "type": "test"
+            } } }),
+            &json!({ "key": "test" })
+        ),
+        FilterResult::fatal_invalid_filter(
+            "#proto arg `value` not specified",
+            "@.key.#proto",
+            "@.key"
+        )
+    );
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "#proto": {
+                "type": "test",
+                "value": "test"
+            } } }),
+            &json!({ "key": "test" })
+        ),
+        FilterResult::fatal_invalid_filter(
+            "#proto protobuf decoder not provided",
+            "@.key.#proto",
+            "@.key"
+        )
+    );
+    assert_eq!(
+        CwJsonFilter::new(Some(Box::new(|_message_name, _value| {
+            Err("protobuf decoder error".to_string())
+        })))
+        .matches(
+            &json!({ "key": { "#proto": {
+                "type": "test",
+                "value": "test"
+            } } }),
+            &json!({ "key": "%" })
+        ),
+        FilterResult::operator_failed(
+            "#proto",
+            "failed to decode protobuf base64 value: Invalid symbol 37, offset 0.",
+            "@.key.#proto",
+            "@.key"
+        )
+    );
+    assert_eq!(
+        CwJsonFilter::new(Some(Box::new(|_message_name, _value| {
+            Err("protobuf decoder error".to_string())
+        })))
+        .matches(
+            &json!({ "key": { "#proto": {
+                "type": "test",
+                "value": "test"
+            } } }),
+            &json!({ "key": "test" })
+        ),
+        FilterResult::operator_failed("#proto", "protobuf decoder error", "@.key.#proto", "@.key")
+    );
+    assert_eq!(
+        CwJsonFilter::check(&json!({ "key": { "#proto": {} } }), &json!({ "key": 123 })),
+        FilterResult::operator_failed("#proto", "value is not a string", "@.key.#proto", "@.key")
+    );
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "#proto": 123 } }),
+            &json!({ "key": "test" })
+        ),
+        FilterResult::fatal_invalid_filter("#proto arg must be an object", "@.key.#proto", "@.key")
+    );
+
+    // #stargate transformation
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "#stargate": {
+                "value": "test"
+            } } }),
+            &json!({ "key": "test" })
+        ),
+        FilterResult::fatal_invalid_filter(
+            "#stargate arg `type_url` not specified",
+            "@.key.#stargate",
+            "@.key"
+        )
+    );
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "#stargate": {
+                "type_url": "test",
+                "value": "test"
+            } } }),
+            &json!({ "key": "test" })
+        ),
+        FilterResult::fatal_invalid_filter(
+            "#stargate arg `type_url` must start with `/`",
+            "@.key.#stargate",
+            "@.key"
+        )
+    );
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "#stargate": {
+                "type_url": "/test",
+            } } }),
+            &json!({ "key": "test" })
+        ),
+        FilterResult::fatal_invalid_filter(
+            "#stargate arg `value` not specified",
+            "@.key.#stargate",
+            "@.key"
+        )
+    );
+    assert_eq!(
+        CwJsonFilter::check(
+            &json!({ "key": { "#stargate": true } }),
+            &json!({ "key": "test" })
+        ),
+        FilterResult::fatal_invalid_filter(
+            "#stargate arg must be an object",
+            "@.key.#stargate",
+            "@.key"
+        )
     );
 }

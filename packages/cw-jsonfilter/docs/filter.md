@@ -203,7 +203,7 @@ Checks whether the key exists in the object.
 
 ## Array/String/Object Operators
 
-### `$in` & `$contains`
+### `$contains`
 
 For arrays: Evaluates to `true` if the array contains the specified value.
 
@@ -212,7 +212,7 @@ For strings: Evaluates to `true` if the string contains the specified substring.
 ```json
 { "tags": { "$contains": "programming" } }
 { "description": { "$contains": "rust" } }
-{ "numbers": { "$in": 42 } }
+{ "numbers": { "$contains": 42 } }
 ```
 
 ### `$overlap`

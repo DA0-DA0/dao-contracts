@@ -48,7 +48,7 @@ not coerced to numbers automatically and require manual conversion like this.
   "bank": {
     "send": {
       "to_address": {
-        "$in": ["cosmos123...", "cosmos145..."]
+        "$or": ["cosmos123...", "cosmos145..."]
       },
       "amount": [
         { "denom": "uatom", "amount": { "#to_number": { "$lte": 10000 } } }

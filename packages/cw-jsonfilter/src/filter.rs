@@ -238,11 +238,6 @@ impl<'a> CwJsonFilter<'a> {
         filter_path: &str,
         obj_path: &str,
     ) -> FilterResult {
-        // It is the caller's responsibility to pass a valid operator.
-        if !operator.starts_with('$') && !operator.starts_with('#') {
-            return FilterResult::fatal_unknown_operator(operator, filter_path, obj_path);
-        }
-
         match operator {
             // Existence operator
             "$exists" => match operator_arg {
@@ -476,7 +471,7 @@ impl<'a> CwJsonFilter<'a> {
                                     None => {
                                         return FilterResult::operator_failed(
                                             operator,
-                                            "filter minimum and value are not both numbers or both strings",
+                                            "filter bounds and value are not all numbers or all strings",
                                             filter_path,
                                             obj_path,
                                         )
@@ -492,7 +487,7 @@ impl<'a> CwJsonFilter<'a> {
                                     None => {
                                         return FilterResult::operator_failed(
                                             operator,
-                                            "filter maximum and value are not both numbers or both strings",
+                                            "filter bounds and value are not all numbers or all strings",
                                             filter_path,
                                             obj_path,
                                         )
@@ -537,7 +532,10 @@ impl<'a> CwJsonFilter<'a> {
                                 "object" => (value.is_object(), "value is not an object"),
                                 _ => {
                                     return FilterResult::fatal_invalid_filter(
-                                        format!("invalid type: `{}`", type_str),
+                                        format!(
+                                            "{} arg must be a valid type, got `{}`",
+                                            operator, type_str
+                                        ),
                                         filter_path,
                                         obj_path,
                                     );
@@ -554,7 +552,7 @@ impl<'a> CwJsonFilter<'a> {
                     },
 
                     // Array/String operators
-                    "$in" | "$contains" => match (operator_arg, value) {
+                    "$contains" => match (operator_arg, value) {
                         // when value is a string, operator_arg must be a string
                         (
                             serde_json::Value::String(op_arg),
@@ -583,10 +581,10 @@ impl<'a> CwJsonFilter<'a> {
                             filter_path,
                             obj_path,
                         ),
-                        // value is neither a string nor an array
+                        // value is incorrect type
                         _ => FilterResult::operator_failed(
                             operator,
-                            "value not a string nor array",
+                            "value is not a string or an array",
                             filter_path,
                             obj_path,
                         ),
@@ -643,8 +641,9 @@ impl<'a> CwJsonFilter<'a> {
                                 obj_path,
                             )
                         }
-                        _ => FilterResult::fatal_invalid_filter(
-                            format!("{} arg must be an array", operator),
+                        _ => FilterResult::operator_failed(
+                            operator,
+                            "value is not an array",
                             filter_path,
                             obj_path,
                         ),
@@ -669,8 +668,9 @@ impl<'a> CwJsonFilter<'a> {
                             // are no values.
                             FilterResult::Pass
                         }
-                        _ => FilterResult::fatal_invalid_filter(
-                            format!("{} arg must be an array", operator),
+                        _ => FilterResult::operator_failed(
+                            operator,
+                            "value is not an array",
                             filter_path,
                             obj_path,
                         ),
@@ -767,7 +767,7 @@ impl<'a> CwJsonFilter<'a> {
                         ),
                         _ => FilterResult::operator_failed(
                             operator,
-                            "value is neither a string nor number",
+                            "value is not a string or number",
                             filter_path,
                             obj_path,
                         ),
@@ -844,7 +844,7 @@ impl<'a> CwJsonFilter<'a> {
                                 Some(serde_json::Value::String(str)) => str,
                                 _ => {
                                     return FilterResult::fatal_invalid_filter(
-                                        format!("{} find must be a string", operator),
+                                        format!("{} arg `find` must be a string", operator),
                                         filter_path,
                                         obj_path,
                                     )
@@ -855,7 +855,7 @@ impl<'a> CwJsonFilter<'a> {
                                 Some(serde_json::Value::String(str)) => str,
                                 _ => {
                                     return FilterResult::fatal_invalid_filter(
-                                        format!("{} replace must be a string", operator),
+                                        format!("{} arg `replace` must be a string", operator),
                                         filter_path,
                                         obj_path,
                                     )
@@ -866,7 +866,7 @@ impl<'a> CwJsonFilter<'a> {
                                 Some(v) => v,
                                 None => {
                                     return FilterResult::fatal_invalid_filter(
-                                        format!("{} filter must be provided", operator),
+                                        format!("{} arg `filter` must be provided", operator),
                                         filter_path,
                                         obj_path,
                                     )
@@ -882,9 +882,14 @@ impl<'a> CwJsonFilter<'a> {
                                 obj_path,
                             )
                         }
-                        _ => FilterResult::operator_failed(
+                        (serde_json::Value::Object(_), _) => FilterResult::operator_failed(
                             operator,
-                            format!("{} arg is not an object or value is not a string", operator),
+                            "value is not a string",
+                            filter_path,
+                            obj_path,
+                        ),
+                        _ => FilterResult::fatal_invalid_filter(
+                            format!("{} arg must be an object", operator),
                             filter_path,
                             obj_path,
                         ),
@@ -910,7 +915,10 @@ impl<'a> CwJsonFilter<'a> {
                                 Err(e) => {
                                     return FilterResult::operator_failed(
                                         operator,
-                                        format!("failed to convert base64 to string: {}", e),
+                                        format!(
+                                        "failed to parse decoded base64 value as utf-8 string: {}",
+                                        e
+                                    ),
                                         filter_path,
                                         obj_path,
                                     )
@@ -951,7 +959,7 @@ impl<'a> CwJsonFilter<'a> {
                                 Some(proto_type) => proto_type,
                                 None => {
                                     return FilterResult::fatal_invalid_filter(
-                                        format!("{} argument `type` not specified", operator),
+                                        format!("{} arg `type` not specified", operator),
                                         filter_path,
                                         obj_path,
                                     )
@@ -961,7 +969,7 @@ impl<'a> CwJsonFilter<'a> {
                                 Some(v) => v,
                                 None => {
                                     return FilterResult::fatal_invalid_filter(
-                                        format!("{} argument `value` not specified", operator),
+                                        format!("{} arg `value` not specified", operator),
                                         filter_path,
                                         obj_path,
                                     )
@@ -986,7 +994,7 @@ impl<'a> CwJsonFilter<'a> {
                                 Err(e) => {
                                     return FilterResult::operator_failed(
                                         operator,
-                                        format!("failed to decode base64 protobuf value: {}", e),
+                                        format!("failed to decode protobuf base64 value: {}", e),
                                         filter_path,
                                         obj_path,
                                     )
@@ -1023,7 +1031,7 @@ impl<'a> CwJsonFilter<'a> {
                             obj_path,
                         ),
                         _ => FilterResult::fatal_invalid_filter(
-                            format!("{} argument must be an object", operator),
+                            format!("{} arg must be an object", operator),
                             filter_path,
                             obj_path,
                         ),
@@ -1034,7 +1042,7 @@ impl<'a> CwJsonFilter<'a> {
                                 Some(serde_json::Value::String(type_url)) => type_url,
                                 _ => {
                                     return FilterResult::fatal_invalid_filter(
-                                        format!("{} argument `type_url` not specified", operator),
+                                        format!("{} arg `type_url` not specified", operator),
                                         filter_path,
                                         obj_path,
                                     )
@@ -1045,10 +1053,7 @@ impl<'a> CwJsonFilter<'a> {
                                 Some(t) => t,
                                 None => {
                                     return FilterResult::fatal_invalid_filter(
-                                        format!(
-                                            "{} argument `type_url` must be a full type URL (starts with `/`)",
-                                            operator
-                                        ),
+                                        format!("{} arg `type_url` must start with `/`", operator),
                                         filter_path,
                                         obj_path,
                                     )
@@ -1059,7 +1064,7 @@ impl<'a> CwJsonFilter<'a> {
                                 Some(v) => v,
                                 None => {
                                     return FilterResult::fatal_invalid_filter(
-                                        format!("{} argument `value` not specified", operator),
+                                        format!("{} arg `value` not specified", operator),
                                         filter_path,
                                         obj_path,
                                     )
@@ -1084,7 +1089,7 @@ impl<'a> CwJsonFilter<'a> {
                             )
                         }
                         _ => FilterResult::fatal_invalid_filter(
-                            format!("{} argument must be an object", operator),
+                            format!("{} arg must be an object", operator),
                             filter_path,
                             obj_path,
                         ),
