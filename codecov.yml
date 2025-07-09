@@ -3,3 +3,6 @@ ignore:
     - "packages/dao-dao-macros"
     - "packages/dao-testing"
     - "test-contracts"
+    - "**/shim.rs"
+    - "**/*test*/suite.rs"
+    - "**/*test*/suite/**/*.rs"
