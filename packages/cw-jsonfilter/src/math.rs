@@ -44,26 +44,21 @@ pub fn lt_json(a: &serde_json::Value, b: &serde_json::Value) -> Option<bool> {
 /// * `Some(false)` if `a` is less than or equal to `b`.
 /// * `None` if `a` and `b` are not of the same type or if they are of an unsupported type.
 pub fn gt_json(a: &serde_json::Value, b: &serde_json::Value) -> Option<bool> {
-    if a.is_u64() && b.is_u64() {
-        let a = a.as_u64().unwrap();
-        let b = b.as_u64().unwrap();
-        return Some(a > b);
-    } else if a.is_i64() && b.is_i64() {
-        let a = a.as_i64().unwrap();
-        let b = b.as_i64().unwrap();
-        return Some(a > b);
-    } else if a.is_string() && b.is_string() {
-        let a = a.as_str().unwrap();
-        let b = b.as_str().unwrap();
-        return Some(a > b);
-    }
-
-    // Try to convert to float last. `is_f64` ignores integers, even if they
-    // would be valid floats, so to compare decimals we just need to convert.
-    let a = a.as_f64();
-    let b = b.as_f64();
-    if let (Some(a), Some(b)) = (a, b) {
+    if let (Some(a), Some(b)) = (a.as_u64(), b.as_u64()) {
         Some(a > b)
+    } else if let (Some(a), Some(b)) = (a.as_i64(), b.as_i64()) {
+        Some(a > b)
+    } else if let (Some(a), Some(b)) = (a.as_str(), b.as_str()) {
+        Some(a > b)
+    } else if a.is_f64() && b.is_f64() {
+        // explicit `is_f64()` checks for both values because `as_f64()`
+        // silently casts integers (signed & unsigned) into `f64` which
+        // would allow for conversion between different numeric types.
+        if let (Some(a), Some(b)) = (a.as_f64(), b.as_f64()) {
+            Some(a > b)
+        } else {
+            None
+        }
     } else {
         None
     }
@@ -159,6 +154,99 @@ mod tests {
 
         let check_result = crate::CwJsonFilter::check(
             &json!({ "number": { "$lt": filter_val } }),
+            &json!({ "number": object_val })
+        );
+
+        assert!(check_result.is_fail());
+    }
+
+    #[test]
+    fn gt_json_f64_f64_happy() {
+        let filter_val: f64 = 85.0;
+        let object_val: f64 = 86.0;
+
+        let check_result = crate::CwJsonFilter::check(
+            &json!({ "number": { "$gt": filter_val } }),
+            &json!({ "number": object_val })
+        );
+
+        assert!(check_result.is_pass());
+    }
+
+    #[test]
+    fn gt_json_i64_i64_happy() {
+        let filter_val: i64 = -21;
+        let object_val: i64 = -20;
+
+        let check_result = crate::CwJsonFilter::check(
+            &json!({ "number": { "$gt": filter_val } }),
+            &json!({ "number": object_val })
+        );
+
+        assert!(check_result.is_pass());
+    }
+
+    #[test]
+    fn gt_json_u64_u64_happy() {
+        let filter_val: u64 = 20;
+        let object_val: u64 = 21;
+
+        let check_result = crate::CwJsonFilter::check(
+            &json!({ "number": { "$gt": filter_val } }),
+            &json!({ "number": object_val })
+        );
+
+        assert!(check_result.is_pass());
+    }
+
+
+
+    #[test]
+    fn gt_json_f64_u64_err() {
+        let filter_val: f64 = 85.0;
+        let object_val: u64 = 86;
+
+        let check_result = crate::CwJsonFilter::check(
+            &json!({ "number": { "$gt": filter_val } }),
+            &json!({ "number": object_val })
+        );
+
+        assert!(check_result.is_fail());
+    }
+
+    #[test]
+    fn gt_json_u64_f64_err() {
+        let filter_val: u64 = 85;
+        let object_val: f64 = 86.0;
+
+        let check_result = crate::CwJsonFilter::check(
+            &json!({ "number": { "$gt": filter_val } }),
+            &json!({ "number": object_val })
+        );
+
+        assert!(check_result.is_fail());
+    }
+
+    #[test]
+    fn gt_json_i64_f64_err() {
+        let filter_val: i64 = 2;
+        let object_val: f64 = 1.0;
+
+        let check_result = crate::CwJsonFilter::check(
+            &json!({ "number": { "$gt": filter_val } }),
+            &json!({ "number": object_val })
+        );
+
+        assert!(check_result.is_fail());
+    }
+
+    #[test]
+    fn gt_json_f64_i64_err() {
+        let filter_val: i64 = 2;
+        let object_val: f64 = 1.0;
+
+        let check_result = crate::CwJsonFilter::check(
+            &json!({ "number": { "$gt": filter_val } }),
             &json!({ "number": object_val })
         );
 
