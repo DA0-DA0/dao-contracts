@@ -17,15 +17,12 @@ pub fn lt_json(a: &serde_json::Value, b: &serde_json::Value) -> Option<bool> {
         Some(a < b)
     } else if let (Some(a), Some(b)) = (a.as_str(), b.as_str()) {
         Some(a < b)
-    } else if a.is_f64() && b.is_f64() {
-        // explicit `is_f64()` checks for both values because `as_f64()`
-        // silently casts integers (signed & unsigned) into `f64` which
-        // would allow for conversion between different numeric types.
-        if let (Some(a), Some(b)) = (a.as_f64(), b.as_f64()) {
-            Some(a < b)
-        } else {
-            None
-        }
+    } else if let (Some(a), Some(b)) = (a.as_f64(), b.as_f64()) {
+        // if both values being compared are not of the same numeric type
+        // (u64/i64/f64), fallback both to f64.
+        // this deliberately casts the original serde_json numbers into f64
+        // and compares them based on that instead of the original types.
+        Some(a < b)
     } else {
         None
     }
@@ -50,15 +47,12 @@ pub fn gt_json(a: &serde_json::Value, b: &serde_json::Value) -> Option<bool> {
         Some(a > b)
     } else if let (Some(a), Some(b)) = (a.as_str(), b.as_str()) {
         Some(a > b)
-    } else if a.is_f64() && b.is_f64() {
-        // explicit `is_f64()` checks for both values because `as_f64()`
-        // silently casts integers (signed & unsigned) into `f64` which
-        // would allow for conversion between different numeric types.
-        if let (Some(a), Some(b)) = (a.as_f64(), b.as_f64()) {
-            Some(a > b)
-        } else {
-            None
-        }
+    } else if let (Some(a), Some(b)) = (a.as_f64(), b.as_f64()) {
+        // if both values being compared are not of the same numeric type
+        // (u64/i64/f64), fallback both to f64.
+        // this deliberately casts the original serde_json numbers into f64
+        // and compares them based on that instead of the original types.
+        Some(a > b)
     } else {
         None
     }
@@ -74,7 +68,7 @@ mod tests {
 
         let check_result = crate::CwJsonFilter::check(
             &json!({ "number": { "$lt": filter_val } }),
-            &json!({ "number": object_val })
+            &json!({ "number": object_val }),
         );
 
         assert!(check_result.is_pass());
@@ -87,7 +81,7 @@ mod tests {
 
         let check_result = crate::CwJsonFilter::check(
             &json!({ "number": { "$lt": filter_val } }),
-            &json!({ "number": object_val })
+            &json!({ "number": object_val }),
         );
 
         assert!(check_result.is_pass());
@@ -100,13 +94,11 @@ mod tests {
 
         let check_result = crate::CwJsonFilter::check(
             &json!({ "number": { "$lt": filter_val } }),
-            &json!({ "number": object_val })
+            &json!({ "number": object_val }),
         );
 
         assert!(check_result.is_pass());
     }
-
-
 
     #[test]
     fn lt_json_f64_u64_err() {
@@ -115,7 +107,7 @@ mod tests {
 
         let check_result = crate::CwJsonFilter::check(
             &json!({ "number": { "$lt": filter_val } }),
-            &json!({ "number": object_val })
+            &json!({ "number": object_val }),
         );
 
         assert!(check_result.is_fail());
@@ -128,7 +120,7 @@ mod tests {
 
         let check_result = crate::CwJsonFilter::check(
             &json!({ "number": { "$lt": filter_val } }),
-            &json!({ "number": object_val })
+            &json!({ "number": object_val }),
         );
 
         assert!(check_result.is_fail());
@@ -141,7 +133,7 @@ mod tests {
 
         let check_result = crate::CwJsonFilter::check(
             &json!({ "number": { "$lt": filter_val } }),
-            &json!({ "number": object_val })
+            &json!({ "number": object_val }),
         );
 
         assert!(check_result.is_fail());
@@ -154,7 +146,7 @@ mod tests {
 
         let check_result = crate::CwJsonFilter::check(
             &json!({ "number": { "$lt": filter_val } }),
-            &json!({ "number": object_val })
+            &json!({ "number": object_val }),
         );
 
         assert!(check_result.is_fail());
@@ -167,7 +159,7 @@ mod tests {
 
         let check_result = crate::CwJsonFilter::check(
             &json!({ "number": { "$gt": filter_val } }),
-            &json!({ "number": object_val })
+            &json!({ "number": object_val }),
         );
 
         assert!(check_result.is_pass());
@@ -180,7 +172,7 @@ mod tests {
 
         let check_result = crate::CwJsonFilter::check(
             &json!({ "number": { "$gt": filter_val } }),
-            &json!({ "number": object_val })
+            &json!({ "number": object_val }),
         );
 
         assert!(check_result.is_pass());
@@ -193,13 +185,11 @@ mod tests {
 
         let check_result = crate::CwJsonFilter::check(
             &json!({ "number": { "$gt": filter_val } }),
-            &json!({ "number": object_val })
+            &json!({ "number": object_val }),
         );
 
         assert!(check_result.is_pass());
     }
-
-
 
     #[test]
     fn gt_json_f64_u64_err() {
@@ -208,7 +198,7 @@ mod tests {
 
         let check_result = crate::CwJsonFilter::check(
             &json!({ "number": { "$gt": filter_val } }),
-            &json!({ "number": object_val })
+            &json!({ "number": object_val }),
         );
 
         assert!(check_result.is_fail());
@@ -221,7 +211,7 @@ mod tests {
 
         let check_result = crate::CwJsonFilter::check(
             &json!({ "number": { "$gt": filter_val } }),
-            &json!({ "number": object_val })
+            &json!({ "number": object_val }),
         );
 
         assert!(check_result.is_fail());
@@ -234,7 +224,7 @@ mod tests {
 
         let check_result = crate::CwJsonFilter::check(
             &json!({ "number": { "$gt": filter_val } }),
-            &json!({ "number": object_val })
+            &json!({ "number": object_val }),
         );
 
         assert!(check_result.is_fail());
@@ -247,7 +237,7 @@ mod tests {
 
         let check_result = crate::CwJsonFilter::check(
             &json!({ "number": { "$gt": filter_val } }),
-            &json!({ "number": object_val })
+            &json!({ "number": object_val }),
         );
 
         assert!(check_result.is_fail());
