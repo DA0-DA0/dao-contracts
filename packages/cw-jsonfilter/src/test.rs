@@ -406,7 +406,7 @@ fn range_op_asserts_order() {
         &json!({"key": { "$range": [30.0, 30.0] }}),
         &json!({
             "key": 20
-        })
+        }),
     );
     assert!(res.is_fatal());
 
@@ -415,7 +415,7 @@ fn range_op_asserts_order() {
         &json!({"key": { "$range": [31.0, 30.0] }}),
         &json!({
             "key": 30.5
-        })
+        }),
     );
     assert!(res.is_fatal());
     assert_eq!(
@@ -432,9 +432,58 @@ fn range_op_asserts_order() {
         &json!({"key": { "$range": [31.0, "???"] }}),
         &json!({
             "key": 30.5
-        })
+        }),
     );
     assert!(res.is_fatal());
+}
+
+#[test]
+fn key_not_found_filter_failure_formatting() {
+    let res = CwJsonFilter::check(
+        &json!({"not_the_key": { "$range": [31.0, 30.0] }}),
+        &json!({
+            "key": 30.5
+        }),
+    );
+    assert!(res.is_fail());
+    let filter_failure = match res {
+        FilterResult::Fail(filter_failure) => filter_failure,
+        _ => panic!(),
+    };
+    assert_eq!(
+        filter_failure.to_string(),
+        "Key not found at object path: `@.not_the_key` for filter path: `@.not_the_key.$range`"
+    );
+}
+
+#[test]
+fn filter_result_formatting() {
+    let key = json!({
+        "key": 30.5
+    });
+
+    let res_pass = CwJsonFilter::check(&json!({"key": { "$range": [30.0, 31.0] }}), &key);
+    assert!(res_pass.is_pass());
+    assert_eq!(format!("{}", res_pass), "Pass".to_string());
+
+    let res_fail = CwJsonFilter::check(&json!({"not_the_key": { "$range": [30.0, 31.0] }}), &key);
+    assert!(res_fail.is_fail());
+    match res_fail.clone() {
+        FilterResult::Fail(filter_failure) => {
+            assert_eq!(format!("Fail: {}", filter_failure), res_fail.to_string())
+        }
+        _ => panic!(),
+    };
+
+    let res_fatal = CwJsonFilter::check(&json!({"key": { "$range": [31.0, 30.0] }}), &key);
+    assert!(res_fatal.is_fatal());
+    match res_fatal.clone() {
+        FilterResult::Fatal(filter_fatal_error) => assert_eq!(
+            format!("Fatal: {}", filter_fatal_error),
+            res_fatal.to_string()
+        ),
+        _ => panic!(),
+    };
 }
 
 #[test]
