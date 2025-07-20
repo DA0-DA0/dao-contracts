@@ -400,6 +400,44 @@ fn range_op() {
 }
 
 #[test]
+fn range_op_asserts_order() {
+    // range bounds equal to eachother
+    let res = CwJsonFilter::check(
+        &json!({"key": { "$range": [30.0, 30.0] }}),
+        &json!({
+            "key": 20
+        })
+    );
+    assert!(res.is_fatal());
+
+    // descending range is not supported
+    let res = CwJsonFilter::check(
+        &json!({"key": { "$range": [31.0, 30.0] }}),
+        &json!({
+            "key": 30.5
+        })
+    );
+    assert!(res.is_fatal());
+    assert_eq!(
+        res.as_fatal().unwrap(),
+        &FilterFatalError::InvalidFilter {
+            reason: "$range args must be in ascending order".into(),
+            filter_path: "@.key.$range".into(),
+            obj_path: "@.key".into()
+        }
+    );
+
+    // range defined from incompatible types
+    let res = CwJsonFilter::check(
+        &json!({"key": { "$range": [31.0, "???"] }}),
+        &json!({
+            "key": 30.5
+        })
+    );
+    assert!(res.is_fatal());
+}
+
+#[test]
 fn in_array_contains() {
     assert!(CwJsonFilter::check(
         &json!({
