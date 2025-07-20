@@ -58,6 +58,7 @@ pub fn gt_json(a: &serde_json::Value, b: &serde_json::Value) -> Option<bool> {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use serde_json::json;
 
@@ -197,7 +198,7 @@ mod tests {
         let object_val: u64 = 86;
 
         let check_result = crate::CwJsonFilter::check(
-            &json!({ "number": { "$gt": filter_val } }),
+            &json!({ "number": { "$lt": filter_val } }),
             &json!({ "number": object_val }),
         );
 
@@ -210,7 +211,7 @@ mod tests {
         let object_val: f64 = 86.0;
 
         let check_result = crate::CwJsonFilter::check(
-            &json!({ "number": { "$gt": filter_val } }),
+            &json!({ "number": { "$lt": filter_val } }),
             &json!({ "number": object_val }),
         );
 
