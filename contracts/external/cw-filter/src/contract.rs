@@ -32,32 +32,34 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // Default the owner to the sender.
-    let owner = msg.owner.map_or_else(
-        || Ok(info.sender.clone()),
-        |owner| deps.api.addr_validate(&owner),
-    )?;
-    initialize_owner(deps.storage, deps.api, Some(owner.as_str()))?;
+    // Default the owner to the sender if unset
+    let owner = &match msg.owner {
+        Some(addr) => addr,
+        None => info.sender.to_string(),
+    };
+
+    // initialize_owner call performs the addr validation (if set)
+    initialize_owner(deps.storage, deps.api, Some(owner))?;
 
     // Initialize protobuf registry by either creating it or using an existing
     // one. Use this contract's owner as the admin.
-    let protobuf_registry_message = msg.protobuf_registry.map_or_else(
+    let protobuf_registry_messages = msg.protobuf_registry.map_or_else(
         || Ok(vec![]),
         |protobuf_registry| {
             protobuf_registry.update(
                 deps.branch(),
                 &PROTOBUF_REGISTRY,
                 INSTANTIATE_PROTOBUF_REGISTRY_REPLY_ID,
-                &owner,
+                owner,
             )
         },
     )?;
 
     Ok(Response::new()
-        .add_submessages(protobuf_registry_message)
+        .add_submessages(protobuf_registry_messages)
         .add_attribute("action", "instantiate")
         .add_attribute("creator", info.sender.as_str())
-        .add_attribute("owner", owner.as_str()))
+        .add_attribute("owner", owner))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -95,7 +97,7 @@ fn execute_update_protobuf_registry(
 ) -> Result<Response, ContractError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
-    let protobuf_registry_message = match protobuf_registry {
+    let protobuf_registry_messages = match protobuf_registry {
         Some(protobuf_registry) => protobuf_registry.update(
             deps,
             &PROTOBUF_REGISTRY,
@@ -109,7 +111,7 @@ fn execute_update_protobuf_registry(
     }?;
 
     Ok(Response::new()
-        .add_submessages(protobuf_registry_message)
+        .add_submessages(protobuf_registry_messages)
         .add_attribute("action", "update_protobuf_registry"))
 }
 
