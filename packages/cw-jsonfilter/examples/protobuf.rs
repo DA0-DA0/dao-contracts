@@ -1,4 +1,4 @@
-use cw_jsonfilter::{CwJsonFilter, FilterResult};
+use cw_jsonfilter::{CwJsonFilter, FilterResult, ProtobufDecoder};
 use cw_protobuf_registry::protobuf::{base64_encode_protobuf, decode_protobuf};
 use prost_reflect::{prost::Message, prost_types::FileDescriptorSet, DescriptorPool};
 use serde_json::{json, Value};
@@ -11,11 +11,17 @@ fn main() {
         FileDescriptorSet::decode(std::fs::read(proto_path).unwrap().as_slice()).unwrap();
     let pool = DescriptorPool::from_file_descriptor_set(file_descriptor_set.clone()).unwrap();
 
-    let cwjf = CwJsonFilter::new(Some(Box::new(
-        move |message_name: String, value: Vec<u8>| {
-            decode_protobuf(file_descriptor_set.clone(), message_name, value)
-        },
-    )));
+    struct MockProtobufDecoder {
+        file_descriptor_set: FileDescriptorSet,
+    }
+
+    impl ProtobufDecoder for MockProtobufDecoder {
+        fn decode(&self, message_name: String, value: Vec<u8>) -> Result<serde_json::Value, String> {
+            decode_protobuf(self.file_descriptor_set.clone(), message_name, value)
+        }
+    }
+
+    let cwjf = CwJsonFilter::new(Some(MockProtobufDecoder { file_descriptor_set }));
 
     // String filter
 
@@ -61,7 +67,7 @@ fn main() {
     println!();
 }
 
-fn match_objects(cwjf: &CwJsonFilter, filter: &Value, obj: &Value) {
+fn match_objects<D: ProtobufDecoder>(cwjf: &CwJsonFilter<D>, filter: &Value, obj: &Value) {
     match cwjf.matches(filter, obj) {
         FilterResult::Pass => println!("Filter matches the object"),
         FilterResult::Fail(err) => println!("Filter does not match the object: {:?}", err),

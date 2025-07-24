@@ -1,34 +1,35 @@
 use base64::Engine;
 use serde_json::json;
 
-use crate::{gt_json, lt_json, FilterResult, BASE64_ENGINE};
+use crate::{decoder::{NoopDecoder, ProtobufDecoder}, gt_json, lt_json, FilterResult, BASE64_ENGINE};
 
-pub type ProtobufDecoder<'a> = dyn Fn(String, Vec<u8>) -> Result<serde_json::Value, String> + 'a;
-
-pub struct CwJsonFilter<'a> {
-    /// Optional method to decode a protobuf message into JSON.
-    pub decode_protobuf: Option<Box<ProtobufDecoder<'a>>>,
+pub struct CwJsonFilter<D> {
+    /// optional ProtobufDecoder trait object to decode
+    /// a protobuf messages into JSON.
+    pub decode_protobuf: Option<D>,
 }
 
-impl Default for CwJsonFilter<'_> {
+impl Default for CwJsonFilter<NoopDecoder> {
     fn default() -> Self {
         Self::new(None)
     }
 }
 
-impl<'a> CwJsonFilter<'a> {
-    /// Create a new filter, optionally providing a protobuf decoder to use with
-    /// the #proto/#stargate transformer. If not provided, the filter will not
-    /// be able to use protobuf transformers.
-    pub fn new(decode_protobuf: Option<Box<ProtobufDecoder<'a>>>) -> Self {
-        Self { decode_protobuf }
-    }
-
+impl CwJsonFilter<NoopDecoder> {
     /// Static convenience function for the default filter with no protobuf
     /// decoder.
     pub fn check(filter: &serde_json::Value, obj: &serde_json::Value) -> FilterResult {
         let cwjf = CwJsonFilter::default();
         cwjf.matches(filter, obj)
+    }
+}
+
+impl<D: ProtobufDecoder> CwJsonFilter<D> {
+    /// Create a new filter, optionally providing a protobuf decoder to use with
+    /// the #proto/#stargate transformer. If not provided, the filter will not
+    /// be able to use protobuf transformers.
+    pub fn new(decode_protobuf: Option<D>) -> Self {
+        Self { decode_protobuf }
     }
 
     /// Matches an object against a filter and returns whether the object passes
@@ -1002,7 +1003,7 @@ impl<'a> CwJsonFilter<'a> {
                             };
 
                             // Decode the protobuf value.
-                            let proto_value_json = match decode_protobuf(
+                            let proto_value_json = match decode_protobuf.decode(
                                 proto_type.to_string(),
                                 proto_value_encoded,
                             ) {
