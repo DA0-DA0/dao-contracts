@@ -12,6 +12,7 @@ use cw_utils::{nonpayable, parse_reply_instantiate_data};
 use dao_interface::proposal::InfoResponse;
 use dao_interface::state::ModuleUpdate;
 
+use crate::decoder::WasmQuerierProtobufDecoder;
 use crate::error::ContractError;
 use crate::msg::{
     ExecuteMsg, FilterResponse, InstantiateMsg, MigrateMsg, ProtobufRegistryResponse, QueryMsg,
@@ -142,28 +143,15 @@ fn query_filter(
 ) -> StdResult<FilterResponse> {
     let protobuf_registry = PROTOBUF_REGISTRY.may_load(deps.storage)?;
 
-    let decode_protobuf = protobuf_registry.map(
-        |protobuf_registry| -> Box<dyn Fn(String, Vec<u8>) -> Result<serde_json::Value, String>> {
-            Box::new(move |message_name, value| {
-                deps.querier
-                    .query_wasm_smart::<cw_protobuf_registry::msg::DecodeResponse>(
-                        &protobuf_registry,
-                        &cw_protobuf_registry::msg::QueryMsg::Decode {
-                            message_name: message_name.to_string(),
-                            value,
-                        },
-                    )
-                    .map(|r| r.value)
-                    .map_err(|e| e.to_string())
-            })
-        },
-    );
-
     let msg_value = serde_json::to_value(msg).map_err(|e| {
         StdError::generic_err(ContractError::JsonSerialization { err: e.to_string() }.to_string())
     })?;
 
-    let result = CwJsonFilter::new(decode_protobuf).matches(&filter, &msg_value);
+    let decoder = protobuf_registry.map(|addr| {
+        WasmQuerierProtobufDecoder::new(deps.querier, addr)
+    });
+
+    let result = CwJsonFilter::new(decoder).matches(&filter, &msg_value);
 
     let response = match result {
         FilterResult::Pass => FilterResponse::Pass {},
