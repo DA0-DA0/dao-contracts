@@ -1,6 +1,6 @@
 use crate::{
-    filter::append_array_path, json_ops::operator::OperatorContext, CwJsonFilter, FilterResult,
-    ProtobufDecoder,
+    json_ops::{operator::OperatorContext, utils::append_array_path},
+    CwJsonFilter, FilterResult, ProtobufDecoder,
 };
 
 impl<D: ProtobufDecoder> CwJsonFilter<D> {

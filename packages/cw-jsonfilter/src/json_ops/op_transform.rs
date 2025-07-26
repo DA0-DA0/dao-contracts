@@ -2,7 +2,8 @@ use base64::Engine;
 use serde_json::json;
 
 use crate::{
-    json_ops::operator::OperatorContext, CwJsonFilter, FilterResult, ProtobufDecoder, BASE64_ENGINE,
+    json_ops::{operator::OperatorContext, utils::BASE64_ENGINE},
+    CwJsonFilter, FilterResult, ProtobufDecoder,
 };
 
 impl<D: ProtobufDecoder> CwJsonFilter<D> {
