@@ -249,136 +249,79 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
             "$or" => self.handle_or_op(operator, operator_arg, value, filter_path, obj_path),
             "$xor" => self.handle_xor_op(operator, operator_arg, value, filter_path, obj_path),
             "$not" => self.handle_not_op(operator, operator_arg, value, filter_path, obj_path),
-            // The rest of the operators require a value.
-            _ => {
-                let value = match value {
-                    Some(v) => v,
-                    None => return FilterResult::key_not_found(filter_path, obj_path),
-                };
 
-                match operator {
-                    // Comparison operators
-                    "$eq" => {
-                        self.handle_eq_op(operator, operator_arg, value, filter_path, obj_path)
-                    }
-                    "$ne" | "$neq" => {
-                        self.handle_neq_op(operator, operator_arg, value, filter_path, obj_path)
-                    }
-                    "$lt" | "$lte" => self.handle_lt_check_op(
-                        operator,
-                        operator_arg,
-                        value,
-                        filter_path,
-                        obj_path,
-                    ),
-                    "$gt" | "$gte" => self.handle_gt_check_op(
-                        operator,
-                        operator_arg,
-                        value,
-                        filter_path,
-                        obj_path,
-                    ),
-                    "$range" | "$range_exclusive" | "$between" | "$between_exclusive" => {
-                        self.handle_range_op(operator, operator_arg, value, filter_path, obj_path)
-                    }
-                    "$type" => {
-                        self.handle_type_op(operator, operator_arg, value, filter_path, obj_path)
-                    }
-
-                    // Array/String operators
-                    "$contains" => self.handle_contains_op(
-                        operator,
-                        operator_arg,
-                        value,
-                        filter_path,
-                        obj_path,
-                    ),
-
-                    // Array operators
-                    "$overlap" => self.handle_overlaps_op(
-                        operator,
-                        operator_arg,
-                        value,
-                        filter_path,
-                        obj_path,
-                    ),
-                    "$any" => {
-                        self.handle_any_op(operator, operator_arg, value, filter_path, obj_path)
-                    }
-                    "$all" => {
-                        self.handle_all_op(operator, operator_arg, value, filter_path, obj_path)
-                    }
-
-                    // String operators
-                    "$startsWith" | "$endsWith" => self.handle_starts_ends_with_op(
-                        operator,
-                        operator_arg,
-                        value,
-                        filter_path,
-                        obj_path,
-                    ),
-
-                    // Value transformers
-                    "#len" | "#size" => {
-                        self.handle_size_op(operator, operator_arg, value, filter_path, obj_path)
-                    }
-                    "#to_string" => self.handle_to_string_op(
-                        operator,
-                        operator_arg,
-                        value,
-                        filter_path,
-                        obj_path,
-                    ),
-                    "#to_number" => self.handle_to_number_op(
-                        operator,
-                        operator_arg,
-                        value,
-                        filter_path,
-                        obj_path,
-                    ),
-                    "#lower" => self.handle_to_lower_op(
-                        operator,
-                        operator_arg,
-                        value,
-                        filter_path,
-                        obj_path,
-                    ),
-                    "#upper" => self.handle_to_upper_op(
-                        operator,
-                        operator_arg,
-                        value,
-                        filter_path,
-                        obj_path,
-                    ),
-                    "#keys" => {
-                        self.handle_to_keys_op(operator, operator_arg, value, filter_path, obj_path)
-                    }
-                    "#values" => self.handle_to_values_op(
-                        operator,
-                        operator_arg,
-                        value,
-                        filter_path,
-                        obj_path,
-                    ),
-                    "#replace" => {
-                        self.handle_replace_op(operator, operator_arg, value, filter_path, obj_path)
-                    }
-                    "#base64" => {
-                        self.handle_base64_op(operator, operator_arg, value, filter_path, obj_path)
-                    }
-                    "#proto" => {
-                        self.handle_proto_op(operator, operator_arg, value, filter_path, obj_path)
-                    }
-                    "#stargate" => self.handle_stargate_op(
-                        operator,
-                        operator_arg,
-                        value,
-                        filter_path,
-                        obj_path,
-                    ),
-                    _ => FilterResult::fatal_unknown_operator(operator, filter_path, obj_path),
-                }
+            // Comparison operators
+            "$eq" => self.handle_eq_op(operator, operator_arg, value, filter_path, obj_path),
+            "$ne" | "$neq" => {
+                self.handle_neq_op(operator, operator_arg, value, filter_path, obj_path)
             }
+            "$lt" | "$lte" => {
+                self.handle_lt_check_op(operator, operator_arg, value, filter_path, obj_path)
+            }
+            "$gt" | "$gte" => {
+                self.handle_gt_check_op(operator, operator_arg, value, filter_path, obj_path)
+            }
+            "$range" | "$range_exclusive" | "$between" | "$between_exclusive" => {
+                self.handle_range_op(operator, operator_arg, value, filter_path, obj_path)
+            }
+
+            // type operator
+            "$type" => self.handle_type_op(operator, operator_arg, value, filter_path, obj_path),
+
+            // Array/String operators
+            "$contains" => {
+                self.handle_contains_op(operator, operator_arg, value, filter_path, obj_path)
+            }
+
+            // Array operators
+            "$overlap" => {
+                self.handle_overlaps_op(operator, operator_arg, value, filter_path, obj_path)
+            }
+            "$any" => self.handle_any_op(operator, operator_arg, value, filter_path, obj_path),
+            "$all" => self.handle_all_op(operator, operator_arg, value, filter_path, obj_path),
+
+            // String operators
+            "$startsWith" | "$endsWith" => self.handle_starts_ends_with_op(
+                operator,
+                operator_arg,
+                value,
+                filter_path,
+                obj_path,
+            ),
+
+            // Value transformers
+            "#len" | "#size" => {
+                self.handle_size_op(operator, operator_arg, value, filter_path, obj_path)
+            }
+            "#to_string" => {
+                self.handle_to_string_op(operator, operator_arg, value, filter_path, obj_path)
+            }
+            "#to_number" => {
+                self.handle_to_number_op(operator, operator_arg, value, filter_path, obj_path)
+            }
+            "#lower" => {
+                self.handle_to_lower_op(operator, operator_arg, value, filter_path, obj_path)
+            }
+            "#upper" => {
+                self.handle_to_upper_op(operator, operator_arg, value, filter_path, obj_path)
+            }
+            "#keys" => self.handle_to_keys_op(operator, operator_arg, value, filter_path, obj_path),
+            "#values" => {
+                self.handle_to_values_op(operator, operator_arg, value, filter_path, obj_path)
+            }
+            "#replace" => {
+                self.handle_replace_op(operator, operator_arg, value, filter_path, obj_path)
+            }
+            "#base64" => {
+                self.handle_base64_op(operator, operator_arg, value, filter_path, obj_path)
+            }
+            "#proto" => self.handle_proto_op(operator, operator_arg, value, filter_path, obj_path),
+            "#stargate" => {
+                self.handle_stargate_op(operator, operator_arg, value, filter_path, obj_path)
+            }
+
+            // other operators not supported
+            _ => FilterResult::fatal_unknown_operator(operator, filter_path, obj_path),
         }
     }
 }
