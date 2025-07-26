@@ -1,6 +1,6 @@
 use crate::{
     decoder::{NoopDecoder, ProtobufDecoder},
-    json_ops::operator::Operator,
+    json_ops::operator::{Operator, OperatorContext},
     FilterResult,
 };
 
@@ -243,102 +243,57 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
         let Some(op_kind) = Operator::from_name(operator) else {
             return FilterResult::fatal_unknown_operator(operator, filter_path, obj_path);
         };
+
+        let op_ctx = OperatorContext {
+            operator,
+            operator_arg,
+            value,
+            filter_path,
+            obj_path,
+        };
+
         match op_kind {
             // Existence operator
-            Operator::Exists => {
-                self.handle_exists_op(operator, operator_arg, value, filter_path, obj_path)
-            }
+            Operator::Exists => self.handle_exists_op(op_ctx),
 
             // Logical operators
-            Operator::And => {
-                self.handle_and_op(operator, operator_arg, value, filter_path, obj_path)
-            }
-            Operator::Or => self.handle_or_op(operator, operator_arg, value, filter_path, obj_path),
-            Operator::Xor => {
-                self.handle_xor_op(operator, operator_arg, value, filter_path, obj_path)
-            }
-            Operator::Not => {
-                self.handle_not_op(operator, operator_arg, value, filter_path, obj_path)
-            }
+            Operator::And => self.handle_and_op(op_ctx),
+            Operator::Or => self.handle_or_op(op_ctx),
+            Operator::Xor => self.handle_xor_op(op_ctx),
+            Operator::Not => self.handle_not_op(op_ctx),
 
             // Comparison operators
-            Operator::Eq => self.handle_eq_op(operator, operator_arg, value, filter_path, obj_path),
-            Operator::Ne | Operator::Neq => {
-                self.handle_neq_op(operator, operator_arg, value, filter_path, obj_path)
-            }
-            Operator::Lt | Operator::Lte => {
-                self.handle_lt_check_op(operator, operator_arg, value, filter_path, obj_path)
-            }
-            Operator::Gt | Operator::Gte => {
-                self.handle_gt_check_op(operator, operator_arg, value, filter_path, obj_path)
-            }
+            Operator::Eq => self.handle_eq_op(op_ctx),
+            Operator::Ne | Operator::Neq => self.handle_neq_op(op_ctx),
+            Operator::Lt | Operator::Lte => self.handle_lt_check_op(op_ctx),
+            Operator::Gt | Operator::Gte => self.handle_gt_check_op(op_ctx),
             Operator::Range
             | Operator::RangeExclusive
             | Operator::Between
-            | Operator::BetweenExclusive => {
-                self.handle_range_op(operator, operator_arg, value, filter_path, obj_path)
-            }
+            | Operator::BetweenExclusive => self.handle_range_op(op_ctx),
 
             // type operator
-            Operator::Type => {
-                self.handle_type_op(operator, operator_arg, value, filter_path, obj_path)
-            }
+            Operator::Type => self.handle_type_op(op_ctx),
 
             // Array/String operators
-            Operator::Contains => {
-                self.handle_contains_op(operator, operator_arg, value, filter_path, obj_path)
-            }
-            Operator::Overlap => {
-                self.handle_overlaps_op(operator, operator_arg, value, filter_path, obj_path)
-            }
-            Operator::Any => {
-                self.handle_any_op(operator, operator_arg, value, filter_path, obj_path)
-            }
-            Operator::All => {
-                self.handle_all_op(operator, operator_arg, value, filter_path, obj_path)
-            }
-            Operator::StartsWith | Operator::EndsWith => self.handle_starts_ends_with_op(
-                operator,
-                operator_arg,
-                value,
-                filter_path,
-                obj_path,
-            ),
+            Operator::Contains => self.handle_contains_op(op_ctx),
+            Operator::Overlap => self.handle_overlaps_op(op_ctx),
+            Operator::Any => self.handle_any_op(op_ctx),
+            Operator::All => self.handle_all_op(op_ctx),
+            Operator::StartsWith | Operator::EndsWith => self.handle_starts_ends_with_op(op_ctx),
 
             // Value transformers
-            Operator::Len | Operator::Size => {
-                self.handle_size_op(operator, operator_arg, value, filter_path, obj_path)
-            }
-            Operator::ToString => {
-                self.handle_to_string_op(operator, operator_arg, value, filter_path, obj_path)
-            }
-            Operator::ToNumber => {
-                self.handle_to_number_op(operator, operator_arg, value, filter_path, obj_path)
-            }
-            Operator::Lower => {
-                self.handle_to_lower_op(operator, operator_arg, value, filter_path, obj_path)
-            }
-            Operator::Upper => {
-                self.handle_to_upper_op(operator, operator_arg, value, filter_path, obj_path)
-            }
-            Operator::Keys => {
-                self.handle_to_keys_op(operator, operator_arg, value, filter_path, obj_path)
-            }
-            Operator::Values => {
-                self.handle_to_values_op(operator, operator_arg, value, filter_path, obj_path)
-            }
-            Operator::Replace => {
-                self.handle_replace_op(operator, operator_arg, value, filter_path, obj_path)
-            }
-            Operator::Base64 => {
-                self.handle_base64_op(operator, operator_arg, value, filter_path, obj_path)
-            }
-            Operator::Proto => {
-                self.handle_proto_op(operator, operator_arg, value, filter_path, obj_path)
-            }
-            Operator::Stargate => {
-                self.handle_stargate_op(operator, operator_arg, value, filter_path, obj_path)
-            }
+            Operator::Len | Operator::Size => self.handle_size_op(op_ctx),
+            Operator::ToString => self.handle_to_string_op(op_ctx),
+            Operator::ToNumber => self.handle_to_number_op(op_ctx),
+            Operator::Lower => self.handle_to_lower_op(op_ctx),
+            Operator::Upper => self.handle_to_upper_op(op_ctx),
+            Operator::Keys => self.handle_to_keys_op(op_ctx),
+            Operator::Values => self.handle_to_values_op(op_ctx),
+            Operator::Replace => self.handle_replace_op(op_ctx),
+            Operator::Base64 => self.handle_base64_op(op_ctx),
+            Operator::Proto => self.handle_proto_op(op_ctx),
+            Operator::Stargate => self.handle_stargate_op(op_ctx),
         }
     }
 }
