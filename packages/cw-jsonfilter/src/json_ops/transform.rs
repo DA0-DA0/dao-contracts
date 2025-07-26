@@ -8,10 +8,15 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
         &self,
         operator: &str,
         operator_arg: &serde_json::Value,
-        value: &serde_json::Value,
+        value: Option<&serde_json::Value>,
         filter_path: &str,
         obj_path: &str,
     ) -> FilterResult {
+        let value = match value {
+            Some(v) => v,
+            None => return FilterResult::key_not_found(filter_path, obj_path),
+        };
+
         match value.as_array().map_or_else(
             || {
                 value.as_str().map_or_else(
@@ -40,10 +45,15 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
         &self,
         operator: &str,
         operator_arg: &serde_json::Value,
-        value: &serde_json::Value,
+        value: Option<&serde_json::Value>,
         filter_path: &str,
         obj_path: &str,
     ) -> FilterResult {
+        let value = match value {
+            Some(v) => v,
+            None => return FilterResult::key_not_found(filter_path, obj_path),
+        };
+
         match value {
             // pass through if value is already a string
             serde_json::Value::String(_) => {
@@ -62,10 +72,15 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
         &self,
         operator: &str,
         operator_arg: &serde_json::Value,
-        value: &serde_json::Value,
+        value: Option<&serde_json::Value>,
         filter_path: &str,
         obj_path: &str,
     ) -> FilterResult {
+        let value = match value {
+            Some(v) => v,
+            None => return FilterResult::key_not_found(filter_path, obj_path),
+        };
+
         match value {
             // pass through if value is already a number
             serde_json::Value::Number(_) => {
@@ -100,10 +115,15 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
         &self,
         operator: &str,
         operator_arg: &serde_json::Value,
-        value: &serde_json::Value,
+        value: Option<&serde_json::Value>,
         filter_path: &str,
         obj_path: &str,
     ) -> FilterResult {
+        let value = match value {
+            Some(v) => v,
+            None => return FilterResult::key_not_found(filter_path, obj_path),
+        };
+
         match value {
             serde_json::Value::String(value_str) => self.inner_matches(
                 operator_arg,
@@ -124,10 +144,15 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
         &self,
         operator: &str,
         operator_arg: &serde_json::Value,
-        value: &serde_json::Value,
+        value: Option<&serde_json::Value>,
         filter_path: &str,
         obj_path: &str,
     ) -> FilterResult {
+        let value = match value {
+            Some(v) => v,
+            None => return FilterResult::key_not_found(filter_path, obj_path),
+        };
+
         match value {
             serde_json::Value::String(value_str) => self.inner_matches(
                 operator_arg,
@@ -148,10 +173,15 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
         &self,
         operator: &str,
         operator_arg: &serde_json::Value,
-        value: &serde_json::Value,
+        value: Option<&serde_json::Value>,
         filter_path: &str,
         obj_path: &str,
     ) -> FilterResult {
+        let value = match value {
+            Some(v) => v,
+            None => return FilterResult::key_not_found(filter_path, obj_path),
+        };
+
         match value {
             serde_json::Value::Object(value_obj) => self.inner_matches(
                 operator_arg,
@@ -177,10 +207,15 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
         &self,
         operator: &str,
         operator_arg: &serde_json::Value,
-        value: &serde_json::Value,
+        value: Option<&serde_json::Value>,
         filter_path: &str,
         obj_path: &str,
     ) -> FilterResult {
+        let value = match value {
+            Some(v) => v,
+            None => return FilterResult::key_not_found(filter_path, obj_path),
+        };
+
         match value {
             serde_json::Value::Object(value_obj) => self.inner_matches(
                 operator_arg,
@@ -202,10 +237,15 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
         &self,
         operator: &str,
         operator_arg: &serde_json::Value,
-        value: &serde_json::Value,
+        value: Option<&serde_json::Value>,
         filter_path: &str,
         obj_path: &str,
     ) -> FilterResult {
+        let value = match value {
+            Some(v) => v,
+            None => return FilterResult::key_not_found(filter_path, obj_path),
+        };
+
         match (operator_arg, value) {
             (serde_json::Value::Object(op_arg), serde_json::Value::String(value_str)) => {
                 let substring = match op_arg.get("find") {
@@ -267,10 +307,15 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
         &self,
         operator: &str,
         operator_arg: &serde_json::Value,
-        value: &serde_json::Value,
+        value: Option<&serde_json::Value>,
         filter_path: &str,
         obj_path: &str,
     ) -> FilterResult {
+        let value = match value {
+            Some(v) => v,
+            None => return FilterResult::key_not_found(filter_path, obj_path),
+        };
+
         match value {
             serde_json::Value::String(value_str) => {
                 // Decode the base64 string.
@@ -329,10 +374,15 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
         &self,
         operator: &str,
         operator_arg: &serde_json::Value,
-        value: &serde_json::Value,
+        value: Option<&serde_json::Value>,
         filter_path: &str,
         obj_path: &str,
     ) -> FilterResult {
+        let value = match value {
+            Some(v) => v,
+            None => return FilterResult::key_not_found(filter_path, obj_path),
+        };
+
         match (operator_arg, value) {
             (serde_json::Value::Object(op_arg), serde_json::Value::String(value_str)) => {
                 // Extract `type` and `value` from the operator
@@ -412,10 +462,15 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
         &self,
         operator: &str,
         operator_arg: &serde_json::Value,
-        value: &serde_json::Value,
+        value: Option<&serde_json::Value>,
         filter_path: &str,
         obj_path: &str,
     ) -> FilterResult {
+        let value = match value {
+            Some(v) => v,
+            None => return FilterResult::key_not_found(filter_path, obj_path),
+        };
+
         match operator_arg {
             serde_json::Value::Object(op_arg) => {
                 let type_url = match op_arg.get("type_url") {

@@ -5,10 +5,15 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
         &self,
         operator: &str,
         operator_arg: &serde_json::Value,
-        value: &serde_json::Value,
+        value: Option<&serde_json::Value>,
         filter_path: &str,
         obj_path: &str,
     ) -> FilterResult {
+        let value = match value {
+            Some(v) => v,
+            None => return FilterResult::key_not_found(filter_path, obj_path),
+        };
+
         match operator_arg {
             serde_json::Value::String(type_str) => {
                 let (check, reason) = match type_str.to_lowercase().as_str() {
