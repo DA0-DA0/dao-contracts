@@ -6,35 +6,42 @@ with only its name and the protobuf encoded bytes.
 
 ```rust
 use serde_json::json;
-use cw_jsonfilter::CwJsonFilter;
+use cw_jsonfilter::{CwJsonFilter, ProtobufDecoder};
 use prost_reflect::{prost::Message, prost_types::FileDescriptorSet, DescriptorPool, DynamicMessage};
+
+// decoder type that will implement the ProtobufDecoder trait
+struct MyDecoder {
+    pool: DescriptorPool,
+}
+
+impl ProtobufDecoder for MyDecoder {
+    fn decode(&self, message_name: String, value: Vec<u8>) -> Result<serde_json::Value, String> {
+        let message_descriptor =
+          self.pool.get_message_by_name(&message_name)
+            .ok_or_else(|| {
+              format!(
+                  "message descriptor not found in pool for `{}`",
+                  message_name
+              )
+            })?;
+
+        let dynamic_message =
+          DynamicMessage::decode(message_descriptor, value.as_slice())
+            .map_err(|e| format!("failed to decode protobuf value: {}", e))?;
+
+        let json = serde_json::to_value(dynamic_message)
+            .map_err(|e| format!("failed to serialize decoded protobuf value as JSON: {}", e))?;
+
+        Ok(json)
+    }
+}
 
 let proto_fds_path = "path/to/proto/file.pb";
 let file_descriptor_set =
   FileDescriptorSet::decode(std::fs::read(proto_fds_path).unwrap().as_slice()).unwrap();
 let pool = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap();
-
-let cwjf = CwJsonFilter::new(Some(Box::new(
-  move |message_name: String, value: Vec<u8>| {
-    let message_descriptor =
-      pool.get_message_by_name(&message_name)
-        .ok_or_else(|| {
-          format!(
-              "message descriptor not found in pool for `{}`",
-              message_name
-          )
-        })?;
-
-    let dynamic_message =
-      DynamicMessage::decode(message_descriptor, value.as_slice())
-        .map_err(|e| format!("failed to decode protobuf value: {}", e))?;
-
-    let json = serde_json::to_value(dynamic_message)
-        .map_err(|e| format!("failed to serialize decoded protobuf value as JSON: {}", e))?;
-
-    Ok(json)
-  },
-)));
+let decoder = MyDecoder { pool };
+let cwjf = CwJsonFilter::new(Some(decoder));
 
 // To check if a JSON object matches a filter:
 let filter = json!({"proto_data": { "#proto": { "type": "google.protobuf.StringValue", "value": "Hello, world!" } }});

@@ -140,6 +140,14 @@ is the same as:
 { "key": "value" }
 ```
 
+### `$ne` / `$neq`
+
+Explicitly checks for inequality.
+
+```json
+{ "key": { "$ne": "value" } }
+```
+
 ### `$lt` & `$lte`
 
 Evaluates to `true` if the value is less than or equal to the specified value.
