@@ -1,7 +1,10 @@
 use base64::Engine;
 use serde_json::json;
 
-use crate::{decoder::{NoopDecoder, ProtobufDecoder}, gt_json,  lt_json, FilterResult, BASE64_ENGINE};
+use crate::{
+    decoder::{NoopDecoder, ProtobufDecoder},
+    gt_json, lt_json, FilterResult, BASE64_ENGINE,
+};
 
 pub struct CwJsonFilter<D> {
     /// optional ProtobufDecoder trait object to decode
@@ -64,7 +67,7 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
         self.inner_matches(filter, Some(obj), "@", "@")
     }
 
-    fn inner_matches(
+    pub fn inner_matches(
         &self,
         filter: &serde_json::Value,
         obj: Option<&serde_json::Value>,
@@ -241,112 +244,14 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
     ) -> FilterResult {
         match operator {
             // Existence operator
-            "$exists" => self.handle_exists_op(operator, operator_arg, value, filter_path, obj_path),
-            // Logical operators
-            "$and" => match operator_arg {
-                serde_json::Value::Array(and_arg) => {
-                    for (i, sub_filter) in and_arg.iter().enumerate() {
-                        let filter_path = &append_array_path(filter_path, i);
-                        match self.inner_matches(sub_filter, value, filter_path, obj_path) {
-                            // Continue on success.
-                            FilterResult::Pass => continue,
-                            // Early return the first failure.
-                            failure_result => return failure_result,
-                        }
-                    }
-                    // Passes if all filters passed or there are no
-                    // filters.
-                    FilterResult::Pass
-                }
-                _ => FilterResult::fatal_invalid_filter(
-                    format!("{} arg must be an array", operator),
-                    filter_path,
-                    obj_path,
-                ),
-            },
-            "$or" => match operator_arg {
-                serde_json::Value::Array(or_arg) => {
-                    for (i, sub_filter) in or_arg.iter().enumerate() {
-                        let filter_path = &append_array_path(filter_path, i);
-                        match self.inner_matches(sub_filter, value, filter_path, obj_path) {
-                            // Early return passed on first success.
-                            FilterResult::Pass => return FilterResult::Pass,
-                            // Ignore non-fatal errors.
-                            FilterResult::Fail(_) => continue,
-                            // Return fatal errors immediately.
-                            FilterResult::Fatal(e) => return FilterResult::Fatal(e),
-                        }
-                    }
-                    // Fails if all filters failed or there are no
-                    // filters.
-                    FilterResult::operator_failed(
-                        operator,
-                        "all filters failed",
-                        filter_path,
-                        obj_path,
-                    )
-                }
-                _ => FilterResult::fatal_invalid_filter(
-                    format!("{} arg must be an array", operator),
-                    filter_path,
-                    obj_path,
-                ),
-            },
-            "$xor" => match operator_arg {
-                serde_json::Value::Array(xor_arg) => {
-                    let mut passed = 0;
-                    for (i, sub_filter) in xor_arg.iter().enumerate() {
-                        let filter_path = &append_array_path(filter_path, i);
-                        match self.inner_matches(sub_filter, value, filter_path, obj_path) {
-                            FilterResult::Pass => {
-                                passed += 1;
-                                // Early return failed on second
-                                // success.
-                                if passed > 1 {
-                                    return FilterResult::operator_failed(
-                                        operator,
-                                        "more than one filter passed",
-                                        filter_path,
-                                        obj_path,
-                                    );
-                                }
-                            }
-                            // Ignore non-fatal errors.
-                            FilterResult::Fail(_) => continue,
-                            // Return fatal errors immediately.
-                            FilterResult::Fatal(e) => return FilterResult::Fatal(e),
-                        }
-                    }
-                    // Passes if exactly one filter passed.
-                    FilterResult::from_bool(
-                        passed == 1,
-                        operator,
-                        format!("{} filters passed, expected exactly 1", passed),
-                        filter_path,
-                        obj_path,
-                    )
-                }
-                _ => FilterResult::fatal_invalid_filter(
-                    format!("{} arg must be an array", operator),
-                    filter_path,
-                    obj_path,
-                ),
-            },
-            "$not" => {
-                match self.inner_matches(operator_arg, value, filter_path, obj_path) {
-                    // Passes if the filter fails.
-                    FilterResult::Pass => FilterResult::operator_failed(
-                        operator,
-                        "filter needed to fail, but it passed",
-                        filter_path,
-                        obj_path,
-                    ),
-                    // Fails if the filter passes.
-                    FilterResult::Fail(_) => FilterResult::Pass,
-                    // Pass fatal errors through.
-                    FilterResult::Fatal(e) => FilterResult::Fatal(e),
-                }
+            "$exists" => {
+                self.handle_exists_op(operator, operator_arg, value, filter_path, obj_path)
             }
+            // Logical operators
+            "$and" => self.handle_and_op(operator, operator_arg, value, filter_path, obj_path),
+            "$or" => self.handle_or_op(operator, operator_arg, value, filter_path, obj_path),
+            "$xor" => self.handle_xor_op(operator, operator_arg, value, filter_path, obj_path),
+            "$not" => self.handle_not_op(operator, operator_arg, value, filter_path, obj_path),
             // The rest of the operators require a value.
             _ => {
                 let value = match value {
@@ -987,10 +892,9 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
                             };
 
                             // Decode the protobuf value.
-                            let proto_value_json = match decode_protobuf.decode(
-                                proto_type.to_string(),
-                                proto_value_encoded,
-                            ) {
+                            let proto_value_json = match decode_protobuf
+                                .decode(proto_type.to_string(), proto_value_encoded)
+                            {
                                 Ok(json) => json,
                                 Err(e) => {
                                     return FilterResult::operator_failed(
@@ -1088,7 +992,7 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
 
 // Helper to reduce path allocations
 #[inline]
-fn append_path(base: &str, segment: &str) -> String {
+pub fn append_path(base: &str, segment: &str) -> String {
     let mut path = String::with_capacity(base.len() + segment.len() + 1);
     path.push_str(base);
     path.push('.');
@@ -1097,7 +1001,7 @@ fn append_path(base: &str, segment: &str) -> String {
 }
 
 #[inline]
-fn append_array_path(base: &str, index: usize) -> String {
+pub fn append_array_path(base: &str, index: usize) -> String {
     let mut path = String::with_capacity(base.len() + 10); // reasonable for most indices
     path.push_str(base);
     path.push('[');
