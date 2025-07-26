@@ -1,9 +1,6 @@
-use base64::Engine;
-use serde_json::json;
-
 use crate::{
     decoder::{NoopDecoder, ProtobufDecoder},
-    gt_json, lt_json, FilterResult, BASE64_ENGINE,
+    FilterResult,
 };
 
 pub struct CwJsonFilter<D> {
@@ -267,51 +264,19 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
                     "$ne" | "$neq" => {
                         self.handle_neq_op(operator, operator_arg, value, filter_path, obj_path)
                     }
-                    "$lt" | "$lte" => lt_json(value, operator_arg).map_or_else(
-                        || {
-                            FilterResult::operator_failed(
-                                operator,
-                                "filter and value are not both numbers or both strings",
-                                filter_path,
-                                obj_path,
-                            )
-                        },
-                        |lt| {
-                            FilterResult::from_bool(
-                                lt || (operator == "$lte" && value == operator_arg),
-                                operator,
-                                if operator == "$lt" {
-                                    "value >= filter"
-                                } else {
-                                    "value > filter"
-                                },
-                                filter_path,
-                                obj_path,
-                            )
-                        },
+                    "$lt" | "$lte" => self.handle_lt_check_op(
+                        operator,
+                        operator_arg,
+                        value,
+                        filter_path,
+                        obj_path,
                     ),
-                    "$gt" | "$gte" => gt_json(value, operator_arg).map_or_else(
-                        || {
-                            FilterResult::operator_failed(
-                                operator,
-                                "filter and value are not both numbers or both strings",
-                                filter_path,
-                                obj_path,
-                            )
-                        },
-                        |gt| {
-                            FilterResult::from_bool(
-                                gt || (operator == "$gte" && value == operator_arg),
-                                operator,
-                                if operator == "$gt" {
-                                    "value <= filter"
-                                } else {
-                                    "value < filter"
-                                },
-                                filter_path,
-                                obj_path,
-                            )
-                        },
+                    "$gt" | "$gte" => self.handle_gt_check_op(
+                        operator,
+                        operator_arg,
+                        value,
+                        filter_path,
+                        obj_path,
                     ),
                     "$range" | "$range_exclusive" | "$between" | "$between_exclusive" => {
                         self.handle_range_op(operator, operator_arg, value, filter_path, obj_path)

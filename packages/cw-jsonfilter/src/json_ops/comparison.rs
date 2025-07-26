@@ -129,4 +129,70 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
             ),
         }
     }
+
+    pub fn handle_lt_check_op(
+        &self,
+        operator: &str,
+        operator_arg: &serde_json::Value,
+        value: &serde_json::Value,
+        filter_path: &str,
+        obj_path: &str,
+    ) -> FilterResult {
+        lt_json(value, operator_arg).map_or_else(
+            || {
+                FilterResult::operator_failed(
+                    operator,
+                    "filter and value are not both numbers or both strings",
+                    filter_path,
+                    obj_path,
+                )
+            },
+            |lt| {
+                FilterResult::from_bool(
+                    lt || (operator == "$lte" && value == operator_arg),
+                    operator,
+                    if operator == "$lt" {
+                        "value >= filter"
+                    } else {
+                        "value > filter"
+                    },
+                    filter_path,
+                    obj_path,
+                )
+            },
+        )
+    }
+
+    pub fn handle_gt_check_op(
+        &self,
+        operator: &str,
+        operator_arg: &serde_json::Value,
+        value: &serde_json::Value,
+        filter_path: &str,
+        obj_path: &str,
+    ) -> FilterResult {
+        gt_json(value, operator_arg).map_or_else(
+            || {
+                FilterResult::operator_failed(
+                    operator,
+                    "filter and value are not both numbers or both strings",
+                    filter_path,
+                    obj_path,
+                )
+            },
+            |gt| {
+                FilterResult::from_bool(
+                    gt || (operator == "$gte" && value == operator_arg),
+                    operator,
+                    if operator == "$gt" {
+                        "value <= filter"
+                    } else {
+                        "value < filter"
+                    },
+                    filter_path,
+                    obj_path,
+                )
+            },
+        )
+    }
 }
