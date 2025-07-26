@@ -57,7 +57,8 @@ impl Operator {
 
             // Comparison
             "$eq" => Operator::Eq,
-            "$ne" | "$neq" => Operator::Neq,
+            "$ne" => Operator::Ne,
+            "$neq" => Operator::Neq,
             "$lt" => Operator::Lt,
             "$lte" => Operator::Lte,
             "$gt" => Operator::Gt,
@@ -79,7 +80,8 @@ impl Operator {
             "$endsWith" => Operator::EndsWith,
 
             // Transformers
-            "#len" | "#size" => Operator::Len,
+            "#len" => Operator::Len,
+            "#size" => Operator::Size,
             "#to_string" => Operator::ToString,
             "#to_number" => Operator::ToNumber,
             "#lower" => Operator::Lower,
