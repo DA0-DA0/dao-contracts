@@ -2,6 +2,7 @@ pub mod decoder;
 pub mod filter;
 pub mod math;
 pub mod result;
+pub mod json_ops;
 
 #[cfg(test)]
 mod test;

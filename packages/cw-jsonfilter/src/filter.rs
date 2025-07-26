@@ -1,7 +1,7 @@
 use base64::Engine;
 use serde_json::json;
 
-use crate::{decoder::{NoopDecoder, ProtobufDecoder}, gt_json, lt_json, FilterResult, BASE64_ENGINE};
+use crate::{decoder::{NoopDecoder, ProtobufDecoder}, gt_json,  lt_json, FilterResult, BASE64_ENGINE};
 
 pub struct CwJsonFilter<D> {
     /// optional ProtobufDecoder trait object to decode
@@ -241,23 +241,7 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
     ) -> FilterResult {
         match operator {
             // Existence operator
-            "$exists" => match operator_arg {
-                serde_json::Value::Bool(exists) => FilterResult::from_bool(
-                    *exists == value.is_some(),
-                    operator,
-                    match value.is_some() {
-                        true => "value exists",
-                        false => "value does not exist",
-                    },
-                    filter_path,
-                    obj_path,
-                ),
-                _ => FilterResult::fatal_invalid_filter(
-                    format!("{} arg must be a boolean", operator),
-                    filter_path,
-                    obj_path,
-                ),
-            },
+            "$exists" => self.handle_exists_op(operator, operator_arg, value, filter_path, obj_path),
             // Logical operators
             "$and" => match operator_arg {
                 serde_json::Value::Array(and_arg) => {
