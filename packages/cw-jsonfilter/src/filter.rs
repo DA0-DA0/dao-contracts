@@ -1,5 +1,6 @@
 use crate::{
     decoder::{NoopDecoder, ProtobufDecoder},
+    json_ops::operator::Operator,
     FilterResult,
 };
 
@@ -239,49 +240,64 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
         filter_path: &str,
         obj_path: &str,
     ) -> FilterResult {
-        match operator {
+        let Some(op_kind) = Operator::from_name(operator) else {
+            return FilterResult::fatal_unknown_operator(operator, filter_path, obj_path);
+        };
+        match op_kind {
             // Existence operator
-            "$exists" => {
+            Operator::Exists => {
                 self.handle_exists_op(operator, operator_arg, value, filter_path, obj_path)
             }
+
             // Logical operators
-            "$and" => self.handle_and_op(operator, operator_arg, value, filter_path, obj_path),
-            "$or" => self.handle_or_op(operator, operator_arg, value, filter_path, obj_path),
-            "$xor" => self.handle_xor_op(operator, operator_arg, value, filter_path, obj_path),
-            "$not" => self.handle_not_op(operator, operator_arg, value, filter_path, obj_path),
+            Operator::And => {
+                self.handle_and_op(operator, operator_arg, value, filter_path, obj_path)
+            }
+            Operator::Or => self.handle_or_op(operator, operator_arg, value, filter_path, obj_path),
+            Operator::Xor => {
+                self.handle_xor_op(operator, operator_arg, value, filter_path, obj_path)
+            }
+            Operator::Not => {
+                self.handle_not_op(operator, operator_arg, value, filter_path, obj_path)
+            }
 
             // Comparison operators
-            "$eq" => self.handle_eq_op(operator, operator_arg, value, filter_path, obj_path),
-            "$ne" | "$neq" => {
+            Operator::Eq => self.handle_eq_op(operator, operator_arg, value, filter_path, obj_path),
+            Operator::Ne | Operator::Neq => {
                 self.handle_neq_op(operator, operator_arg, value, filter_path, obj_path)
             }
-            "$lt" | "$lte" => {
+            Operator::Lt | Operator::Lte => {
                 self.handle_lt_check_op(operator, operator_arg, value, filter_path, obj_path)
             }
-            "$gt" | "$gte" => {
+            Operator::Gt | Operator::Gte => {
                 self.handle_gt_check_op(operator, operator_arg, value, filter_path, obj_path)
             }
-            "$range" | "$range_exclusive" | "$between" | "$between_exclusive" => {
+            Operator::Range
+            | Operator::RangeExclusive
+            | Operator::Between
+            | Operator::BetweenExclusive => {
                 self.handle_range_op(operator, operator_arg, value, filter_path, obj_path)
             }
 
             // type operator
-            "$type" => self.handle_type_op(operator, operator_arg, value, filter_path, obj_path),
+            Operator::Type => {
+                self.handle_type_op(operator, operator_arg, value, filter_path, obj_path)
+            }
 
             // Array/String operators
-            "$contains" => {
+            Operator::Contains => {
                 self.handle_contains_op(operator, operator_arg, value, filter_path, obj_path)
             }
-
-            // Array operators
-            "$overlap" => {
+            Operator::Overlap => {
                 self.handle_overlaps_op(operator, operator_arg, value, filter_path, obj_path)
             }
-            "$any" => self.handle_any_op(operator, operator_arg, value, filter_path, obj_path),
-            "$all" => self.handle_all_op(operator, operator_arg, value, filter_path, obj_path),
-
-            // String operators
-            "$startsWith" | "$endsWith" => self.handle_starts_ends_with_op(
+            Operator::Any => {
+                self.handle_any_op(operator, operator_arg, value, filter_path, obj_path)
+            }
+            Operator::All => {
+                self.handle_all_op(operator, operator_arg, value, filter_path, obj_path)
+            }
+            Operator::StartsWith | Operator::EndsWith => self.handle_starts_ends_with_op(
                 operator,
                 operator_arg,
                 value,
@@ -290,38 +306,39 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
             ),
 
             // Value transformers
-            "#len" | "#size" => {
+            Operator::Len | Operator::Size => {
                 self.handle_size_op(operator, operator_arg, value, filter_path, obj_path)
             }
-            "#to_string" => {
+            Operator::ToString => {
                 self.handle_to_string_op(operator, operator_arg, value, filter_path, obj_path)
             }
-            "#to_number" => {
+            Operator::ToNumber => {
                 self.handle_to_number_op(operator, operator_arg, value, filter_path, obj_path)
             }
-            "#lower" => {
+            Operator::Lower => {
                 self.handle_to_lower_op(operator, operator_arg, value, filter_path, obj_path)
             }
-            "#upper" => {
+            Operator::Upper => {
                 self.handle_to_upper_op(operator, operator_arg, value, filter_path, obj_path)
             }
-            "#keys" => self.handle_to_keys_op(operator, operator_arg, value, filter_path, obj_path),
-            "#values" => {
+            Operator::Keys => {
+                self.handle_to_keys_op(operator, operator_arg, value, filter_path, obj_path)
+            }
+            Operator::Values => {
                 self.handle_to_values_op(operator, operator_arg, value, filter_path, obj_path)
             }
-            "#replace" => {
+            Operator::Replace => {
                 self.handle_replace_op(operator, operator_arg, value, filter_path, obj_path)
             }
-            "#base64" => {
+            Operator::Base64 => {
                 self.handle_base64_op(operator, operator_arg, value, filter_path, obj_path)
             }
-            "#proto" => self.handle_proto_op(operator, operator_arg, value, filter_path, obj_path),
-            "#stargate" => {
+            Operator::Proto => {
+                self.handle_proto_op(operator, operator_arg, value, filter_path, obj_path)
+            }
+            Operator::Stargate => {
                 self.handle_stargate_op(operator, operator_arg, value, filter_path, obj_path)
             }
-
-            // other operators not supported
-            _ => FilterResult::fatal_unknown_operator(operator, filter_path, obj_path),
         }
     }
 }
