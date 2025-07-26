@@ -97,3 +97,11 @@ impl Operator {
         Some(operator)
     }
 }
+
+pub struct OperatorContext<'a> {
+    pub operator: &'a str,
+    pub operator_arg: &'a serde_json::Value,
+    pub value: Option<&'a serde_json::Value>,
+    pub filter_path: &'a str,
+    pub obj_path: &'a str,
+}
