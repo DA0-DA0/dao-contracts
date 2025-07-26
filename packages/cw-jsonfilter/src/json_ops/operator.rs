@@ -1,3 +1,4 @@
+/// JSON Operator enum that declares the supported operations
 pub enum Operator {
     // existence
     Exists,
@@ -77,7 +78,7 @@ impl Operator {
             "$startsWith" => Operator::StartsWith,
             "$endsWith" => Operator::EndsWith,
 
-            // Transforms
+            // Transformers
             "#len" | "#size" => Operator::Len,
             "#to_string" => Operator::ToString,
             "#to_number" => Operator::ToNumber,
@@ -98,10 +99,19 @@ impl Operator {
     }
 }
 
+/// Helper type used for wrapping the fields relevant for inner
+/// operator matching functionality.
 pub struct OperatorContext<'a> {
+    /// The operator to apply to the value.
     pub operator: &'a str,
+    /// The argument associated with the operator.
     pub operator_arg: &'a serde_json::Value,
+    /// The value to apply the operator filter to. If None, the
+    /// value does not exist in the object at the path specified by
+    /// `obj_path`.
     pub value: Option<&'a serde_json::Value>,
+    /// The path to the filter operator being applied.
     pub filter_path: &'a str,
+    /// The path to the value from the object bei.
     pub obj_path: &'a str,
 }
