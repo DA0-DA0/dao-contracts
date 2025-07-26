@@ -96,13 +96,14 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
                     // the absence of an object.
                     if is_operator || is_transformer {
                         let filter_path = &append_path(filter_path, filter_key);
-                        match self.inner_matches_operator(
-                            filter_key,
-                            filter_val,
-                            obj,
+                        let op_ctx = OperatorContext {
+                            operator: filter_key,
+                            operator_arg: filter_val,
+                            value: obj,
                             filter_path,
                             obj_path,
-                        ) {
+                        };
+                        match self.inner_matches_operator(op_ctx) {
                             // If success, continue to next key.
                             FilterResult::Pass => continue,
                             // If failure, return the error.
@@ -209,13 +210,14 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
     ///
     /// # Arguments
     ///
-    /// * `operator` - The operator to apply to the value.
-    /// * `operator_arg` - The argument associated with the operator.
-    /// * `value` - The value to apply the operator filter to. If None, the
-    ///   value does not exist in the object at the path specified by
-    ///   `obj_path`.
-    /// * `filter_path` - The path to the filter operator being applied.
-    /// * `obj_path` - The path to the value from the object bei.
+    /// * `op_ctx` - OperatorContext helper type that wraps around the following:
+    ///     * `operator` - The operator to apply to the value.
+    ///     * `operator_arg` - The argument associated with the operator.
+    ///     * `value` - The value to apply the operator filter to. If None, the
+    ///       value does not exist in the object at the path specified by
+    ///       `obj_path`.
+    ///     * `filter_path` - The path to the filter operator being applied.
+    ///     * `obj_path` - The path to the value from the object bei.
     ///
     /// # Returns
     ///
@@ -232,24 +234,13 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
     ///   context.
     /// * The filter format is invalid.
     /// * The value is not found in the object when it is needed.
-    fn inner_matches_operator(
-        &self,
-        operator: &str,
-        operator_arg: &serde_json::Value,
-        value: Option<&serde_json::Value>,
-        filter_path: &str,
-        obj_path: &str,
-    ) -> FilterResult {
-        let Some(op_kind) = Operator::from_name(operator) else {
-            return FilterResult::fatal_unknown_operator(operator, filter_path, obj_path);
-        };
-
-        let op_ctx = OperatorContext {
-            operator,
-            operator_arg,
-            value,
-            filter_path,
-            obj_path,
+    fn inner_matches_operator(&self, op_ctx: OperatorContext) -> FilterResult {
+        let Some(op_kind) = Operator::from_name(op_ctx.operator) else {
+            return FilterResult::fatal_unknown_operator(
+                op_ctx.operator,
+                op_ctx.filter_path,
+                op_ctx.obj_path,
+            );
         };
 
         match op_kind {
@@ -272,7 +263,7 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
             | Operator::Between
             | Operator::BetweenExclusive => self.handle_range_op(op_ctx),
 
-            // type operator
+            // Type operator
             Operator::Type => self.handle_type_op(op_ctx),
 
             // Array/String operators
