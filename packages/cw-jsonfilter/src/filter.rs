@@ -1,6 +1,9 @@
 use crate::{
     decoder::{NoopDecoder, ProtobufDecoder},
-    json_ops::operator::{Operator, OperatorContext},
+    json_ops::{
+        operator::{Operator, OperatorContext},
+        utils::{append_array_path, append_path},
+    },
     FilterResult,
 };
 
@@ -235,6 +238,7 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
     /// * The filter format is invalid.
     /// * The value is not found in the object when it is needed.
     fn inner_matches_operator(&self, op_ctx: OperatorContext) -> FilterResult {
+        // validate the operator
         let Some(op_kind) = Operator::from_name(op_ctx.operator) else {
             return FilterResult::fatal_unknown_operator(
                 op_ctx.operator,
@@ -243,6 +247,7 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
             );
         };
 
+        // depending on the operator kind we branch out to individual handlers
         match op_kind {
             // Existence operator
             Operator::Exists => self.handle_exists_op(op_ctx),
@@ -287,24 +292,4 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
             Operator::Stargate => self.handle_stargate_op(op_ctx),
         }
     }
-}
-
-// Helper to reduce path allocations
-#[inline]
-pub fn append_path(base: &str, segment: &str) -> String {
-    let mut path = String::with_capacity(base.len() + segment.len() + 1);
-    path.push_str(base);
-    path.push('.');
-    path.push_str(segment);
-    path
-}
-
-#[inline]
-pub fn append_array_path(base: &str, index: usize) -> String {
-    let mut path = String::with_capacity(base.len() + 10); // reasonable for most indices
-    path.push_str(base);
-    path.push('[');
-    path.push_str(&index.to_string());
-    path.push(']');
-    path
 }
