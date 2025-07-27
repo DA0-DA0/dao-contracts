@@ -90,121 +90,148 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
         match filter {
             // Objects process each key present in the filter, behaving like an
             // $and operation for all keys.
-            serde_json::Value::Object(filter_obj) => {
-                for (filter_key, filter_val) in filter_obj {
-                    let is_operator = filter_key.starts_with('$');
-                    let is_transformer = filter_key.starts_with('#');
-                    // The object doesn't have to exist at this point, since the
-                    // existence operator (and logical operators) can operate on
-                    // the absence of an object.
-                    if is_operator || is_transformer {
-                        let filter_path = &append_path(filter_path, filter_key);
-                        let op_ctx = OperatorContext {
-                            operator: filter_key,
-                            operator_arg: filter_val,
-                            value: obj,
-                            filter_path,
-                            obj_path,
-                        };
-                        match self.inner_matches_operator(op_ctx) {
+            serde_json::Value::Object(filter_obj) => self.handle_object_filter(filter_obj, filter_path, obj_path, obj),
+            // Arrays implicitly match each item in order, behaving like an $and
+            // operation for all items, while also matching the array as a
+            // whole (exact same number of items).
+            serde_json::Value::Array(filter_list) => self.handle_array_filter(filter_path, obj_path, obj, filter_list),
+            // Match primitive values directly.
+            _ => self.handle_primitive_filter(filter, filter_path, obj_path, obj),
+        }
+    }
+
+    fn handle_object_filter(
+        &self,
+        filter_obj: &serde_json::Map<String, serde_json::Value>,
+        filter_path: &str,
+        obj_path: &str,
+        obj: Option<&serde_json::Value>,
+    ) -> FilterResult {
+        for (filter_key, filter_val) in filter_obj {
+            let is_operator = filter_key.starts_with('$');
+            let is_transformer = filter_key.starts_with('#');
+            // The object doesn't have to exist at this point, since the
+            // existence operator (and logical operators) can operate on
+            // the absence of an object.
+            if is_operator || is_transformer {
+                let filter_path = &append_path(filter_path, filter_key);
+                let op_ctx = OperatorContext {
+                    operator: filter_key,
+                    operator_arg: filter_val,
+                    value: obj,
+                    filter_path,
+                    obj_path,
+                };
+                match self.inner_matches_operator(op_ctx) {
+                    // If success, continue to next key.
+                    FilterResult::Pass => continue,
+                    // If failure, return the error.
+                    failure_result => return failure_result,
+                }
+            } else {
+                // The object must be present at this point since we
+                // need to dig deeper into the object.
+                let obj = match obj {
+                    Some(o) => o,
+                    None => return FilterResult::key_not_found(filter_path, obj_path),
+                };
+
+                // If the key is a stringified number and the object is
+                // an array, index into the array.
+                match (obj.as_array(), filter_key.parse::<usize>()) {
+                    (Some(obj_array), Ok(index)) => {
+                        let filter_path = &append_array_path(filter_path, index);
+                        let obj_path = &append_array_path(obj_path, index);
+                        let value = obj_array.get(index);
+                        match self.inner_matches(filter_val, value, filter_path, obj_path) {
                             // If success, continue to next key.
                             FilterResult::Pass => continue,
                             // If failure, return the error.
                             failure_result => return failure_result,
                         }
-                    } else {
-                        // The object must be present at this point since we
-                        // need to dig deeper into the object.
-                        let obj = match obj {
-                            Some(o) => o,
-                            None => return FilterResult::key_not_found(filter_path, obj_path),
-                        };
-
-                        // If the key is a stringified number and the object is
-                        // an array, index into the array.
-                        match (obj.as_array(), filter_key.parse::<usize>()) {
-                            (Some(obj_array), Ok(index)) => {
-                                let filter_path = &append_array_path(filter_path, index);
-                                let obj_path = &append_array_path(obj_path, index);
-                                let value = obj_array.get(index);
-                                match self.inner_matches(filter_val, value, filter_path, obj_path) {
-                                    // If success, continue to next key.
-                                    FilterResult::Pass => continue,
-                                    // If failure, return the error.
-                                    failure_result => return failure_result,
-                                }
-                            }
-                            _ => {
-                                let filter_path = &append_path(filter_path, filter_key);
-                                let obj_path = &append_path(obj_path, filter_key);
-                                let value = obj.get(filter_key);
-                                match self.inner_matches(filter_val, value, filter_path, obj_path) {
-                                    // If success, continue to next key.
-                                    FilterResult::Pass => continue,
-                                    // If failure, return the error.
-                                    failure_result => return failure_result,
-                                }
-                            }
-                        }
                     }
-                }
-
-                // Passes if all keys matched or there are no keys.
-                FilterResult::Pass
-            }
-            // Arrays implicitly match each item in order, behaving like an $and
-            // operation for all items, while also matching the array as a
-            // whole (exact same number of items).
-            serde_json::Value::Array(filter_list) => match obj {
-                Some(serde_json::Value::Array(obj_list)) => {
-                    let filter_len = filter_list.len();
-                    let obj_len = obj_list.len();
-                    if filter_len != obj_len {
-                        return FilterResult::operator_failed(
-                            "[...]",
-                            format!(
-                                "value array length ({}) != filter array length ({})",
-                                obj_len, filter_len
-                            ),
-                            filter_path,
-                            obj_path,
-                        );
-                    }
-
-                    for (i, sub_filter) in filter_list.iter().enumerate() {
-                        let filter_path = &append_array_path(filter_path, i);
-                        let obj_path = &append_array_path(obj_path, i);
-                        match self.inner_matches(sub_filter, obj_list.get(i), filter_path, obj_path)
-                        {
-                            // If success, continue to next item.
+                    _ => {
+                        let filter_path = &append_path(filter_path, filter_key);
+                        let obj_path = &append_path(obj_path, filter_key);
+                        let value = obj.get(filter_key);
+                        match self.inner_matches(filter_val, value, filter_path, obj_path) {
+                            // If success, continue to next key.
                             FilterResult::Pass => continue,
                             // If failure, return the error.
                             failure_result => return failure_result,
-                        };
+                        }
                     }
-
-                    // Passes if all filters matched or there are no filters.
-                    FilterResult::Pass
                 }
-                Some(_) => FilterResult::operator_failed(
-                    "[...]",
-                    "value is not an array",
-                    filter_path,
-                    obj_path,
-                ),
-                None => FilterResult::key_not_found(filter_path, obj_path),
-            },
-            // Match primitive values directly.
-            _ => match obj.map(|o| o == filter) {
-                Some(true) => FilterResult::Pass,
-                Some(false) => FilterResult::operator_failed(
-                    "implicit equality check",
-                    "value does not match filter",
-                    filter_path,
-                    obj_path,
-                ),
-                None => FilterResult::key_not_found(filter_path, obj_path),
-            },
+            }
+        }
+
+        // Passes if all keys matched or there are no keys.
+        FilterResult::Pass
+    }
+
+    fn handle_array_filter(
+        &self,
+        filter_path: &str,
+        obj_path: &str,
+        obj: Option<&serde_json::Value>,
+        filter_list: &Vec<serde_json::Value>
+    ) -> FilterResult {
+        match obj {
+            Some(serde_json::Value::Array(obj_list)) => {
+                let filter_len = filter_list.len();
+                let obj_len = obj_list.len();
+                if filter_len != obj_len {
+                    return FilterResult::operator_failed(
+                        "[...]",
+                        format!(
+                            "value array length ({obj_len}) != filter array length ({filter_len})"
+                        ),
+                        filter_path,
+                        obj_path,
+                    );
+                }
+
+                for (i, sub_filter) in filter_list.iter().enumerate() {
+                    let filter_path = &append_array_path(filter_path, i);
+                    let obj_path = &append_array_path(obj_path, i);
+                    match self.inner_matches(sub_filter, obj_list.get(i), filter_path, obj_path)
+                    {
+                        // If success, continue to next item.
+                        FilterResult::Pass => continue,
+                        // If failure, return the error.
+                        failure_result => return failure_result,
+                    };
+                }
+
+                // Passes if all filters matched or there are no filters.
+                FilterResult::Pass
+            }
+            Some(_) => FilterResult::operator_failed(
+                "[...]",
+                "value is not an array",
+                filter_path,
+                obj_path,
+            ),
+            None => FilterResult::key_not_found(filter_path, obj_path),
+        }
+    }
+
+    fn handle_primitive_filter(
+        &self,
+        filter: &serde_json::Value,
+        filter_path: &str,
+        obj_path: &str,
+        obj: Option<&serde_json::Value>,
+    ) -> FilterResult {
+        match obj.map(|o| o == filter) {
+            Some(true) => FilterResult::Pass,
+            Some(false) => FilterResult::operator_failed(
+                "implicit equality check",
+                "value does not match filter",
+                filter_path,
+                obj_path,
+            ),
+            None => FilterResult::key_not_found(filter_path, obj_path),
         }
     }
 
