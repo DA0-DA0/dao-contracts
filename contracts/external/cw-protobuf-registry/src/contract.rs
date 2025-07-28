@@ -2,6 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError, StdResult,
+    Storage,
 };
 use cw2::set_contract_version;
 use cw_ownable::initialize_owner;
@@ -95,118 +96,145 @@ fn execute_register(
         return Err(ContractError::NoFiles {});
     }
 
+    // counters for response attributes
     let mut file_count = 0u32;
     let mut message_count = 0u32;
 
-    for (file_descriptor_set_index, file_descriptor_set) in
-        file_descriptor_sets.into_iter().enumerate()
-    {
-        let file_descriptor_set = FileDescriptorSet::decode(file_descriptor_set.as_slice())?;
-        for (new_fd_index, new_fd) in file_descriptor_set.file.into_iter().enumerate() {
-            let file_name =
-                new_fd
-                    .name
-                    .clone()
-                    .ok_or(ContractError::FileDescriptorMissingName {
-                        file_descriptor_index: new_fd_index,
-                        file_descriptor_set_index,
-                    })?;
-            let file_package =
-                new_fd
-                    .package
-                    .clone()
-                    .ok_or(ContractError::FileDescriptorMissingPackage {
-                        file_descriptor_index: new_fd_index,
-                        file_descriptor_name: file_name.clone(),
-                        file_descriptor_set_index,
-                    })?;
-
-            // Store map of messages' full names to their file names so their
-            // files can be looked up later when messages are referenced in
-            // filters.
-            for (message_descriptor_index, message_descriptor) in
-                new_fd.message_type.iter().enumerate()
-            {
-                let message_type_name = message_descriptor.name.clone().ok_or_else(|| {
-                    ContractError::MessageDescriptorMissingName {
-                        message_descriptor_index,
-                        file_name: file_name.clone(),
-                        file_package: file_package.clone(),
-                    }
-                })?;
-                let message_full_name = format!("{}.{}", file_package, message_type_name);
-
-                MESSAGES.save(deps.storage, message_full_name, &file_name)?;
-
-                message_count += 1;
-            }
-
-            // Get existing file descriptor data.
-            let existing_file_descriptor_data = FILES.may_load(deps.storage, file_name.clone())?;
-
-            // If file is already registered, merge the files.
-            if let Some(existing_fd_data) = existing_file_descriptor_data {
-                let mut existing_fd = FileDescriptorProto::decode(existing_fd_data.as_slice())?;
-
-                // If the file package changed, error.
-                if existing_fd.package.as_ref() != Some(&file_package) {
-                    return Err(ContractError::FileDescriptorPackageChanged {
-                        file_name,
-                        file_package: existing_fd.package.clone().unwrap_or_default(),
-                        new_file_package: file_package,
-                    });
-                }
-
-                // Add new or overwrite existing dependencies/messages/enums.
-
-                for dependency in new_fd.dependency {
-                    if !existing_fd.dependency.contains(&dependency) {
-                        existing_fd.dependency.push(dependency);
-                    }
-                }
-
-                for mut new_message in new_fd.message_type {
-                    if let Some(existing_message) = existing_fd
-                        .message_type
-                        .iter_mut()
-                        .find(|m| m.name == new_message.name)
-                    {
-                        // Replace with new message.
-                        std::mem::swap(existing_message, &mut new_message);
-                    } else {
-                        // Add new message.
-                        existing_fd.message_type.push(new_message);
-                    }
-                }
-
-                for mut new_enum in new_fd.enum_type {
-                    if let Some(existing_enum_type) = existing_fd
-                        .enum_type
-                        .iter_mut()
-                        .find(|e| e.name == new_enum.name)
-                    {
-                        // Replace with new enum.
-                        std::mem::swap(existing_enum_type, &mut new_enum);
-                    } else {
-                        // Add new enum.
-                        existing_fd.enum_type.push(new_enum);
-                    }
-                }
-
-                FILES.save(deps.storage, file_name, &existing_fd.encode_to_vec())?;
-            } else {
-                let file_descriptor_data = new_fd.encode_to_vec();
-                FILES.save(deps.storage, file_name, &file_descriptor_data)?;
-            }
-
-            file_count += 1;
-        }
+    // iterate over each encoded file descriptor set
+    for (fds_i, fds_bytes) in file_descriptor_sets.into_iter().enumerate() {
+        // decode the file descriptor bytes into a vec of FileDescriptorProto and
+        // attempt to register the result
+        let file_descriptor_set = FileDescriptorSet::decode(fds_bytes.as_slice())?;
+        try_register_fds(
+            deps.storage,
+            file_descriptor_set.file,
+            fds_i,
+            &mut file_count,
+            &mut message_count,
+        )?;
     }
 
     Ok(Response::new()
         .add_attribute("action", "register")
         .add_attribute("file_count", file_count.to_string())
         .add_attribute("message_count", message_count.to_string()))
+}
+
+/// registers descriptor set files.
+fn try_register_fds(
+    store: &mut dyn Storage,
+    fds_files: Vec<FileDescriptorProto>,
+    fds_i: usize,
+    file_count: &mut u32,
+    message_count: &mut u32,
+) -> Result<(), ContractError> {
+    // iterate over each of the provided file descriptor set files
+    for (new_fd_index, new_fd) in fds_files.into_iter().enumerate() {
+        let file_name = new_fd
+            .name
+            .clone()
+            .ok_or(ContractError::FileDescriptorMissingName {
+                file_descriptor_index: new_fd_index,
+                file_descriptor_set_index: fds_i,
+            })?;
+        let file_package =
+            new_fd
+                .package
+                .clone()
+                .ok_or(ContractError::FileDescriptorMissingPackage {
+                    file_descriptor_index: new_fd_index,
+                    file_descriptor_name: file_name.clone(),
+                    file_descriptor_set_index: fds_i,
+                })?;
+
+        // Store map of messages' full names to their file names so their
+        // files can be looked up later when messages are referenced in
+        // filters.
+        for (message_descriptor_index, descriptor) in new_fd.message_type.iter().enumerate() {
+            let message_type_name = descriptor.name.as_ref().ok_or_else(|| {
+                ContractError::MessageDescriptorMissingName {
+                    message_descriptor_index,
+                    file_name: file_name.to_string(),
+                    file_package: file_package.to_string(),
+                }
+            })?;
+            let message_full_name = format!("{}.{}", file_package, message_type_name);
+
+            MESSAGES.save(store, message_full_name, &file_name)?;
+
+            *message_count += 1;
+        }
+
+        match FILES.may_load(store, file_name.to_string())? {
+            // If file is already registered, merge the files.
+            Some(existing_fd_data) => {
+                merge_file_descriptors(store, existing_fd_data, file_package, file_name, new_fd)?
+            }
+            // otherwise, write a new file descriptor under the given file name
+            None => {
+                let file_descriptor_data = new_fd.encode_to_vec();
+                FILES.save(store, file_name, &file_descriptor_data)?;
+            }
+        }
+
+        *file_count += 1;
+    }
+
+    Ok(())
+}
+
+fn merge_file_descriptors(
+    store: &mut dyn Storage,
+    existing_fd_data: Vec<u8>,
+    file_package: String,
+    file_name: String,
+    new_fd: FileDescriptorProto,
+) -> Result<(), ContractError> {
+    let mut existing_fd = FileDescriptorProto::decode(existing_fd_data.as_slice())?;
+
+    // If the file package changed, error.
+    if existing_fd.package.as_deref() != Some(file_package.as_str()) {
+        return Err(ContractError::FileDescriptorPackageChanged {
+            file_name,
+            file_package: existing_fd.package.unwrap_or_default(),
+            new_file_package: file_package,
+        });
+    }
+
+    // Add new or overwrite existing dependencies/messages/enums.
+    for dep in new_fd.dependency {
+        if !existing_fd.dependency.contains(&dep) {
+            existing_fd.dependency.push(dep);
+        }
+    }
+
+    for new_message in new_fd.message_type {
+        if let Some(i) = existing_fd
+            .message_type
+            .iter()
+            .position(|m| m.name == new_message.name)
+        {
+            existing_fd.message_type[i] = new_message; // replace
+        } else {
+            existing_fd.message_type.push(new_message); // insert
+        }
+    }
+
+    for new_enum in new_fd.enum_type {
+        if let Some(i) = existing_fd
+            .enum_type
+            .iter()
+            .position(|e| e.name == new_enum.name)
+        {
+            existing_fd.enum_type[i] = new_enum; // replace
+        } else {
+            existing_fd.enum_type.push(new_enum); // insert
+        }
+    }
+
+    FILES.save(store, file_name, &existing_fd.encode_to_vec())?;
+
+    Ok(())
 }
 
 fn execute_unregister(
