@@ -39,7 +39,7 @@ pub fn instantiate(
         None => info.sender.to_string(),
     };
 
-    // initialize_owner call performs the addr validation (if set)
+    // initialize_owner call performs the addr validation
     initialize_owner(deps.storage, deps.api, Some(owner))?;
 
     // Initialize protobuf registry by either creating it or using an existing

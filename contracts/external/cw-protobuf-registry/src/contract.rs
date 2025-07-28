@@ -35,12 +35,14 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // Default the owner to the sender.
-    let owner = msg.owner.map_or_else(
-        || Ok(info.sender.clone()),
-        |owner| deps.api.addr_validate(&owner),
-    )?;
-    initialize_owner(deps.storage, deps.api, Some(owner.as_str()))?;
+    // Default the owner to the sender if unset
+    let owner = &match msg.owner {
+        Some(addr) => addr,
+        None => info.sender.to_string(),
+    };
+
+    // initialize_owner call performs the addr validation
+    initialize_owner(deps.storage, deps.api, Some(owner))?;
 
     Ok(Response::new()
         .add_attribute("action", "instantiate")
