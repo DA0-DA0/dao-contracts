@@ -85,6 +85,13 @@ fn execute_update_ownership(
         .add_attributes(ownership.into_attributes()))
 }
 
+/// accepts a list of FileDescriptorSet objects, which are the
+/// compiled output of .proto files.
+/// For each file descriptor, it stores the raw descriptor and
+/// indexes all the message types within it.
+/// If a file with the same name already exists, it merges the new
+/// definitions with the old ones. This allows for updating existing
+/// protobuf definitions.
 fn execute_register(
     deps: DepsMut,
     info: MessageInfo,
@@ -237,6 +244,14 @@ fn merge_file_descriptors(
     Ok(())
 }
 
+/// owner can provide a list of file names to remove from the registry.
+/// this will also remove all the associated message definitions from
+/// the storage.
+/// use message_limit parameter to handle cases where a single file
+/// contains a large number of messages that can't be all removed
+/// in a single transaction due to gas limits.
+/// this should function as an inverse of previous execute_register
+/// executions.
 fn execute_unregister(
     deps: DepsMut,
     info: MessageInfo,
@@ -296,6 +311,11 @@ fn execute_unregister(
         ))
 }
 
+/// eager loading for actual proto decoding.
+/// pre-generates and stores the FileDescriptorSet required
+/// to decode a specific message, including all its dependencies.
+/// this saves gas on the actual decoding, as the FileDescriptorSet
+/// does not need to be loaded just-in-time for each query_decode call.
 fn execute_prepare(
     deps: DepsMut,
     info: MessageInfo,
@@ -305,7 +325,7 @@ fn execute_prepare(
 
     for message in messages {
         // Only prepare messages that are not already prepared.
-        if !PREPARED.has(deps.storage, message.clone()) {
+        if !PREPARED.has(deps.storage, &message) {
             let fds = create_file_descriptor_set_for_messages(&deps.as_ref(), &[message.clone()])?
                 .encode_to_vec();
             PREPARED.save(deps.storage, message, &fds)?;
@@ -315,6 +335,8 @@ fn execute_prepare(
     Ok(Response::new().add_attribute("action", "prepare"))
 }
 
+/// allows the owner to remove the pre-generated
+/// FileDescriptorSet for a given list of messages
 fn execute_unprepare(
     deps: DepsMut,
     info: MessageInfo,
@@ -418,7 +440,7 @@ pub fn query_list_prepared(
 }
 
 fn query_prepared(deps: Deps, message_name: String) -> StdResult<PreparedResponse> {
-    let prepared = PREPARED.has(deps.storage, message_name);
+    let prepared = PREPARED.has(deps.storage, &message_name);
     Ok(PreparedResponse { prepared })
 }
 
@@ -430,7 +452,7 @@ fn query_file_descriptor_set(
     // file descriptor set. Otherwise, create a file descriptor set for all
     // messages.
     let file_descriptor_set =
-        if messages.len() == 1 && PREPARED.has(deps.storage, messages[0].clone()) {
+        if messages.len() == 1 && PREPARED.has(deps.storage, &messages[0]) {
             PREPARED.load(deps.storage, messages[0].clone())?
         } else {
             create_file_descriptor_set_for_messages(&deps, &messages)

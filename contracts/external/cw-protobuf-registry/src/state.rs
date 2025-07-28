@@ -1,6 +1,6 @@
 use cw_storage_plus::{Index, IndexList, IndexedMap, Map, MultiIndex};
 
-/// Map protobuf file name -> protobuf file descriptor proto data.
+/// Map protobuf file name -> raw protobuf file descriptor proto data.
 pub const FILES: Map<String, Vec<u8>> = Map::new("files");
 
 /// Map protobuf message descriptor name -> protobuf file name that contains it.
