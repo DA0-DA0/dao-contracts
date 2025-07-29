@@ -23,7 +23,7 @@ pub fn get_next_id(deps: DepsMut) -> StdResult<u64> {
         .map(|id| id - 1)
 }
 
-pub fn get_module_label(env: &Env, suffix: &str) -> String {
+fn get_module_label(env: &Env, suffix: &str) -> String {
     let last6 = env.contract.address.to_string().chars().rev().take(6).collect::<String>();
     format!("rbam-{}-{}", last6, suffix)
 }
