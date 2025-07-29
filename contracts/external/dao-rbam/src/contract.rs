@@ -3,8 +3,7 @@ use std::collections::HashSet;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Reply, Response,
-    StdError, StdResult, SubMsg, WasmMsg,
+    attr, to_json_binary, Attribute, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Reply, Response, StdError, StdResult, SubMsg, WasmMsg
 };
 use cw_storage_plus::Bound;
 
@@ -46,7 +45,7 @@ pub const PREPARE_PROTOBUF_REGISTRY_REPLY_ID: u64 = 3;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    mut deps: DepsMut,
+    deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -61,10 +60,11 @@ pub fn instantiate(
     DAO.save(deps.storage, &dao)?;
 
     // Default the owner to the DAO.
-    let owner = msg
-        .owner
-        .map_or_else(|| Ok(dao.clone()), |owner| deps.api.addr_validate(&owner))?;
-    initialize_owner(deps.storage, deps.api, Some(owner.as_str()))?;
+    let owner = match msg.owner {
+        Some(addr) => addr.to_string(),
+        None => dao.to_string(),
+    };
+    initialize_owner(deps.storage, deps.api, Some(&owner))?;
 
     let last_6_address_chars = env
         .contract
@@ -139,56 +139,69 @@ pub fn instantiate(
 
     // Create initial roles.
     if let Some(initial_roles) = msg.initial_roles {
-        for InitialRole {
-            name,
-            metadata,
-            authorizations,
-            assignments,
-            enabled,
-        } in initial_roles
-        {
-            let enabled = enabled.unwrap_or(true);
-            let role = Role::create(deps.branch(), name, metadata, enabled)?;
-            response = response.add_attribute("role_id", role.id.to_string());
+        let (role_attrs, role_submsgs) = try_create_initial_roles(deps, initial_roles)?;
+        response = response.add_attributes(role_attrs);
+        response = response.add_submessages(role_submsgs);
+    }
 
-            // Create initial authorizations for role.
-            if let Some(authorizations) = authorizations {
-                for InitialAuthorization {
+    Ok(response)
+}
+
+fn try_create_initial_roles(
+    mut deps: DepsMut,
+    initial_roles: Vec<InitialRole>,
+) -> Result<(Vec<Attribute>, Vec<SubMsg>), ContractError> {
+    let mut resp_attributes = vec![];
+    let mut resp_messages = vec![];
+
+    for InitialRole {
+        name,
+        metadata,
+        authorizations,
+        assignments,
+        enabled,
+    } in initial_roles
+    {
+        let enabled = enabled.unwrap_or(true);
+        let role = Role::create(deps.branch(), name, metadata, enabled)?;
+        resp_attributes.push(attr("role_id", role.id.to_string()));
+
+        // Create initial authorizations for role.
+        if let Some(authorizations) = authorizations {
+            for InitialAuthorization {
+                name,
+                metadata,
+                filter,
+                enabled,
+                skip_prepare,
+            } in authorizations
+            {
+                let enabled = enabled.unwrap_or(true);
+                let (authorization, mut protobuf_prepare_messages) = Authorization::create(
+                    deps.branch(),
+                    role.id,
                     name,
                     metadata,
                     filter,
                     enabled,
-                    skip_prepare,
-                } in authorizations
-                {
-                    let enabled = enabled.unwrap_or(true);
-                    let (authorization, protobuf_prepare_messages) = Authorization::create(
-                        deps.branch(),
-                        role.id,
-                        name,
-                        metadata,
-                        filter,
-                        enabled,
-                    )?;
-                    response =
-                        response.add_attribute("authorization_id", authorization.id.to_string());
-                    if !skip_prepare.unwrap_or_default() {
-                        response = response.add_submessages(protobuf_prepare_messages);
-                    }
+                )?;
+                resp_attributes.push(attr("authorization_id", authorization.id.to_string()));
+                if !skip_prepare.unwrap_or_default() {
+                    resp_messages.append(&mut protobuf_prepare_messages);
                 }
             }
+        }
 
-            // Assign role.
-            if let Some(assignments) = assignments {
-                for addr in assignments {
-                    let addr = deps.api.addr_validate(&addr)?;
-                    Role::assign(deps.branch(), &addr, role.id)?;
-                }
+        // Assign role.
+        if let Some(assignments) = assignments {
+            for addr in assignments {
+                let addr = deps.api.addr_validate(&addr)?;
+                Role::assign(deps.branch(), &addr, role.id)?;
             }
         }
     }
 
-    Ok(response)
+    Ok((resp_attributes, resp_messages))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -325,12 +338,12 @@ fn execute_update_protobuf_registry(
             &PROTOBUF_REGISTRY,
             INSTANTIATE_PROTOBUF_REGISTRY_REPLY_ID,
             &info.sender,
-        ),
+        )?,
         None => {
             PROTOBUF_REGISTRY.remove(deps.storage);
-            Ok(vec![])
+            vec![]
         }
-    }?;
+    };
 
     Ok(Response::new()
         .add_submessages(protobuf_registry_message)
