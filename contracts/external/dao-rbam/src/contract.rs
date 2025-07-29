@@ -16,7 +16,7 @@ use dao_interface::state::{Admin, ModuleInstantiateInfo, ModuleUpdate};
 
 use crate::action::{Action, ActionToExecute};
 use crate::error::ContractError;
-use crate::helpers::{ensure_enabled, get_module_label};
+use crate::helpers::{ensure_enabled, get_module_label, submsg_instantiate_filter, submsg_instantiate_registry};
 use crate::msg::{
     ActionResponse, AssignedResponse, Assignment, AuthorizationResponse, AuthorizedByResponse,
     AuthorizedByRoleResponse, AuthorizedResponse, DaoResponse, EnabledResponse, ExecuteMsg,
@@ -37,9 +37,8 @@ const DEFAULT_LIMIT: u32 = 30;
 const DEFAULT_LIMIT_IS_MSG_AUTHORIZED: u32 = 30;
 const MAX_LIMIT: u32 = 100;
 
-const INSTANTIATE_FILTER_REPLY_ID: u64 = 1;
-const INSTANTIATE_PROTOBUF_REGISTRY_REPLY_ID: u64 = 2;
-
+pub const INSTANTIATE_FILTER_REPLY_ID: u64 = 1;
+pub const INSTANTIATE_PROTOBUF_REGISTRY_REPLY_ID: u64 = 2;
 pub const PREPARE_PROTOBUF_REGISTRY_REPLY_ID: u64 = 3;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -74,24 +73,7 @@ pub fn instantiate(
                 filter_salt: msg.filter_salt,
             })?;
 
-            SubMsg::reply_on_success(
-                ModuleInstantiateInfo {
-                    code_id: protobuf_registry_code_id,
-                    // Set this RBAM as owner so we can prepare protobuf messages.
-                    msg: to_json_binary(&cw_protobuf_registry::msg::InstantiateMsg {
-                        owner: Some(env.contract.address.to_string()),
-                    })?,
-                    // Set RBAM's owner as the admin so they can upgrade it.
-                    admin: Some(Admin::Address {
-                        addr: owner.to_string(),
-                    }),
-                    salt: msg.protobuf_registry_salt,
-                    funds: None,
-                    label: get_module_label(&env, "protobuf-registry")
-                }
-                .into_cosmos_msg(""),
-                INSTANTIATE_PROTOBUF_REGISTRY_REPLY_ID,
-            )
+            submsg_instantiate_registry(&env, owner, protobuf_registry_code_id, msg.protobuf_registry_salt)?
         }
         None => SubMsg::reply_on_success(
             ModuleInstantiateInfo {
@@ -1436,30 +1418,15 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     // Remove the code ID and salt from storage.
                     PENDING_FILTER_INSTALL.remove(deps.storage);
 
-                    vec![SubMsg::reply_on_success(
-                        ModuleInstantiateInfo {
-                            code_id: pending_filter_install.filter_code_id,
-                            // Set RBAM's owner as owner.
-                            msg: to_json_binary(&cw_filter::msg::InstantiateMsg {
-                                owner: Some(owner.to_string()),
-                                // Set protobuf registry to the one we just
-                                // created.
-                                protobuf_registry: Some(ModuleUpdate::Existing {
-                                    address: addr.to_string(),
-                                }),
-                            })?,
-                            // Set RBAM's owner as the admin so they can upgrade
-                            // it.
-                            admin: Some(Admin::Address {
-                                addr: owner.to_string(),
-                            }),
-                            funds: None,
-                            label: get_module_label(&env, "filter"),
-                            salt: pending_filter_install.filter_salt,
-                        }
-                        .into_cosmos_msg(""),
-                        INSTANTIATE_FILTER_REPLY_ID,
-                    )]
+                    let filter_init_msg = submsg_instantiate_filter(
+                        &env,
+                        owner.to_string(),
+                        pending_filter_install.filter_code_id,
+                        pending_filter_install.filter_salt,
+                        Some(addr.clone()),
+                    )?;
+
+                    vec![filter_init_msg]
                 }
             };
 
