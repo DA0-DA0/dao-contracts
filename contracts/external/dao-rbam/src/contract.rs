@@ -12,11 +12,11 @@ use cw_ownable::initialize_owner;
 use cw_utils::{nonpayable, parse_reply_instantiate_data};
 use dao_interface::helpers::OptionalUpdate;
 use dao_interface::proposal::InfoResponse;
-use dao_interface::state::{Admin, ModuleInstantiateInfo, ModuleUpdate};
+use dao_interface::state::{ModuleUpdate};
 
 use crate::action::{Action, ActionToExecute};
 use crate::error::ContractError;
-use crate::helpers::{ensure_enabled, get_module_label, submsg_instantiate_filter, submsg_instantiate_registry};
+use crate::helpers::{ensure_enabled, submsg_instantiate_filter, submsg_instantiate_registry};
 use crate::msg::{
     ActionResponse, AssignedResponse, Assignment, AuthorizationResponse, AuthorizedByResponse,
     AuthorizedByRoleResponse, AuthorizedResponse, DaoResponse, EnabledResponse, ExecuteMsg,
@@ -59,11 +59,13 @@ pub fn instantiate(
 
     // Default the owner to the DAO.
     let owner = match msg.owner {
-        Some(addr) => addr.to_string(),
+        Some(addr) => addr,
         None => dao.to_string(),
     };
     initialize_owner(deps.storage, deps.api, Some(&owner))?;
 
+    // if protobuf is enabled, we set up the proto registry before
+    // setting up the filter. otherwise, just set up the filter.
     let first_init_submsg = match msg.protobuf_registry_code_id {
         Some(protobuf_registry_code_id) => {
             // Save filter code ID so we can instantiate it in the reply handler
@@ -75,26 +77,13 @@ pub fn instantiate(
 
             submsg_instantiate_registry(&env, owner, protobuf_registry_code_id, msg.protobuf_registry_salt)?
         }
-        None => SubMsg::reply_on_success(
-            ModuleInstantiateInfo {
-                code_id: msg.filter_code_id,
-                // Set RBAM's owner as owner.
-                msg: to_json_binary(&cw_filter::msg::InstantiateMsg {
-                    owner: Some(owner.to_string()),
-                    // No protobuf registry in use.
-                    protobuf_registry: None,
-                })?,
-                // Set RBAM's owner as the admin so they can upgrade it.
-                admin: Some(Admin::Address {
-                    addr: owner.to_string(),
-                }),
-                salt: msg.filter_salt,
-                funds: None,
-                label: get_module_label(&env, "filter"),
-            }
-            .into_cosmos_msg(""),
-            INSTANTIATE_FILTER_REPLY_ID,
-        ),
+        None => submsg_instantiate_filter(
+            &env,
+            owner,
+            msg.filter_code_id,
+            msg.filter_salt,
+            None,
+        )?
     };
 
     // Initialize enabled state (default to true).
