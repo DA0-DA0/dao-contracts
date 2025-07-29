@@ -325,7 +325,7 @@ fn execute_prepare(
 
     for message in messages {
         // Only prepare messages that are not already prepared.
-        if !PREPARED.has(deps.storage, &message) {
+        if !PREPARED.has(deps.storage, message.to_string()) {
             let fds = create_file_descriptor_set_for_messages(&deps.as_ref(), &[message.clone()])?
                 .encode_to_vec();
             PREPARED.save(deps.storage, message, &fds)?;
@@ -440,7 +440,7 @@ pub fn query_list_prepared(
 }
 
 fn query_prepared(deps: Deps, message_name: String) -> StdResult<PreparedResponse> {
-    let prepared = PREPARED.has(deps.storage, &message_name);
+    let prepared = PREPARED.has(deps.storage, message_name);
     Ok(PreparedResponse { prepared })
 }
 
@@ -452,8 +452,8 @@ fn query_file_descriptor_set(
     // file descriptor set. Otherwise, create a file descriptor set for all
     // messages.
     let file_descriptor_set =
-        if messages.len() == 1 && PREPARED.has(deps.storage, &messages[0]) {
-            PREPARED.load(deps.storage, messages[0].clone())?
+        if messages.len() == 1 && PREPARED.has(deps.storage, messages[0].to_string()) {
+            PREPARED.load(deps.storage, messages[0].to_string())?
         } else {
             create_file_descriptor_set_for_messages(&deps, &messages)
                 .map_err(|e| StdError::generic_err(e.to_string()))?
