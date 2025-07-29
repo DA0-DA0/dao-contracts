@@ -154,6 +154,10 @@ fn try_create_initial_roles(
     let mut resp_attributes = vec![];
     let mut resp_messages = vec![];
 
+    // preload the protobuf registry for all potential authorizations
+    // and pass it as ref to avoid loading every time
+    let protobuf_registry = PROTOBUF_REGISTRY.may_load(deps.storage)?;
+
     for InitialRole {
         name,
         metadata,
@@ -179,6 +183,7 @@ fn try_create_initial_roles(
                 let enabled = enabled.unwrap_or(true);
                 let (authorization, mut protobuf_prepare_messages) = Authorization::create(
                     deps.branch(),
+                    &protobuf_registry,
                     role.id,
                     name,
                     metadata,
@@ -399,6 +404,9 @@ fn execute_create_role(
 
     let enabled = enabled.unwrap_or(true);
     let role = Role::create(deps.branch(), name, metadata, enabled)?;
+    // preload the protobuf registry for all potential authorizations
+    // and pass it as ref to avoid loading every time
+    let protobuf_registry = PROTOBUF_REGISTRY.may_load(deps.storage)?;
 
     let mut response = Response::new()
         .add_attribute("action", "create_role")
@@ -417,7 +425,7 @@ fn execute_create_role(
         {
             let enabled = enabled.unwrap_or(true);
             let (authorization, messages) =
-                Authorization::create(deps.branch(), role.id, name, metadata, filter, enabled)?;
+                Authorization::create(deps.branch(), &protobuf_registry, role.id, name, metadata, filter, enabled)?;
             response = response.add_attribute("authorization_id", authorization.id.to_string());
             if !skip_prepare.unwrap_or_default() {
                 response = response.add_submessages(messages);
@@ -485,8 +493,9 @@ fn execute_create_authorization(
     Role::ensure_exists(&deps.as_ref(), role_id)?;
 
     let enabled = enabled.unwrap_or(true);
+    let protobuf_registry = PROTOBUF_REGISTRY.may_load(deps.storage)?;
     let (authorization, protobuf_prepare_messages) =
-        Authorization::create(deps, role_id, name, metadata, filter, enabled)?;
+        Authorization::create(deps, &protobuf_registry, role_id, name, metadata, filter, enabled)?;
 
     // If skip_prepare is true, don't prepare the protobuf messages.
     let messages = if skip_prepare.unwrap_or_default() {
@@ -529,7 +538,8 @@ fn execute_update_authorization(
     let protobuf_prepare_messages = filter.maybe_update_result_with_value(
         |value| {
             authorization.filter = value;
-            authorization.get_protobuf_message_preparation_submsgs(&deps.as_ref())
+            let protobuf_registry = PROTOBUF_REGISTRY.may_load(deps.storage)?;
+            authorization.get_protobuf_message_preparation_submsgs(&protobuf_registry)
         },
         vec![],
     )?;
@@ -630,10 +640,14 @@ fn execute_execute_actions(
         return Err(ContractError::NoActions {});
     }
 
+    // preload the filter and pass as ref for all potential actions
+    // to avoid loading every time
+    let filter_contract = FILTER.load(deps.storage)?;
+
     let (msgs, action_ids): (Vec<_>, Vec<_>) = actions
         .into_iter()
         .map(|action| {
-            let action = action.initiate(deps.branch(), &env, &info.sender)?;
+            let action = action.initiate(deps.branch(), &env, &info.sender, &filter_contract)?;
             Ok((action.msg, action.id.to_string()))
         })
         .collect::<Result<Vec<_>, ContractError>>()?
@@ -1109,6 +1123,10 @@ fn query_authorized(
 
     let mut last_checked: Option<(u64, u64)> = None;
 
+    // preload the filter and pass as ref for all potential authorizations
+    // to avoid loading every time
+    let filter_contract = FILTER.load(deps.storage)?;
+
     for role_id in assigned_roles {
         let role_id = role_id?;
         last_checked = Some((
@@ -1158,7 +1176,7 @@ fn query_authorized(
 
             // Check if the authorization allows the message.
             let allowed = authorization
-                .allows(&deps, msg.clone(), true)
+                .allows(&deps, &filter_contract, msg.clone(), true)
                 // Should not happen since we ignore filter errors.
                 .map_err(|e| StdError::generic_err(e.to_string()))?;
 
@@ -1236,6 +1254,7 @@ fn query_authorized_by_role(
     );
 
     let mut last_checked: Option<u64> = None;
+    let filter_contract = FILTER.load(deps.storage)?;
 
     for result in authorizations {
         // If we've reached the limit in the past iteration and we have another
@@ -1264,7 +1283,7 @@ fn query_authorized_by_role(
 
         // Check if the authorization allows the message.
         let allowed = authorization
-            .allows(&deps, msg.clone(), true)
+            .allows(&deps, &filter_contract, msg.clone(), true)
             // Should not happen since we ignore filter errors.
             .map_err(|e| StdError::generic_err(e.to_string()))?;
 
@@ -1335,7 +1354,8 @@ fn query_authorized_by(
     }
 
     // Check if the authorization allows the message.
-    let allowed = match authorization.allows(&deps, msg, false) {
+    let filter_contract = FILTER.load(deps.storage)?;
+    let allowed = match authorization.allows(&deps, &filter_contract, msg, false) {
         Ok(allowed) => allowed,
         Err(e) => {
             return Ok(AuthorizedByResponse::Unauthorized {
@@ -1368,8 +1388,9 @@ fn query_test_filter(
     filter: serde_json::Value,
     msg: CosmosMsg,
 ) -> StdResult<TestFilterResponse> {
+    let filter_contract = FILTER.load(deps.storage)?;
     // Test the filter.
-    let result = Authorization::filter_allows(&deps, filter, msg, false);
+    let result = Authorization::filter_allows(&deps, &filter_contract, filter, msg, false);
 
     // Handle filter errors appropriately.
     let response = result.map_or_else(

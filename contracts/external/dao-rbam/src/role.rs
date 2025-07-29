@@ -5,7 +5,7 @@ use cw_protobuf_registry::protobuf::get_protobuf_messages;
 use crate::{
     contract::PREPARE_PROTOBUF_REGISTRY_REPLY_ID,
     helpers::get_next_id,
-    state::{ASSIGNMENTS, AUTHORIZATIONS, FILTER, PROTOBUF_REGISTRY, ROLES},
+    state::{ASSIGNMENTS, AUTHORIZATIONS, ROLES},
     ContractError,
 };
 
@@ -103,6 +103,7 @@ impl Authorization {
     // messages for decoding.
     pub fn create(
         mut deps: DepsMut,
+        protobuf_registry: &Option<Addr>,
         role_id: u64,
         name: String,
         metadata: Option<String>,
@@ -117,7 +118,7 @@ impl Authorization {
             filter,
             enabled,
         };
-        let messages = authorization.get_protobuf_message_preparation_submsgs(&deps.as_ref())?;
+        let messages = authorization.get_protobuf_message_preparation_submsgs(protobuf_registry)?;
 
         AUTHORIZATIONS.save(deps.storage, authorization.id, &authorization)?;
 
@@ -138,16 +139,15 @@ impl Authorization {
     /// will be true if the filter passes.
     pub fn filter_allows(
         deps: &Deps,
+        filter_contract: &Addr,
         filter: serde_json::Value,
         msg: CosmosMsg,
         ignore_filter_error: bool,
     ) -> Result<bool, ContractError> {
-        let filter_contract = FILTER.load(deps.storage)?;
-
         let result = deps
             .querier
             .query_wasm_smart::<cw_filter::msg::FilterResponse>(
-                &filter_contract,
+                filter_contract,
                 &cw_filter::msg::QueryMsg::Filter { filter, msg },
             )
             .map_err(|e| ContractError::FilterContractQueryError {
@@ -181,7 +181,7 @@ impl Authorization {
     /// decoding protobufs during matching.
     pub fn get_protobuf_message_preparation_submsgs(
         &self,
-        deps: &Deps,
+        protobuf_registry: &Option<Addr>,
     ) -> Result<Vec<SubMsg>, ContractError> {
         if let Some(filter) = &self.filter {
             // Get the protobuf messages referenced by the filter.
@@ -192,7 +192,7 @@ impl Authorization {
             // If there are protobuf messages and the protobuf registry is
             // registered, prepare them.
             if !protobuf_messages.is_empty() {
-                if let Some(protobuf_registry) = PROTOBUF_REGISTRY.may_load(deps.storage)? {
+                if let Some(protobuf_registry) = protobuf_registry {
                     return Ok(vec![SubMsg::reply_on_error(
                         WasmMsg::Execute {
                             contract_addr: protobuf_registry.to_string(),
@@ -218,12 +218,13 @@ impl Authorization {
     pub fn allows(
         &self,
         deps: &Deps,
+        filter_contract: &Addr,
         msg: CosmosMsg,
         ignore_filter_error: bool,
     ) -> Result<bool, ContractError> {
         match (&self.filter, ignore_filter_error) {
             (Some(filter), _) => {
-                Authorization::filter_allows(deps, filter.clone(), msg, ignore_filter_error)
+                Authorization::filter_allows(deps, filter_contract, filter.clone(), msg, ignore_filter_error)
             }
             (None, true) => Ok(false),
             (None, false) => Err(ContractError::NoAuthorizationFilterSet {}),

@@ -4,7 +4,7 @@ use cosmwasm_std::{Addr, CosmosMsg, DepsMut, Env};
 use crate::{
     helpers::get_next_id,
     role::{Authorization, Role},
-    state::LOG,
+    state::{LOG},
     ContractError,
 };
 
@@ -72,6 +72,7 @@ impl ActionToExecute {
         mut deps: DepsMut,
         env: &Env,
         sender: &Addr,
+        filter_contract: &Addr,
     ) -> Result<Action, ContractError> {
         let ActionToExecute {
             msg,
@@ -102,7 +103,7 @@ impl ActionToExecute {
         }
 
         // Ensure message is allowed.
-        let allowed = authorization.allows(&deps.as_ref(), msg.clone(), false)?;
+        let allowed = authorization.allows(&deps.as_ref(), filter_contract, msg.clone(), false)?;
         // should never happen since ignore_filter_error is false
         if !allowed {
             return Err(ContractError::MsgNotAllowedByFilter {
