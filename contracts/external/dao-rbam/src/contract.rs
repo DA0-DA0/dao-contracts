@@ -16,7 +16,7 @@ use dao_interface::state::{Admin, ModuleInstantiateInfo, ModuleUpdate};
 
 use crate::action::{Action, ActionToExecute};
 use crate::error::ContractError;
-use crate::helpers::ensure_enabled;
+use crate::helpers::{ensure_enabled, get_module_label};
 use crate::msg::{
     ActionResponse, AssignedResponse, Assignment, AuthorizationResponse, AuthorizedByResponse,
     AuthorizedByRoleResponse, AuthorizedResponse, DaoResponse, EnabledResponse, ExecuteMsg,
@@ -27,8 +27,7 @@ use crate::msg::{
 };
 use crate::role::{Authorization, Role};
 use crate::state::{
-    ASSIGNMENTS, AUTHORIZATIONS, DAO, ENABLED, FILTER, FILTER_CODE_ID, FILTER_SALT, LOG, NEXT_ID,
-    PROTOBUF_REGISTRY, ROLES,
+    PendingFilterInstall, ASSIGNMENTS, AUTHORIZATIONS, DAO, ENABLED, FILTER, LOG, NEXT_ID, PENDING_FILTER_INSTALL, PROTOBUF_REGISTRY, ROLES
 };
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-rbam";
@@ -66,22 +65,14 @@ pub fn instantiate(
     };
     initialize_owner(deps.storage, deps.api, Some(&owner))?;
 
-    let last_6_address_chars = env
-        .contract
-        .address
-        .to_string()
-        .chars()
-        .rev()
-        .take(6)
-        .collect::<String>();
     let first_init_submsg = match msg.protobuf_registry_code_id {
         Some(protobuf_registry_code_id) => {
             // Save filter code ID so we can instantiate it in the reply handler
             // after the protobuf registry is instantiated.
-            FILTER_CODE_ID.save(deps.storage, &msg.filter_code_id)?;
-            if let Some(filter_salt) = msg.filter_salt {
-                FILTER_SALT.save(deps.storage, &filter_salt)?;
-            }
+            PENDING_FILTER_INSTALL.save(deps.storage, &PendingFilterInstall {
+                filter_code_id: msg.filter_code_id,
+                filter_salt: msg.filter_salt,
+            })?;
 
             SubMsg::reply_on_success(
                 ModuleInstantiateInfo {
@@ -96,7 +87,7 @@ pub fn instantiate(
                     }),
                     salt: msg.protobuf_registry_salt,
                     funds: None,
-                    label: format!("rbam-{}-protobuf-registry", last_6_address_chars),
+                    label: get_module_label(&env, "protobuf-registry")
                 }
                 .into_cosmos_msg(""),
                 INSTANTIATE_PROTOBUF_REGISTRY_REPLY_ID,
@@ -117,7 +108,7 @@ pub fn instantiate(
                 }),
                 salt: msg.filter_salt,
                 funds: None,
-                label: format!("rbam-{}-filter", last_6_address_chars),
+                label: get_module_label(&env, "filter"),
             }
             .into_cosmos_msg(""),
             INSTANTIATE_FILTER_REPLY_ID,
@@ -1437,28 +1428,17 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             PROTOBUF_REGISTRY.save(deps.storage, &addr)?;
 
             // If filter code ID is set from instantiate, create it.
-            let submsgs = match FILTER_CODE_ID.may_load(deps.storage)? {
+            let submsgs = match PENDING_FILTER_INSTALL.may_load(deps.storage)? {
                 None => vec![],
-                Some(filter_code_id) => {
-                    let filter_salt = FILTER_SALT.may_load(deps.storage)?;
+                Some(pending_filter_install) => {
                     let owner = cw_ownable::get_ownership(deps.storage)?.owner.unwrap();
 
                     // Remove the code ID and salt from storage.
-                    FILTER_CODE_ID.remove(deps.storage);
-                    FILTER_SALT.remove(deps.storage);
-
-                    let last_6_address_chars = env
-                        .contract
-                        .address
-                        .to_string()
-                        .chars()
-                        .rev()
-                        .take(6)
-                        .collect::<String>();
+                    PENDING_FILTER_INSTALL.remove(deps.storage);
 
                     vec![SubMsg::reply_on_success(
                         ModuleInstantiateInfo {
-                            code_id: filter_code_id,
+                            code_id: pending_filter_install.filter_code_id,
                             // Set RBAM's owner as owner.
                             msg: to_json_binary(&cw_filter::msg::InstantiateMsg {
                                 owner: Some(owner.to_string()),
@@ -1474,8 +1454,8 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                                 addr: owner.to_string(),
                             }),
                             funds: None,
-                            label: format!("rbam-{}-filter", last_6_address_chars),
-                            salt: filter_salt,
+                            label: get_module_label(&env, "filter"),
+                            salt: pending_filter_install.filter_salt,
                         }
                         .into_cosmos_msg(""),
                         INSTANTIATE_FILTER_REPLY_ID,

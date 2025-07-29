@@ -1,3 +1,4 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary};
 use cw_storage_plus::{
     Index, IndexList, IndexedMap, Item, KeyDeserialize, Map, MultiIndex, UniqueIndex,
@@ -11,14 +12,21 @@ use crate::{
 /// The address of the DAO.
 pub const DAO: Item<Addr> = Item::new("dao");
 
+
+#[cw_serde]
+pub struct PendingFilterInstall {
+    /// The code ID of the filter contract, stored temporarily if creating the
+    /// protobuf registry first.
+    pub filter_code_id: u64,
+    /// The salt of the filter contract, stored temporarily if creating the
+    /// protobuf registry first.
+    pub filter_salt: Option<Binary>,
+}
+
+pub const PENDING_FILTER_INSTALL: Item<PendingFilterInstall> = Item::new("pending_filter_install");
+
 /// The address of the filter contract.
 pub const FILTER: Item<Addr> = Item::new("filter");
-/// The code ID of the filter contract, stored temporarily if creating the
-/// protobuf registry first.
-pub const FILTER_CODE_ID: Item<u64> = Item::new("filter_code_id");
-/// The salt of the filter contract, stored temporarily if creating the
-/// protobuf registry first.
-pub const FILTER_SALT: Item<Binary> = Item::new("filter_salt");
 
 /// The address of the protobuf registry, if any.
 pub const PROTOBUF_REGISTRY: Item<Addr> = Item::new("protobuf_registry");
