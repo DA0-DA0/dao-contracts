@@ -2,7 +2,9 @@ use cosmwasm_std::{to_json_binary, Addr, DepsMut, Env, StdResult, SubMsg};
 use dao_interface::state::{Admin, ModuleInstantiateInfo, ModuleUpdate};
 
 use crate::{
-    contract::{INSTANTIATE_FILTER_REPLY_ID, INSTANTIATE_PROTOBUF_REGISTRY_REPLY_ID}, state::{ENABLED, NEXT_ID}, ContractError
+    contract::{INSTANTIATE_FILTER_REPLY_ID, INSTANTIATE_PROTOBUF_REGISTRY_REPLY_ID},
+    state::{ENABLED, NEXT_ID},
+    ContractError,
 };
 
 /// Ensure the RBAM system is enabled.
@@ -24,8 +26,15 @@ pub fn get_next_id(deps: DepsMut) -> StdResult<u64> {
 }
 
 fn get_module_label(env: &Env, suffix: &str) -> String {
-    let last6 = env.contract.address.to_string().chars().rev().take(6).collect::<String>();
-    format!("rbam-{}-{}", last6, suffix)
+    let last6 = env
+        .contract
+        .address
+        .to_string()
+        .chars()
+        .rev()
+        .take(6)
+        .collect::<String>();
+    format!("rbam-{last6}-{suffix}")
 }
 
 pub fn submsg_instantiate_registry(
@@ -42,12 +51,10 @@ pub fn submsg_instantiate_registry(
                 owner: Some(env.contract.address.to_string()),
             })?,
             // Set RBAM's owner as the admin so they can upgrade it.
-            admin: Some(Admin::Address {
-                addr: owner,
-            }),
+            admin: Some(Admin::Address { addr: owner }),
             salt,
             funds: None,
-            label: get_module_label(&env, "protobuf-registry")
+            label: get_module_label(env, "protobuf-registry"),
         }
         .into_cosmos_msg(""),
         INSTANTIATE_PROTOBUF_REGISTRY_REPLY_ID,
@@ -56,7 +63,6 @@ pub fn submsg_instantiate_registry(
     Ok(submsg)
 }
 
-
 pub fn submsg_instantiate_filter(
     env: &Env,
     owner: String,
@@ -64,7 +70,9 @@ pub fn submsg_instantiate_filter(
     salt: Option<cosmwasm_std::Binary>,
     protobuf_registry: Option<Addr>,
 ) -> Result<SubMsg, ContractError> {
-    let protobuf_registry = protobuf_registry.map(|addr| ModuleUpdate::Existing { address: addr.to_string() });
+    let protobuf_registry = protobuf_registry.map(|addr| ModuleUpdate::Existing {
+        address: addr.to_string(),
+    });
 
     let module_init_msg = ModuleInstantiateInfo {
         code_id,
@@ -79,14 +87,11 @@ pub fn submsg_instantiate_filter(
         }),
         salt,
         funds: None,
-        label: get_module_label(&env, "filter"),
+        label: get_module_label(env, "filter"),
     }
     .into_cosmos_msg("");
 
-    let submsg = SubMsg::reply_on_success(
-        module_init_msg,
-        INSTANTIATE_FILTER_REPLY_ID,
-    );
+    let submsg = SubMsg::reply_on_success(module_init_msg, INSTANTIATE_FILTER_REPLY_ID);
 
     Ok(submsg)
 }

@@ -3,7 +3,8 @@ use std::collections::HashSet;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, to_json_binary, Attribute, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Reply, Response, StdError, StdResult, SubMsg, WasmMsg
+    attr, to_json_binary, Attribute, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
+    Reply, Response, StdError, StdResult, SubMsg, WasmMsg,
 };
 use cw_storage_plus::Bound;
 
@@ -12,7 +13,7 @@ use cw_ownable::initialize_owner;
 use cw_utils::{nonpayable, parse_reply_instantiate_data};
 use dao_interface::helpers::OptionalUpdate;
 use dao_interface::proposal::InfoResponse;
-use dao_interface::state::{ModuleUpdate};
+use dao_interface::state::ModuleUpdate;
 
 use crate::action::{Action, ActionToExecute};
 use crate::error::ContractError;
@@ -27,7 +28,8 @@ use crate::msg::{
 };
 use crate::role::{Authorization, Role};
 use crate::state::{
-    PendingFilterInstall, ASSIGNMENTS, AUTHORIZATIONS, DAO, ENABLED, FILTER, LOG, NEXT_ID, PENDING_FILTER_INSTALL, PROTOBUF_REGISTRY, ROLES
+    PendingFilterInstall, ASSIGNMENTS, AUTHORIZATIONS, DAO, ENABLED, FILTER, LOG, NEXT_ID,
+    PENDING_FILTER_INSTALL, PROTOBUF_REGISTRY, ROLES,
 };
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-rbam";
@@ -70,20 +72,22 @@ pub fn instantiate(
         Some(protobuf_registry_code_id) => {
             // Save filter code ID so we can instantiate it in the reply handler
             // after the protobuf registry is instantiated.
-            PENDING_FILTER_INSTALL.save(deps.storage, &PendingFilterInstall {
-                filter_code_id: msg.filter_code_id,
-                filter_salt: msg.filter_salt,
-            })?;
+            PENDING_FILTER_INSTALL.save(
+                deps.storage,
+                &PendingFilterInstall {
+                    filter_code_id: msg.filter_code_id,
+                    filter_salt: msg.filter_salt,
+                },
+            )?;
 
-            submsg_instantiate_registry(&env, owner, protobuf_registry_code_id, msg.protobuf_registry_salt)?
+            submsg_instantiate_registry(
+                &env,
+                owner,
+                protobuf_registry_code_id,
+                msg.protobuf_registry_salt,
+            )?
         }
-        None => submsg_instantiate_filter(
-            &env,
-            owner,
-            msg.filter_code_id,
-            msg.filter_salt,
-            None,
-        )?
+        None => submsg_instantiate_filter(&env, owner, msg.filter_code_id, msg.filter_salt, None)?,
     };
 
     // Initialize enabled state (default to true).
@@ -386,8 +390,15 @@ fn execute_create_role(
         } in authorizations
         {
             let enabled = enabled.unwrap_or(true);
-            let (authorization, messages) =
-                Authorization::create(deps.branch(), &protobuf_registry, role.id, name, metadata, filter, enabled)?;
+            let (authorization, messages) = Authorization::create(
+                deps.branch(),
+                &protobuf_registry,
+                role.id,
+                name,
+                metadata,
+                filter,
+                enabled,
+            )?;
             response = response.add_attribute("authorization_id", authorization.id.to_string());
             if !skip_prepare.unwrap_or_default() {
                 response = response.add_submessages(messages);
@@ -456,8 +467,15 @@ fn execute_create_authorization(
 
     let enabled = enabled.unwrap_or(true);
     let protobuf_registry = PROTOBUF_REGISTRY.may_load(deps.storage)?;
-    let (authorization, protobuf_prepare_messages) =
-        Authorization::create(deps, &protobuf_registry, role_id, name, metadata, filter, enabled)?;
+    let (authorization, protobuf_prepare_messages) = Authorization::create(
+        deps,
+        &protobuf_registry,
+        role_id,
+        name,
+        metadata,
+        filter,
+        enabled,
+    )?;
 
     // If skip_prepare is true, don't prepare the protobuf messages.
     let messages = if skip_prepare.unwrap_or_default() {
