@@ -16,12 +16,18 @@ fn main() {
     }
 
     impl ProtobufDecoder for MockProtobufDecoder {
-        fn decode(&self, message_name: String, value: Vec<u8>) -> Result<serde_json::Value, String> {
+        fn decode(
+            &self,
+            message_name: String,
+            value: Vec<u8>,
+        ) -> Result<serde_json::Value, String> {
             decode_protobuf(self.file_descriptor_set.clone(), message_name, value)
         }
     }
 
-    let cwjf = CwJsonFilter::new(Some(MockProtobufDecoder { file_descriptor_set }));
+    let cwjf = CwJsonFilter::new(Some(MockProtobufDecoder {
+        file_descriptor_set,
+    }));
 
     // String filter
 

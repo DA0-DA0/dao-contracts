@@ -1,12 +1,13 @@
 use std::collections::HashSet;
 
-use crate::{decoder::{NoopDecoder, ProtobufDecoder}, CwJsonFilter, FilterFailure, FilterFatalError, FilterResult};
-use cw_protobuf_registry::protobuf::decode_protobuf;
-use prost_types::FileDescriptorSet;
-use cw_protobuf_registry::protobuf::{
-    base64_encode_protobuf, get_protobuf_messages,
+use crate::{
+    decoder::{NoopDecoder, ProtobufDecoder},
+    CwJsonFilter, FilterFailure, FilterFatalError, FilterResult,
 };
+use cw_protobuf_registry::protobuf::decode_protobuf;
+use cw_protobuf_registry::protobuf::{base64_encode_protobuf, get_protobuf_messages};
 use prost_reflect::{prost::Message, DescriptorPool};
+use prost_types::FileDescriptorSet;
 use serde_json::json;
 
 struct MockProtobufDecoder {
@@ -18,8 +19,6 @@ impl ProtobufDecoder for MockProtobufDecoder {
         decode_protobuf(self.file_descriptor_set.clone(), message_name, value)
     }
 }
-
-
 
 #[test]
 fn array_match() {
@@ -1512,7 +1511,9 @@ fn protobuf_filter() {
         FileDescriptorSet::decode(std::fs::read(proto_path).unwrap().as_slice()).unwrap();
     let pool = DescriptorPool::from_file_descriptor_set(file_descriptor_set.clone()).unwrap();
 
-    let cwjf = CwJsonFilter::new(Some(MockProtobufDecoder { file_descriptor_set }));
+    let cwjf = CwJsonFilter::new(Some(MockProtobufDecoder {
+        file_descriptor_set,
+    }));
 
     // String filter
 
@@ -2123,8 +2124,7 @@ fn invalid_operator_arg() {
         )
     );
     assert_eq!(
-        CwJsonFilter::new(Some(NoopDecoder))
-        .matches(
+        CwJsonFilter::new(Some(NoopDecoder)).matches(
             &json!({ "key": { "#proto": {
                 "type": "test",
                 "value": "test"
@@ -2139,15 +2139,19 @@ fn invalid_operator_arg() {
         )
     );
     assert_eq!(
-        CwJsonFilter::new(Some(NoopDecoder))
-        .matches(
+        CwJsonFilter::new(Some(NoopDecoder)).matches(
             &json!({ "key": { "#proto": {
                 "type": "test",
                 "value": "test"
             } } }),
             &json!({ "key": "test" })
         ),
-        FilterResult::operator_failed("#proto", "protobuf decoder not provided", "@.key.#proto", "@.key")
+        FilterResult::operator_failed(
+            "#proto",
+            "protobuf decoder not provided",
+            "@.key.#proto",
+            "@.key"
+        )
     );
     assert_eq!(
         CwJsonFilter::check(&json!({ "key": { "#proto": {} } }), &json!({ "key": 123 })),

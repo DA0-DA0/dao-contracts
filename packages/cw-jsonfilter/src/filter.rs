@@ -90,11 +90,15 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
         match filter {
             // Objects process each key present in the filter, behaving like an
             // $and operation for all keys.
-            serde_json::Value::Object(filter_obj) => self.handle_object_filter(filter_obj, filter_path, obj_path, obj),
+            serde_json::Value::Object(filter_obj) => {
+                self.handle_object_filter(filter_obj, filter_path, obj_path, obj)
+            }
             // Arrays implicitly match each item in order, behaving like an $and
             // operation for all items, while also matching the array as a
             // whole (exact same number of items).
-            serde_json::Value::Array(filter_list) => self.handle_array_filter(filter_path, obj_path, obj, filter_list),
+            serde_json::Value::Array(filter_list) => {
+                self.handle_array_filter(filter_path, obj_path, obj, filter_list)
+            }
             // Match primitive values directly.
             _ => self.handle_primitive_filter(filter, filter_path, obj_path, obj),
         }
@@ -174,7 +178,7 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
         filter_path: &str,
         obj_path: &str,
         obj: Option<&serde_json::Value>,
-        filter_list: &Vec<serde_json::Value>
+        filter_list: &Vec<serde_json::Value>,
     ) -> FilterResult {
         match obj {
             Some(serde_json::Value::Array(obj_list)) => {
@@ -194,8 +198,7 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
                 for (i, sub_filter) in filter_list.iter().enumerate() {
                     let filter_path = &append_array_path(filter_path, i);
                     let obj_path = &append_array_path(obj_path, i);
-                    match self.inner_matches(sub_filter, obj_list.get(i), filter_path, obj_path)
-                    {
+                    match self.inner_matches(sub_filter, obj_list.get(i), filter_path, obj_path) {
                         // If success, continue to next item.
                         FilterResult::Pass => continue,
                         // If failure, return the error.

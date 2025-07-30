@@ -147,9 +147,7 @@ fn query_filter(
         StdError::generic_err(ContractError::JsonSerialization { err: e.to_string() }.to_string())
     })?;
 
-    let decoder = protobuf_registry.map(|addr| {
-        WasmQuerierProtobufDecoder::new(deps.querier, addr)
-    });
+    let decoder = protobuf_registry.map(|addr| WasmQuerierProtobufDecoder::new(deps.querier, addr));
 
     let result = CwJsonFilter::new(decoder).matches(&filter, &msg_value);
 
