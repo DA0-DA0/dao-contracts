@@ -223,9 +223,13 @@ impl Authorization {
         ignore_filter_error: bool,
     ) -> Result<bool, ContractError> {
         match (&self.filter, ignore_filter_error) {
-            (Some(filter), _) => {
-                Authorization::filter_allows(deps, filter_contract, filter.clone(), msg, ignore_filter_error)
-            }
+            (Some(filter), _) => Authorization::filter_allows(
+                deps,
+                filter_contract,
+                filter.clone(),
+                msg,
+                ignore_filter_error,
+            ),
             (None, true) => Ok(false),
             (None, false) => Err(ContractError::NoAuthorizationFilterSet {}),
         }

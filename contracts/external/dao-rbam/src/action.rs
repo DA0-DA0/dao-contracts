@@ -4,7 +4,7 @@ use cosmwasm_std::{Addr, CosmosMsg, DepsMut, Env};
 use crate::{
     helpers::get_next_id,
     role::{Authorization, Role},
-    state::{LOG},
+    state::LOG,
     ContractError,
 };
 

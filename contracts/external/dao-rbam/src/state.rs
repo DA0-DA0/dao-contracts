@@ -12,7 +12,7 @@ use crate::{
 /// The address of the DAO.
 pub const DAO: Item<Addr> = Item::new("dao");
 
-
+/// Filter setup helper type used during the instantiation.
 #[cw_serde]
 pub struct PendingFilterInstall {
     /// The code ID of the filter contract, stored temporarily if creating the
