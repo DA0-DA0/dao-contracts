@@ -178,7 +178,7 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
         filter_path: &str,
         obj_path: &str,
         obj: Option<&serde_json::Value>,
-        filter_list: &Vec<serde_json::Value>,
+        filter_list: &[serde_json::Value],
     ) -> FilterResult {
         match obj {
             Some(serde_json::Value::Array(obj_list)) => {
