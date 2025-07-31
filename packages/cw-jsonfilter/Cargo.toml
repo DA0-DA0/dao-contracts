@@ -12,7 +12,7 @@ base64 = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 prost-reflect = { workspace = true, features = ["serde"] }
-prost-types = { workspace = true }
 
 [dev-dependencies]
 cw-protobuf-registry = { workspace = true, features = ["library"] }
+prost-types = { workspace = true }
