@@ -60,10 +60,7 @@ pub fn instantiate(
     DAO.save(deps.storage, &dao)?;
 
     // Default the owner to the DAO.
-    let owner = match msg.owner {
-        Some(addr) => addr,
-        None => dao.to_string(),
-    };
+    let owner = msg.owner.unwrap_or_else(|| dao.to_string());
     initialize_owner(deps.storage, deps.api, Some(&owner))?;
 
     // if protobuf is enabled, we set up the proto registry before

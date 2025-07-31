@@ -37,10 +37,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     // Default the owner to the sender if unset
-    let owner = &match msg.owner {
-        Some(addr) => addr,
-        None => info.sender.to_string(),
-    };
+    let owner = &msg.owner.unwrap_or_else(|| info.sender.to_string());
 
     // initialize_owner call performs the addr validation
     initialize_owner(deps.storage, deps.api, Some(owner))?;
@@ -48,7 +45,7 @@ pub fn instantiate(
     Ok(Response::new()
         .add_attribute("action", "instantiate")
         .add_attribute("creator", info.sender.as_str())
-        .add_attribute("owner", owner.as_str()))
+        .add_attribute("owner", owner))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
