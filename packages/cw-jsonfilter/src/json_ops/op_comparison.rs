@@ -68,39 +68,25 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
                     }
                 };
 
+                // Check if value is greater than min and less than max.
+                let (is_gt_min, is_lt_max) = match (gt_json(value, min), lt_json(value, max)) {
+                    (Some(gt), Some(lt)) => (gt, lt),
+                    _ => {
+                        return FilterResult::operator_failed(
+                            op_ctx.operator,
+                            "filter bounds and value are not all numbers or all strings",
+                            op_ctx.filter_path,
+                            op_ctx.obj_path,
+                        )
+                    }
+                };
+
                 let inclusive = !op_ctx.operator.ends_with("_exclusive");
 
-                let min_passes = match gt_json(value, min) {
-                    Some(true) => true,
-                    // If not greater than the min, check if
-                    // inclusive and equal to the min.
-                    Some(false) => inclusive && value == min,
-                    // If the types are incompatible, fail.
-                    None => {
-                        return FilterResult::operator_failed(
-                            op_ctx.operator,
-                            "filter bounds and value are not all numbers or all strings",
-                            op_ctx.filter_path,
-                            op_ctx.obj_path,
-                        )
-                    }
-                };
-
-                let max_passes = match lt_json(value, max) {
-                    Some(true) => true,
-                    // If not less than the max, check if inclusive
-                    // and equal to the max.
-                    Some(false) => inclusive && value == max,
-                    // If the types are incompatible, fail.
-                    None => {
-                        return FilterResult::operator_failed(
-                            op_ctx.operator,
-                            "filter bounds and value are not all numbers or all strings",
-                            op_ctx.filter_path,
-                            op_ctx.obj_path,
-                        )
-                    }
-                };
+                // If not less than/greater than the min/max, check if inclusive
+                // and equal to the min/max.
+                let min_passes = is_gt_min || (inclusive && value == min);
+                let max_passes = is_lt_max || (inclusive && value == max);
 
                 FilterResult::from_bool(
                     min_passes && max_passes,
