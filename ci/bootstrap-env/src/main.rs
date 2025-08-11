@@ -24,7 +24,7 @@ struct Account {
 }
 
 fn main() -> Result<()> {
-    env_logger::init();
+    env_logger::try_init();
 
     let config = env::var("CONFIG").expect("missing yaml CONFIG env var");
     let mut cfg = Config::from_yaml(&config)?;
