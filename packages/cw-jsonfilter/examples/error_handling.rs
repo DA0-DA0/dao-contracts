@@ -6,13 +6,13 @@ fn main() {
     let obj = json!({"name": "John", "age": 30});
 
     println!("Applying filter:");
-    println!("{}", filter);
+    println!("{filter}");
     println!("To object:");
-    println!("{}", obj);
+    println!("{obj}");
 
     match CwJsonFilter::check(&filter, &obj) {
         FilterResult::Pass => println!("Filter matches the object"),
-        FilterResult::Fail(err) => println!("Filter does not match the object: {:?}", err),
-        FilterResult::Fatal(err) => println!("Fatal error: {:?}", err),
+        FilterResult::Fail(err) => println!("Filter does not match the object: {err:?}"),
+        FilterResult::Fatal(err) => println!("Fatal error: {err:?}"),
     }
 }

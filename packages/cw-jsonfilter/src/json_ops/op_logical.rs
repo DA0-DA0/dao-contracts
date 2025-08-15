@@ -92,7 +92,7 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
                 FilterResult::from_bool(
                     passed == 1,
                     op_ctx.operator,
-                    format!("{} filters passed, expected exactly 1", passed),
+                    format!("{passed} filters passed, expected exactly 1"),
                     op_ctx.filter_path,
                     op_ctx.obj_path,
                 )

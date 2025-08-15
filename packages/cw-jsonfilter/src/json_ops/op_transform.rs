@@ -81,7 +81,7 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
                     Err(e) => {
                         return FilterResult::operator_failed(
                             op_ctx.operator,
-                            format!("failed to convert string to number: {}", e),
+                            format!("failed to convert string to number: {e}"),
                             op_ctx.filter_path,
                             op_ctx.obj_path,
                         )
@@ -270,7 +270,7 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
                     Err(e) => {
                         return FilterResult::operator_failed(
                             op_ctx.operator,
-                            format!("failed to decode base64: {}", e),
+                            format!("failed to decode base64: {e}"),
                             op_ctx.filter_path,
                             op_ctx.obj_path,
                         )
@@ -283,10 +283,7 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
                     Err(e) => {
                         return FilterResult::operator_failed(
                             op_ctx.operator,
-                            format!(
-                                "failed to parse decoded base64 value as utf-8 string: {}",
-                                e
-                            ),
+                            format!("failed to parse decoded base64 value as utf-8 string: {e}"),
                             op_ctx.filter_path,
                             op_ctx.obj_path,
                         )
@@ -365,7 +362,7 @@ impl<D: ProtobufDecoder> CwJsonFilter<D> {
                     Err(e) => {
                         return FilterResult::operator_failed(
                             op_ctx.operator,
-                            format!("failed to decode protobuf base64 value: {}", e),
+                            format!("failed to decode protobuf base64 value: {e}"),
                             op_ctx.filter_path,
                             op_ctx.obj_path,
                         )

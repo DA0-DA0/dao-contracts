@@ -162,7 +162,7 @@ fn try_register_fds(
                     file_package: file_package.to_string(),
                 }
             })?;
-            let message_full_name = format!("{}.{}", file_package, message_type_name);
+            let message_full_name = format!("{file_package}.{message_type_name}");
 
             MESSAGES.save(store, message_full_name, &file_name)?;
 
@@ -470,12 +470,7 @@ fn query_decode(deps: Deps, message_name: String, value: Vec<u8>) -> StdResult<D
         .map_or_else(
             || {
                 create_file_descriptor_set_for_messages(&deps, &[message_name.clone()]).map_err(
-                    |e| {
-                        StdError::generic_err(format!(
-                            "failed to create file descriptor set: {}",
-                            e
-                        ))
-                    },
+                    |e| StdError::generic_err(format!("failed to create file descriptor set: {e}")),
                 )
             },
             |fds| {
@@ -485,15 +480,14 @@ fn query_decode(deps: Deps, message_name: String, value: Vec<u8>) -> StdResult<D
         )?;
 
     let pool = DescriptorPool::from_file_descriptor_set(file_descriptor_set).map_err(|e| {
-        StdError::generic_err(format!("failed to create descriptor pool from FDS: {}", e))
+        StdError::generic_err(format!("failed to create descriptor pool from FDS: {e}"))
     })?;
 
     // should never error since we created the FDS from the message name, but
     // check just in case.
     let message_descriptor = pool.get_message_by_name(&message_name).ok_or_else(|| {
         StdError::generic_err(format!(
-            "message descriptor not found for name: {}",
-            message_name
+            "message descriptor not found for name: {message_name}"
         ))
     })?;
 
@@ -502,8 +496,7 @@ fn query_decode(deps: Deps, message_name: String, value: Vec<u8>) -> StdResult<D
 
     let json = serde_json::to_value(message).map_err(|e| {
         StdError::generic_err(format!(
-            "failed to serialize decoded protobuf value as JSON: {}",
-            e
+            "failed to serialize decoded protobuf value as JSON: {e}"
         ))
     })?;
 

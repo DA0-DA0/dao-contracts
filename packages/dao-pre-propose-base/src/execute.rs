@@ -523,10 +523,7 @@ where
                             PreProposeSubmissionPolicyError::Unauthorized {},
                         ) => to_json_binary(&false),
                         PreProposeError::Std(err) => Err(err),
-                        _ => Err(StdError::generic_err(format!(
-                            "unexpected error: {:?}",
-                            err
-                        ))),
+                        _ => Err(StdError::generic_err(format!("unexpected error: {err:?}"))),
                     },
                 }
             }

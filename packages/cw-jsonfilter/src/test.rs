@@ -477,13 +477,13 @@ fn filter_result_formatting() {
 
     let res_pass = CwJsonFilter::check(&json!({"key": { "$range": [30.0, 31.0] }}), &key);
     assert!(res_pass.is_pass());
-    assert_eq!(format!("{}", res_pass), "Pass".to_string());
+    assert_eq!(format!("{res_pass}"), "Pass".to_string());
 
     let res_fail = CwJsonFilter::check(&json!({"not_the_key": { "$range": [30.0, 31.0] }}), &key);
     assert!(res_fail.is_fail());
     match res_fail.clone() {
         FilterResult::Fail(filter_failure) => {
-            assert_eq!(format!("Fail: {}", filter_failure), res_fail.to_string())
+            assert_eq!(format!("Fail: {filter_failure}"), res_fail.to_string())
         }
         _ => panic!(),
     };
@@ -492,7 +492,7 @@ fn filter_result_formatting() {
     assert!(res_fatal.is_fatal());
     match res_fatal.clone() {
         FilterResult::Fatal(filter_fatal_error) => assert_eq!(
-            format!("Fatal: {}", filter_fatal_error),
+            format!("Fatal: {filter_fatal_error}"),
             res_fatal.to_string()
         ),
         _ => panic!(),

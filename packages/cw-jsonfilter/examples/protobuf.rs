@@ -43,11 +43,11 @@ fn main() {
 
     println!();
     println!("String filter:");
-    println!("{}", string_filter);
+    println!("{string_filter}");
     println!("String objects:");
-    println!("Object 1: {}", obj1);
+    println!("Object 1: {obj1}");
     match_objects(&cwjf, &string_filter, &obj1);
-    println!("Object 2: {}", obj2);
+    println!("Object 2: {obj2}");
     match_objects(&cwjf, &string_filter, &obj2);
     println!();
 
@@ -64,11 +64,11 @@ fn main() {
     let obj2 = json!({"someProto": base64_encoded_false});
 
     println!("Bool filter:");
-    println!("{}", bool_filter);
+    println!("{bool_filter}");
     println!("Bool objects:");
-    println!("Object 1: {}", obj1);
+    println!("Object 1: {obj1}");
     match_objects(&cwjf, &bool_filter, &obj1);
-    println!("Object 2: {}", obj2);
+    println!("Object 2: {obj2}");
     match_objects(&cwjf, &bool_filter, &obj2);
     println!();
 }
@@ -76,7 +76,7 @@ fn main() {
 fn match_objects<D: ProtobufDecoder>(cwjf: &CwJsonFilter<D>, filter: &Value, obj: &Value) {
     match cwjf.matches(filter, obj) {
         FilterResult::Pass => println!("Filter matches the object"),
-        FilterResult::Fail(err) => println!("Filter does not match the object: {:?}", err),
-        FilterResult::Fatal(err) => println!("Fatal error: {:?}", err),
+        FilterResult::Fail(err) => println!("Filter does not match the object: {err:?}"),
+        FilterResult::Fatal(err) => println!("Fatal error: {err:?}"),
     }
 }

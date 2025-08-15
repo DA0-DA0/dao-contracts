@@ -205,8 +205,8 @@ impl Display for FilterResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Pass => write!(f, "Pass"),
-            Self::Fail(failure) => write!(f, "Fail: {}", failure),
-            Self::Fatal(fatal) => write!(f, "Fatal: {}", fatal),
+            Self::Fail(failure) => write!(f, "Fail: {failure}"),
+            Self::Fatal(fatal) => write!(f, "Fatal: {fatal}"),
         }
     }
 }
