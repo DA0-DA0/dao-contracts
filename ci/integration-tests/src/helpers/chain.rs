@@ -79,7 +79,7 @@ fn test_accounts(derivation_path: String) -> HashMap<String, SigningAccount> {
 
 // global_setup() runs once before all of the tests
 fn global_setup() -> Cfg {
-    env_logger::try_init();
+    let _ = env_logger::try_init();
     let config = env::var("CONFIG").expect("missing yaml CONFIG env var");
     let gas_report_dir = env::var("GAS_OUT_DIR").unwrap_or_else(|_| "gas_reports".to_string());
 
