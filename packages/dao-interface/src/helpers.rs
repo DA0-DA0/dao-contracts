@@ -8,6 +8,7 @@ pub enum Update<T> {
 
 /// An update type that allows partial updates of optional fields.
 #[cw_serde]
+#[serde(transparent)]
 pub struct OptionalUpdate<T>(pub Option<Update<T>>);
 
 impl<T> OptionalUpdate<T> {
@@ -26,10 +27,20 @@ impl<T> OptionalUpdate<T> {
         self,
         update: impl FnOnce(Option<T>) -> Result<(), E>,
     ) -> Result<(), E> {
+        self.maybe_update_result_with_value(update, ())
+    }
+
+    /// Updates the value if it exists, otherwise does nothing, requiring the
+    /// update action to return a result with a value.
+    pub fn maybe_update_result_with_value<R, E>(
+        self,
+        update: impl FnOnce(Option<T>) -> Result<R, E>,
+        default: R,
+    ) -> Result<R, E> {
         match self.0 {
             Some(Update::Set(value)) => update(Some(value)),
             Some(Update::Clear) => update(None),
-            None => Ok(()),
+            None => Ok(default),
         }
     }
 }

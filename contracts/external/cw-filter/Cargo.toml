@@ -1,0 +1,40 @@
+[package]
+name = "cw-filter"
+authors = ["Noah Saso <noah@daodao.zone>"]
+description = "A contract that filters messages based on a JSON filter."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = { workspace = true, features = ["cosmwasm_1_2"] }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-jsonfilter = { workspace = true }
+dao-interface = { workspace = true }
+thiserror = { workspace = true }
+cw-utils = { workspace = true }
+cw-ownable = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+cw2 = { workspace = true }
+cw-protobuf-registry = { workspace = true, features = ["library"] }
+
+[dev-dependencies]
+cw-filter = { workspace = true, features = ["library"] }
+cw-multi-test = { workspace = true }
+dao-testing = { workspace = true }
+prost = { workspace = true }
+prost-reflect = { workspace = true, features = ["serde"] }
+prost-types = { workspace = true }

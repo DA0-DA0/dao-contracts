@@ -7,7 +7,7 @@ use cosmwasm_std::{
     to_json_binary, Addr, BlockInfo, Coin, CosmosMsg, Empty, QuerierWrapper, Timestamp, Uint128,
 };
 use cw20::Cw20Coin;
-use cw_multi_test::{error::AnyResult, App, AppResponse, Contract, Executor};
+use cw_multi_test::{error::AnyResult, App, AppResponse, BankSudo, Contract, Executor, SudoMsg};
 use cw_utils::Duration;
 use serde::Serialize;
 
@@ -45,6 +45,9 @@ pub struct DaoTestingSuiteBase {
     pub voting_token_staked_id: u64,
     pub cw20_stake_id: u64,
     pub rewards_distributor_id: u64,
+    pub rbam_id: u64,
+    pub filter_id: u64,
+    pub protobuf_registry_id: u64,
     // External stuff
     pub cw4_group_id: u64,
     pub cw20_base_id: u64,
@@ -207,6 +210,9 @@ impl DaoTestingSuiteBase {
         let voting_token_staked_id = app.store_code(dao_voting_token_staked_contract());
         let cw20_stake_id = app.store_code(cw20_stake_contract());
         let rewards_distributor_id = app.store_code(dao_rewards_distributor_contract());
+        let rbam_id = app.store_code(dao_rbam_contract());
+        let filter_id = app.store_code(cw_filter_contract());
+        let protobuf_registry_id = app.store_code(cw_protobuf_registry_contract());
 
         let cw4_group_id = app.store_code(cw4_group_contract());
         let cw20_base_id = app.store_code(cw20_base_contract());
@@ -242,6 +248,9 @@ impl DaoTestingSuiteBase {
             voting_token_staked_id,
             cw20_stake_id,
             rewards_distributor_id,
+            rbam_id,
+            filter_id,
+            protobuf_registry_id,
             cw4_group_id,
             cw20_base_id,
             cw721_base_id,
@@ -367,6 +376,24 @@ impl DaoTestingSuiteBase {
     /// advance the block height by one
     pub fn advance_block(&mut self) {
         self.advance_blocks(1);
+    }
+
+    /// mint tokens to an address
+    pub fn mint(
+        &mut self,
+        addr: impl Into<String>,
+        amount: impl Into<Uint128>,
+        denom: impl Into<String>,
+    ) {
+        self.app
+            .sudo(SudoMsg::Bank(BankSudo::Mint {
+                to_address: addr.into(),
+                amount: vec![Coin {
+                    denom: denom.into(),
+                    amount: amount.into(),
+                }],
+            }))
+            .unwrap();
     }
 
     /// store a contract given its maker function and return its code ID
@@ -673,6 +700,32 @@ impl DaoTestingSuiteBase {
     /// get the current block
     pub fn block(&self) -> BlockInfo {
         self.app.block_info()
+    }
+
+    /// get the config of the DAO
+    pub fn get_config(&self, core_addr: impl Into<String>) -> dao_interface::state::Config {
+        self.querier()
+            .query_wasm_smart::<dao_interface::state::Config>(
+                Addr::unchecked(core_addr.into()),
+                &dao_interface::msg::QueryMsg::Config {},
+            )
+            .unwrap()
+    }
+
+    /// get the proposal modules of the DAO
+    pub fn proposal_modules(
+        &self,
+        core_addr: impl Into<String>,
+    ) -> Vec<dao_interface::state::ProposalModule> {
+        self.querier()
+            .query_wasm_smart::<Vec<dao_interface::state::ProposalModule>>(
+                Addr::unchecked(core_addr.into()),
+                &dao_interface::msg::QueryMsg::ProposalModules {
+                    start_after: None,
+                    limit: None,
+                },
+            )
+            .unwrap()
     }
 
     /// get the total voting power of the DAO

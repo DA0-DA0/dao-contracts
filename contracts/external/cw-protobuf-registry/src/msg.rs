@@ -1,0 +1,127 @@
+use cosmwasm_schema::{cw_serde, QueryResponses};
+use cw_ownable::{cw_ownable_execute, cw_ownable_query};
+use dao_interface::proposal::InfoResponse;
+
+pub use cw_ownable::Ownership;
+
+#[cw_serde]
+pub struct InstantiateMsg {
+    /// The address of the initial owner of the contract. Defaults to the
+    /// sender.
+    pub owner: Option<String>,
+}
+
+#[cw_ownable_execute]
+#[cw_serde]
+pub enum ExecuteMsg {
+    /// Register protobuf file descriptor sets.
+    Register {
+        /// The protobuf file descriptor sets to register. This will override
+        /// existing files with the same names.
+        file_descriptor_sets: Vec<Vec<u8>>,
+    },
+    /// Unregister protobuf files and their message descriptors.
+    Unregister {
+        /// The names of the protobuf files to unregister.
+        file_names: Vec<String>,
+        /// The maximum number of message descriptors to unregister. If not
+        /// provided, it will attempt to unregister all message descriptors,
+        /// running out of gas if there are too many. If the limit is too low
+        /// such that we never progress to and delete the last file, it will
+        /// return an error.
+        message_limit: Option<u32>,
+    },
+    /// Prepare a file descriptor set for each message to make decoding faster.
+    Prepare {
+        /// The messages to prepare file descriptor sets for.
+        messages: Vec<String>,
+    },
+    /// Unprepare a file descriptor set for each message to clean up space.
+    Unprepare {
+        /// The messages to unprepare file descriptor sets for.
+        messages: Vec<String>,
+    },
+}
+
+#[cw_ownable_query]
+#[cw_serde]
+#[derive(QueryResponses)]
+pub enum QueryMsg {
+    #[returns(InfoResponse)]
+    Info {},
+    #[returns(ListFilesResponse)]
+    ListFiles {
+        /// The file name to start after. If not provided, the query will start
+        /// from the beginning.
+        start_after: Option<String>,
+        /// The maximum number of files to return. Defaults to 10, max is 100.
+        limit: Option<u32>,
+    },
+    #[returns(ListMessagesResponse)]
+    ListMessages {
+        /// Optionally list messages by file name.
+        file_name: Option<String>,
+        /// The message name to start after. If not provided, the query will
+        /// start from the beginning.
+        start_after: Option<String>,
+        /// The maximum number of messages to return. Defaults to 10, max is
+        /// 100.
+        limit: Option<u32>,
+    },
+    #[returns(ListMessagesResponse)]
+    ListPrepared {
+        /// The message name to start after. If not provided, the query will
+        /// start from the beginning.
+        start_after: Option<String>,
+        /// The maximum number of messages to return. Defaults to 10, max is
+        /// 100.
+        limit: Option<u32>,
+    },
+    #[returns(PreparedResponse)]
+    Prepared {
+        /// The message name to check.
+        message_name: String,
+    },
+    #[returns(FileDescriptorSetResponse)]
+    FileDescriptorSet {
+        /// The messages to include in the file descriptor set.
+        messages: Vec<String>,
+    },
+    #[returns(DecodeResponse)]
+    Decode {
+        /// The name of the message to decode.
+        message_name: String,
+        /// The value to decode.
+        value: Vec<u8>,
+    },
+}
+
+#[cw_serde]
+pub struct MigrateMsg {}
+
+// Response types
+
+#[cw_serde]
+pub struct ListFilesResponse {
+    pub files: Vec<String>,
+}
+
+#[cw_serde]
+pub struct ListMessagesResponse {
+    pub messages: Vec<String>,
+}
+
+#[cw_serde]
+pub struct PreparedResponse {
+    pub prepared: bool,
+}
+
+#[cw_serde]
+pub struct FileDescriptorSetResponse {
+    pub file_descriptor_set: Vec<u8>,
+}
+
+#[cw_serde]
+pub struct DecodeResponse {
+    pub value: serde_json::Value,
+}

@@ -479,8 +479,7 @@ impl TokenfactoryIssuer {
     pub fn execute_error(err: ContractError) -> RunnerError {
         RunnerError::ExecuteError {
             msg: format!(
-                "failed to execute message; message index: 0: {}: execute wasm contract failed",
-                err
+                "failed to execute message; message index: 0: {err}: execute wasm contract failed"
             ),
         }
     }

@@ -244,6 +244,35 @@ pub fn dao_test_custom_factory_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
+pub fn dao_rbam_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        dao_rbam::contract::execute,
+        dao_rbam::contract::instantiate,
+        dao_rbam::contract::query,
+    )
+    .with_reply(dao_rbam::contract::reply);
+    Box::new(contract)
+}
+
+pub fn cw_filter_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw_filter::contract::execute,
+        cw_filter::contract::instantiate,
+        cw_filter::contract::query,
+    )
+    .with_reply(cw_filter::contract::reply);
+    Box::new(contract)
+}
+
+pub fn cw_protobuf_registry_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw_protobuf_registry::contract::execute,
+        cw_protobuf_registry::contract::instantiate,
+        cw_protobuf_registry::contract::query,
+    );
+    Box::new(contract)
+}
+
 pub fn dao_rewards_distributor_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         dao_rewards_distributor::contract::execute,

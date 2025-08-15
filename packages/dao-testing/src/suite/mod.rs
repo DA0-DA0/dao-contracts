@@ -12,6 +12,7 @@ pub const ADDR2: &str = "addr2";
 pub const ADDR3: &str = "addr3";
 pub const ADDR4: &str = "addr4";
 
+pub const DENOM: &str = "udenom";
 pub const GOV_DENOM: &str = "ugovtoken";
 
 pub use cw_multi_test::Executor;

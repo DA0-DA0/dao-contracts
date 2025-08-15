@@ -1,0 +1,39 @@
+[package]
+name = "cw-protobuf-registry"
+authors = ["Noah Saso <noah@daodao.zone>"]
+description = "A protobuf registry that handles decoding protobuf messages."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = { workspace = true, features = ["cosmwasm_1_2"] }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+dao-interface = { workspace = true }
+thiserror = { workspace = true }
+cw-utils = { workspace = true }
+cw-ownable = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+cw2 = { workspace = true }
+prost = { workspace = true }
+prost-reflect = { workspace = true, features = ["serde"] }
+prost-types = { workspace = true }
+base64 = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }
+cw-protobuf-registry = { workspace = true }
+dao-testing = { workspace = true }

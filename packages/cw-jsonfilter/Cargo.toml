@@ -1,0 +1,18 @@
+[package]
+name = "cw-jsonfilter"
+authors = ["Noah <noah@daodao.zone>", "JMARyA <jmarya@hydrar.de>"]
+description = "Filter and compare JSON objects for CosmWasm"
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+base64 = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+prost-reflect = { workspace = true, features = ["serde"] }
+
+[dev-dependencies]
+cw-protobuf-registry = { workspace = true, features = ["library"] }
+prost-types = { workspace = true }

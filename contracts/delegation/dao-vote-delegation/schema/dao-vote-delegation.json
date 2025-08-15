@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-vote-delegation",
-  "contract_version": "2.7.1",
+  "contract_version": "2.8.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -233,16 +233,15 @@
         "properties": {
           "update_config": {
             "type": "object",
-            "required": [
-              "delegation_validity_blocks",
-              "vp_cap_percent"
-            ],
             "properties": {
               "delegation_validity_blocks": {
                 "description": "the number of blocks a delegation is valid for, after which it must be renewed by the delegator. if not set, the delegation will never expire.",
-                "allOf": [
+                "anyOf": [
                   {
-                    "$ref": "#/definitions/OptionalUpdate_for_uint64"
+                    "$ref": "#/definitions/Update_for_uint64"
+                  },
+                  {
+                    "type": "null"
                   }
                 ]
               },
@@ -257,9 +256,12 @@
               },
               "vp_cap_percent": {
                 "description": "the maximum percent of voting power that a single delegate can wield. they can be delegated any amount of voting power—this cap is only applied when casting votes.",
-                "allOf": [
+                "anyOf": [
                   {
-                    "$ref": "#/definitions/OptionalUpdate_for_Decimal"
+                    "$ref": "#/definitions/Update_for_Decimal"
+                  },
+                  {
+                    "type": "null"
                   }
                 ]
               }
@@ -431,28 +433,6 @@
               }
             },
             "additionalProperties": false
-          }
-        ]
-      },
-      "OptionalUpdate_for_Decimal": {
-        "description": "An update type that allows partial updates of optional fields.",
-        "anyOf": [
-          {
-            "$ref": "#/definitions/Update_for_Decimal"
-          },
-          {
-            "type": "null"
-          }
-        ]
-      },
-      "OptionalUpdate_for_uint64": {
-        "description": "An update type that allows partial updates of optional fields.",
-        "anyOf": [
-          {
-            "$ref": "#/definitions/Update_for_uint64"
-          },
-          {
-            "type": "null"
           }
         ]
       },
