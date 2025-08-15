@@ -1,6 +1,6 @@
 {
   "contract_name": "cw20-stake",
-  "contract_version": "2.8.0",
+  "contract_version": "2.8.0-alpha.1",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
