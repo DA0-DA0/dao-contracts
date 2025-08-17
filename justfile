@@ -16,7 +16,7 @@ gen: build gen-schema
 gen-schema:
 	./scripts/schema.sh
 
-integration-test: deploy-local
+integration-test: deploy-local workspace-optimize
     sleep 10
     docker ps || grep cosmwasm || echo "container not found"
     @echo "sleep more"
