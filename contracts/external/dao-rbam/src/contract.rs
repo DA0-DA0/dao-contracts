@@ -699,7 +699,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
-        QueryMsg::Action { addr, id } => to_json_binary(&query_get_action(deps, addr, id)?),
+        QueryMsg::Action { id } => to_json_binary(&query_get_action(deps, id)?),
         QueryMsg::ListActions {
             start_after,
             limit,
@@ -943,9 +943,8 @@ fn query_list_assignments_by_address(
     Ok(ListRolesForAddressResponse { role_ids })
 }
 
-fn query_get_action(deps: Deps, addr: String, action_id: u64) -> StdResult<ActionResponse> {
-    let addr = deps.api.addr_validate(&addr)?;
-    let action = LOG.load(deps.storage, (addr, action_id)).map_err(|_| {
+fn query_get_action(deps: Deps, action_id: u64) -> StdResult<ActionResponse> {
+    let action = LOG.load(deps.storage, action_id).map_err(|_| {
         StdError::generic_err(ContractError::ActionNotFound { id: action_id }.to_string())
     })?;
     Ok(ActionResponse { action })
@@ -966,8 +965,6 @@ fn query_list_actions(
     };
 
     let actions: Vec<Action> = LOG
-        .idx
-        .action_id
         .range(deps.storage, min, max, order)
         .take(limit)
         .collect::<StdResult<Vec<_>>>()?
@@ -981,18 +978,12 @@ fn query_list_actions(
 fn query_list_actions_by_role(
     deps: Deps,
     role_id: u64,
-    start_after: Option<(String, u64)>,
+    start_after: Option<u64>,
     limit: Option<u32>,
     reverse: Option<bool>,
 ) -> StdResult<ListActionsResponse> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start = start_after
-        .map(|(addr, action_id)| {
-            deps.api
-                .addr_validate(&addr)
-                .map(|addr| Bound::exclusive((addr, action_id)))
-        })
-        .transpose()?;
+    let start = start_after.map(Bound::exclusive);
     let (min, max, order) = if reverse.unwrap_or(false) {
         (None, start, Order::Descending)
     } else {
@@ -1014,18 +1005,12 @@ fn query_list_actions_by_role(
 fn query_list_actions_by_authorization(
     deps: Deps,
     authorization_id: u64,
-    start_after: Option<(String, u64)>,
+    start_after: Option<u64>,
     limit: Option<u32>,
     reverse: Option<bool>,
 ) -> StdResult<ListActionsResponse> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start = start_after
-        .map(|(addr, authorization_id)| {
-            deps.api
-                .addr_validate(&addr)
-                .map(|addr| Bound::exclusive((addr, authorization_id)))
-        })
-        .transpose()?;
+    let start = start_after.map(Bound::exclusive);
     let (min, max, order) = if reverse.unwrap_or(false) {
         (None, start, Order::Descending)
     } else {
@@ -1061,6 +1046,8 @@ fn query_list_actions_by_address(
     };
 
     let actions: Vec<Action> = LOG
+        .idx
+        .address
         .prefix(addr)
         .range(deps.storage, min, max, order)
         .take(limit)

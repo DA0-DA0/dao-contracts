@@ -920,7 +920,7 @@ fn test_action_execution() {
     assert_eq!(actions[0].authorization_id, authorization_id);
     assert_eq!(actions[0].msg, action_msg);
 
-    let action = suite.get_action(ADDR0.to_string(), actions[0].id).action;
+    let action = suite.get_action(actions[0].id).action;
     assert_eq!(action.role_id, role_id);
     assert_eq!(action.authorization_id, authorization_id);
     assert_eq!(action.msg, action_msg);
@@ -930,7 +930,7 @@ fn test_action_execution() {
     assert_eq!(config.name, "new_name");
     assert_eq!(config.description, "new_description");
 
-    let err = suite.get_action_err(ADDR0.to_string(), 100);
+    let err = suite.get_action_err(100);
     assert!(err.to_string().contains(
         ContractError::ActionNotFound { id: 100 }
             .to_string()
@@ -2149,15 +2149,8 @@ fn test_comprehensive_list_queries_with_filtering() {
     let mut role2_actions = suite.list_actions_by_role(role_id2, None, None, None);
     assert_eq!(role2_actions.actions.len(), 2);
 
-    let role2_actions_start_after = suite.list_actions_by_role(
-        role_id2,
-        Some((
-            role2_actions.actions[0].addr.to_string(),
-            role2_actions.actions[0].id,
-        )),
-        None,
-        None,
-    );
+    let role2_actions_start_after =
+        suite.list_actions_by_role(role_id2, Some(role2_actions.actions[0].id), None, None);
     assert_eq!(role2_actions_start_after.actions.len(), 1);
     assert_eq!(
         role2_actions_start_after.actions[0].id,
@@ -2179,10 +2172,7 @@ fn test_comprehensive_list_queries_with_filtering() {
 
     let auth3_actions_start_after = suite.list_actions_by_authorization(
         authorization_id3,
-        Some((
-            auth3_actions.actions[0].addr.to_string(),
-            auth3_actions.actions[0].id,
-        )),
+        Some(auth3_actions.actions[0].id),
         None,
         None,
     );

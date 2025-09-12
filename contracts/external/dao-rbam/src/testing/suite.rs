@@ -343,22 +343,19 @@ impl Suite {
             .unwrap()
     }
 
-    pub fn get_action(&mut self, addr: String, id: u64) -> ActionResponse {
+    pub fn get_action(&mut self, id: u64) -> ActionResponse {
         self.base
             .app
             .wrap()
-            .query_wasm_smart(self.rbam_addr.clone(), &QueryMsg::Action { addr, id })
+            .query_wasm_smart(self.rbam_addr.clone(), &QueryMsg::Action { id })
             .unwrap()
     }
 
-    pub fn get_action_err(&mut self, addr: String, id: u64) -> StdError {
+    pub fn get_action_err(&mut self, id: u64) -> StdError {
         self.base
             .app
             .wrap()
-            .query_wasm_smart::<ActionResponse>(
-                self.rbam_addr.clone(),
-                &QueryMsg::Action { addr, id },
-            )
+            .query_wasm_smart::<ActionResponse>(self.rbam_addr.clone(), &QueryMsg::Action { id })
             .unwrap_err()
     }
 
@@ -385,7 +382,7 @@ impl Suite {
     pub fn list_actions_by_role(
         &mut self,
         role_id: u64,
-        start_after: Option<(String, u64)>,
+        start_after: Option<u64>,
         limit: Option<u32>,
         reverse: Option<bool>,
     ) -> ListActionsResponse {
@@ -407,7 +404,7 @@ impl Suite {
     pub fn list_actions_by_authorization(
         &mut self,
         authorization_id: u64,
-        start_after: Option<(String, u64)>,
+        start_after: Option<u64>,
         limit: Option<u32>,
         reverse: Option<bool>,
     ) -> ListActionsResponse {

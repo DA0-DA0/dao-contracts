@@ -1,8 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary};
-use cw_storage_plus::{
-    Index, IndexList, IndexedMap, Item, KeyDeserialize, Map, MultiIndex, UniqueIndex,
-};
+use cw_storage_plus::{Index, IndexList, IndexedMap, Item, KeyDeserialize, Map, MultiIndex};
 
 use crate::{
     action::Action,
@@ -77,20 +75,21 @@ pub const ASSIGNMENTS: IndexedMap<AssignmentPair, Addr, AssignmentsIndexes<'_>> 
     },
 );
 
-/// Map (address, action_id) -> action. Secondary indexes on action_id, role_id,
-/// and authorization_id to look up/iterate over all actions by role and by
+/// Map action_id -> action. Secondary indexes on address, role_id, and
+/// authorization_id to look up/iterate over all actions by address, role, and
 /// authorization. This supports the following queries:
 /// - get a specific action by ID (map lookup)
 /// - list all actions (range query)
-/// - list all actions performed by a specific address (prefixed range query)
+/// - list all actions performed by a specific address (secondary index range
+///   query)
 /// - list all actions performed by a specific role (secondary index range
 ///   query)
 /// - list all actions performed by a specific authorization (secondary index
 ///   range query)
-pub const LOG: IndexedMap<LogPairKey, Action, LogIndexes<'_>> = IndexedMap::new(
+pub const LOG: IndexedMap<u64, Action, LogIndexes<'_>> = IndexedMap::new(
     "log",
     LogIndexes {
-        action_id: UniqueIndex::new(|a| a.id, "log__action_id"),
+        address: MultiIndex::new(|_pk, a| a.addr.clone(), "log", "log__address"),
         role_id: MultiIndex::new(|_pk, a| a.role_id, "log", "log__role_id"),
         authorization_id: MultiIndex::new(
             |_pk, a| a.authorization_id,
@@ -126,20 +125,16 @@ impl IndexList<Addr> for AssignmentsIndexes<'_> {
     }
 }
 
-/// A pair of (address, action_id), the key for the LOG map.
-pub type LogPairKey = (Addr, u64);
-
-/// Secondary indexes for log to look up/iterate over all actions by role and by
-/// authorization.
+/// Secondary indexes for log to look up/iterate over all actions by address,
+/// role, and authorization.
 pub struct LogIndexes<'a> {
-    pub action_id: UniqueIndex<'a, u64, Action, LogPairKey>,
-    pub role_id: MultiIndex<'a, u64, Action, LogPairKey>,
-    pub authorization_id: MultiIndex<'a, u64, Action, LogPairKey>,
+    pub address: MultiIndex<'a, Addr, Action, u64>,
+    pub role_id: MultiIndex<'a, u64, Action, u64>,
+    pub authorization_id: MultiIndex<'a, u64, Action, u64>,
 }
 impl IndexList<Action> for LogIndexes<'_> {
     fn get_indexes(&self) -> Box<dyn Iterator<Item = &dyn Index<Action>> + '_> {
-        let v: Vec<&dyn Index<Action>> =
-            vec![&self.action_id, &self.role_id, &self.authorization_id];
+        let v: Vec<&dyn Index<Action>> = vec![&self.address, &self.role_id, &self.authorization_id];
         Box::new(v.into_iter())
     }
 }

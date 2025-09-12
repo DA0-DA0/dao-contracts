@@ -273,8 +273,6 @@ pub enum QueryMsg {
     // Action/Log queries
     #[returns(ActionResponse)]
     Action {
-        /// The address of the action.
-        addr: String,
         /// The action ID.
         id: u64,
     },
@@ -294,9 +292,9 @@ pub enum QueryMsg {
     ListActionsByRole {
         /// The role to list actions for.
         role_id: u64,
-        /// The (addr, action_id) to start after. If not provided, the query
-        /// will start from the beginning.
-        start_after: Option<(String, u64)>,
+        /// The action_id to start after. If not provided, the query will start
+        /// from the beginning.
+        start_after: Option<u64>,
         /// The maximum number of actions to return. Defaults to 10, max is 100.
         limit: Option<u32>,
         /// Whether to reverse the order of the results. Defaults to false. If
@@ -308,9 +306,9 @@ pub enum QueryMsg {
     ListActionsByAuthorization {
         /// The authorization to list actions for.
         authorization_id: u64,
-        /// The (addr, action_id) to start after. If not provided, the query
-        /// will start from the beginning.
-        start_after: Option<(String, u64)>,
+        /// The action_id to start after. If not provided, the query will start
+        /// from the beginning.
+        start_after: Option<u64>,
         /// The maximum number of actions to return. Defaults to 10, max is 100.
         limit: Option<u32>,
         /// Whether to reverse the order of the results. Defaults to false. If
