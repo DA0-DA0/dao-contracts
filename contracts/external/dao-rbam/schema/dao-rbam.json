@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-rbam",
-  "contract_version": "2.8.0-alpha.1",
+  "contract_version": "2.8.0-alpha.2",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2303,14 +2303,9 @@
           "action": {
             "type": "object",
             "required": [
-              "addr",
               "id"
             ],
             "properties": {
-              "addr": {
-                "description": "The address of the action.",
-                "type": "string"
-              },
               "id": {
                 "description": "The action ID.",
                 "type": "integer",
@@ -2398,23 +2393,13 @@
                 "minimum": 0.0
               },
               "start_after": {
-                "description": "The (addr, action_id) to start after. If not provided, the query will start from the beginning.",
+                "description": "The action_id to start after. If not provided, the query will start from the beginning.",
                 "type": [
-                  "array",
+                  "integer",
                   "null"
                 ],
-                "items": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "integer",
-                    "format": "uint64",
-                    "minimum": 0.0
-                  }
-                ],
-                "maxItems": 2,
-                "minItems": 2
+                "format": "uint64",
+                "minimum": 0.0
               }
             },
             "additionalProperties": false
@@ -2457,23 +2442,13 @@
                 ]
               },
               "start_after": {
-                "description": "The (addr, action_id) to start after. If not provided, the query will start from the beginning.",
+                "description": "The action_id to start after. If not provided, the query will start from the beginning.",
                 "type": [
-                  "array",
+                  "integer",
                   "null"
                 ],
-                "items": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "integer",
-                    "format": "uint64",
-                    "minimum": 0.0
-                  }
-                ],
-                "maxItems": 2,
-                "minItems": 2
+                "format": "uint64",
+                "minimum": 0.0
               }
             },
             "additionalProperties": false

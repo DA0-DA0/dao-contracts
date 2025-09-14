@@ -51,7 +51,7 @@ impl Action {
             tx_index: env.transaction.as_ref().map(|tx| tx.index),
         };
 
-        LOG.save(deps.storage, (addr, action.id), &action)?;
+        LOG.save(deps.storage, action.id, &action)?;
 
         Ok(action)
     }
