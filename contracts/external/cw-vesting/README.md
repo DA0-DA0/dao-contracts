@@ -73,18 +73,21 @@ that looks like this:
 As you can see, it travels through `(0, 0)` in a straight line to `(2,
 2)`, then increases its slope and travels to `(4, 8)`.
 
-A curve where 50% vests the first month starting January 1st 2023, and
-the remaining 50% vests over the next year. For 100 Juno.
+Here is a curve where 50% vests the first 30 days (2,592,000 seconds), and the
+remaining 50% vests over the next year (31,536,000 seconds):
 
 ```json
 {
     "piecewise_linear": [
-        (1672531200, "0"),
-        (1675209600, "50000000"),
-        (1706745600, "100000000")
+        (0, "0"),
+        (2592000, "50000000"),
+        (31536000, "100000000")
     ]
 }
 ```
+
+These are tuples of `(seconds_since_start, tokens_released)`. The first must be
+`(0, 0)`.
 
 ### Creating native token vesting
 
