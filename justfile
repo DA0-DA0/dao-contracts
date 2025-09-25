@@ -17,7 +17,31 @@ gen-schema:
 	./scripts/schema.sh
 
 integration-test: deploy-local workspace-optimize
-	RUST_LOG=info CONFIG={{orc_config}} cargo integration-test
+    sleep 10
+    docker ps || grep cosmwasm || echo "container not found"
+    @echo "sleep more"
+    sleep 10
+    @echo "Testing Tendermint RPC (26657)..."
+    curl -f -s --max-time 5 http://localhost:26657/status > /tmp/rpc_test.json && echo "Tendermint OK" || echo "Tendermint failed"
+    @test -f /tmp/rpc_test.json && jq -r '.result.sync_info.latest_block_height' /tmp/rpc_test.json || echo "No block height data"
+    @echo "Testing REST API (1317)..."
+    curl -f -s --max-time 5 http://localhost:1317/cosmos/base/tendermint/v1beta1/blocks/latest > /tmp/rest_test.json && echo "REST OK" || echo "REST failed"
+    @test -f /tmp/rest_test.json && jq -r '.block.header.height' /tmp/rest_test.json || echo "No REST height data"
+    @echo "Testing gRPC port (9090) accessibility..."
+    timeout 5 bash -c '</dev/tcp/localhost/9090' && echo "gRPC port open" || echo "gRPC port closed"
+    @echo ""
+    @echo "DEBUG: Container network info"
+    docker exec cosmwasm netstat -tlnp 2>/dev/null | head -10 || echo "netstat failed"
+    @echo ""
+    @echo "DEBUG: Config file content"
+    @echo "Using config: {{orc_config}}"
+    cat {{orc_config}} || echo "Config file not found"
+    @echo ""
+    @echo "DEBUG: Container app.toml gRPC config"
+    docker exec cosmwasm grep -A 5 "\[grpc\]" /root/.juno/config/app.toml || echo "gRPC config check failed"
+    @echo ""
+    @echo "Starting integration tests with full output..."
+    RUST_LOG=info CONFIG={{orc_config}} cargo integration-test
 
 test-tube:
     cargo test --features "test-tube"
@@ -45,7 +69,7 @@ deploy-local: download-deps
 		-p 26657:26657 \
 		-p 9090:9090 \
 		--mount type=volume,source=junod_data,target=/root \
-		ghcr.io/cosmoscontracts/juno:v15.0.0 /opt/setup_and_run.sh {{test_addrs}}
+		ghcr.io/cosmoscontracts/juno:v24.0.0 /opt/setup_and_run.sh {{test_addrs}}
 
 download-deps:
 	mkdir -p artifacts target
