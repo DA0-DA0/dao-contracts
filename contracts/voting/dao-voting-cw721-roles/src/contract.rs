@@ -6,11 +6,9 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw4::{MemberResponse, TotalWeightResponse};
-use cw721_base::{
-    ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg, QueryMsg as Cw721QueryMsg,
-};
+use cw721::msg::{Cw721ExecuteMsg, Cw721InstantiateMsg, Cw721QueryMsg};
+use cw721::DefaultOptionalCollectionExtension;
 use cw_ownable::Action;
-use cw_utils::parse_reply_instantiate_data;
 use dao_cw721_extensions::roles::{ExecuteExt, MetadataExt, QueryExt};
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 
@@ -70,8 +68,10 @@ pub fn instantiate(
                     msg: to_json_binary(&Cw721InstantiateMsg {
                         name,
                         symbol,
-                        // Admin must be set to contract to mint initial NFTs
-                        minter: env.contract.address.to_string(),
+                        minter: Some(env.contract.address.to_string()),
+                        collection_info_extension: DefaultOptionalCollectionExtension::default(),
+                        creator: Some(info.sender.to_string()),
+                        withdraw_address: Some(info.sender.to_string()),
                     })?,
                     funds: None,
                     salt,
@@ -117,7 +117,7 @@ pub fn query_voting_power_at_height(
     let config = CONFIG.load(deps.storage)?;
     let member: MemberResponse = deps.querier.query_wasm_smart(
         config.nft_address,
-        &Cw721QueryMsg::<QueryExt>::Extension {
+        &Cw721QueryMsg::<MetadataExt, ExecuteExt, QueryExt>::Extension {
             msg: QueryExt::Member {
                 addr: address,
                 at_height,
@@ -139,7 +139,7 @@ pub fn query_total_power_at_height(
     let config = CONFIG.load(deps.storage)?;
     let total: TotalWeightResponse = deps.querier.query_wasm_smart(
         config.nft_address,
-        &Cw721QueryMsg::<QueryExt>::Extension {
+        &Cw721QueryMsg::<MetadataExt, ExecuteExt, QueryExt>::Extension {
             msg: QueryExt::TotalWeight { at_height },
         },
     )?;
@@ -168,69 +168,72 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
-        INSTANTIATE_NFT_CONTRACT_REPLY_ID => {
-            let res = parse_reply_instantiate_data(msg);
-            match res {
-                Ok(res) => {
-                    let dao = DAO.load(deps.storage)?;
-                    let nft_contract = res.contract_address;
+        INSTANTIATE_NFT_CONTRACT_REPLY_ID => match msg.result {
+            cosmwasm_std::SubMsgResult::Ok(sub_msg_response) => {
+                let dao = DAO.load(deps.storage)?;
+                let res = parse_reply_instantiate_data(msg);
+                let nft_contract = res.contract_address;
 
-                    // Save config
-                    let config = Config {
-                        nft_address: deps.api.addr_validate(&nft_contract)?,
-                    };
-                    CONFIG.save(deps.storage, &config)?;
+                // Save config
+                let config = Config {
+                    nft_address: deps.api.addr_validate(&nft_contract)?,
+                };
+                CONFIG.save(deps.storage, &config)?;
 
-                    let initial_nfts = INITIAL_NFTS.load(deps.storage)?;
+                let initial_nfts = INITIAL_NFTS.load(deps.storage)?;
 
-                    // Add mint submessages
-                    let mint_submessages: Vec<SubMsg> = initial_nfts
-                        .iter()
-                        .flat_map(|nft| -> Result<SubMsg, ContractError> {
-                            Ok(SubMsg::new(WasmMsg::Execute {
-                                contract_addr: nft_contract.clone(),
-                                funds: vec![],
-                                msg: to_json_binary(
-                                    &Cw721ExecuteMsg::<MetadataExt, ExecuteExt>::Mint {
-                                        token_id: nft.token_id.clone(),
-                                        owner: nft.owner.clone(),
-                                        token_uri: nft.token_uri.clone(),
-                                        extension: MetadataExt {
-                                            role: nft.clone().extension.role,
-                                            weight: nft.extension.weight,
-                                        },
-                                    },
-                                )?,
-                            }))
-                        })
-                        .collect::<Vec<SubMsg>>();
+                // Add mint submessages
+                let mint_submessages: Vec<SubMsg> = initial_nfts
+                    .iter()
+                    .flat_map(|nft| -> Result<SubMsg, ContractError> {
+                        Ok(SubMsg::new(WasmMsg::Execute {
+                            contract_addr: nft_contract.clone(),
+                            funds: vec![],
+                            msg: to_json_binary(&Cw721ExecuteMsg::<
+                                MetadataExt,
+                                ExecuteExt,
+                                QueryExt,
+                            >::Mint {
+                                token_id: nft.token_id.clone(),
+                                owner: nft.owner.clone(),
+                                token_uri: nft.token_uri.clone(),
+                                extension: MetadataExt {
+                                    role: nft.clone().extension.role,
+                                    weight: nft.extension.weight,
+                                },
+                            })?,
+                        }))
+                    })
+                    .collect::<Vec<SubMsg>>();
 
-                    // Clear space
-                    INITIAL_NFTS.remove(deps.storage);
+                // Clear space
+                INITIAL_NFTS.remove(deps.storage);
 
-                    // Update minter message
-                    let update_minter_msg = WasmMsg::Execute {
-                        contract_addr: nft_contract.clone(),
-                        msg: to_json_binary(
-                            &Cw721ExecuteMsg::<MetadataExt, ExecuteExt>::UpdateOwnership(
+                // Update minter message
+                let update_minter_msg =
+                        WasmMsg::Execute {
+                            contract_addr: nft_contract.clone(),
+                            msg: to_json_binary(&Cw721ExecuteMsg::<
+                                MetadataExt,
+                                ExecuteExt,
+                                QueryExt,
+                            >::UpdateMinterOwnership(
                                 Action::TransferOwnership {
                                     new_owner: dao.to_string(),
                                     expiry: None,
                                 },
-                            ),
-                        )?,
-                        funds: vec![],
-                    };
+                            ))?,
+                            funds: vec![],
+                        };
 
-                    Ok(Response::default()
-                        .add_attribute("method", "instantiate")
-                        .add_attribute("nft_contract", nft_contract)
-                        .add_message(update_minter_msg)
-                        .add_submessages(mint_submessages))
-                }
-                Err(_) => Err(ContractError::NftInstantiateError {}),
+                Ok(Response::default()
+                    .add_attribute("method", "instantiate")
+                    .add_attribute("nft_contract", nft_contract)
+                    .add_message(update_minter_msg)
+                    .add_submessages(mint_submessages))
             }
-        }
+            cosmwasm_std::SubMsgResult::Err(_) => Err(ContractError::NftInstantiateError {}),
+        },
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }
 }

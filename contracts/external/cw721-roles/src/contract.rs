@@ -8,8 +8,13 @@ use cw4::{
     Member, MemberChangedHookMsg, MemberDiff, MemberListResponse, MemberResponse,
     TotalWeightResponse,
 };
-use cw721::{Cw721ReceiveMsg, NftInfoResponse, OwnerOfResponse};
-use cw721_base::{Cw721Contract, InstantiateMsg as Cw721BaseInstantiateMsg};
+use cw721::{
+    helpers::Cw721Helper,
+    msg::{Cw721InstantiateMsg, NftInfoResponse, OwnerOfResponse},
+    receiver::Cw721ReceiveMsg,
+    EmptyOptionalCollectionExtension,
+};
+
 use cw_storage_plus::Bound;
 use cw_utils::maybe_addr;
 use dao_cw721_extensions::roles::{ExecuteExt, MetadataExt, QueryExt};
@@ -27,14 +32,14 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 
-pub type Cw721Roles<'a> = Cw721Contract<'a, MetadataExt, Empty, ExecuteExt, QueryExt>;
+pub type Cw721Roles<'a> = Cw721Helper<'a, MetadataExt, Empty, ExecuteExt, QueryExt>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: Cw721BaseInstantiateMsg,
+    msg: Cw721InstantiateMsg<EmptyOptionalCollectionExtension>,
 ) -> Result<Response, ContractError> {
     Cw721Roles::default().instantiate(deps.branch(), env.clone(), info, msg)?;
 
