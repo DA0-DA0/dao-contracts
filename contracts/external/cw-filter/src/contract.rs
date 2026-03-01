@@ -8,7 +8,7 @@ use cw_jsonfilter::{CwJsonFilter, FilterResult};
 
 use cw2::set_contract_version;
 use cw_ownable::initialize_owner;
-use cw_utils::{nonpayable, parse_reply_instantiate_data};
+use cw_utils::nonpayable;
 use dao_interface::proposal::InfoResponse;
 use dao_interface::state::ModuleUpdate;
 

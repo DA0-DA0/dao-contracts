@@ -57,9 +57,9 @@ impl TestEnv {
         app: &OsmosisTestApp,
         test_accs_count: u64,
     ) -> Vec<SigningAccount> {
-        let default_initial_balance = [Coin::new(100_000_000_000, "uosmo")];
+        let default_initial_balance = [Coin::new(100_000_000_000u128, "uosmo")];
 
-        app.init_accounts(&default_initial_balance, test_accs_count)
+        app.init_accounts(default_initial_balance.as_ref(), test_accs_count)
             .unwrap()
     }
 
@@ -138,7 +138,7 @@ impl TokenfactoryIssuer {
         signer: &SigningAccount,
     ) -> Result<Self, RunnerError> {
         let wasm = Wasm::new(&app);
-        let token_creation_fee = Coin::new(10000000, "uosmo");
+        let token_creation_fee = Coin::new(10000000u128, "uosmo");
 
         let code_id = wasm
             .store_code(&Self::get_wasm_byte_code(), None, signer)?

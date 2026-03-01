@@ -410,7 +410,7 @@ pub fn execute_set_withdraw_address(
         Status::Canceled { .. } => cw_ownable::assert_owner(deps.storage, &info.sender)?,
     }
 
-    if address == env.contract.address {
+    if address == env.contract.address.to_string() {
         return Err(ContractError::SelfWithdraw);
     }
 
