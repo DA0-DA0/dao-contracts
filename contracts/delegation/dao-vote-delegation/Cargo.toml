@@ -11,9 +11,6 @@ version = { workspace = true }
 crate-type = ["cdylib", "rlib"]
 
 [features]
-backtraces = ["cosmwasm-std/backtraces"]
-# use library feature to disable all instantiate/execute/query exports
-library = []
 
 [dependencies]
 cosmwasm-std = { workspace = true }

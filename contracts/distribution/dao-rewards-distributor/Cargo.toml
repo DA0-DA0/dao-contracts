@@ -16,7 +16,6 @@ version = { workspace = true }
 crate-type = ["cdylib", "rlib"]
 
 [features]
-backtraces = ["cw-multi-test/backtrace"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
 
