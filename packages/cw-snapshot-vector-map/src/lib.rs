@@ -16,15 +16,15 @@ pub type SnapshotVectorMapItemRef = (u64, Option<u64>);
 /// expired.
 pub struct SnapshotVectorMap<'a, K, V> {
     /// All items for a key, indexed by ID.
-    items: Map<'a, &'a (K, u64), V>,
+    items: Map<&'a (K, u64), V>,
     /// The next item ID to use per-key.
-    next_ids: Map<'a, K, u64>,
+    next_ids: Map<K, u64>,
     /// The IDs of the items that are active for a key at a given height, and
     /// optionally the height at which they expire.
-    active: SnapshotMap<'a, K, Vec<SnapshotVectorMapItemRef>>,
+    active: SnapshotMap<K, Vec<SnapshotVectorMapItemRef>>,
     /// The last height at which the active list was updated for each key, to
     /// enforce that updates (push/remove) are done in order.
-    last_active_update: Map<'a, K, u64>,
+    last_active_update: Map<K, u64>,
 }
 
 /// A loaded item from the vector, including its ID and expiration.

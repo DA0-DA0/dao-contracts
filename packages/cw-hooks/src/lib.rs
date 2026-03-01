@@ -24,10 +24,10 @@ pub enum HookError {
 }
 
 // store all hook addresses in one item. We cannot have many of them before the contract becomes unusable anyway.
-pub struct Hooks<'a>(Item<'a, Vec<Addr>>);
+pub struct Hooks(Item<Vec<Addr>>);
 
-impl<'a> Hooks<'a> {
-    pub const fn new(storage_key: &'a str) -> Self {
+impl Hooks {
+    pub const fn new(storage_key: &'static str) -> Self {
         Hooks(Item::new(storage_key))
     }
 
@@ -191,7 +191,7 @@ mod tests {
 
         // Query hooks returns all hooks added
         let HooksResponse { hooks: the_hooks } = hooks.query_hooks(deps.as_ref()).unwrap();
-        assert_eq!(the_hooks, vec![addr!("meow")]);
+        assert_eq!(the_hooks, vec![addr!("meow").to_string()]);
 
         // Remove last hook
         hooks.remove_hook(&mut deps.storage, addr!("meow")).unwrap();

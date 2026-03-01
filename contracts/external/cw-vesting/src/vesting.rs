@@ -12,9 +12,9 @@ use cw_stake_tracker::{StakeTracker, StakeTrackerQuery};
 
 use crate::error::ContractError;
 
-pub struct Payment<'a> {
-    vesting: Item<'a, Vest>,
-    staking: StakeTracker<'a>,
+pub struct Payment {
+    vesting: Item<Vest>,
+    staking: StakeTracker,
 }
 
 #[cw_serde]
@@ -80,12 +80,12 @@ pub struct VestInit {
     pub description: Option<String>,
 }
 
-impl<'a> Payment<'a> {
+impl Payment {
     pub const fn new(
-        vesting_prefix: &'a str,
-        staked_prefix: &'a str,
-        validator_prefix: &'a str,
-        cardinality_prefix: &'a str,
+        vesting_prefix: &'static str,
+        staked_prefix: &'static str,
+        validator_prefix: &'static str,
+        cardinality_prefix: &'static str,
     ) -> Self {
         Self {
             vesting: Item::new(vesting_prefix),

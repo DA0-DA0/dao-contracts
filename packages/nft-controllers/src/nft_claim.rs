@@ -31,10 +31,10 @@ impl NftClaim {
     }
 }
 
-pub struct NftClaims<'a>(Map<'a, (&'a Addr, &'a String), Expiration>);
+pub struct NftClaims<'a>(Map<(&'a Addr, &'a String), Expiration>);
 
 impl<'a> NftClaims<'a> {
-    pub const fn new(storage_key: &'a str) -> Self {
+    pub const fn new(storage_key: &'static str) -> Self {
         NftClaims(Map::new(storage_key))
     }
 

@@ -55,16 +55,13 @@ pub fn execute(
     }
 }
 
-struct CounterpartyResponse<'a> {
+struct CounterpartyResponse {
     pub counterparty: CheckedCounterparty,
     pub other_counterparty: CheckedCounterparty,
-    pub storage: Item<'a, CheckedCounterparty>,
+    pub storage: Item<CheckedCounterparty>,
 }
 
-fn get_counterparty<'a>(
-    deps: Deps,
-    sender: &Addr,
-) -> Result<CounterpartyResponse<'a>, ContractError> {
+fn get_counterparty(deps: Deps, sender: &Addr) -> Result<CounterpartyResponse, ContractError> {
     let counterparty_one = COUNTERPARTY_ONE.load(deps.storage)?;
     let counterparty_two = COUNTERPARTY_TWO.load(deps.storage)?;
 
