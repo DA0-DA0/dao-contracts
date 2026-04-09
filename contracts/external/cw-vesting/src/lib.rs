@@ -16,6 +16,8 @@ pub use cw_ownable::Ownership;
 pub use cw_stake_tracker::StakeTrackerQuery;
 
 #[cfg(test)]
+mod migrate_tests;
+#[cfg(test)]
 mod suite_tests;
 #[cfg(test)]
 mod tests;
