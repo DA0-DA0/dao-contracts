@@ -19,8 +19,8 @@ use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, ReceiveMsg};
 use crate::state::{PAYMENT, UNBONDING_DURATION_SECONDS};
 use crate::vesting::{Status, VestInit};
 
-const CONTRACT_NAME: &str = "crates.io:cw-vesting";
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const CONTRACT_NAME: &str = "crates.io:cw-vesting";
+pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
