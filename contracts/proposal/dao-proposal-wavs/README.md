@@ -53,12 +53,6 @@ wasm-opt -Oz --signext-lowering --enable-bulk-memory --enable-reference-types \
   -o ../../artifacts/dao_proposal_wavs.wasm
 ```
 
-## Naming + upstream coordination
-
-This crate is intended to be PR'd to `DA0-DA0/dao-contracts/contracts/proposal/dao-proposal-wavs` once the design stabilizes. Under that path it would become a workspace member of dao-contracts. Until then it lives standalone in this meta-repo.
-
-When ready to upstream, coordinate with DAO DAO maintainers (Noah Saso et al.) per `memory/jake-relational-norms.md` — bring working code, not idea.
-
 ## License
 
-Apache-2.0.
+BSD-3-Clause, inherited from the dao-contracts workspace.
