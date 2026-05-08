@@ -9,7 +9,11 @@ pub fn advance_proposal_id(storage: &mut dyn Storage) -> Result<u64, ContractErr
         .may_load(storage)?
         .unwrap_or_default()
         .checked_add(1)
-        .ok_or_else(|| ContractError::Std(cosmwasm_std::StdError::generic_err("proposal count overflow")))?;
+        .ok_or_else(|| {
+            ContractError::Std(cosmwasm_std::StdError::generic_err(
+                "proposal count overflow",
+            ))
+        })?;
     PROPOSAL_COUNT.save(storage, &id)?;
     Ok(id)
 }

@@ -44,7 +44,13 @@ pub fn sha256(bytes: &[u8]) -> Vec<u8> {
 
 /// Convert `event_id` bytes to a lowercase hex string for storage / display.
 pub fn event_id_hex(event_id: &[u8]) -> String {
-    event_id.iter().map(|b| format!("{:02x}", b)).collect()
+    use std::fmt::Write;
+    event_id
+        .iter()
+        .fold(String::with_capacity(event_id.len() * 2), |mut acc, b| {
+            let _ = write!(acc, "{:02x}", b);
+            acc
+        })
 }
 
 /// Helper: load the `Empty`-msg result type expected by ServiceHandler.

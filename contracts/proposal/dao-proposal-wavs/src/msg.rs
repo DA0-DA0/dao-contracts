@@ -1,8 +1,8 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use dao_voting::veto::VetoConfig;
 
-use crate::state::{AuthorizedService, MandateFilterConfig};
 pub use crate::state::WavsProposal;
+use crate::state::{AuthorizedService, MandateFilterConfig};
 use crate::wavs_compat::{ServiceHandlerExecuteMessages, ServiceHandlerQueryMessages};
 
 /// Instantiate the dao-proposal-wavs contract. Called by the DAO core during `voting_module_instantiate_info`

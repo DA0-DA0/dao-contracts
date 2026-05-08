@@ -56,7 +56,10 @@ pub enum AuthorizedService {
     /// A single WAVS operator address is the only one allowed to submit attested envelopes.
     SingleOperator { addr: Addr },
     /// k-of-n operator quorum. (v2 — not handled in v0.1 verify path.)
-    Quorum { operators: Vec<Addr>, threshold: u32 },
+    Quorum {
+        operators: Vec<Addr>,
+        threshold: u32,
+    },
     /// Indirection through an external registry contract. (v2.)
     Registry { addr: Addr },
 }

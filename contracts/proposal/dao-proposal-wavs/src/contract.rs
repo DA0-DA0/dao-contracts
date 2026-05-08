@@ -101,7 +101,9 @@ pub fn execute(
         ExecuteMsg::RemoveProposalHook { address } => {
             execute_remove_proposal_hook(deps, info, address)
         }
-        ExecuteMsg::ServiceHandler(handler_msg) => execute_service_handler(deps, env, info, handler_msg),
+        ExecuteMsg::ServiceHandler(handler_msg) => {
+            execute_service_handler(deps, env, info, handler_msg)
+        }
     }
 }
 
@@ -413,12 +415,19 @@ fn execute_wavs_handle_signed_envelope(
 
     // 2. Defer to service-manager. (Currently rubber-stamps per cw-middleware's TODO; will
     //    become real verification when Lay3rLabs ships it. Our contract doesn't change.)
-    validate_envelope(deps.as_ref(), cfg.service_manager.as_str(), &envelope, &signature_data)?;
+    validate_envelope(
+        deps.as_ref(),
+        cfg.service_manager.as_str(),
+        &envelope,
+        &signature_data,
+    )?;
 
     // 3. Replay-check.
-    let event_id = envelope.event_id().map_err(|e| ContractError::InvalidPayload {
-        reason: e.to_string(),
-    })?;
+    let event_id = envelope
+        .event_id()
+        .map_err(|e| ContractError::InvalidPayload {
+            reason: e.to_string(),
+        })?;
     let event_id_hex_str = event_id_hex(event_id);
     if ATTESTATIONS_SEEN
         .may_load(deps.storage, event_id)?
@@ -430,9 +439,11 @@ fn execute_wavs_handle_signed_envelope(
     }
 
     // 4. Decode payload.
-    let payload_bytes = envelope.payload().map_err(|e| ContractError::InvalidPayload {
-        reason: e.to_string(),
-    })?;
+    let payload_bytes = envelope
+        .payload()
+        .map_err(|e| ContractError::InvalidPayload {
+            reason: e.to_string(),
+        })?;
     let payload: ProposalPayload =
         serde_json::from_slice(payload_bytes).map_err(|e| ContractError::InvalidPayload {
             reason: format!("payload JSON decode failed: {e}"),
@@ -491,9 +502,8 @@ fn execute_wavs_handle_signed_envelope(
         .add_attribute("status", format!("{:?}", initial_status));
 
     if cfg.auto_execute && cfg.veto.is_none() {
-        let dispatch_msg = dao_interface::msg::ExecuteMsg::ExecuteProposalHook {
-            msgs: payload.msgs,
-        };
+        let dispatch_msg =
+            dao_interface::msg::ExecuteMsg::ExecuteProposalHook { msgs: payload.msgs };
         let dispatch = CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: cfg.dao.to_string(),
             msg: to_json_binary(&dispatch_msg)?,
@@ -559,7 +569,7 @@ fn query_service_handler(
 
 fn decode_hex(s: &str) -> Result<Vec<u8>, ContractError> {
     let s = s.trim_start_matches("0x");
-    if !s.len().is_multiple_of(2) {
+    if s.len() % 2 != 0 {
         return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
             "hex string must have even length",
         )));

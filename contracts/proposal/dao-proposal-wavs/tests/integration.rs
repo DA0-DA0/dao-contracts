@@ -16,8 +16,6 @@ use cosmwasm_std::{to_json_binary, Addr, Binary, CosmosMsg, Empty, StdError};
 use cw_multi_test::{App, ContractWrapper, Executor};
 use cw_storage_plus::Item;
 use cw_utils::Duration;
-use dao_voting::status::Status;
-use dao_voting::veto::VetoConfig;
 use dao_proposal_wavs::filter::{FilterQueryMsg, FilterResponse};
 use dao_proposal_wavs::msg::{ExecuteMsg, InstantiateMsg, ProposalPayload, QueryMsg};
 use dao_proposal_wavs::state::{AuthorizedService, Config, MandateFilterConfig, WavsProposal};
@@ -25,6 +23,8 @@ use dao_proposal_wavs::wavs_compat::{
     ServiceHandlerExecuteMessages, ServiceManagerQueryMessages, WavsEnvelope, WavsSignatureData,
     WavsValidateResult,
 };
+use dao_voting::status::Status;
+use dao_voting::veto::VetoConfig;
 
 const OPERATOR: &str = "wasm1operator";
 const NOT_OPERATOR: &str = "wasm1stranger";
@@ -79,9 +79,7 @@ const MOCK_DAO_CALLS: Item<u32> = Item::new("mock_dao_calls");
 
 #[cw_serde]
 pub enum MockDaoExecuteMsg {
-    ExecuteProposalHook {
-        msgs: Vec<CosmosMsg<Empty>>,
-    },
+    ExecuteProposalHook { msgs: Vec<CosmosMsg<Empty>> },
 }
 
 #[cw_serde]
@@ -796,5 +794,8 @@ fn close_open_proposal_rejected() {
             &[],
         )
         .unwrap_err();
-    assert!(format!("{err:?}").contains("InvalidProposalState") || format!("{err:?}").contains("not in a state"));
+    assert!(
+        format!("{err:?}").contains("InvalidProposalState")
+            || format!("{err:?}").contains("not in a state")
+    );
 }
