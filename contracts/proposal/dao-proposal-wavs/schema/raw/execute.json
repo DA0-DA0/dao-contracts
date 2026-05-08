@@ -1,0 +1,477 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "description": "Execute messages for the contract. Embeds the canonical WAVS service-handler messages via `#[serde(untagged)]` per the wavs-types convention so that WAVS calls into us with its standard schema while we keep our DAO-specific messages in the same enum.",
+  "oneOf": [
+    {
+      "description": "Execute a passed proposal. After timelock if veto is configured.",
+      "type": "object",
+      "required": [
+        "execute"
+      ],
+      "properties": {
+        "execute": {
+          "type": "object",
+          "required": [
+            "proposal_id"
+          ],
+          "properties": {
+            "proposal_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Veto a proposal during its timelock window. Callable only by `veto.vetoer`.",
+      "type": "object",
+      "required": [
+        "veto"
+      ],
+      "properties": {
+        "veto": {
+          "type": "object",
+          "required": [
+            "proposal_id"
+          ],
+          "properties": {
+            "proposal_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Close a proposal that has failed (either rejected by filter or expired).",
+      "type": "object",
+      "required": [
+        "close"
+      ],
+      "properties": {
+        "close": {
+          "type": "object",
+          "required": [
+            "proposal_id"
+          ],
+          "properties": {
+            "proposal_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Update authorized service. DAO-only.",
+      "type": "object",
+      "required": [
+        "update_authorized_service"
+      ],
+      "properties": {
+        "update_authorized_service": {
+          "type": "object",
+          "required": [
+            "service"
+          ],
+          "properties": {
+            "service": {
+              "$ref": "#/definitions/AuthorizedService"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Update the mandate filter (or remove it). DAO-only.",
+      "type": "object",
+      "required": [
+        "update_mandate_filter"
+      ],
+      "properties": {
+        "update_mandate_filter": {
+          "type": "object",
+          "properties": {
+            "mandate_filter": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/MandateFilterConfig"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Update veto config (or remove it). DAO-only.",
+      "type": "object",
+      "required": [
+        "update_veto"
+      ],
+      "properties": {
+        "update_veto": {
+          "type": "object",
+          "properties": {
+            "veto": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/VetoConfig"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Update auto-execute toggle. DAO-only.",
+      "type": "object",
+      "required": [
+        "update_auto_execute"
+      ],
+      "properties": {
+        "update_auto_execute": {
+          "type": "object",
+          "required": [
+            "auto_execute"
+          ],
+          "properties": {
+            "auto_execute": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Add a proposal hook receiver.",
+      "type": "object",
+      "required": [
+        "add_proposal_hook"
+      ],
+      "properties": {
+        "add_proposal_hook": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Remove a proposal hook receiver.",
+      "type": "object",
+      "required": [
+        "remove_proposal_hook"
+      ],
+      "properties": {
+        "remove_proposal_hook": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "WAVS service-handler interface — receives signed envelopes from authorized operators. `#[serde(untagged)]` keeps the canonical wavs-types message shape.",
+      "type": "object",
+      "required": [
+        "service_handler"
+      ],
+      "properties": {
+        "service_handler": {
+          "$ref": "#/definitions/ServiceHandlerExecuteMessages"
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Addr": {
+      "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+      "type": "string"
+    },
+    "AuthorizedService": {
+      "description": "Authorized WAVS service. v1 supports a single-operator gate; quorum + registry come in v2.",
+      "oneOf": [
+        {
+          "description": "A single WAVS operator address is the only one allowed to submit attested envelopes.",
+          "type": "object",
+          "required": [
+            "single_operator"
+          ],
+          "properties": {
+            "single_operator": {
+              "type": "object",
+              "required": [
+                "addr"
+              ],
+              "properties": {
+                "addr": {
+                  "$ref": "#/definitions/Addr"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "k-of-n operator quorum. (v2 — not handled in v0.1 verify path.)",
+          "type": "object",
+          "required": [
+            "quorum"
+          ],
+          "properties": {
+            "quorum": {
+              "type": "object",
+              "required": [
+                "operators",
+                "threshold"
+              ],
+              "properties": {
+                "operators": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Addr"
+                  }
+                },
+                "threshold": {
+                  "type": "integer",
+                  "format": "uint32",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Indirection through an external registry contract. (v2.)",
+          "type": "object",
+          "required": [
+            "registry"
+          ],
+          "properties": {
+            "registry": {
+              "type": "object",
+              "required": [
+                "addr"
+              ],
+              "properties": {
+                "addr": {
+                  "$ref": "#/definitions/Addr"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "Duration": {
+      "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "height"
+          ],
+          "properties": {
+            "height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Time in seconds",
+          "type": "object",
+          "required": [
+            "time"
+          ],
+          "properties": {
+            "time": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "MandateFilterConfig": {
+      "description": "Configuration for the cw-filter mandate gate.",
+      "type": "object",
+      "required": [
+        "filter",
+        "filter_contract"
+      ],
+      "properties": {
+        "filter": {
+          "description": "The JSON filter spec passed to `Filter { filter, msg }`."
+        },
+        "filter_contract": {
+          "description": "The cw-filter contract to query.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "ServiceHandlerExecuteMessages": {
+      "description": "The execute-side messages the WAVS service emits to a service-handler contract.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "wavs_handle_signed_envelope"
+          ],
+          "properties": {
+            "wavs_handle_signed_envelope": {
+              "type": "object",
+              "required": [
+                "envelope",
+                "signature_data"
+              ],
+              "properties": {
+                "envelope": {
+                  "$ref": "#/definitions/WavsEnvelope"
+                },
+                "signature_data": {
+                  "$ref": "#/definitions/WavsSignatureData"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "VetoConfig": {
+      "type": "object",
+      "required": [
+        "early_execute",
+        "timelock_duration",
+        "veto_before_passed",
+        "vetoer"
+      ],
+      "properties": {
+        "early_execute": {
+          "description": "Whether or not the vetoer can execute a proposal early before the timelock duration has expired",
+          "type": "boolean"
+        },
+        "timelock_duration": {
+          "description": "The time duration to lock a proposal for after its expiration to allow the vetoer to veto.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Duration"
+            }
+          ]
+        },
+        "veto_before_passed": {
+          "description": "Whether or not the vetoer can veto a proposal before it passes.",
+          "type": "boolean"
+        },
+        "vetoer": {
+          "description": "The address able to veto proposals.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "WavsEnvelope": {
+      "description": "`WavsEnvelope` is an ABI-encoded `Envelope { eventId, ordering, payload }` wrapped as opaque bytes. We don't need to decode the Solidity layout on-chain; we extract the `eventId` (first 20 bytes) and `payload` via index slicing in the verify path.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Binary"
+        }
+      ]
+    },
+    "WavsSignatureData": {
+      "description": "Mirror of `WavsSignatureData`. `signers` are bech32 addresses; `signatures` are opaque bytes.",
+      "type": "object",
+      "required": [
+        "reference_block",
+        "signatures",
+        "signers"
+      ],
+      "properties": {
+        "reference_block": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "signatures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Binary"
+          }
+        },
+        "signers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
