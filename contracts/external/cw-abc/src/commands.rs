@@ -745,7 +745,7 @@ pub fn update_hatch_allowlist(
 /// shape — true by induction from the empty case if all inserts go through
 /// this function. Closes audit finding M-1 (the previous binary_search_by
 /// approach was a no-op due to a comparator that never returned Equal).
-fn insert_into_priority_queue(
+pub(crate) fn insert_into_priority_queue(
     queue: &mut Vec<crate::state::HatcherAllowlistEntry>,
     entry: crate::state::HatcherAllowlistEntry,
     priority: Option<cosmwasm_std::Uint64>,

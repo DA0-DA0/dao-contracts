@@ -17,4 +17,7 @@ mod test_tube;
 #[cfg(test)]
 mod testing;
 
+#[cfg(test)]
+mod audit_tests;
+
 pub use crate::error::ContractError;
