@@ -41,11 +41,14 @@ pub struct InstantiateMsg {
 /// was reachable as a `todo!()` panic).
 #[cw_serde]
 pub enum UpdatePhaseConfigMsg {
-    /// Update the hatch phase configuration
+    /// Update the hatch phase configuration. Each field is optional;
+    /// omitted fields preserve their existing value. To clear
+    /// `hatch_deadline`, send `Some(None)` (a JSON `null`).
     Hatch {
         contribution_limits: Option<MinMax>,
         initial_raise: Option<MinMax>,
         entry_fee: Option<Decimal>,
+        hatch_deadline: Option<Option<cosmwasm_std::Timestamp>>,
     },
     /// Update the open phase configuration.
     Open {
@@ -104,6 +107,11 @@ pub enum ExecuteMsg {
     /// to zero.
     /// For example, this could be used in the event of a project shutting down.
     Close {},
+    /// Abort a stalled hatch. Callable by anyone after `hatch_deadline`
+    /// has passed if `initial_raise.min` was not reached. Transitions the
+    /// contract to Closed phase so hatchers can sell back their tokens.
+    /// Closes audit M-5.
+    AbortHatch {},
 }
 
 #[cw_ownable::cw_ownable_query]

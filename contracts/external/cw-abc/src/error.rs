@@ -61,6 +61,9 @@ pub enum ContractError {
         available: Uint128,
     },
 
+    #[error("Invalid migration: contract is {actual}, expected {expected}")]
+    InvalidMigration { expected: String, actual: String },
+
     #[error("Invalid subdenom: {subdenom:?}")]
     InvalidSubdenom { subdenom: String },
 

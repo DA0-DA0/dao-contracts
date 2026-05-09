@@ -100,8 +100,10 @@ pub fn hatcher_allowlist<'a>(
     IndexedMap::new("hatcher_allowlist", indexes)
 }
 
-/// The hatcher allowlist with configurations
-pub const HATCHER_ALLOWLIST: Map<&Addr, HatcherAllowlistConfig> = Map::new("hatcher_allowlist");
+// Note: the bare `HATCHER_ALLOWLIST: Map<&Addr, HatcherAllowlistConfig>`
+// constant that previously coexisted with `hatcher_allowlist()` (an
+// IndexedMap, same primary-key namespace) was removed 2026-05-09 as part
+// of audit fix M-4. The IndexedMap is the sole writer/reader.
 
 /// The DAO portion of the hatcher allowlist implemented as a priority queue
 /// If someone is a member of multiple allowlisted DAO's, we want to be able to control the checking order

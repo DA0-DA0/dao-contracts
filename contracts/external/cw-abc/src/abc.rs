@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, Decimal, Uint128};
+use cosmwasm_std::{ensure, Decimal, Timestamp, Uint128};
 use cw_curves::{
     curves::{Constant, Linear, SquareRoot},
     utils::decimal,
@@ -48,6 +48,11 @@ pub struct HatchConfig {
     pub initial_raise: MinMax,
     /// The initial allocation (θ), percentage of the initial raise allocated to the Funding Pool
     pub entry_fee: Decimal,
+    /// Optional hatch deadline. If set and `initial_raise.min` is not
+    /// reached by this timestamp, anyone can call `AbortHatch {}` to
+    /// transition the contract to Closed phase, allowing hatchers to sell
+    /// back their tokens. Closes audit M-5.
+    pub hatch_deadline: Option<Timestamp>,
 }
 
 impl Copy for HatchConfig {}

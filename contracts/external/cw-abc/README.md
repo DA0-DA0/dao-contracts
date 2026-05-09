@@ -144,7 +144,37 @@ Example Instantiation message:
 - `phase_config`: configuration for the different phase of the augmented bonding curve.
 - `hatcher_allowlist`: the list of address allowed to participate in a hatch.
 
+## Trust assumptions
+
+This contract has a privileged `owner` address (set at instantiate, transferable via `UpdateOwnership`) that can:
+
+- Pause the contract (circuit breaker).
+- Withdraw the funding pool (`Withdraw`).
+- Update the curve type — but **only in the Closed phase**, and only when the new curve produces a reserve at the existing supply within 1% of the recorded reserve (audit fix C-1, see `audits/`).
+- Update phase config (Hatch and Open variants).
+- Update the maximum supply (`UpdateMaxSupply`).
+- Update the hatcher allowlist (`UpdateHatchAllowlist`).
+- Close the curve (`Close`).
+- Update the funding-pool forwarding address.
+
+**Recommended deployment**: ownership set to a DAO core contract. EOA / single-multisig ownership is technically supported but not recommended for production deployments; the owner has unilateral access to the funding pool and substantial latitude to adjust phase config.
+
+`AbortHatch {}` is permissionless — any address can call it after `hatch_deadline` has passed if the curve has not reached `initial_raise.min`. This transitions the contract to Closed so hatchers can recover their reserve.
+
+`UpdateCurve` is gated on Closed phase plus a continuity check that prevents replacement curves from breaking the (reserve, supply) invariant beyond a small tolerance. This closes the rug-via-curve-swap surface identified in the 2026-05-09 security review.
+
+## Vesting (added 2026-05-09)
+
+Hatcher tokens are subject to a configurable vesting schedule once the curve transitions Hatch → Open. See `CommonsPhaseConfig.vesting`:
+
+- `VestingSchedule::None` — no vesting; hatchers can sell immediately at Open.
+- `VestingSchedule::Cliff { duration_seconds }` — 0% available until `duration_seconds` after Open transition, 100% after.
+- `VestingSchedule::Linear { duration_seconds }` — linear ramp from 0% at Open transition to 100% at `duration_seconds`.
+
+Tokens minted during the Open phase by addresses that did **not** participate in the hatch are not subject to vesting.
+
 ## Future Work
-- [ ] Optionally vest tokens during the hatch phase
+
 - [ ] Implement an expanded set of pricing curves to choose from
+- [ ] Hatch-failure refund path: in a future `Refunding` sub-state, hatchers receive a pro-rata share of `reserve + funding` (currently `AbortHatch` only refunds the reserve side).
 

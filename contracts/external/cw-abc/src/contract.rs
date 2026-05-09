@@ -175,6 +175,7 @@ pub fn execute(
         ExecuteMsg::UpdateOwnership(action) => {
             commands::update_ownership(deps, &env, &info, action)
         }
+        ExecuteMsg::AbortHatch {} => commands::abort_hatch(deps, env, info),
     }
 }
 
@@ -231,7 +232,17 @@ pub fn do_query(deps: Deps, _env: Env, msg: QueryMsg, curve_fn: CurveFn) -> StdR
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // Set contract to version to latest
+    // M-2: verify the stored cw2 contract name matches before overwriting.
+    // Migrating from an unrelated contract type would silently overwrite
+    // metadata otherwise.
+    let stored = cw2::get_contract_version(deps.storage)?;
+    if stored.contract != CONTRACT_NAME {
+        return Err(ContractError::InvalidMigration {
+            expected: CONTRACT_NAME.to_string(),
+            actual: stored.contract,
+        });
+    }
+
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(Response::default())
 }

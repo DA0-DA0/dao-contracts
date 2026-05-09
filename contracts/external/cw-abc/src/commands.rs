@@ -265,6 +265,44 @@ pub fn close(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError
     Ok(Response::new().add_attribute("action", "close"))
 }
 
+/// Abort a stalled hatch. Callable by anyone after `hatch_deadline` has
+/// passed if the curve has not reached `initial_raise.min`. Transitions
+/// to Closed so hatchers can recover their reserve. Closes audit M-5.
+pub fn abort_hatch(
+    deps: DepsMut,
+    env: Env,
+    _info: MessageInfo,
+) -> Result<Response, ContractError> {
+    let phase = PHASE.load(deps.storage)?;
+    phase.expect_hatch()?;
+
+    let phase_config = PHASE_CONFIG.load(deps.storage)?;
+    let deadline = phase_config
+        .hatch
+        .hatch_deadline
+        .ok_or(ContractError::HatchPhaseConfigError(
+            "No hatch_deadline configured; abort not allowed".to_string(),
+        ))?;
+    if env.block.time < deadline {
+        return Err(ContractError::HatchPhaseConfigError(format!(
+            "Hatch deadline (epoch {}) not yet reached",
+            deadline.seconds()
+        )));
+    }
+
+    let curve_state = CURVE_STATE.load(deps.storage)?;
+    if curve_state.reserve >= phase_config.hatch.initial_raise.min {
+        return Err(ContractError::HatchPhaseConfigError(format!(
+            "Hatch reached the minimum raise ({}); abort not allowed",
+            phase_config.hatch.initial_raise.min
+        )));
+    }
+
+    PHASE.save(deps.storage, &CommonsPhase::Closed)?;
+
+    Ok(Response::new().add_attribute("action", "abort_hatch"))
+}
+
 /// Send a donation to the funding pool
 pub fn donate(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     let mut curve_state = CURVE_STATE.load(deps.storage)?;
@@ -506,29 +544,7 @@ pub fn update_hatch_allowlist(
                     HATCHER_DAO_PRIORITY_QUEUE.update(
                         deps.storage,
                         |mut queue| -> StdResult<_> {
-                            match priority {
-                                Some(priority_value) => {
-                                    // Insert based on priority
-                                    let pos = queue
-                                        .binary_search_by(|entry| {
-                                            match &entry.config.config_type {
-                                                HatcherAllowlistConfigType::DAO {
-                                                    priority: Some(entry_priority),
-                                                } => entry_priority
-                                                    .cmp(&priority_value)
-                                                    .then(std::cmp::Ordering::Less),
-                                                _ => std::cmp::Ordering::Less, // Treat non-DAO or DAO without priority as lower priority
-                                            }
-                                        })
-                                        .unwrap_or_else(|e| e);
-                                    queue.insert(pos, entry);
-                                }
-                                None => {
-                                    // Append to the end if no priority
-                                    queue.push(entry);
-                                }
-                            }
-
+                            insert_into_priority_queue(&mut queue, entry, priority);
                             Ok(queue)
                         },
                     )?;
@@ -552,6 +568,38 @@ pub fn update_hatch_allowlist(
     }
 
     Ok(Response::new().add_attributes(vec![("action", "update_hatch_allowlist")]))
+}
+
+/// Insert a new DAO-typed allowlist entry into the priority queue while
+/// keeping the queue sorted: `Some(priority)` entries first in ascending
+/// priority-value order, `None`-priority entries appended at the end. Uses
+/// `partition_point`, which assumes the queue is already sorted in this
+/// shape — true by induction from the empty case if all inserts go through
+/// this function. Closes audit finding M-1 (the previous binary_search_by
+/// approach was a no-op due to a comparator that never returned Equal).
+fn insert_into_priority_queue(
+    queue: &mut Vec<crate::state::HatcherAllowlistEntry>,
+    entry: crate::state::HatcherAllowlistEntry,
+    priority: Option<cosmwasm_std::Uint64>,
+) {
+    match priority {
+        Some(priority_value) => {
+            let pos = queue.partition_point(|existing| {
+                match &existing.config.config_type {
+                    HatcherAllowlistConfigType::DAO {
+                        priority: Some(p),
+                    } => *p <= priority_value,
+                    // None-priority entries sort after all Some entries.
+                    HatcherAllowlistConfigType::DAO { priority: None } => false,
+                    HatcherAllowlistConfigType::Address {} => false,
+                }
+            });
+            queue.insert(pos, entry);
+        }
+        None => {
+            queue.push(entry);
+        }
+    }
 }
 
 fn try_remove_from_priority_queue(
@@ -597,6 +645,7 @@ pub fn update_phase_config(
             initial_raise,
             entry_fee,
             contribution_limits,
+            hatch_deadline,
         } => {
             // Check we are in the hatch phase
             phase.expect_hatch()?;
@@ -610,6 +659,11 @@ pub fn update_phase_config(
             }
             if let Some(entry_fee) = entry_fee {
                 phase_config.hatch.entry_fee = entry_fee;
+            }
+            // Some(None) clears the deadline; Some(Some(t)) sets it; None
+            // leaves the existing value untouched.
+            if let Some(hatch_deadline) = hatch_deadline {
+                phase_config.hatch.hatch_deadline = hatch_deadline;
             }
 
             // Validate config

@@ -65,6 +65,7 @@ pub fn default_instantiate_msg(
                     max: Uint128::from(1000000u128),
                 },
                 entry_fee: Decimal::percent(10u64),
+                hatch_deadline: None,
             },
             vesting: VestingSchedule::None,
             open: OpenConfig {
