@@ -5,8 +5,9 @@ use crate::msg::{
     HatcherAllowlistResponse, HatchersResponse, QuoteResponse,
 };
 use crate::state::{
-    hatcher_allowlist, CurveState, HatcherAllowlistConfigType, HatcherAllowlistEntry, CURVE_STATE,
-    CURVE_TYPE, DONATIONS, HATCHERS, MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
+    hatcher_allowlist, CurveState, HatcherAllowlistConfigType, HatcherAllowlistEntry,
+    HatcherState, CURVE_STATE, CURVE_TYPE, DONATIONS, HATCHERS, MAX_SUPPLY, PHASE, PHASE_CONFIG,
+    SUPPLY_DENOM,
 };
 use cosmwasm_std::{Deps, Order, QuerierWrapper, StdError, StdResult, Uint128};
 use cw_storage_plus::Bound;
@@ -88,8 +89,8 @@ pub fn query_hatchers(
     Ok(HatchersResponse { hatchers })
 }
 
-/// Query the contribution of a hatcher
-pub fn query_hatcher(deps: Deps, addr: String) -> StdResult<Uint128> {
+/// Query the state of a hatcher
+pub fn query_hatcher(deps: Deps, addr: String) -> StdResult<HatcherState> {
     let addr = deps.api.addr_validate(&addr)?;
 
     HATCHERS.load(deps.storage, &addr)

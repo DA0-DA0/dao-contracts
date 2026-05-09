@@ -3,7 +3,7 @@ use cosmwasm_std::{Addr, Decimal, Uint128};
 
 use crate::{
     abc::{CommonsPhase, CommonsPhaseConfig, CurveType, MinMax, ReserveToken, SupplyToken},
-    state::{HatcherAllowlistConfigType, HatcherAllowlistEntry},
+    state::{HatcherAllowlistConfigType, HatcherAllowlistEntry, HatcherState},
 };
 
 #[cw_serde]
@@ -34,12 +34,16 @@ pub struct InstantiateMsg {
 
 /// Update the phase configurations.
 /// These can only be called by the owner.
+///
+/// Note: there is no `Closed` variant. ClosedConfig has no configurable
+/// fields, so a Closed-phase update would have nothing to do. Removed
+/// 2026-05-09 as part of audit fix H-2 (the previous `Closed {}` variant
+/// was reachable as a `todo!()` panic).
 #[cw_serde]
 pub enum UpdatePhaseConfigMsg {
     /// Update the hatch phase configuration
     Hatch {
         contribution_limits: Option<MinMax>,
-        // TODO what is the minimum used for?
         initial_raise: Option<MinMax>,
         entry_fee: Option<Decimal>,
     },
@@ -48,9 +52,6 @@ pub enum UpdatePhaseConfigMsg {
         exit_fee: Option<Decimal>,
         entry_fee: Option<Decimal>,
     },
-    /// Update the closed phase configuration.
-    /// TODO Set the curve type to be used on close?
-    Closed {},
 }
 
 #[cw_ownable::cw_ownable_execute]
@@ -132,15 +133,15 @@ pub enum QueryMsg {
     /// receives any fees collected from bonding curve operation and donations
     #[returns(Option<::cosmwasm_std::Addr>)]
     FundingPoolForwarding {},
-    /// List the hatchers and their contributions
+    /// List the hatchers and their per-address state
     /// Returns [`HatchersResponse`]
     #[returns(HatchersResponse)]
     Hatchers {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    /// Returns the contribution of a hatcher
-    #[returns(Uint128)]
+    /// Returns the per-address state of a hatcher
+    #[returns(HatcherState)]
     Hatcher { addr: String },
     /// Lists the hatcher allowlist
     /// Returns [`HatcherAllowlistResponse`]
@@ -227,8 +228,8 @@ pub struct DonationsResponse {
 
 #[cw_serde]
 pub struct HatchersResponse {
-    /// The hatchers mapped to their contribution in the reserve token
-    pub hatchers: Vec<(Addr, Uint128)>,
+    /// The hatchers mapped to their per-address state.
+    pub hatchers: Vec<(Addr, HatcherState)>,
 }
 
 #[cw_serde]

@@ -47,6 +47,24 @@ pub fn instantiate(
 
     phase_config.validate()?;
 
+    // H-5: bound token decimals. cw-curves uses `10u128.pow(decimals)`
+    // internally; pow(38) ≈ 3.4e38 < u128::MAX, but pow(39) overflows.
+    // Reject at instantiate so the contract is not bricked on first
+    // buy or sell.
+    const MAX_DECIMALS: u8 = 38;
+    if supply.decimals >= MAX_DECIMALS {
+        return Err(ContractError::InvalidDecimals {
+            decimals: supply.decimals,
+            max: MAX_DECIMALS,
+        });
+    }
+    if reserve.decimals >= MAX_DECIMALS {
+        return Err(ContractError::InvalidDecimals {
+            decimals: reserve.decimals,
+            max: MAX_DECIMALS,
+        });
+    }
+
     // Validate and store the funding pool forwarding
     if let Some(funding_pool_forwarding) = funding_pool_forwarding {
         FUNDING_POOL_FORWARDING.save(

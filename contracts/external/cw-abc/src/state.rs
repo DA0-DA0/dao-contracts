@@ -2,7 +2,7 @@ use std::fmt::{self, Display};
 
 use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType, MinMax, SupplyToken};
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Uint128, Uint64};
+use cosmwasm_std::{Addr, Timestamp, Uint128, Uint64};
 use cw_curves::DecimalPlaces;
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 
@@ -124,10 +124,45 @@ pub const SUPPLY_DENOM: Item<String> = Item::new("denom");
 /// The maximum supply of the supply token, new tokens cannot be minted beyond this cap
 pub const MAX_SUPPLY: Item<Uint128> = Item::new("max_supply");
 
-/// Keep track of who has contributed to the hatch phase
-/// TODO: cw-set? This should be a map because in the open-phase we need to be able
-/// to ascertain the amount contributed by a user
-pub static HATCHERS: Map<&Addr, Uint128> = Map::new("hatchers");
+/// Per-hatcher state: gross hatch contribution, tokens minted, tokens
+/// already burned, and the time at which the vesting schedule started
+/// (set when the curve transitions Hatch → Open).
+///
+/// `contributed` is gross intake during hatch (used for the
+/// contribution_limits.max check); `minted - already_burned` is the live
+/// token count subject to vesting checks.
+#[cw_serde]
+pub struct HatcherState {
+    /// Gross reserve contributed during the hatch phase.
+    pub contributed: Uint128,
+    /// Cumulative supply tokens minted to this hatcher during hatch.
+    pub minted: Uint128,
+    /// Cumulative supply tokens this hatcher has burned post-Open.
+    pub already_burned: Uint128,
+    /// Vesting clock start. `None` while still in Hatch; set to
+    /// `env.block.time` at the moment of the Hatch → Open transition.
+    pub vesting_started_at: Option<Timestamp>,
+}
+
+impl HatcherState {
+    pub fn new() -> Self {
+        Self {
+            contributed: Uint128::zero(),
+            minted: Uint128::zero(),
+            already_burned: Uint128::zero(),
+            vesting_started_at: None,
+        }
+    }
+}
+
+impl Default for HatcherState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Per-hatcher state, keyed by address. See [`HatcherState`].
+pub const HATCHERS: Map<&Addr, HatcherState> = Map::new("hatchers");
 
 /// Keep track of the donated amounts per user
 pub static DONATIONS: Map<&Addr, Uint128> = Map::new("donations");

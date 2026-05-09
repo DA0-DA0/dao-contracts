@@ -9,7 +9,7 @@ use crate::msg::InstantiateMsg;
 use crate::{
     abc::{
         ClosedConfig, CommonsPhaseConfig, CurveType, HatchConfig, MinMax, OpenConfig, ReserveToken,
-        SupplyToken,
+        SupplyToken, VestingSchedule,
     },
     ContractError,
 };
@@ -66,6 +66,7 @@ pub fn default_instantiate_msg(
                 },
                 entry_fee: Decimal::percent(10u64),
             },
+            vesting: VestingSchedule::None,
             open: OpenConfig {
                 entry_fee: Decimal::percent(10u64),
                 exit_fee: Decimal::percent(10u64),

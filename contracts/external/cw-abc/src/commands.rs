@@ -1,22 +1,22 @@
 use cosmwasm_std::{
-    to_json_binary, Addr, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, QuerierWrapper,
-    Response, StdResult, Storage, Uint128, WasmMsg,
+    to_json_binary, Addr, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Order,
+    QuerierWrapper, Response, StdResult, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw_tokenfactory_issuer::msg::ExecuteMsg as IssuerExecuteMsg;
 use cw_utils::must_pay;
 use std::ops::Deref;
 
 use crate::abc::{CommonsPhase, CurveType, HatchConfig, MinMax};
-use crate::helpers::{calculate_buy_quote, calculate_sell_quote};
+use crate::helpers::{calculate_buy_quote, calculate_sell_quote, vested_amount};
 use crate::msg::{HatcherAllowlistEntryMsg, UpdatePhaseConfigMsg};
 use crate::state::{
-    hatcher_allowlist, HatcherAllowlistConfig, HatcherAllowlistConfigType, CURVE_STATE, CURVE_TYPE,
-    DONATIONS, FUNDING_POOL_FORWARDING, HATCHERS, HATCHER_DAO_PRIORITY_QUEUE, IS_PAUSED,
-    MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
+    hatcher_allowlist, HatcherAllowlistConfig, HatcherAllowlistConfigType, CURVE_STATE,
+    CURVE_TYPE, DONATIONS, FUNDING_POOL_FORWARDING, HATCHERS, HATCHER_DAO_PRIORITY_QUEUE,
+    IS_PAUSED, MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
 };
 use crate::ContractError;
 
-pub fn buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn buy(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     let curve_type = CURVE_TYPE.load(deps.storage)?;
     let mut curve_state = CURVE_STATE.load(deps.storage)?;
 
@@ -40,15 +40,19 @@ pub fn buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Cont
                 &phase_config.hatch,
             )?;
 
-            // Update hatcher contribution
-            let contribution =
-                HATCHERS.update(deps.storage, &info.sender, |amount| -> StdResult<_> {
-                    Ok(amount.unwrap_or_default() + payment)
+            // Update hatcher state with the gross contribution and the
+            // freshly-minted tokens.
+            let updated_state =
+                HATCHERS.update(deps.storage, &info.sender, |maybe| -> StdResult<_> {
+                    let mut state = maybe.unwrap_or_default();
+                    state.contributed = state.contributed.checked_add(payment)?;
+                    state.minted = state.minted.checked_add(buy_quote.amount)?;
+                    Ok(state)
                 })?;
 
-            // Check contribution is within limits
-            if contribution < hatch_config.contribution_limits.min
-                || contribution > hatch_config.contribution_limits.max
+            // Check contribution is within limits (uses gross contribution)
+            if updated_state.contributed < hatch_config.contribution_limits.min
+                || updated_state.contributed > hatch_config.contribution_limits.max
             {
                 return Err(ContractError::ContributionLimit {
                     min: hatch_config.contribution_limits.min,
@@ -61,7 +65,14 @@ pub fn buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Cont
                 // Transition to the Open phase
                 phase = CommonsPhase::Open;
 
-                // Can clean up state here
+                // Stamp every hatcher's vesting_started_at so their tokens
+                // begin unlocking from the transition time. Iteration is
+                // O(N hatchers); N is bounded by initial_raise.max divided
+                // by contribution_limits.min.
+                let now = env.block.time;
+                stamp_hatcher_vesting_clocks(deps.storage, now)?;
+
+                // Allowlist no longer needed
                 hatcher_allowlist().clear(deps.storage);
 
                 PHASE.save(deps.storage, &phase)?;
@@ -123,8 +134,28 @@ pub fn buy(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Cont
         .add_attribute("supply", buy_quote.new_supply))
 }
 
+/// Stamp `vesting_started_at` on every existing hatcher entry. Called once
+/// at the Hatch → Open transition. Hatchers added after this point (i.e.
+/// no one — we forbid hatch buys after Open) would not need stamping.
+fn stamp_hatcher_vesting_clocks(
+    storage: &mut dyn Storage,
+    now: Timestamp,
+) -> Result<(), ContractError> {
+    let addrs: Vec<Addr> = HATCHERS
+        .keys(storage, None, None, Order::Ascending)
+        .collect::<StdResult<Vec<_>>>()?;
+    for addr in addrs {
+        HATCHERS.update(storage, &addr, |maybe| -> StdResult<_> {
+            let mut state = maybe.unwrap_or_default();
+            state.vesting_started_at = Some(now);
+            Ok(state)
+        })?;
+    }
+    Ok(())
+}
+
 /// Sell tokens on the bonding curve
-pub fn sell(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn sell(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     let curve_type = CURVE_TYPE.load(deps.storage)?;
     let supply_denom = SUPPLY_DENOM.load(deps.storage)?;
     let burn_amount = must_pay(&info, &supply_denom)?;
@@ -134,6 +165,24 @@ pub fn sell(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, Con
     // Load the phase configuration and the current phase
     let phase_config = PHASE_CONFIG.load(deps.storage)?;
     let phase = PHASE.load(deps.storage)?;
+
+    // H-1: enforce hatcher vesting before letting hatchers exit.
+    // Non-hatchers (no entry in HATCHERS) sell freely. Hatchers' tokens
+    // unlock per `phase_config.vesting`; sells consume from the unlocked
+    // portion via `state.already_burned`.
+    if let Some(state) = HATCHERS.may_load(deps.storage, &info.sender)? {
+        let vested = vested_amount(&state, &phase_config.vesting, env.block.time);
+        let available = vested.saturating_sub(state.already_burned);
+        if burn_amount > available {
+            return Err(ContractError::HatcherTokensNotVested {
+                requested: burn_amount,
+                available,
+            });
+        }
+        let mut updated = state;
+        updated.already_burned = updated.already_burned.checked_add(burn_amount)?;
+        HATCHERS.save(deps.storage, &info.sender, &updated)?;
+    }
 
     // Calculate the sell quote
     let sell_quote = calculate_sell_quote(
@@ -590,8 +639,6 @@ pub fn update_phase_config(
 
             Ok(Response::new().add_attribute("action", "update_open_phase_config"))
         }
-        // TODO what should the closed phase configuration be, is there one?
-        _ => todo!(),
     }
 }
 

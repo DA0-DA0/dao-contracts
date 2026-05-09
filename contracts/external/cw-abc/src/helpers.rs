@@ -1,9 +1,9 @@
-use cosmwasm_std::{Decimal, Deps, StdResult, Uint128};
+use cosmwasm_std::{Decimal, Deps, StdResult, Timestamp, Uint128};
 
 use crate::{
-    abc::{CommonsPhase, CommonsPhaseConfig, CurveType},
+    abc::{CommonsPhase, CommonsPhaseConfig, CurveType, VestingSchedule},
     msg::{HatcherAllowlistEntryMsg, QuoteResponse},
-    state::{CurveState, HatcherAllowlistConfig, HatcherAllowlistEntry},
+    state::{CurveState, HatcherAllowlistConfig, HatcherAllowlistEntry, HatcherState},
     ContractError,
 };
 
@@ -105,5 +105,53 @@ impl HatcherAllowlistEntryMsg {
                 config_height: height,
             },
         })
+    }
+}
+
+/// Compute the unlocked portion of a hatcher's `minted` balance at time `now`.
+///
+/// - Returns `state.minted` if vesting hasn't started (still in Hatch),
+///   under the assumption that the contract will not allow sells while in
+///   Hatch (enforced separately in `calculate_sell_quote`).
+/// - Returns `state.minted` for `VestingSchedule::None`.
+/// - For `Cliff`, returns 0 until duration has elapsed, then `state.minted`.
+/// - For `Linear`, returns `state.minted * elapsed / duration` saturating at
+///   `state.minted` once duration has elapsed. Zero-duration treated as
+///   immediately fully vested.
+pub fn vested_amount(
+    state: &HatcherState,
+    schedule: &VestingSchedule,
+    now: Timestamp,
+) -> Uint128 {
+    let started = match state.vesting_started_at {
+        Some(t) => t,
+        // Still in Hatch — sells should be blocked at the phase layer; if
+        // they reach here, treat as fully vested so the math is well-defined.
+        None => return state.minted,
+    };
+
+    if now < started {
+        return Uint128::zero();
+    }
+    let elapsed = now.seconds() - started.seconds();
+
+    match schedule {
+        VestingSchedule::None => state.minted,
+        VestingSchedule::Cliff { duration_seconds } => {
+            if *duration_seconds == 0 || elapsed >= *duration_seconds {
+                state.minted
+            } else {
+                Uint128::zero()
+            }
+        }
+        VestingSchedule::Linear { duration_seconds } => {
+            if *duration_seconds == 0 || elapsed >= *duration_seconds {
+                state.minted
+            } else {
+                state
+                    .minted
+                    .multiply_ratio(Uint128::from(elapsed), Uint128::from(*duration_seconds))
+            }
+        }
     }
 }

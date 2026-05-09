@@ -62,10 +62,22 @@ impl HatchConfig {
             )
         );
 
+        // H-6: contribution_limits.min must not exceed max. Equality is
+        // allowed (fixed-amount hatches are a legitimate pattern).
         ensure!(
-            self.entry_fee <= Decimal::percent(100u64),
+            self.contribution_limits.min <= self.contribution_limits.max,
             ContractError::HatchPhaseConfigError(
-                "Initial allocation percentage must be between 0 and 100.".to_string()
+                "Contribution limits minimum value must be less than or equal to maximum value."
+                    .to_string()
+            )
+        );
+
+        // H-3: strict < 100%. At exactly 100% the entire payment is diverted
+        // to the funding pool, no reserve accumulates, and the curve is bricked.
+        ensure!(
+            self.entry_fee < Decimal::percent(100u64),
+            ContractError::HatchPhaseConfigError(
+                "Initial allocation percentage must be between 0 and less than 100.".to_string()
             )
         );
 
@@ -85,18 +97,19 @@ pub struct OpenConfig {
 impl OpenConfig {
     /// Validate the open config
     pub fn validate(&self) -> Result<(), ContractError> {
+        // H-3: strict < 100%. At 100% the curve cannot accumulate reserve.
         ensure!(
-            self.entry_fee <= Decimal::percent(100u64),
+            self.entry_fee < Decimal::percent(100u64),
             ContractError::OpenPhaseConfigError(
-                "Reserve percentage must be between 0 and 100.".to_string()
+                "Reserve percentage must be between 0 and less than 100.".to_string()
             )
         );
 
+        // H-4: strict < 100%. At 100% sellers receive nothing for their
+        // burned tokens — silent rug of every seller.
         ensure!(
-            self.exit_fee <= Decimal::percent(100u64),
-            ContractError::OpenPhaseConfigError(
-                "Exit taxation percentage must be between 0 and 100.".to_string()
-            )
+            self.exit_fee < Decimal::percent(100u64),
+            ContractError::InvalidExitFee {}
         );
 
         Ok(())
@@ -117,13 +130,30 @@ impl ClosedConfig {
 pub struct CommonsPhaseConfig {
     /// The Hatch phase where initial contributors (Hatchers) participate in a hatch sale.
     pub hatch: HatchConfig,
-    /// TODO Vest tokens after hatch phase
-    /// The Vesting phase where tokens minted during the Hatch phase are locked (burning is disabled) to combat early speculation/arbitrage.
-    /// pub vesting: VestingConfig,
+    /// Hatcher token vesting schedule. Tokens minted during the Hatch phase
+    /// are locked according to this schedule once the curve transitions to
+    /// Open, to combat early speculation/arbitrage. Tokens minted during
+    /// Open phase by non-hatchers are not subject to vesting.
+    pub vesting: VestingSchedule,
     /// The Open phase where anyone can mint tokens by contributing the reserve token into the curve and becoming members of the Commons.
     pub open: OpenConfig,
     /// The Closed phase where the Commons is closed to new members.
     pub closed: ClosedConfig,
+}
+
+/// Vesting schedule applied to hatcher tokens once the curve transitions
+/// to Open phase. Time-based to survive block-time changes.
+#[cw_serde]
+pub enum VestingSchedule {
+    /// No vesting — hatchers may sell immediately upon Open phase. Useful
+    /// for testing or for hatches where anti-arb is not a concern.
+    None,
+    /// Cliff vest: 0% available until `duration_seconds` after Open
+    /// transition, 100% available thereafter.
+    Cliff { duration_seconds: u64 },
+    /// Linear vest: 0% at Open transition, ramping to 100% over
+    /// `duration_seconds`.
+    Linear { duration_seconds: u64 },
 }
 
 #[cw_serde]
