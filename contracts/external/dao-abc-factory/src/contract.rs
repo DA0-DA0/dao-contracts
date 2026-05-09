@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
-    Response, StdResult, SubMsg, WasmMsg,
+    ensure, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
+    Reply, Response, StdResult, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_abc::msg::{
@@ -12,8 +12,8 @@ use cw_abc::msg::{
 use cw_storage_plus::{Bound, Item, Map};
 use cw_utils::parse_reply_instantiate_data;
 use dao_interface::{
-    state::ModuleInstantiateCallback, token::TokenFactoryCallback,
-    voting::Query as VotingModuleQueryMsg,
+    msg::QueryMsg as DaoQueryMsg, state::ModuleInstantiateCallback,
+    token::TokenFactoryCallback, voting::Query as VotingModuleQueryMsg,
 };
 
 use crate::{
@@ -64,13 +64,26 @@ pub fn execute_token_factory_factory(
     code_id: u64,
     msg: AbcInstantiateMsg,
 ) -> Result<Response, ContractError> {
-    // Save voting module address
-    VOTING_MODULE.save(deps.storage, &info.sender)?;
-
-    // Query for DAO
+    // Reverse-handshake authentication: the caller (info.sender) claims to
+    // be a DAO's voting module. We accept the claim only if (a) the caller
+    // responds to `VotingModuleQueryMsg::Dao` with some DAO address, and
+    // (b) that DAO responds to `QueryMsg::VotingModule` with the caller's
+    // address. This closes the impostor-voting-module attack where any
+    // contract could spoof the relationship and have ownership transferred
+    // to an attacker-chosen address.
     let dao: Addr = deps
         .querier
-        .query_wasm_smart(info.sender, &VotingModuleQueryMsg::Dao {})?;
+        .query_wasm_smart(&info.sender, &VotingModuleQueryMsg::Dao {})?;
+    let claimed_voting_module: Addr = deps
+        .querier
+        .query_wasm_smart(&dao, &DaoQueryMsg::VotingModule {})?;
+    ensure!(
+        claimed_voting_module == info.sender,
+        ContractError::Unauthorized {}
+    );
+
+    // Save voting module address
+    VOTING_MODULE.save(deps.storage, &info.sender)?;
 
     DAOS.save(deps.storage, dao.clone(), &Empty {})?;
     CURRENT_DAO.save(deps.storage, &dao)?;
@@ -130,8 +143,11 @@ pub fn query_daos(
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
         INSTANTIATE_ABC_REPLY_ID => {
-            // Load DAO
+            // Load and clear the temp DAO/voting-module state so it does
+            // not linger between calls (TempState semantics).
             let dao = CURRENT_DAO.load(deps.storage)?;
+            CURRENT_DAO.remove(deps.storage);
+            VOTING_MODULE.remove(deps.storage);
 
             // Parse issuer address from instantiate reply
             let abc_addr = parse_reply_instantiate_data(msg)?.contract_address;

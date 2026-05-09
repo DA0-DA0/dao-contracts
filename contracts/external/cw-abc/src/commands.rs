@@ -595,9 +595,11 @@ pub fn update_phase_config(
     }
 }
 
-/// Update the bonding curve. (only callable by owner)
-/// NOTE: this changes the pricing. Use with caution.
-/// TODO: what other limitations do we want to put on this?
+/// Update the bonding curve. Only callable by the owner, and only while the
+/// commons is in the Closed phase. The new curve must produce a reserve at
+/// the existing supply that is within `MAX_CURVE_DRIFT` of the recorded
+/// reserve, so that an invariant break (mint-flood / sell-deadlock) is not
+/// possible via curve replacement.
 pub fn update_curve(
     deps: DepsMut,
     info: MessageInfo,
@@ -605,10 +607,41 @@ pub fn update_curve(
 ) -> Result<Response, ContractError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
+    let phase = PHASE.load(deps.storage)?;
+    phase.expect_closed()?;
+
+    let curve_state = CURVE_STATE.load(deps.storage)?;
+    let new_curve = curve_type.to_curve_fn()(curve_state.decimals);
+    let new_reserve_at_supply = new_curve.reserve(curve_state.supply);
+
+    // Reject any curve that would not honor the existing (reserve, supply)
+    // pair within tolerance. Tolerance is for floor-rounding accumulation,
+    // not for arbitrary swaps.
+    let drift = if new_reserve_at_supply > curve_state.reserve {
+        new_reserve_at_supply - curve_state.reserve
+    } else {
+        curve_state.reserve - new_reserve_at_supply
+    };
+    let tolerance = curve_state.reserve.multiply_ratio(MAX_CURVE_DRIFT_BPS, 10_000u128);
+    if drift > tolerance {
+        return Err(ContractError::CurveDriftExceeded {
+            current_reserve: curve_state.reserve,
+            new_reserve_at_current_supply: new_reserve_at_supply,
+            tolerance,
+        });
+    }
+
     CURVE_TYPE.save(deps.storage, &curve_type)?;
 
-    Ok(Response::new().add_attribute("action", "close"))
+    Ok(Response::new().add_attribute("action", "update_curve"))
 }
+
+/// Maximum allowed drift between the existing reserve and what a replacement
+/// curve would imply at the current supply, expressed in basis points
+/// (1 bp = 0.01%). 100 bps = 1% — wide enough to absorb floor-rounding
+/// across curves with different precision shapes, narrow enough to prevent
+/// rug via curve swap.
+const MAX_CURVE_DRIFT_BPS: u128 = 100;
 
 /// Update the ownership of the contract
 pub fn update_ownership(

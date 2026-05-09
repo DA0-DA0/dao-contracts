@@ -25,6 +25,16 @@ pub enum ContractError {
     #[error("Cannot mint more tokens than the maximum supply of {max}")]
     CannotExceedMaxSupply { max: Uint128 },
 
+    #[error(
+        "New curve would imply reserve {new_reserve_at_current_supply} at current supply, \
+         but recorded reserve is {current_reserve} (drift exceeds tolerance {tolerance})"
+    )]
+    CurveDriftExceeded {
+        current_reserve: Uint128,
+        new_reserve_at_current_supply: Uint128,
+        tolerance: Uint128,
+    },
+
     #[error("The commons is closed to new contributions")]
     CommonsClosed {},
 
