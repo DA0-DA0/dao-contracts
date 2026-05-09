@@ -71,3 +71,160 @@ pub(crate) fn cube_root(cube: Decimal) -> Result<Decimal, CurveError> {
     let root = extended.integer_cbrt();
     Ok(decimal(root, EXTRA_DIGITS / 3))
 }
+
+// ============================================================
+// nth-root helpers for the Power curve (Phase U)
+// ============================================================
+
+/// Compute `value^(1/n)` for `n: u32` via Newton-Raphson on `Decimal`.
+///
+/// `value` must be non-negative. Returns `CurveError::DivisionByZero` for n=0.
+/// For n=2 and n=3 we delegate to the integer-arithmetic fast paths
+/// (`square_root` / `cube_root`) which are exact on the integer part and
+/// well-tested. For other n we run Newton-Raphson on `Decimal` from a
+/// bit-count-guided initial guess so `x^(n-1)` doesn't overflow on the
+/// first iteration (a naive `value / n` initial guess saturates rust_decimal
+/// for large values + high n).
+pub(crate) fn nth_root(value: Decimal, n: u32) -> Result<Decimal, CurveError> {
+    if n == 0 {
+        return Err(CurveError::DivisionByZero);
+    }
+    if n == 1 {
+        return Ok(value);
+    }
+    if value.is_zero() {
+        return Ok(Decimal::ZERO);
+    }
+    if value.is_sign_negative() {
+        return Err(CurveError::Overflow {
+            scale: n,
+            value: format!("nth_root of negative value: {}", value),
+        });
+    }
+    if n == 2 {
+        return square_root(value);
+    }
+    if n == 3 {
+        return cube_root(value);
+    }
+
+    const MAX_ITERS: u32 = 64;
+    let n_dec = Decimal::from(n);
+    let n_minus_1_dec = Decimal::from(n - 1);
+
+    // Initial guess: 2^(bits / n) where bits ≈ log2(value).
+    // Get the integer part of value as a u128 (rounded down), count its bits,
+    // and start at 2^(bits / n). If the integer part is 0 (value < 1), start
+    // at Decimal::ONE — Newton converges from above.
+    let int_part = value.floor().to_u128().unwrap_or(0);
+    let mut x = if int_part == 0 {
+        Decimal::ONE
+    } else {
+        let bits = 128 - int_part.leading_zeros();
+        let shift = (bits / n).min(127);
+        Decimal::from(1u128 << shift)
+    };
+
+    for _ in 0..MAX_ITERS {
+        // Compute x^(n-1) with overflow detection so a too-large initial guess
+        // doesn't panic.
+        let mut x_pow = Decimal::ONE;
+        let mut overflow = false;
+        for _ in 0..(n - 1) {
+            match x_pow.checked_mul(x) {
+                Some(v) => x_pow = v,
+                None => {
+                    overflow = true;
+                    break;
+                }
+            }
+        }
+        if overflow || x_pow.is_zero() {
+            // Halve x and retry — gets us back to a safe range.
+            x /= Decimal::from(2u32);
+            if x.is_zero() {
+                return Err(CurveError::DivisionByZero);
+            }
+            continue;
+        }
+        let quotient = value / x_pow;
+        let next = (n_minus_1_dec * x + quotient) / n_dec;
+        let diff = if next > x { next - x } else { x - next };
+        let tol = if x.is_zero() {
+            Decimal::new(1, 9)
+        } else {
+            x * Decimal::new(1, 9)
+        };
+        x = next;
+        if diff <= tol {
+            return Ok(x);
+        }
+    }
+    Err(CurveError::Overflow {
+        scale: n,
+        value: format!("nth_root failed to converge for value {}", value),
+    })
+}
+
+/// Compute `base^exp` where `exp` is a non-negative rational `num/den`.
+///
+/// Routes integer exponents through repeated multiplication and
+/// half-/third-integer exponents through the existing fast-path roots when
+/// possible. Otherwise falls back to `nth_root(base^num, den)` which works
+/// but is more expensive.
+pub(crate) fn pow_rational(
+    base: Decimal,
+    num: u32,
+    den: u32,
+) -> Result<Decimal, CurveError> {
+    if den == 0 {
+        return Err(CurveError::DivisionByZero);
+    }
+    if num == 0 {
+        return Ok(Decimal::ONE);
+    }
+    if base.is_zero() {
+        return Ok(Decimal::ZERO);
+    }
+
+    // Reduce num/den by gcd to hit the fast paths more often.
+    let g = gcd_u32(num, den);
+    let num = num / g;
+    let den = den / g;
+
+    // Integer exponent.
+    if den == 1 {
+        let mut result = Decimal::ONE;
+        for _ in 0..num {
+            result = result
+                .checked_mul(base)
+                .ok_or_else(|| CurveError::Overflow {
+                    scale: num,
+                    value: base.to_string(),
+                })?;
+        }
+        return Ok(result);
+    }
+
+    // Compute base^num first (still integer-power), then take den-th root.
+    let mut numer = Decimal::ONE;
+    for _ in 0..num {
+        numer = numer
+            .checked_mul(base)
+            .ok_or_else(|| CurveError::Overflow {
+                scale: num,
+                value: base.to_string(),
+            })?;
+    }
+    nth_root(numer, den)
+}
+
+fn gcd_u32(a: u32, b: u32) -> u32 {
+    let (mut a, mut b) = (a, b);
+    while b != 0 {
+        let t = b;
+        b = a % b;
+        a = t;
+    }
+    a.max(1)
+}

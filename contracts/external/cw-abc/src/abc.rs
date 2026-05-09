@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, Decimal, Timestamp, Uint128};
 use cw_curves::{
-    curves::{Constant, Linear, SquareRoot},
+    curves::{Constant, Linear, Power, SquareRoot},
     utils::decimal,
     Curve, DecimalPlaces,
 };
@@ -235,8 +235,6 @@ impl CommonsPhaseConfig {
 
 pub type CurveFn = Box<dyn Fn(DecimalPlaces) -> Box<dyn Curve>>;
 
-// TODO Curve type validation?
-// TODO add S-curve and taylor series
 #[cw_serde]
 pub enum CurveType {
     /// Constant always returns `value * 10^-scale` as spot price
@@ -245,6 +243,17 @@ pub enum CurveType {
     Linear { slope: Uint128, scale: u32 },
     /// SquareRoot returns `slope * 10^-scale * supply^0.5` as spot price
     SquareRoot { slope: Uint128, scale: u32 },
+    /// Power returns `slope * 10^-scale * supply^(exponent_num/exponent_den)`
+    /// as spot price. Generalizes Constant (num=0), Linear (num=1, den=1),
+    /// and SquareRoot (num=1, den=2) — kept alongside for back-compat —
+    /// and also supports arbitrary rational exponents (e.g. 3/4, 7/4).
+    /// Phase U addition.
+    Power {
+        slope: Uint128,
+        scale: u32,
+        exponent_num: u32,
+        exponent_den: u32,
+    },
 }
 
 impl CurveType {
@@ -265,6 +274,22 @@ impl CurveType {
             CurveType::SquareRoot { slope, scale } => {
                 let calc = move |places| -> Box<dyn Curve> {
                     Box::new(SquareRoot::new(decimal(slope, scale), places))
+                };
+                Box::new(calc)
+            }
+            CurveType::Power {
+                slope,
+                scale,
+                exponent_num,
+                exponent_den,
+            } => {
+                let calc = move |places| -> Box<dyn Curve> {
+                    Box::new(Power::new(
+                        decimal(slope, scale),
+                        exponent_num,
+                        exponent_den,
+                        places,
+                    ))
                 };
                 Box::new(calc)
             }

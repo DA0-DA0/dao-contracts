@@ -16,7 +16,7 @@
 
 use cosmwasm_std::Uint128;
 
-use crate::curves::{Constant, Linear, SquareRoot};
+use crate::curves::{Constant, Linear, Power, SquareRoot};
 use crate::{Curve, DecimalPlaces};
 use rust_decimal::Decimal;
 
@@ -300,6 +300,118 @@ fn diff_sqrt_round_trip() {
         "too few sqrt round-trip samples: {}",
         sampled
     );
+}
+
+// ============================================================
+// Power (Phase U)
+// ============================================================
+
+fn ref_power_reserve(
+    supply: u128,
+    slope: f64,
+    num: u32,
+    den: u32,
+    sd: u32,
+    rd: u32,
+) -> u128 {
+    let s = norm_supply(supply, sd);
+    // F(s) = slope / (1 + num/den) * s^(1 + num/den) = slope * den / (num+den) * s^((num+den)/den)
+    let p = (num as f64 + den as f64) / den as f64;
+    let r = slope * (den as f64 / (num as f64 + den as f64)) * s.powf(p);
+    denorm_reserve(r, rd).floor() as u128
+}
+
+#[test]
+fn diff_power_random_walk() {
+    const SEED: u64 = 0x_DEC0_DED1;
+    const ITERS: u32 = 500;
+    const SLOPE: u128 = 5; // 0.5
+    const SCALE: u32 = 1;
+
+    // Test a range of rational exponents including the existing fast paths
+    // (Constant n=0/1, Linear n=1/1, SquareRoot n=1/2) and a few that
+    // exercise the general nth_root path (3/4, 7/4).
+    let exponents: &[(u32, u32)] = &[(0, 1), (1, 2), (1, 1), (3, 4), (7, 4), (2, 1)];
+
+    for &(num, den) in exponents {
+        for &(sd, rd) in &[(6u32, 6u32), (2, 8)] {
+            let normalize = DecimalPlaces::new(sd as u8, rd as u8);
+            let curve = Power::new(
+                Decimal::from_i128_with_scale(SLOPE as i128, SCALE),
+                num,
+                den,
+                normalize,
+            );
+            let mut rng = SplitMix64::new(SEED);
+            let slope_f = SLOPE as f64 / 10f64.powi(SCALE as i32);
+
+            // Bound supplies so that intermediate base^num stays under
+            // rust_decimal's saturation. For higher num/den, this matters more.
+            let max_supply = match (num, den) {
+                (0, 1) => 10u128.pow((sd + 5).min(13)),
+                (n, _) if n <= 2 => 10u128.pow((sd + 4).min(11)),
+                _ => 10u128.pow((sd + 3).min(9)),
+            };
+
+            for i in 0..ITERS {
+                let s = rng.sample_payment(max_supply);
+                let prod = match curve.reserve(Uint128::new(s)) {
+                    Ok(v) => v.u128(),
+                    Err(_) => continue, // skip if math saturates for this sample
+                };
+                let refr = ref_power_reserve(s, slope_f, num, den, sd, rd);
+                assert_close(
+                    prod,
+                    refr,
+                    1000,
+                    1e-2,
+                    &format!(
+                        "power n={}/{}reserve sd={} rd={} iter={} s={}",
+                        num, den, sd, rd, i, s
+                    ),
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn diff_power_round_trip() {
+    let normalize = DecimalPlaces::new(6, 6);
+    // n = 3/4 — exotic fractional exponent that goes through nth_root.
+    let curve = Power::new(Decimal::from_i128_with_scale(2, 0), 3, 4, normalize);
+    let mut rng = SplitMix64::new(0x_F0F0_BEEF);
+    let mut sampled = 0u32;
+    let mut attempts = 0u32;
+    while sampled < 200 && attempts < 2000 {
+        attempts += 1;
+        let s = rng.sample_payment(10_000_000);
+        let r = match curve.reserve(Uint128::new(s)) {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+        if r.u128() < 100 {
+            // skip small-reserve dust regime where rounding dominates
+            continue;
+        }
+        let s_back = match curve.supply(r) {
+            Ok(v) => v.u128(),
+            Err(_) => continue,
+        };
+        sampled += 1;
+        let diff = if s_back > s { s_back - s } else { s - s_back };
+        let rel = if s > 0 { diff as f64 / s as f64 } else { 0.0 };
+        assert!(
+            diff <= 10_000 || rel <= 1e-2,
+            "power round-trip drift too high: s={} -> r={} -> s_back={} (diff={}, rel={:.4})",
+            s,
+            r,
+            s_back,
+            diff,
+            rel
+        );
+    }
+    assert!(sampled >= 50, "too few power round-trip samples: {}", sampled);
 }
 
 // ============================================================

@@ -4,7 +4,7 @@
 use cosmwasm_std::{Decimal as StdDecimal, Uint128};
 
 use crate::{
-    curves::{Constant, Linear, SquareRoot},
+    curves::{Constant, Linear, Power, SquareRoot},
     utils::decimal,
     Curve, DecimalPlaces,
 };
@@ -145,6 +145,89 @@ fn linear_division_by_zero() {
 fn square_root_division_by_zero() {
     let normalize = DecimalPlaces::new(6, 6);
     let curve = SquareRoot::new(decimal(0u128, 0), normalize);
+    assert!(matches!(
+        curve.supply(Uint128::new(100)),
+        Err(crate::CurveError::DivisionByZero)
+    ));
+}
+
+// ============================================================
+// Phase U: Power curve happy paths
+// ============================================================
+
+#[test]
+fn power_curve_matches_linear_at_n1() {
+    // Power with exponent 1/1 should match Linear's behavior.
+    let normalize = DecimalPlaces::new(2, 8);
+    let linear = Linear::new(decimal(1u128, 1), normalize);
+    let power = Power::new(decimal(1u128, 1), 1, 1, normalize);
+
+    for &supply in &[100u128, 500, 1000, 1700, 5000] {
+        let lr = linear.reserve(Uint128::new(supply)).unwrap();
+        let pr = power.reserve(Uint128::new(supply)).unwrap();
+        assert_eq!(lr, pr, "linear vs power@n=1 reserve mismatch at supply={}", supply);
+    }
+}
+
+#[test]
+fn power_curve_matches_square_root_at_n_half() {
+    // Power with exponent 1/2 should match SquareRoot's behavior.
+    let normalize = DecimalPlaces::new(6, 2);
+    let sqrt = SquareRoot::new(decimal(35u128, 2), normalize);
+    let power = Power::new(decimal(35u128, 2), 1, 2, normalize);
+
+    for &supply in &[1_000_000u128, 50_000_000, 100_000_000] {
+        let sr = sqrt.reserve(Uint128::new(supply)).unwrap();
+        let pr = power.reserve(Uint128::new(supply)).unwrap();
+        // Allow 1-unit floor difference between the two impls.
+        let diff = if sr > pr { sr - pr } else { pr - sr };
+        assert!(
+            diff.u128() <= 1,
+            "sqrt vs power@n=1/2 reserve mismatch at supply={}: sqrt={}, power={}",
+            supply,
+            sr,
+            pr
+        );
+    }
+}
+
+#[test]
+fn power_curve_matches_constant_at_n0() {
+    // Power with exponent 0/1 reduces to constant slope: f(s) = slope.
+    // Integral F(s) = slope * s.
+    let normalize = DecimalPlaces::new(9, 6);
+    let constant = Constant::new(decimal(15u128, 1), normalize);
+    let power = Power::new(decimal(15u128, 1), 0, 1, normalize);
+
+    let cr = constant.reserve(Uint128::new(30_000_000_000)).unwrap();
+    let pr = power.reserve(Uint128::new(30_000_000_000)).unwrap();
+    assert_eq!(cr, pr);
+}
+
+#[test]
+fn power_curve_round_trip() {
+    // Round-trip identity for an exotic exponent (3/4).
+    let normalize = DecimalPlaces::new(6, 6);
+    let curve = Power::new(decimal(2u128, 0), 3, 4, normalize);
+    for &supply in &[1_000_000u128, 5_000_000, 10_000_000, 50_000_000] {
+        let r = curve.reserve(Uint128::new(supply)).unwrap();
+        let s_back = curve.supply(r).unwrap().u128();
+        let diff = if s_back > supply { s_back - supply } else { supply - s_back };
+        assert!(
+            diff <= 1000,
+            "power round-trip drift too high at supply={}: r={}, s_back={}, diff={}",
+            supply,
+            r,
+            s_back,
+            diff
+        );
+    }
+}
+
+#[test]
+fn power_division_by_zero_on_zero_slope() {
+    let normalize = DecimalPlaces::new(6, 6);
+    let curve = Power::new(decimal(0u128, 0), 1, 2, normalize);
     assert!(matches!(
         curve.supply(Uint128::new(100)),
         Err(crate::CurveError::DivisionByZero)
