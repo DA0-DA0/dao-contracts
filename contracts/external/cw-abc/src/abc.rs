@@ -163,9 +163,17 @@ pub enum VestingSchedule {
 
 #[cw_serde]
 pub enum CommonsPhase {
+    /// Initial contributors hatch the curve under contribution_limits.
     Hatch,
+    /// Anyone can buy/sell. Hatcher tokens unlock per the vesting schedule.
     Open,
+    /// Curve was closed by the owner; sells allowed at zero exit fee, buys rejected.
     Closed,
+    /// Hatch failed to reach `initial_raise.min` by `hatch_deadline`. Hatchers
+    /// claim their pro-rata share of `(reserve + funding)` via `ClaimRefund`.
+    /// Buys, normal sells, owner Withdraw of funding, update_curve and Close
+    /// are all rejected. Closes audit finding M-5 (full).
+    Refunding,
 }
 
 impl CommonsPhase {
@@ -196,6 +204,17 @@ impl CommonsPhase {
             matches!(self, CommonsPhase::Closed),
             ContractError::InvalidPhase {
                 expected: "Closed".to_string(),
+                actual: format!("{:?}", self)
+            }
+        );
+        Ok(())
+    }
+
+    pub fn expect_refunding(&self) -> Result<(), ContractError> {
+        ensure!(
+            matches!(self, CommonsPhase::Refunding),
+            ContractError::InvalidPhase {
+                expected: "Refunding".to_string(),
                 actual: format!("{:?}", self)
             }
         );

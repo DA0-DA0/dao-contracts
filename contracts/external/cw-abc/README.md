@@ -159,7 +159,7 @@ This contract has a privileged `owner` address (set at instantiate, transferable
 
 **Recommended deployment**: ownership set to a DAO core contract. EOA / single-multisig ownership is technically supported but not recommended for production deployments; the owner has unilateral access to the funding pool and substantial latitude to adjust phase config.
 
-`AbortHatch {}` is permissionless — any address can call it after `hatch_deadline` has passed if the curve has not reached `initial_raise.min`. This transitions the contract to Closed so hatchers can recover their reserve.
+`AbortHatch {}` is permissionless — any address can call it after `hatch_deadline` has passed if the curve has not reached `initial_raise.min`. This transitions the contract to **Refunding** phase, snapshots the pro-rata refund math (`total_pool = reserve + funding` and `total_contributed`), and lets each hatcher reclaim their share via `ClaimRefund {}`. Each hatcher receives `state.contributed * total_pool / total_contributed` reserve tokens in exchange for surrendering their unburned hatcher tokens. The funding pool is locked from owner withdrawal during Refunding — the funds belong to the hatchers.
 
 `UpdateCurve` is gated on Closed phase plus a continuity check that prevents replacement curves from breaking the (reserve, supply) invariant beyond a small tolerance. This closes the rug-via-curve-swap surface identified in the 2026-05-09 security review.
 
@@ -176,5 +176,4 @@ Tokens minted during the Open phase by addresses that did **not** participate in
 ## Future Work
 
 - [ ] Implement an expanded set of pricing curves to choose from
-- [ ] Hatch-failure refund path: in a future `Refunding` sub-state, hatchers receive a pro-rata share of `reserve + funding` (currently `AbortHatch` only refunds the reserve side).
 

@@ -176,6 +176,7 @@ pub fn execute(
             commands::update_ownership(deps, &env, &info, action)
         }
         ExecuteMsg::AbortHatch {} => commands::abort_hatch(deps, env, info),
+        ExecuteMsg::ClaimRefund {} => commands::claim_refund(deps, env, info),
     }
 }
 

@@ -144,6 +144,9 @@ pub struct HatcherState {
     /// Vesting clock start. `None` while still in Hatch; set to
     /// `env.block.time` at the moment of the Hatch → Open transition.
     pub vesting_started_at: Option<Timestamp>,
+    /// True once this hatcher has claimed their pro-rata refund in the
+    /// Refunding phase (M-5 full). Prevents double-claim.
+    pub claimed_refund: bool,
 }
 
 impl HatcherState {
@@ -153,6 +156,7 @@ impl HatcherState {
             minted: Uint128::zero(),
             already_burned: Uint128::zero(),
             vesting_started_at: None,
+            claimed_refund: false,
         }
     }
 }
@@ -180,3 +184,16 @@ pub const TEMP_SUPPLY: Item<SupplyToken> = Item::new("temp_supply");
 
 /// The address of the cw-tokenfactory-issuer contract
 pub const TOKEN_ISSUER_CONTRACT: Item<Addr> = Item::new("token_issuer_contract");
+
+/// Snapshot taken at the moment of `AbortHatch` to lock the pro-rata refund
+/// math. Late claimants don't dilute earlier ones because the divisor is
+/// frozen here. M-5 full Refunding sub-state.
+#[cw_serde]
+pub struct RefundSnapshot {
+    /// `curve_state.reserve + curve_state.funding` at AbortHatch time.
+    pub total_pool: Uint128,
+    /// Sum of `HatcherState.contributed` across all hatchers at AbortHatch time.
+    pub total_contributed: Uint128,
+}
+
+pub const REFUND_SNAPSHOT: Item<RefundSnapshot> = Item::new("refund_snapshot");

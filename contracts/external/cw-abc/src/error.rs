@@ -67,6 +67,12 @@ pub enum ContractError {
     #[error("Invalid migration: contract is {actual}, expected {expected}")]
     InvalidMigration { expected: String, actual: String },
 
+    #[error("Refund has already been claimed by this address")]
+    RefundAlreadyClaimed {},
+
+    #[error("Refund burn mismatch: expected {expected}, got {sent}")]
+    RefundBurnMismatch { expected: Uint128, sent: Uint128 },
+
     #[error("Invalid subdenom: {subdenom:?}")]
     InvalidSubdenom { subdenom: String },
 

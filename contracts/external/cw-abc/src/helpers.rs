@@ -24,6 +24,7 @@ pub fn calculate_buy_quote(
         CommonsPhase::Hatch => calculate_reserved_and_funded(payment, phase_config.hatch.entry_fee),
         CommonsPhase::Open => calculate_reserved_and_funded(payment, phase_config.open.entry_fee),
         CommonsPhase::Closed => Err(ContractError::CommonsClosed {}),
+        CommonsPhase::Refunding => Err(ContractError::CommonsClosed {}),
     }?;
 
     // Update the reserve and calculate the new supply from the new reserve
@@ -61,6 +62,9 @@ pub fn calculate_sell_quote(
         CommonsPhase::Hatch => Err(ContractError::CommonsHatch {}),
         CommonsPhase::Open => Ok(phase_config.open.exit_fee),
         CommonsPhase::Closed => Ok(Decimal::zero()),
+        // Refunding has its own settlement path (`ClaimRefund`); regular
+        // sells are not allowed.
+        CommonsPhase::Refunding => Err(ContractError::CommonsClosed {}),
     }?;
 
     // Calculate the new reserve based on the new supply

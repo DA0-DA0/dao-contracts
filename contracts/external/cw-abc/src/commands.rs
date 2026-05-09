@@ -10,9 +10,10 @@ use crate::abc::{CommonsPhase, CurveType, HatchConfig, MinMax};
 use crate::helpers::{calculate_buy_quote, calculate_sell_quote, vested_amount};
 use crate::msg::{HatcherAllowlistEntryMsg, UpdatePhaseConfigMsg};
 use crate::state::{
-    hatcher_allowlist, HatcherAllowlistConfig, HatcherAllowlistConfigType, CURVE_STATE,
-    CURVE_TYPE, DONATIONS, FUNDING_POOL_FORWARDING, HATCHERS, HATCHER_DAO_PRIORITY_QUEUE,
-    IS_PAUSED, MAX_SUPPLY, PHASE, PHASE_CONFIG, SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
+    hatcher_allowlist, HatcherAllowlistConfig, HatcherAllowlistConfigType, RefundSnapshot,
+    CURVE_STATE, CURVE_TYPE, DONATIONS, FUNDING_POOL_FORWARDING, HATCHERS,
+    HATCHER_DAO_PRIORITY_QUEUE, IS_PAUSED, MAX_SUPPLY, PHASE, PHASE_CONFIG, REFUND_SNAPSHOT,
+    SUPPLY_DENOM, TOKEN_ISSUER_CONTRACT,
 };
 use crate::ContractError;
 
@@ -80,6 +81,9 @@ pub fn buy(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, Contr
         }
         CommonsPhase::Open => {}
         CommonsPhase::Closed => {
+            return Err(ContractError::CommonsClosed {});
+        }
+        CommonsPhase::Refunding => {
             return Err(ContractError::CommonsClosed {});
         }
     };
@@ -262,6 +266,16 @@ pub fn sell(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, Cont
 pub fn close(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
+    // M-5 full: Refunding is terminal (driven by AbortHatch); cannot be
+    // overridden by Close.
+    let phase = PHASE.load(deps.storage)?;
+    if matches!(phase, CommonsPhase::Refunding) {
+        return Err(ContractError::InvalidPhase {
+            expected: "Hatch | Open".to_string(),
+            actual: "Refunding".to_string(),
+        });
+    }
+
     // I-2: zero out the open-phase exit fee so the stored config matches
     // runtime behavior (calculate_sell_quote returns Decimal::zero() for
     // Closed phase regardless, but indexers / UIs read the config and
@@ -276,8 +290,9 @@ pub fn close(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError
 }
 
 /// Abort a stalled hatch. Callable by anyone after `hatch_deadline` has
-/// passed if the curve has not reached `initial_raise.min`. Transitions
-/// to Closed so hatchers can recover their reserve. Closes audit M-5.
+/// passed if the curve has not reached `initial_raise.min`. Snapshots the
+/// pro-rata refund math and transitions to `CommonsPhase::Refunding`, where
+/// hatchers claim via `ClaimRefund`. Closes audit M-5 (full).
 pub fn abort_hatch(
     deps: DepsMut,
     env: Env,
@@ -308,9 +323,121 @@ pub fn abort_hatch(
         )));
     }
 
-    PHASE.save(deps.storage, &CommonsPhase::Closed)?;
+    // Snapshot the pool and total contributions so claims are deterministic.
+    let total_pool = curve_state.reserve.checked_add(curve_state.funding)?;
+    let total_contributed = HATCHERS
+        .range(deps.storage, None, None, Order::Ascending)
+        .try_fold(Uint128::zero(), |acc, item| -> StdResult<_> {
+            let (_addr, state) = item?;
+            Ok(acc + state.contributed)
+        })?;
 
-    Ok(Response::new().add_attribute("action", "abort_hatch"))
+    REFUND_SNAPSHOT.save(
+        deps.storage,
+        &RefundSnapshot {
+            total_pool,
+            total_contributed,
+        },
+    )?;
+
+    PHASE.save(deps.storage, &CommonsPhase::Refunding)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "abort_hatch")
+        .add_attribute("total_pool", total_pool)
+        .add_attribute("total_contributed", total_contributed))
+}
+
+/// Claim a hatcher's pro-rata refund during the Refunding phase. Caller
+/// must be a hatcher who has not yet claimed; must send their unburned
+/// hatcher tokens for burning. Returns `state.contributed * snapshot.total_pool
+/// / snapshot.total_contributed` reserve tokens.
+pub fn claim_refund(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
+    let phase = PHASE.load(deps.storage)?;
+    phase.expect_refunding()?;
+
+    let mut state = HATCHERS
+        .may_load(deps.storage, &info.sender)?
+        .ok_or(ContractError::SenderNotAllowlisted {
+            sender: info.sender.to_string(),
+        })?;
+
+    if state.claimed_refund {
+        return Err(ContractError::RefundAlreadyClaimed {});
+    }
+
+    let snapshot = REFUND_SNAPSHOT.load(deps.storage)?;
+    if snapshot.total_contributed.is_zero() {
+        return Err(ContractError::HatchPhaseConfigError(
+            "No refund snapshot — nothing to claim".to_string(),
+        ));
+    }
+
+    // Hatcher must surrender their unburned hatcher tokens.
+    let supply_denom = SUPPLY_DENOM.load(deps.storage)?;
+    let burn_amount = must_pay(&info, &supply_denom)?;
+    let unburned = state.minted.checked_sub(state.already_burned)?;
+    if burn_amount != unburned {
+        return Err(ContractError::RefundBurnMismatch {
+            expected: unburned,
+            sent: burn_amount,
+        });
+    }
+
+    // Pro-rata refund.
+    let refund = state
+        .contributed
+        .multiply_ratio(snapshot.total_pool, snapshot.total_contributed);
+
+    // Mark claimed first so re-entrancy via reply can't double-claim.
+    state.already_burned = state.minted;
+    state.claimed_refund = true;
+    HATCHERS.save(deps.storage, &info.sender, &state)?;
+
+    let curve_state = CURVE_STATE.load(deps.storage)?;
+    let issuer_addr = TOKEN_ISSUER_CONTRACT.load(deps.storage)?;
+
+    let mut msgs: Vec<CosmosMsg> = vec![
+        // Send hatcher tokens to issuer for burning
+        CosmosMsg::Bank(BankMsg::Send {
+            to_address: issuer_addr.to_string(),
+            amount: vec![Coin {
+                amount: burn_amount,
+                denom: supply_denom,
+            }],
+        }),
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: issuer_addr.to_string(),
+            msg: to_json_binary(&IssuerExecuteMsg::Burn {
+                from_address: issuer_addr.to_string(),
+                amount: burn_amount,
+            })?,
+            funds: vec![],
+        }),
+    ];
+
+    // Send pro-rata refund.
+    if !refund.is_zero() {
+        msgs.push(CosmosMsg::Bank(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: vec![Coin {
+                amount: refund,
+                denom: curve_state.reserve_denom,
+            }],
+        }));
+    }
+
+    Ok(Response::new()
+        .add_messages(msgs)
+        .add_attribute("action", "claim_refund")
+        .add_attribute("hatcher", info.sender)
+        .add_attribute("contributed", state.contributed)
+        .add_attribute("refund", refund)
+        .add_attribute("burned", burn_amount))
 }
 
 /// Send a donation to the funding pool
@@ -360,6 +487,16 @@ pub fn withdraw(
 ) -> Result<Response, ContractError> {
     // Validate ownership
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    // M-5 full: in Refunding the funding pool belongs to hatchers via
+    // pro-rata claims; owner cannot drain it.
+    let phase = PHASE.load(deps.storage)?;
+    if matches!(phase, CommonsPhase::Refunding) {
+        return Err(ContractError::InvalidPhase {
+            expected: "Hatch | Open | Closed".to_string(),
+            actual: "Refunding".to_string(),
+        });
+    }
 
     let mut curve_state = CURVE_STATE.load(deps.storage)?;
 

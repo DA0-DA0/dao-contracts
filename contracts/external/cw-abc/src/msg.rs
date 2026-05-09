@@ -109,9 +109,14 @@ pub enum ExecuteMsg {
     Close {},
     /// Abort a stalled hatch. Callable by anyone after `hatch_deadline`
     /// has passed if `initial_raise.min` was not reached. Transitions the
-    /// contract to Closed phase so hatchers can sell back their tokens.
-    /// Closes audit M-5.
+    /// contract to Refunding phase, snapshots the pro-rata math, and
+    /// allows hatchers to claim via `ClaimRefund`. Closes audit M-5 (full).
     AbortHatch {},
+    /// Claim a hatcher's pro-rata refund during the Refunding phase. Caller
+    /// must be a hatcher who has not yet claimed and must send their
+    /// unburned hatcher tokens for burning. Returns the hatcher's pro-rata
+    /// share of `(reserve + funding)` snapshotted at AbortHatch time.
+    ClaimRefund {},
 }
 
 #[cw_ownable::cw_ownable_query]
