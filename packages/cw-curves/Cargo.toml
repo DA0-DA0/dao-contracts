@@ -18,3 +18,4 @@ cosmwasm-schema = { workspace = true }
 rust_decimal = { workspace = true }
 integer-sqrt = { workspace = true }
 integer-cbrt = { workspace = true }
+thiserror = { workspace = true }

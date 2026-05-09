@@ -2,8 +2,20 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Decimal as StdDecimal, Uint128};
 use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
+use thiserror::Error;
 
 use crate::utils::decimal;
+
+/// Errors that can occur during curve evaluation. L-5: replaces the
+/// previous `unwrap()` panics with typed errors so consumers can choose
+/// to surface them rather than crash the contract.
+#[derive(Error, Debug, PartialEq)]
+pub enum CurveError {
+    #[error("curve math overflow at scale {scale}, value {value}")]
+    Overflow { scale: u32, value: String },
+    #[error("curve division by zero")]
+    DivisionByZero,
+}
 
 /// This defines the curves we are using.
 ///
@@ -19,17 +31,17 @@ use crate::utils::decimal;
 /// and `reserve_decimal` in the curve constructors.
 pub trait Curve {
     /// Returns the spot price given the supply.
-    /// `f(x)` from the README
-    fn spot_price(&self, supply: Uint128) -> StdDecimal;
+    /// `f(x)` from the README.
+    fn spot_price(&self, supply: Uint128) -> Result<StdDecimal, CurveError>;
 
     /// Returns the total price paid up to purchase supply tokens (integral)
-    /// `F(x)` from the README
-    fn reserve(&self, supply: Uint128) -> Uint128;
+    /// `F(x)` from the README.
+    fn reserve(&self, supply: Uint128) -> Result<Uint128, CurveError>;
 
     /// Inverse of reserve. Returns how many tokens would be issued
     /// with a total paid amount of reserve.
-    /// `F^-1(x)` from the README
-    fn supply(&self, reserve: Uint128) -> Uint128;
+    /// `F^-1(x)` from the README.
+    fn supply(&self, reserve: Uint128) -> Result<Uint128, CurveError>;
 }
 
 /// DecimalPlaces should be passed into curve constructors
@@ -50,18 +62,28 @@ impl DecimalPlaces {
         }
     }
 
-    pub fn to_reserve(self, reserve: Decimal) -> Uint128 {
+    pub fn to_reserve(self, reserve: Decimal) -> Result<Uint128, CurveError> {
         let factor = decimal(10u128.pow(self.reserve), 0);
         let out = reserve * factor;
-        // TODO: execute overflow better? Result?
-        out.floor().to_u128().unwrap().into()
+        out.floor()
+            .to_u128()
+            .map(Uint128::from)
+            .ok_or(CurveError::Overflow {
+                scale: self.reserve,
+                value: reserve.to_string(),
+            })
     }
 
-    pub fn to_supply(self, supply: Decimal) -> Uint128 {
+    pub fn to_supply(self, supply: Decimal) -> Result<Uint128, CurveError> {
         let factor = decimal(10u128.pow(self.supply), 0);
         let out = supply * factor;
-        // TODO: execute overflow better? Result?
-        out.floor().to_u128().unwrap().into()
+        out.floor()
+            .to_u128()
+            .map(Uint128::from)
+            .ok_or(CurveError::Overflow {
+                scale: self.supply,
+                value: supply.to_string(),
+            })
     }
 
     pub fn from_supply(&self, supply: Uint128) -> Decimal {

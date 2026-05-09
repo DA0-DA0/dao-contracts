@@ -744,7 +744,7 @@ pub fn update_curve(
 
     let curve_state = CURVE_STATE.load(deps.storage)?;
     let new_curve = curve_type.to_curve_fn()(curve_state.decimals);
-    let new_reserve_at_supply = new_curve.reserve(curve_state.supply);
+    let new_reserve_at_supply = new_curve.reserve(curve_state.supply)?;
 
     // Reject any curve that would not honor the existing (reserve, supply)
     // pair within tolerance. Tolerance is for floor-rounding accumulation,

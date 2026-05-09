@@ -28,7 +28,7 @@ pub fn calculate_buy_quote(
 
     // Update the reserve and calculate the new supply from the new reserve
     let new_reserve = curve_state.reserve.checked_add(reserved)?;
-    let new_supply = curve.supply(new_reserve);
+    let new_supply = curve.supply(new_reserve)?;
 
     // Calculate the difference between the new and old supply to get the minted tokens
     let minted = new_supply.checked_sub(curve_state.supply)?;
@@ -64,7 +64,7 @@ pub fn calculate_sell_quote(
     }?;
 
     // Calculate the new reserve based on the new supply
-    let new_reserve = curve.reserve(new_supply);
+    let new_reserve = curve.reserve(new_supply)?;
 
     // Calculate how many reserve tokens to release based on the amount being burned
     let released_reserve = curve_state.reserve.checked_sub(new_reserve)?;

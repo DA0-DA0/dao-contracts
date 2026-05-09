@@ -22,6 +22,9 @@ pub enum ContractError {
     #[error("{0}")]
     CheckedMultiplyFraction(#[from] CheckedMultiplyFractionError),
 
+    #[error("{0}")]
+    CurveError(#[from] cw_curves::CurveError),
+
     #[error("Cannot mint more tokens than the maximum supply of {max}")]
     CannotExceedMaxSupply { max: Uint128 },
 

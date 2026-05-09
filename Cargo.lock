@@ -951,6 +951,7 @@ dependencies = [
  "integer-cbrt",
  "integer-sqrt",
  "rust_decimal",
+ "thiserror",
 ]
 
 [[package]]

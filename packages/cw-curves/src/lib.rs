@@ -5,4 +5,4 @@ pub mod utils;
 #[cfg(test)]
 mod tests;
 
-pub use curve::{Curve, DecimalPlaces};
+pub use curve::{Curve, CurveError, DecimalPlaces};
