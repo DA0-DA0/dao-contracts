@@ -127,13 +127,7 @@ pub fn instantiate(
     // `update_hatch_allowlist` that could be a footgun for any future code
     // path that introduces additional self-calls.
     if let Some(hatcher_allowlist) = hatcher_allowlist {
-        commands::update_hatch_allowlist(
-            deps.branch(),
-            env,
-            info,
-            hatcher_allowlist,
-            vec![],
-        )?;
+        commands::update_hatch_allowlist(deps.branch(), env, info, hatcher_allowlist, vec![])?;
     }
 
     Ok(Response::default().add_submessage(msg))

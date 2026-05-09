@@ -122,11 +122,7 @@ impl HatcherAllowlistEntryMsg {
 /// - For `Linear`, returns `state.minted * elapsed / duration` saturating at
 ///   `state.minted` once duration has elapsed. Zero-duration treated as
 ///   immediately fully vested.
-pub fn vested_amount(
-    state: &HatcherState,
-    schedule: &VestingSchedule,
-    now: Timestamp,
-) -> Uint128 {
+pub fn vested_amount(state: &HatcherState, schedule: &VestingSchedule, now: Timestamp) -> Uint128 {
     let started = match state.vesting_started_at {
         Some(t) => t,
         // Still in Hatch — sells should be blocked at the phase layer; if

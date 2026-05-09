@@ -293,21 +293,18 @@ pub fn close(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError
 /// passed if the curve has not reached `initial_raise.min`. Snapshots the
 /// pro-rata refund math and transitions to `CommonsPhase::Refunding`, where
 /// hatchers claim via `ClaimRefund`. Closes audit M-5 (full).
-pub fn abort_hatch(
-    deps: DepsMut,
-    env: Env,
-    _info: MessageInfo,
-) -> Result<Response, ContractError> {
+pub fn abort_hatch(deps: DepsMut, env: Env, _info: MessageInfo) -> Result<Response, ContractError> {
     let phase = PHASE.load(deps.storage)?;
     phase.expect_hatch()?;
 
     let phase_config = PHASE_CONFIG.load(deps.storage)?;
-    let deadline = phase_config
-        .hatch
-        .hatch_deadline
-        .ok_or(ContractError::HatchPhaseConfigError(
-            "No hatch_deadline configured; abort not allowed".to_string(),
-        ))?;
+    let deadline =
+        phase_config
+            .hatch
+            .hatch_deadline
+            .ok_or(ContractError::HatchPhaseConfigError(
+                "No hatch_deadline configured; abort not allowed".to_string(),
+            ))?;
     if env.block.time < deadline {
         return Err(ContractError::HatchPhaseConfigError(format!(
             "Hatch deadline (epoch {}) not yet reached",
@@ -360,11 +357,11 @@ pub fn claim_refund(
     let phase = PHASE.load(deps.storage)?;
     phase.expect_refunding()?;
 
-    let mut state = HATCHERS
-        .may_load(deps.storage, &info.sender)?
-        .ok_or(ContractError::SenderNotAllowlisted {
+    let mut state = HATCHERS.may_load(deps.storage, &info.sender)?.ok_or(
+        ContractError::SenderNotAllowlisted {
             sender: info.sender.to_string(),
-        })?;
+        },
+    )?;
 
     if state.claimed_refund {
         return Err(ContractError::RefundAlreadyClaimed {});
@@ -754,9 +751,7 @@ pub(crate) fn insert_into_priority_queue(
         Some(priority_value) => {
             let pos = queue.partition_point(|existing| {
                 match &existing.config.config_type {
-                    HatcherAllowlistConfigType::DAO {
-                        priority: Some(p),
-                    } => *p <= priority_value,
+                    HatcherAllowlistConfigType::DAO { priority: Some(p) } => *p <= priority_value,
                     // None-priority entries sort after all Some entries.
                     HatcherAllowlistConfigType::DAO { priority: None } => false,
                     HatcherAllowlistConfigType::Address {} => false,
@@ -891,7 +886,9 @@ pub fn update_curve(
     } else {
         curve_state.reserve - new_reserve_at_supply
     };
-    let tolerance = curve_state.reserve.multiply_ratio(MAX_CURVE_DRIFT_BPS, 10_000u128);
+    let tolerance = curve_state
+        .reserve
+        .multiply_ratio(MAX_CURVE_DRIFT_BPS, 10_000u128);
     if drift > tolerance {
         return Err(ContractError::CurveDriftExceeded {
             current_reserve: curve_state.reserve,

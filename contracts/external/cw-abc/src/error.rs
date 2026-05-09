@@ -56,9 +56,7 @@ pub enum ContractError {
     #[error("Token decimals must be less than {max} (got {decimals})")]
     InvalidDecimals { decimals: u8, max: u8 },
 
-    #[error(
-        "Hatcher tokens not yet vested: requested {requested}, only {available} unlocked"
-    )]
+    #[error("Hatcher tokens not yet vested: requested {requested}, only {available} unlocked")]
     HatcherTokensNotVested {
         requested: Uint128,
         available: Uint128,

@@ -14,7 +14,6 @@ use crate::{
     ContractError,
 };
 
-
 pub(crate) mod prelude {
     pub use super::{default_instantiate_msg, TEST_RESERVE_DENOM};
     pub use speculoos::prelude::*;

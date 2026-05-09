@@ -18,9 +18,9 @@ use crate::abc::{
     ReserveToken, SupplyToken, VestingSchedule,
 };
 use crate::commands;
+use crate::commands::insert_into_priority_queue;
 use crate::contract;
 use crate::msg::{InstantiateMsg, UpdatePhaseConfigMsg};
-use crate::commands::insert_into_priority_queue;
 use crate::state::{
     HatcherAllowlistConfig, HatcherAllowlistConfigType, HatcherAllowlistEntry, HatcherState,
     RefundSnapshot, CURVE_STATE, HATCHERS, PHASE, REFUND_SNAPSHOT, SUPPLY_DENOM,
@@ -86,7 +86,9 @@ fn c1_update_curve_rejects_in_open() {
 fn c1_update_curve_rejects_when_drift_exceeds_tolerance() {
     let mut deps = mock_dependencies();
     mock_init(deps.as_mut(), linear_msg()).unwrap();
-    PHASE.save(&mut deps.storage, &CommonsPhase::Closed).unwrap();
+    PHASE
+        .save(&mut deps.storage, &CommonsPhase::Closed)
+        .unwrap();
 
     // Force a non-zero (reserve, supply) state.
     let mut curve_state = CURVE_STATE.load(&deps.storage).unwrap();
@@ -114,7 +116,9 @@ fn c1_update_curve_rejects_when_drift_exceeds_tolerance() {
 fn c1_update_curve_rejects_non_owner() {
     let mut deps = mock_dependencies();
     mock_init(deps.as_mut(), linear_msg()).unwrap();
-    PHASE.save(&mut deps.storage, &CommonsPhase::Closed).unwrap();
+    PHASE
+        .save(&mut deps.storage, &CommonsPhase::Closed)
+        .unwrap();
 
     let res = commands::update_curve(
         deps.as_mut(),
@@ -414,7 +418,10 @@ fn m5_claim_refund_rejected_for_non_hatcher() {
         mock_env(),
         mock_info("not-a-hatcher", &[coin(50, "factory/abc/test")]),
     );
-    assert!(matches!(res, Err(ContractError::SenderNotAllowlisted { .. })));
+    assert!(matches!(
+        res,
+        Err(ContractError::SenderNotAllowlisted { .. })
+    ));
 }
 
 #[test]

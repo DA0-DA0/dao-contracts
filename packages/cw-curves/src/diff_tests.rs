@@ -117,7 +117,10 @@ fn diff_constant_random_walk() {
 
     for &(sd, rd) in &[(6u32, 6u32), (9, 6), (2, 8), (18, 18)] {
         let normalize = DecimalPlaces::new(sd as u8, rd as u8);
-        let curve = Constant::new(Decimal::from_i128_with_scale(VALUE as i128, SCALE), normalize);
+        let curve = Constant::new(
+            Decimal::from_i128_with_scale(VALUE as i128, SCALE),
+            normalize,
+        );
         let mut rng = SplitMix64::new(SEED);
 
         let value_f = VALUE as f64 / 10f64.powi(SCALE as i32);
@@ -175,7 +178,10 @@ fn diff_linear_random_walk() {
 
     for &(sd, rd) in &[(2u32, 8u32), (6, 6), (9, 6)] {
         let normalize = DecimalPlaces::new(sd as u8, rd as u8);
-        let curve = Linear::new(Decimal::from_i128_with_scale(SLOPE as i128, SCALE), normalize);
+        let curve = Linear::new(
+            Decimal::from_i128_with_scale(SLOPE as i128, SCALE),
+            normalize,
+        );
         let mut rng = SplitMix64::new(SEED);
         let slope_f = SLOPE as f64 / 10f64.powi(SCALE as i32);
 
@@ -289,7 +295,11 @@ fn diff_sqrt_round_trip() {
             rel
         );
     }
-    assert!(sampled >= 100, "too few sqrt round-trip samples: {}", sampled);
+    assert!(
+        sampled >= 100,
+        "too few sqrt round-trip samples: {}",
+        sampled
+    );
 }
 
 // ============================================================

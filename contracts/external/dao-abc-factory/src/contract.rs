@@ -12,8 +12,8 @@ use cw_abc::msg::{
 use cw_storage_plus::{Bound, Item, Map};
 use cw_utils::parse_reply_instantiate_data;
 use dao_interface::{
-    msg::QueryMsg as DaoQueryMsg, state::ModuleInstantiateCallback,
-    token::TokenFactoryCallback, voting::Query as VotingModuleQueryMsg,
+    msg::QueryMsg as DaoQueryMsg, state::ModuleInstantiateCallback, token::TokenFactoryCallback,
+    voting::Query as VotingModuleQueryMsg,
 };
 
 use crate::{

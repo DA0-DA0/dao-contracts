@@ -42,7 +42,8 @@ fn assert_caller_is_voting_module(
     querier: &QuerierWrapper,
     claimed_voting_module: &Addr,
 ) -> Result<Addr, ContractError> {
-    let dao: Addr = querier.query_wasm_smart(claimed_voting_module, &VotingModuleQueryMsg::Dao {})?;
+    let dao: Addr =
+        querier.query_wasm_smart(claimed_voting_module, &VotingModuleQueryMsg::Dao {})?;
     let voting_module: Addr = querier.query_wasm_smart(&dao, &DaoQueryMsg::VotingModule {})?;
     ensure!(
         voting_module == *claimed_voting_module,
