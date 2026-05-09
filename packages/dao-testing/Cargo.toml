@@ -41,6 +41,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 btsg-ft-factory = { workspace = true }
+cw-abc = { workspace = true }
 cw-admin-factory = { workspace = true }
 cw-hooks = { workspace = true }
 cw-payroll-factory = { workspace = true }
@@ -52,6 +53,7 @@ cw20-stake-reward-distributor = { workspace = true }
 cw721-base = { workspace = true }
 cw721-roles = { workspace = true }
 cw-tokenfactory-issuer = { workspace = true }
+dao-abc-factory = { workspace = true }
 dao-dao-core = { workspace = true }
 dao-interface = { workspace = true }
 dao-migrator = { workspace = true }

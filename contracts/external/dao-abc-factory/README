@@ -1,0 +1,4 @@
+# DAO ABC Factory
+Used for creating DAOs with `dao-voting-token-staked` and `cw-abc`.
+
+NOTE: this contract is NOT AUDITED, use at your own risk.
