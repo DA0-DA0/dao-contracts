@@ -108,11 +108,16 @@ fn sqrt_curve() {
     assert_eq!(Uint128::new(84_057), reserve); // round down
 
     // // if we have 0.23 CHF, we should have 0.990453 TREE (round down)
+    // L-6: cube_root EXTRA_DIGITS raised from 9 to 15 — precision improved
+    // from 990_000 (~0.045% off) to 990_450 (~0.0003% off). True value
+    // 990_453.x.
     let supply = curve.supply(Uint128::new(23));
-    assert_eq!(Uint128::new(990_000), supply);
+    assert_eq!(Uint128::new(990_450), supply);
     // if we have 840.58 CHF, we should have 235.000170 TREE (round down)
+    // L-6: precision boost — was rounding to 235_000_000 (off by 170 micro-TREE),
+    // now matches the comment's stated true value.
     let supply = curve.supply(Uint128::new(84058));
-    assert_eq!(Uint128::new(235_000_000), supply);
+    assert_eq!(Uint128::new(235_000_170), supply);
 }
 
 // Idea: generic test that curve.supply(curve.reserve(supply)) == supply (or within some small rounding margin)

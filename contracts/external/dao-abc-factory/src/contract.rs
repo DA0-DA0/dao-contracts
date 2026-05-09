@@ -21,7 +21,8 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
 };
 
-const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
+// I-4: align with the cw-abc convention.
+const CONTRACT_NAME: &str = "crates.io:dao-abc-factory";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const INSTANTIATE_ABC_REPLY_ID: u64 = 1;

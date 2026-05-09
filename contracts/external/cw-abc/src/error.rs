@@ -70,9 +70,9 @@ pub enum ContractError {
     #[error("Invalid phase, expected {expected:?}, actual {actual:?}")]
     InvalidPhase { expected: String, actual: String },
 
-    #[error("Invalid sell amount")]
-    MismatchedSellAmount {},
-
+    // I-1: removed unused `MismatchedSellAmount` and `Unauthorized` variants
+    // (audit cleanup). cw-abc relies on `cw_ownable::OwnershipError` via
+    // the `Ownership` variant for unauthorized owner-only paths.
     #[error("Open phase config error {0}")]
     OpenPhaseConfigError(String),
 
@@ -81,9 +81,6 @@ pub enum ContractError {
 
     #[error("Supply token error {0}")]
     SupplyTokenError(String),
-
-    #[error("Unauthorized")]
-    Unauthorized {},
 
     #[error("Got a submessage reply with unknown id: {id}")]
     UnknownReplyId { id: u64 },

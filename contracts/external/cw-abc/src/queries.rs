@@ -122,12 +122,14 @@ pub fn query_hatcher_allowlist(
     }
     .map(|result| result.map(|(addr, config)| HatcherAllowlistEntry { addr, config }));
 
-    let allowlist = match limit {
-        Some(limit) => iter
-            .take(limit.try_into().unwrap())
-            .collect::<StdResult<_>>(),
-        None => iter.collect::<StdResult<_>>(),
-    }?;
+    // L-1: bound the allowlist query so it can't OOM/gas-out on large
+    // operator-curated DAO lists.
+    const DEFAULT_LIMIT: u32 = 30;
+    const MAX_LIMIT: u32 = 100;
+    let effective_limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT);
+    let allowlist = iter
+        .take(effective_limit as usize)
+        .collect::<StdResult<_>>()?;
 
     Ok(HatcherAllowlistResponse {
         allowlist: Some(allowlist),

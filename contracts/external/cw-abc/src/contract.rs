@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
-    SubMsg, Uint128, WasmMsg,
+    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
+    Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_curves::DecimalPlaces;
@@ -28,7 +28,7 @@ const INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID: u64 = 0;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -110,7 +110,7 @@ pub fn instantiate(
             msg: to_json_binary(&IssuerInstantiateMsg::NewToken {
                 subdenom: supply.subdenom,
             })?,
-            funds: info.funds,
+            funds: info.funds.clone(),
             label: "cw-tokenfactory-issuer".to_string(),
         },
         INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID,
@@ -122,21 +122,21 @@ pub fn instantiate(
     // Set the paused state
     IS_PAUSED.save(deps.storage, &false)?;
 
-    // Set hatcher allowlist through internal method
-    let msgs = if let Some(hatcher_allowlist) = hatcher_allowlist {
-        vec![CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: env.contract.address.to_string(),
-            msg: to_json_binary(&ExecuteMsg::UpdateHatchAllowlist {
-                to_add: hatcher_allowlist,
-                to_remove: vec![],
-            })?,
-            funds: vec![],
-        })]
-    } else {
-        vec![]
-    };
+    // L-3: set hatcher allowlist inline rather than via a self-call. The
+    // previous self-call required an auth-bypass branch in
+    // `update_hatch_allowlist` that could be a footgun for any future code
+    // path that introduces additional self-calls.
+    if let Some(hatcher_allowlist) = hatcher_allowlist {
+        commands::update_hatch_allowlist(
+            deps.branch(),
+            env,
+            info,
+            hatcher_allowlist,
+            vec![],
+        )?;
+    }
 
-    Ok(Response::default().add_messages(msgs).add_submessage(msg))
+    Ok(Response::default().add_submessage(msg))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -258,7 +258,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             // Load the temporary supply
             let supply = TEMP_SUPPLY.load(deps.storage)?;
 
-            // Clear the temporary state
+            // Clear the temporary state. I-7: keep this immediately after
+            // the load so future contributors don't introduce intervening
+            // failure paths that leave TEMP_SUPPLY orphaned.
             TEMP_SUPPLY.remove(deps.storage);
 
             // Format the denom and save it

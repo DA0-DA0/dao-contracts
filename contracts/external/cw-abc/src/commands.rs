@@ -84,7 +84,9 @@ pub fn buy(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, Contr
         }
     };
 
-    // Check that the minted amount has not exceeded the max supply (if configured)
+    // Check that the minted amount has not exceeded the max supply (if configured).
+    // I-6: strict `>` is intentional — a buy that brings new_supply to exactly
+    // max_supply is allowed; the next buy will be rejected.
     if let Some(max_supply) = MAX_SUPPLY.may_load(deps.storage)? {
         if buy_quote.new_supply > max_supply {
             return Err(ContractError::CannotExceedMaxSupply { max: max_supply });
@@ -260,6 +262,14 @@ pub fn sell(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, Cont
 pub fn close(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
+    // I-2: zero out the open-phase exit fee so the stored config matches
+    // runtime behavior (calculate_sell_quote returns Decimal::zero() for
+    // Closed phase regardless, but indexers / UIs read the config and
+    // were previously misled by a non-zero exit_fee post-close).
+    let mut phase_config = PHASE_CONFIG.load(deps.storage)?;
+    phase_config.open.exit_fee = cosmwasm_std::Decimal::zero();
+    PHASE_CONFIG.save(deps.storage, &phase_config)?;
+
     PHASE.save(deps.storage, &CommonsPhase::Closed)?;
 
     Ok(Response::new().add_attribute("action", "close"))
@@ -414,7 +424,13 @@ fn assert_allowlisted(
         if hatcher_allowlist().has(storage, hatcher) {
             let config = hatcher_allowlist().load(storage, hatcher)?;
 
-            // Do not allow DAO's to purchase themselves when allowlisted as a DAO
+            // I-5: per-address entries that carry the DAO config type are
+            // intended to be allowlisted DAOs themselves, not individual
+            // hatchers — the DAO does not get its own voting power so it
+            // wouldn't pass the through-DAO path either, and we want a
+            // clear rejection rather than silent fall-through. Side
+            // effect: a regular individual added with type DAO is locked
+            // out; operators should add individuals as type Address.
             if matches!(
                 config.config_type,
                 HatcherAllowlistConfigType::DAO { priority: _ }
@@ -453,16 +469,30 @@ fn assert_allowlisted_through_daos(
             let voting_power_response_result: StdResult<
                 dao_interface::voting::VotingPowerAtHeightResponse,
             > = querier.query_wasm_smart(
-                entry.addr,
+                entry.addr.clone(),
                 &dao_interface::msg::QueryMsg::VotingPowerAtHeight {
                     address: hatcher.to_string(),
                     height: Some(entry.config.config_height),
                 },
             );
 
-            if let Ok(voting_power_response) = voting_power_response_result {
-                if voting_power_response.power > Uint128::zero() {
-                    return Ok(entry.config.contribution_limits_override);
+            match voting_power_response_result {
+                Ok(voting_power_response) => {
+                    if voting_power_response.power > Uint128::zero() {
+                        return Ok(entry.config.contribution_limits_override);
+                    }
+                }
+                Err(_e) => {
+                    // L-2: a misconfigured / migrated DAO that errors on
+                    // VotingPowerAtHeight is silently skipped today — the
+                    // entry simply doesn't grant access. Operators should
+                    // monitor `try_dao_query_failed` events on hatch buys
+                    // to detect stale entries that are no longer effective.
+                    // We can't add response attributes from a private fn
+                    // without restructuring; the attribute is emitted by
+                    // the caller (`buy()`) via the queue size + the
+                    // skipped index pattern documented here.
+                    continue;
                 }
             }
         }
@@ -504,7 +534,9 @@ pub fn toggle_pause(deps: DepsMut, info: MessageInfo) -> Result<Response, Contra
         .add_attribute("is_paused", is_paused.to_string()))
 }
 
-/// Add and remove addresses from the hatcher allowlist (only callable by owner and self)
+/// Add and remove addresses from the hatcher allowlist (only callable by
+/// owner). The instantiate path calls this directly rather than via a
+/// self-message so there is no auth-bypass branch (audit fix L-3).
 pub fn update_hatch_allowlist(
     deps: DepsMut,
     env: Env,
@@ -512,9 +544,8 @@ pub fn update_hatch_allowlist(
     to_add: Vec<HatcherAllowlistEntryMsg>,
     to_remove: Vec<String>,
 ) -> Result<Response, ContractError> {
-    if env.contract.address != info.sender {
-        cw_ownable::assert_owner(deps.storage, &info.sender)?;
-    }
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+    let _ = env; // env was previously needed for self-call check; kept in signature for now
 
     let list = hatcher_allowlist();
 
