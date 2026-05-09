@@ -555,9 +555,9 @@ A user who is added with `HatcherAllowlistConfigType::DAO {}` as their primary e
 
 ---
 
-## Status as of 2026-05-09 (post-fix)
+## Status as of 2026-05-09 (closing-out PR ready for review)
 
-Branch: `feat/cw-abc-rebase` on `juno-ai-dev/dao-contracts`. Five fix commits on top of the rebase. Each finding's status:
+Branch: `augmented-bonding-curves` on `juno-ai-dev/dao-contracts`, based on `feat/cw-abc-rebase`. Five fix commits on the parent + four follow-up commits on this branch (Phase L through Phase N) closing out the deferred and partial items. Each finding's status:
 
 | ID | Severity | Status | Fix commit |
 |---|---|---|---|
@@ -573,13 +573,13 @@ Branch: `feat/cw-abc-rebase` on `juno-ai-dev/dao-contracts`. Five fix commits on
 | M-2 | Medium | Fixed — cw2 contract-name check on migrate; `InvalidMigration` | 29ba5e12 |
 | M-3 | Medium | Fixed — HATCHERS semantics clarified via H-1 refactor | 7a3fcfce |
 | M-4 | Medium | Fixed — dead `HATCHER_ALLOWLIST` Map removed | 29ba5e12 |
-| M-5 | Medium | Partial — `hatch_deadline` + `AbortHatch` ship; full pro-rata Refunding deferred | 29ba5e12 |
+| M-5 | Medium | Fixed — `hatch_deadline` + `AbortHatch` (commit 29ba5e12); full pro-rata Refunding sub-state with `CommonsPhase::Refunding` + `ClaimRefund` (commit 744e609f) | 29ba5e12, 744e609f |
 | M-6 | Medium | Fixed — Trust assumptions section in cw-abc README | 29ba5e12 |
 | L-1 | Low | Fixed — DEFAULT_LIMIT=30 / MAX_LIMIT=100 caps | 84c9bf12 |
 | L-2 | Low | Partial — query errors no longer indistinguishable from "zero power"; explicit Err arm + operator note | 84c9bf12 |
 | L-3 | Low | Fixed — instantiate calls allowlist handler inline; auth-bypass branch removed | 84c9bf12 |
 | L-4 | Low | Fixed — `decimal()` asserts ≤ i128::MAX before cast | 84c9bf12 |
-| L-5 | Low | Deferred — `Curve` trait → `Result` is invasive; queued as a follow-up |  |
+| L-5 | Low | Fixed — `Curve` trait returns `Result<_, CurveError>`; `unwrap()` panics replaced with typed `CurveError::Overflow` / `DivisionByZero` | 74931ee3 |
 | L-6 | Low | Fixed — `cube_root` EXTRA_DIGITS 9 → 15; tests updated | 84c9bf12 |
 | L-7 | Low | Fixed — factory temp state cleared in reply | 429a45af |
 | I-1 | Info | Fixed — `MismatchedSellAmount`, `Unauthorized` (cw-abc), `UnsupportedFactoryMsg` removed | 84c9bf12 |
@@ -590,27 +590,27 @@ Branch: `feat/cw-abc-rebase` on `juno-ai-dev/dao-contracts`. Five fix commits on
 | I-6 | Info | Fixed — doc comment on MAX_SUPPLY strict `>` semantics | 84c9bf12 |
 | I-7 | Info | Fixed — inline note on TEMP_SUPPLY load/remove ordering | 84c9bf12 |
 
-**Summary**: 19 findings fully fixed, 2 partial (M-5 Refunding sub-state and L-2 attribute surface), 1 deferred (L-5 — invasive Curve-trait `Result` conversion). All Criticals and Highs are fully addressed.
+**Summary**: 20 findings fully fixed, 1 partial (L-2 attribute surface — explicit Err arm + operator note shipped, but per-skipped-DAO event attribute on the response is deferred since the helper is private and doesn't return attributes today). All Criticals, Highs, and Mediums are fully addressed.
 
 **Verification status (in this container)**:
 
 - `cargo +nightly-2024-01-08 check`: green for cw-curves, cw-abc, dao-abc-factory.
 - `cargo +nightly-2024-01-08 clippy --lib -- -D warnings`: green for cw-curves, cw-abc, dao-abc-factory under cosmwasm_tokenfactory; dao-test-custom-factory under osmosis_tokenfactory.
-- `cargo +nightly-2024-01-08 test -p cw-curves`: 3/3 passing (sqrt_curve precision-improved expectations updated as part of L-6).
+- `cargo +nightly-2024-01-08 test -p cw-curves`: **14/14 passing** — 3 happy-path, 3 division-by-zero (L-5), 6 differential random walks vs f64 reference, 2 round-trip identity, 2 boundary cases.
 - `RUSTFLAGS="-C link-arg=-s" cargo +nightly-2024-01-08 build --release --lib --target wasm32-unknown-unknown` for cw-abc and dao-abc-factory: green.
+- 30 audit-defense tests in `cw-abc/src/audit_tests.rs` covering C-1, H-1 vesting math, H-2..H-6, M-1, M-2, M-5, L-3 — verified by inspection; CI runs them.
 
 **Verification deferred to a libclang-equipped CI environment**:
 
-- `cargo test -p cw-abc -p dao-abc-factory` (dev-dep `osmosis-test-tube` requires libclang for bindgen).
+- `cargo test -p cw-abc -p dao-abc-factory` (dev-dep `osmosis-test-tube` requires libclang for bindgen; the pinned nightly does not support optional dev-deps so we cannot gate it locally).
 - `bash scripts/schema.sh` regen for cw-abc and dao-abc-factory (same dev-dep pull).
-- `cargo test --features test-tube`.
+- `cargo test --features test-tube` for the chain-binary integration tests.
 
 **Recommended follow-up before external audit**:
 
-1. Run the libclang-gated test surface in CI; iterate on any unit-test breakage from H-1's HatcherState schema change.
-2. Implement L-5 (`Curve` trait → `Result`) as a separate PR; touches every curve impl and helper caller.
-3. Implement the full Refunding sub-state for M-5; today AbortHatch refunds reserve only, not funding-pool.
-4. Add new unit tests asserting each Critical/High defended-against behavior is rejected (vesting matrix, factory auth, fee boundaries, decimals bounds, contribution_limits ordering, migrate guard, abort path).
-5. Add a differential test-suite against a Python reference for each curve's integral, asserting `curve.supply(curve.reserve(s)) ≈ s` over a 10k random walk.
+1. Run the libclang-gated test surface in CI; confirm the 30 audit-defense tests + the test-tube suite pass.
+2. Add cw-multi-test integration tests for the through-the-issuer flows: H-1 vesting matrix via real buy/sell, C-2 factory reverse-handshake via mock voting modules, M-5 ClaimRefund roundtrip with actual mint/burn.
+3. Schema regen + commit the resulting `cw-abc.json` and `dao-abc-factory.json` so they reflect the H-1 HatcherState shape, the M-5 ClaimRefund + Refunding additions, the L-5 type changes, and the I-1 variant removals.
+4. Surface L-2 query errors as response attributes once the queue model is restructured to thread them through (current implementation has the explicit Err arm + operator-monitoring note).
 
 *Prepared as part of the cw-abc revival audit (`memory/cw-abc-branch.md`). This review is an internal first-pass; an external audit by a CosmWasm-experienced security firm is recommended before mainnet deployment.*
