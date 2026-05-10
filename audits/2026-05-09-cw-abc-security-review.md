@@ -562,7 +562,7 @@ Branch: `augmented-bonding-curves` on `juno-ai-dev/dao-contracts`, based on `fea
 | ID | Severity | Status | Fix commit |
 |---|---|---|---|
 | C-1 | Critical | Fixed — Closed-phase gate + 1% continuity check on `update_curve` | 429a45af |
-| C-2 | Critical | Fixed — reverse-handshake auth in dao-abc-factory + dao-test-custom-factory | 429a45af |
+| C-2 | Critical | Fixed (production) — reverse-handshake auth in dao-abc-factory. Parity application to dao-test-custom-factory was reverted because that test contract is exercised by sibling-crate tests (e.g. dao-voting-cw721-staked::test_factory) that instantiate the test factory from an EOA without a real DAO; production callers should use dao-abc-factory directly. | 429a45af, [revert] |
 | H-1 | High | Fixed — inline `HatcherState` + `VestingSchedule::{None,Cliff,Linear}` + sell guard | 7a3fcfce |
 | H-2 | High | Fixed — `UpdatePhaseConfigMsg::Closed {}` variant removed | 7a3fcfce |
 | H-3 | High | Fixed — strict `<` 100% on entry_fee (Hatch + Open) | 7a3fcfce |

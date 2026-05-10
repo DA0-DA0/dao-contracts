@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    QuerierWrapper, Reply, Response, StdResult, SubMsg, Uint128, WasmMsg,
+    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
+    Response, StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721QueryMsg, NumTokensResponse};
@@ -14,7 +14,6 @@ use cw_tokenfactory_issuer::msg::ExecuteMsg as IssuerExecuteMsg;
 use cw_tokenfactory_issuer::msg::InstantiateMsg as IssuerInstantiateMsg;
 use cw_utils::{one_coin, parse_reply_instantiate_data};
 use dao_interface::{
-    msg::QueryMsg as DaoQueryMsg,
     nft::NftFactoryCallback,
     state::ModuleInstantiateCallback,
     token::{InitialBalance, NewTokenInfo, TokenFactoryCallback},
@@ -34,24 +33,16 @@ const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const INSTANTIATE_ISSUER_REPLY_ID: u64 = 1;
-
-/// Verify `claimed_voting_module` is genuinely a voting module of some DAO,
-/// not an impostor contract spoofing the relationship. Returns the verified
-/// DAO address. Closes the C-2 finding from the cw-abc audit.
-fn assert_caller_is_voting_module(
-    querier: &QuerierWrapper,
-    claimed_voting_module: &Addr,
-) -> Result<Addr, ContractError> {
-    let dao: Addr =
-        querier.query_wasm_smart(claimed_voting_module, &VotingModuleQueryMsg::Dao {})?;
-    let voting_module: Addr = querier.query_wasm_smart(&dao, &DaoQueryMsg::VotingModule {})?;
-    ensure!(
-        voting_module == *claimed_voting_module,
-        ContractError::Unauthorized {}
-    );
-    Ok(dao)
-}
 const INSTANTIATE_NFT_REPLY_ID: u64 = 2;
+
+// Note: C-2's reverse-handshake parity fix lives on the production
+// `dao-abc-factory` contract. It was originally applied to this test
+// factory as well for consistency, but that broke
+// `dao-voting-cw721-staked::test_factory` (which exercises the factory
+// pathway by instantiating cw721-staked directly from an EOA — there's no
+// real DAO to reverse-handshake against). Since this is a test contract
+// (`contracts/test/...`), parity was reverted; production callers should
+// use `dao-abc-factory` directly.
 
 const DAO: Item<Addr> = Item::new("dao");
 const INITIAL_NFTS: Item<Vec<Binary>> = Item::new("initial_nfts");
@@ -138,11 +129,13 @@ pub fn execute_nft_factory(
     code_id: u64,
     initial_nfts: Vec<Binary>,
 ) -> Result<Response, ContractError> {
-    // Reverse-handshake authentication (see assert_caller_is_voting_module).
-    let dao = assert_caller_is_voting_module(&deps.querier, &info.sender)?;
-
     // Save voting module address
     VOTING_MODULE.save(deps.storage, &info.sender)?;
+
+    // Query for DAO
+    let dao: Addr = deps
+        .querier
+        .query_wasm_smart(info.sender, &VotingModuleQueryMsg::Dao {})?;
 
     // Save DAO and TOKEN_INFO for use in replies
     DAO.save(deps.storage, &dao)?;
@@ -229,11 +222,13 @@ pub fn execute_token_factory_factory(
     info: MessageInfo,
     token: NewTokenInfo,
 ) -> Result<Response, ContractError> {
-    // Reverse-handshake authentication (see assert_caller_is_voting_module).
-    let dao = assert_caller_is_voting_module(&deps.querier, &info.sender)?;
-
     // Save voting module address
     VOTING_MODULE.save(deps.storage, &info.sender)?;
+
+    // Query for DAO
+    let dao: Addr = deps
+        .querier
+        .query_wasm_smart(info.sender, &VotingModuleQueryMsg::Dao {})?;
 
     // Save DAO and TOKEN_INFO for use in replies
     DAO.save(deps.storage, &dao)?;
