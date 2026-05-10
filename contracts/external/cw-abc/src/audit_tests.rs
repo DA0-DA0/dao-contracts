@@ -13,10 +13,7 @@ use cosmwasm_std::{
     Addr, Decimal, Timestamp, Uint128,
 };
 
-use crate::abc::{
-    ClosedConfig, CommonsPhase, CommonsPhaseConfig, CurveType, HatchConfig, MinMax, OpenConfig,
-    ReserveToken, SupplyToken, VestingSchedule,
-};
+use crate::abc::{CommonsPhase, CurveType, MinMax, VestingSchedule};
 use crate::commands;
 use crate::commands::insert_into_priority_queue;
 use crate::contract;
