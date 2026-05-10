@@ -114,6 +114,7 @@ impl<'a> TestEnv<'a> {
                         }),
                         initial_balances,
                         initial_dao_balance: Some(Uint128::new(900)),
+                        token_issuer_salt: None,
                     }),
                     unstaking_duration: Some(Duration::Time(2)),
                     active_threshold: Some(ActiveThreshold::AbsoluteCount {
@@ -122,8 +123,9 @@ impl<'a> TestEnv<'a> {
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                funds: vec![],
+                funds: None,
                 label: "DAO DAO Voting Module".to_string(),
+                salt: None,
             },
             proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
                 code_id: dao_ids.1,
@@ -139,13 +141,16 @@ impl<'a> TestEnv<'a> {
                     close_proposal_on_execution_failure: false,
                     pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
                     veto: None,
+                    delegation_module: None,
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                funds: vec![],
+                funds: None,
                 label: "DAO DAO Proposal Module".to_string(),
+                salt: None,
             }],
             initial_items: None,
+            initial_actions: None,
         };
 
         let dao = DaoCore::new(self.app, &msg, &self.accounts[0], &[]).unwrap();
@@ -263,7 +268,9 @@ impl TestEnvBuilder {
                             max: Uint128::from(900_000u128), // 1m - 10%
                         },
                         entry_fee: Decimal::percent(10u64),
+                        hatch_deadline: None,
                     },
+                    vesting: crate::abc::VestingSchedule::None,
                     open: OpenConfig {
                         entry_fee: Decimal::percent(10u64),
                         exit_fee: Decimal::percent(10u64),

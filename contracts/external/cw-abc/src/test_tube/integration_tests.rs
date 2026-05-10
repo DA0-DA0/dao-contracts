@@ -118,7 +118,9 @@ fn test_happy_path() {
                     max: Uint128::from(900_000u128),
                 },
                 entry_fee: Decimal::percent(10u64),
+                hatch_deadline: None,
             },
+            vesting: crate::abc::VestingSchedule::None,
             open: OpenConfig {
                 entry_fee: Decimal::percent(10u64),
                 exit_fee: Decimal::percent(10u64),
@@ -350,7 +352,9 @@ fn test_allowlist() {
                     max: Uint128::from(1000000u128),
                 },
                 entry_fee: Decimal::percent(10u64),
+                hatch_deadline: None,
             },
+            vesting: crate::abc::VestingSchedule::None,
             open: OpenConfig {
                 entry_fee: Decimal::percent(10u64),
                 exit_fee: Decimal::percent(10u64),

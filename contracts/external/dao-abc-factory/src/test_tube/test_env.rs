@@ -158,7 +158,9 @@ impl TestEnvBuilder {
                                             max: Uint128::from(1000000u128),
                                         },
                                         entry_fee: Decimal::percent(10u64),
+                                        hatch_deadline: None,
                                     },
+                                    vesting: cw_abc::abc::VestingSchedule::None,
                                     open: OpenConfig {
                                         entry_fee: Decimal::percent(10u64),
                                         exit_fee: Decimal::percent(10u64),
@@ -240,6 +242,7 @@ impl TestEnvBuilder {
             automatically_add_cw721s: false,
             voting_module_instantiate_info: ModuleInstantiateInfo {
                 code_id: vp_contract_id,
+                salt: None,
                 msg: to_json_binary(&dao_voting_token_staked::msg::InstantiateMsg {
                     token_info: TokenInfo::Factory(
                         to_json_binary(&WasmMsg::Execute {
@@ -269,7 +272,9 @@ impl TestEnvBuilder {
                                                 max: Uint128::from(1000000u128),
                                             },
                                             entry_fee: Decimal::percent(10u64),
+                                            hatch_deadline: None,
                                         },
+                                        vesting: cw_abc::abc::VestingSchedule::None,
                                         open: OpenConfig {
                                             entry_fee: Decimal::percent(10u64),
                                             exit_fee: Decimal::percent(10u64),
@@ -296,11 +301,12 @@ impl TestEnvBuilder {
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                funds: vec![],
+                funds: None,
                 label: "DAO DAO Voting Module".to_string(),
             },
             proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
                 code_id: proposal_single_id,
+                salt: None,
                 msg: to_json_binary(&dao_proposal_single::msg::InstantiateMsg {
                     min_voting_period: None,
                     threshold: Threshold::ThresholdQuorum {
@@ -313,13 +319,15 @@ impl TestEnvBuilder {
                     close_proposal_on_execution_failure: false,
                     pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
                     veto: None,
+                    delegation_module: None,
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                funds: vec![],
+                funds: None,
                 label: "DAO DAO Proposal Module".to_string(),
             }],
             initial_items: None,
+            initial_actions: None,
         };
 
         // Instantiate DAO
