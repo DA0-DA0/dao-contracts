@@ -4,10 +4,12 @@
 use cosmwasm_std::{Decimal as StdDecimal, Uint128};
 
 use crate::{
-    curves::{Constant, Linear, Power, SquareRoot},
-    utils::decimal,
+    curves::{Constant, Linear, Power, Sigmoid, SquareRoot},
+    utils::{decimal, taylor_exp},
     Curve, DecimalPlaces,
 };
+use rust_decimal::Decimal;
+use std::str::FromStr;
 
 #[test]
 fn constant_curve() {
@@ -228,6 +230,185 @@ fn power_curve_round_trip() {
 fn power_division_by_zero_on_zero_slope() {
     let normalize = DecimalPlaces::new(6, 6);
     let curve = Power::new(decimal(0u128, 0), 1, 2, normalize);
+    assert!(matches!(
+        curve.supply(Uint128::new(100)),
+        Err(crate::CurveError::DivisionByZero)
+    ));
+}
+
+// ============================================================
+// Phase V: taylor_exp helper
+// ============================================================
+
+fn approx_eq(a: Decimal, b: Decimal, tol_decimal_places: u32) -> bool {
+    let diff = if a > b { a - b } else { b - a };
+    let tol = Decimal::new(1, tol_decimal_places); // 10^(-tol_decimal_places)
+    diff < tol
+}
+
+#[test]
+fn taylor_exp_zero_is_one() {
+    assert_eq!(taylor_exp(Decimal::ZERO).unwrap(), Decimal::ONE);
+}
+
+#[test]
+fn taylor_exp_one_matches_e() {
+    let expected = Decimal::from_str("2.7182818284590452353602874713").unwrap();
+    let actual = taylor_exp(Decimal::ONE).unwrap();
+    assert!(
+        approx_eq(actual, expected, 6),
+        "taylor_exp(1) = {}, expected ≈ {}",
+        actual,
+        expected
+    );
+}
+
+#[test]
+fn taylor_exp_negative_is_reciprocal() {
+    // e^-1 = 1/e ≈ 0.36787944117144233
+    let expected = Decimal::from_str("0.36787944117144232159552377").unwrap();
+    let actual = taylor_exp(-Decimal::ONE).unwrap();
+    assert!(
+        approx_eq(actual, expected, 6),
+        "taylor_exp(-1) = {}, expected ≈ {}",
+        actual,
+        expected
+    );
+}
+
+#[test]
+fn taylor_exp_two_point_five() {
+    // e^2.5 ≈ 12.182493960703473
+    let expected = Decimal::from_str("12.182493960703473").unwrap();
+    let actual = taylor_exp(Decimal::from_str("2.5").unwrap()).unwrap();
+    assert!(
+        approx_eq(actual, expected, 4),
+        "taylor_exp(2.5) = {}, expected ≈ {}",
+        actual,
+        expected
+    );
+}
+
+#[test]
+fn taylor_exp_rejects_too_large() {
+    let res = taylor_exp(Decimal::from(50u32));
+    assert!(matches!(res, Err(crate::CurveError::Overflow { .. })));
+}
+
+// ============================================================
+// Phase V: Sigmoid happy paths
+// ============================================================
+
+#[test]
+fn sigmoid_spot_price_at_midpoint_is_half_amplitude() {
+    // f(midpoint) = a / (1 + e^0) = a / 2.
+    let normalize = DecimalPlaces::new(6, 6);
+    let curve = Sigmoid::new(
+        Decimal::from(2u32),                         // amplitude = 2
+        Decimal::ONE,                                // steepness = 1
+        Decimal::ONE,                                // midpoint = 1.0 (normalized)
+        normalize,
+    );
+    // 1.0 normalized supply = 1_000_000 raw at 6 decimals.
+    let actual = curve.spot_price(Uint128::new(1_000_000)).unwrap();
+    let expected = cosmwasm_std::Decimal::from_str("1.0").unwrap();
+    let diff = if actual > expected {
+        actual - expected
+    } else {
+        expected - actual
+    };
+    assert!(
+        diff < cosmwasm_std::Decimal::from_str("0.001").unwrap(),
+        "sigmoid mid-point spot_price = {}, expected ≈ 1.0",
+        actual
+    );
+}
+
+#[test]
+fn sigmoid_spot_price_saturates_high_supply() {
+    // Far above midpoint, f(s) → amplitude.
+    let normalize = DecimalPlaces::new(6, 6);
+    let curve = Sigmoid::new(
+        Decimal::from(2u32),
+        Decimal::ONE,
+        Decimal::ONE,
+        normalize,
+    );
+    // 10.0 normalized supply.
+    let actual = curve.spot_price(Uint128::new(10_000_000)).unwrap();
+    let expected = cosmwasm_std::Decimal::from_str("2.0").unwrap();
+    let diff = if actual > expected {
+        actual - expected
+    } else {
+        expected - actual
+    };
+    assert!(
+        diff < cosmwasm_std::Decimal::from_str("0.01").unwrap(),
+        "sigmoid saturated spot_price = {}, expected ≈ 2.0",
+        actual
+    );
+}
+
+#[test]
+fn sigmoid_reserve_zero_is_zero() {
+    let normalize = DecimalPlaces::new(6, 6);
+    let curve = Sigmoid::new(
+        Decimal::from(2u32),
+        Decimal::ONE,
+        Decimal::ONE,
+        normalize,
+    );
+    assert_eq!(curve.reserve(Uint128::zero()).unwrap(), Uint128::zero());
+}
+
+#[test]
+fn sigmoid_reserve_monotonic() {
+    let normalize = DecimalPlaces::new(6, 6);
+    let curve = Sigmoid::new(
+        Decimal::from(2u32),
+        Decimal::ONE,
+        Decimal::ONE,
+        normalize,
+    );
+    let r1 = curve.reserve(Uint128::new(500_000)).unwrap();
+    let r2 = curve.reserve(Uint128::new(1_000_000)).unwrap();
+    let r3 = curve.reserve(Uint128::new(2_000_000)).unwrap();
+    assert!(r1 < r2);
+    assert!(r2 < r3);
+}
+
+#[test]
+fn sigmoid_round_trip_within_bounds() {
+    // Newton-Raphson inverse should land within reasonable tolerance for
+    // supply values in the steep-slope region of the curve.
+    let normalize = DecimalPlaces::new(6, 6);
+    let curve = Sigmoid::new(
+        Decimal::from(2u32),
+        Decimal::ONE,
+        Decimal::ONE,
+        normalize,
+    );
+    for &s in &[500_000u128, 1_000_000, 1_500_000] {
+        let r = curve.reserve(Uint128::new(s)).unwrap();
+        let s_back = curve.supply(r).unwrap().u128();
+        let diff = if s_back > s { s_back - s } else { s - s_back };
+        // Simpson's rule + Newton may drift up to ~1% of full-scale; accept
+        // 100k supply units (10% of midpoint) as the tolerance — this is
+        // research-quality precision, not production.
+        assert!(
+            diff <= 100_000,
+            "sigmoid round-trip drift too high: s={} -> r={} -> s_back={}",
+            s,
+            r,
+            s_back
+        );
+    }
+}
+
+#[test]
+fn sigmoid_division_by_zero_on_zero_amplitude() {
+    let normalize = DecimalPlaces::new(6, 6);
+    let curve = Sigmoid::new(Decimal::ZERO, Decimal::ONE, Decimal::ONE, normalize);
     assert!(matches!(
         curve.supply(Uint128::new(100)),
         Err(crate::CurveError::DivisionByZero)

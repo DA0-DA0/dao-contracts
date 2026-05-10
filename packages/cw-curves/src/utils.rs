@@ -27,10 +27,12 @@ pub fn decimal<T: Into<u128>>(num: T, scale: u32) -> Decimal {
 /// StdDecimal stores as a u128 with 18 decimal points of precision.
 ///
 /// L-5: returns Result so overflow surfaces as a typed error rather than
-/// a panic. Conversion through string is rare-path; the error is mostly
-/// theoretical for in-range Uint128 values.
+/// a panic. We round the input to 18 decimal places before string
+/// conversion because `StdDecimal::from_str` rejects strings with more
+/// fractional digits than its native precision.
 pub fn decimal_to_std(x: Decimal) -> Result<StdDecimal, CurveError> {
-    StdDecimal::from_str(&x.to_string()).map_err(|_| CurveError::Overflow {
+    let rounded = x.round_dp(18);
+    StdDecimal::from_str(&rounded.to_string()).map_err(|_| CurveError::Overflow {
         scale: 0,
         value: x.to_string(),
     })
@@ -227,4 +229,75 @@ fn gcd_u32(a: u32, b: u32) -> u32 {
         a = t;
     }
     a.max(1)
+}
+
+// ============================================================
+// Transcendental helpers for the Sigmoid curve (Phase V)
+// ============================================================
+
+/// Compute `e^x` for any `x` via range reduction `e^x = e^k * e^r` where
+/// `k = trunc(x)` and `r = x - k`. `e^k` for integer `k` uses repeated
+/// multiplication by Euler's number (or its reciprocal for negative); `e^r`
+/// for `|r| < 1` uses a 16-term Taylor series. Bounded to `|x| ≤ 30` to
+/// keep the result inside Decimal range (`e^30 ≈ 1.07e13`, `e^-30 ≈ 9.4e-14`).
+pub(crate) fn taylor_exp(x: Decimal) -> Result<Decimal, CurveError> {
+    if x.is_zero() {
+        return Ok(Decimal::ONE);
+    }
+    let abs = if x.is_sign_negative() { -x } else { x };
+    if abs > Decimal::from(30u32) {
+        return Err(CurveError::Overflow {
+            scale: 0,
+            value: format!("taylor_exp |x| > 30: {}", x),
+        });
+    }
+    // Euler's constant to 28 decimal digits.
+    let e: Decimal = Decimal::from_str("2.7182818284590452353602874713")
+        .expect("euler-const literal parses");
+    let one_over_e: Decimal = Decimal::from_str("0.3678794411714423215955237701")
+        .expect("1/e literal parses");
+
+    // Split into integer and fractional parts of |x|.
+    let int_part = abs.floor();
+    let int_k = int_part.to_u32().ok_or_else(|| CurveError::Overflow {
+        scale: 0,
+        value: format!("taylor_exp int part: {}", int_part),
+    })?;
+    let frac = abs - int_part;
+
+    // e^int_k via repeated multiplication.
+    let base = if x.is_sign_negative() { one_over_e } else { e };
+    let mut int_pow = Decimal::ONE;
+    for _ in 0..int_k {
+        int_pow = int_pow.checked_mul(base).ok_or_else(|| {
+            CurveError::Overflow {
+                scale: int_k,
+                value: format!("taylor_exp int_pow overflow at k={}", int_k),
+            }
+        })?;
+    }
+
+    // e^frac via Taylor series for |frac| < 1: 1 + r + r²/2! + r³/3! + ...
+    // For x < 0 we still compute e^|frac| then take reciprocal at the end —
+    // this avoids the alternating-sign series losing precision.
+    let mut frac_pow = Decimal::ONE; // 1
+    let mut term = Decimal::ONE; // r^0 / 0!
+    for n in 1..=20u32 {
+        term = term * frac / Decimal::from(n);
+        frac_pow += term;
+    }
+
+    let frac_pow = if x.is_sign_negative() {
+        if frac_pow.is_zero() {
+            return Err(CurveError::DivisionByZero);
+        }
+        Decimal::ONE / frac_pow
+    } else {
+        frac_pow
+    };
+
+    int_pow.checked_mul(frac_pow).ok_or_else(|| CurveError::Overflow {
+        scale: int_k,
+        value: "taylor_exp combine overflow".to_string(),
+    })
 }

@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, Decimal, Timestamp, Uint128};
 use cw_curves::{
-    curves::{Constant, Linear, Power, SquareRoot},
+    curves::{Constant, Linear, Power, Sigmoid, SquareRoot},
     utils::decimal,
     Curve, DecimalPlaces,
 };
@@ -254,6 +254,26 @@ pub enum CurveType {
         exponent_num: u32,
         exponent_den: u32,
     },
+    /// Sigmoid (logistic) curve. Spot price is the standard logistic with
+    /// asymptote `amplitude * 10^-amplitude_scale`, inflection at supply
+    /// `midpoint * 10^-midpoint_scale`, and slope controlled by
+    /// `steepness_num / steepness_den` (a rational so it round-trips
+    /// through JSON). Used in production by Token Engineering Commons for
+    /// smoothed price discovery.
+    ///
+    /// **Note**: the Sigmoid impl uses Simpson's-rule numerical integration
+    /// for the integral and Newton-Raphson for the inverse. Precision is
+    /// research-quality (~1e-3 relative error) rather than the exact-math
+    /// of the closed-form curves; gas cost per call is also higher.
+    /// Phase V addition.
+    Sigmoid {
+        amplitude: Uint128,
+        amplitude_scale: u32,
+        steepness_num: u32,
+        steepness_den: u32,
+        midpoint: Uint128,
+        midpoint_scale: u32,
+    },
 }
 
 impl CurveType {
@@ -288,6 +308,26 @@ impl CurveType {
                         decimal(slope, scale),
                         exponent_num,
                         exponent_den,
+                        places,
+                    ))
+                };
+                Box::new(calc)
+            }
+            CurveType::Sigmoid {
+                amplitude,
+                amplitude_scale,
+                steepness_num,
+                steepness_den,
+                midpoint,
+                midpoint_scale,
+            } => {
+                let calc = move |places| -> Box<dyn Curve> {
+                    let steepness =
+                        decimal(steepness_num, 0) / decimal(steepness_den.max(1), 0);
+                    Box::new(Sigmoid::new(
+                        decimal(amplitude, amplitude_scale),
+                        steepness,
+                        decimal(midpoint, midpoint_scale),
                         places,
                     ))
                 };

@@ -16,7 +16,7 @@
 
 use cosmwasm_std::Uint128;
 
-use crate::curves::{Constant, Linear, Power, SquareRoot};
+use crate::curves::{Constant, Linear, Power, Sigmoid, SquareRoot};
 use crate::{Curve, DecimalPlaces};
 use rust_decimal::Decimal;
 
@@ -412,6 +412,53 @@ fn diff_power_round_trip() {
         );
     }
     assert!(sampled >= 50, "too few power round-trip samples: {}", sampled);
+}
+
+// ============================================================
+// Sigmoid (Phase V)
+// ============================================================
+
+fn ref_sigmoid_spot_price(supply: u128, amplitude: f64, k: f64, mid: f64, sd: u32) -> f64 {
+    let s = norm_supply(supply, sd);
+    amplitude / (1.0 + (-k * (s - mid)).exp())
+}
+
+#[test]
+fn diff_sigmoid_spot_price_matches_reference() {
+    let normalize = DecimalPlaces::new(6, 6);
+    // amplitude=2, steepness=1, midpoint=1.0
+    let curve = Sigmoid::new(
+        Decimal::from(2u32),
+        Decimal::ONE,
+        Decimal::ONE,
+        normalize,
+    );
+    let mut rng = SplitMix64::new(0x_516_516_516);
+    let mut sampled = 0u32;
+    let mut attempts = 0u32;
+    while sampled < 100 && attempts < 1000 {
+        attempts += 1;
+        // Sample supplies from 0.01 to 5.0 (normalized).
+        let s: u128 = ((rng.next() % 5_000_000) + 10_000) as u128;
+        let prod = match curve.spot_price(Uint128::new(s)) {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+        let prod_f: f64 = prod.to_string().parse().unwrap_or(0.0);
+        let refr = ref_sigmoid_spot_price(s, 2.0, 1.0, 1.0, 6);
+        let diff = (prod_f - refr).abs();
+        // Allow ~1e-6 absolute error from Taylor truncation + StdDecimal rounding.
+        assert!(
+            diff < 1e-4,
+            "sigmoid spot_price mismatch at s={}: prod={}, ref={}, diff={:.6}",
+            s,
+            prod_f,
+            refr,
+            diff
+        );
+        sampled += 1;
+    }
+    assert!(sampled >= 50, "too few sigmoid spot-price samples: {}", sampled);
 }
 
 // ============================================================
