@@ -167,7 +167,11 @@ fn power_curve_matches_linear_at_n1() {
     for &supply in &[100u128, 500, 1000, 1700, 5000] {
         let lr = linear.reserve(Uint128::new(supply)).unwrap();
         let pr = power.reserve(Uint128::new(supply)).unwrap();
-        assert_eq!(lr, pr, "linear vs power@n=1 reserve mismatch at supply={}", supply);
+        assert_eq!(
+            lr, pr,
+            "linear vs power@n=1 reserve mismatch at supply={}",
+            supply
+        );
     }
 }
 
@@ -214,7 +218,11 @@ fn power_curve_round_trip() {
     for &supply in &[1_000_000u128, 5_000_000, 10_000_000, 50_000_000] {
         let r = curve.reserve(Uint128::new(supply)).unwrap();
         let s_back = curve.supply(r).unwrap().u128();
-        let diff = if s_back > supply { s_back - supply } else { supply - s_back };
+        let diff = if s_back > supply {
+            s_back - supply
+        } else {
+            supply - s_back
+        };
         assert!(
             diff <= 1000,
             "power round-trip drift too high at supply={}: r={}, s_back={}, diff={}",
@@ -304,9 +312,9 @@ fn sigmoid_spot_price_at_midpoint_is_half_amplitude() {
     // f(midpoint) = a / (1 + e^0) = a / 2.
     let normalize = DecimalPlaces::new(6, 6);
     let curve = Sigmoid::new(
-        Decimal::from(2u32),                         // amplitude = 2
-        Decimal::ONE,                                // steepness = 1
-        Decimal::ONE,                                // midpoint = 1.0 (normalized)
+        Decimal::from(2u32), // amplitude = 2
+        Decimal::ONE,        // steepness = 1
+        Decimal::ONE,        // midpoint = 1.0 (normalized)
         normalize,
     );
     // 1.0 normalized supply = 1_000_000 raw at 6 decimals.
@@ -328,12 +336,7 @@ fn sigmoid_spot_price_at_midpoint_is_half_amplitude() {
 fn sigmoid_spot_price_saturates_high_supply() {
     // Far above midpoint, f(s) → amplitude.
     let normalize = DecimalPlaces::new(6, 6);
-    let curve = Sigmoid::new(
-        Decimal::from(2u32),
-        Decimal::ONE,
-        Decimal::ONE,
-        normalize,
-    );
+    let curve = Sigmoid::new(Decimal::from(2u32), Decimal::ONE, Decimal::ONE, normalize);
     // 10.0 normalized supply.
     let actual = curve.spot_price(Uint128::new(10_000_000)).unwrap();
     let expected = cosmwasm_std::Decimal::from_str("2.0").unwrap();
@@ -352,24 +355,14 @@ fn sigmoid_spot_price_saturates_high_supply() {
 #[test]
 fn sigmoid_reserve_zero_is_zero() {
     let normalize = DecimalPlaces::new(6, 6);
-    let curve = Sigmoid::new(
-        Decimal::from(2u32),
-        Decimal::ONE,
-        Decimal::ONE,
-        normalize,
-    );
+    let curve = Sigmoid::new(Decimal::from(2u32), Decimal::ONE, Decimal::ONE, normalize);
     assert_eq!(curve.reserve(Uint128::zero()).unwrap(), Uint128::zero());
 }
 
 #[test]
 fn sigmoid_reserve_monotonic() {
     let normalize = DecimalPlaces::new(6, 6);
-    let curve = Sigmoid::new(
-        Decimal::from(2u32),
-        Decimal::ONE,
-        Decimal::ONE,
-        normalize,
-    );
+    let curve = Sigmoid::new(Decimal::from(2u32), Decimal::ONE, Decimal::ONE, normalize);
     let r1 = curve.reserve(Uint128::new(500_000)).unwrap();
     let r2 = curve.reserve(Uint128::new(1_000_000)).unwrap();
     let r3 = curve.reserve(Uint128::new(2_000_000)).unwrap();
@@ -382,12 +375,7 @@ fn sigmoid_round_trip_within_bounds() {
     // Newton-Raphson inverse should land within reasonable tolerance for
     // supply values in the steep-slope region of the curve.
     let normalize = DecimalPlaces::new(6, 6);
-    let curve = Sigmoid::new(
-        Decimal::from(2u32),
-        Decimal::ONE,
-        Decimal::ONE,
-        normalize,
-    );
+    let curve = Sigmoid::new(Decimal::from(2u32), Decimal::ONE, Decimal::ONE, normalize);
     for &s in &[500_000u128, 1_000_000, 1_500_000] {
         let r = curve.reserve(Uint128::new(s)).unwrap();
         let s_back = curve.supply(r).unwrap().u128();

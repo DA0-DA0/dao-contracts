@@ -596,8 +596,7 @@ fn assert_allowlisted(
         }
 
         // If not allowlisted as individual, then check any DAO allowlists.
-        let (override_limits, attrs) =
-            assert_allowlisted_through_daos(querier, storage, hatcher)?;
+        let (override_limits, attrs) = assert_allowlisted_through_daos(querier, storage, hatcher)?;
         return Ok((
             HatchConfig {
                 contribution_limits: override_limits.unwrap_or(hatch_config.contribution_limits),

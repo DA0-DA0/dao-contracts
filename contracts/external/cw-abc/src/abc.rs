@@ -322,8 +322,7 @@ impl CurveType {
                 midpoint_scale,
             } => {
                 let calc = move |places| -> Box<dyn Curve> {
-                    let steepness =
-                        decimal(steepness_num, 0) / decimal(steepness_den.max(1), 0);
+                    let steepness = decimal(steepness_num, 0) / decimal(steepness_den.max(1), 0);
                     Box::new(Sigmoid::new(
                         decimal(amplitude, amplitude_scale),
                         steepness,

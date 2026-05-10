@@ -55,8 +55,8 @@ impl Curve for Power {
         // F(s) = slope * den / (num + den) * s^((num + den) / den)
         let s = self.normalize.from_supply(supply);
         let powered = pow_rational(s, self.integral_num(), self.exponent_den)?;
-        let coefficient = self.slope * Decimal::from(self.exponent_den)
-            / Decimal::from(self.integral_num());
+        let coefficient =
+            self.slope * Decimal::from(self.exponent_den) / Decimal::from(self.integral_num());
         self.normalize.to_reserve(coefficient * powered)
     }
 

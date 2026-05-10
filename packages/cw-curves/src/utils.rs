@@ -174,11 +174,7 @@ pub(crate) fn nth_root(value: Decimal, n: u32) -> Result<Decimal, CurveError> {
 /// half-/third-integer exponents through the existing fast-path roots when
 /// possible. Otherwise falls back to `nth_root(base^num, den)` which works
 /// but is more expensive.
-pub(crate) fn pow_rational(
-    base: Decimal,
-    num: u32,
-    den: u32,
-) -> Result<Decimal, CurveError> {
+pub(crate) fn pow_rational(base: Decimal, num: u32, den: u32) -> Result<Decimal, CurveError> {
     if den == 0 {
         return Err(CurveError::DivisionByZero);
     }
@@ -252,10 +248,10 @@ pub(crate) fn taylor_exp(x: Decimal) -> Result<Decimal, CurveError> {
         });
     }
     // Euler's constant to 28 decimal digits.
-    let e: Decimal = Decimal::from_str("2.7182818284590452353602874713")
-        .expect("euler-const literal parses");
-    let one_over_e: Decimal = Decimal::from_str("0.3678794411714423215955237701")
-        .expect("1/e literal parses");
+    let e: Decimal =
+        Decimal::from_str("2.7182818284590452353602874713").expect("euler-const literal parses");
+    let one_over_e: Decimal =
+        Decimal::from_str("0.3678794411714423215955237701").expect("1/e literal parses");
 
     // Split into integer and fractional parts of |x|.
     let int_part = abs.floor();
@@ -269,12 +265,12 @@ pub(crate) fn taylor_exp(x: Decimal) -> Result<Decimal, CurveError> {
     let base = if x.is_sign_negative() { one_over_e } else { e };
     let mut int_pow = Decimal::ONE;
     for _ in 0..int_k {
-        int_pow = int_pow.checked_mul(base).ok_or_else(|| {
-            CurveError::Overflow {
+        int_pow = int_pow
+            .checked_mul(base)
+            .ok_or_else(|| CurveError::Overflow {
                 scale: int_k,
                 value: format!("taylor_exp int_pow overflow at k={}", int_k),
-            }
-        })?;
+            })?;
     }
 
     // e^frac via Taylor series for |frac| < 1: 1 + r + r²/2! + r³/3! + ...
@@ -296,8 +292,10 @@ pub(crate) fn taylor_exp(x: Decimal) -> Result<Decimal, CurveError> {
         frac_pow
     };
 
-    int_pow.checked_mul(frac_pow).ok_or_else(|| CurveError::Overflow {
-        scale: int_k,
-        value: "taylor_exp combine overflow".to_string(),
-    })
+    int_pow
+        .checked_mul(frac_pow)
+        .ok_or_else(|| CurveError::Overflow {
+            scale: int_k,
+            value: "taylor_exp combine overflow".to_string(),
+        })
 }

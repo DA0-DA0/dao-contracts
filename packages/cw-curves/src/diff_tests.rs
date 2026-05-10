@@ -306,14 +306,7 @@ fn diff_sqrt_round_trip() {
 // Power (Phase U)
 // ============================================================
 
-fn ref_power_reserve(
-    supply: u128,
-    slope: f64,
-    num: u32,
-    den: u32,
-    sd: u32,
-    rd: u32,
-) -> u128 {
+fn ref_power_reserve(supply: u128, slope: f64, num: u32, den: u32, sd: u32, rd: u32) -> u128 {
     let s = norm_supply(supply, sd);
     // F(s) = slope / (1 + num/den) * s^(1 + num/den) = slope * den / (num+den) * s^((num+den)/den)
     let p = (num as f64 + den as f64) / den as f64;
@@ -411,7 +404,11 @@ fn diff_power_round_trip() {
             rel
         );
     }
-    assert!(sampled >= 50, "too few power round-trip samples: {}", sampled);
+    assert!(
+        sampled >= 50,
+        "too few power round-trip samples: {}",
+        sampled
+    );
 }
 
 // ============================================================
@@ -427,12 +424,7 @@ fn ref_sigmoid_spot_price(supply: u128, amplitude: f64, k: f64, mid: f64, sd: u3
 fn diff_sigmoid_spot_price_matches_reference() {
     let normalize = DecimalPlaces::new(6, 6);
     // amplitude=2, steepness=1, midpoint=1.0
-    let curve = Sigmoid::new(
-        Decimal::from(2u32),
-        Decimal::ONE,
-        Decimal::ONE,
-        normalize,
-    );
+    let curve = Sigmoid::new(Decimal::from(2u32), Decimal::ONE, Decimal::ONE, normalize);
     let mut rng = SplitMix64::new(0x_516_516_516);
     let mut sampled = 0u32;
     let mut attempts = 0u32;
@@ -458,7 +450,11 @@ fn diff_sigmoid_spot_price_matches_reference() {
         );
         sampled += 1;
     }
-    assert!(sampled >= 50, "too few sigmoid spot-price samples: {}", sampled);
+    assert!(
+        sampled >= 50,
+        "too few sigmoid spot-price samples: {}",
+        sampled
+    );
 }
 
 // ============================================================
