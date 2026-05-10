@@ -576,7 +576,7 @@ Branch: `augmented-bonding-curves` on `juno-ai-dev/dao-contracts`, based on `fea
 | M-5 | Medium | Fixed — `hatch_deadline` + `AbortHatch` (commit 29ba5e12); full pro-rata Refunding sub-state with `CommonsPhase::Refunding` + `ClaimRefund` (commit 744e609f) | 29ba5e12, 744e609f |
 | M-6 | Medium | Fixed — Trust assumptions section in cw-abc README | 29ba5e12 |
 | L-1 | Low | Fixed — DEFAULT_LIMIT=30 / MAX_LIMIT=100 caps | 84c9bf12 |
-| L-2 | Low | Partial — query errors no longer indistinguishable from "zero power"; explicit Err arm + operator note | 84c9bf12 |
+| L-2 | Low | Fixed — `assert_allowlisted_through_daos` now returns `Vec<Attribute>` alongside the result; `commands::buy()` attaches `try_dao_query_failed` events to the response per skipped DAO so operators can detect stale entries from chain logs | 84c9bf12, [phase T] |
 | L-3 | Low | Fixed — instantiate calls allowlist handler inline; auth-bypass branch removed | 84c9bf12 |
 | L-4 | Low | Fixed — `decimal()` asserts ≤ i128::MAX before cast | 84c9bf12 |
 | L-5 | Low | Fixed — `Curve` trait returns `Result<_, CurveError>`; `unwrap()` panics replaced with typed `CurveError::Overflow` / `DivisionByZero` | 74931ee3 |
@@ -590,7 +590,7 @@ Branch: `augmented-bonding-curves` on `juno-ai-dev/dao-contracts`, based on `fea
 | I-6 | Info | Fixed — doc comment on MAX_SUPPLY strict `>` semantics | 84c9bf12 |
 | I-7 | Info | Fixed — inline note on TEMP_SUPPLY load/remove ordering | 84c9bf12 |
 
-**Summary**: 20 findings fully fixed, 1 partial (L-2 attribute surface — explicit Err arm + operator note shipped, but per-skipped-DAO event attribute on the response is deferred since the helper is private and doesn't return attributes today). All Criticals, Highs, and Mediums are fully addressed.
+**Summary**: **21/21 findings fully fixed** as of the Phase L–T closing-out commits on `augmented-bonding-curves`. All Criticals, Highs, Mediums, and Lows fully addressed.
 
 **Verification status (in this container)**:
 

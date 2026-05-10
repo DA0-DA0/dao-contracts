@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    to_json_binary, Addr, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Order,
+    to_json_binary, Addr, Attribute, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Order,
     QuerierWrapper, Response, StdResult, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw_tokenfactory_issuer::msg::ExecuteMsg as IssuerExecuteMsg;
@@ -30,16 +30,22 @@ pub fn buy(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, Contr
     // Calculate the curve state from the buy
     let buy_quote = calculate_buy_quote(payment, &curve_type, &curve_state, &phase, &phase_config)?;
 
+    // L-2: collect any allowlist-warning attributes for surfacing on the
+    // buy response (e.g. `try_dao_query_failed` events when a configured
+    // DAO entry's voting-power query errored).
+    let mut allowlist_attrs: Vec<Attribute> = vec![];
+
     // Validate phase
     match &phase {
         CommonsPhase::Hatch => {
             // Check that the potential hatcher is allowlisted
-            let hatch_config = assert_allowlisted(
+            let (hatch_config, attrs) = assert_allowlisted(
                 deps.querier,
                 deps.storage,
                 &info.sender,
                 &phase_config.hatch,
             )?;
+            allowlist_attrs = attrs;
 
             // Update hatcher state with the gross contribution and the
             // freshly-minted tokens.
@@ -137,7 +143,8 @@ pub fn buy(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, Contr
         .add_attribute("reserved", buy_quote.new_reserve)
         .add_attribute("minted", buy_quote.amount)
         .add_attribute("funded", buy_quote.funded)
-        .add_attribute("supply", buy_quote.new_supply))
+        .add_attribute("supply", buy_quote.new_supply)
+        .add_attributes(allowlist_attrs))
 }
 
 /// Stamp `vesting_started_at` on every existing hatcher entry. Called once
@@ -546,13 +553,16 @@ pub fn update_funding_pool_forwarding(
         ))
 }
 
-/// Check if the sender is allowlisted for the hatch phase
+/// Check if the sender is allowlisted for the hatch phase. Returns the
+/// effective HatchConfig along with any debug attributes (e.g.
+/// `try_dao_query_failed` events) that callers should attach to their
+/// response so operators can monitor allowlist health.
 fn assert_allowlisted(
     querier: QuerierWrapper,
     storage: &dyn Storage,
     hatcher: &Addr,
     hatch_config: &HatchConfig,
-) -> Result<HatchConfig, ContractError> {
+) -> Result<(HatchConfig, Vec<Attribute>), ContractError> {
     if !hatcher_allowlist().is_empty(storage) {
         // Specific configs should trump everything
         if hatcher_allowlist().has(storage, hatcher) {
@@ -574,30 +584,46 @@ fn assert_allowlisted(
                 });
             }
 
-            return Ok(HatchConfig {
-                contribution_limits: config
-                    .contribution_limits_override
-                    .unwrap_or(hatch_config.contribution_limits),
-                ..*hatch_config
-            });
+            return Ok((
+                HatchConfig {
+                    contribution_limits: config
+                        .contribution_limits_override
+                        .unwrap_or(hatch_config.contribution_limits),
+                    ..*hatch_config
+                },
+                vec![],
+            ));
         }
 
-        // If not allowlisted as individual, then check any DAO allowlists
-        return Ok(HatchConfig {
-            contribution_limits: assert_allowlisted_through_daos(querier, storage, hatcher)?
-                .unwrap_or(hatch_config.contribution_limits),
-            ..*hatch_config
-        });
+        // If not allowlisted as individual, then check any DAO allowlists.
+        let (override_limits, attrs) =
+            assert_allowlisted_through_daos(querier, storage, hatcher)?;
+        return Ok((
+            HatchConfig {
+                contribution_limits: override_limits.unwrap_or(hatch_config.contribution_limits),
+                ..*hatch_config
+            },
+            attrs,
+        ));
     }
 
-    Ok(*hatch_config)
+    Ok((*hatch_config, vec![]))
 }
 
+/// Iterate the priority queue of DAO allowlist entries, returning the first
+/// `contribution_limits_override` whose DAO grants the hatcher voting power.
+///
+/// L-2: returns the accumulated `try_dao_query_failed` attributes alongside
+/// the result so callers can surface them on the response. The entries that
+/// errored (rather than returned zero power) are surfaced this way so
+/// operators can detect a misconfigured / migrated DAO without inferring
+/// from gas profile alone.
 fn assert_allowlisted_through_daos(
     querier: QuerierWrapper,
     storage: &dyn Storage,
     hatcher: &Addr,
-) -> Result<Option<MinMax>, ContractError> {
+) -> Result<(Option<MinMax>, Vec<Attribute>), ContractError> {
+    let mut attrs: Vec<Attribute> = vec![];
     if let Some(hatcher_dao_priority_queue) = HATCHER_DAO_PRIORITY_QUEUE.may_load(storage)? {
         for entry in hatcher_dao_priority_queue {
             let voting_power_response_result: StdResult<
@@ -613,20 +639,19 @@ fn assert_allowlisted_through_daos(
             match voting_power_response_result {
                 Ok(voting_power_response) => {
                     if voting_power_response.power > Uint128::zero() {
-                        return Ok(entry.config.contribution_limits_override);
+                        return Ok((entry.config.contribution_limits_override, attrs));
                     }
                 }
                 Err(_e) => {
-                    // L-2: a misconfigured / migrated DAO that errors on
-                    // VotingPowerAtHeight is silently skipped today — the
-                    // entry simply doesn't grant access. Operators should
-                    // monitor `try_dao_query_failed` events on hatch buys
-                    // to detect stale entries that are no longer effective.
-                    // We can't add response attributes from a private fn
-                    // without restructuring; the attribute is emitted by
-                    // the caller (`buy()`) via the queue size + the
-                    // skipped index pattern documented here.
-                    continue;
+                    // L-2: surface the failed-query DAO on the response so
+                    // operators can detect a stale / misconfigured entry.
+                    // We continue to the next entry rather than aborting
+                    // — a single broken DAO shouldn't lock out users who
+                    // have voting power in a different allowlisted DAO.
+                    attrs.push(Attribute::new(
+                        "try_dao_query_failed",
+                        entry.addr.to_string(),
+                    ));
                 }
             }
         }
