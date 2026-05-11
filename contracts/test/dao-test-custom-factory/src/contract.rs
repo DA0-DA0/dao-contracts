@@ -35,6 +35,15 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const INSTANTIATE_ISSUER_REPLY_ID: u64 = 1;
 const INSTANTIATE_NFT_REPLY_ID: u64 = 2;
 
+// Note: C-2's reverse-handshake parity fix lives on the production
+// `dao-abc-factory` contract. It was originally applied to this test
+// factory as well for consistency, but that broke
+// `dao-voting-cw721-staked::test_factory` (which exercises the factory
+// pathway by instantiating cw721-staked directly from an EOA — there's no
+// real DAO to reverse-handshake against). Since this is a test contract
+// (`contracts/test/...`), parity was reverted; production callers should
+// use `dao-abc-factory` directly.
+
 const DAO: Item<Addr> = Item::new("dao");
 const INITIAL_NFTS: Item<Vec<Binary>> = Item::new("initial_nfts");
 const NFT_CONTRACT: Item<Addr> = Item::new("nft_contract");

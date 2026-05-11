@@ -49,9 +49,16 @@ deploy-local: download-deps
 
 download-deps:
 	mkdir -p artifacts target
-	wget https://github.com/CosmWasm/cw-plus/releases/latest/download/cw20_base.wasm -O artifacts/cw20_base.wasm
-	wget https://github.com/CosmWasm/cw-plus/releases/latest/download/cw4_group.wasm -O artifacts/cw4_group.wasm
-	wget https://github.com/CosmWasm/cw-nfts/releases/latest/download/cw721_base.wasm -O artifacts/cw721_base.wasm
+	# Pinned versions: CosmWasm/cw-plus and cw-nfts float `latest` on each
+	# release. Recent cw-plus tags ship wasm built against newer cosmwasm-vm
+	# features (specifically the Wasm sign-extension proposal — opcode 0xC0 =
+	# 192) that the integration-test chain (juno v15.0.0 → wasmd v0.31 →
+	# cosmwasm-vm 1.2) can't deserialize. Pin to v1.1.2 / v0.18.0 which match
+	# the workspace's `cw20 = "1.1"` and `cw721 = "0.18"` deps and are
+	# known-compatible with the test chain.
+	wget https://github.com/CosmWasm/cw-plus/releases/download/v1.1.2/cw20_base.wasm -O artifacts/cw20_base.wasm
+	wget https://github.com/CosmWasm/cw-plus/releases/download/v1.1.2/cw4_group.wasm -O artifacts/cw4_group.wasm
+	wget https://github.com/CosmWasm/cw-nfts/releases/download/v0.18.0/cw721_base.wasm -O artifacts/cw721_base.wasm
 
 workspace-optimize:
     #!/bin/bash
