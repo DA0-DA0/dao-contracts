@@ -1,6 +1,6 @@
 {
   "contract_name": "cw-abc",
-  "contract_version": "2.4.1",
+  "contract_version": "2.8.0-alpha.2",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -81,7 +81,8 @@
         "required": [
           "closed",
           "hatch",
-          "open"
+          "open",
+          "vesting"
         ],
         "properties": {
           "closed": {
@@ -101,10 +102,18 @@
             ]
           },
           "open": {
-            "description": "TODO Vest tokens after hatch phase The Vesting phase where tokens minted during the Hatch phase are locked (burning is disabled) to combat early speculation/arbitrage. pub vesting: VestingConfig, The Open phase where anyone can mint tokens by contributing the reserve token into the curve and becoming members of the Commons.",
+            "description": "The Open phase where anyone can mint tokens by contributing the reserve token into the curve and becoming members of the Commons.",
             "allOf": [
               {
                 "$ref": "#/definitions/OpenConfig"
+              }
+            ]
+          },
+          "vesting": {
+            "description": "Hatcher token vesting schedule. Tokens minted during the Hatch phase are locked according to this schedule once the curve transitions to Open, to combat early speculation/arbitrage. Tokens minted during Open phase by non-hatchers are not subject to vesting.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/VestingSchedule"
               }
             ]
           }
@@ -196,6 +205,96 @@
               }
             },
             "additionalProperties": false
+          },
+          {
+            "description": "Power returns `slope * 10^-scale * supply^(exponent_num/exponent_den)` as spot price. Generalizes Constant (num=0), Linear (num=1, den=1), and SquareRoot (num=1, den=2) — kept alongside for back-compat — and also supports arbitrary rational exponents (e.g. 3/4, 7/4). Phase U addition.",
+            "type": "object",
+            "required": [
+              "power"
+            ],
+            "properties": {
+              "power": {
+                "type": "object",
+                "required": [
+                  "exponent_den",
+                  "exponent_num",
+                  "scale",
+                  "slope"
+                ],
+                "properties": {
+                  "exponent_den": {
+                    "type": "integer",
+                    "format": "uint32",
+                    "minimum": 0.0
+                  },
+                  "exponent_num": {
+                    "type": "integer",
+                    "format": "uint32",
+                    "minimum": 0.0
+                  },
+                  "scale": {
+                    "type": "integer",
+                    "format": "uint32",
+                    "minimum": 0.0
+                  },
+                  "slope": {
+                    "$ref": "#/definitions/Uint128"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Sigmoid (logistic) curve. Spot price is the standard logistic with asymptote `amplitude * 10^-amplitude_scale`, inflection at supply `midpoint * 10^-midpoint_scale`, and slope controlled by `steepness_num / steepness_den` (a rational so it round-trips through JSON). Used in production by Token Engineering Commons for smoothed price discovery.\n\n**Note**: the Sigmoid impl uses Simpson's-rule numerical integration for the integral and Newton-Raphson for the inverse. Precision is research-quality (~1e-3 relative error) rather than the exact-math of the closed-form curves; gas cost per call is also higher. Phase V addition.",
+            "type": "object",
+            "required": [
+              "sigmoid"
+            ],
+            "properties": {
+              "sigmoid": {
+                "type": "object",
+                "required": [
+                  "amplitude",
+                  "amplitude_scale",
+                  "midpoint",
+                  "midpoint_scale",
+                  "steepness_den",
+                  "steepness_num"
+                ],
+                "properties": {
+                  "amplitude": {
+                    "$ref": "#/definitions/Uint128"
+                  },
+                  "amplitude_scale": {
+                    "type": "integer",
+                    "format": "uint32",
+                    "minimum": 0.0
+                  },
+                  "midpoint": {
+                    "$ref": "#/definitions/Uint128"
+                  },
+                  "midpoint_scale": {
+                    "type": "integer",
+                    "format": "uint32",
+                    "minimum": 0.0
+                  },
+                  "steepness_den": {
+                    "type": "integer",
+                    "format": "uint32",
+                    "minimum": 0.0
+                  },
+                  "steepness_num": {
+                    "type": "integer",
+                    "format": "uint32",
+                    "minimum": 0.0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
           }
         ]
       },
@@ -252,6 +351,17 @@
             "allOf": [
               {
                 "$ref": "#/definitions/Decimal"
+              }
+            ]
+          },
+          "hatch_deadline": {
+            "description": "Optional hatch deadline. If set and `initial_raise.min` is not reached by this timestamp, anyone can call `AbortHatch {}` to transition the contract to Closed phase, allowing hatchers to sell back their tokens. Closes audit M-5.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Timestamp"
+              },
+              {
+                "type": "null"
               }
             ]
           },
@@ -495,6 +605,14 @@
         },
         "additionalProperties": false
       },
+      "Timestamp": {
+        "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+        "allOf": [
+          {
+            "$ref": "#/definitions/Uint64"
+          }
+        ]
+      },
       "Uint128": {
         "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
         "type": "string"
@@ -502,6 +620,66 @@
       "Uint64": {
         "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
         "type": "string"
+      },
+      "VestingSchedule": {
+        "description": "Vesting schedule applied to hatcher tokens once the curve transitions to Open phase. Time-based to survive block-time changes.",
+        "oneOf": [
+          {
+            "description": "No vesting — hatchers may sell immediately upon Open phase. Useful for testing or for hatches where anti-arb is not a concern.",
+            "type": "string",
+            "enum": [
+              "none"
+            ]
+          },
+          {
+            "description": "Cliff vest: 0% available until `duration_seconds` after Open transition, 100% available thereafter.",
+            "type": "object",
+            "required": [
+              "cliff"
+            ],
+            "properties": {
+              "cliff": {
+                "type": "object",
+                "required": [
+                  "duration_seconds"
+                ],
+                "properties": {
+                  "duration_seconds": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Linear vest: 0% at Open transition, ramping to 100% over `duration_seconds`.",
+            "type": "object",
+            "required": [
+              "linear"
+            ],
+            "properties": {
+              "linear": {
+                "type": "object",
+                "required": [
+                  "duration_seconds"
+                ],
+                "properties": {
+                  "duration_seconds": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
       }
     }
   },
@@ -726,6 +904,34 @@
         "additionalProperties": false
       },
       {
+        "description": "Abort a stalled hatch. Callable by anyone after `hatch_deadline` has passed if `initial_raise.min` was not reached. Transitions the contract to Refunding phase, snapshots the pro-rata math, and allows hatchers to claim via `ClaimRefund`. Closes audit M-5 (full).",
+        "type": "object",
+        "required": [
+          "abort_hatch"
+        ],
+        "properties": {
+          "abort_hatch": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Claim a hatcher's pro-rata refund during the Refunding phase. Caller must be a hatcher who has not yet claimed and must send their unburned hatcher tokens for burning. Returns the hatcher's pro-rata share of `(reserve + funding)` snapshotted at AbortHatch time.",
+        "type": "object",
+        "required": [
+          "claim_refund"
+        ],
+        "properties": {
+          "claim_refund": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "description": "Update the contract's ownership. The `action` to be provided can be either to propose transferring ownership to an account, accept a pending ownership transfer, or renounce the ownership permanently.",
         "type": "object",
         "required": [
@@ -870,6 +1076,96 @@
                   },
                   "slope": {
                     "$ref": "#/definitions/Uint128"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Power returns `slope * 10^-scale * supply^(exponent_num/exponent_den)` as spot price. Generalizes Constant (num=0), Linear (num=1, den=1), and SquareRoot (num=1, den=2) — kept alongside for back-compat — and also supports arbitrary rational exponents (e.g. 3/4, 7/4). Phase U addition.",
+            "type": "object",
+            "required": [
+              "power"
+            ],
+            "properties": {
+              "power": {
+                "type": "object",
+                "required": [
+                  "exponent_den",
+                  "exponent_num",
+                  "scale",
+                  "slope"
+                ],
+                "properties": {
+                  "exponent_den": {
+                    "type": "integer",
+                    "format": "uint32",
+                    "minimum": 0.0
+                  },
+                  "exponent_num": {
+                    "type": "integer",
+                    "format": "uint32",
+                    "minimum": 0.0
+                  },
+                  "scale": {
+                    "type": "integer",
+                    "format": "uint32",
+                    "minimum": 0.0
+                  },
+                  "slope": {
+                    "$ref": "#/definitions/Uint128"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Sigmoid (logistic) curve. Spot price is the standard logistic with asymptote `amplitude * 10^-amplitude_scale`, inflection at supply `midpoint * 10^-midpoint_scale`, and slope controlled by `steepness_num / steepness_den` (a rational so it round-trips through JSON). Used in production by Token Engineering Commons for smoothed price discovery.\n\n**Note**: the Sigmoid impl uses Simpson's-rule numerical integration for the integral and Newton-Raphson for the inverse. Precision is research-quality (~1e-3 relative error) rather than the exact-math of the closed-form curves; gas cost per call is also higher. Phase V addition.",
+            "type": "object",
+            "required": [
+              "sigmoid"
+            ],
+            "properties": {
+              "sigmoid": {
+                "type": "object",
+                "required": [
+                  "amplitude",
+                  "amplitude_scale",
+                  "midpoint",
+                  "midpoint_scale",
+                  "steepness_den",
+                  "steepness_num"
+                ],
+                "properties": {
+                  "amplitude": {
+                    "$ref": "#/definitions/Uint128"
+                  },
+                  "amplitude_scale": {
+                    "type": "integer",
+                    "format": "uint32",
+                    "minimum": 0.0
+                  },
+                  "midpoint": {
+                    "$ref": "#/definitions/Uint128"
+                  },
+                  "midpoint_scale": {
+                    "type": "integer",
+                    "format": "uint32",
+                    "minimum": 0.0
+                  },
+                  "steepness_den": {
+                    "type": "integer",
+                    "format": "uint32",
+                    "minimum": 0.0
+                  },
+                  "steepness_num": {
+                    "type": "integer",
+                    "format": "uint32",
+                    "minimum": 0.0
                   }
                 },
                 "additionalProperties": false
@@ -1051,10 +1347,10 @@
         "type": "string"
       },
       "UpdatePhaseConfigMsg": {
-        "description": "Update the phase configurations. These can only be called by the owner.",
+        "description": "Update the phase configurations. These can only be called by the owner.\n\nNote: there is no `Closed` variant. ClosedConfig has no configurable fields, so a Closed-phase update would have nothing to do. Removed 2026-05-09 as part of audit fix H-2 (the previous `Closed {}` variant was reachable as a `todo!()` panic).",
         "oneOf": [
           {
-            "description": "Update the hatch phase configuration",
+            "description": "Update the hatch phase configuration. Each field is optional; omitted fields preserve their existing value. To clear `hatch_deadline`, send `Some(None)` (a JSON `null`).",
             "type": "object",
             "required": [
               "hatch"
@@ -1077,6 +1373,23 @@
                     "anyOf": [
                       {
                         "$ref": "#/definitions/Decimal"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "hatch_deadline": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "$ref": "#/definitions/Timestamp"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       },
                       {
                         "type": "null"
@@ -1130,20 +1443,6 @@
                     ]
                   }
                 },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "description": "Update the closed phase configuration. TODO Set the curve type to be used on close?",
-            "type": "object",
-            "required": [
-              "closed"
-            ],
-            "properties": {
-              "closed": {
-                "type": "object",
                 "additionalProperties": false
               }
             },
@@ -1257,7 +1556,7 @@
         "additionalProperties": false
       },
       {
-        "description": "List the hatchers and their contributions Returns [`HatchersResponse`]",
+        "description": "List the hatchers and their per-address state Returns [`HatchersResponse`]",
         "type": "object",
         "required": [
           "hatchers"
@@ -1287,7 +1586,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Returns the contribution of a hatcher",
+        "description": "Returns the per-address state of a hatcher",
         "type": "object",
         "required": [
           "hatcher"
@@ -1700,6 +1999,96 @@
             }
           },
           "additionalProperties": false
+        },
+        {
+          "description": "Power returns `slope * 10^-scale * supply^(exponent_num/exponent_den)` as spot price. Generalizes Constant (num=0), Linear (num=1, den=1), and SquareRoot (num=1, den=2) — kept alongside for back-compat — and also supports arbitrary rational exponents (e.g. 3/4, 7/4). Phase U addition.",
+          "type": "object",
+          "required": [
+            "power"
+          ],
+          "properties": {
+            "power": {
+              "type": "object",
+              "required": [
+                "exponent_den",
+                "exponent_num",
+                "scale",
+                "slope"
+              ],
+              "properties": {
+                "exponent_den": {
+                  "type": "integer",
+                  "format": "uint32",
+                  "minimum": 0.0
+                },
+                "exponent_num": {
+                  "type": "integer",
+                  "format": "uint32",
+                  "minimum": 0.0
+                },
+                "scale": {
+                  "type": "integer",
+                  "format": "uint32",
+                  "minimum": 0.0
+                },
+                "slope": {
+                  "$ref": "#/definitions/Uint128"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Sigmoid (logistic) curve. Spot price is the standard logistic with asymptote `amplitude * 10^-amplitude_scale`, inflection at supply `midpoint * 10^-midpoint_scale`, and slope controlled by `steepness_num / steepness_den` (a rational so it round-trips through JSON). Used in production by Token Engineering Commons for smoothed price discovery.\n\n**Note**: the Sigmoid impl uses Simpson's-rule numerical integration for the integral and Newton-Raphson for the inverse. Precision is research-quality (~1e-3 relative error) rather than the exact-math of the closed-form curves; gas cost per call is also higher. Phase V addition.",
+          "type": "object",
+          "required": [
+            "sigmoid"
+          ],
+          "properties": {
+            "sigmoid": {
+              "type": "object",
+              "required": [
+                "amplitude",
+                "amplitude_scale",
+                "midpoint",
+                "midpoint_scale",
+                "steepness_den",
+                "steepness_num"
+              ],
+              "properties": {
+                "amplitude": {
+                  "$ref": "#/definitions/Uint128"
+                },
+                "amplitude_scale": {
+                  "type": "integer",
+                  "format": "uint32",
+                  "minimum": 0.0
+                },
+                "midpoint": {
+                  "$ref": "#/definitions/Uint128"
+                },
+                "midpoint_scale": {
+                  "type": "integer",
+                  "format": "uint32",
+                  "minimum": 0.0
+                },
+                "steepness_den": {
+                  "type": "integer",
+                  "format": "uint32",
+                  "minimum": 0.0
+                },
+                "steepness_num": {
+                  "type": "integer",
+                  "format": "uint32",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
         }
       ],
       "definitions": {
@@ -1781,9 +2170,75 @@
     },
     "hatcher": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Uint128",
-      "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
-      "type": "string"
+      "title": "HatcherState",
+      "description": "Per-hatcher state: gross hatch contribution, tokens minted, tokens already burned, and the time at which the vesting schedule started (set when the curve transitions Hatch → Open).\n\n`contributed` is gross intake during hatch (used for the contribution_limits.max check); `minted - already_burned` is the live token count subject to vesting checks.",
+      "type": "object",
+      "required": [
+        "already_burned",
+        "claimed_refund",
+        "contributed",
+        "minted"
+      ],
+      "properties": {
+        "already_burned": {
+          "description": "Cumulative supply tokens this hatcher has burned post-Open.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint128"
+            }
+          ]
+        },
+        "claimed_refund": {
+          "description": "True once this hatcher has claimed their pro-rata refund in the Refunding phase (M-5 full). Prevents double-claim.",
+          "type": "boolean"
+        },
+        "contributed": {
+          "description": "Gross reserve contributed during the hatch phase.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint128"
+            }
+          ]
+        },
+        "minted": {
+          "description": "Cumulative supply tokens minted to this hatcher during hatch.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint128"
+            }
+          ]
+        },
+        "vesting_started_at": {
+          "description": "Vesting clock start. `None` while still in Hatch; set to `env.block.time` at the moment of the Hatch → Open transition.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
     },
     "hatcher_allowlist": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1938,7 +2393,7 @@
       ],
       "properties": {
         "hatchers": {
-          "description": "The hatchers mapped to their contribution in the reserve token",
+          "description": "The hatchers mapped to their per-address state.",
           "type": "array",
           "items": {
             "type": "array",
@@ -1947,7 +2402,7 @@
                 "$ref": "#/definitions/Addr"
               },
               {
-                "$ref": "#/definitions/Uint128"
+                "$ref": "#/definitions/HatcherState"
               }
             ],
             "maxItems": 2,
@@ -1961,8 +2416,72 @@
           "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
           "type": "string"
         },
+        "HatcherState": {
+          "description": "Per-hatcher state: gross hatch contribution, tokens minted, tokens already burned, and the time at which the vesting schedule started (set when the curve transitions Hatch → Open).\n\n`contributed` is gross intake during hatch (used for the contribution_limits.max check); `minted - already_burned` is the live token count subject to vesting checks.",
+          "type": "object",
+          "required": [
+            "already_burned",
+            "claimed_refund",
+            "contributed",
+            "minted"
+          ],
+          "properties": {
+            "already_burned": {
+              "description": "Cumulative supply tokens this hatcher has burned post-Open.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                }
+              ]
+            },
+            "claimed_refund": {
+              "description": "True once this hatcher has claimed their pro-rata refund in the Refunding phase (M-5 full). Prevents double-claim.",
+              "type": "boolean"
+            },
+            "contributed": {
+              "description": "Gross reserve contributed during the hatch phase.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                }
+              ]
+            },
+            "minted": {
+              "description": "Cumulative supply tokens minted to this hatcher during hatch.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                }
+              ]
+            },
+            "vesting_started_at": {
+              "description": "Vesting clock start. `None` while still in Hatch; set to `env.block.time` at the moment of the Hatch → Open transition.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Timestamp"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
         "Uint128": {
           "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
           "type": "string"
         }
       }
@@ -2076,11 +2595,35 @@
     "phase": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "CommonsPhase",
-      "type": "string",
-      "enum": [
-        "hatch",
-        "open",
-        "closed"
+      "oneOf": [
+        {
+          "description": "Initial contributors hatch the curve under contribution_limits.",
+          "type": "string",
+          "enum": [
+            "hatch"
+          ]
+        },
+        {
+          "description": "Anyone can buy/sell. Hatcher tokens unlock per the vesting schedule.",
+          "type": "string",
+          "enum": [
+            "open"
+          ]
+        },
+        {
+          "description": "Curve was closed by the owner; sells allowed at zero exit fee, buys rejected.",
+          "type": "string",
+          "enum": [
+            "closed"
+          ]
+        },
+        {
+          "description": "Hatch failed to reach `initial_raise.min` by `hatch_deadline`. Hatchers claim their pro-rata share of `(reserve + funding)` via `ClaimRefund`. Buys, normal sells, owner Withdraw of funding, update_curve and Close are all rejected. Closes audit finding M-5 (full).",
+          "type": "string",
+          "enum": [
+            "refunding"
+          ]
+        }
       ]
     },
     "phase_config": {
@@ -2116,11 +2659,35 @@
           "additionalProperties": false
         },
         "CommonsPhase": {
-          "type": "string",
-          "enum": [
-            "hatch",
-            "open",
-            "closed"
+          "oneOf": [
+            {
+              "description": "Initial contributors hatch the curve under contribution_limits.",
+              "type": "string",
+              "enum": [
+                "hatch"
+              ]
+            },
+            {
+              "description": "Anyone can buy/sell. Hatcher tokens unlock per the vesting schedule.",
+              "type": "string",
+              "enum": [
+                "open"
+              ]
+            },
+            {
+              "description": "Curve was closed by the owner; sells allowed at zero exit fee, buys rejected.",
+              "type": "string",
+              "enum": [
+                "closed"
+              ]
+            },
+            {
+              "description": "Hatch failed to reach `initial_raise.min` by `hatch_deadline`. Hatchers claim their pro-rata share of `(reserve + funding)` via `ClaimRefund`. Buys, normal sells, owner Withdraw of funding, update_curve and Close are all rejected. Closes audit finding M-5 (full).",
+              "type": "string",
+              "enum": [
+                "refunding"
+              ]
+            }
           ]
         },
         "CommonsPhaseConfig": {
@@ -2128,7 +2695,8 @@
           "required": [
             "closed",
             "hatch",
-            "open"
+            "open",
+            "vesting"
           ],
           "properties": {
             "closed": {
@@ -2148,10 +2716,18 @@
               ]
             },
             "open": {
-              "description": "TODO Vest tokens after hatch phase The Vesting phase where tokens minted during the Hatch phase are locked (burning is disabled) to combat early speculation/arbitrage. pub vesting: VestingConfig, The Open phase where anyone can mint tokens by contributing the reserve token into the curve and becoming members of the Commons.",
+              "description": "The Open phase where anyone can mint tokens by contributing the reserve token into the curve and becoming members of the Commons.",
               "allOf": [
                 {
                   "$ref": "#/definitions/OpenConfig"
+                }
+              ]
+            },
+            "vesting": {
+              "description": "Hatcher token vesting schedule. Tokens minted during the Hatch phase are locked according to this schedule once the curve transitions to Open, to combat early speculation/arbitrage. Tokens minted during Open phase by non-hatchers are not subject to vesting.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/VestingSchedule"
                 }
               ]
             }
@@ -2183,6 +2759,17 @@
               "allOf": [
                 {
                   "$ref": "#/definitions/Decimal"
+                }
+              ]
+            },
+            "hatch_deadline": {
+              "description": "Optional hatch deadline. If set and `initial_raise.min` is not reached by this timestamp, anyone can call `AbortHatch {}` to transition the contract to Closed phase, allowing hatchers to sell back their tokens. Closes audit M-5.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Timestamp"
+                },
+                {
+                  "type": "null"
                 }
               ]
             },
@@ -2240,9 +2827,81 @@
           },
           "additionalProperties": false
         },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
         "Uint128": {
           "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
           "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        },
+        "VestingSchedule": {
+          "description": "Vesting schedule applied to hatcher tokens once the curve transitions to Open phase. Time-based to survive block-time changes.",
+          "oneOf": [
+            {
+              "description": "No vesting — hatchers may sell immediately upon Open phase. Useful for testing or for hatches where anti-arb is not a concern.",
+              "type": "string",
+              "enum": [
+                "none"
+              ]
+            },
+            {
+              "description": "Cliff vest: 0% available until `duration_seconds` after Open transition, 100% available thereafter.",
+              "type": "object",
+              "required": [
+                "cliff"
+              ],
+              "properties": {
+                "cliff": {
+                  "type": "object",
+                  "required": [
+                    "duration_seconds"
+                  ],
+                  "properties": {
+                    "duration_seconds": {
+                      "type": "integer",
+                      "format": "uint64",
+                      "minimum": 0.0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "Linear vest: 0% at Open transition, ramping to 100% over `duration_seconds`.",
+              "type": "object",
+              "required": [
+                "linear"
+              ],
+              "properties": {
+                "linear": {
+                  "type": "object",
+                  "required": [
+                    "duration_seconds"
+                  ],
+                  "properties": {
+                    "duration_seconds": {
+                      "type": "integer",
+                      "format": "uint64",
+                      "minimum": 0.0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
         }
       }
     },
