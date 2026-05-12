@@ -16,9 +16,8 @@ use cw_tokenfactory_issuer::msg::{
 
 use cw_tokenfactory_issuer::msg::{DenomUnit, Metadata};
 
-use cw_utils::{
-    maybe_addr, must_pay, parse_reply_execute_data, parse_reply_instantiate_data, Duration,
-};
+use cw_reply_compat::{parse_reply_execute_data, parse_reply_instantiate_data};
+use cw_utils::{maybe_addr, must_pay, Duration};
 use dao_hooks::stake::{stake_hook_msgs, unstake_hook_msgs};
 use dao_interface::{
     state::{Admin, ModuleInstantiateCallback, ModuleInstantiateInfo},
@@ -732,7 +731,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         }
 
                         // Sort denom units by exponent, must be in ascending order
-                        denom_units.sort_by(|a, b| a.exponent.cmp(&b.exponent));
+                        denom_units.sort_by_key(|a| a.exponent);
 
                         msgs.push(WasmMsg::Execute {
                             contract_addr: issuer_addr.clone(),
@@ -744,6 +743,8 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                                     display: metadata.display,
                                     name: metadata.name,
                                     symbol: metadata.symbol,
+                                    uri: String::new(),
+                                    uri_hash: String::new(),
                                 },
                             })?,
                             funds: vec![],

@@ -139,9 +139,7 @@ pub struct CheckedMultipleChoiceOption {
 impl MultipleChoiceOptions {
     pub fn into_checked(self) -> StdResult<CheckedMultipleChoiceOptions> {
         if self.options.len() < 2 || self.options.len() > MAX_NUM_CHOICES as usize {
-            return Err(StdError::GenericErr {
-                msg: "Wrong number of choices".to_string(),
-            });
+            return Err(StdError::generic_err("Wrong number of choices"));
         }
 
         let mut checked_options: Vec<CheckedMultipleChoiceOption> =

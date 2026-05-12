@@ -1,3 +1,4 @@
+#![cfg(feature = "test-tube")]
 use cosmwasm_std::Addr;
 use cw_tokenfactory_issuer::{
     msg::{InstantiateMsg, QueryMsg},

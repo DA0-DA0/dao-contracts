@@ -18,12 +18,12 @@ use dao_testing::contracts::{
 };
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
-const DAO_ADDR: &str = "dao";
-const ADDR1: &str = "addr1";
-const ADDR2: &str = "addr2";
+const DAO_ADDR: &str = "cosmwasm1vwr8z00ty7mqnk4dtchr9mn9j96nuh6w9v55nvy575c4rp0ha5xqwujcc7";
+const ADDR1: &str = "cosmwasm14ch5q26mhx3jk5cxl88t278nper264ce5fa7agjr4cw0yfjj7c6q56drym";
+const ADDR2: &str = "cosmwasm1cq2j7y4utseeatek2alfy5ttaphjrtdxqqz0sn820v9jupy0seuqmh8c9s";
 const DENOM: &str = "ujuno";
-const INVALID_DENOM: &str = "uinvalid";
-const ODD_DENOM: &str = "uodd";
+const INVALID_DENOM: &str = "cosmwasm1c8g3vh4xusk87e98gw4xdtycz04d6gjvsypxyxyzw9xy55sfdzpqsf65hq";
+const ODD_DENOM: &str = "cosmwasm1vx26j80ehm67d73m2d40dqf3vy68r4mpmxv4c9xh4h379ghrjmhqeh9dax";
 
 fn mock_app() -> App {
     let mut app = App::default();
@@ -1252,7 +1252,7 @@ fn test_add_remove_hooks() {
         Addr::unchecked(DAO_ADDR),
         addr.clone(),
         &ExecuteMsg::AddHook {
-            addr: "hook".to_string(),
+            addr: "cosmwasm1qeyznz6ghcp3n9380tj8yy26gmnevnf2cwyzucdcgdgl8slc54rssydn7s".to_string(),
         },
         &[],
     )
@@ -1263,14 +1263,17 @@ fn test_add_remove_hooks() {
         .wrap()
         .query_wasm_smart(addr.clone(), &QueryMsg::GetHooks {})
         .unwrap();
-    assert_eq!(resp.hooks, vec!["hook".to_string()]);
+    assert_eq!(
+        resp.hooks,
+        vec!["cosmwasm1qeyznz6ghcp3n9380tj8yy26gmnevnf2cwyzucdcgdgl8slc54rssydn7s".to_string()]
+    );
 
     // Remove hook.
     app.execute_contract(
         Addr::unchecked(DAO_ADDR),
         addr.clone(),
         &ExecuteMsg::RemoveHook {
-            addr: "hook".to_string(),
+            addr: "cosmwasm1qeyznz6ghcp3n9380tj8yy26gmnevnf2cwyzucdcgdgl8slc54rssydn7s".to_string(),
         },
         &[],
     )

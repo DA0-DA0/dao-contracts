@@ -17,9 +17,10 @@ use crate::msg::{InstantiateMsg, OnftCollection};
 use self::execute::create_onft_collection;
 
 /// Address used as the instantiator.
-pub(crate) const DAO: &str = "dao";
+pub(crate) const DAO: &str = "cosmwasm1vwr8z00ty7mqnk4dtchr9mn9j96nuh6w9v55nvy575c4rp0ha5xqwujcc7";
 /// Address used to stake.
-pub(crate) const STAKER: &str = "staker";
+pub(crate) const STAKER: &str =
+    "cosmwasm1639jjhzpm4pu7pqa3pccxgp40lf5d6xvrcjj6p6rqd57hlj7af9s9kznuq";
 
 pub(crate) struct CommonTest {
     app: OmniflixApp,
@@ -35,7 +36,12 @@ pub(crate) fn setup_test(
     let mut app = OmniflixApp::new();
     let module_id = app.store_code(dao_voting_onft_staked_contract());
 
-    let nft = create_onft_collection(&mut app, "nft", DAO, DAO);
+    let nft = create_onft_collection(
+        &mut app,
+        "cosmwasm1hr93qzcjspaa32px0qqywlh9hf9a8plggza7mupwx9u8e22rpwcq9azqv2",
+        DAO,
+        DAO,
+    );
     let module = app
         .instantiate_contract(
             module_id,

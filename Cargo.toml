@@ -46,25 +46,25 @@ chrono = "0.4"
 cosm-orc = { version = "4.0" }
 cosm-tome = "0.2"
 cosmos-sdk-proto = "0.19"
-cosmwasm-schema = { version = "1.5.4" }
-cosmwasm-std = { version = "1.5.4", features = ["ibc3", "cosmwasm_1_2"] }
-cw-controllers = "1.1"
-cw-multi-test = { version = "0.20.1", features = ["cosmwasm_1_2"] }
-cw-storage-plus = { version = "1.1" }
-cw-utils = "1.0"
-cw2 = "1.1"
-cw20 = "1.1"
-cw20-base = "1.1"
-cw3 = "1.1"
-cw4 = "1.1"
-cw4-group = "1.1"
-cw721 = "0.18"
-cw721-base = "0.18"
+cosmwasm-schema = "2.0.4"
+cosmwasm-std = { version = "2.0.4", features = ["cosmwasm_2_0", "stargate"] }
+cw-controllers = "2.0.0"
+cw-multi-test = { version = "2.4.0", features = ["cosmwasm_2_0"] }
+cw-storage-plus = "2.0.0"
+cw-utils = "2.0.0"
+cw2 = "2.0.0"
+cw20 = "2.0.0"
+cw20-base = "2.0.0"
+cw3 = "2.0.0"
+cw4 = "2.0.0"
+cw4-group = "2.0.0"
+cw721 = "0.22"
+cw721-base = "0.22"
 env_logger = "0.10"
 once_cell = "1.18"
-omniflix-std = "0.1.8"
-osmosis-std = "0.20.1"
-osmosis-std-derive = "0.20.1"
+omniflix-std = "1.1.0-beta"
+osmosis-std = "0.26"
+osmosis-std-derive = "0.26"
 osmosis-test-tube = "20.1.1"
 proc-macro2 = "1.0"
 prost = { version = "=0.12.3", features = ["prost-derive"] }
@@ -86,11 +86,9 @@ sg721-base = "3.1.0"
 syn = { version = "1.0", features = ["derive"] }
 test-context = "0.1"
 thiserror = { version = "1.0" }
-wynd-utils = "0.4"
+wynd-utils = { path = "./packages/wynd-utils", version = "2.8.0-alpha.2" }
 
-# One commit ahead of version 0.3.0. Allows initialization with an
-# optional owner.
-cw-ownable = "0.5"
+cw-ownable = "2.1"
 
 btsg-ft-factory = { path = "./contracts/external/btsg-ft-factory", version = "2.8.0-alpha.2" }
 cw-admin-factory = { path = "./contracts/external/cw-admin-factory", version = "2.8.0-alpha.2" }
@@ -100,6 +98,7 @@ cw-hooks = { path = "./packages/cw-hooks", version = "2.8.0-alpha.2" }
 cw-filter = { path = "./contracts/external/cw-filter", version = "2.8.0-alpha.2" }
 cw-jsonfilter = { path = "./packages/cw-jsonfilter", version = "2.8.0-alpha.2" }
 cw-paginate-storage = { path = "./packages/cw-paginate-storage", version = "2.8.0-alpha.2" }
+cw-reply-compat = { path = "./packages/cw-reply-compat", version = "2.8.0-alpha.2" }
 cw-payroll-factory = { path = "./contracts/external/cw-payroll-factory", version = "2.8.0-alpha.2" }
 cw-protobuf-registry = { path = "./contracts/external/cw-protobuf-registry", version = "2.8.0-alpha.2" }
 cw-snapshot-vector-map = { path = "./packages/cw-snapshot-vector-map", version = "2.8.0-alpha.2" }

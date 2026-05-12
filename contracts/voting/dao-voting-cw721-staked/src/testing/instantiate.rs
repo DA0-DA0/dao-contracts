@@ -8,10 +8,13 @@ pub fn instantiate_cw721_base(app: &mut App, sender: &str, minter: &str) -> Addr
     app.instantiate_contract(
         cw721_id,
         Addr::unchecked(sender),
-        &cw721_base::InstantiateMsg {
+        &cw721_base::msg::InstantiateMsg {
             name: "bad kids".to_string(),
             symbol: "bad kids".to_string(),
-            minter: minter.to_string(),
+            minter: Some(minter.to_string()),
+            collection_info_extension: None,
+            creator: None,
+            withdraw_address: None,
         },
         &[],
         "cw721_base".to_string(),

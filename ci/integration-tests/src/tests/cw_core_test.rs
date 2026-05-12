@@ -21,8 +21,15 @@ use test_context::test_context;
 #[test]
 #[ignore]
 fn execute_execute_admin_msgs(chain: &mut Chain) {
-    let user_addr = chain.users["user1"].account.address.clone();
-    let user_key = chain.users["user1"].key.clone();
+    let user_addr = chain.users
+        ["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"]
+        .account
+        .address
+        .clone();
+    let user_key = chain.users
+        ["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"]
+        .key
+        .clone();
 
     // if you are not the admin, you cant execute admin msgs:
     let res = create_dao(
@@ -104,8 +111,15 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
 #[test]
 #[ignore]
 fn execute_items(chain: &mut Chain) {
-    let user_addr = chain.users["user1"].account.address.clone();
-    let user_key = chain.users["user1"].key.clone();
+    let user_addr = chain.users
+        ["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"]
+        .account
+        .address
+        .clone();
+    let user_key = chain.users
+        ["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"]
+        .key
+        .clone();
 
     // add item:
     let res = create_dao(
@@ -206,14 +220,21 @@ fn execute_items(chain: &mut Chain) {
 #[test]
 #[ignore]
 fn instantiate_with_no_admin(chain: &mut Chain) {
-    let user_addr = chain.users["user1"].account.address.clone();
-    let user_key = chain.users["user1"].key.clone();
+    let user_addr = chain.users
+        ["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"]
+        .account
+        .address
+        .clone();
+    let user_key = chain.users
+        ["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"]
+        .key
+        .clone();
 
     let res = create_dao(chain, None, "inst_dao_no_admin", user_addr, &user_key);
     let dao = res.unwrap();
 
     // ensure the dao is the admin:
-    assert_eq!(dao.state.admin, dao.addr);
+    assert_eq!(dao.state.admin.as_str(), dao.addr);
     assert_eq!(dao.state.pause_info, PauseInfoResponse::Unpaused {});
     assert_eq!(
         dao.state.config,
@@ -232,8 +253,15 @@ fn instantiate_with_no_admin(chain: &mut Chain) {
 #[test]
 #[ignore]
 fn instantiate_with_admin(chain: &mut Chain) {
-    let user_addr = chain.users["user1"].account.address.clone();
-    let user_key = chain.users["user1"].key.clone();
+    let user_addr = chain.users
+        ["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"]
+        .account
+        .address
+        .clone();
+    let user_key = chain.users
+        ["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"]
+        .key
+        .clone();
     let voting_contract = "dao_voting_cw20_staked";
     let proposal_contract = "cw_proposal_single";
 
@@ -247,7 +275,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
     let dao = res.unwrap();
 
     // general dao info is valid:
-    assert_eq!(dao.state.admin, user_addr);
+    assert_eq!(dao.state.admin.as_str(), user_addr);
     assert_eq!(dao.state.pause_info, PauseInfoResponse::Unpaused {});
     assert_eq!(
         dao.state.config,
@@ -325,7 +353,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
         )
         .unwrap();
     let token_addr: &str = res.data().unwrap();
-    assert_eq!(config_res.token_address, token_addr);
+    assert_eq!(config_res.token_address.as_str(), token_addr);
 
     assert_eq!(config_res.unstaking_duration, Some(Duration::Time(1209600)));
 
@@ -376,7 +404,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
         }
     );
     assert_eq!(
-        config_res.dao,
+        config_res.dao.as_str(),
         chain.orc.contract_map.address("dao_dao_core").unwrap()
     );
 }

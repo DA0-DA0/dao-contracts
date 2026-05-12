@@ -1,3 +1,4 @@
+#![cfg(feature = "test-tube")]
 use cosmwasm_std::coins;
 use osmosis_test_tube::{Account, RunnerError};
 

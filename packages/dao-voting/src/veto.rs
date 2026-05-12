@@ -73,7 +73,7 @@ impl VetoConfig {
 
     /// Checks whether the message sender is the vetoer.
     pub fn check_is_vetoer(&self, info: &MessageInfo) -> Result<(), VetoError> {
-        if self.vetoer == info.sender {
+        if self.vetoer == info.sender.as_str() {
             Ok(())
         } else {
             Err(VetoError::Unauthorized {})

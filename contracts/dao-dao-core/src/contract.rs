@@ -2,12 +2,13 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_json, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    Order, Reply, Response, StdError, StdResult, SubMsg, WasmMsg,
+    Reply, Response, StdError, StdResult, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_paginate_storage::{paginate_map, paginate_map_keys, paginate_map_values};
+use cw_reply_compat::parse_reply_instantiate_data;
 use cw_storage_plus::Map;
-use cw_utils::{parse_reply_instantiate_data, Duration};
+use cw_utils::Duration;
 use dao_interface::{
     msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{
@@ -15,7 +16,7 @@ use dao_interface::{
         GetItemResponse, PauseInfoResponse, ProposalModuleCountResponse, SubDao,
     },
     state::{
-        Admin, Config, ModuleInstantiateCallback, ModuleInstantiateInfo, ProposalModule,
+        Config, ModuleInstantiateCallback, ModuleInstantiateInfo, ProposalModule,
         ProposalModuleStatus,
     },
     voting,
@@ -478,9 +479,16 @@ pub fn execute_update_cw721_list(
         return Err(ContractError::Unauthorized {});
     }
     do_update_addr_list(deps, CW721_LIST, to_add, to_remove, |addr, deps| {
-        let _info: cw721::ContractInfoResponse = deps
-            .querier
-            .query_wasm_smart(addr, &cw721::Cw721QueryMsg::ContractInfo {})?;
+        let _info: cw721::msg::CollectionInfoAndExtensionResponse<
+            cw721::DefaultOptionalCollectionExtension,
+        > = deps.querier.query_wasm_smart(
+            addr,
+            &cw721::msg::Cw721QueryMsg::<
+                cosmwasm_std::Empty,
+                cosmwasm_std::Empty,
+                cosmwasm_std::Empty,
+            >::GetCollectionInfoAndExtension {},
+        )?;
         Ok(())
     })?;
     Ok(Response::default().add_attribute("action", "update_cw721_list"))
@@ -893,78 +901,18 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
     let ContractVersion { version, .. } = get_contract_version(deps.storage)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     match msg {
-        MigrateMsg::FromV1 { dao_uri, params } => {
-            // `CONTRACT_VERSION` here is from the data section of the
-            // blob we are migrating to. `version` is from storage. If
-            // the version in storage matches the version in the blob
-            // we are not upgrading.
-            if version == CONTRACT_VERSION {
-                return Err(ContractError::AlreadyMigrated {});
-            }
-
-            use cw_core_v1 as v1;
-
-            let current_keys = v1::state::PROPOSAL_MODULES
-                .keys(deps.storage, None, None, Order::Ascending)
-                .collect::<StdResult<Vec<Addr>>>()?;
-
-            // All proposal modules are considered active in v1.
-            let module_count = &(current_keys.len() as u32);
-            TOTAL_PROPOSAL_MODULE_COUNT.save(deps.storage, module_count)?;
-            ACTIVE_PROPOSAL_MODULE_COUNT.save(deps.storage, module_count)?;
-
-            // Update proposal modules to v2.
-            current_keys
-                .into_iter()
-                .enumerate()
-                .try_for_each::<_, StdResult<()>>(|(idx, address)| {
-                    let prefix = derive_proposal_module_prefix(idx)?;
-                    let proposal_module = &ProposalModule {
-                        address: address.clone(),
-                        status: ProposalModuleStatus::Enabled {},
-                        prefix,
-                    };
-                    PROPOSAL_MODULES.save(deps.storage, address, proposal_module)?;
-                    Ok(())
-                })?;
-
-            // Update config to have the V2 "dao_uri" field.
-            let v1_config = v1::state::CONFIG.load(deps.storage)?;
-            CONFIG.save(
-                deps.storage,
-                &Config {
-                    name: v1_config.name,
-                    description: v1_config.description,
-                    image_url: v1_config.image_url,
-                    automatically_add_cw20s: v1_config.automatically_add_cw20s,
-                    automatically_add_cw721s: v1_config.automatically_add_cw721s,
-                    dao_uri,
-                },
-            )?;
-
-            let response = if let Some(migrate_params) = params {
-                let msg = WasmMsg::Execute {
-                    contract_addr: env.contract.address.to_string(),
-                    msg: to_json_binary(&ExecuteMsg::UpdateProposalModules {
-                        to_add: vec![ModuleInstantiateInfo {
-                            code_id: migrate_params.migrator_code_id,
-                            msg: to_json_binary(&migrate_params.params).unwrap(),
-                            admin: Some(Admin::CoreModule {}),
-                            label: "migrator".to_string(),
-                            funds: None,
-                            salt: None,
-                        }],
-                        to_disable: vec![],
-                    })
-                    .unwrap(),
-                    funds: vec![],
-                };
-                Response::default().add_message(msg)
-            } else {
-                Response::default()
-            };
-
-            Ok(response)
+        MigrateMsg::FromV1 {
+            dao_uri: _,
+            params: _,
+        } => {
+            // v1 -> v2.9+ direct migration is disabled. The cosmwasm-std 1.x → 2.x bump
+            // breaks Storage trait identity between cw-core-v1 (pinned to cosmwasm-std 1.5.5)
+            // and the workspace's cosmwasm-std 2.x — there is no zero-cost way to load
+            // v1 typed storage through a v2 Storage handle. Two-step migration via the
+            // v2.4.1 release remains supported.
+            let _ = env;
+            let _ = version;
+            Err(ContractError::V1MigrationUnsupported {})
         }
         MigrateMsg::FromCompatible {} => Ok(Response::default()),
     }

@@ -61,6 +61,8 @@ mod tokenfactory_msg {
                 display: metadata.display,
                 name: metadata.name,
                 symbol: metadata.symbol,
+                uri: String::new(),
+                uri_hash: String::new(),
             }),
         }
     }
@@ -159,6 +161,8 @@ mod tokenfactory_msg {
                 display: metadata.display,
                 name: metadata.name,
                 symbol: metadata.symbol,
+                uri: String::new(),
+                uri_hash: String::new(),
             }),
         }
     }

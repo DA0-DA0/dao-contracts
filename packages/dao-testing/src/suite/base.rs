@@ -100,7 +100,7 @@ pub trait DaoTestingSuite<Extra = Empty>: Deref + DerefMut {
                                     allowlist: vec![],
                                     denylist: vec![],
                                 },
-                            extension: Empty {},
+                            extension: cosmwasm_std::Empty {},
                         })
                         .unwrap(),
                         admin: Some(dao_interface::state::Admin::CoreModule {}),
@@ -140,7 +140,7 @@ pub trait DaoTestingSuite<Extra = Empty>: Deref + DerefMut {
                                     allowlist: vec![],
                                     denylist: vec![],
                                 },
-                            extension: Empty {},
+                            extension: cosmwasm_std::Empty {},
                         })
                         .unwrap(),
                         admin: Some(dao_interface::state::Admin::CoreModule {}),
@@ -259,19 +259,19 @@ impl DaoTestingSuiteBase {
         }
     }
 
-    pub fn cw4(&mut self) -> DaoTestingSuiteCw4 {
+    pub fn cw4(&mut self) -> DaoTestingSuiteCw4<'_> {
         DaoTestingSuiteCw4::new(self)
     }
 
-    pub fn cw20(&mut self) -> DaoTestingSuiteCw20 {
+    pub fn cw20(&mut self) -> DaoTestingSuiteCw20<'_> {
         DaoTestingSuiteCw20::new(self)
     }
 
-    pub fn cw721(&mut self) -> DaoTestingSuiteCw721 {
+    pub fn cw721(&mut self) -> DaoTestingSuiteCw721<'_> {
         DaoTestingSuiteCw721::new(self)
     }
 
-    pub fn token(&mut self) -> DaoTestingSuiteToken {
+    pub fn token(&mut self) -> DaoTestingSuiteToken<'_> {
         DaoTestingSuiteToken::new(self)
     }
 }

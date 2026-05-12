@@ -939,7 +939,8 @@
                     "y": {
                       "$ref": "#/definitions/Uint128"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -995,7 +996,8 @@
                 "minItems": 2
               }
             }
-          }
+          },
+          "additionalProperties": false
         },
         "SaturatingLinear": {
           "description": "min_y for all x <= min_x, max_y for all x >= max_x, linear in between",
@@ -1023,7 +1025,8 @@
             "min_y": {
               "$ref": "#/definitions/Uint128"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "Status": {
           "oneOf": [

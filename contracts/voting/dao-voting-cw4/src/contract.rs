@@ -6,7 +6,7 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw4::{MemberListResponse, MemberResponse, TotalWeightResponse};
-use cw_utils::parse_reply_instantiate_data;
+use cw_reply_compat::parse_reply_instantiate_data;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 
 use crate::error::ContractError;

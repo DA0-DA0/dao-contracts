@@ -18,16 +18,16 @@ pub struct Config {
 
 pub struct PreProposeContract<InstantiateExt, ExecuteExt, QueryExt, MigrateExt, ProposalMessage> {
     /// The proposal module that this module is associated with.
-    pub proposal_module: Item<'static, Addr>,
+    pub proposal_module: Item<Addr>,
     /// The DAO (dao-dao-core module) that this module is associated
     /// with.
-    pub dao: Item<'static, Addr>,
+    pub dao: Item<Addr>,
     /// The configuration for this module.
-    pub config: Item<'static, Config>,
+    pub config: Item<Config>,
     /// Map between proposal IDs and (deposit, proposer) pairs.
-    pub deposits: Map<'static, u64, (Option<CheckedDepositInfo>, Addr)>,
+    pub deposits: Map<u64, (Option<CheckedDepositInfo>, Addr)>,
     /// Consumers of proposal submitted hooks.
-    pub proposal_submitted_hooks: Hooks<'static>,
+    pub proposal_submitted_hooks: Hooks,
 
     // These types are used in associated functions, but not
     // assocaited data. To stop the compiler complaining about unused

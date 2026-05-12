@@ -12,12 +12,12 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 # for more explicit tests, cargo test --features=backtraces
-backtraces = ["cosmwasm-std/backtraces"]
+backtraces = ["cw-multi-test/backtrace"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
 # use test tube feature to enable test-tube integration tests, for example
 # cargo test --features "test-tube"
-test-tube = []
+test-tube = ["dep:osmosis-test-tube"]
 # when writing tests you may wish to enable test-tube as a default feature
 # default = ["test-tube"]
 
@@ -28,6 +28,8 @@ cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 thiserror = { workspace = true }
 cw-utils = { workspace = true }
+cw-reply-compat = { workspace = true }
+osmosis-test-tube = { workspace = true, optional = true }
 
 [dev-dependencies]
 cw-admin-factory = { workspace = true }
@@ -41,4 +43,3 @@ dao-proposal-single = { workspace = true }
 dao-testing = { workspace = true }
 dao-voting = { workspace = true }
 dao-voting-cw4 = { workspace = true }
-osmosis-test-tube = { workspace = true }

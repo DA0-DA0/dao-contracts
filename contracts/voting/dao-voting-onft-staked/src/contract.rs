@@ -22,8 +22,7 @@ use crate::msg::{
 use crate::omniflix::{get_onft_transfer_msg, query_onft_owner, query_onft_supply};
 use crate::state::{
     register_staked_nfts, register_unstaked_nfts, Config, ACTIVE_THRESHOLD, CONFIG, DAO, HOOKS,
-    LEGACY_NFT_CLAIMS, NFT_BALANCES, NFT_CLAIMS, PREPARED_ONFTS, STAKED_NFTS_PER_OWNER,
-    TOTAL_STAKED_NFTS,
+    NFT_BALANCES, NFT_CLAIMS, PREPARED_ONFTS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
 };
 use crate::ContractError;
 
@@ -124,7 +123,7 @@ pub fn execute_prepare_stake(
         .map(|token_id| -> StdResult<bool> {
             let owner = query_onft_owner(deps.as_ref(), &config.onft_collection_id, token_id)?;
 
-            Ok(owner == info.sender)
+            Ok(owner == info.sender.as_str())
         })
         .collect::<StdResult<Vec<bool>>>()?
         .into_iter()
@@ -171,7 +170,7 @@ pub fn execute_confirm_stake(
             // check that NFT was transferred to this contract
             let owner = query_onft_owner(deps.as_ref(), &config.onft_collection_id, token_id)?;
 
-            Ok(prepared && owner == env.contract.address)
+            Ok(prepared && owner == env.contract.address.as_str())
         })
         .collect::<StdResult<Vec<bool>>>()?
         .into_iter()
@@ -253,7 +252,7 @@ pub fn execute_cancel_stake(
 
             // if this contract owns the NFT, send it to the recipient (or
             // preparer if one exists and no recipient was specified).
-            if owner == env.contract.address {
+            if owner == env.contract.address.as_str() {
                 let recipient = recipient
                     .clone()
                     .or_else(|| preparer.map(|p| p.to_string()));
@@ -274,7 +273,7 @@ pub fn execute_cancel_stake(
         for (token_id, owner, preparer) in token_ids_with_owners_and_preparers {
             let is_preparer = preparer.as_ref() == Some(&info.sender);
             // only owner or preparer can cancel stake
-            if info.sender != owner && !is_preparer {
+            if info.sender.as_str() != owner && !is_preparer {
                 return Err(ContractError::NotPreparerNorOwner {});
             }
 
@@ -284,7 +283,7 @@ pub fn execute_cancel_stake(
             // if owner is this staking contract, send it back to the preparer,
             // who must also be the sender (but let's force unwrap the preparer
             // just to make sure)
-            if owner == env.contract.address {
+            if owner == env.contract.address.as_str() {
                 transfer_msgs.push(get_onft_transfer_msg(
                     &config.onft_collection_id,
                     token_id,
@@ -403,7 +402,10 @@ pub fn execute_claim_nfts(
     let token_ids = match claim_type {
         // attempt to claim all legacy NFTs
         ClaimType::Legacy => {
-            LEGACY_NFT_CLAIMS.claim_nfts(deps.storage, &info.sender, &env.block)?
+            // Legacy NFT claims are gated by a cosmwasm-std 1.x dependency — see
+            // the matching dao-voting-cw721-staked branch. Drain legacy claims
+            // through the v2.8 binary before migrating to v2.9+.
+            Vec::<String>::new()
         }
         // attempt to claim all non-legacy NFTs
         ClaimType::All => {
@@ -692,17 +694,10 @@ pub fn query_nft_claims(
 ) -> StdResult<Binary> {
     let addr = deps.api.addr_validate(&address)?;
 
-    // load all legacy claims since it does not support pagination
-    let legacy_claims = LEGACY_NFT_CLAIMS
-        .query_claims(deps, &addr)?
-        .nft_claims
-        .into_iter()
-        .map(|c| NftClaim {
-            token_id: c.token_id,
-            release_at: c.release_at,
-            legacy: true,
-        })
-        .collect::<Vec<_>>();
+    // Legacy claims (cw721-controllers 2.5.0) are not surfaced — see comment in
+    // execute_claim_nfts for the cosmwasm-std 1.x bridge constraint.
+    let _ = addr;
+    let legacy_claims: Vec<NftClaim> = Vec::new();
 
     // paginate all new claims
     let claims = NFT_CLAIMS

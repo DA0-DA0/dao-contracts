@@ -1,8 +1,8 @@
 use std::vec;
 
 use cosmwasm_std::{
-    testing::{mock_dependencies, mock_env, mock_info},
-    to_json_binary, Addr, Binary, Reply, SubMsg, SubMsgResponse, SubMsgResult, WasmMsg,
+    testing::{message_info, mock_dependencies, mock_env},
+    to_json_binary, Binary, Reply, SubMsg, SubMsgResponse, SubMsgResult, WasmMsg,
 };
 use cw_multi_test::{App, AppResponse, Executor};
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
@@ -18,11 +18,10 @@ use crate::{
 };
 use cw_admin_factory::ContractError;
 
-const ADMIN_ADDR: &str = "admin";
-
 #[test]
 pub fn test_set_self_admin() {
     let mut app = App::default();
+    let creator = app.api().addr_make("CREATOR");
     let code_id = app.store_code(cw_admin_factory_contract());
     let cw20_code_id = app.store_code(cw20_base_contract());
     let cw20_instantiate = cw20_base::msg::InstantiateMsg {
@@ -38,7 +37,7 @@ pub fn test_set_self_admin() {
     let factory_addr = app
         .instantiate_contract(
             code_id,
-            Addr::unchecked("CREATOR"),
+            creator.clone(),
             &instantiate,
             &[],
             "cw-admin-factory",
@@ -88,7 +87,7 @@ pub fn test_set_self_admin() {
 
     let res: AppResponse = app
         .execute_contract(
-            Addr::unchecked("CREATOR"),
+            creator,
             factory_addr,
             &ExecuteMsg::InstantiateContractWithSelfAdmin {
                 instantiate_msg: to_json_binary(&instantiate_core).unwrap(),
@@ -106,12 +105,18 @@ pub fn test_set_self_admin() {
 
     // Check that admin of core address is itself
     let contract_info = app.wrap().query_wasm_contract_info(&core_addr).unwrap();
-    assert_eq!(contract_info.admin, Some(core_addr))
+    assert_eq!(contract_info.admin.map(|a| a.to_string()), Some(core_addr))
 }
 
 #[test]
 pub fn test_authorized_set_self_admin() {
     let mut app = App::default();
+    let admin = app
+        .api()
+        .addr_make("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql");
+    let not_admin = app
+        .api()
+        .addr_make("cosmwasm1xvg7279n5wvh2g9reua0cf2yyrzmlxf3fnurwarvzy47wt5pz33slsv9xw");
     let code_id = app.store_code(cw_admin_factory_contract());
     let cw20_code_id = app.store_code(cw20_base_contract());
     let cw20_instantiate = cw20_base::msg::InstantiateMsg {
@@ -124,12 +129,12 @@ pub fn test_authorized_set_self_admin() {
     };
 
     let instantiate = InstantiateMsg {
-        admin: Some(ADMIN_ADDR.to_string()),
+        admin: Some(admin.to_string()),
     };
     let factory_addr = app
         .instantiate_contract(
             code_id,
-            Addr::unchecked(ADMIN_ADDR),
+            admin.clone(),
             &instantiate,
             &[],
             "cw-admin-factory",
@@ -142,7 +147,7 @@ pub fn test_authorized_set_self_admin() {
         .wrap()
         .query_wasm_smart(factory_addr.clone(), &QueryMsg::Admin {})
         .unwrap();
-    assert_eq!(current_admin.admin, Some(Addr::unchecked(ADMIN_ADDR)));
+    assert_eq!(current_admin.admin, Some(admin.clone()));
 
     // Instantiate core contract using factory.
     let cw_core_code_id = app.store_code(dao_dao_core_contract());
@@ -187,7 +192,7 @@ pub fn test_authorized_set_self_admin() {
     // Fails when not the admin.
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("not_admin"),
+            not_admin,
             factory_addr.clone(),
             &ExecuteMsg::InstantiateContractWithSelfAdmin {
                 instantiate_msg: to_json_binary(&instantiate_core).unwrap(),
@@ -204,7 +209,7 @@ pub fn test_authorized_set_self_admin() {
     // Succeeds as the admin.
     let res: AppResponse = app
         .execute_contract(
-            Addr::unchecked(ADMIN_ADDR),
+            admin,
             factory_addr,
             &ExecuteMsg::InstantiateContractWithSelfAdmin {
                 instantiate_msg: to_json_binary(&instantiate_core).unwrap(),
@@ -222,23 +227,39 @@ pub fn test_authorized_set_self_admin() {
 
     // Check that admin of core address is itself
     let contract_info = app.wrap().query_wasm_contract_info(&core_addr).unwrap();
-    assert_eq!(contract_info.admin, Some(core_addr))
+    assert_eq!(contract_info.admin.map(|a| a.to_string()), Some(core_addr))
 }
 
 #[test]
 pub fn test_set_self_admin_mock() {
     let mut deps = mock_dependencies();
+    let creator = deps
+        .api
+        .addr_make("cosmwasm1h34lmpywh4upnjdg90cjf4j70aee6z8qqfspugamjp42e4q28kqs8s7vcp");
+    let contract2 = deps.api.addr_make("contract2");
     // Instantiate factory contract
     let instantiate_msg = InstantiateMsg { admin: None };
-    let info = mock_info("creator", &[]);
+    let info = message_info(&creator, &[]);
     let env = mock_env();
     instantiate(deps.as_mut(), env.clone(), info, instantiate_msg).unwrap();
-    let bytes = vec![10, 9, 99, 111, 110, 116, 114, 97, 99, 116, 50];
+    // Encode `MsgInstantiateContractResponse { contract_address: contract2.to_string() }`
+    // as protobuf: field 1, wire type 2 (length-delimited).
+    let addr_str = contract2.to_string();
+    assert!(
+        addr_str.len() < 128,
+        "bech32 addr len must fit single varint"
+    );
+    let mut bytes = vec![0x0Au8, addr_str.len() as u8];
+    bytes.extend_from_slice(addr_str.as_bytes());
+    #[allow(deprecated)]
     let reply_msg: Reply = Reply {
         id: INSTANTIATE_CONTRACT_REPLY_ID,
+        gas_used: 0,
+        payload: Binary::default(),
         result: SubMsgResult::Ok(SubMsgResponse {
             events: vec![],
-            data: (Some(Binary(bytes))),
+            data: Some(Binary::from(bytes)),
+            msg_responses: vec![],
         }),
     };
 
@@ -247,8 +268,8 @@ pub fn test_set_self_admin_mock() {
     assert_eq!(
         res.messages[0],
         SubMsg::new(WasmMsg::UpdateAdmin {
-            contract_addr: "contract2".to_string(),
-            admin: "contract2".to_string()
+            contract_addr: contract2.to_string(),
+            admin: contract2.to_string(),
         })
     )
 }

@@ -41,4 +41,9 @@ pub enum ContractError {
 
     #[error("Too many outstanding claims. Claim some tokens before unstaking more.")]
     TooManyClaims {},
+
+    #[error(
+        "Direct v1 -> v2.9+ migration is not supported in this binary. Migrate v1 contracts via the v2.4.1 release first, then re-migrate to v2.9+."
+    )]
+    V1MigrationUnsupported {},
 }

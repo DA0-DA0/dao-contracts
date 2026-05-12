@@ -1,7 +1,7 @@
 use anyhow::Result;
 use cosm_orc::orchestrator::{Coin, Key, SigningKey};
 use cosm_orc::{config::cfg::Config, orchestrator::cosm_orc::CosmOrc};
-use cosmwasm_std::{to_json_binary, Decimal, Empty, Uint128};
+use cosmwasm_std::{to_json_binary, Decimal, Uint128};
 use cw20::Cw20Coin;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_voting::pre_propose::PreProposeSubmissionPolicy;
@@ -108,7 +108,7 @@ fn main() -> Result<()> {
                                 allowlist: vec![],
                                 denylist: vec![],
                             },
-                            extension: Empty::default(),
+                            extension: cosmwasm_std::Empty {},
                         })
                         .unwrap(),
                         admin: Some(Admin::CoreModule {}),

@@ -1,5 +1,7 @@
 use anyhow::Result;
-use cosmwasm_std::{from_json, to_json_binary, Addr, Api, Binary, BlockInfo, Querier, Storage};
+use cosmwasm_std::{
+    from_json, to_json_binary, Addr, AnyMsg, Api, Binary, BlockInfo, Querier, Storage,
+};
 use cw_multi_test::{error::AnyResult, AppResponse, CosmosRouter, Stargate};
 use omniflix_std::types::omniflix::onft::v1beta1::{
     Collection, Denom, MsgCreateDenom, MsgCreateDenomResponse, MsgMintOnft, MsgMintOnftResponse,
@@ -8,23 +10,28 @@ use omniflix_std::types::omniflix::onft::v1beta1::{
 use omniflix_std::types::omniflix::onft::v1beta1::{Onft, QueryOnftRequest, QueryOnftResponse};
 use prost::{DecodeError, Message};
 
-const COLLECTION_PREFIX: &str = "collection";
+const COLLECTION_PREFIX: &str =
+    "cosmwasm1lf6fde9wsspsdh6ph4jcsqpe9cjdhzkywec4n44alz3rk2xyf6sqlgnlqr";
 
 pub struct StargateKeeper {}
 
 impl StargateKeeper {}
 
 impl Stargate for StargateKeeper {
-    fn execute<ExecC, QueryC>(
+    fn execute_any<ExecC, QueryC>(
         &self,
         _api: &dyn Api,
         storage: &mut dyn Storage,
         _router: &dyn CosmosRouter<ExecC = ExecC, QueryC = QueryC>,
         _block: &BlockInfo,
         sender: Addr,
-        type_url: String,
-        value: Binary,
-    ) -> AnyResult<AppResponse> {
+        msg: AnyMsg,
+    ) -> AnyResult<AppResponse>
+    where
+        ExecC: cosmwasm_std::CustomMsg + serde::de::DeserializeOwned + 'static,
+        QueryC: cosmwasm_std::CustomQuery + serde::de::DeserializeOwned + 'static,
+    {
+        let AnyMsg { type_url, value } = msg;
         if type_url == *"/OmniFlix.onft.v1beta1.MsgCreateDenom" {
             let msg: MsgCreateDenom = Message::decode(value.as_slice()).unwrap();
             let collection = Collection {
@@ -104,7 +111,7 @@ impl Stargate for StargateKeeper {
         Ok(AppResponse::default())
     }
 
-    fn query(
+    fn query_stargate(
         &self,
         _api: &dyn Api,
         storage: &dyn Storage,

@@ -11,7 +11,7 @@ use crate::contracts::{
     dao_voting_cw20_balance_contract, dao_voting_cw20_staked_contract, dao_voting_cw4_contract,
 };
 
-const CREATOR_ADDR: &str = "creator";
+const CREATOR_ADDR: &str = "cosmwasm1h34lmpywh4upnjdg90cjf4j70aee6z8qqfspugamjp42e4q28kqs8s7vcp";
 
 pub fn instantiate_with_cw20_balances_governance(
     app: &mut App,
@@ -247,11 +247,13 @@ pub fn instantiate_with_staking_active_threshold(
     let initial_balances = initial_balances.unwrap_or_else(|| {
         vec![
             Cw20Coin {
-                address: "blob".to_string(),
+                address: "cosmwasm1lgkge38js9mthmk5kumd7456xnree5mj860vgtukwj6dg6kxhzuq3zeght"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
             Cw20Coin {
-                address: "blue".to_string(),
+                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]

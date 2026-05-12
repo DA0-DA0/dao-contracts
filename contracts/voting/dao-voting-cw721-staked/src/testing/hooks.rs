@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    testing::{mock_dependencies, mock_env, mock_info},
+    testing::{message_info, mock_dependencies, mock_env},
     Addr,
 };
 use dao_hooks::nft_stake::{stake_nft_hook_msgs, unstake_nft_hook_msgs};
@@ -16,7 +16,7 @@ fn test_hooks() {
     let messages = stake_nft_hook_msgs(
         HOOKS,
         &deps.storage,
-        Addr::unchecked("ekez"),
+        Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
         "ekez-token".to_string(),
     )
     .unwrap();
@@ -25,36 +25,44 @@ fn test_hooks() {
     let messages = unstake_nft_hook_msgs(
         HOOKS,
         &deps.storage,
-        Addr::unchecked("ekez"),
+        Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
         vec!["ekez-token".to_string()],
     )
     .unwrap();
     assert_eq!(messages.len(), 0);
 
     // Save a DAO address for the execute messages we're testing.
-    DAO.save(deps.as_mut().storage, &Addr::unchecked("ekez"))
-        .unwrap();
+    DAO.save(
+        deps.as_mut().storage,
+        &Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
+    )
+    .unwrap();
 
     // Save a config for the execute messages we're testing.
     CONFIG
         .save(
             deps.as_mut().storage,
             &Config {
-                nft_address: Addr::unchecked("ekez-token"),
+                nft_address: Addr::unchecked(
+                    "cosmwasm1yxqer5jd2pt64dnlvu4g8m80r7f2qlmhkf555tnjdmnknfe59zeqqyj7cp",
+                ),
                 unstaking_duration: None,
             },
         )
         .unwrap();
 
     let env = mock_env();
-    let info = mock_info("ekez", &[]);
+    let info = message_info(
+        &Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
+        &[],
+    );
 
     execute(
         deps.as_mut(),
         env,
         info,
         crate::msg::ExecuteMsg::AddHook {
-            addr: "ekez".to_string(),
+            addr: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
         },
     )
     .unwrap();
@@ -62,7 +70,7 @@ fn test_hooks() {
     let messages = stake_nft_hook_msgs(
         HOOKS,
         &deps.storage,
-        Addr::unchecked("ekez"),
+        Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
         "ekez-token".to_string(),
     )
     .unwrap();
@@ -71,21 +79,24 @@ fn test_hooks() {
     let messages = unstake_nft_hook_msgs(
         HOOKS,
         &deps.storage,
-        Addr::unchecked("ekez"),
+        Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
         vec!["ekez-token".to_string()],
     )
     .unwrap();
     assert_eq!(messages.len(), 1);
 
     let env = mock_env();
-    let info = mock_info("ekez", &[]);
+    let info = message_info(
+        &Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
+        &[],
+    );
 
     execute(
         deps.as_mut(),
         env,
         info,
         crate::msg::ExecuteMsg::RemoveHook {
-            addr: "ekez".to_string(),
+            addr: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
         },
     )
     .unwrap();
@@ -93,7 +104,7 @@ fn test_hooks() {
     let messages = stake_nft_hook_msgs(
         HOOKS,
         &deps.storage,
-        Addr::unchecked("ekez"),
+        Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
         "ekez-token".to_string(),
     )
     .unwrap();
@@ -102,7 +113,7 @@ fn test_hooks() {
     let messages = unstake_nft_hook_msgs(
         HOOKS,
         &deps.storage,
-        Addr::unchecked("ekez"),
+        Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
         vec!["ekez-token".to_string()],
     )
     .unwrap();

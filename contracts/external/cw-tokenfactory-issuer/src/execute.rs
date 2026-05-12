@@ -233,7 +233,7 @@ pub fn set_before_send_hook(
         // If the `cosmwasm_address` is not the same as the cw_tokenfactory_issuer contract
         // BeforeSendHook features are disabled.
         let mut advanced_features_enabled = true;
-        if cosmwasm_address != env.contract.address {
+        if cosmwasm_address != env.contract.address.as_str() {
             advanced_features_enabled = false;
         }
 

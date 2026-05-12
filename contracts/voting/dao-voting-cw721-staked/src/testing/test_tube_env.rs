@@ -30,7 +30,7 @@ use osmosis_test_tube::{
 use serde::de::DeserializeOwned;
 use std::path::PathBuf;
 
-pub const DENOM: &str = "ucat";
+pub const DENOM: &str = "cosmwasm1d72x6j88hr7zzms7ur4a5k8ksnhp55e7qn45gmuqu679havr9mhs8wj877";
 pub const JUNO: &str = "ujuno";
 
 pub struct TestEnv<'a> {
@@ -94,7 +94,10 @@ impl TestEnvBuilder {
                                     cw721_instantiate_msg: Cw721InstantiateMsg {
                                         name: "Test NFT".to_string(),
                                         symbol: "TEST".to_string(),
-                                        minter: accounts[0].address(),
+                                        minter: Some(accounts[0].address()),
+                                        collection_info_extension: None,
+                                        creator: None,
+                                        withdraw_address: None,
                                     },
                                     initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::<
                                         Empty,
@@ -103,7 +106,7 @@ impl TestEnvBuilder {
                                         owner: accounts[0].address(),
                                         token_uri: Some("https://example.com".to_string()),
                                         token_id: "1".to_string(),
-                                        extension: Empty {},
+                                        extension: None,
                                     })
                                     .unwrap()],
                                 },

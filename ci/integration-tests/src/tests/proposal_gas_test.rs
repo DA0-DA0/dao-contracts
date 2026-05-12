@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_json_binary, CosmosMsg, Empty, WasmMsg};
+use cosmwasm_std::{to_json_binary, CosmosMsg, WasmMsg};
 use dao_proposal_single::query::ProposalResponse;
 use dao_voting::voting::Vote;
 use test_context::test_context;
@@ -15,11 +15,11 @@ fn mint_mint_mint_mint(cw721: &str, owner: &str, mints: u64) -> Vec<CosmosMsg> {
         .map(|mint| {
             WasmMsg::Execute {
                 contract_addr: cw721.to_string(),
-                msg: to_json_binary(&cw721_base::msg::ExecuteMsg::Mint::<Empty, Empty>{
+                msg: to_json_binary(&cw721_base::msg::ExecuteMsg::Mint{
                         token_id: mint.to_string(),
                         owner: owner.to_string(),
                         token_uri: Some("https://bafkreibufednctf2f2bpduiibgkvpqcw5rtdmhqh2htqx3qbdnji4h55hy.ipfs.nftstorage.link".to_string()),
-                        extension: Empty::default(),
+                        extension: None,
                     },
                 )
                 .unwrap(),
@@ -37,8 +37,15 @@ fn mint_mint_mint_mint(cw721: &str, owner: &str, mints: u64) -> Vec<CosmosMsg> {
 #[test]
 #[ignore]
 fn how_many_nfts_can_be_minted_in_one_proposal(chain: &mut Chain) {
-    let user_addr = chain.users["user1"].account.address.clone();
-    let user_key = chain.users["user1"].key.clone();
+    let user_addr = chain.users
+        ["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"]
+        .account
+        .address
+        .clone();
+    let user_key = chain.users
+        ["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"]
+        .key
+        .clone();
 
     let dao = create_dao(chain, None, "create_dao", user_addr.clone(), &user_key).unwrap();
     let cw721 = instantiate_cw721_base(chain, &user_key, &dao.addr);

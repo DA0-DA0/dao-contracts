@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_json_binary, Addr, Coin, Decimal, Empty, Uint128};
+use cosmwasm_std::{to_json_binary, Addr, Coin, Decimal, Uint128};
 use cw20::Cw20Coin;
 
 use cw_multi_test::{next_block, App, BankSudo, Executor, SudoMsg};
@@ -46,7 +46,7 @@ pub(crate) fn get_pre_propose_info(
             msg: to_json_binary(&cppbps::InstantiateMsg {
                 deposit_info,
                 submission_policy,
-                extension: Empty::default(),
+                extension: cosmwasm_std::Empty {},
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),
@@ -140,9 +140,16 @@ pub(crate) fn instantiate_with_staked_cw721_governance(
     let nft_address = app
         .instantiate_contract(
             cw721_id,
-            Addr::unchecked("ekez"),
+            Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
             &cw721_base::msg::InstantiateMsg {
-                minter: "ekez".to_string(),
+                minter: Some(
+                    "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                        .to_string(),
+                ),
+
+                collection_info_extension: None,
+                creator: None,
+                withdraw_address: None,
                 symbol: "token".to_string(),
                 name: "ekez token best token".to_string(),
             },
@@ -210,9 +217,11 @@ pub(crate) fn instantiate_with_staked_cw721_governance(
     for Cw20Coin { address, amount } in initial_balances {
         for i in 0..amount.u128() {
             app.execute_contract(
-                Addr::unchecked("ekez"),
+                Addr::unchecked(
+                    "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+                ),
                 nft_address.clone(),
-                &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::Mint {
+                &cw721_base::msg::ExecuteMsg::Mint {
                     token_id: format!("{address}_{i}"),
                     owner: address.clone(),
                     token_uri: None,
@@ -224,7 +233,7 @@ pub(crate) fn instantiate_with_staked_cw721_governance(
             app.execute_contract(
                 Addr::unchecked(address.clone()),
                 nft_address.clone(),
-                &cw721_base::msg::ExecuteMsg::SendNft::<Option<Empty>, Empty> {
+                &cw721_base::msg::ExecuteMsg::SendNft {
                     contract: staking_addr.to_string(),
                     token_id: format!("{address}_{i}"),
                     msg: to_json_binary("").unwrap(),

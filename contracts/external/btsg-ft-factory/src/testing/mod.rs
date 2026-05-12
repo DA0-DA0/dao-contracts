@@ -10,7 +10,8 @@ use dao_testing::contracts::{btsg_ft_factory_contract, dao_voting_token_staked_c
 use crate::msg::InstantiateMsg;
 
 /// Address used to stake stuff.
-pub(crate) const STAKER: &str = "staker";
+pub(crate) const STAKER: &str =
+    "cosmwasm1639jjhzpm4pu7pqa3pccxgp40lf5d6xvrcjj6p6rqd57hlj7af9s9kznuq";
 
 pub(crate) struct CommonTest {
     app: BitsongApp,
@@ -26,7 +27,7 @@ pub(crate) fn setup_test() -> CommonTest {
     let factory = app
         .instantiate_contract(
             factory_id,
-            Addr::unchecked("anyone"),
+            Addr::unchecked("cosmwasm1ztkc6999tld5wq0wsgvlzr70y7zeznccvke8lay45vde7sww6gpskvfask"),
             &InstantiateMsg {},
             &[],
             "bitsong_fantoken_factory",

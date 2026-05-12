@@ -45,4 +45,9 @@ pub enum ContractError {
 
     #[error("Proposal migration params length is not equal to proposal modules length")]
     MigrationParamsNotEqualProposalModulesLength,
+
+    #[error(
+        "Direct v1 -> v2.9+ migration is disabled in this binary. Migrate v1 DAOs via the v2.4.1 release first, then re-migrate to v2.9+."
+    )]
+    V1MigrationUnsupported {},
 }

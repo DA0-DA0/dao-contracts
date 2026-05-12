@@ -714,6 +714,23 @@
           }
         ]
       },
+      "AnyMsg": {
+        "description": "A message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto). This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+        "type": "object",
+        "required": [
+          "type_url",
+          "value"
+        ],
+        "properties": {
+          "type_url": {
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/definitions/Binary"
+          }
+        },
+        "additionalProperties": false
+      },
       "Assignment": {
         "type": "object",
         "required": [
@@ -760,7 +777,8 @@
                   "to_address": {
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -784,7 +802,8 @@
                       "$ref": "#/definitions/Coin"
                     }
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -808,7 +827,8 @@
           "denom": {
             "type": "string"
           }
-        }
+        },
+        "additionalProperties": false
       },
       "CosmosMsg_for_Empty": {
         "oneOf": [
@@ -861,7 +881,8 @@
             "additionalProperties": false
           },
           {
-            "description": "A Stargate message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto). This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+            "description": "This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+            "deprecated": true,
             "type": "object",
             "required": [
               "stargate"
@@ -880,7 +901,21 @@
                   "value": {
                     "$ref": "#/definitions/Binary"
                   }
-                }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "`CosmosMsg::Any` is the replaces the \"stargate message\" – a message wrapped in a [protobuf Any](https://protobuf.dev/programming-guides/proto3/#any) that is supported by the chain. It behaves the same as `CosmosMsg::Stargate` but has a better name and slightly improved syntax.\n\nThis is feature-gated at compile time with `cosmwasm_2_0` because a chain running CosmWasm < 2.0 cannot process this.",
+            "type": "object",
+            "required": [
+              "any"
+            ],
+            "properties": {
+              "any": {
+                "$ref": "#/definitions/AnyMsg"
               }
             },
             "additionalProperties": false
@@ -947,7 +982,8 @@
                     "description": "The `withdraw_address`",
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -969,7 +1005,34 @@
                     "description": "The `validator_address`",
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "This is translated to a [[MsgFundCommunityPool](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#LL69C1-L76C2). `depositor` is automatically filled with the current contract's address.",
+            "type": "object",
+            "required": [
+              "fund_community_pool"
+            ],
+            "properties": {
+              "fund_community_pool": {
+                "type": "object",
+                "required": [
+                  "amount"
+                ],
+                "properties": {
+                  "amount": {
+                    "description": "The amount to spend",
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/Coin"
+                    }
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -977,8 +1040,9 @@
         ]
       },
       "Empty": {
-        "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
-        "type": "object"
+        "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressible in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
+        "type": "object",
+        "additionalProperties": false
       },
       "ExecuteMsg": {
         "oneOf": [
@@ -1163,7 +1227,7 @@
         ]
       },
       "GovMsg": {
-        "description": "This message type allows the contract interact with the [x/gov] module in order to cast votes.\n\n[x/gov]: https://github.com/cosmos/cosmos-sdk/tree/v0.45.12/x/gov\n\n## Examples\n\nCast a simple vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); use cosmwasm_std::{GovMsg, VoteOption};\n\n#[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::Vote { proposal_id: 4, vote: VoteOption::Yes, })) } ```\n\nCast a weighted vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); # #[cfg(feature = \"cosmwasm_1_2\")] use cosmwasm_std::{Decimal, GovMsg, VoteOption, WeightedVoteOption};\n\n# #[cfg(feature = \"cosmwasm_1_2\")] #[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::VoteWeighted { proposal_id: 4, options: vec![ WeightedVoteOption { option: VoteOption::Yes, weight: Decimal::percent(65), }, WeightedVoteOption { option: VoteOption::Abstain, weight: Decimal::percent(35), }, ], })) } ```",
+        "description": "This message type allows the contract interact with the [x/gov] module in order to cast votes.\n\n[x/gov]: https://github.com/cosmos/cosmos-sdk/tree/v0.45.12/x/gov\n\n## Examples\n\nCast a simple vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); use cosmwasm_std::{GovMsg, VoteOption};\n\n#[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::Vote { proposal_id: 4, option: VoteOption::Yes, })) } ```\n\nCast a weighted vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); # #[cfg(feature = \"cosmwasm_1_2\")] use cosmwasm_std::{Decimal, GovMsg, VoteOption, WeightedVoteOption};\n\n# #[cfg(feature = \"cosmwasm_1_2\")] #[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::VoteWeighted { proposal_id: 4, options: vec![ WeightedVoteOption { option: VoteOption::Yes, weight: Decimal::percent(65), }, WeightedVoteOption { option: VoteOption::Abstain, weight: Decimal::percent(35), }, ], })) } ```",
         "oneOf": [
           {
             "description": "This maps directly to [MsgVote](https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/gov/v1beta1/tx.proto#L46-L56) in the Cosmos SDK with voter set to the contract address.",
@@ -1175,24 +1239,25 @@
               "vote": {
                 "type": "object",
                 "required": [
-                  "proposal_id",
-                  "vote"
+                  "option",
+                  "proposal_id"
                 ],
                 "properties": {
-                  "proposal_id": {
-                    "type": "integer",
-                    "format": "uint64",
-                    "minimum": 0.0
-                  },
-                  "vote": {
-                    "description": "The vote option.\n\nThis should be called \"option\" for consistency with Cosmos SDK. Sorry for that. See <https://github.com/CosmWasm/cosmwasm/issues/1571>.",
+                  "option": {
+                    "description": "The vote option.\n\nThis used to be called \"vote\", but was changed for consistency with Cosmos SDK.",
                     "allOf": [
                       {
                         "$ref": "#/definitions/VoteOption"
                       }
                     ]
+                  },
+                  "proposal_id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1222,7 +1287,8 @@
                     "format": "uint64",
                     "minimum": 0.0
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1260,6 +1326,13 @@
                     "description": "existing channel to send the tokens over",
                     "type": "string"
                   },
+                  "memo": {
+                    "description": "An optional memo. See the blog post [\"Moving Beyond Simple Token Transfers\"](https://medium.com/the-interchain-foundation/moving-beyond-simple-token-transfers-d42b2b1dc29b) for more information.\n\nThere is no difference between setting this to `None` or an empty string.\n\nThis field is only supported on chains with CosmWasm >= 2.0 and silently ignored on older chains. If you need support for both 1.x and 2.x chain with the same codebase, it is recommended to use `CosmosMsg::Stargate` with a custom MsgTransfer protobuf encoder instead.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
                   "timeout": {
                     "description": "when packet times out, measured on remote chain",
                     "allOf": [
@@ -1272,7 +1345,8 @@
                     "description": "address on the remote chain to receive these tokens",
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1306,7 +1380,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1327,7 +1402,8 @@
                   "channel_id": {
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1358,7 +1434,8 @@
               }
             ]
           }
-        }
+        },
+        "additionalProperties": false
       },
       "IbcTimeoutBlock": {
         "description": "IBCTimeoutHeight Height is a monotonically increasing data type that can be compared against another Height for the purposes of updating and freezing clients. Ordering is (revision_number, timeout_height)",
@@ -1380,7 +1457,8 @@
             "format": "uint64",
             "minimum": 0.0
           }
-        }
+        },
+        "additionalProperties": false
       },
       "InitialAuthorization": {
         "type": "object",
@@ -1543,7 +1621,8 @@
                   "validator": {
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1568,7 +1647,8 @@
                   "validator": {
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1597,7 +1677,8 @@
                   "src_validator": {
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1706,7 +1787,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1756,7 +1838,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1810,7 +1893,8 @@
                   "salt": {
                     "$ref": "#/definitions/Binary"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1847,7 +1931,8 @@
                     "format": "uint64",
                     "minimum": 0.0
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1872,7 +1957,8 @@
                   "contract_addr": {
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1893,7 +1979,8 @@
                   "contract_addr": {
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1913,7 +2000,8 @@
           "weight": {
             "$ref": "#/definitions/Decimal"
           }
-        }
+        },
+        "additionalProperties": false
       }
     }
   },
@@ -2697,6 +2785,23 @@
       }
     ],
     "definitions": {
+      "AnyMsg": {
+        "description": "A message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto). This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+        "type": "object",
+        "required": [
+          "type_url",
+          "value"
+        ],
+        "properties": {
+          "type_url": {
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/definitions/Binary"
+          }
+        },
+        "additionalProperties": false
+      },
       "BankMsg": {
         "description": "The message types of the bank module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto",
         "oneOf": [
@@ -2723,7 +2828,8 @@
                   "to_address": {
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -2747,7 +2853,8 @@
                       "$ref": "#/definitions/Coin"
                     }
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -2771,7 +2878,8 @@
           "denom": {
             "type": "string"
           }
-        }
+        },
+        "additionalProperties": false
       },
       "CosmosMsg_for_Empty": {
         "oneOf": [
@@ -2824,7 +2932,8 @@
             "additionalProperties": false
           },
           {
-            "description": "A Stargate message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto). This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+            "description": "This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+            "deprecated": true,
             "type": "object",
             "required": [
               "stargate"
@@ -2843,7 +2952,21 @@
                   "value": {
                     "$ref": "#/definitions/Binary"
                   }
-                }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "`CosmosMsg::Any` is the replaces the \"stargate message\" – a message wrapped in a [protobuf Any](https://protobuf.dev/programming-guides/proto3/#any) that is supported by the chain. It behaves the same as `CosmosMsg::Stargate` but has a better name and slightly improved syntax.\n\nThis is feature-gated at compile time with `cosmwasm_2_0` because a chain running CosmWasm < 2.0 cannot process this.",
+            "type": "object",
+            "required": [
+              "any"
+            ],
+            "properties": {
+              "any": {
+                "$ref": "#/definitions/AnyMsg"
               }
             },
             "additionalProperties": false
@@ -2910,7 +3033,8 @@
                     "description": "The `withdraw_address`",
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -2932,7 +3056,34 @@
                     "description": "The `validator_address`",
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "This is translated to a [[MsgFundCommunityPool](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#LL69C1-L76C2). `depositor` is automatically filled with the current contract's address.",
+            "type": "object",
+            "required": [
+              "fund_community_pool"
+            ],
+            "properties": {
+              "fund_community_pool": {
+                "type": "object",
+                "required": [
+                  "amount"
+                ],
+                "properties": {
+                  "amount": {
+                    "description": "The amount to spend",
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/Coin"
+                    }
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -2940,11 +3091,12 @@
         ]
       },
       "Empty": {
-        "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
-        "type": "object"
+        "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressible in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
+        "type": "object",
+        "additionalProperties": false
       },
       "GovMsg": {
-        "description": "This message type allows the contract interact with the [x/gov] module in order to cast votes.\n\n[x/gov]: https://github.com/cosmos/cosmos-sdk/tree/v0.45.12/x/gov\n\n## Examples\n\nCast a simple vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); use cosmwasm_std::{GovMsg, VoteOption};\n\n#[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::Vote { proposal_id: 4, vote: VoteOption::Yes, })) } ```\n\nCast a weighted vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); # #[cfg(feature = \"cosmwasm_1_2\")] use cosmwasm_std::{Decimal, GovMsg, VoteOption, WeightedVoteOption};\n\n# #[cfg(feature = \"cosmwasm_1_2\")] #[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::VoteWeighted { proposal_id: 4, options: vec![ WeightedVoteOption { option: VoteOption::Yes, weight: Decimal::percent(65), }, WeightedVoteOption { option: VoteOption::Abstain, weight: Decimal::percent(35), }, ], })) } ```",
+        "description": "This message type allows the contract interact with the [x/gov] module in order to cast votes.\n\n[x/gov]: https://github.com/cosmos/cosmos-sdk/tree/v0.45.12/x/gov\n\n## Examples\n\nCast a simple vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); use cosmwasm_std::{GovMsg, VoteOption};\n\n#[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::Vote { proposal_id: 4, option: VoteOption::Yes, })) } ```\n\nCast a weighted vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); # #[cfg(feature = \"cosmwasm_1_2\")] use cosmwasm_std::{Decimal, GovMsg, VoteOption, WeightedVoteOption};\n\n# #[cfg(feature = \"cosmwasm_1_2\")] #[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::VoteWeighted { proposal_id: 4, options: vec![ WeightedVoteOption { option: VoteOption::Yes, weight: Decimal::percent(65), }, WeightedVoteOption { option: VoteOption::Abstain, weight: Decimal::percent(35), }, ], })) } ```",
         "oneOf": [
           {
             "description": "This maps directly to [MsgVote](https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/gov/v1beta1/tx.proto#L46-L56) in the Cosmos SDK with voter set to the contract address.",
@@ -2956,24 +3108,25 @@
               "vote": {
                 "type": "object",
                 "required": [
-                  "proposal_id",
-                  "vote"
+                  "option",
+                  "proposal_id"
                 ],
                 "properties": {
-                  "proposal_id": {
-                    "type": "integer",
-                    "format": "uint64",
-                    "minimum": 0.0
-                  },
-                  "vote": {
-                    "description": "The vote option.\n\nThis should be called \"option\" for consistency with Cosmos SDK. Sorry for that. See <https://github.com/CosmWasm/cosmwasm/issues/1571>.",
+                  "option": {
+                    "description": "The vote option.\n\nThis used to be called \"vote\", but was changed for consistency with Cosmos SDK.",
                     "allOf": [
                       {
                         "$ref": "#/definitions/VoteOption"
                       }
                     ]
+                  },
+                  "proposal_id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -3003,7 +3156,8 @@
                     "format": "uint64",
                     "minimum": 0.0
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -3041,6 +3195,13 @@
                     "description": "existing channel to send the tokens over",
                     "type": "string"
                   },
+                  "memo": {
+                    "description": "An optional memo. See the blog post [\"Moving Beyond Simple Token Transfers\"](https://medium.com/the-interchain-foundation/moving-beyond-simple-token-transfers-d42b2b1dc29b) for more information.\n\nThere is no difference between setting this to `None` or an empty string.\n\nThis field is only supported on chains with CosmWasm >= 2.0 and silently ignored on older chains. If you need support for both 1.x and 2.x chain with the same codebase, it is recommended to use `CosmosMsg::Stargate` with a custom MsgTransfer protobuf encoder instead.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
                   "timeout": {
                     "description": "when packet times out, measured on remote chain",
                     "allOf": [
@@ -3053,7 +3214,8 @@
                     "description": "address on the remote chain to receive these tokens",
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -3087,7 +3249,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -3108,7 +3271,8 @@
                   "channel_id": {
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -3139,7 +3303,8 @@
               }
             ]
           }
-        }
+        },
+        "additionalProperties": false
       },
       "IbcTimeoutBlock": {
         "description": "IBCTimeoutHeight Height is a monotonically increasing data type that can be compared against another Height for the purposes of updating and freezing clients. Ordering is (revision_number, timeout_height)",
@@ -3161,7 +3326,8 @@
             "format": "uint64",
             "minimum": 0.0
           }
-        }
+        },
+        "additionalProperties": false
       },
       "StakingMsg": {
         "description": "The message types of the staking module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto",
@@ -3186,7 +3352,8 @@
                   "validator": {
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -3211,7 +3378,8 @@
                   "validator": {
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -3240,7 +3408,8 @@
                   "src_validator": {
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -3307,7 +3476,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -3357,7 +3527,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -3411,7 +3582,8 @@
                   "salt": {
                     "$ref": "#/definitions/Binary"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -3448,7 +3620,8 @@
                     "format": "uint64",
                     "minimum": 0.0
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -3473,7 +3646,8 @@
                   "contract_addr": {
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -3494,7 +3668,8 @@
                   "contract_addr": {
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -3514,7 +3689,8 @@
           "weight": {
             "$ref": "#/definitions/Decimal"
           }
-        }
+        },
+        "additionalProperties": false
       }
     }
   },
@@ -3607,6 +3783,23 @@
           "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
           "type": "string"
         },
+        "AnyMsg": {
+          "description": "A message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto). This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+          "type": "object",
+          "required": [
+            "type_url",
+            "value"
+          ],
+          "properties": {
+            "type_url": {
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/definitions/Binary"
+            }
+          },
+          "additionalProperties": false
+        },
         "BankMsg": {
           "description": "The message types of the bank module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto",
           "oneOf": [
@@ -3633,7 +3826,8 @@
                     "to_address": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -3657,7 +3851,8 @@
                         "$ref": "#/definitions/Coin"
                       }
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -3681,7 +3876,8 @@
             "denom": {
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "CosmosMsg_for_Empty": {
           "oneOf": [
@@ -3734,7 +3930,8 @@
               "additionalProperties": false
             },
             {
-              "description": "A Stargate message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto). This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+              "description": "This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+              "deprecated": true,
               "type": "object",
               "required": [
                 "stargate"
@@ -3753,7 +3950,21 @@
                     "value": {
                       "$ref": "#/definitions/Binary"
                     }
-                  }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "`CosmosMsg::Any` is the replaces the \"stargate message\" – a message wrapped in a [protobuf Any](https://protobuf.dev/programming-guides/proto3/#any) that is supported by the chain. It behaves the same as `CosmosMsg::Stargate` but has a better name and slightly improved syntax.\n\nThis is feature-gated at compile time with `cosmwasm_2_0` because a chain running CosmWasm < 2.0 cannot process this.",
+              "type": "object",
+              "required": [
+                "any"
+              ],
+              "properties": {
+                "any": {
+                  "$ref": "#/definitions/AnyMsg"
                 }
               },
               "additionalProperties": false
@@ -3820,7 +4031,8 @@
                       "description": "The `withdraw_address`",
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -3842,7 +4054,34 @@
                       "description": "The `validator_address`",
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "This is translated to a [[MsgFundCommunityPool](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#LL69C1-L76C2). `depositor` is automatically filled with the current contract's address.",
+              "type": "object",
+              "required": [
+                "fund_community_pool"
+              ],
+              "properties": {
+                "fund_community_pool": {
+                  "type": "object",
+                  "required": [
+                    "amount"
+                  ],
+                  "properties": {
+                    "amount": {
+                      "description": "The amount to spend",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/Coin"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -3850,11 +4089,12 @@
           ]
         },
         "Empty": {
-          "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
-          "type": "object"
+          "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressible in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
+          "type": "object",
+          "additionalProperties": false
         },
         "GovMsg": {
-          "description": "This message type allows the contract interact with the [x/gov] module in order to cast votes.\n\n[x/gov]: https://github.com/cosmos/cosmos-sdk/tree/v0.45.12/x/gov\n\n## Examples\n\nCast a simple vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); use cosmwasm_std::{GovMsg, VoteOption};\n\n#[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::Vote { proposal_id: 4, vote: VoteOption::Yes, })) } ```\n\nCast a weighted vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); # #[cfg(feature = \"cosmwasm_1_2\")] use cosmwasm_std::{Decimal, GovMsg, VoteOption, WeightedVoteOption};\n\n# #[cfg(feature = \"cosmwasm_1_2\")] #[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::VoteWeighted { proposal_id: 4, options: vec![ WeightedVoteOption { option: VoteOption::Yes, weight: Decimal::percent(65), }, WeightedVoteOption { option: VoteOption::Abstain, weight: Decimal::percent(35), }, ], })) } ```",
+          "description": "This message type allows the contract interact with the [x/gov] module in order to cast votes.\n\n[x/gov]: https://github.com/cosmos/cosmos-sdk/tree/v0.45.12/x/gov\n\n## Examples\n\nCast a simple vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); use cosmwasm_std::{GovMsg, VoteOption};\n\n#[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::Vote { proposal_id: 4, option: VoteOption::Yes, })) } ```\n\nCast a weighted vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); # #[cfg(feature = \"cosmwasm_1_2\")] use cosmwasm_std::{Decimal, GovMsg, VoteOption, WeightedVoteOption};\n\n# #[cfg(feature = \"cosmwasm_1_2\")] #[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::VoteWeighted { proposal_id: 4, options: vec![ WeightedVoteOption { option: VoteOption::Yes, weight: Decimal::percent(65), }, WeightedVoteOption { option: VoteOption::Abstain, weight: Decimal::percent(35), }, ], })) } ```",
           "oneOf": [
             {
               "description": "This maps directly to [MsgVote](https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/gov/v1beta1/tx.proto#L46-L56) in the Cosmos SDK with voter set to the contract address.",
@@ -3866,24 +4106,25 @@
                 "vote": {
                   "type": "object",
                   "required": [
-                    "proposal_id",
-                    "vote"
+                    "option",
+                    "proposal_id"
                   ],
                   "properties": {
-                    "proposal_id": {
-                      "type": "integer",
-                      "format": "uint64",
-                      "minimum": 0.0
-                    },
-                    "vote": {
-                      "description": "The vote option.\n\nThis should be called \"option\" for consistency with Cosmos SDK. Sorry for that. See <https://github.com/CosmWasm/cosmwasm/issues/1571>.",
+                    "option": {
+                      "description": "The vote option.\n\nThis used to be called \"vote\", but was changed for consistency with Cosmos SDK.",
                       "allOf": [
                         {
                           "$ref": "#/definitions/VoteOption"
                         }
                       ]
+                    },
+                    "proposal_id": {
+                      "type": "integer",
+                      "format": "uint64",
+                      "minimum": 0.0
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -3913,7 +4154,8 @@
                       "format": "uint64",
                       "minimum": 0.0
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -3951,6 +4193,13 @@
                       "description": "existing channel to send the tokens over",
                       "type": "string"
                     },
+                    "memo": {
+                      "description": "An optional memo. See the blog post [\"Moving Beyond Simple Token Transfers\"](https://medium.com/the-interchain-foundation/moving-beyond-simple-token-transfers-d42b2b1dc29b) for more information.\n\nThere is no difference between setting this to `None` or an empty string.\n\nThis field is only supported on chains with CosmWasm >= 2.0 and silently ignored on older chains. If you need support for both 1.x and 2.x chain with the same codebase, it is recommended to use `CosmosMsg::Stargate` with a custom MsgTransfer protobuf encoder instead.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "timeout": {
                       "description": "when packet times out, measured on remote chain",
                       "allOf": [
@@ -3963,7 +4212,8 @@
                       "description": "address on the remote chain to receive these tokens",
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -3997,7 +4247,8 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -4018,7 +4269,8 @@
                     "channel_id": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -4049,7 +4301,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "IbcTimeoutBlock": {
           "description": "IBCTimeoutHeight Height is a monotonically increasing data type that can be compared against another Height for the purposes of updating and freezing clients. Ordering is (revision_number, timeout_height)",
@@ -4071,7 +4324,8 @@
               "format": "uint64",
               "minimum": 0.0
             }
-          }
+          },
+          "additionalProperties": false
         },
         "StakingMsg": {
           "description": "The message types of the staking module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto",
@@ -4096,7 +4350,8 @@
                     "validator": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -4121,7 +4376,8 @@
                     "validator": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -4150,7 +4406,8 @@
                     "src_validator": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -4217,7 +4474,8 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -4267,7 +4525,8 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -4321,7 +4580,8 @@
                     "salt": {
                       "$ref": "#/definitions/Binary"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -4358,7 +4618,8 @@
                       "format": "uint64",
                       "minimum": 0.0
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -4383,7 +4644,8 @@
                     "contract_addr": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -4404,7 +4666,8 @@
                     "contract_addr": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -4424,7 +4687,8 @@
             "weight": {
               "$ref": "#/definitions/Decimal"
             }
-          }
+          },
+          "additionalProperties": false
         }
       }
     },
@@ -5119,6 +5383,23 @@
           "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
           "type": "string"
         },
+        "AnyMsg": {
+          "description": "A message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto). This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+          "type": "object",
+          "required": [
+            "type_url",
+            "value"
+          ],
+          "properties": {
+            "type_url": {
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/definitions/Binary"
+            }
+          },
+          "additionalProperties": false
+        },
         "BankMsg": {
           "description": "The message types of the bank module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto",
           "oneOf": [
@@ -5145,7 +5426,8 @@
                     "to_address": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -5169,7 +5451,8 @@
                         "$ref": "#/definitions/Coin"
                       }
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -5193,7 +5476,8 @@
             "denom": {
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "CosmosMsg_for_Empty": {
           "oneOf": [
@@ -5246,7 +5530,8 @@
               "additionalProperties": false
             },
             {
-              "description": "A Stargate message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto). This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+              "description": "This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+              "deprecated": true,
               "type": "object",
               "required": [
                 "stargate"
@@ -5265,7 +5550,21 @@
                     "value": {
                       "$ref": "#/definitions/Binary"
                     }
-                  }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "`CosmosMsg::Any` is the replaces the \"stargate message\" – a message wrapped in a [protobuf Any](https://protobuf.dev/programming-guides/proto3/#any) that is supported by the chain. It behaves the same as `CosmosMsg::Stargate` but has a better name and slightly improved syntax.\n\nThis is feature-gated at compile time with `cosmwasm_2_0` because a chain running CosmWasm < 2.0 cannot process this.",
+              "type": "object",
+              "required": [
+                "any"
+              ],
+              "properties": {
+                "any": {
+                  "$ref": "#/definitions/AnyMsg"
                 }
               },
               "additionalProperties": false
@@ -5332,7 +5631,8 @@
                       "description": "The `withdraw_address`",
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -5354,7 +5654,34 @@
                       "description": "The `validator_address`",
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "This is translated to a [[MsgFundCommunityPool](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#LL69C1-L76C2). `depositor` is automatically filled with the current contract's address.",
+              "type": "object",
+              "required": [
+                "fund_community_pool"
+              ],
+              "properties": {
+                "fund_community_pool": {
+                  "type": "object",
+                  "required": [
+                    "amount"
+                  ],
+                  "properties": {
+                    "amount": {
+                      "description": "The amount to spend",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/Coin"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -5362,11 +5689,12 @@
           ]
         },
         "Empty": {
-          "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
-          "type": "object"
+          "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressible in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
+          "type": "object",
+          "additionalProperties": false
         },
         "GovMsg": {
-          "description": "This message type allows the contract interact with the [x/gov] module in order to cast votes.\n\n[x/gov]: https://github.com/cosmos/cosmos-sdk/tree/v0.45.12/x/gov\n\n## Examples\n\nCast a simple vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); use cosmwasm_std::{GovMsg, VoteOption};\n\n#[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::Vote { proposal_id: 4, vote: VoteOption::Yes, })) } ```\n\nCast a weighted vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); # #[cfg(feature = \"cosmwasm_1_2\")] use cosmwasm_std::{Decimal, GovMsg, VoteOption, WeightedVoteOption};\n\n# #[cfg(feature = \"cosmwasm_1_2\")] #[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::VoteWeighted { proposal_id: 4, options: vec![ WeightedVoteOption { option: VoteOption::Yes, weight: Decimal::percent(65), }, WeightedVoteOption { option: VoteOption::Abstain, weight: Decimal::percent(35), }, ], })) } ```",
+          "description": "This message type allows the contract interact with the [x/gov] module in order to cast votes.\n\n[x/gov]: https://github.com/cosmos/cosmos-sdk/tree/v0.45.12/x/gov\n\n## Examples\n\nCast a simple vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); use cosmwasm_std::{GovMsg, VoteOption};\n\n#[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::Vote { proposal_id: 4, option: VoteOption::Yes, })) } ```\n\nCast a weighted vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); # #[cfg(feature = \"cosmwasm_1_2\")] use cosmwasm_std::{Decimal, GovMsg, VoteOption, WeightedVoteOption};\n\n# #[cfg(feature = \"cosmwasm_1_2\")] #[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::VoteWeighted { proposal_id: 4, options: vec![ WeightedVoteOption { option: VoteOption::Yes, weight: Decimal::percent(65), }, WeightedVoteOption { option: VoteOption::Abstain, weight: Decimal::percent(35), }, ], })) } ```",
           "oneOf": [
             {
               "description": "This maps directly to [MsgVote](https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/gov/v1beta1/tx.proto#L46-L56) in the Cosmos SDK with voter set to the contract address.",
@@ -5378,24 +5706,25 @@
                 "vote": {
                   "type": "object",
                   "required": [
-                    "proposal_id",
-                    "vote"
+                    "option",
+                    "proposal_id"
                   ],
                   "properties": {
-                    "proposal_id": {
-                      "type": "integer",
-                      "format": "uint64",
-                      "minimum": 0.0
-                    },
-                    "vote": {
-                      "description": "The vote option.\n\nThis should be called \"option\" for consistency with Cosmos SDK. Sorry for that. See <https://github.com/CosmWasm/cosmwasm/issues/1571>.",
+                    "option": {
+                      "description": "The vote option.\n\nThis used to be called \"vote\", but was changed for consistency with Cosmos SDK.",
                       "allOf": [
                         {
                           "$ref": "#/definitions/VoteOption"
                         }
                       ]
+                    },
+                    "proposal_id": {
+                      "type": "integer",
+                      "format": "uint64",
+                      "minimum": 0.0
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -5425,7 +5754,8 @@
                       "format": "uint64",
                       "minimum": 0.0
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -5463,6 +5793,13 @@
                       "description": "existing channel to send the tokens over",
                       "type": "string"
                     },
+                    "memo": {
+                      "description": "An optional memo. See the blog post [\"Moving Beyond Simple Token Transfers\"](https://medium.com/the-interchain-foundation/moving-beyond-simple-token-transfers-d42b2b1dc29b) for more information.\n\nThere is no difference between setting this to `None` or an empty string.\n\nThis field is only supported on chains with CosmWasm >= 2.0 and silently ignored on older chains. If you need support for both 1.x and 2.x chain with the same codebase, it is recommended to use `CosmosMsg::Stargate` with a custom MsgTransfer protobuf encoder instead.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "timeout": {
                       "description": "when packet times out, measured on remote chain",
                       "allOf": [
@@ -5475,7 +5812,8 @@
                       "description": "address on the remote chain to receive these tokens",
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -5509,7 +5847,8 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -5530,7 +5869,8 @@
                     "channel_id": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -5561,7 +5901,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "IbcTimeoutBlock": {
           "description": "IBCTimeoutHeight Height is a monotonically increasing data type that can be compared against another Height for the purposes of updating and freezing clients. Ordering is (revision_number, timeout_height)",
@@ -5583,7 +5924,8 @@
               "format": "uint64",
               "minimum": 0.0
             }
-          }
+          },
+          "additionalProperties": false
         },
         "StakingMsg": {
           "description": "The message types of the staking module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto",
@@ -5608,7 +5950,8 @@
                     "validator": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -5633,7 +5976,8 @@
                     "validator": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -5662,7 +6006,8 @@
                     "src_validator": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -5729,7 +6074,8 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -5779,7 +6125,8 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -5833,7 +6180,8 @@
                     "salt": {
                       "$ref": "#/definitions/Binary"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -5870,7 +6218,8 @@
                       "format": "uint64",
                       "minimum": 0.0
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -5895,7 +6244,8 @@
                     "contract_addr": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -5916,7 +6266,8 @@
                     "contract_addr": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -5936,7 +6287,8 @@
             "weight": {
               "$ref": "#/definitions/Decimal"
             }
-          }
+          },
+          "additionalProperties": false
         }
       }
     },
@@ -6024,6 +6376,23 @@
           "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
           "type": "string"
         },
+        "AnyMsg": {
+          "description": "A message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto). This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+          "type": "object",
+          "required": [
+            "type_url",
+            "value"
+          ],
+          "properties": {
+            "type_url": {
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/definitions/Binary"
+            }
+          },
+          "additionalProperties": false
+        },
         "BankMsg": {
           "description": "The message types of the bank module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto",
           "oneOf": [
@@ -6050,7 +6419,8 @@
                     "to_address": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -6074,7 +6444,8 @@
                         "$ref": "#/definitions/Coin"
                       }
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -6098,7 +6469,8 @@
             "denom": {
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "CosmosMsg_for_Empty": {
           "oneOf": [
@@ -6151,7 +6523,8 @@
               "additionalProperties": false
             },
             {
-              "description": "A Stargate message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto). This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+              "description": "This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+              "deprecated": true,
               "type": "object",
               "required": [
                 "stargate"
@@ -6170,7 +6543,21 @@
                     "value": {
                       "$ref": "#/definitions/Binary"
                     }
-                  }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "`CosmosMsg::Any` is the replaces the \"stargate message\" – a message wrapped in a [protobuf Any](https://protobuf.dev/programming-guides/proto3/#any) that is supported by the chain. It behaves the same as `CosmosMsg::Stargate` but has a better name and slightly improved syntax.\n\nThis is feature-gated at compile time with `cosmwasm_2_0` because a chain running CosmWasm < 2.0 cannot process this.",
+              "type": "object",
+              "required": [
+                "any"
+              ],
+              "properties": {
+                "any": {
+                  "$ref": "#/definitions/AnyMsg"
                 }
               },
               "additionalProperties": false
@@ -6237,7 +6624,8 @@
                       "description": "The `withdraw_address`",
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -6259,7 +6647,34 @@
                       "description": "The `validator_address`",
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "This is translated to a [[MsgFundCommunityPool](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#LL69C1-L76C2). `depositor` is automatically filled with the current contract's address.",
+              "type": "object",
+              "required": [
+                "fund_community_pool"
+              ],
+              "properties": {
+                "fund_community_pool": {
+                  "type": "object",
+                  "required": [
+                    "amount"
+                  ],
+                  "properties": {
+                    "amount": {
+                      "description": "The amount to spend",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/Coin"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -6267,11 +6682,12 @@
           ]
         },
         "Empty": {
-          "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
-          "type": "object"
+          "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressible in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
+          "type": "object",
+          "additionalProperties": false
         },
         "GovMsg": {
-          "description": "This message type allows the contract interact with the [x/gov] module in order to cast votes.\n\n[x/gov]: https://github.com/cosmos/cosmos-sdk/tree/v0.45.12/x/gov\n\n## Examples\n\nCast a simple vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); use cosmwasm_std::{GovMsg, VoteOption};\n\n#[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::Vote { proposal_id: 4, vote: VoteOption::Yes, })) } ```\n\nCast a weighted vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); # #[cfg(feature = \"cosmwasm_1_2\")] use cosmwasm_std::{Decimal, GovMsg, VoteOption, WeightedVoteOption};\n\n# #[cfg(feature = \"cosmwasm_1_2\")] #[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::VoteWeighted { proposal_id: 4, options: vec![ WeightedVoteOption { option: VoteOption::Yes, weight: Decimal::percent(65), }, WeightedVoteOption { option: VoteOption::Abstain, weight: Decimal::percent(35), }, ], })) } ```",
+          "description": "This message type allows the contract interact with the [x/gov] module in order to cast votes.\n\n[x/gov]: https://github.com/cosmos/cosmos-sdk/tree/v0.45.12/x/gov\n\n## Examples\n\nCast a simple vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); use cosmwasm_std::{GovMsg, VoteOption};\n\n#[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::Vote { proposal_id: 4, option: VoteOption::Yes, })) } ```\n\nCast a weighted vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); # #[cfg(feature = \"cosmwasm_1_2\")] use cosmwasm_std::{Decimal, GovMsg, VoteOption, WeightedVoteOption};\n\n# #[cfg(feature = \"cosmwasm_1_2\")] #[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::VoteWeighted { proposal_id: 4, options: vec![ WeightedVoteOption { option: VoteOption::Yes, weight: Decimal::percent(65), }, WeightedVoteOption { option: VoteOption::Abstain, weight: Decimal::percent(35), }, ], })) } ```",
           "oneOf": [
             {
               "description": "This maps directly to [MsgVote](https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/gov/v1beta1/tx.proto#L46-L56) in the Cosmos SDK with voter set to the contract address.",
@@ -6283,24 +6699,25 @@
                 "vote": {
                   "type": "object",
                   "required": [
-                    "proposal_id",
-                    "vote"
+                    "option",
+                    "proposal_id"
                   ],
                   "properties": {
-                    "proposal_id": {
-                      "type": "integer",
-                      "format": "uint64",
-                      "minimum": 0.0
-                    },
-                    "vote": {
-                      "description": "The vote option.\n\nThis should be called \"option\" for consistency with Cosmos SDK. Sorry for that. See <https://github.com/CosmWasm/cosmwasm/issues/1571>.",
+                    "option": {
+                      "description": "The vote option.\n\nThis used to be called \"vote\", but was changed for consistency with Cosmos SDK.",
                       "allOf": [
                         {
                           "$ref": "#/definitions/VoteOption"
                         }
                       ]
+                    },
+                    "proposal_id": {
+                      "type": "integer",
+                      "format": "uint64",
+                      "minimum": 0.0
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -6330,7 +6747,8 @@
                       "format": "uint64",
                       "minimum": 0.0
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -6368,6 +6786,13 @@
                       "description": "existing channel to send the tokens over",
                       "type": "string"
                     },
+                    "memo": {
+                      "description": "An optional memo. See the blog post [\"Moving Beyond Simple Token Transfers\"](https://medium.com/the-interchain-foundation/moving-beyond-simple-token-transfers-d42b2b1dc29b) for more information.\n\nThere is no difference between setting this to `None` or an empty string.\n\nThis field is only supported on chains with CosmWasm >= 2.0 and silently ignored on older chains. If you need support for both 1.x and 2.x chain with the same codebase, it is recommended to use `CosmosMsg::Stargate` with a custom MsgTransfer protobuf encoder instead.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "timeout": {
                       "description": "when packet times out, measured on remote chain",
                       "allOf": [
@@ -6380,7 +6805,8 @@
                       "description": "address on the remote chain to receive these tokens",
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -6414,7 +6840,8 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -6435,7 +6862,8 @@
                     "channel_id": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -6466,7 +6894,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "IbcTimeoutBlock": {
           "description": "IBCTimeoutHeight Height is a monotonically increasing data type that can be compared against another Height for the purposes of updating and freezing clients. Ordering is (revision_number, timeout_height)",
@@ -6488,7 +6917,8 @@
               "format": "uint64",
               "minimum": 0.0
             }
-          }
+          },
+          "additionalProperties": false
         },
         "StakingMsg": {
           "description": "The message types of the staking module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto",
@@ -6513,7 +6943,8 @@
                     "validator": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -6538,7 +6969,8 @@
                     "validator": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -6567,7 +6999,8 @@
                     "src_validator": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -6634,7 +7067,8 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -6684,7 +7118,8 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -6738,7 +7173,8 @@
                     "salt": {
                       "$ref": "#/definitions/Binary"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -6775,7 +7211,8 @@
                       "format": "uint64",
                       "minimum": 0.0
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -6800,7 +7237,8 @@
                     "contract_addr": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -6821,7 +7259,8 @@
                     "contract_addr": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -6841,7 +7280,8 @@
             "weight": {
               "$ref": "#/definitions/Decimal"
             }
-          }
+          },
+          "additionalProperties": false
         }
       }
     },
@@ -6929,6 +7369,23 @@
           "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
           "type": "string"
         },
+        "AnyMsg": {
+          "description": "A message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto). This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+          "type": "object",
+          "required": [
+            "type_url",
+            "value"
+          ],
+          "properties": {
+            "type_url": {
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/definitions/Binary"
+            }
+          },
+          "additionalProperties": false
+        },
         "BankMsg": {
           "description": "The message types of the bank module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto",
           "oneOf": [
@@ -6955,7 +7412,8 @@
                     "to_address": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -6979,7 +7437,8 @@
                         "$ref": "#/definitions/Coin"
                       }
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -7003,7 +7462,8 @@
             "denom": {
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "CosmosMsg_for_Empty": {
           "oneOf": [
@@ -7056,7 +7516,8 @@
               "additionalProperties": false
             },
             {
-              "description": "A Stargate message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto). This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+              "description": "This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+              "deprecated": true,
               "type": "object",
               "required": [
                 "stargate"
@@ -7075,7 +7536,21 @@
                     "value": {
                       "$ref": "#/definitions/Binary"
                     }
-                  }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "`CosmosMsg::Any` is the replaces the \"stargate message\" – a message wrapped in a [protobuf Any](https://protobuf.dev/programming-guides/proto3/#any) that is supported by the chain. It behaves the same as `CosmosMsg::Stargate` but has a better name and slightly improved syntax.\n\nThis is feature-gated at compile time with `cosmwasm_2_0` because a chain running CosmWasm < 2.0 cannot process this.",
+              "type": "object",
+              "required": [
+                "any"
+              ],
+              "properties": {
+                "any": {
+                  "$ref": "#/definitions/AnyMsg"
                 }
               },
               "additionalProperties": false
@@ -7142,7 +7617,8 @@
                       "description": "The `withdraw_address`",
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -7164,7 +7640,34 @@
                       "description": "The `validator_address`",
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "This is translated to a [[MsgFundCommunityPool](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#LL69C1-L76C2). `depositor` is automatically filled with the current contract's address.",
+              "type": "object",
+              "required": [
+                "fund_community_pool"
+              ],
+              "properties": {
+                "fund_community_pool": {
+                  "type": "object",
+                  "required": [
+                    "amount"
+                  ],
+                  "properties": {
+                    "amount": {
+                      "description": "The amount to spend",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/Coin"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -7172,11 +7675,12 @@
           ]
         },
         "Empty": {
-          "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
-          "type": "object"
+          "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressible in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
+          "type": "object",
+          "additionalProperties": false
         },
         "GovMsg": {
-          "description": "This message type allows the contract interact with the [x/gov] module in order to cast votes.\n\n[x/gov]: https://github.com/cosmos/cosmos-sdk/tree/v0.45.12/x/gov\n\n## Examples\n\nCast a simple vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); use cosmwasm_std::{GovMsg, VoteOption};\n\n#[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::Vote { proposal_id: 4, vote: VoteOption::Yes, })) } ```\n\nCast a weighted vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); # #[cfg(feature = \"cosmwasm_1_2\")] use cosmwasm_std::{Decimal, GovMsg, VoteOption, WeightedVoteOption};\n\n# #[cfg(feature = \"cosmwasm_1_2\")] #[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::VoteWeighted { proposal_id: 4, options: vec![ WeightedVoteOption { option: VoteOption::Yes, weight: Decimal::percent(65), }, WeightedVoteOption { option: VoteOption::Abstain, weight: Decimal::percent(35), }, ], })) } ```",
+          "description": "This message type allows the contract interact with the [x/gov] module in order to cast votes.\n\n[x/gov]: https://github.com/cosmos/cosmos-sdk/tree/v0.45.12/x/gov\n\n## Examples\n\nCast a simple vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); use cosmwasm_std::{GovMsg, VoteOption};\n\n#[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::Vote { proposal_id: 4, option: VoteOption::Yes, })) } ```\n\nCast a weighted vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); # #[cfg(feature = \"cosmwasm_1_2\")] use cosmwasm_std::{Decimal, GovMsg, VoteOption, WeightedVoteOption};\n\n# #[cfg(feature = \"cosmwasm_1_2\")] #[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::VoteWeighted { proposal_id: 4, options: vec![ WeightedVoteOption { option: VoteOption::Yes, weight: Decimal::percent(65), }, WeightedVoteOption { option: VoteOption::Abstain, weight: Decimal::percent(35), }, ], })) } ```",
           "oneOf": [
             {
               "description": "This maps directly to [MsgVote](https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/gov/v1beta1/tx.proto#L46-L56) in the Cosmos SDK with voter set to the contract address.",
@@ -7188,24 +7692,25 @@
                 "vote": {
                   "type": "object",
                   "required": [
-                    "proposal_id",
-                    "vote"
+                    "option",
+                    "proposal_id"
                   ],
                   "properties": {
-                    "proposal_id": {
-                      "type": "integer",
-                      "format": "uint64",
-                      "minimum": 0.0
-                    },
-                    "vote": {
-                      "description": "The vote option.\n\nThis should be called \"option\" for consistency with Cosmos SDK. Sorry for that. See <https://github.com/CosmWasm/cosmwasm/issues/1571>.",
+                    "option": {
+                      "description": "The vote option.\n\nThis used to be called \"vote\", but was changed for consistency with Cosmos SDK.",
                       "allOf": [
                         {
                           "$ref": "#/definitions/VoteOption"
                         }
                       ]
+                    },
+                    "proposal_id": {
+                      "type": "integer",
+                      "format": "uint64",
+                      "minimum": 0.0
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -7235,7 +7740,8 @@
                       "format": "uint64",
                       "minimum": 0.0
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -7273,6 +7779,13 @@
                       "description": "existing channel to send the tokens over",
                       "type": "string"
                     },
+                    "memo": {
+                      "description": "An optional memo. See the blog post [\"Moving Beyond Simple Token Transfers\"](https://medium.com/the-interchain-foundation/moving-beyond-simple-token-transfers-d42b2b1dc29b) for more information.\n\nThere is no difference between setting this to `None` or an empty string.\n\nThis field is only supported on chains with CosmWasm >= 2.0 and silently ignored on older chains. If you need support for both 1.x and 2.x chain with the same codebase, it is recommended to use `CosmosMsg::Stargate` with a custom MsgTransfer protobuf encoder instead.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "timeout": {
                       "description": "when packet times out, measured on remote chain",
                       "allOf": [
@@ -7285,7 +7798,8 @@
                       "description": "address on the remote chain to receive these tokens",
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -7319,7 +7833,8 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -7340,7 +7855,8 @@
                     "channel_id": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -7371,7 +7887,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "IbcTimeoutBlock": {
           "description": "IBCTimeoutHeight Height is a monotonically increasing data type that can be compared against another Height for the purposes of updating and freezing clients. Ordering is (revision_number, timeout_height)",
@@ -7393,7 +7910,8 @@
               "format": "uint64",
               "minimum": 0.0
             }
-          }
+          },
+          "additionalProperties": false
         },
         "StakingMsg": {
           "description": "The message types of the staking module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto",
@@ -7418,7 +7936,8 @@
                     "validator": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -7443,7 +7962,8 @@
                     "validator": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -7472,7 +7992,8 @@
                     "src_validator": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -7539,7 +8060,8 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -7589,7 +8111,8 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -7643,7 +8166,8 @@
                     "salt": {
                       "$ref": "#/definitions/Binary"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -7680,7 +8204,8 @@
                       "format": "uint64",
                       "minimum": 0.0
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -7705,7 +8230,8 @@
                     "contract_addr": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -7726,7 +8252,8 @@
                     "contract_addr": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -7746,7 +8273,8 @@
             "weight": {
               "$ref": "#/definitions/Decimal"
             }
-          }
+          },
+          "additionalProperties": false
         }
       }
     },
@@ -7834,6 +8362,23 @@
           "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
           "type": "string"
         },
+        "AnyMsg": {
+          "description": "A message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto). This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+          "type": "object",
+          "required": [
+            "type_url",
+            "value"
+          ],
+          "properties": {
+            "type_url": {
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/definitions/Binary"
+            }
+          },
+          "additionalProperties": false
+        },
         "BankMsg": {
           "description": "The message types of the bank module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto",
           "oneOf": [
@@ -7860,7 +8405,8 @@
                     "to_address": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -7884,7 +8430,8 @@
                         "$ref": "#/definitions/Coin"
                       }
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -7908,7 +8455,8 @@
             "denom": {
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "CosmosMsg_for_Empty": {
           "oneOf": [
@@ -7961,7 +8509,8 @@
               "additionalProperties": false
             },
             {
-              "description": "A Stargate message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto). This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+              "description": "This is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+              "deprecated": true,
               "type": "object",
               "required": [
                 "stargate"
@@ -7980,7 +8529,21 @@
                     "value": {
                       "$ref": "#/definitions/Binary"
                     }
-                  }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "`CosmosMsg::Any` is the replaces the \"stargate message\" – a message wrapped in a [protobuf Any](https://protobuf.dev/programming-guides/proto3/#any) that is supported by the chain. It behaves the same as `CosmosMsg::Stargate` but has a better name and slightly improved syntax.\n\nThis is feature-gated at compile time with `cosmwasm_2_0` because a chain running CosmWasm < 2.0 cannot process this.",
+              "type": "object",
+              "required": [
+                "any"
+              ],
+              "properties": {
+                "any": {
+                  "$ref": "#/definitions/AnyMsg"
                 }
               },
               "additionalProperties": false
@@ -8047,7 +8610,8 @@
                       "description": "The `withdraw_address`",
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -8069,7 +8633,34 @@
                       "description": "The `validator_address`",
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "This is translated to a [[MsgFundCommunityPool](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#LL69C1-L76C2). `depositor` is automatically filled with the current contract's address.",
+              "type": "object",
+              "required": [
+                "fund_community_pool"
+              ],
+              "properties": {
+                "fund_community_pool": {
+                  "type": "object",
+                  "required": [
+                    "amount"
+                  ],
+                  "properties": {
+                    "amount": {
+                      "description": "The amount to spend",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/Coin"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -8077,11 +8668,12 @@
           ]
         },
         "Empty": {
-          "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
-          "type": "object"
+          "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressible in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
+          "type": "object",
+          "additionalProperties": false
         },
         "GovMsg": {
-          "description": "This message type allows the contract interact with the [x/gov] module in order to cast votes.\n\n[x/gov]: https://github.com/cosmos/cosmos-sdk/tree/v0.45.12/x/gov\n\n## Examples\n\nCast a simple vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); use cosmwasm_std::{GovMsg, VoteOption};\n\n#[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::Vote { proposal_id: 4, vote: VoteOption::Yes, })) } ```\n\nCast a weighted vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); # #[cfg(feature = \"cosmwasm_1_2\")] use cosmwasm_std::{Decimal, GovMsg, VoteOption, WeightedVoteOption};\n\n# #[cfg(feature = \"cosmwasm_1_2\")] #[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::VoteWeighted { proposal_id: 4, options: vec![ WeightedVoteOption { option: VoteOption::Yes, weight: Decimal::percent(65), }, WeightedVoteOption { option: VoteOption::Abstain, weight: Decimal::percent(35), }, ], })) } ```",
+          "description": "This message type allows the contract interact with the [x/gov] module in order to cast votes.\n\n[x/gov]: https://github.com/cosmos/cosmos-sdk/tree/v0.45.12/x/gov\n\n## Examples\n\nCast a simple vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); use cosmwasm_std::{GovMsg, VoteOption};\n\n#[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::Vote { proposal_id: 4, option: VoteOption::Yes, })) } ```\n\nCast a weighted vote:\n\n``` # use cosmwasm_std::{ #     HexBinary, #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo, #     Response, QueryResponse, # }; # type ExecuteMsg = (); # #[cfg(feature = \"cosmwasm_1_2\")] use cosmwasm_std::{Decimal, GovMsg, VoteOption, WeightedVoteOption};\n\n# #[cfg(feature = \"cosmwasm_1_2\")] #[entry_point] pub fn execute( deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg, ) -> Result<Response, StdError> { // ... Ok(Response::new().add_message(GovMsg::VoteWeighted { proposal_id: 4, options: vec![ WeightedVoteOption { option: VoteOption::Yes, weight: Decimal::percent(65), }, WeightedVoteOption { option: VoteOption::Abstain, weight: Decimal::percent(35), }, ], })) } ```",
           "oneOf": [
             {
               "description": "This maps directly to [MsgVote](https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/gov/v1beta1/tx.proto#L46-L56) in the Cosmos SDK with voter set to the contract address.",
@@ -8093,24 +8685,25 @@
                 "vote": {
                   "type": "object",
                   "required": [
-                    "proposal_id",
-                    "vote"
+                    "option",
+                    "proposal_id"
                   ],
                   "properties": {
-                    "proposal_id": {
-                      "type": "integer",
-                      "format": "uint64",
-                      "minimum": 0.0
-                    },
-                    "vote": {
-                      "description": "The vote option.\n\nThis should be called \"option\" for consistency with Cosmos SDK. Sorry for that. See <https://github.com/CosmWasm/cosmwasm/issues/1571>.",
+                    "option": {
+                      "description": "The vote option.\n\nThis used to be called \"vote\", but was changed for consistency with Cosmos SDK.",
                       "allOf": [
                         {
                           "$ref": "#/definitions/VoteOption"
                         }
                       ]
+                    },
+                    "proposal_id": {
+                      "type": "integer",
+                      "format": "uint64",
+                      "minimum": 0.0
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -8140,7 +8733,8 @@
                       "format": "uint64",
                       "minimum": 0.0
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -8178,6 +8772,13 @@
                       "description": "existing channel to send the tokens over",
                       "type": "string"
                     },
+                    "memo": {
+                      "description": "An optional memo. See the blog post [\"Moving Beyond Simple Token Transfers\"](https://medium.com/the-interchain-foundation/moving-beyond-simple-token-transfers-d42b2b1dc29b) for more information.\n\nThere is no difference between setting this to `None` or an empty string.\n\nThis field is only supported on chains with CosmWasm >= 2.0 and silently ignored on older chains. If you need support for both 1.x and 2.x chain with the same codebase, it is recommended to use `CosmosMsg::Stargate` with a custom MsgTransfer protobuf encoder instead.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "timeout": {
                       "description": "when packet times out, measured on remote chain",
                       "allOf": [
@@ -8190,7 +8791,8 @@
                       "description": "address on the remote chain to receive these tokens",
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -8224,7 +8826,8 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -8245,7 +8848,8 @@
                     "channel_id": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -8276,7 +8880,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "IbcTimeoutBlock": {
           "description": "IBCTimeoutHeight Height is a monotonically increasing data type that can be compared against another Height for the purposes of updating and freezing clients. Ordering is (revision_number, timeout_height)",
@@ -8298,7 +8903,8 @@
               "format": "uint64",
               "minimum": 0.0
             }
-          }
+          },
+          "additionalProperties": false
         },
         "StakingMsg": {
           "description": "The message types of the staking module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto",
@@ -8323,7 +8929,8 @@
                     "validator": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -8348,7 +8955,8 @@
                     "validator": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -8377,7 +8985,8 @@
                     "src_validator": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -8444,7 +9053,8 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -8494,7 +9104,8 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -8548,7 +9159,8 @@
                     "salt": {
                       "$ref": "#/definitions/Binary"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -8585,7 +9197,8 @@
                       "format": "uint64",
                       "minimum": 0.0
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -8610,7 +9223,8 @@
                     "contract_addr": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -8631,7 +9245,8 @@
                     "contract_addr": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -8651,7 +9266,8 @@
             "weight": {
               "$ref": "#/definitions/Decimal"
             }
-          }
+          },
+          "additionalProperties": false
         }
       }
     },

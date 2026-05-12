@@ -15,11 +15,11 @@ use crate::{
 };
 use dao_voting_cw4::ContractError;
 
-const DAO_ADDR: &str = "dao";
-const ADDR1: &str = "addr1";
-const ADDR2: &str = "addr2";
-const ADDR3: &str = "addr3";
-const ADDR4: &str = "addr4";
+const DAO_ADDR: &str = "cosmwasm1vwr8z00ty7mqnk4dtchr9mn9j96nuh6w9v55nvy575c4rp0ha5xqwujcc7";
+const ADDR1: &str = "cosmwasm14ch5q26mhx3jk5cxl88t278nper264ce5fa7agjr4cw0yfjj7c6q56drym";
+const ADDR2: &str = "cosmwasm1cq2j7y4utseeatek2alfy5ttaphjrtdxqqz0sn820v9jupy0seuqmh8c9s";
+const ADDR3: &str = "cosmwasm1384tqgn4nknw9dk7rt5u5axd5g6zwrsc4p8qed22t329h803205qhm564r";
+const ADDR4: &str = "cosmwasm1q5nfz2u8guyfkjnyy2qw8kgdxeryae0jxuyaumze8ygqqxymrres6seka8";
 
 fn instantiate_voting(app: &mut App, voting_id: u64, msg: InstantiateMsg) -> Addr {
     app.instantiate_contract(

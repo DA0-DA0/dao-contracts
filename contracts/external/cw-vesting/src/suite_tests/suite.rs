@@ -30,7 +30,8 @@ impl Default for SuiteBuilder {
         Self {
             instantiate: InstantiateMsg {
                 owner: Some("owner".to_string()),
-                recipient: "recipient".to_string(),
+                recipient: "cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9"
+                    .to_string(),
                 title: "title".to_string(),
                 description: Some("description".to_string()),
                 total: Uint128::new(100_000_000),
@@ -54,7 +55,9 @@ impl SuiteBuilder {
                     storage,
                     &mock_env().block,
                     Validator {
-                        address: "validator".to_string(),
+                        address:
+                            "cosmwasm1lq40xgtqh3f3zt9prz4m74l6dlk506us9ydp68vj7su2utkhfmmqgusez5"
+                                .to_string(),
                         commission: Decimal::zero(), // zero percent comission to keep math simple.
                         max_commission: Decimal::percent(10),
                         max_change_rate: Decimal::percent(2),
@@ -68,7 +71,9 @@ impl SuiteBuilder {
                     storage,
                     &mock_env().block,
                     Validator {
-                        address: "otherone".to_string(),
+                        address:
+                            "cosmwasm18y3y37sqnrwv9klx58276jtvmf9ymtj8p7qsslsrmj8auq6u2ulselj2ts"
+                                .to_string(),
                         commission: Decimal::zero(), // zero percent comission to keep math simple.
                         max_commission: Decimal::percent(10),
                         max_change_rate: Decimal::percent(2),
@@ -81,7 +86,9 @@ impl SuiteBuilder {
             let funds = coins(self.instantiate.total.u128(), denom);
             app.sudo(
                 BankSudo::Mint {
-                    to_address: "owner".to_string(),
+                    to_address:
+                        "cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053y"
+                            .to_string(),
                     amount: funds.clone(),
                 }
                 .into(),
@@ -96,7 +103,9 @@ impl SuiteBuilder {
         let vesting = app
             .instantiate_contract(
                 vesting_id,
-                Addr::unchecked("owner"),
+                Addr::unchecked(
+                    "cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053y",
+                ),
                 &self.instantiate,
                 &funds,
                 "cw_vesting",
@@ -271,7 +280,9 @@ impl Suite {
         self.app
             .execute_contract(
                 // anyone may call this method on a canceled vesting contract
-                Addr::unchecked("random"),
+                Addr::unchecked(
+                    "cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6",
+                ),
                 self.vesting.clone(),
                 &ExecuteMsg::WithdrawCanceledPayment { amount },
                 &[],

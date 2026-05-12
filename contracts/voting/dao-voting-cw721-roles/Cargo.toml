@@ -11,7 +11,7 @@ version = { workspace = true }
 crate-type = ["cdylib", "rlib"]
 
 [features]
-backtraces = ["cosmwasm-std/backtraces"]
+backtraces = ["cw-multi-test/backtrace"]
 library = []
 
 [dependencies]
@@ -25,6 +25,7 @@ cw721-base = { workspace = true, features = ["library"] }
 cw-ownable = { workspace = true }
 cw721 = { workspace = true }
 cw-utils = { workspace = true }
+cw-reply-compat = { workspace = true }
 cw2 = { workspace = true }
 cw4 = { workspace = true }
 thiserror = { workspace = true }

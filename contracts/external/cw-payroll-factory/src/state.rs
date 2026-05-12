@@ -25,7 +25,7 @@ impl IndexList<VestingContract> for TokenIndexes<'_> {
     }
 }
 
-pub fn vesting_contracts<'a>() -> IndexedMap<'a, &'a str, VestingContract, TokenIndexes<'a>> {
+pub fn vesting_contracts<'a>() -> IndexedMap<&'a str, VestingContract, TokenIndexes<'a>> {
     let indexes = TokenIndexes {
         instantiator: MultiIndex::new(
             |_pk: &[u8], d: &VestingContract| d.instantiator.clone(),

@@ -6,7 +6,7 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw20::{Cw20Coin, TokenInfoResponse};
-use cw_utils::parse_reply_instantiate_data;
+use cw_reply_compat::parse_reply_instantiate_data;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_interface::voting::IsActiveResponse;
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};

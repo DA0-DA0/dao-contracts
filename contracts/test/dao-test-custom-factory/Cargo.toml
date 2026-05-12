@@ -13,7 +13,7 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = ["osmosis_tokenfactory"]
 # for more explicit tests, cargo test --features=backtraces
-backtraces = ["cosmwasm-std/backtraces"]
+backtraces = ["cw-multi-test/backtrace"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
 # different tokenfactory cosmos sdk module standards. enable corresponding
@@ -29,6 +29,7 @@ cw721-base = { workspace = true, features = ["library"] }
 cw-ownable = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }
+cw-reply-compat = { workspace = true }
 thiserror = { workspace = true }
 dao-dao-macros = { workspace = true }
 dao-interface = { workspace = true }

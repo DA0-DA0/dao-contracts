@@ -1,7 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_json_binary, Addr, Binary, Empty};
+use cosmwasm_std::{to_json_binary, Addr, Binary};
 use cw_utils::Duration;
 
 use super::*;
@@ -101,7 +101,7 @@ impl<'a> DaoTestingSuiteCw721<'a> {
         self.execute_smart_ok(
             staker,
             &dao.x.cw721_addr,
-            &cw721_base::msg::ExecuteMsg::<Empty, Empty>::SendNft {
+            &cw721_base::msg::ExecuteMsg::SendNft {
                 contract: dao.voting_module_addr.to_string(),
                 token_id: token_id.into(),
                 msg: Binary::default(),
@@ -148,18 +148,21 @@ impl DaoTestingSuite<Cw721DaoExtra> for DaoTestingSuiteCw721<'_> {
                     msg: to_json_binary(&cw721_base::msg::InstantiateMsg {
                         name: "Voting NFT".to_string(),
                         symbol: "VOTE".to_string(),
-                        minter: OWNER.to_string(),
+                        minter: Some(OWNER.to_string()),
+                        collection_info_extension: None,
+                        creator: None,
+                        withdraw_address: None,
                     })
                     .unwrap(),
                     initial_nfts: self
                         .initial_nfts
                         .iter()
                         .map(|x| {
-                            to_json_binary(&cw721_base::msg::ExecuteMsg::<Empty, Empty>::Mint {
+                            to_json_binary(&cw721_base::msg::ExecuteMsg::Mint {
                                 token_id: x.token_id.clone(),
                                 owner: x.owner.clone(),
                                 token_uri: None,
-                                extension: Empty {},
+                                extension: None,
                             })
                             .unwrap()
                         })

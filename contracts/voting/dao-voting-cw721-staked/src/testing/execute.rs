@@ -1,5 +1,5 @@
-use cosmwasm_std::{Addr, Binary, Empty};
-use cw721::Cw721ExecuteMsg;
+use cosmwasm_std::{Addr, Binary};
+use cw721_base::msg::ExecuteMsg as Cw721ExecuteMsg;
 use cw_multi_test::{App, AppResponse, Executor};
 
 use anyhow::Result as AnyResult;
@@ -44,11 +44,11 @@ pub fn mint_nft(
     app.execute_contract(
         addr!(sender),
         cw721.clone(),
-        &cw721_base::ExecuteMsg::Mint::<Empty, Empty> {
+        &Cw721ExecuteMsg::Mint {
             token_id: token_id.to_string(),
             owner: receiver.to_string(),
             token_uri: None,
-            extension: Empty::default(),
+            extension: None,
         },
         &[],
     )
@@ -117,6 +117,7 @@ pub fn claim_nfts(app: &mut App, module: &Addr, sender: &str) -> AnyResult<AppRe
     )
 }
 
+#[allow(dead_code)]
 pub fn claim_specific_nfts(
     app: &mut App,
     module: &Addr,
@@ -133,6 +134,7 @@ pub fn claim_specific_nfts(
     )
 }
 
+#[allow(dead_code)]
 pub fn claim_legacy_nfts(app: &mut App, module: &Addr, sender: &str) -> AnyResult<AppResponse> {
     app.execute_contract(
         addr!(sender),

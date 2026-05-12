@@ -47,13 +47,13 @@ use cw_storage_plus::{Bound, KeyDeserialize, Map, PrimaryKey};
 ///     Some(Uint128::new(3))
 /// );
 /// ```
-pub struct Wormhole<'n, K, V> {
-    namespace: &'n str,
+pub struct Wormhole<K, V> {
+    namespace: &'static str,
     k: PhantomData<K>,
     v: PhantomData<V>,
 }
 
-impl<'n, K, V> Wormhole<'n, K, V> {
+impl<K, V> Wormhole<K, V> {
     /// Creates a new map using the provided namespace.
     ///
     /// The namespace identifies the prefix in the SDK's prefix
@@ -67,7 +67,7 @@ impl<'n, K, V> Wormhole<'n, K, V> {
     ///
     /// pub const MAP: Wormhole<&Addr, Uint128> = Wormhole::new("unbonded_balances");
     /// ```
-    pub const fn new(namespace: &'n str) -> Self {
+    pub const fn new(namespace: &'static str) -> Self {
         Self {
             namespace,
             k: PhantomData,
@@ -76,7 +76,7 @@ impl<'n, K, V> Wormhole<'n, K, V> {
     }
 }
 
-impl<'n, K, V> Wormhole<'n, K, V>
+impl<K, V> Wormhole<K, V>
 where
     // 1. values in the map can be serialized, deserialized, and compared
     V: Serialize + DeserializeOwned + Default + Clone + PartialEq,
@@ -127,7 +127,7 @@ where
 
     /// Gets the snapshot map with a namespace with a lifetime equal
     /// to the lifetime of `&'a self`.
-    const fn snapshots<'a>(&self) -> Map<'n, &'a (K, u64), V> {
+    const fn snapshots<'a>(&self) -> Map<&'a (K, u64), V> {
         Map::new(self.namespace)
     }
 

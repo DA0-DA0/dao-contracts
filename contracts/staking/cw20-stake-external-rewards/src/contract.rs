@@ -84,37 +84,11 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
-    use cw20_stake_external_rewards_v1 as v1;
-
     let ContractVersion { version, .. } = get_contract_version(deps.storage)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
+    let _ = version;
     match msg {
-        MigrateMsg::FromV1 {} => {
-            if version == CONTRACT_VERSION {
-                // You can not possibly be migrating from v1 to v2 and
-                // also not changing your contract version.
-                return Err(ContractError::AlreadyMigrated {});
-            }
-            // From v1 -> v2 we moved `owner` out of config and into
-            // the `cw_ownable` package.
-            let config = v1::state::CONFIG.load(deps.storage)?;
-            cw_ownable::initialize_owner(
-                deps.storage,
-                deps.api,
-                config.owner.map(|a| a.into_string()).as_deref(),
-            )?;
-            let config = Config {
-                staking_contract: config.staking_contract,
-                reward_token: match config.reward_token {
-                    cw20_013::Denom::Native(n) => Denom::Native(n),
-                    cw20_013::Denom::Cw20(a) => Denom::Cw20(a),
-                },
-            };
-            CONFIG.save(deps.storage, &config)?;
-
-            Ok(Response::default())
-        }
+        MigrateMsg::FromV1 {} => Err(ContractError::V1MigrationUnsupported {}),
     }
 }
 

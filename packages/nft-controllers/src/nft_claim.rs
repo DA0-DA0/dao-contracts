@@ -31,10 +31,10 @@ impl NftClaim {
     }
 }
 
-pub struct NftClaims<'a>(Map<'a, (&'a Addr, &'a String), Expiration>);
+pub struct NftClaims<'a>(Map<(&'a Addr, &'a String), Expiration>);
 
-impl<'a> NftClaims<'a> {
-    pub const fn new(storage_key: &'a str) -> Self {
+impl NftClaims<'_> {
+    pub const fn new(storage_key: &'static str) -> Self {
         NftClaims(Map::new(storage_key))
     }
 
@@ -129,8 +129,10 @@ mod test {
     };
 
     use super::*;
-    const TEST_BAYC_TOKEN_ID: &str = "BAYC";
-    const TEST_CRYPTO_PUNKS_TOKEN_ID: &str = "CRYPTOPUNKS";
+    const TEST_BAYC_TOKEN_ID: &str =
+        "cosmwasm1dd4y2v9eezmztw05spxfp8lpdtgc2wq7yk5jr5q9d73yt80kxmnqlfy005";
+    const TEST_CRYPTO_PUNKS_TOKEN_ID: &str =
+        "cosmwasm1jmfdj63g8vfmzxnlrkw8atpcmc8tg7kgm2gk467j3wjesl09qkxq084twu";
     const TEST_EXPIRATION: Expiration = Expiration::AtHeight(10);
 
     #[test]
@@ -164,7 +166,9 @@ mod test {
         claims
             .create_nft_claims(
                 deps.as_mut().storage,
-                &Addr::unchecked("addr"),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
                 vec![TEST_BAYC_TOKEN_ID.into()],
                 TEST_EXPIRATION,
             )
@@ -173,7 +177,9 @@ mod test {
         // Assert that claims creates a map and there is one claim for the address.
         let saved_claims = claims
             .0
-            .prefix(&Addr::unchecked("addr"))
+            .prefix(&Addr::unchecked(
+                "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+            ))
             .range(deps.as_mut().storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
@@ -185,7 +191,9 @@ mod test {
         claims
             .create_nft_claims(
                 deps.as_mut().storage,
-                &Addr::unchecked("addr"),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
                 vec![TEST_CRYPTO_PUNKS_TOKEN_ID.into()],
                 TEST_EXPIRATION,
             )
@@ -194,7 +202,9 @@ mod test {
         // Assert that both claims exist for the address.
         let saved_claims = claims
             .0
-            .prefix(&Addr::unchecked("addr"))
+            .prefix(&Addr::unchecked(
+                "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+            ))
             .range(deps.as_mut().storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
@@ -208,7 +218,9 @@ mod test {
         claims
             .create_nft_claims(
                 deps.as_mut().storage,
-                &Addr::unchecked("addr2"),
+                &Addr::unchecked(
+                    "cosmwasm1cq2j7y4utseeatek2alfy5ttaphjrtdxqqz0sn820v9jupy0seuqmh8c9s",
+                ),
                 vec![TEST_CRYPTO_PUNKS_TOKEN_ID.to_string()],
                 TEST_EXPIRATION,
             )
@@ -217,14 +229,18 @@ mod test {
         // Assert that both claims exist for the address.
         let saved_claims = claims
             .0
-            .prefix(&Addr::unchecked("addr"))
+            .prefix(&Addr::unchecked(
+                "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+            ))
             .range(deps.as_mut().storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
 
         let saved_claims_addr2 = claims
             .0
-            .prefix(&Addr::unchecked("addr2"))
+            .prefix(&Addr::unchecked(
+                "cosmwasm1cq2j7y4utseeatek2alfy5ttaphjrtdxqqz0sn820v9jupy0seuqmh8c9s",
+            ))
             .range(deps.as_mut().storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
@@ -241,7 +257,9 @@ mod test {
         let error = claims
             .claim_nfts(
                 deps.as_mut().storage,
-                &Addr::unchecked("addr"),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
                 &["404".to_string()],
                 &env.block,
             )
@@ -256,14 +274,18 @@ mod test {
         claims
             .claim_nfts(
                 deps.as_mut().storage,
-                &Addr::unchecked("addr"),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
                 &[],
                 &mock_env().block,
             )
             .unwrap();
         let saved_claims = claims
             .0
-            .prefix(&Addr::unchecked("addr"))
+            .prefix(&Addr::unchecked(
+                "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+            ))
             .range_raw(deps.as_mut().storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
@@ -279,7 +301,9 @@ mod test {
         claims
             .create_nft_claims(
                 deps.as_mut().storage,
-                &Addr::unchecked("addr"),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
                 vec![TEST_CRYPTO_PUNKS_TOKEN_ID.to_string()],
                 Expiration::AtHeight(10),
             )
@@ -288,7 +312,9 @@ mod test {
         claims
             .create_nft_claims(
                 deps.as_mut().storage,
-                &Addr::unchecked("addr"),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
                 vec![TEST_BAYC_TOKEN_ID.to_string()],
                 Expiration::AtHeight(100),
             )
@@ -300,7 +326,9 @@ mod test {
         let error = claims
             .claim_nfts(
                 deps.as_mut().storage,
-                &Addr::unchecked("addr"),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
                 &[
                     TEST_CRYPTO_PUNKS_TOKEN_ID.to_string(),
                     TEST_BAYC_TOKEN_ID.to_string(),
@@ -317,7 +345,9 @@ mod test {
 
         let saved_claims = claims
             .0
-            .prefix(&Addr::unchecked("addr"))
+            .prefix(&Addr::unchecked(
+                "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+            ))
             .range(deps.as_mut().storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
@@ -337,7 +367,9 @@ mod test {
         claims
             .create_nft_claims(
                 deps.as_mut().storage,
-                &Addr::unchecked("addr"),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
                 vec![TEST_BAYC_TOKEN_ID.to_string()],
                 Expiration::AtHeight(10),
             )
@@ -346,7 +378,9 @@ mod test {
         claims
             .create_nft_claims(
                 deps.as_mut().storage,
-                &Addr::unchecked("addr"),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
                 vec![TEST_CRYPTO_PUNKS_TOKEN_ID.to_string()],
                 Expiration::AtHeight(100),
             )
@@ -358,7 +392,9 @@ mod test {
         claims
             .claim_nfts(
                 deps.as_mut().storage,
-                &Addr::unchecked("addr"),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
                 &[TEST_BAYC_TOKEN_ID.to_string()],
                 &env.block,
             )
@@ -366,7 +402,9 @@ mod test {
 
         let saved_claims = claims
             .0
-            .prefix(&Addr::unchecked("addr"))
+            .prefix(&Addr::unchecked(
+                "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+            ))
             .range(deps.as_mut().storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
@@ -384,7 +422,9 @@ mod test {
         claims
             .create_nft_claims(
                 deps.as_mut().storage,
-                &Addr::unchecked("addr"),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
                 vec![TEST_BAYC_TOKEN_ID.to_string()],
                 Expiration::AtHeight(10),
             )
@@ -393,7 +433,9 @@ mod test {
         claims
             .create_nft_claims(
                 deps.as_mut().storage,
-                &Addr::unchecked("addr"),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
                 vec![TEST_CRYPTO_PUNKS_TOKEN_ID.to_string()],
                 Expiration::AtHeight(100),
             )
@@ -405,7 +447,9 @@ mod test {
         claims
             .claim_nfts(
                 deps.as_mut().storage,
-                &Addr::unchecked("addr"),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
                 &[
                     TEST_BAYC_TOKEN_ID.to_string(),
                     TEST_CRYPTO_PUNKS_TOKEN_ID.to_string(),
@@ -416,7 +460,9 @@ mod test {
 
         let saved_claims = claims
             .0
-            .prefix(&Addr::unchecked("addr"))
+            .prefix(&Addr::unchecked(
+                "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+            ))
             .range(deps.as_mut().storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
@@ -432,18 +478,29 @@ mod test {
         claims
             .create_nft_claims(
                 deps.as_mut().storage,
-                &Addr::unchecked("addr"),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
                 vec![TEST_CRYPTO_PUNKS_TOKEN_ID.to_string()],
                 Expiration::AtHeight(10),
             )
             .unwrap();
 
         let queried_claims = claims
-            .query_claims(deps.as_ref(), &Addr::unchecked("addr"), None, None)
+            .query_claims(
+                deps.as_ref(),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
+                None,
+                None,
+            )
             .unwrap();
         let saved_claims = claims
             .0
-            .prefix(&Addr::unchecked("addr"))
+            .prefix(&Addr::unchecked(
+                "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+            ))
             .range(deps.as_mut().storage, None, None, Order::Ascending)
             .map(|item| item.map(|(token_id, v)| NftClaim::new(token_id, v)))
             .collect::<StdResult<Vec<_>>>()
@@ -460,7 +517,9 @@ mod test {
         claims
             .create_nft_claims(
                 deps.as_mut().storage,
-                &Addr::unchecked("addr"),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
                 vec![
                     TEST_BAYC_TOKEN_ID.to_string(),
                     TEST_CRYPTO_PUNKS_TOKEN_ID.to_string(),
@@ -470,7 +529,14 @@ mod test {
             .unwrap();
 
         let queried_claims = claims
-            .query_claims(deps.as_ref(), &Addr::unchecked("addr"), None, None)
+            .query_claims(
+                deps.as_ref(),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
+                None,
+                None,
+            )
             .unwrap();
         assert_eq!(
             queried_claims,
@@ -484,7 +550,14 @@ mod test {
         );
 
         let queried_claims = claims
-            .query_claims(deps.as_ref(), &Addr::unchecked("addr"), None, Some(1))
+            .query_claims(
+                deps.as_ref(),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
+                None,
+                Some(1),
+            )
             .unwrap();
         assert_eq!(
             queried_claims,
@@ -497,7 +570,9 @@ mod test {
         let queried_claims = claims
             .query_claims(
                 deps.as_ref(),
-                &Addr::unchecked("addr"),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
                 Some(&TEST_BAYC_TOKEN_ID.to_string()),
                 None,
             )
@@ -513,7 +588,9 @@ mod test {
         let queried_claims = claims
             .query_claims(
                 deps.as_ref(),
-                &Addr::unchecked("addr"),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
                 Some(&TEST_CRYPTO_PUNKS_TOKEN_ID.to_string()),
                 None,
             )
@@ -529,14 +606,23 @@ mod test {
         claims
             .create_nft_claims(
                 deps.as_mut().storage,
-                &Addr::unchecked("addr"),
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
                 vec![TEST_CRYPTO_PUNKS_TOKEN_ID.to_string()],
                 Expiration::AtHeight(10),
             )
             .unwrap();
 
         let queried_claims = claims
-            .query_claims(deps.as_ref(), &Addr::unchecked("addr2"), None, None)
+            .query_claims(
+                deps.as_ref(),
+                &Addr::unchecked(
+                    "cosmwasm1cq2j7y4utseeatek2alfy5ttaphjrtdxqqz0sn820v9jupy0seuqmh8c9s",
+                ),
+                None,
+                None,
+            )
             .unwrap();
 
         assert_eq!(queried_claims.len(), 0);

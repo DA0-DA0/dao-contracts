@@ -383,7 +383,9 @@ mod tests {
         MultipleChoiceProposal {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
-            proposer: Addr::unchecked("CREATOR"),
+            proposer: Addr::unchecked(
+                "cosmwasm1lh2lvaz78ts2etnp8c0xnscy9g97uxfws8vpy3yda3fqyt8l92ss3atz9h",
+            ),
             start_height: mock_env().block.height,
             expiration,
             // The last option that gets added in into_checked is always the none of the above option

@@ -7,8 +7,9 @@ use cosmwasm_std::{
 
 use cw2::set_contract_version;
 use cw_hooks::Hooks;
+use cw_reply_compat::parse_reply_instantiate_data;
 use cw_storage_plus::Bound;
-use cw_utils::{parse_reply_instantiate_data, Duration};
+use cw_utils::Duration;
 use dao_hooks::proposal::{
     new_proposal_hooks, proposal_completed_hooks, proposal_status_changed_hooks,
 };
@@ -561,7 +562,7 @@ pub fn execute_execute(
                 .ok_or(VetoError::NoVetoConfiguration {})?;
 
             // check that the sender is the vetoer
-            if veto_config.vetoer != info.sender {
+            if veto_config.vetoer != info.sender.as_str() {
                 // if the sender can normally execute, but is not the vetoer,
                 // return timelocked error. otherwise return unauthorized.
                 if sender_can_execute {

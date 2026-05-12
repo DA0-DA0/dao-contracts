@@ -11,8 +11,9 @@ use crate::bitsong::{
     MsgSetMinterResponse, MsgSetUri, MsgSetUriResponse,
 };
 
-const DENOMS_PREFIX: &str = "denoms";
-const DENOMS_COUNT_KEY: &str = "denoms_count";
+const DENOMS_PREFIX: &str = "cosmwasm1txcq95x3uy5ucperyj3njq4actah4q9yc82ky9am8zu4j6lheeusjlechq";
+const DENOMS_COUNT_KEY: &str =
+    "cosmwasm1zaw49jfy9muvxtdhk9kunfuxe6srehdmf246htwp6j922ka79wtqnj38tt";
 
 #[cw_serde]
 struct FanToken {
@@ -30,7 +31,7 @@ pub struct StargateKeeper {}
 impl StargateKeeper {}
 
 impl Stargate for StargateKeeper {
-    fn execute<ExecC, QueryC: cosmwasm_std::CustomQuery>(
+    fn execute_stargate<ExecC, QueryC>(
         &self,
         api: &dyn Api,
         storage: &mut dyn Storage,
@@ -39,7 +40,11 @@ impl Stargate for StargateKeeper {
         sender: Addr,
         type_url: String,
         value: Binary,
-    ) -> AnyResult<AppResponse> {
+    ) -> AnyResult<AppResponse>
+    where
+        ExecC: cosmwasm_std::CustomMsg + serde::de::DeserializeOwned + 'static,
+        QueryC: cosmwasm_std::CustomQuery + serde::de::DeserializeOwned + 'static,
+    {
         if type_url == *"/bitsong.fantoken.MsgIssue" {
             let denoms_count: Uint64 = storage
                 .get(DENOMS_COUNT_KEY.as_bytes())
@@ -63,6 +68,7 @@ impl Stargate for StargateKeeper {
 
             return Ok(AppResponse {
                 events: vec![],
+                msg_responses: vec![],
                 data: Some(Binary::from(MsgIssueResponse { denom })),
             });
         }
@@ -92,6 +98,7 @@ impl Stargate for StargateKeeper {
 
             return Ok(AppResponse {
                 events: vec![],
+                msg_responses: vec![],
                 data: Some(Binary::from(MsgMintResponse {})),
             });
         }
@@ -116,6 +123,7 @@ impl Stargate for StargateKeeper {
 
             return Ok(AppResponse {
                 events: vec![],
+                msg_responses: vec![],
                 data: Some(Binary::from(MsgSetMinterResponse {})),
             });
         }
@@ -140,6 +148,7 @@ impl Stargate for StargateKeeper {
 
             return Ok(AppResponse {
                 events: vec![],
+                msg_responses: vec![],
                 data: Some(Binary::from(MsgSetMinterResponse {})),
             });
         }
@@ -160,13 +169,14 @@ impl Stargate for StargateKeeper {
 
             return Ok(AppResponse {
                 events: vec![],
+                msg_responses: vec![],
                 data: Some(Binary::from(MsgSetUriResponse {})),
             });
         }
         Ok(AppResponse::default())
     }
 
-    fn query(
+    fn query_stargate(
         &self,
         _api: &dyn Api,
         _storage: &dyn Storage,
