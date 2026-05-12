@@ -2169,13 +2169,13 @@ fn test_hook_management() {
         pre_propose,
     } = setup_default_test(app, None, true);
 
-    add_hook(app, core_addr.as_str(), &pre_propose, "one");
-    add_hook(app, core_addr.as_str(), &pre_propose, "two");
+    add_hook(app, core_addr.as_str(), &pre_propose, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu");
+    add_hook(app, core_addr.as_str(), &pre_propose, "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r");
 
-    remove_hook(app, core_addr.as_str(), &pre_propose, "one");
+    remove_hook(app, core_addr.as_str(), &pre_propose, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu");
 
     let hooks = query_hooks(app, pre_propose).hooks;
-    assert_eq!(hooks, vec!["two".to_string()])
+    assert_eq!(hooks, vec!["cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r".to_string()])
 }
 
 // v241 migration test — gated off while the v2.4.1 contract stack is stubbed

@@ -541,23 +541,23 @@ fn test_add_remove_hooks() -> anyhow::Result<()> {
         ..
     } = setup_test(None, None);
 
-    add_hook(&mut app, &module, DAO, "meow")?;
-    remove_hook(&mut app, &module, DAO, "meow")?;
+    add_hook(&mut app, &module, DAO, "cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt")?;
+    remove_hook(&mut app, &module, DAO, "cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt")?;
 
     // Minting NFT works if no hooks
     mint_and_stake_nft(&mut app, &nft, &module, STAKER, "1").unwrap();
 
-    // Add a hook to a fake contract called "meow"
-    add_hook(&mut app, &module, DAO, "meow")?;
+    // Add a hook to a fake contract called "cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt"
+    add_hook(&mut app, &module, DAO, "cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt")?;
 
     let hooks = query_hooks(&app, &module)?;
-    assert_eq!(hooks.hooks, vec!["meow".to_string()]);
+    assert_eq!(hooks.hooks, vec!["cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt".to_string()]);
 
     // Minting / staking now doesn't work because meow isn't a contract
     // This failure means the hook is working
     mint_and_stake_nft(&mut app, &nft, &module, STAKER, "1").unwrap_err();
 
-    let res = add_hook(&mut app, &module, DAO, "meow");
+    let res = add_hook(&mut app, &module, DAO, "cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt");
     is_error!(res => "Given address already registered as a hook");
 
     let res = remove_hook(&mut app, &module, DAO, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w");

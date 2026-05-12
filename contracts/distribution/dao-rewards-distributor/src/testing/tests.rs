@@ -2395,7 +2395,7 @@ fn test_update_vp_contract() {
 fn test_update_hook_caller() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
-    let new_hook_caller = "new_hook_caller";
+    let new_hook_caller = "cosmwasm1sm8mdpe73s8s5ywsggnxwj0f45qp5h09h29ulwklfy38y8jwnvjsf5jlcp";
     suite.update_hook_caller(1, new_hook_caller);
 
     let distribution = suite.get_distribution(1);
@@ -2406,7 +2406,7 @@ fn test_update_hook_caller() {
 fn test_update_withdraw_destination() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
-    let new_withdraw_destination = "new_withdraw_destination";
+    let new_withdraw_destination = "cosmwasm1sh26mm60vafst2rqscqs0dk5p3kxxmun8px4enesn5m7usq9genqnmzr8g";
     suite.update_withdraw_destination(1, new_withdraw_destination);
 
     let distribution = suite.get_distribution(1);

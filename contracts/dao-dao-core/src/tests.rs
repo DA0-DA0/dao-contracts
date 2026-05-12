@@ -1098,7 +1098,7 @@ fn test_admin_permissions() {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: core_addr.to_string(),
                 msg: to_json_binary(&ExecuteMsg::NominateAdmin {
-                    admin: Some("meow".to_string()),
+                    admin: Some("cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt".to_string()),
                 })
                 .unwrap(),
                 funds: vec![],
@@ -1253,7 +1253,7 @@ fn test_admin_permissions() {
         Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql"),
         core_with_admin_addr.clone(),
         &ExecuteMsg::NominateAdmin {
-            admin: Some("meow".to_string()),
+            admin: Some("cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt".to_string()),
         },
         &[],
     );
@@ -1408,7 +1408,7 @@ fn test_admin_nomination() {
         Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql"),
         core_addr.clone(),
         &ExecuteMsg::NominateAdmin {
-            admin: Some("meow".to_string()),
+            admin: Some("cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt".to_string()),
         },
         &[],
     )
@@ -1456,7 +1456,7 @@ fn test_admin_nomination() {
         .wrap()
         .query_wasm_smart(core_addr.clone(), &QueryMsg::Admin {})
         .unwrap();
-    assert_eq!(admin, Addr::unchecked("meow".to_string()));
+    assert_eq!(admin, Addr::unchecked("cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt".to_string()));
 
     let start_height = app.block_info().height;
     // Check that the new admin can do admin things and the old can not.

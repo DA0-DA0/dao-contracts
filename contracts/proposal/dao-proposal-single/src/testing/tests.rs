@@ -2869,35 +2869,35 @@ fn test_three_of_five_multisig() {
 
     let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, vec![], None);
 
-    vote_on_proposal(&mut app, &proposal_module, "one", proposal_id, Vote::Yes);
-    vote_on_proposal(&mut app, &proposal_module, "two", proposal_id, Vote::Yes);
+    vote_on_proposal(&mut app, &proposal_module, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu", proposal_id, Vote::Yes);
+    vote_on_proposal(&mut app, &proposal_module, "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r", proposal_id, Vote::Yes);
 
     // Make sure it doesn't pass early.
     let proposal: ProposalResponse = query_proposal(&app, &proposal_module, 1);
     assert_eq!(proposal.proposal.status, Status::Open);
 
-    vote_on_proposal(&mut app, &proposal_module, "three", proposal_id, Vote::Yes);
+    vote_on_proposal(&mut app, &proposal_module, "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7", proposal_id, Vote::Yes);
 
     let proposal: ProposalResponse = query_proposal(&app, &proposal_module, 1);
     assert_eq!(proposal.proposal.status, Status::Passed);
 
-    execute_proposal(&mut app, &proposal_module, "four", proposal_id);
+    execute_proposal(&mut app, &proposal_module, "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp", proposal_id);
 
     let proposal: ProposalResponse = query_proposal(&app, &proposal_module, 1);
     assert_eq!(proposal.proposal.status, Status::Executed);
 
     // Make another proposal which we'll reject.
-    let proposal_id = make_proposal(&mut app, &proposal_module, "one", vec![], None);
+    let proposal_id = make_proposal(&mut app, &proposal_module, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu", vec![], None);
 
-    vote_on_proposal(&mut app, &proposal_module, "one", proposal_id, Vote::Yes);
-    vote_on_proposal(&mut app, &proposal_module, "two", proposal_id, Vote::No);
-    vote_on_proposal(&mut app, &proposal_module, "three", proposal_id, Vote::No);
-    vote_on_proposal(&mut app, &proposal_module, "four", proposal_id, Vote::No);
+    vote_on_proposal(&mut app, &proposal_module, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu", proposal_id, Vote::Yes);
+    vote_on_proposal(&mut app, &proposal_module, "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r", proposal_id, Vote::No);
+    vote_on_proposal(&mut app, &proposal_module, "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7", proposal_id, Vote::No);
+    vote_on_proposal(&mut app, &proposal_module, "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp", proposal_id, Vote::No);
 
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Rejected);
 
-    close_proposal(&mut app, &proposal_module, "four", proposal_id);
+    close_proposal(&mut app, &proposal_module, "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp", proposal_id);
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Closed);
 }
@@ -2951,25 +2951,25 @@ fn test_three_of_five_multisig_revoting() {
 
     let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, vec![], None);
 
-    vote_on_proposal(&mut app, &proposal_module, "one", proposal_id, Vote::Yes);
-    vote_on_proposal(&mut app, &proposal_module, "two", proposal_id, Vote::Yes);
+    vote_on_proposal(&mut app, &proposal_module, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu", proposal_id, Vote::Yes);
+    vote_on_proposal(&mut app, &proposal_module, "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r", proposal_id, Vote::Yes);
 
     // Make sure it doesn't pass early.
     let proposal: ProposalResponse = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Open);
 
-    vote_on_proposal(&mut app, &proposal_module, "three", proposal_id, Vote::Yes);
+    vote_on_proposal(&mut app, &proposal_module, "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7", proposal_id, Vote::Yes);
 
     // Revoting is enabled so the proposal is still open.
     let proposal: ProposalResponse = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Open);
 
     // Change our minds.
-    vote_on_proposal(&mut app, &proposal_module, "one", proposal_id, Vote::No);
-    vote_on_proposal(&mut app, &proposal_module, "two", proposal_id, Vote::No);
+    vote_on_proposal(&mut app, &proposal_module, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu", proposal_id, Vote::No);
+    vote_on_proposal(&mut app, &proposal_module, "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r", proposal_id, Vote::No);
 
     let err =
-        vote_on_proposal_should_fail(&mut app, &proposal_module, "two", proposal_id, Vote::No);
+        vote_on_proposal_should_fail(&mut app, &proposal_module, "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r", proposal_id, Vote::No);
     assert!(matches!(err, ContractError::AlreadyCast {}));
 
     // Expire the revoting proposal and close it.
@@ -3883,16 +3883,16 @@ fn test_query_list_votes() {
         ]),
     );
     let proposal_module = query_single_proposal_module(&app, &core_addr);
-    let proposal_id = make_proposal(&mut app, &proposal_module, "one", vec![], None);
+    let proposal_id = make_proposal(&mut app, &proposal_module, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu", vec![], None);
 
     let votes = query_list_votes(&app, &proposal_module, proposal_id, None, None);
     assert_eq!(votes.votes, vec![]);
 
-    vote_on_proposal(&mut app, &proposal_module, "two", proposal_id, Vote::No);
-    vote_on_proposal(&mut app, &proposal_module, "three", proposal_id, Vote::No);
-    vote_on_proposal(&mut app, &proposal_module, "one", proposal_id, Vote::Yes);
-    vote_on_proposal(&mut app, &proposal_module, "four", proposal_id, Vote::Yes);
-    vote_on_proposal(&mut app, &proposal_module, "five", proposal_id, Vote::Yes);
+    vote_on_proposal(&mut app, &proposal_module, "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r", proposal_id, Vote::No);
+    vote_on_proposal(&mut app, &proposal_module, "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7", proposal_id, Vote::No);
+    vote_on_proposal(&mut app, &proposal_module, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu", proposal_id, Vote::Yes);
+    vote_on_proposal(&mut app, &proposal_module, "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp", proposal_id, Vote::Yes);
+    vote_on_proposal(&mut app, &proposal_module, "cosmwasm1yg4sh4glemm7vhpwvtdja4j52uqnh26kheh6l6ceacgag5c48jqqtfwsjj", proposal_id, Vote::Yes);
 
     let votes = query_list_votes(&app, &proposal_module, proposal_id, None, None);
     assert_eq!(
@@ -3940,7 +3940,7 @@ fn test_query_list_votes() {
         &app,
         &proposal_module,
         proposal_id,
-        Some("four".to_string()),
+        Some("cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp".to_string()),
         Some(2),
     );
     assert_eq!(

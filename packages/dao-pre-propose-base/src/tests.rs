@@ -95,7 +95,7 @@ fn test_proposal_submitted_hooks() {
     // The DAO can add a hook.
     let info = message_info(&Addr::unchecked("cosmwasm1rzkruu6r7qtgjrz3p6fljdfxz95ancl4v4pkg2vrp7hsjd85lrjqwpk08g"), &[]);
     module
-        .execute_add_proposal_submitted_hook(deps.as_mut(), info, "one".to_string())
+        .execute_add_proposal_submitted_hook(deps.as_mut(), info, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string())
         .unwrap();
     let hooks: HooksResponse = from_json(
         module
@@ -107,12 +107,12 @@ fn test_proposal_submitted_hooks() {
             .unwrap(),
     )
     .unwrap();
-    assert_eq!(hooks.hooks, vec!["one".to_string()]);
+    assert_eq!(hooks.hooks, vec!["cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string()]);
 
     // Non-DAO addresses can not add hooks.
     let info = message_info(&Addr::unchecked("cosmwasm1rvttrh6n3wsjmsle0mdmsh92wpgdgmq5sy6zjrlt4q8cydkg8kusr83amx"), &[]);
     let err = module
-        .execute_add_proposal_submitted_hook(deps.as_mut(), info, "two".to_string())
+        .execute_add_proposal_submitted_hook(deps.as_mut(), info, "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r".to_string())
         .unwrap_err();
     assert_eq!(err, PreProposeError::NotDao {});
 
@@ -135,7 +135,7 @@ fn test_proposal_submitted_hooks() {
     assert_eq!(
         res.messages[1],
         SubMsg::new(WasmMsg::Execute {
-            contract_addr: "one".to_string(),
+            contract_addr: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string(),
             msg: to_json_binary(&Empty::default()).unwrap(),
             funds: vec![],
         })
@@ -144,14 +144,14 @@ fn test_proposal_submitted_hooks() {
     // Non-DAO addresses can not remove hooks.
     let info = message_info(&Addr::unchecked("cosmwasm1rvttrh6n3wsjmsle0mdmsh92wpgdgmq5sy6zjrlt4q8cydkg8kusr83amx"), &[]);
     let err = module
-        .execute_remove_proposal_submitted_hook(deps.as_mut(), info, "one".to_string())
+        .execute_remove_proposal_submitted_hook(deps.as_mut(), info, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string())
         .unwrap_err();
     assert_eq!(err, PreProposeError::NotDao {});
 
     // The DAO can remove a hook.
     let info = message_info(&Addr::unchecked("cosmwasm1rzkruu6r7qtgjrz3p6fljdfxz95ancl4v4pkg2vrp7hsjd85lrjqwpk08g"), &[]);
     module
-        .execute_remove_proposal_submitted_hook(deps.as_mut(), info, "one".to_string())
+        .execute_remove_proposal_submitted_hook(deps.as_mut(), info, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string())
         .unwrap();
     let hooks: HooksResponse = from_json(
         module
