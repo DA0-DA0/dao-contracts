@@ -1,4 +1,5 @@
 mod adapter;
+mod errors;
 mod gauge;
 mod reset;
 mod suite;

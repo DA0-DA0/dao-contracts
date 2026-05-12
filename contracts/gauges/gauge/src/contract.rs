@@ -410,6 +410,14 @@ mod execute {
             max_options_selected > 0,
             ContractError::MaxOptionsSelectedTooSmall {}
         );
+        if let Some(max_available_percentage) = max_available_percentage {
+            // update_gauge already enforces this; mirror the check here so the
+            // invariant cannot be bypassed via create_gauge.
+            ensure!(
+                max_available_percentage < Decimal::one(),
+                ContractError::MaxAvailablePercentTooBig {}
+            );
+        }
         let gauge = Gauge {
             title,
             adapter: adapter.clone(),
