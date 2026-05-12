@@ -24,6 +24,7 @@ cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 cw20 = { workspace = true }
 cw-denom = { workspace = true }
+cw-ownable = { workspace = true }
 cw-utils = { workspace = true }
 semver = { workspace = true }
 thiserror = { workspace = true }

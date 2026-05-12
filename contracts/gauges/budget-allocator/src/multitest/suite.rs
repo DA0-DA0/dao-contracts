@@ -18,34 +18,34 @@ pub fn addr(name: &str) -> Addr {
 
 pub struct Suite {
     pub app: App,
-    pub admin: Addr,
+    pub owner: Addr,
     pub allocator: Addr,
 }
 
 impl Suite {
     pub fn new(options: &[&str], epoch_budget: Coin) -> Self {
         let mut app = App::default();
-        let admin = addr("admin");
+        let owner = addr("owner");
 
         let code_id = app.store_code(contract());
         let allocator = app
             .instantiate_contract(
                 code_id,
-                admin.clone(),
+                owner.clone(),
                 &InstantiateMsg {
-                    admin: admin.to_string(),
+                    owner: owner.to_string(),
                     options: options.iter().map(|s| s.to_string()).collect(),
                     epoch_budget,
                 },
                 &[],
                 "budget-allocator",
-                Some(admin.to_string()),
+                Some(owner.to_string()),
             )
             .unwrap();
 
         Suite {
             app,
-            admin,
+            owner,
             allocator,
         }
     }
@@ -55,9 +55,9 @@ impl Suite {
             .execute_contract(sender.clone(), self.allocator.clone(), msg, &[])
     }
 
-    pub fn execute_admin(&mut self, msg: &ExecuteMsg) -> AnyResult<AppResponse> {
-        let admin = self.admin.clone();
-        self.execute_as(&admin, msg)
+    pub fn execute_owner(&mut self, msg: &ExecuteMsg) -> AnyResult<AppResponse> {
+        let owner = self.owner.clone();
+        self.execute_as(&owner, msg)
     }
 
     pub fn query<T: DeserializeOwned>(&self, msg: &QueryMsg) -> StdResult<T> {

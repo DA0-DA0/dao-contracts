@@ -12,21 +12,21 @@ fn instantiate_requires_at_least_one_option() {
     use cw_multi_test::{App, Executor};
 
     let mut app = App::default();
-    let admin = addr("admin");
+    let owner = addr("owner");
     let code_id = app.store_code(crate::multitest::suite::contract());
 
     let err = app
         .instantiate_contract(
             code_id,
-            admin.clone(),
+            owner.clone(),
             &crate::msg::InstantiateMsg {
-                admin: admin.to_string(),
+                owner: owner.to_string(),
                 options: vec![],
                 epoch_budget: ujuno(1_000),
             },
             &[],
             "no-options",
-            Some(admin.to_string()),
+            Some(owner.to_string()),
         )
         .unwrap_err();
     assert_eq!(ContractError::NoOptions {}, err.downcast().unwrap());
@@ -59,11 +59,11 @@ fn happy_path_options_and_budget() {
 }
 
 #[test]
-fn admin_can_add_and_remove_options() {
+fn owner_can_add_and_remove_options() {
     let mut suite = Suite::new(&["alice"], ujuno(1_000));
 
     suite
-        .execute_admin(&ExecuteMsg::AddOption {
+        .execute_owner(&ExecuteMsg::AddOption {
             option: "bob".to_string(),
         })
         .unwrap();
@@ -71,7 +71,7 @@ fn admin_can_add_and_remove_options() {
     assert_eq!(opts.options.len(), 2);
 
     suite
-        .execute_admin(&ExecuteMsg::RemoveOption {
+        .execute_owner(&ExecuteMsg::RemoveOption {
             option: "alice".to_string(),
         })
         .unwrap();
@@ -83,7 +83,7 @@ fn admin_can_add_and_remove_options() {
 fn add_option_rejects_duplicates() {
     let mut suite = Suite::new(&["alice"], ujuno(1_000));
     let err = suite
-        .execute_admin(&ExecuteMsg::AddOption {
+        .execute_owner(&ExecuteMsg::AddOption {
             option: "alice".to_string(),
         })
         .unwrap_err();
@@ -97,7 +97,7 @@ fn add_option_rejects_duplicates() {
 fn remove_option_rejects_missing() {
     let mut suite = Suite::new(&["alice"], ujuno(1_000));
     let err = suite
-        .execute_admin(&ExecuteMsg::RemoveOption {
+        .execute_owner(&ExecuteMsg::RemoveOption {
             option: "ghost".to_string(),
         })
         .unwrap_err();
@@ -108,7 +108,7 @@ fn remove_option_rejects_missing() {
 }
 
 #[test]
-fn non_admin_cannot_mutate() {
+fn non_owner_cannot_mutate() {
     let mut suite = Suite::new(&["alice"], ujuno(1_000));
     let intruder = addr("intruder");
 
@@ -120,7 +120,10 @@ fn non_admin_cannot_mutate() {
             },
         )
         .unwrap_err();
-    assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
+    assert_eq!(
+        ContractError::Ownership(cw_ownable::OwnershipError::NotOwner),
+        err.downcast().unwrap()
+    );
 
     let err = suite
         .execute_as(
@@ -130,14 +133,17 @@ fn non_admin_cannot_mutate() {
             },
         )
         .unwrap_err();
-    assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
+    assert_eq!(
+        ContractError::Ownership(cw_ownable::OwnershipError::NotOwner),
+        err.downcast().unwrap()
+    );
 }
 
 #[test]
 fn update_budget_works() {
     let mut suite = Suite::new(&["alice"], ujuno(1_000));
     suite
-        .execute_admin(&ExecuteMsg::UpdateBudget {
+        .execute_owner(&ExecuteMsg::UpdateBudget {
             epoch_budget: ujuno(2_500),
         })
         .unwrap();

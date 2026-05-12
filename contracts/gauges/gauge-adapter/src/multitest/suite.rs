@@ -64,7 +64,7 @@ impl Suite {
                 adapter_code_id,
                 owner.clone(),
                 &InstantiateMsg {
-                    admin: owner.to_string(),
+                    owner: owner.to_string(),
                     required_deposit,
                     community_pool: community_pool.to_string(),
                     reward: AssetUnchecked {
@@ -101,7 +101,7 @@ impl Suite {
                 adapter_code_id,
                 owner.clone(),
                 &InstantiateMsg {
-                    admin: owner.to_string(),
+                    owner: owner.to_string(),
                     required_deposit,
                     community_pool: community_pool.to_string(),
                     reward,
@@ -139,7 +139,7 @@ impl Suite {
                 adapter_code_id,
                 owner.clone(),
                 &InstantiateMsg {
-                    admin: owner.to_string(),
+                    owner: owner.to_string(),
                     required_deposit: Some(AssetUnchecked {
                         denom: UncheckedDenom::Cw20(deposit_cw20.to_string()),
                         amount: Uint128::new(1_000),

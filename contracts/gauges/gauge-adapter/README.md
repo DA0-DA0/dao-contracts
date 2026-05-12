@@ -13,7 +13,9 @@ implementing the three `AdapterQueryMsg` variants.
 ## Lifecycle
 
 1. **Instantiate.** The DAO uploads this contract and instantiates with:
-   - `admin` — the only address allowed to call `ReturnDeposits`.
+   - `owner` — the only address allowed to call `ReturnDeposits` /
+     `Reject`. Managed via standard [`cw_ownable`](https://crates.io/crates/cw-ownable)
+     two-step transfer (`UpdateOwnership`) and `RenounceOwnership`.
    - `required_deposit` — optional native or cw20 bond per submission.
    - `community_pool` — refund target for unbid funds (gets a default
      "Unimpressed" submission so unused weight isn't lost).
@@ -38,7 +40,7 @@ implementing the three `AdapterQueryMsg` variants.
    `Vec<CosmosMsg>` — one transfer per recipient, native or cw20 depending
    on how `reward` was configured.
 
-5. **Refund.** The admin calls `ReturnDeposits` to refund all posted
+5. **Refund.** The owner calls `ReturnDeposits` to refund all posted
    deposits in one shot.
 
 ## ExecuteMsg
@@ -47,8 +49,9 @@ implementing the three `AdapterQueryMsg` variants.
 |---|---|---|
 | `CreateSubmission { name, url, address }` | anyone | Native-deposit path. Funds must match `required_deposit` exactly (or be empty if no deposit required). |
 | `Receive(Cw20ReceiveMsg)` | the configured cw20 | cw20-deposit path. Sender of the cw20 `Send` becomes the submission's sender. |
-| `Reject { submission, soft }` | `admin` | Remove `submission` from the registry. With `soft = true`, refund the bond to the original sender (good-faith reject). With `soft = false`, forfeit the bond to the community pool (spam / malicious). No-op on the bond side if no `required_deposit` is configured. Cannot target the default community-pool submission. |
-| `ReturnDeposits {}` | `admin` | Refunds every posted deposit to its sender. Use at program close. |
+| `Reject { submission, soft }` | `owner` | Remove `submission` from the registry. With `soft = true`, refund the bond to the original sender (good-faith reject). With `soft = false`, forfeit the bond to the community pool (spam / malicious). No-op on the bond side if no `required_deposit` is configured. Cannot target the default community-pool submission. |
+| `ReturnDeposits {}` | `owner` | Refunds every posted deposit to its sender. Use at program close. |
+| `UpdateOwnership(action)` | `owner` / pending owner | Standard [`cw_ownable`](https://crates.io/crates/cw-ownable) two-step transfer / renounce flow. |
 
 ## QueryMsg (`AdapterQueryMsg`)
 
@@ -60,12 +63,14 @@ implementing the three `AdapterQueryMsg` variants.
 | `SampleGaugeMsgs { selected }` | `SampleGaugeMsgsResponse { execute: Vec<CosmosMsg> }` | Translates a selected set into payout messages. |
 | `Submission { address }` | `SubmissionResponse` | Read a single submission. |
 | `AllSubmissions {}` | `AllSubmissionsResponse` | List all submissions. |
+| `SubmissionsBySender { sender }` | `AllSubmissionsResponse` | All submissions whose sender is `sender`. |
+| `Ownership {}` | `cw_ownable::Ownership<Addr>` | Current owner + any pending transfer. |
 
 ## Errors
 
 | Variant | Trigger |
 |---|---|
-| `Unauthorized` | Non-admin called `ReturnDeposits`. |
+| `Ownership(OwnershipError)` | Caller is not the owner (or `cw-ownable` transfer-flow misuse). |
 | `UnauthorizedSubmission` | Submission to a recipient claimed by a different sender. |
 | `InvalidDepositType` | Sent the wrong denom / wrong cw20. |
 | `InvalidDepositAmount { correct_amount }` | Sent the right denom but wrong amount. |

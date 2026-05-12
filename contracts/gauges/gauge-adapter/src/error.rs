@@ -1,5 +1,6 @@
 use cosmwasm_std::{StdError, Uint128};
 use cw_denom::DenomError;
+use cw_ownable::OwnershipError;
 use cw_utils::PaymentError;
 use thiserror::Error;
 
@@ -14,8 +15,8 @@ pub enum ContractError {
     #[error("{0}")]
     DenomError(#[from] DenomError),
 
-    #[error("Operation unauthorized - only admin can release deposits")]
-    Unauthorized {},
+    #[error(transparent)]
+    Ownership(#[from] OwnershipError),
 
     #[error("Operation unauthorized - there's already existing submission for that destination address; only previous sender can overwrite it")]
     UnauthorizedSubmission {},

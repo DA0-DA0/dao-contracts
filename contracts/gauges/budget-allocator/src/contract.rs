@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, ensure_eq, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
+    coin, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
     MessageInfo, Order, Response, StdError, StdResult, Uint128,
 };
 use cw2::set_contract_version;
@@ -30,11 +30,11 @@ pub fn instantiate(
         return Err(ContractError::NoOptions {});
     }
 
-    let admin = deps.api.addr_validate(&msg.admin)?;
+    cw_ownable::initialize_owner(deps.storage, deps.api, Some(&msg.owner))?;
+
     CONFIG.save(
         deps.storage,
         &Config {
-            admin,
             epoch_budget: msg.epoch_budget,
         },
     )?;
@@ -49,12 +49,14 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    ensure_eq!(info.sender, config.admin, ContractError::Unauthorized {});
+    // UpdateOwnership runs its own auth — gate everything else here.
+    if !matches!(msg, ExecuteMsg::UpdateOwnership(_)) {
+        cw_ownable::assert_owner(deps.storage, &info.sender)?;
+    }
 
     match msg {
         ExecuteMsg::AddOption { option } => {
@@ -85,6 +87,10 @@ pub fn execute(
                 .add_attribute("denom", &epoch_budget.denom)
                 .add_attribute("amount", epoch_budget.amount.to_string()))
         }
+        ExecuteMsg::UpdateOwnership(action) => {
+            let ownership = cw_ownable::update_ownership(deps, &env.block, &info.sender, action)?;
+            Ok(Response::new().add_attributes(ownership.into_attributes()))
+        }
     }
 }
 
@@ -100,6 +106,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::SampleGaugeMsgs { selected } => {
             to_json_binary(&sample_gauge_msgs(deps, selected)?)
         }
+        QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
     }
 }
 
@@ -121,6 +128,7 @@ pub fn answer_adapter(deps: Deps, msg: AdapterQueryMsg) -> StdResult<Binary> {
         | AdapterQueryMsg::SubmissionsBySender { .. } => Err(StdError::generic_err(
             "gauge-budget-allocator does not implement registry-style queries",
         )),
+        AdapterQueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
     }
 }
 

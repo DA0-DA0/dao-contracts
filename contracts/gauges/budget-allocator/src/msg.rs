@@ -11,29 +11,32 @@ pub use gauge_adapter::msg::{
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    /// Address allowed to update the option list. Typically the DAO's core
-    /// module.
-    pub admin: String,
+    /// Owner of the contract — the only address allowed to mutate the option
+    /// list and budget, and to transfer / renounce ownership through the
+    /// standard `cw_ownable` flow. Typically the DAO's core module.
+    pub owner: String,
     /// Initial set of valid options.
     pub options: Vec<String>,
     /// Per-epoch budget distributed proportional to weights.
     pub epoch_budget: Coin,
 }
 
+#[cw_ownable::cw_ownable_execute]
 #[cw_serde]
 pub enum ExecuteMsg {
-    /// Admin-only: add a new option to the valid set.
+    /// Owner-only: add a new option to the valid set.
     AddOption { option: String },
-    /// Admin-only: remove an option from the valid set.
+    /// Owner-only: remove an option from the valid set.
     RemoveOption { option: String },
-    /// Admin-only: replace the per-epoch budget.
+    /// Owner-only: replace the per-epoch budget.
     UpdateBudget { epoch_budget: Coin },
 }
 
+#[cw_ownable::cw_ownable_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    /// Inspect the stored config (admin + current budget).
+    /// Inspect the stored config (current budget).
     #[returns(crate::state::Config)]
     Config {},
     /// All currently-valid options (proxy for `AdapterQueryMsg::AllOptions`).

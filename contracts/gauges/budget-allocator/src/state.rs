@@ -1,11 +1,9 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Coin};
+use cosmwasm_std::Coin;
 use cw_storage_plus::{Item, Map};
 
 #[cw_serde]
 pub struct Config {
-    /// The address allowed to update the option list.
-    pub admin: Addr,
     /// Per-epoch budget — the amount distributed proportionally to weights
     /// each time `SampleGaugeMsgs` is queried.
     pub epoch_budget: Coin,

@@ -5,8 +5,10 @@ use cw_denom::UncheckedDenom;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    /// Address that is allowed to return deposits.
-    pub admin: String,
+    /// The owner of the contract — typically the DAO core module. Holds the
+    /// authority to `ReturnDeposits`, `Reject`, and transfer / renounce
+    /// ownership via the standard `cw_ownable` flow.
+    pub owner: String,
     /// Deposit required for valid submission. This option allows to reduce spam.
     pub required_deposit: Option<AssetUnchecked>,
     /// Address of contract where each deposit is transferred.
@@ -15,6 +17,7 @@ pub struct InstantiateMsg {
     pub reward: AssetUnchecked,
 }
 
+#[cw_ownable::cw_ownable_execute]
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Implements the Cw20 receiver interface.
@@ -28,7 +31,7 @@ pub enum ExecuteMsg {
     },
     /// Sends back all deposit to senders.
     ReturnDeposits {},
-    /// Admin-only: remove a submission from the registry. If a deposit was
+    /// Owner-only: remove a submission from the registry. If a deposit was
     /// required, `soft = true` refunds it to the original sender (good-
     /// faith reject) and `soft = false` forfeits it to the community pool
     /// (spam / malicious reject). Rejecting the default community-pool
@@ -56,6 +59,7 @@ pub enum MigrateMsg {}
 
 // Queries copied from gauge-orchestrator for now (we could use a common crate for this).
 /// Queries the gauge requires from the adapter contract in order to function.
+#[cw_ownable::cw_ownable_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum AdapterQueryMsg {

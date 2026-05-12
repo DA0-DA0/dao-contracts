@@ -257,7 +257,10 @@ fn return_deposits_no_admin() {
     let err = suite
         .execute(&intruder, &ExecuteMsg::ReturnDeposits {}, &[])
         .unwrap_err();
-    assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
+    assert_eq!(
+        ContractError::Ownership(cw_ownable::OwnershipError::NotOwner),
+        err.downcast().unwrap()
+    );
 }
 
 #[test]
@@ -537,7 +540,10 @@ fn reject_requires_admin() {
             &[],
         )
         .unwrap_err();
-    assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
+    assert_eq!(
+        ContractError::Ownership(cw_ownable::OwnershipError::NotOwner),
+        err.downcast().unwrap()
+    );
 }
 
 #[test]
