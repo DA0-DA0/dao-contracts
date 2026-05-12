@@ -1,3 +1,55 @@
 # Gauges
 
-Forked from [Wynd DAO repo](https://github.com/wynddao/wynddao), modified to support any type of DAO.
+A gauge is a stake-weighted preference signal that periodically translates into
+on-chain action. Stakers continuously express how some pool of resources should
+be allocated (reward emissions, validator delegations, marketing budget, etc).
+The gauge orchestrates the voting, the adapter translates the result into
+`CosmosMsg`s for the DAO to execute.
+
+Inspired by the [Curve gauge system](https://resources.curve.fi/reward-gauges/gauge-weights).
+Forked from the [Wynd DAO repo](https://github.com/wynddao/wynddao) (Apache-2.0;
+git history preserved per the LICENSE/NOTICE files) and modified to support any
+DAO DAO voting module — cw4 membership, cw20-staked, cw721-staked, native- or
+token-factory-staked.
+
+## Two-contract design
+
+```
+                ┌────────────────────────┐         ┌──────────────────────┐
+   staking      │                        │  query  │                      │
+   hooks ─────▶│   gauge-orchestrator   │◀───────▶│    gauge-adapter     │
+               │   (this folder/gauge)  │  msgs   │  (this folder/gauge- │
+               │                        │         │   adapter, or your   │
+               │                        │         │   own adapter)       │
+               └────────────┬───────────┘         └──────────────────────┘
+                            │
+                            │ executes selected set
+                            ▼
+                  ┌──────────────────────┐
+                  │     DAO DAO core     │
+                  │   (proposal module)  │
+                  └──────────────────────┘
+```
+
+- **`gauge` (gauge-orchestrator)** — generic vote-tally + epoch dispatcher.
+  Holds one or many gauges, each with its own adapter. Doesn't know what an
+  "option" *is* — just an opaque string that the adapter validates and
+  interprets.
+- **`gauge-adapter`** — pluggable. Defines what an option means (a project
+  address, a validator address, an AMM pool…), how to validate user-submitted
+  options, and how to translate a winning set into `CosmosMsg`s. This folder
+  ships one example (the *Marketing Gauge Adapter*: a project-bond-registry +
+  proportional-reward dispatcher). Other adapters live alongside or in separate
+  crates.
+
+Both contracts are wired into the DAO via the standard `dao-interface` module
+plumbing — gauge-orchestrator is typically installed as a proposal module on
+DAO DAO core, with the staking module's hooks routed to it.
+
+See the individual contract READMEs for ExecuteMsg / QueryMsg semantics and
+integration walk-throughs.
+
+## Reference deployments
+
+- [Curve](https://dao.curve.fi/gaugeweight) — the OG.
+- [Wynd DAO](https://app.wynddao.com/gauges) — the immediate predecessor of this code.

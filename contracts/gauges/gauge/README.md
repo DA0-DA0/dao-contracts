@@ -1,81 +1,103 @@
-# Gauge Orchestrator Contract
+# Gauge Orchestrator
 
-There are many places where we want something like a [gauge contract](https://resources.curve.fi/reward-gauges/gauge-weights),
-when we need to select a weighted group out of a larger group of options.
+A generic, stake-weighted preference signal that periodically translates
+into on-chain action. The orchestrator hosts many gauges, each backed by a
+pluggable [adapter](../gauge-adapter/README.md) that decides what the gauge
+"means". Curve-inspired ([Curve gauges](https://resources.curve.fi/reward-gauges/gauge-weights));
+see [`contracts/gauges/README.md`](../README.md) for the bigger picture.
 
-## TODO
-- [ ] More tests to make sure it works with different DAO types (Membership, NFT staking, and Token Staking DAOs)
-- [ ] Make improvements to `GaugeAdapter` API
-- [ ] Improve `GaugeAdapter` examples
-- [ ] Does not handle small numbers elegantly (a problem with NFT DAOs, where people might stake 1 NFT)
-- [ ] Better READMEs
+## Lifecycle
 
-## Orchestrator
+1. **Attach.** The DAO calls `ExecuteMsg::CreateGauge` with a `GaugeConfig`
+   that references an adapter address. The orchestrator queries the adapter's
+   `AllOptions` to seed the option set, then opens it for voting.
+2. **Vote.** Anyone with nonzero voting power calls `PlaceVotes` with a list
+   of `(option, weight)` pairs whose weights sum to ≤ 1.0. The orchestrator
+   walks each voter's previous vote and applies a tally diff in one pass.
+3. **Update tallies on stake changes.** The orchestrator is registered as a
+   staking hook (cw4 `MemberChangedHook`, cw20 `StakeChangedHook`, cw721
+   `NftStakeChangedHook`). When a voter's power changes, every gauge they
+   voted on is updated automatically — the user does not have to re-vote.
+4. **Execute.** Once `next_epoch < block.time`, anyone can call
+   `ExecuteMsg::Execute { gauge }`. The orchestrator snapshots the current
+   tally, computes the *selected set* (top-N by weight subject to
+   `min_percent_selected` and `max_available_percentage`), queries the
+   adapter's `SampleGaugeMsgs(selected)` for the `CosmosMsg`s to dispatch,
+   and forwards them to the DAO core for execution via
+   `ProposalExecuteHook`. `next_epoch` advances by `epoch_size`.
+5. **Optional reset.** If the gauge was created with a `reset_epoch`, the
+   option list can be wiped and refreshed from the adapter on a separate
+   cadence — useful for periodically pruning stale options without
+   restarting the gauge.
 
-To work properly, the gauge must be informed every time that the voting power of a member changes.
-It does so by listening to "update hooks" on the underlying staking contract and if an address's
-voting power changes, updating their vote weight in the gauge, and the tally for the option they
-had voted for (if any).
+## Why one orchestrator for many gauges
 
-Every contract call has some overhead, which is silently added to the basic staking action.
-If we have 5 gauges in a DAO, we would likely have a minimum of 5 x 65k or 325k gas per staking action,
-just to update gauges. This is a lot of overhead, and we want to avoid it.
+Each staking hook adds a CosmWasm call to every staking action. With N
+separate gauge contracts each hooked, you pay N × hook-overhead per
+stake/unstake. With one orchestrator, the hook fires once and the
+orchestrator iterates its tallied state for each registered gauge — far
+cheaper.
 
-To do so, we make one "Gauge Orchestrator", which can manage many different gauges. They all have the
-same voting logic and rules to update when the voting power changes. The Orchestrator is the only
-contract that must be called by the staking contract, and doing a few writes for each gauge is a
-lot cheaper gas-wise than calling a separate contract.
+## Configuration knobs
 
-The Orchestrator has an "owner" (the DAO) which is responsible for adding new gauges here,
-and eventually stopping them if we don't need them anymore (to avoid extra writes).
+Per-gauge config lives on the `Gauge` struct in `state.rs`. Mutable via
+`ExecuteMsg::UpdateGauge` (owner-gated):
 
-## Gauge Functionality
+| Field | Meaning |
+|---|---|
+| `epoch` | Seconds between executions. Minimum 60. |
+| `min_percent_selected` | Optional floor: options below this fraction of total cast are not selected. |
+| `max_options_selected` | Hard cap on the size of the selected set. |
+| `max_available_percentage` | Optional ceiling: an option's effective weight is clamped to this fraction (excess goes to no one). |
+| `reset` | Optional periodic option-list refresh. |
 
-A gauge is initialized with a set of options. Anyone with voting power may vote for any option at any time,
-which is recorded, and also updates the tally. If they re-vote, it checks their last vote to reduce power on
-that before adding to the new one. When an "update hook" is triggered, it updates the voting power of that user's vote, while maintaining the same option. Either increasing or decreasing the tally for the given option as appropriate.
+## Adapter contract (`AdapterQueryMsg`)
 
-Every epoch (eg 1/week), the current tally of the gauge is sampled, and some cut-off applies
-(top 20, min 0.5% of votes, etc). The resulting set is the "selected set" and the options along with
-their relative vote counts (normalized to 1.0 = total votes within this set) is used to initiate some
-action (eg. distribute reward tokens).
+Every adapter must answer:
 
-## Extensibility
+| Query | Purpose |
+|---|---|
+| `AllOptions {}` | Initial option seed at gauge attachment. |
+| `CheckOption { option }` | Validates user-proposed additions via `AddOption`. |
+| `SampleGaugeMsgs { selected }` | Returns `Vec<CosmosMsg>` for the orchestrator to dispatch on the DAO's behalf. |
 
-We will be using one Orchestrator for many different gauges that update many different contracts.
-To make it more extensible, we define option as an arbitrary string that makes sense to that contract.
+See [`gauge-adapter/README.md`](../gauge-adapter/README.md) for a worked
+example.
 
-We also store the integration logic in an external contract, called a `GaugeAdapter` that must provide
-3 queries to the Orchestrator:
+## Voting power edge cases
 
-* Provide set of all options: maybe expensive, iterate over all and return them. This is used for initialization.
-* Check an option: Allow anyone to propose one, and this confirms if it is valid (eg is this a valid address
-  of a registered AMM pool?)
-* Create update messages: Accepts "selected set" as argument, returns `Vec<CosmosMsg>` to be executed by the
-  gauge contract / DAO.
+Vote weight × voting power is computed with truncating integer math. A user
+with 1 unit of power who splits 50/50 across two options would have *both*
+options counted as 0 — silently erasing their voice. The orchestrator
+rejects such votes with `VoteWeightRoundsToZero` so the user can retry with
+larger per-option weights or fewer options. Acquire more power to express
+finer-grained preferences.
 
-We will have a mock implementation of an Adapter for testing.
+## Storage layout
 
-## Example Use
+All non-global state is indexed first by `GaugeId` (u64, auto-incremented)
+and then by a secondary key (voter address for votes, option string for
+tallies). This is what lets one orchestrator host many gauges efficiently —
+`.prefix()` / `.sub_prefix()` queries scope to a single gauge without
+scanning the rest.
 
-When the DAO wants to add another gauge, it first uploads the code for generating eg. AMM reward messages,
-and instantiates a properly configured Adapter. 
+Key collections (see `state.rs`):
 
-Then, it votes to create a new Gauge that uses this adapter. Upon creating the gauge, it will query the adapter
-for the current set of options to initialize state.
+- `GAUGES: Map<GaugeId, Gauge>` — per-gauge config + execution state.
+- `TALLY: Map<(GaugeId, &str), u128>` — cumulative weighted power per option.
+- `OPTION_BY_POINTS: Map<(GaugeId, u128, &str), u8>` — secondary index for
+  top-N selection.
+- `TOTAL_CAST: Map<GaugeId, u128>` — denominator for percent math.
+- `votes()` — indexed map keyed `(voter, gauge_id) → Vote`.
 
-After one epoch has passed, anyone can trigger `Execute` on this gauge ID, and the Orchestrator will
-apply the logic to determine the "selected set". It will then query the adapter for the messages
-needed to convert that selection into the appropriate action, and it will send those to the
-DAO DAO core module to be executed.
+## Hooks the orchestrator must be registered against
 
-## Storage
+`ExecuteMsg`:
 
-Every gauge that is created is given a new auto-incrementing ID.
+- `StakeChangeHook` — cw20-staked, native-staked, token-factory-staked.
+- `NftStakeChangeHook` — cw721-staked.
+- `MemberChangedHook` — cw4 group changes.
 
-All non-global state in the contract (only owner and voting power contract) is indexed
-first by the gauge and then by the other key (eg. voter address for Votes, option for tallied power, etc)
-
-We do not know how many gauges will be there a priori and this composite index allows us to
-be flexible. Not the use of `.prefix()` and `.sub_prefix()` in `state.rs` tests to efficiently
-focus on the relevant data for one gauge.
+The DAO's voting module (or its underlying staking contract) must add the
+orchestrator address as a hook receiver; otherwise stake changes will not
+flow into gauge tallies and the gauge will drift from reality.
