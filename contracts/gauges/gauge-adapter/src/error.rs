@@ -28,4 +28,10 @@ pub enum ContractError {
 
     #[error("No deposit was required, therefore no deposit can be returned")]
     NoDepositToRefund {},
+
+    #[error("Submission {0} not found in registry")]
+    SubmissionNotFound(String),
+
+    #[error("Cannot reject the default community-pool submission")]
+    CannotRejectDefault {},
 }

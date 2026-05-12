@@ -420,3 +420,187 @@ fn sample_gauge_msgs_cw20() {
     // Suppress unused-import lint in case helper not used.
     let _ = submit_cw20_create;
 }
+
+// ------------------------------------------------------- Reject submission
+
+#[test]
+fn soft_reject_refunds_bond_and_removes_submission() {
+    let mut suite = Suite::new_native(Some(AssetUnchecked {
+        denom: UncheckedDenom::Native("juno".into()),
+        amount: Uint128::new(1_000),
+    }));
+    let owner = suite.owner.clone();
+    let project = addr("project");
+    let recipient = addr("recipient");
+
+    // Project submits with bond.
+    suite.mint_native(&project, coin(1_000, "juno"));
+    suite
+        .create_submission(&project, &recipient, Some(coin(1_000, "juno")))
+        .unwrap();
+    assert_eq!(suite.native_balance(&project, "juno"), Uint128::zero());
+    let adapter = suite.adapter.clone();
+    assert_eq!(suite.native_balance(&adapter, "juno"), Uint128::new(1_000));
+
+    // Admin soft-rejects.
+    suite
+        .execute_owner(&ExecuteMsg::Reject {
+            submission: recipient.to_string(),
+            soft: true,
+        })
+        .unwrap();
+
+    // Submission gone from registry; bond returned to project (the sender).
+    let res: Result<SubmissionResponse, _> = suite.query(&AdapterQueryMsg::Submission {
+        address: recipient.to_string(),
+    });
+    assert!(res.is_err());
+    assert_eq!(suite.native_balance(&project, "juno"), Uint128::new(1_000));
+    assert_eq!(suite.native_balance(&adapter, "juno"), Uint128::zero());
+    let _ = owner;
+}
+
+#[test]
+fn hard_reject_forfeits_bond_to_community_pool() {
+    let mut suite = Suite::new_native(Some(AssetUnchecked {
+        denom: UncheckedDenom::Native("juno".into()),
+        amount: Uint128::new(1_000),
+    }));
+    let project = addr("project");
+    let recipient = addr("recipient");
+    let community_pool = suite.community_pool.clone();
+
+    suite.mint_native(&project, coin(1_000, "juno"));
+    suite
+        .create_submission(&project, &recipient, Some(coin(1_000, "juno")))
+        .unwrap();
+
+    suite
+        .execute_owner(&ExecuteMsg::Reject {
+            submission: recipient.to_string(),
+            soft: false,
+        })
+        .unwrap();
+
+    // Bond went to community pool, not the project.
+    assert_eq!(suite.native_balance(&project, "juno"), Uint128::zero());
+    assert_eq!(
+        suite.native_balance(&community_pool, "juno"),
+        Uint128::new(1_000),
+    );
+    let adapter = suite.adapter.clone();
+    assert_eq!(suite.native_balance(&adapter, "juno"), Uint128::zero());
+}
+
+#[test]
+fn reject_with_no_required_deposit_just_removes() {
+    let mut suite = Suite::new_native(None);
+    let owner = suite.owner.clone();
+    let recipient = addr("recipient");
+
+    suite.create_submission(&owner, &recipient, None).unwrap();
+    // No bond was paid, so soft vs hard is moot.
+    suite
+        .execute_owner(&ExecuteMsg::Reject {
+            submission: recipient.to_string(),
+            soft: true,
+        })
+        .unwrap();
+
+    let res: Result<SubmissionResponse, _> = suite.query(&AdapterQueryMsg::Submission {
+        address: recipient.to_string(),
+    });
+    assert!(res.is_err());
+}
+
+#[test]
+fn reject_requires_admin() {
+    let mut suite = Suite::new_native(Some(AssetUnchecked {
+        denom: UncheckedDenom::Native("juno".into()),
+        amount: Uint128::new(1_000),
+    }));
+    let project = addr("project");
+    let recipient = addr("recipient");
+    suite.mint_native(&project, coin(1_000, "juno"));
+    suite
+        .create_submission(&project, &recipient, Some(coin(1_000, "juno")))
+        .unwrap();
+
+    let intruder = addr("intruder");
+    let err = suite
+        .execute(
+            &intruder,
+            &ExecuteMsg::Reject {
+                submission: recipient.to_string(),
+                soft: true,
+            },
+            &[],
+        )
+        .unwrap_err();
+    assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
+}
+
+#[test]
+fn reject_missing_submission_errors() {
+    let mut suite = Suite::new_native(None);
+    let err = suite
+        .execute_owner(&ExecuteMsg::Reject {
+            submission: "ghost".to_string(),
+            soft: true,
+        })
+        .unwrap_err();
+    assert_eq!(
+        ContractError::SubmissionNotFound("ghost".to_string()),
+        err.downcast().unwrap(),
+    );
+}
+
+#[test]
+fn reject_default_community_pool_submission_errors() {
+    let mut suite = Suite::new_native(None);
+    let community_pool = suite.community_pool.clone();
+    let err = suite
+        .execute_owner(&ExecuteMsg::Reject {
+            submission: community_pool.to_string(),
+            soft: true,
+        })
+        .unwrap_err();
+    assert_eq!(
+        ContractError::CannotRejectDefault {},
+        err.downcast().unwrap(),
+    );
+}
+
+#[test]
+fn reject_with_cw20_bond_routes_correctly() {
+    let (mut suite, cw20) = Suite::new_cw20_deposit();
+    let owner = suite.owner.clone();
+    let adapter = suite.adapter.clone();
+    let community_pool = suite.community_pool.clone();
+    let recipient = addr("recipient");
+
+    // Submit via cw20 Send.
+    let inner = to_json_binary(&ReceiveMsg::CreateSubmission {
+        name: "DAOers".into(),
+        url: "https://daodao.zone".into(),
+        address: recipient.to_string(),
+    })
+    .unwrap();
+    suite
+        .cw20_send(&cw20, &owner, &adapter, 1_000, inner)
+        .unwrap();
+    assert_eq!(suite.cw20_balance(&cw20, &adapter), Uint128::new(1_000));
+
+    // Hard-reject → cw20 bond goes to community pool.
+    suite
+        .execute_owner(&ExecuteMsg::Reject {
+            submission: recipient.to_string(),
+            soft: false,
+        })
+        .unwrap();
+    assert_eq!(suite.cw20_balance(&cw20, &adapter), Uint128::zero());
+    assert_eq!(
+        suite.cw20_balance(&cw20, &community_pool),
+        Uint128::new(1_000)
+    );
+}

@@ -28,6 +28,16 @@ pub enum ExecuteMsg {
     },
     /// Sends back all deposit to senders.
     ReturnDeposits {},
+    /// Admin-only: remove a submission from the registry. If a deposit was
+    /// required, `soft = true` refunds it to the original sender (good-
+    /// faith reject) and `soft = false` forfeits it to the community pool
+    /// (spam / malicious reject). Rejecting the default community-pool
+    /// submission is an error.
+    Reject {
+        /// Destination address of the submission to reject.
+        submission: String,
+        soft: bool,
+    },
 }
 
 #[cw_serde]

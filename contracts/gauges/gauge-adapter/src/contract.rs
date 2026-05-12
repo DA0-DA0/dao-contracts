@@ -76,6 +76,9 @@ pub fn execute(
             execute::create_submission(deps, info.sender, name, url, address, received)
         }
         ExecuteMsg::ReturnDeposits {} => execute::return_deposits(deps, info.sender),
+        ExecuteMsg::Reject { submission, soft } => {
+            execute::reject(deps, info.sender, submission, soft)
+        }
     }
 }
 
@@ -153,6 +156,51 @@ pub mod execute {
 
         SUBMISSIONS.save(deps.storage, address, &Submission { sender, name, url })?;
         Ok(Response::new().add_attribute("create", "submission"))
+    }
+
+    pub fn reject(
+        deps: DepsMut,
+        sender: Addr,
+        submission: String,
+        soft: bool,
+    ) -> Result<Response, ContractError> {
+        let Config {
+            admin,
+            required_deposit,
+            community_pool,
+            reward: _,
+        } = CONFIG.load(deps.storage)?;
+        ensure_eq!(sender, admin, ContractError::Unauthorized {});
+
+        let submission_addr = deps.api.addr_validate(&submission)?;
+        if submission_addr == community_pool {
+            return Err(ContractError::CannotRejectDefault {});
+        }
+        let stored = SUBMISSIONS
+            .may_load(deps.storage, submission_addr.clone())?
+            .ok_or_else(|| ContractError::SubmissionNotFound(submission.clone()))?;
+
+        SUBMISSIONS.remove(deps.storage, submission_addr.clone());
+
+        let mut resp = Response::new()
+            .add_attribute("action", "reject")
+            .add_attribute("submission", submission_addr.to_string())
+            .add_attribute("kind", if soft { "soft" } else { "hard" });
+
+        if let Some(deposit) = required_deposit {
+            // Soft: refund to original sender. Hard: forfeit to community pool.
+            let destination = if soft {
+                &stored.sender
+            } else {
+                &community_pool
+            };
+            let msg = deposit
+                .denom
+                .get_transfer_to_message(destination, deposit.amount)?;
+            resp = resp.add_message(msg);
+        }
+
+        Ok(resp)
     }
 
     pub fn return_deposits(deps: DepsMut, sender: Addr) -> Result<Response, ContractError> {

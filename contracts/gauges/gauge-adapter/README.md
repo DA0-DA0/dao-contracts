@@ -47,7 +47,8 @@ implementing the three `AdapterQueryMsg` variants.
 |---|---|---|
 | `CreateSubmission { name, url, address }` | anyone | Native-deposit path. Funds must match `required_deposit` exactly (or be empty if no deposit required). |
 | `Receive(Cw20ReceiveMsg)` | the configured cw20 | cw20-deposit path. Sender of the cw20 `Send` becomes the submission's sender. |
-| `ReturnDeposits {}` | `admin` | Refunds every posted deposit to its sender. |
+| `Reject { submission, soft }` | `admin` | Remove `submission` from the registry. With `soft = true`, refund the bond to the original sender (good-faith reject). With `soft = false`, forfeit the bond to the community pool (spam / malicious). No-op on the bond side if no `required_deposit` is configured. Cannot target the default community-pool submission. |
+| `ReturnDeposits {}` | `admin` | Refunds every posted deposit to its sender. Use at program close. |
 
 ## QueryMsg (`AdapterQueryMsg`)
 
@@ -69,6 +70,8 @@ implementing the three `AdapterQueryMsg` variants.
 | `InvalidDepositType` | Sent the wrong denom / wrong cw20. |
 | `InvalidDepositAmount { correct_amount }` | Sent the right denom but wrong amount. |
 | `NoDepositToRefund` | `ReturnDeposits` called on a deposit-less adapter. |
+| `SubmissionNotFound(addr)` | `Reject` targeted a submission that isn't in the registry. |
+| `CannotRejectDefault` | `Reject` targeted the default community-pool submission. |
 | `PaymentError` | Missing funds when a deposit is required. |
 
 ## Writing a different adapter
