@@ -41,7 +41,7 @@ backtraces = ["cw-multi-test/backtrace"]
 library = []
 # use test tube feature to enable test-tube integration tests, for example
 # cargo test --features "test-tube"
-test-tube = ["osmosis_tokenfactory"]
+test-tube = ["osmosis_tokenfactory", "dep:osmosis-test-tube"]
 # different tokenfactory cosmos sdk module standards. enable corresponding
 # standard in types library
 osmosis_tokenfactory = ["cw-tokenfactory-types/osmosis_tokenfactory"]
@@ -62,8 +62,9 @@ schemars = { workspace = true }
 serde = { workspace = true, default-features = false, features = ["derive"] }
 thiserror = { workspace = true }
 
+osmosis-test-tube = { workspace = true, optional = true }
+
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }
 cw-multi-test = { workspace = true }
-osmosis-test-tube = { workspace = true }
 serde_json = { workspace = true }

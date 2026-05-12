@@ -96,4 +96,9 @@ pub enum ContractError {
 
     #[error("incompatible migration version")]
     MigrationVersionError {},
+
+    #[error(
+        "Direct v1 -> v2.9+ migration is not supported in this binary. Migrate v1 DAOs via the v2.4.1 release first, then re-migrate to v2.9+."
+    )]
+    V1MigrationUnsupported {},
 }

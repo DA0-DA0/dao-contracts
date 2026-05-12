@@ -1,3 +1,4 @@
+#![cfg(feature = "test-tube")]
 use cosmwasm_std::coins;
 use cw_tokenfactory_issuer::msg::QueryMsg;
 use cw_tokenfactory_issuer::{state::BeforeSendHookInfo, ContractError};

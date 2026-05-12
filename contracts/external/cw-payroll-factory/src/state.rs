@@ -14,8 +14,8 @@ pub struct VestingContract {
 }
 
 pub struct TokenIndexes<'a> {
-    pub instantiator: MultiIndex<String, VestingContract, String>,
-    pub recipient: MultiIndex<String, VestingContract, String>,
+    pub instantiator: MultiIndex<'a, String, VestingContract, String>,
+    pub recipient: MultiIndex<'a, String, VestingContract, String>,
 }
 
 impl IndexList<VestingContract> for TokenIndexes<'_> {

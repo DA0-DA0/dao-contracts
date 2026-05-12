@@ -7,7 +7,7 @@ pub enum RolesContractError {
     Std(#[from] StdError),
 
     #[error(transparent)]
-    Base(#[from] cw721_base::ContractError),
+    Base(#[from] cw721_base::error::ContractError),
 
     #[error(transparent)]
     HookError(#[from] cw_controllers::HookError),

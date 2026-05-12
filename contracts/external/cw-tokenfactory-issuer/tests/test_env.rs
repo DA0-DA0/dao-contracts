@@ -1,3 +1,4 @@
+#![cfg(feature = "test-tube")]
 // The code is used in tests but reported as dead code
 // see https://github.com/rust-lang/rust/issues/46379
 #![allow(dead_code)]

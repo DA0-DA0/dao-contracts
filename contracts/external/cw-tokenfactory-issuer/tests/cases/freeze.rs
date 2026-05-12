@@ -1,3 +1,4 @@
+#![cfg(feature = "test-tube")]
 use cw_tokenfactory_issuer::ContractError;
 
 use crate::test_env::{TestEnv, TokenfactoryIssuer};

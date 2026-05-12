@@ -16,5 +16,5 @@ pub mod suite;
 #[cfg(not(target_arch = "wasm32"))]
 pub use suite::*;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "test-tube"))]
 pub mod test_tube;

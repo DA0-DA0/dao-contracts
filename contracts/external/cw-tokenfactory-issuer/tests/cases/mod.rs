@@ -1,3 +1,4 @@
+#![cfg(feature = "test-tube")]
 mod allowlist;
 mod beforesend;
 mod burn;

@@ -1,6 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
-use cw721_base::InstantiateMsg as Cw721InstantiateMsg;
+use cw721_base::msg::InstantiateMsg as Cw721InstantiateMsg;
 
 #[cfg(feature = "osmosis_tokenfactory")]
 use dao_interface::token::NewTokenInfo;

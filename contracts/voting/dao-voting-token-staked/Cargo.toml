@@ -36,7 +36,7 @@ backtraces = ["cw-multi-test/backtrace"]
 library = []
 # use test tube feature to enable test-tube integration tests, for example
 # cargo test --features "test-tube"
-test-tube = []
+test-tube = ["dep:osmosis-test-tube", "dao-testing/test-tube"]
 # when writing tests you may wish to enable test-tube as a default feature
 # default = ["test-tube"]
 # different tokenfactory cosmos sdk module standards. enable corresponding
@@ -63,6 +63,7 @@ dao-voting = { workspace = true }
 cw-tokenfactory-issuer = { workspace = true, default-features = false, features = [
   "library",
 ] }
+osmosis-test-tube = { workspace = true, optional = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }
@@ -70,7 +71,6 @@ cw-multi-test = { workspace = true }
 dao-proposal-single = { workspace = true }
 dao-proposal-hook-counter = { workspace = true }
 dao-test-custom-factory = { workspace = true }
-dao-testing = { workspace = true, features = ["test-tube"] }
+dao-testing = { workspace = true }
 osmosis-std = { workspace = true }
-osmosis-test-tube = { workspace = true }
 serde = { workspace = true }

@@ -5,8 +5,8 @@ use cosmwasm_std::{
     Response, StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw721::{Cw721QueryMsg, NumTokensResponse};
-use cw721_base::InstantiateMsg as Cw721InstantiateMsg;
+use cw721::msg::{Cw721QueryMsg, NumTokensResponse};
+use cw721_base::msg::InstantiateMsg as Cw721InstantiateMsg;
 use cw_ownable::Ownership;
 use cw_storage_plus::Item;
 use cw_tokenfactory_issuer::msg::ExecuteMsg as IssuerExecuteMsg;
@@ -139,7 +139,10 @@ pub fn execute_nft_factory(
     let msg = to_json_binary(&Cw721InstantiateMsg {
         name: cw721_instantiate_msg.name,
         symbol: cw721_instantiate_msg.symbol,
-        minter: dao.to_string(),
+        minter: Some(dao.to_string()),
+        collection_info_extension: cw721_instantiate_msg.collection_info_extension,
+        creator: cw721_instantiate_msg.creator,
+        withdraw_address: cw721_instantiate_msg.withdraw_address,
     })?;
 
     // Instantiate new contract, further setup is handled in the
@@ -296,7 +299,7 @@ pub fn execute_validate_nft_dao(
     // Query the collection owner and check that it's the DAO.
     let owner: Ownership<Addr> = deps.querier.query_wasm_smart(
         collection_addr.clone(),
-        &cw721_base::msg::QueryMsg::<Empty>::Ownership {},
+        &cw721_base::msg::QueryMsg::GetMinterOwnership {},
     )?;
     match owner.owner {
         Some(owner) => {
@@ -310,7 +313,10 @@ pub fn execute_validate_nft_dao(
     // Query the total supply of the NFT contract
     let nft_supply: NumTokensResponse = deps
         .querier
-        .query_wasm_smart(collection_addr.clone(), &Cw721QueryMsg::NumTokens {})?;
+        .query_wasm_smart(
+            collection_addr.clone(),
+            &Cw721QueryMsg::<Empty, Empty, Empty>::NumTokens {},
+        )?;
 
     // Check greater than zero
     if nft_supply.count == 0 {

@@ -8,14 +8,16 @@ use cw4::{
     Member, MemberChangedHookMsg, MemberDiff, MemberListResponse, MemberResponse,
     TotalWeightResponse,
 };
-use cw721::{Cw721ReceiveMsg, NftInfoResponse, OwnerOfResponse};
-use cw721_base::{Cw721Contract, InstantiateMsg as Cw721BaseInstantiateMsg};
+use cw721::extension::Cw721Extensions;
+use cw721::msg::{NftInfoResponse, OwnerOfResponse};
+use cw721::receiver::Cw721ReceiveMsg;
+use cw721::traits::{Cw721Execute, Cw721Query};
 use cw_storage_plus::Bound;
 use cw_utils::maybe_addr;
 use dao_cw721_extensions::roles::{ExecuteExt, MetadataExt, QueryExt};
 use std::cmp::Ordering;
 
-use crate::msg::{ExecuteMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{MEMBERS, TOTAL};
 use crate::{error::RolesContractError as ContractError, state::HOOKS};
 
@@ -27,16 +29,23 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 
-pub type Cw721Roles<'a> = Cw721Contract<'a, MetadataExt, Empty, ExecuteExt, QueryExt>;
+/// cw721-roles wraps `Cw721Extensions` with:
+///   - NFT extension: `MetadataExt` (role + weight, also doubles as the mint-time msg type)
+///   - Collection extension: `Empty` (unused)
+///   - Execute extension: `ExecuteExt` (hooks, update token role/uri/weight)
+///   - Query extension: `QueryExt` (cw4-style member queries)
+///   - Custom response: `Empty`
+pub type Cw721Roles<'a> =
+    Cw721Extensions<'a, MetadataExt, MetadataExt, Empty, Empty, ExecuteExt, QueryExt, Empty>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: Cw721BaseInstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    Cw721Roles::default().instantiate(deps.branch(), env.clone(), info, msg)?;
+    Cw721Roles::default().instantiate(deps.branch(), &env, &info, msg)?;
 
     // Initialize total weight to zero
     TOTAL.save(deps.storage, &0, env.block.height)?;
@@ -66,7 +75,8 @@ pub fn execute(
             extension,
         } => execute_mint(deps, env, info, token_id, owner, token_uri, extension),
         ExecuteMsg::Burn { token_id } => execute_burn(deps, env, info, token_id),
-        ExecuteMsg::Extension { msg } => match msg {
+        #[allow(deprecated)]
+        ExecuteMsg::UpdateExtension { msg } => match msg {
             ExecuteExt::AddHook { addr } => execute_add_hook(deps, info, addr),
             ExecuteExt::RemoveHook { addr } => execute_remove_hook(deps, info, addr),
             ExecuteExt::UpdateTokenRole { token_id, role } => {
@@ -90,7 +100,7 @@ pub fn execute(
             msg,
         } => execute_send(deps, env, info, token_id, contract, msg),
         _ => Cw721Roles::default()
-            .execute(deps, env, info, msg)
+            .execute(deps, &env, &info, msg)
             .map_err(Into::into),
     }
 }
@@ -134,8 +144,8 @@ pub fn execute_mint(
     // Call base mint
     let res = Cw721Roles::default().execute(
         deps,
-        env,
-        info,
+        &env,
+        &info,
         ExecuteMsg::Mint {
             token_id,
             owner,
@@ -153,10 +163,12 @@ pub fn execute_burn(
     info: MessageInfo,
     token_id: String,
 ) -> Result<Response, ContractError> {
+    let contract = Cw721Roles::default();
+
     // Lookup the owner of the NFT
-    let owner: OwnerOfResponse = from_json(Cw721Roles::default().query(
+    let owner: OwnerOfResponse = from_json(contract.query(
         deps.as_ref(),
-        env.clone(),
+        &env,
         QueryMsg::OwnerOf {
             token_id: token_id.clone(),
             include_expired: None,
@@ -164,9 +176,9 @@ pub fn execute_burn(
     )?)?;
 
     // Get the weight of the token
-    let nft_info: NftInfoResponse<MetadataExt> = from_json(Cw721Roles::default().query(
+    let nft_info: NftInfoResponse<MetadataExt> = from_json(contract.query(
         deps.as_ref(),
-        env.clone(),
+        &env,
         QueryMsg::NftInfo {
             token_id: token_id.clone(),
         },
@@ -215,11 +227,12 @@ pub fn execute_burn(
     })?;
 
     // Remove the token
-    Cw721Roles::default()
-        .tokens
+    contract
+        .config
+        .nft_info
         .remove(deps.storage, &token_id)?;
-    // Decrement the account
-    Cw721Roles::default().decrement_tokens(deps.storage)?;
+    // Decrement the count
+    contract.config.decrement_tokens(deps.storage)?;
 
     Ok(Response::new()
         .add_attribute("action", "burn")
@@ -237,11 +250,14 @@ pub fn execute_transfer(
 ) -> Result<Response, ContractError> {
     let contract = Cw721Roles::default();
 
-    let mut token = contract.tokens.load(deps.storage, &token_id)?;
+    let mut token = contract.config.nft_info.load(deps.storage, &token_id)?;
     // set owner and remove existing approvals
     token.owner = deps.api.addr_validate(&recipient)?;
     token.approvals = vec![];
-    contract.tokens.save(deps.storage, &token_id, &token)?;
+    contract
+        .config
+        .nft_info
+        .save(deps.storage, &token_id, &token)?;
 
     Ok(Response::new()
         .add_attribute("action", "transfer_nft")
@@ -260,11 +276,14 @@ pub fn execute_send(
 ) -> Result<Response, ContractError> {
     let contract = Cw721Roles::default();
 
-    let mut token = contract.tokens.load(deps.storage, &token_id)?;
+    let mut token = contract.config.nft_info.load(deps.storage, &token_id)?;
     // set owner and remove existing approvals
     token.owner = deps.api.addr_validate(&recipient_contract)?;
     token.approvals = vec![];
-    contract.tokens.save(deps.storage, &token_id, &token)?;
+    contract
+        .config
+        .nft_info
+        .save(deps.storage, &token_id, &token)?;
 
     let send = Cw721ReceiveMsg {
         sender: info.sender.to_string(),
@@ -316,11 +335,14 @@ pub fn execute_update_token_role(
     let contract = Cw721Roles::default();
 
     // Make sure NFT exists
-    let mut token = contract.tokens.load(deps.storage, &token_id)?;
+    let mut token = contract.config.nft_info.load(deps.storage, &token_id)?;
 
     // Update role with new value
     token.extension.role.clone_from(&role);
-    contract.tokens.save(deps.storage, &token_id, &token)?;
+    contract
+        .config
+        .nft_info
+        .save(deps.storage, &token_id, &token)?;
 
     Ok(Response::default()
         .add_attribute("action", "update_token_role")
@@ -338,11 +360,14 @@ pub fn execute_update_token_uri(
 ) -> Result<Response, ContractError> {
     let contract = Cw721Roles::default();
 
-    let mut token = contract.tokens.load(deps.storage, &token_id)?;
+    let mut token = contract.config.nft_info.load(deps.storage, &token_id)?;
 
     // Set new token URI
     token.token_uri.clone_from(&token_uri);
-    contract.tokens.save(deps.storage, &token_id, &token)?;
+    contract
+        .config
+        .nft_info
+        .save(deps.storage, &token_id, &token)?;
 
     Ok(Response::new()
         .add_attribute("action", "update_token_uri")
@@ -361,7 +386,7 @@ pub fn execute_update_token_weight(
     let contract = Cw721Roles::default();
 
     // Make sure NFT exists
-    let mut token = contract.tokens.load(deps.storage, &token_id)?;
+    let mut token = contract.config.nft_info.load(deps.storage, &token_id)?;
 
     let mut total = Uint64::from(TOTAL.load(deps.storage)?);
     let mut diff = MemberDiff::new(token.clone().owner, None, None);
@@ -424,7 +449,10 @@ pub fn execute_update_token_weight(
 
     // Save token weight
     token.extension.weight = weight;
-    contract.tokens.save(deps.storage, &token_id, &token)?;
+    contract
+        .config
+        .nft_info
+        .save(deps.storage, &token_id, &token)?;
 
     Ok(Response::default()
         .add_submessages(msgs)
@@ -449,7 +477,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 to_json_binary(&query_total_weight(deps, at_height)?)
             }
         },
-        _ => Cw721Roles::default().query(deps, env, msg),
+        _ => Cw721Roles::default()
+            .query(deps, &env, msg)
+            .map_err(|e| cosmwasm_std::StdError::generic_err(e.to_string())),
     }
 }
 

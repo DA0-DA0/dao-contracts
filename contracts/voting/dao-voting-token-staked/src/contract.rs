@@ -743,6 +743,8 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                                     display: metadata.display,
                                     name: metadata.name,
                                     symbol: metadata.symbol,
+                                    uri: String::new(),
+                                    uri_hash: String::new(),
                                 },
                             })?,
                             funds: vec![],

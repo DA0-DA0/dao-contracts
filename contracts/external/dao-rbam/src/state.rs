@@ -101,7 +101,7 @@ pub const LOG: IndexedMap<u64, Action, LogIndexes<'_>> = IndexedMap::new(
 
 /// Secondary index for authorizations to look up/iterate by role.
 pub struct AuthorizationsIndexes<'a> {
-    pub role_id: MultiIndex<u64, Authorization, u64>,
+    pub role_id: MultiIndex<'a, u64, Authorization, u64>,
 }
 impl IndexList<Authorization> for AuthorizationsIndexes<'_> {
     fn get_indexes(&self) -> Box<dyn Iterator<Item = &dyn Index<Authorization>> + '_> {
@@ -116,7 +116,7 @@ type AssignmentPair = (Addr, u64);
 /// Secondary indexes for assignments to look up/iterate over all addresses
 /// assigned to a role as well as all addresses with a role assigned at all.
 pub struct AssignmentsIndexes<'a> {
-    pub role_id: MultiIndex<u64, Addr, AssignmentPair>,
+    pub role_id: MultiIndex<'a, u64, Addr, AssignmentPair>,
 }
 impl IndexList<Addr> for AssignmentsIndexes<'_> {
     fn get_indexes(&self) -> Box<dyn Iterator<Item = &dyn Index<Addr>> + '_> {
@@ -128,9 +128,9 @@ impl IndexList<Addr> for AssignmentsIndexes<'_> {
 /// Secondary indexes for log to look up/iterate over all actions by address,
 /// role, and authorization.
 pub struct LogIndexes<'a> {
-    pub address: MultiIndex<Addr, Action, u64>,
-    pub role_id: MultiIndex<u64, Action, u64>,
-    pub authorization_id: MultiIndex<u64, Action, u64>,
+    pub address: MultiIndex<'a, Addr, Action, u64>,
+    pub role_id: MultiIndex<'a, u64, Action, u64>,
+    pub authorization_id: MultiIndex<'a, u64, Action, u64>,
 }
 impl IndexList<Action> for LogIndexes<'_> {
     fn get_indexes(&self) -> Box<dyn Iterator<Item = &dyn Index<Action>> + '_> {

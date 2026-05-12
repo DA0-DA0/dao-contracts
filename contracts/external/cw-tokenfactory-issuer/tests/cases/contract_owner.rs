@@ -1,3 +1,4 @@
+#![cfg(feature = "test-tube")]
 use cosmwasm_std::{Addr, Uint128};
 use cw_tokenfactory_issuer::{msg::ExecuteMsg, ContractError};
 use osmosis_test_tube::Account;

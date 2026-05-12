@@ -1,5 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::CustomMsg;
+use cosmwasm_std::{CustomMsg, Deps, Env, MessageInfo};
+use cw721::error::Cw721ContractError;
+use cw721::traits::{Contains, Cw721CustomMsg, Cw721State, StateFactory};
 
 #[cw_serde]
 pub struct MetadataExt {
@@ -7,6 +9,40 @@ pub struct MetadataExt {
     pub role: Option<String>,
     /// The voting weight of this role
     pub weight: u64,
+}
+impl Cw721State for MetadataExt {}
+impl Cw721CustomMsg for MetadataExt {}
+
+/// `Contains` is required by `Cw721Query` so callers can ask "does this NFT have these
+/// traits/metadata". For roles, an NFT contains another when role and weight both match.
+impl Contains for MetadataExt {
+    fn contains(&self, other: &Self) -> bool {
+        self == other
+    }
+}
+
+/// `MetadataExt` doubles as the cw721 NFT extension *state* and *msg*. The msg-to-state
+/// conversion is identity — clone the msg into state with no validation.
+impl StateFactory<MetadataExt> for MetadataExt {
+    fn create(
+        &self,
+        _deps: Deps,
+        _env: &Env,
+        _info: Option<&MessageInfo>,
+        _current: Option<&MetadataExt>,
+    ) -> Result<MetadataExt, Cw721ContractError> {
+        Ok(self.clone())
+    }
+
+    fn validate(
+        &self,
+        _deps: Deps,
+        _env: &Env,
+        _info: Option<&MessageInfo>,
+        _current: Option<&MetadataExt>,
+    ) -> Result<(), Cw721ContractError> {
+        Ok(())
+    }
 }
 
 #[cw_serde]
@@ -30,6 +66,7 @@ pub enum ExecuteExt {
     },
 }
 impl CustomMsg for ExecuteExt {}
+impl Cw721CustomMsg for ExecuteExt {}
 
 #[cw_serde]
 #[derive(QueryResponses)]
@@ -54,3 +91,4 @@ pub enum QueryExt {
     Hooks {},
 }
 impl CustomMsg for QueryExt {}
+impl Cw721CustomMsg for QueryExt {}

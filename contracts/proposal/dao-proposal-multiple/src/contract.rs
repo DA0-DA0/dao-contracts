@@ -562,7 +562,7 @@ pub fn execute_execute(
                 .ok_or(VetoError::NoVetoConfiguration {})?;
 
             // check that the sender is the vetoer
-            if veto_config.vetoer != info.sender {
+            if veto_config.vetoer != info.sender.as_str() {
                 // if the sender can normally execute, but is not the vetoer,
                 // return timelocked error. otherwise return unauthorized.
                 if sender_can_execute {

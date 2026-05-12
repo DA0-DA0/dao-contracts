@@ -1,3 +1,4 @@
+#![cfg(feature = "test-tube")]
 use cw_tokenfactory_issuer::{msg::StatusInfo, ContractError};
 use osmosis_test_tube::Account;
 

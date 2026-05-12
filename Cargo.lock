@@ -482,7 +482,7 @@ dependencies = [
  "dao-testing",
  "dao-voting 2.8.0-alpha.2",
  "dao-voting-token-staked",
- "osmosis-std-derive",
+ "osmosis-std-derive 0.26.0",
  "prost 0.12.3",
  "prost-types 0.12.3",
  "schemars",
@@ -1504,7 +1504,7 @@ dependencies = [
  "cw-tokenfactory-types",
  "cw2 2.0.0",
  "dao-interface 2.8.0-alpha.2",
- "osmosis-std",
+ "osmosis-std 0.26.0",
  "osmosis-test-tube",
  "prost 0.12.3",
  "schemars",
@@ -1520,8 +1520,8 @@ dependencies = [
  "cosmwasm-schema 2.3.2",
  "cosmwasm-std 2.3.2",
  "dao-interface 2.8.0-alpha.2",
- "osmosis-std",
- "osmosis-std-derive",
+ "osmosis-std 0.26.0",
+ "osmosis-std-derive 0.26.0",
  "prost 0.12.3",
  "prost-types 0.12.3",
  "schemars",
@@ -2100,6 +2100,7 @@ dependencies = [
  "cosmwasm-std 2.3.2",
  "cw-controllers 2.0.0",
  "cw4 2.0.0",
+ "cw721 0.22.0",
 ]
 
 [[package]]
@@ -2212,7 +2213,7 @@ dependencies = [
  "cw2 1.1.2",
  "cw20 1.1.2",
  "cw721 0.18.0",
- "osmosis-std",
+ "osmosis-std 0.20.1",
 ]
 
 [[package]]
@@ -2226,7 +2227,7 @@ dependencies = [
  "cw2 2.0.0",
  "cw20 2.0.0",
  "cw721 0.22.0",
- "osmosis-std",
+ "osmosis-std 0.26.0",
 ]
 
 [[package]]
@@ -2703,8 +2704,8 @@ dependencies = [
  "dao-interface 2.8.0-alpha.2",
  "dao-rbam",
  "dao-testing",
- "osmosis-std",
- "osmosis-std-derive",
+ "osmosis-std 0.26.0",
+ "osmosis-std-derive 0.26.0",
  "prost 0.12.3",
  "prost-reflect",
  "prost-types 0.12.3",
@@ -2831,7 +2832,7 @@ dependencies = [
  "dao-voting-cw721-staked",
  "dao-voting-onft-staked",
  "dao-voting-token-staked",
- "osmosis-std",
+ "osmosis-std 0.26.0",
  "osmosis-test-tube",
  "rand",
  "serde",
@@ -3049,7 +3050,7 @@ dependencies = [
  "dao-testing",
  "dao-voting 2.8.0-alpha.2",
  "nft-controllers",
- "osmosis-std",
+ "osmosis-std 0.26.0",
  "osmosis-test-tube",
  "serde",
  "thiserror 1.0.63",
@@ -3109,7 +3110,7 @@ dependencies = [
  "dao-test-custom-factory",
  "dao-testing",
  "dao-voting 2.8.0-alpha.2",
- "osmosis-std",
+ "osmosis-std 0.26.0",
  "osmosis-test-tube",
  "serde",
  "thiserror 1.0.63",
@@ -4175,15 +4176,15 @@ dependencies = [
 
 [[package]]
 name = "omniflix-std"
-version = "0.1.8"
+version = "1.1.0-beta"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a662bd7782ef6ad1af3747a2b73d37f8e6a230bb7b1624d96c05b3567501600"
+checksum = "d6b7a25d5a4be3764142f5006fbe6a05654d5867a6cdb0f008108f3a7739d238"
 dependencies = [
  "chrono",
- "cosmwasm-std 1.5.5",
+ "cosmwasm-std 2.3.2",
  "omniflix-std-derive",
- "prost 0.12.3",
- "prost-types 0.12.3",
+ "prost 0.13.5",
+ "prost-types 0.13.5",
  "schemars",
  "serde",
  "serde-cw-value",
@@ -4191,9 +4192,9 @@ dependencies = [
 
 [[package]]
 name = "omniflix-std-derive"
-version = "0.0.1"
+version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8bbd85582e3ef1a23fa7b12e0415ea604260c114e72faf40d829c2c40f1c745e"
+checksum = "3625b3cad60675b6a5a16b5d5dd9918b226a712a795ecc15663a37aa2bb5d6b2"
 dependencies = [
  "itertools 0.10.5",
  "proc-macro2",
@@ -4247,9 +4248,25 @@ checksum = "47d7aa053bc3fad557ac90a0377688b400c395e2537f0f1de3293a15cad2e970"
 dependencies = [
  "chrono",
  "cosmwasm-std 1.5.5",
- "osmosis-std-derive",
+ "osmosis-std-derive 0.20.1",
  "prost 0.11.9",
  "prost-types 0.11.9",
+ "schemars",
+ "serde",
+ "serde-cw-value",
+]
+
+[[package]]
+name = "osmosis-std"
+version = "0.26.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd621cc2f26474c6fb689ccc114dc0d8b53369a322f1fa5f24802f3de3d3def3"
+dependencies = [
+ "chrono",
+ "cosmwasm-std 2.3.2",
+ "osmosis-std-derive 0.26.0",
+ "prost 0.13.5",
+ "prost-types 0.13.5",
  "schemars",
  "serde",
  "serde-cw-value",
@@ -4269,6 +4286,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "osmosis-std-derive"
+version = "0.26.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b0240fd030a4bbc79fa6cbea0b3eb0260a4b79075ebc039b93e2652bff8655b"
+dependencies = [
+ "itertools 0.10.5",
+ "proc-macro2",
+ "prost-types 0.11.9",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "osmosis-test-tube"
 version = "20.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4278,7 +4308,7 @@ dependencies = [
  "bindgen",
  "cosmrs 0.9.0",
  "cosmwasm-std 1.5.5",
- "osmosis-std",
+ "osmosis-std 0.20.1",
  "prost 0.11.9",
  "serde",
  "serde_json",
@@ -4523,6 +4553,16 @@ dependencies = [
 
 [[package]]
 name = "prost"
+version = "0.13.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2796faa41db3ec313a31f7624d9286acf277b52de526150b7e69f3debf891ee5"
+dependencies = [
+ "bytes",
+ "prost-derive 0.13.5",
+]
+
+[[package]]
+name = "prost"
 version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2ea70524a2f82d518bce41317d0fae74151505651af45faf1ffbd6fd33f0568"
@@ -4552,6 +4592,19 @@ checksum = "efb6c9a1dd1def8e2124d17e83a20af56f1570d6c2d2bd9e266ccb768df3840e"
 dependencies = [
  "anyhow",
  "itertools 0.10.5",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.87",
+]
+
+[[package]]
+name = "prost-derive"
+version = "0.13.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a56d757972c98b346a9b766e3f02746cde6dd1cd1d1d563472929fdd74bec4d"
+dependencies = [
+ "anyhow",
+ "itertools 0.14.0",
  "proc-macro2",
  "quote",
  "syn 2.0.87",
@@ -4600,6 +4653,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "193898f59edcf43c26227dcd4c8427f00d99d61e95dcde58dabd49fa291d470e"
 dependencies = [
  "prost 0.12.3",
+]
+
+[[package]]
+name = "prost-types"
+version = "0.13.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52c2c1bf36ddb1a1c396b3601a3cec27c2462e45f07c386894ec3ccf5332bd16"
+dependencies = [
+ "prost 0.13.5",
 ]
 
 [[package]]
@@ -5569,7 +5631,7 @@ dependencies = [
  "base64 0.13.1",
  "cosmrs 0.9.0",
  "cosmwasm-std 1.5.5",
- "osmosis-std",
+ "osmosis-std 0.20.1",
  "prost 0.11.9",
  "serde",
  "serde_json",
