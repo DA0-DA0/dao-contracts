@@ -1,5 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Decimal, Deps, Env, Order, StdResult, Storage, Uint128};
+use cw_hooks::Hooks;
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 use cw_utils::maybe_addr;
 
@@ -11,6 +12,10 @@ pub type GaugeId = u64;
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const GAUGES: Map<GaugeId, Gauge> = Map::new("gauges");
 const LAST_ID: Item<GaugeId> = Item::new("last_id");
+
+/// Hooks fired on `PlaceVotes`. Owner-managed list; failures auto-unregister
+/// (see the `reply` entry-point).
+pub const VOTE_HOOKS: Hooks = Hooks::new("vote_hooks");
 
 /// Get ID for gauge registration and increment value in storage
 pub fn fetch_last_id(storage: &mut dyn Storage) -> StdResult<u64> {

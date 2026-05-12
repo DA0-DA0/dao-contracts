@@ -88,6 +88,13 @@ pub enum ExecuteMsg {
     },
     /// Takes a sample of the current tally and execute the proper messages to make it work
     Execute { gauge: u64 },
+    /// Owner-only: register a contract address to receive
+    /// [`GaugeVoteHookMsg`](crate::hooks::GaugeVoteHookMsg) submessages on
+    /// every `PlaceVotes`. Subscribers receive `reply_on_error`-style
+    /// submessages — a hook that errors is auto-unregistered.
+    AddHook { addr: String },
+    /// Owner-only: drop a previously-registered hook subscriber.
+    RemoveHook { addr: String },
 }
 
 #[cw_serde]
@@ -127,6 +134,14 @@ pub enum QueryMsg {
     SelectedSet { gauge: u64 },
     #[returns(LastExecutedSetResponse)]
     LastExecutedSet { gauge: u64 },
+    /// List the currently-registered `GaugeVoteHook` subscribers.
+    #[returns(GetHooksResponse)]
+    GetHooks {},
+}
+
+#[cw_serde]
+pub struct GetHooksResponse {
+    pub hooks: Vec<String>,
 }
 
 /// Information about one gauge

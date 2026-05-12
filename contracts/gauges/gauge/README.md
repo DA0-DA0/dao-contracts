@@ -101,3 +101,30 @@ Key collections (see `state.rs`):
 The DAO's voting module (or its underlying staking contract) must add the
 orchestrator address as a hook receiver; otherwise stake changes will not
 flow into gauge tallies and the gauge will drift from reality.
+
+## Hooks the orchestrator emits
+
+The orchestrator broadcasts a `GaugeVoteHook` to every registered
+subscriber on each `PlaceVotes` call. Subscribers receive the new vote
+state — gauge id, voter, the new `Vec<Vote>` (empty on abstain), the
+voter's `voting_power` at the snapshot, and `height`. Useful for
+participation rewards (a sibling `dao-rewards-distributor` paying for
+active gauge participation, off-chain analytics, notification routers,
+etc.). The hook payload type is
+[`hooks::GaugeVoteHookMsg`](src/hooks.rs); subscribers match on
+`GaugeVoteHookExecuteMsg::GaugeVoteHook(..)`.
+
+| ExecuteMsg | Auth | Notes |
+|---|---|---|
+| `AddHook { addr }` | owner | Add a subscriber. |
+| `RemoveHook { addr }` | owner | Drop a subscriber. |
+
+| QueryMsg | Returns | Notes |
+|---|---|---|
+| `GetHooks {}` | `GetHooksResponse { hooks: Vec<String> }` | List current subscribers. |
+
+Subscriber failure is non-fatal to the voter: submessages use
+`reply_on_error`, and the orchestrator's `reply` handler auto-drops a
+failing subscriber by index so its broken callback can't keep blocking
+gas on future votes. Adding a participation-reward consumer is therefore
+safe to attempt — a misconfigured downstream contract is self-pruning.

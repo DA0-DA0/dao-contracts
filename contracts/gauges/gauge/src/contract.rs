@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     ensure, to_json_binary, Addr, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Order,
-    QueryRequest, Response, StdError, StdResult, Uint128, WasmMsg, WasmQuery,
+    QueryRequest, Reply, Response, StdError, StdResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{ensure_from_older_version, set_contract_version};
 use cw_storage_plus::Bound;
@@ -11,14 +11,15 @@ use dao_interface::{
     voting::{Query as DaoQuery, VotingPowerAtHeightResponse},
 };
 
+use crate::hooks::new_vote_hook_msgs;
 use crate::msg::{
     AdapterQueryMsg, AllOptionsResponse, CheckOptionResponse, ExecuteMsg, GaugeConfig,
-    GaugeResponse, InstantiateMsg, ListGaugesResponse, ListOptionsResponse, ListVotesResponse,
-    MigrateMsg, QueryMsg, SampleGaugeMsgsResponse, SelectedSetResponse,
+    GaugeResponse, GetHooksResponse, InstantiateMsg, ListGaugesResponse, ListOptionsResponse,
+    ListVotesResponse, MigrateMsg, QueryMsg, SampleGaugeMsgsResponse, SelectedSetResponse,
 };
 use crate::state::{
     fetch_last_id, update_tally, votes, Config, Gauge, GaugeId, CONFIG, GAUGES, OPTION_BY_POINTS,
-    TALLY, TOTAL_CAST,
+    TALLY, TOTAL_CAST, VOTE_HOOKS,
 };
 use crate::{error::ContractError, state::Reset};
 
@@ -99,6 +100,8 @@ pub fn execute(
             execute::place_votes(deps, env, info.sender, gauge, votes)
         }
         ExecuteMsg::Execute { gauge } => execute::execute(deps, env, gauge),
+        ExecuteMsg::AddHook { addr } => execute::add_hook(deps, info.sender, addr),
+        ExecuteMsg::RemoveHook { addr } => execute::remove_hook(deps, info.sender, addr),
     }
 }
 
@@ -793,11 +796,54 @@ mod execute {
             )?;
         }
 
+        // Snapshot of the new state to ship to any registered vote-hook
+        // subscribers. `votes` is the *new* set (empty means abstain).
+        let snapshot_votes = votes()
+            .may_load(deps.storage, &sender, gauge_id)?
+            .map(|v| v.votes)
+            .unwrap_or_default();
+        let hook_msgs = new_vote_hook_msgs(
+            VOTE_HOOKS,
+            deps.storage,
+            gauge_id,
+            sender.clone(),
+            snapshot_votes,
+            voting_power,
+            env.block.height,
+        )?;
+
         let response = Response::new()
             .add_attribute("action", "place_vote")
             .add_attribute("sender", &sender)
-            .add_attribute("gauge_id", gauge_id.to_string());
+            .add_attribute("gauge_id", gauge_id.to_string())
+            .add_submessages(hook_msgs);
         Ok(response)
+    }
+
+    pub fn add_hook(deps: DepsMut, sender: Addr, addr: String) -> Result<Response, ContractError> {
+        if sender != CONFIG.load(deps.storage)?.owner {
+            return Err(ContractError::Unauthorized {});
+        }
+        let hook = deps.api.addr_validate(&addr)?;
+        VOTE_HOOKS.add_hook(deps.storage, hook)?;
+        Ok(Response::new()
+            .add_attribute("action", "add_hook")
+            .add_attribute("hook", addr))
+    }
+
+    pub fn remove_hook(
+        deps: DepsMut,
+        sender: Addr,
+        addr: String,
+    ) -> Result<Response, ContractError> {
+        if sender != CONFIG.load(deps.storage)?.owner {
+            return Err(ContractError::Unauthorized {});
+        }
+        let hook = deps.api.addr_validate(&addr)?;
+        VOTE_HOOKS.remove_hook(deps.storage, hook)?;
+        Ok(Response::new()
+            .add_attribute("action", "remove_hook")
+            .add_attribute("hook", addr))
     }
 
     pub fn execute(deps: DepsMut, env: Env, gauge_id: u64) -> Result<Response, ContractError> {
@@ -895,7 +941,23 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::LastExecutedSet { gauge } => {
             Ok(to_json_binary(&query::last_executed_set(deps, gauge)?)?)
         }
+        QueryMsg::GetHooks {} => Ok(to_json_binary(&GetHooksResponse {
+            hooks: VOTE_HOOKS.query_hooks(deps)?.hooks,
+        })?),
     }
+}
+
+/// Auto-unregisters a vote hook subscriber that errored on its
+/// `GaugeVoteHook` call. The reply ID is the hook's index at firing time;
+/// `remove_hook_by_index` drops it so future `PlaceVotes` calls don't keep
+/// paying the failing subscriber's gas.
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    let removed = VOTE_HOOKS.remove_hook_by_index(deps.storage, msg.id)?;
+    Ok(Response::new()
+        .add_attribute("action", "remove_failed_vote_hook")
+        .add_attribute("hook", removed.to_string())
+        .add_attribute("index", msg.id.to_string()))
 }
 
 mod query {

@@ -47,7 +47,8 @@ fn store_gauge(app: &mut App) -> u64 {
             crate::contract::instantiate,
             crate::contract::query,
         )
-        .with_migrate(crate::contract::migrate),
+        .with_migrate(crate::contract::migrate)
+        .with_reply_empty(crate::contract::reply),
     );
 
     app.store_code(contract)

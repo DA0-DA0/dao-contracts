@@ -389,6 +389,50 @@
           }
         },
         "additionalProperties": false
+      },
+      {
+        "description": "Owner-only: register a contract address to receive [`GaugeVoteHookMsg`](crate::hooks::GaugeVoteHookMsg) submessages on every `PlaceVotes`. Subscribers receive `reply_on_error`-style submessages — a hook that errors is auto-unregistered.",
+        "type": "object",
+        "required": [
+          "add_hook"
+        ],
+        "properties": {
+          "add_hook": {
+            "type": "object",
+            "required": [
+              "addr"
+            ],
+            "properties": {
+              "addr": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Owner-only: drop a previously-registered hook subscriber.",
+        "type": "object",
+        "required": [
+          "remove_hook"
+        ],
+        "properties": {
+          "remove_hook": {
+            "type": "object",
+            "required": [
+              "addr"
+            ],
+            "properties": {
+              "addr": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       }
     ],
     "definitions": {
@@ -866,6 +910,20 @@
           }
         },
         "additionalProperties": false
+      },
+      {
+        "description": "List the currently-registered `GaugeVoteHook` subscribers.",
+        "type": "object",
+        "required": [
+          "get_hooks"
+        ],
+        "properties": {
+          "get_hooks": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       }
     ]
   },
@@ -993,6 +1051,23 @@
           "additionalProperties": false
         }
       }
+    },
+    "get_hooks": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "GetHooksResponse",
+      "type": "object",
+      "required": [
+        "hooks"
+      ],
+      "properties": {
+        "hooks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
     },
     "info": {
       "$schema": "http://json-schema.org/draft-07/schema#",
