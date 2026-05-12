@@ -2317,20 +2317,20 @@ fn test_proposal_hook_registration() {
 
     // non-dao may not add a hook.
     let err =
-        add_proposal_hook_should_fail(&mut app, &proposal_module, CREATOR_ADDR, "proposalhook");
+        add_proposal_hook_should_fail(&mut app, &proposal_module, CREATOR_ADDR, "cosmwasm18kdemsegp8zkggr204an7mds95e6lkcnl24v9lpa2jw65gaw2zqsmf2jey");
     assert!(matches!(err, ContractError::Unauthorized {}));
 
     add_proposal_hook(
         &mut app,
         &proposal_module,
         core_addr.as_str(),
-        "proposalhook",
+        "cosmwasm18kdemsegp8zkggr204an7mds95e6lkcnl24v9lpa2jw65gaw2zqsmf2jey",
     );
     let err = add_proposal_hook_should_fail(
         &mut app,
         &proposal_module,
         core_addr.as_str(),
-        "proposalhook",
+        "cosmwasm18kdemsegp8zkggr204an7mds95e6lkcnl24v9lpa2jw65gaw2zqsmf2jey",
     );
     assert!(matches!(
         err,
@@ -2338,17 +2338,17 @@ fn test_proposal_hook_registration() {
     ));
 
     let proposal_hooks = query_proposal_hooks(&app, &proposal_module);
-    assert_eq!(proposal_hooks.hooks[0], "proposalhook".to_string());
+    assert_eq!(proposal_hooks.hooks[0], "cosmwasm18kdemsegp8zkggr204an7mds95e6lkcnl24v9lpa2jw65gaw2zqsmf2jey".to_string());
 
     // Only DAO can remove proposal hooks.
     let err =
-        remove_proposal_hook_should_fail(&mut app, &proposal_module, CREATOR_ADDR, "proposalhook");
+        remove_proposal_hook_should_fail(&mut app, &proposal_module, CREATOR_ADDR, "cosmwasm18kdemsegp8zkggr204an7mds95e6lkcnl24v9lpa2jw65gaw2zqsmf2jey");
     assert!(matches!(err, ContractError::Unauthorized {}));
     remove_proposal_hook(
         &mut app,
         &proposal_module,
         core_addr.as_str(),
-        "proposalhook",
+        "cosmwasm18kdemsegp8zkggr204an7mds95e6lkcnl24v9lpa2jw65gaw2zqsmf2jey",
     );
     let proposal_hooks = query_proposal_hooks(&app, &proposal_module);
     assert_eq!(proposal_hooks.hooks.len(), 0);
@@ -2358,7 +2358,7 @@ fn test_proposal_hook_registration() {
         &mut app,
         &proposal_module,
         core_addr.as_str(),
-        "proposalhook",
+        "cosmwasm18kdemsegp8zkggr204an7mds95e6lkcnl24v9lpa2jw65gaw2zqsmf2jey",
     );
     assert!(matches!(
         err,
@@ -2380,39 +2380,39 @@ fn test_vote_hook_registration() {
     assert!(vote_hooks.hooks.is_empty(),);
 
     // non-dao may not add a hook.
-    let err = add_vote_hook_should_fail(&mut app, &proposal_module, CREATOR_ADDR, "votehook");
+    let err = add_vote_hook_should_fail(&mut app, &proposal_module, CREATOR_ADDR, "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t");
     assert!(matches!(err, ContractError::Unauthorized {}));
 
-    add_vote_hook(&mut app, &proposal_module, core_addr.as_str(), "votehook");
+    add_vote_hook(&mut app, &proposal_module, core_addr.as_str(), "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t");
 
     let vote_hooks = query_vote_hooks(&app, &proposal_module);
     assert_eq!(
         vote_hooks,
         HooksResponse {
-            hooks: vec!["votehook".to_string()]
+            hooks: vec!["cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t".to_string()]
         }
     );
 
-    let err = add_vote_hook_should_fail(&mut app, &proposal_module, core_addr.as_str(), "votehook");
+    let err = add_vote_hook_should_fail(&mut app, &proposal_module, core_addr.as_str(), "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t");
     assert!(matches!(
         err,
         ContractError::HookError(HookError::HookAlreadyRegistered {})
     ));
 
     let vote_hooks = query_vote_hooks(&app, &proposal_module);
-    assert_eq!(vote_hooks.hooks[0], "votehook".to_string());
+    assert_eq!(vote_hooks.hooks[0], "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t".to_string());
 
     // Only DAO can remove vote hooks.
-    let err = remove_vote_hook_should_fail(&mut app, &proposal_module, CREATOR_ADDR, "votehook");
+    let err = remove_vote_hook_should_fail(&mut app, &proposal_module, CREATOR_ADDR, "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t");
     assert!(matches!(err, ContractError::Unauthorized {}));
-    remove_vote_hook(&mut app, &proposal_module, core_addr.as_str(), "votehook");
+    remove_vote_hook(&mut app, &proposal_module, core_addr.as_str(), "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t");
 
     let vote_hooks = query_vote_hooks(&app, &proposal_module);
     assert!(vote_hooks.hooks.is_empty(),);
 
     // Can not remove that which does not exist.
     let err =
-        remove_vote_hook_should_fail(&mut app, &proposal_module, core_addr.as_str(), "votehook");
+        remove_vote_hook_should_fail(&mut app, &proposal_module, core_addr.as_str(), "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t");
     assert!(matches!(
         err,
         ContractError::HookError(HookError::HookNotRegistered {})

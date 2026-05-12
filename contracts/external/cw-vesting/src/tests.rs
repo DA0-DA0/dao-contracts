@@ -139,8 +139,15 @@ struct TestCase {
     vesting_payment: Vest,
 }
 
-fn setup_test_case(app: &mut App, msg: InstantiateMsg, funds: &[Coin]) -> TestCase {
+fn setup_test_case(app: &mut App, mut msg: InstantiateMsg, funds: &[Coin]) -> TestCase {
     let (cw20_addr, _, cw_vesting_code_id) = setup_contracts(app);
+
+    // Replace the placeholder "contract0" denom with the real cw20 address.
+    if let UncheckedDenom::Cw20(ref denom) = msg.denom {
+        if denom == "contract0" {
+            msg.denom = UncheckedDenom::Cw20(cw20_addr.to_string());
+        }
+    }
 
     // Instantiate cw-vesting contract
     let cw_vesting_addr = app
