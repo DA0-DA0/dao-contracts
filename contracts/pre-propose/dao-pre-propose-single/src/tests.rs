@@ -71,7 +71,7 @@ fn get_default_proposal_module_instantiate(
                 msg: to_json_binary(&InstantiateMsg {
                     deposit_info,
                     submission_policy,
-                    extension: Empty::default(),
+                    extension: None,
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
@@ -1269,7 +1269,7 @@ fn test_instantiate_with_zero_native_deposit() {
                             allowlist: vec![],
                             denylist: vec![],
                         },
-                        extension: Empty::default(),
+                        extension: cosmwasm_std::Empty {},
                     })
                     .unwrap(),
                     admin: Some(Admin::CoreModule {}),
@@ -1338,7 +1338,7 @@ fn test_instantiate_with_zero_cw20_deposit() {
                             allowlist: vec![],
                             denylist: vec![],
                         },
-                        extension: Empty::default(),
+                        extension: cosmwasm_std::Empty {},
                     })
                     .unwrap(),
                     admin: Some(Admin::CoreModule {}),
@@ -2227,7 +2227,7 @@ fn test_migrate_from_v241() {
                         msg: to_json_binary(&dpps_v241::InstantiateMsg {
                             deposit_info: None,
                             open_proposal_submission: false,
-                            extension: Empty::default(),
+                            extension: cosmwasm_std::Empty {},
                         })
                         .unwrap(),
                         admin: Some(di_v241::state::Admin::CoreModule {}),
@@ -2524,7 +2524,7 @@ fn test_migrate_from_v241_with_policy_update() {
                         msg: to_json_binary(&dpps_v241::InstantiateMsg {
                             deposit_info: None,
                             open_proposal_submission: false,
-                            extension: Empty::default(),
+                            extension: cosmwasm_std::Empty {},
                         })
                         .unwrap(),
                         admin: Some(di_v241::state::Admin::CoreModule {}),

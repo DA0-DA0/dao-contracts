@@ -100,7 +100,7 @@ pub trait DaoTestingSuite<Extra = Empty>: Deref + DerefMut {
                                     allowlist: vec![],
                                     denylist: vec![],
                                 },
-                            extension: Empty {},
+                            extension: cosmwasm_std::Empty {},
                         })
                         .unwrap(),
                         admin: Some(dao_interface::state::Admin::CoreModule {}),
@@ -140,7 +140,7 @@ pub trait DaoTestingSuite<Extra = Empty>: Deref + DerefMut {
                                     allowlist: vec![],
                                     denylist: vec![],
                                 },
-                            extension: Empty {},
+                            extension: cosmwasm_std::Empty {},
                         })
                         .unwrap(),
                         admin: Some(dao_interface::state::Admin::CoreModule {}),

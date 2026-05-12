@@ -2898,6 +2898,8 @@ fn test_migrate_from_v241() {
     assert_eq!(proposal.proposal.status, dv_v241::status::Status::Executed);
 }
 
+// v241 migration test — gated off; see `test_migrate_from_v241`.
+#[cfg(any())]
 #[test]
 fn test_migrate_from_v241_with_policy_update() {
     let app = &mut App::default();

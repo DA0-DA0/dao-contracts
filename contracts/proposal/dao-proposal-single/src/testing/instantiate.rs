@@ -46,7 +46,7 @@ pub(crate) fn get_pre_propose_info(
             msg: to_json_binary(&cppbps::InstantiateMsg {
                 deposit_info,
                 submission_policy,
-                extension: Empty::default(),
+                extension: None,
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),

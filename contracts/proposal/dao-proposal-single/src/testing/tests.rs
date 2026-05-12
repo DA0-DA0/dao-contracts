@@ -4001,7 +4001,7 @@ fn test_update_pre_propose_module() {
                                 allowlist: vec![],
                                 denylist: vec![],
                             },
-                            extension: Empty::default(),
+                            extension: None,
                         })
                         .unwrap(),
                         admin: Some(Admin::CoreModule {}),

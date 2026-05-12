@@ -92,7 +92,7 @@ pub fn create_dao(
                                 allowlist: vec![],
                                 denylist: vec![],
                             },
-                            extension: Empty::default(),
+                            extension: cosmwasm_std::Empty {},
                         })
                         .unwrap(),
                         admin: Some(Admin::CoreModule {}),

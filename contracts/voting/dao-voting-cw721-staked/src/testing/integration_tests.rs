@@ -64,7 +64,10 @@ fn test_full_integration_with_factory() {
                                 cw721_instantiate_msg: Cw721InstantiateMsg {
                                     name: "Test NFT".to_string(),
                                     symbol: "TEST".to_string(),
-                                    minter: accounts[0].address(),
+                                    minter: Some(accounts[0].address()),
+                                    collection_info_extension: None,
+                                    creator: None,
+                                    withdraw_address: None,
                                 },
                                 initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::<
                                     Empty,
@@ -73,7 +76,7 @@ fn test_full_integration_with_factory() {
                                     owner: accounts[0].address(),
                                     token_uri: Some("https://example.com".to_string()),
                                     token_id: "1".to_string(),
-                                    extension: Empty {},
+                                    extension: None,
                                 })
                                 .unwrap()],
                             },

@@ -97,7 +97,7 @@ pub fn query_total_and_voting_power(
 pub fn query_nft_owner(app: &App, nft: &Addr, token_id: &str) -> StdResult<cw721::OwnerOfResponse> {
     let owner = app.wrap().query_wasm_smart(
         nft,
-        &cw721::Cw721QueryMsg::OwnerOf {
+        &cw721::msg::Cw721QueryMsg::OwnerOf {
             token_id: token_id.to_string(),
             include_expired: None,
         },

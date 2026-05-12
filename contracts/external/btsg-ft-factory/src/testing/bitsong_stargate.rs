@@ -30,7 +30,7 @@ pub struct StargateKeeper {}
 impl StargateKeeper {}
 
 impl Stargate for StargateKeeper {
-    fn execute<ExecC, QueryC: cosmwasm_std::CustomQuery>(
+    fn execute_stargate<ExecC, QueryC>(
         &self,
         api: &dyn Api,
         storage: &mut dyn Storage,
@@ -39,7 +39,11 @@ impl Stargate for StargateKeeper {
         sender: Addr,
         type_url: String,
         value: Binary,
-    ) -> AnyResult<AppResponse> {
+    ) -> AnyResult<AppResponse>
+    where
+        ExecC: cosmwasm_std::CustomMsg + serde::de::DeserializeOwned + 'static,
+        QueryC: cosmwasm_std::CustomQuery + serde::de::DeserializeOwned + 'static,
+    {
         if type_url == *"/bitsong.fantoken.MsgIssue" {
             let denoms_count: Uint64 = storage
                 .get(DENOMS_COUNT_KEY.as_bytes())
@@ -63,7 +67,7 @@ impl Stargate for StargateKeeper {
 
             return Ok(AppResponse {
                 events: vec![],
-                data: Some(Binary::from(MsgIssueResponse { denom })),
+                msg_responses: vec![], data: Some(Binary::from(MsgIssueResponse { denom })),
             });
         }
         if type_url == *"/bitsong.fantoken.MsgMint" {
@@ -92,7 +96,7 @@ impl Stargate for StargateKeeper {
 
             return Ok(AppResponse {
                 events: vec![],
-                data: Some(Binary::from(MsgMintResponse {})),
+                msg_responses: vec![], data: Some(Binary::from(MsgMintResponse {})),
             });
         }
         if type_url == *"/bitsong.fantoken.MsgSetMinter" {
@@ -116,7 +120,7 @@ impl Stargate for StargateKeeper {
 
             return Ok(AppResponse {
                 events: vec![],
-                data: Some(Binary::from(MsgSetMinterResponse {})),
+                msg_responses: vec![], data: Some(Binary::from(MsgSetMinterResponse {})),
             });
         }
         if type_url == *"/bitsong.fantoken.MsgSetAuthority" {
@@ -140,7 +144,7 @@ impl Stargate for StargateKeeper {
 
             return Ok(AppResponse {
                 events: vec![],
-                data: Some(Binary::from(MsgSetMinterResponse {})),
+                msg_responses: vec![], data: Some(Binary::from(MsgSetMinterResponse {})),
             });
         }
         if type_url == *"/bitsong.fantoken.MsgSetUri" {
@@ -160,13 +164,13 @@ impl Stargate for StargateKeeper {
 
             return Ok(AppResponse {
                 events: vec![],
-                data: Some(Binary::from(MsgSetUriResponse {})),
+                msg_responses: vec![], data: Some(Binary::from(MsgSetUriResponse {})),
             });
         }
         Ok(AppResponse::default())
     }
 
-    fn query(
+    fn query_stargate(
         &self,
         _api: &dyn Api,
         _storage: &dyn Storage,

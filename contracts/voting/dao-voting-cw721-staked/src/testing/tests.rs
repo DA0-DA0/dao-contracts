@@ -54,13 +54,16 @@ fn test_instantiate_with_new_cw721_collection() -> anyhow::Result<()> {
                     msg: to_json_binary(&Cw721InstantiateMsg {
                         name: "Test NFT".to_string(),
                         symbol: "TEST".to_string(),
-                        minter: CREATOR_ADDR.to_string(),
+                        minter: Some(CREATOR_ADDR.to_string()),
+                        collection_info_extension: None,
+                        creator: None,
+                        withdraw_address: None,
                     })?,
-                    initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                    initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::Mint {
                         owner: CREATOR_ADDR.to_string(),
                         token_uri: Some("https://example.com".to_string()),
                         token_id: "1".to_string(),
-                        extension: Empty {},
+                        extension: None,
                     })?],
                 },
                 unstaking_duration: None,
@@ -592,11 +595,14 @@ fn test_instantiate_with_invalid_duration_fails() {
                     msg: to_json_binary(&Cw721InstantiateMsg {
                         name: "Test NFT".to_string(),
                         symbol: "TEST".to_string(),
-                        minter: CREATOR_ADDR.to_string(),
+                        minter: Some(CREATOR_ADDR.to_string()),
+                        collection_info_extension: None,
+                        creator: None,
+                        withdraw_address: None,
                     })
                     .unwrap(),
                     initial_nfts: vec![to_json_binary(
-                        &Cw721ExecuteMsg::<Empty, Empty>::Extension { msg: Empty {} },
+                        &Cw721ExecuteMsg::UpdateExtension { msg: Empty {} },
                     )
                     .unwrap()],
                 },
@@ -632,14 +638,17 @@ fn test_instantiate_zero_active_threshold_count() {
                 msg: to_json_binary(&Cw721InstantiateMsg {
                     name: "Test NFT".to_string(),
                     symbol: "TEST".to_string(),
-                    minter: CREATOR_ADDR.to_string(),
+                    minter: Some(CREATOR_ADDR.to_string()),
+                    collection_info_extension: None,
+                    creator: None,
+                    withdraw_address: None,
                 })
                 .unwrap(),
-                initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::Mint {
                     owner: CREATOR_ADDR.to_string(),
                     token_uri: Some("https://example.com".to_string()),
                     token_id: "1".to_string(),
-                    extension: Empty {},
+                    extension: None,
                 })
                 .unwrap()],
             },
@@ -673,14 +682,17 @@ fn test_instantiate_invalid_active_threshold_count_new_nft() {
                 msg: to_json_binary(&Cw721InstantiateMsg {
                     name: "Test NFT".to_string(),
                     symbol: "TEST".to_string(),
-                    minter: CREATOR_ADDR.to_string(),
+                    minter: Some(CREATOR_ADDR.to_string()),
+                    collection_info_extension: None,
+                    creator: None,
+                    withdraw_address: None,
                 })
                 .unwrap(),
-                initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::Mint {
                     owner: CREATOR_ADDR.to_string(),
                     token_uri: Some("https://example.com".to_string()),
                     token_id: "1".to_string(),
-                    extension: Empty {},
+                    extension: None,
                 })
                 .unwrap()],
             },
@@ -740,29 +752,32 @@ fn test_active_threshold_absolute_count() {
                     msg: to_json_binary(&Cw721InstantiateMsg {
                         name: "Test NFT".to_string(),
                         symbol: "TEST".to_string(),
-                        minter: CREATOR_ADDR.to_string(),
+                        minter: Some(CREATOR_ADDR.to_string()),
+                        collection_info_extension: None,
+                        creator: None,
+                        withdraw_address: None,
                     })
                     .unwrap(),
                     initial_nfts: vec![
-                        to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                        to_json_binary(&Cw721ExecuteMsg::Mint {
                             owner: CREATOR_ADDR.to_string(),
                             token_uri: Some("https://example.com".to_string()),
                             token_id: "1".to_string(),
-                            extension: Empty {},
+                            extension: None,
                         })
                         .unwrap(),
-                        to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                        to_json_binary(&Cw721ExecuteMsg::Mint {
                             owner: CREATOR_ADDR.to_string(),
                             token_uri: Some("https://example.com".to_string()),
                             token_id: "2".to_string(),
-                            extension: Empty {},
+                            extension: None,
                         })
                         .unwrap(),
-                        to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                        to_json_binary(&Cw721ExecuteMsg::Mint {
                             owner: CREATOR_ADDR.to_string(),
                             token_uri: Some("https://example.com".to_string()),
                             token_id: "3".to_string(),
-                            extension: Empty {},
+                            extension: None,
                         })
                         .unwrap(),
                     ],
@@ -821,14 +836,17 @@ fn test_active_threshold_percent() {
                     msg: to_json_binary(&Cw721InstantiateMsg {
                         name: "Test NFT".to_string(),
                         symbol: "TEST".to_string(),
-                        minter: CREATOR_ADDR.to_string(),
+                        minter: Some(CREATOR_ADDR.to_string()),
+                        collection_info_extension: None,
+                        creator: None,
+                        withdraw_address: None,
                     })
                     .unwrap(),
-                    initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                    initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::Mint {
                         owner: CREATOR_ADDR.to_string(),
                         token_uri: Some("https://example.com".to_string()),
                         token_id: "1".to_string(),
-                        extension: Empty {},
+                        extension: None,
                     })
                     .unwrap()],
                 },
@@ -883,43 +901,46 @@ fn test_active_threshold_percent_rounds_up() {
                     msg: to_json_binary(&Cw721InstantiateMsg {
                         name: "Test NFT".to_string(),
                         symbol: "TEST".to_string(),
-                        minter: CREATOR_ADDR.to_string(),
+                        minter: Some(CREATOR_ADDR.to_string()),
+                        collection_info_extension: None,
+                        creator: None,
+                        withdraw_address: None,
                     })
                     .unwrap(),
                     initial_nfts: vec![
-                        to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                        to_json_binary(&Cw721ExecuteMsg::Mint {
                             owner: CREATOR_ADDR.to_string(),
                             token_uri: Some("https://example.com".to_string()),
                             token_id: "1".to_string(),
-                            extension: Empty {},
+                            extension: None,
                         })
                         .unwrap(),
-                        to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                        to_json_binary(&Cw721ExecuteMsg::Mint {
                             owner: CREATOR_ADDR.to_string(),
                             token_uri: Some("https://example.com".to_string()),
                             token_id: "2".to_string(),
-                            extension: Empty {},
+                            extension: None,
                         })
                         .unwrap(),
-                        to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                        to_json_binary(&Cw721ExecuteMsg::Mint {
                             owner: CREATOR_ADDR.to_string(),
                             token_uri: Some("https://example.com".to_string()),
                             token_id: "3".to_string(),
-                            extension: Empty {},
+                            extension: None,
                         })
                         .unwrap(),
-                        to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                        to_json_binary(&Cw721ExecuteMsg::Mint {
                             owner: CREATOR_ADDR.to_string(),
                             token_uri: Some("https://example.com".to_string()),
                             token_id: "4".to_string(),
-                            extension: Empty {},
+                            extension: None,
                         })
                         .unwrap(),
-                        to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                        to_json_binary(&Cw721ExecuteMsg::Mint {
                             owner: CREATOR_ADDR.to_string(),
                             token_uri: Some("https://example.com".to_string()),
                             token_id: "5".to_string(),
-                            extension: Empty {},
+                            extension: None,
                         })
                         .unwrap(),
                     ],
@@ -986,14 +1007,17 @@ fn test_update_active_threshold() {
                     msg: to_json_binary(&Cw721InstantiateMsg {
                         name: "Test NFT".to_string(),
                         symbol: "TEST".to_string(),
-                        minter: CREATOR_ADDR.to_string(),
+                        minter: Some(CREATOR_ADDR.to_string()),
+                        collection_info_extension: None,
+                        creator: None,
+                        withdraw_address: None,
                     })
                     .unwrap(),
-                    initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                    initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::Mint {
                         owner: CREATOR_ADDR.to_string(),
                         token_uri: Some("https://example.com".to_string()),
                         token_id: "1".to_string(),
-                        extension: Empty {},
+                        extension: None,
                     })
                     .unwrap()],
                 },
@@ -1063,14 +1087,17 @@ fn test_active_threshold_percentage_gt_100() {
                 msg: to_json_binary(&Cw721InstantiateMsg {
                     name: "Test NFT".to_string(),
                     symbol: "TEST".to_string(),
-                    minter: CREATOR_ADDR.to_string(),
+                    minter: Some(CREATOR_ADDR.to_string()),
+                    collection_info_extension: None,
+                    creator: None,
+                    withdraw_address: None,
                 })
                 .unwrap(),
-                initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::Mint {
                     owner: CREATOR_ADDR.to_string(),
                     token_uri: Some("https://example.com".to_string()),
                     token_id: "1".to_string(),
-                    extension: Empty {},
+                    extension: None,
                 })
                 .unwrap()],
             },
@@ -1106,14 +1133,17 @@ fn test_active_threshold_percentage_lte_0() {
                 msg: to_json_binary(&Cw721InstantiateMsg {
                     name: "Test NFT".to_string(),
                     symbol: "TEST".to_string(),
-                    minter: CREATOR_ADDR.to_string(),
+                    minter: Some(CREATOR_ADDR.to_string()),
+                    collection_info_extension: None,
+                    creator: None,
+                    withdraw_address: None,
                 })
                 .unwrap(),
-                initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::Mint {
                     owner: CREATOR_ADDR.to_string(),
                     token_uri: Some("https://example.com".to_string()),
                     token_id: "1".to_string(),
-                    extension: Empty {},
+                    extension: None,
                 })
                 .unwrap()],
             },
@@ -1145,11 +1175,11 @@ fn test_invalid_instantiate_msg() {
                     salt: None,
                     label: "Test NFT".to_string(),
                     msg: to_json_binary(&Empty {}).unwrap(),
-                    initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                    initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::Mint {
                         owner: CREATOR_ADDR.to_string(),
                         token_uri: Some("https://example.com".to_string()),
                         token_id: "1".to_string(),
-                        extension: Empty {},
+                        extension: None,
                     })
                     .unwrap()],
                 },
@@ -1187,11 +1217,14 @@ fn test_invalid_initial_nft_msg() {
                     msg: to_json_binary(&Cw721InstantiateMsg {
                         name: "Test NFT".to_string(),
                         symbol: "TEST".to_string(),
-                        minter: CREATOR_ADDR.to_string(),
+                        minter: Some(CREATOR_ADDR.to_string()),
+                        collection_info_extension: None,
+                        creator: None,
+                        withdraw_address: None,
                     })
                     .unwrap(),
                     initial_nfts: vec![to_json_binary(
-                        &Cw721ExecuteMsg::<Empty, Empty>::Extension { msg: Empty {} },
+                        &Cw721ExecuteMsg::UpdateExtension { msg: Empty {} },
                     )
                     .unwrap()],
                 },
@@ -1227,19 +1260,22 @@ fn test_invalid_initial_nft_msg_wrong_absolute_count() {
                     msg: to_json_binary(&Cw721InstantiateMsg {
                         name: "Test NFT".to_string(),
                         symbol: "TEST".to_string(),
-                        minter: CREATOR_ADDR.to_string(),
+                        minter: Some(CREATOR_ADDR.to_string()),
+                        collection_info_extension: None,
+                        creator: None,
+                        withdraw_address: None,
                     })
                     .unwrap(),
                     initial_nfts: vec![
-                        to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Extension {
+                        to_json_binary(&Cw721ExecuteMsg::UpdateExtension {
                             msg: Empty {},
                         })
                         .unwrap(),
-                        to_json_binary(&Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                        to_json_binary(&Cw721ExecuteMsg::Mint {
                             owner: CREATOR_ADDR.to_string(),
                             token_uri: Some("https://example.com".to_string()),
                             token_id: "1".to_string(),
-                            extension: Empty {},
+                            extension: None,
                         })
                         .unwrap(),
                     ],
@@ -1278,7 +1314,10 @@ fn test_no_initial_nfts_fails() {
                     msg: to_json_binary(&Cw721InstantiateMsg {
                         name: "Test NFT".to_string(),
                         symbol: "TEST".to_string(),
-                        minter: CREATOR_ADDR.to_string(),
+                        minter: Some(CREATOR_ADDR.to_string()),
+                        collection_info_extension: None,
+                        creator: None,
+                        withdraw_address: None,
                     })
                     .unwrap(),
                     initial_nfts: vec![],
@@ -1331,7 +1370,10 @@ fn test_factory() {
                         cw721_instantiate_msg: Cw721InstantiateMsg {
                             name: "Test NFT".to_string(),
                             symbol: "TEST".to_string(),
-                            minter: CREATOR_ADDR.to_string(),
+                            minter: Some(CREATOR_ADDR.to_string()),
+                            collection_info_extension: None,
+                            creator: None,
+                            withdraw_address: None,
                         },
                         initial_nfts: vec![],
                     })
@@ -1395,14 +1437,17 @@ fn test_factory_with_funds_pass_through() {
                             cw721_instantiate_msg: Cw721InstantiateMsg {
                                 name: "Test NFT".to_string(),
                                 symbol: "TEST".to_string(),
-                                minter: CREATOR_ADDR.to_string(),
+                                minter: Some(CREATOR_ADDR.to_string()),
+                                collection_info_extension: None,
+                                creator: None,
+                                withdraw_address: None,
                             },
                             initial_nfts: vec![to_json_binary(
-                                &Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                                &Cw721ExecuteMsg::Mint {
                                     owner: CREATOR_ADDR.to_string(),
                                     token_uri: Some("https://example.com".to_string()),
                                     token_id: "1".to_string(),
-                                    extension: Empty {},
+                                    extension: None,
                                 },
                             )
                             .unwrap()],
@@ -1442,14 +1487,17 @@ fn test_factory_with_funds_pass_through() {
                             cw721_instantiate_msg: Cw721InstantiateMsg {
                                 name: "Test NFT".to_string(),
                                 symbol: "TEST".to_string(),
-                                minter: CREATOR_ADDR.to_string(),
+                                minter: Some(CREATOR_ADDR.to_string()),
+                                collection_info_extension: None,
+                                creator: None,
+                                withdraw_address: None,
                             },
                             initial_nfts: vec![to_json_binary(
-                                &Cw721ExecuteMsg::<Empty, Empty>::Mint {
+                                &Cw721ExecuteMsg::Mint {
                                     owner: CREATOR_ADDR.to_string(),
                                     token_uri: Some("https://example.com".to_string()),
                                     token_id: "1".to_string(),
-                                    extension: Empty {},
+                                    extension: None,
                                 },
                             )
                             .unwrap()],
@@ -1492,7 +1540,10 @@ fn test_unsupported_factory_msg() {
                         cw721_instantiate_msg: Cw721InstantiateMsg {
                             name: "Test NFT".to_string(),
                             symbol: "TEST".to_string(),
-                            minter: CREATOR_ADDR.to_string(),
+                            minter: Some(CREATOR_ADDR.to_string()),
+                            collection_info_extension: None,
+                            creator: None,
+                            withdraw_address: None,
                         },
                         initial_nfts: vec![],
                     })

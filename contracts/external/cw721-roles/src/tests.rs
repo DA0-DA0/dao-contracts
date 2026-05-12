@@ -25,7 +25,7 @@ pub fn setup() -> (App, Addr) {
                 name: "bad kids".to_string(),
                 symbol: "bad kids".to_string(),
                 minter: Some(DAO.to_string()),
-                collection_info_extension: Empty {},
+                collection_info_extension: None,
                 creator: None,
                 withdraw_address: None,
             },
