@@ -37,8 +37,8 @@ fn mint_mint_mint_mint(cw721: &str, owner: &str, mints: u64) -> Vec<CosmosMsg> {
 #[test]
 #[ignore]
 fn how_many_nfts_can_be_minted_in_one_proposal(chain: &mut Chain) {
-    let user_addr = chain.users["user1"].account.address.clone();
-    let user_key = chain.users["user1"].key.clone();
+    let user_addr = chain.users["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"].account.address.clone();
+    let user_key = chain.users["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"].key.clone();
 
     let dao = create_dao(chain, None, "create_dao", user_addr.clone(), &user_key).unwrap();
     let cw721 = instantiate_cw721_base(chain, &user_key, &dao.addr);

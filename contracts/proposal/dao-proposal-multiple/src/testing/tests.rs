@@ -568,7 +568,7 @@ fn test_propose_non_member_auto_vote_fail() {
     make_proposal(
         &mut app,
         &govmod,
-        "anyone",
+        "cosmwasm1ztkc6999tld5wq0wsgvlzr70y7zeznccvke8lay45vde7sww6gpskvfask",
         mc_options.clone(),
         Some(MultipleChoiceAutoVote {
             vote: MultipleChoiceVote { option_id: 0 },
@@ -725,7 +725,7 @@ fn test_propose_with_messages() {
         max_voting_period: cw_utils::Duration::Height(20),
         only_members_execute: false,
         allow_revoting: false,
-        dao: "dao".to_string(),
+        dao: "cosmwasm1vwr8z00ty7mqnk4dtchr9mn9j96nuh6w9v55nvy575c4rp0ha5xqwujcc7".to_string(),
         veto: None,
     };
 
@@ -1250,10 +1250,10 @@ fn test_take_proposal_deposit() {
         )
         .unwrap();
 
-        make_proposal(&mut app, &govmod, "blue", mc_options, None);
+        make_proposal(&mut app, &govmod, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w", mc_options, None);
 
         // Proposal has been executed so deposit has been refunded.
-        let balance = query_balance_cw20(&app, token, "blue".to_string());
+        let balance = query_balance_cw20(&app, token, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string());
         assert_eq!(balance, Uint128::new(1));
     } else {
         panic!()
@@ -1346,10 +1346,10 @@ fn test_take_native_proposal_deposit() {
         )
         .unwrap_err();
 
-        make_proposal(&mut app, &govmod, "blue", mc_options, None);
+        make_proposal(&mut app, &govmod, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w", mc_options, None);
 
         // Proposal has been executed so deposit has been refunded.
-        let balance = query_balance_native(&app, "blue", denom);
+        let balance = query_balance_native(&app, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w", denom);
         assert_eq!(balance, Uint128::new(1));
     } else {
         panic!()
@@ -1456,10 +1456,10 @@ fn test_native_proposal_deposit() {
         .unwrap();
 
         // Adding deposit will work
-        make_proposal(&mut app, &govmod, "blue", mc_options, None);
+        make_proposal(&mut app, &govmod, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w", mc_options, None);
 
-        // "blue" has been refunded
-        let balance = query_balance_native(&app, "blue", "ujuno");
+        // "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w" has been refunded
+        let balance = query_balance_native(&app, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w", "ujuno");
         assert_eq!(balance, Uint128::new(99));
 
         // Govmod has refunded the token
@@ -1489,8 +1489,8 @@ fn test_native_proposal_deposit() {
         )
         .unwrap();
 
-        // "blue" has been refunded
-        let balance = query_balance_native(&app, "blue", "ujuno");
+        // "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w" has been refunded
+        let balance = query_balance_native(&app, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w", "ujuno");
         assert_eq!(balance, Uint128::new(100));
 
         // Govmod has refunded the token
@@ -1545,7 +1545,7 @@ fn test_deposit_return_on_execute() {
     } = deposit_config.deposit_info.unwrap()
     {
         // Proposal has not been executed so deposit has not been refunded.
-        let balance = query_balance_cw20(&app, token, "blue".to_string());
+        let balance = query_balance_cw20(&app, token, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string());
         assert_eq!(balance, Uint128::new(9));
 
         // Execute the proposal, this should cause the deposit to be
@@ -1559,7 +1559,7 @@ fn test_deposit_return_on_execute() {
         .unwrap();
 
         // Proposal has been executed so deposit has been refunded.
-        let balance = query_balance_cw20(&app, token, "blue".to_string());
+        let balance = query_balance_cw20(&app, token, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string());
         assert_eq!(balance, Uint128::new(10));
     } else {
         panic!()
@@ -1610,7 +1610,7 @@ fn test_deposit_return_zero() {
     .unwrap();
 
     // Proposal has been executed so deposit has been refunded.
-    let balance = query_balance_cw20(&app, token, "blue".to_string());
+    let balance = query_balance_cw20(&app, token, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string());
     assert_eq!(balance, Uint128::new(10));
 }
 
@@ -2344,7 +2344,7 @@ fn test_close_open_proposal() {
     } = deposit_config.deposit_info.unwrap()
     {
         // Proposal has been executed so deposit has been refunded.
-        let balance = query_balance_cw20(&app, token, "blue".to_string());
+        let balance = query_balance_cw20(&app, token, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string());
         assert_eq!(balance, Uint128::new(10));
     } else {
         panic!()
@@ -2404,7 +2404,7 @@ fn test_no_refund_failed_proposal() {
     } = deposit_config.deposit_info.unwrap()
     {
         // Proposal has been executed so deposit has been refunded.
-        let balance = query_balance_cw20(&app, token, "blue".to_string());
+        let balance = query_balance_cw20(&app, token, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string());
         assert_eq!(balance, Uint128::new(9));
     } else {
         panic!()
@@ -2470,7 +2470,7 @@ fn test_deposit_return_on_close() {
     } = deposit_config.deposit_info.unwrap()
     {
         // Proposal has been executed so deposit has been refunded.
-        let balance = query_balance_cw20(&app, token, "blue".to_string());
+        let balance = query_balance_cw20(&app, token, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string());
         assert_eq!(balance, Uint128::new(9));
 
         // Close the proposal, this should cause the deposit to be
@@ -2484,7 +2484,7 @@ fn test_deposit_return_on_close() {
         .unwrap();
 
         // Proposal has been executed so deposit has been refunded.
-        let balance = query_balance_cw20(&app, token, "blue".to_string());
+        let balance = query_balance_cw20(&app, token, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string());
         assert_eq!(balance, Uint128::new(10));
     } else {
         panic!()
@@ -2784,7 +2784,7 @@ fn test_no_return_if_no_refunds() {
         .unwrap();
 
         // Proposal has been executed so deposit has been refunded.
-        let balance = query_balance_cw20(&app, token, "blue".to_string());
+        let balance = query_balance_cw20(&app, token, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string());
         assert_eq!(balance, Uint128::new(9));
     } else {
         panic!()
@@ -5006,7 +5006,7 @@ fn test_open_proposal_passes_with_zero_timelock_veto_duration() {
     let timelock_duration = 0;
     let veto_config = VetoConfig {
         timelock_duration: Duration::Height(timelock_duration),
-        vetoer: "vetoer".to_string(),
+        vetoer: "cosmwasm1z3t2m3y2xclz3qex8zyxjfv5e9atum8hlwr48uxjr3txzjwpg2rs7h50t5".to_string(),
         early_execute: false,
         veto_before_passed: true,
     };
@@ -5116,7 +5116,7 @@ fn test_veto_non_existing_prop_id() {
     let timelock_duration = 0;
     let veto_config = VetoConfig {
         timelock_duration: Duration::Height(timelock_duration),
-        vetoer: "vetoer".to_string(),
+        vetoer: "cosmwasm1z3t2m3y2xclz3qex8zyxjfv5e9atum8hlwr48uxjr3txzjwpg2rs7h50t5".to_string(),
         early_execute: false,
         veto_before_passed: true,
     };
@@ -5256,7 +5256,7 @@ fn test_veto_open_prop_with_veto_before_passed_disabled() {
     let timelock_duration = 10;
     let veto_config = VetoConfig {
         timelock_duration: Duration::Height(timelock_duration),
-        vetoer: "vetoer".to_string(),
+        vetoer: "cosmwasm1z3t2m3y2xclz3qex8zyxjfv5e9atum8hlwr48uxjr3txzjwpg2rs7h50t5".to_string(),
         early_execute: false,
         veto_before_passed: false,
     };
@@ -5365,7 +5365,7 @@ fn test_veto_when_veto_timelock_expired() -> anyhow::Result<()> {
     let timelock_duration = Duration::Height(3);
     let veto_config = VetoConfig {
         timelock_duration,
-        vetoer: "vetoer".to_string(),
+        vetoer: "cosmwasm1z3t2m3y2xclz3qex8zyxjfv5e9atum8hlwr48uxjr3txzjwpg2rs7h50t5".to_string(),
         early_execute: false,
         veto_before_passed: false,
     };
@@ -5481,7 +5481,7 @@ fn test_veto_sets_prop_status_to_vetoed() -> anyhow::Result<()> {
     let timelock_duration = Duration::Height(3);
     let veto_config = VetoConfig {
         timelock_duration,
-        vetoer: "vetoer".to_string(),
+        vetoer: "cosmwasm1z3t2m3y2xclz3qex8zyxjfv5e9atum8hlwr48uxjr3txzjwpg2rs7h50t5".to_string(),
         early_execute: false,
         veto_before_passed: false,
     };
@@ -5593,7 +5593,7 @@ fn test_veto_from_catchall_state() {
     let timelock_duration = 3;
     let veto_config = VetoConfig {
         timelock_duration: Duration::Height(timelock_duration),
-        vetoer: "vetoer".to_string(),
+        vetoer: "cosmwasm1z3t2m3y2xclz3qex8zyxjfv5e9atum8hlwr48uxjr3txzjwpg2rs7h50t5".to_string(),
         early_execute: true,
         veto_before_passed: false,
     };
@@ -5715,7 +5715,7 @@ fn test_veto_timelock_early_execute_happy() -> anyhow::Result<()> {
     let timelock_duration = Duration::Height(3);
     let veto_config = VetoConfig {
         timelock_duration,
-        vetoer: "vetoer".to_string(),
+        vetoer: "cosmwasm1z3t2m3y2xclz3qex8zyxjfv5e9atum8hlwr48uxjr3txzjwpg2rs7h50t5".to_string(),
         early_execute: true,
         veto_before_passed: false,
     };
@@ -5840,7 +5840,7 @@ fn test_veto_timelock_expires_happy() -> anyhow::Result<()> {
     let timelock_duration = Duration::Height(3);
     let veto_config = VetoConfig {
         timelock_duration,
-        vetoer: "vetoer".to_string(),
+        vetoer: "cosmwasm1z3t2m3y2xclz3qex8zyxjfv5e9atum8hlwr48uxjr3txzjwpg2rs7h50t5".to_string(),
         early_execute: false,
         veto_before_passed: false,
     };
@@ -5954,7 +5954,7 @@ fn test_veto_only_members_execute_proposal() -> anyhow::Result<()> {
     let timelock_duration = Duration::Height(3);
     let veto_config = VetoConfig {
         timelock_duration,
-        vetoer: "vetoer".to_string(),
+        vetoer: "cosmwasm1z3t2m3y2xclz3qex8zyxjfv5e9atum8hlwr48uxjr3txzjwpg2rs7h50t5".to_string(),
         early_execute: true,
         veto_before_passed: false,
     };

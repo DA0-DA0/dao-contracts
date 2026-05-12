@@ -11,8 +11,8 @@ use test_context::test_context;
 #[test]
 #[ignore]
 fn execute_stake_tokens(chain: &mut Chain) {
-    let user_addr = chain.users["user1"].account.address.clone();
-    let user_key = chain.users["user1"].key.clone();
+    let user_addr = chain.users["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"].account.address.clone();
+    let user_key = chain.users["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"].key.clone();
     let voting_contract = "dao_voting_cw20_staked";
 
     let res = create_dao(

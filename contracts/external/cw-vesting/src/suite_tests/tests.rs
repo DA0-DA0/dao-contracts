@@ -75,12 +75,12 @@ fn test_distribute_nothing_claimable() {
     suite.a_day_passes();
 
     // anyone can call distribute.
-    suite.distribute("random", None).unwrap();
+    suite.distribute("cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6", None).unwrap();
 
     let balance = suite.query_receiver_vesting_token_balance();
     assert_eq!(balance, suite.total.multiply_ratio(2u128, 7u128));
 
-    let res = suite.distribute("random", None);
+    let res = suite.distribute("cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6", None);
 
     is_error!(
         res,
@@ -100,14 +100,14 @@ fn test_distribute_post_completion() {
 
     suite.a_day_passes();
 
-    suite.distribute("random", None).unwrap();
+    suite.distribute("cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6", None).unwrap();
     let balance = suite.query_receiver_vesting_token_balance();
     assert_eq!(balance, suite.total.multiply_ratio(1u128, 7u128));
 
     suite.a_week_passes();
     suite.a_week_passes();
 
-    suite.distribute("violet", None).unwrap();
+    suite.distribute("cosmwasm1ytfqsncpjdk9vnnfp5tsjkvhvermgmyy809nz0lhxyhuz6wu3zwqlf3qmz", None).unwrap();
     let balance = suite.query_receiver_vesting_token_balance();
     assert_eq!(balance, suite.total);
 }
@@ -154,7 +154,7 @@ fn test_cancel_can_not_settle_receiver() {
 
     // contract is canceled so anyone can undelegate.
     suite
-        .undelegate("random", Uint128::new(90_000_000))
+        .undelegate("cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6", Uint128::new(90_000_000))
         .unwrap();
 
     // let tokens unstake. default unstaking period is ten seconds.
@@ -162,7 +162,7 @@ fn test_cancel_can_not_settle_receiver() {
     suite.process_unbonds();
 
     suite.withdraw_canceled(None).unwrap();
-    suite.distribute("random", None).unwrap();
+    suite.distribute("cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6", None).unwrap();
 
     // vestee should now have received all tokens they are entitled to
     // having vested for one day.
@@ -191,11 +191,11 @@ fn test_set_withdraw_address_permissions() {
 
     // owner may not update withdraw address if vesting is not canceled.
     let res =
-        suite.set_withdraw_address(suite.owner.clone().unwrap().to_string().as_str(), "random");
+        suite.set_withdraw_address(suite.owner.clone().unwrap().to_string().as_str(), "cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6");
     is_error!(res, ContractError::NotReceiver.to_string().as_str());
 
     // non-owner can not cancel.
-    let res = suite.cancel("random");
+    let res = suite.cancel("cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6");
     is_error!(
         res,
         ContractError::Ownable(OwnershipError::NotOwner)
@@ -214,7 +214,7 @@ fn test_set_withdraw_address_permissions() {
 fn test_cancel_completed_vest() {
     let mut suite = SuiteBuilder::default().build();
     suite.a_week_passes();
-    suite.distribute("random", None).unwrap();
+    suite.distribute("cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6", None).unwrap();
     suite.cancel(suite.owner.clone().unwrap()).unwrap();
     assert_eq!(
         suite.query_vest().status,
@@ -239,7 +239,7 @@ fn test_redelegation() {
         suite.a_day_passes();
         suite.process_unbonds();
 
-        suite.distribute("random", None).unwrap();
+        suite.distribute("cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6", None).unwrap();
         suite.withdraw_delegator_reward("validator").unwrap();
 
         suite.query_receiver_vesting_token_balance()
@@ -277,7 +277,7 @@ fn test_redelegation() {
     suite.a_day_passes();
     suite.process_unbonds();
 
-    suite.distribute("random", None).unwrap();
+    suite.distribute("cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6", None).unwrap();
     suite.withdraw_delegator_reward("validator").unwrap();
     suite.withdraw_delegator_reward("otherone").unwrap();
 

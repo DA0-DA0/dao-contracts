@@ -82,7 +82,7 @@ fn get_default_proposal_module_instantiate(
                     deposit_info,
                     submission_policy,
                     extension: InstantiateExt {
-                        approver: "approver".to_string(),
+                        approver: "cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq".to_string(),
                     },
                 })
                 .unwrap(),
@@ -525,7 +525,7 @@ fn test_native_permutation(
     match approval_status {
         ApprovalStatus::Approved => {
             // Approver approves, new proposal id is returned
-            let id = approve_proposal(&mut app, pre_propose, "approver", pre_propose_id);
+            let id = approve_proposal(&mut app, pre_propose, "cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq", pre_propose_id);
 
             // Voting happens on newly created proposal
             #[allow(clippy::type_complexity)]
@@ -547,7 +547,7 @@ fn test_native_permutation(
         ApprovalStatus::Rejected => {
             // Proposal is rejected by approver
             // No proposal is created so there is no voting
-            reject_proposal(&mut app, pre_propose, "approver", pre_propose_id);
+            reject_proposal(&mut app, pre_propose, "cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq", pre_propose_id);
         }
     };
 
@@ -605,7 +605,7 @@ fn test_cw20_permutation(
     match approval_status {
         ApprovalStatus::Approved => {
             // Approver approves, new proposal id is returned
-            let id = approve_proposal(&mut app, pre_propose.clone(), "approver", pre_propose_id);
+            let id = approve_proposal(&mut app, pre_propose.clone(), "cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq", pre_propose_id);
 
             // Voting happens on newly created proposal
             #[allow(clippy::type_complexity)]
@@ -627,7 +627,7 @@ fn test_cw20_permutation(
         ApprovalStatus::Rejected => {
             // Proposal is rejected by approver
             // No proposal is created so there is no voting
-            reject_proposal(&mut app, pre_propose.clone(), "approver", pre_propose_id);
+            reject_proposal(&mut app, pre_propose.clone(), "cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq", pre_propose_id);
         }
     };
 
@@ -852,7 +852,7 @@ fn test_multiple_open_proposals() {
     let first_id = approve_proposal(
         &mut app,
         pre_propose.clone(),
-        "approver",
+        "cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq",
         first_pre_propose_id,
     );
     let balance = get_balance_native(&app, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", "ujuno");
@@ -864,7 +864,7 @@ fn test_multiple_open_proposals() {
     assert_eq!(0, balance.u128());
 
     // Approver approves prop, balance remains the same
-    let second_id = approve_proposal(&mut app, pre_propose, "approver", second_pre_propose_id);
+    let second_id = approve_proposal(&mut app, pre_propose, "cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq", second_pre_propose_id);
     let balance = get_balance_native(&app, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", "ujuno");
     assert_eq!(0, balance.u128());
 
@@ -1016,8 +1016,8 @@ fn test_completed_proposal_queries() {
     assert!(is_pending);
 
     let created_approved_id =
-        approve_proposal(&mut app, pre_propose.clone(), "approver", approve_id);
-    reject_proposal(&mut app, pre_propose.clone(), "approver", reject_id);
+        approve_proposal(&mut app, pre_propose.clone(), "cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq", approve_id);
+    reject_proposal(&mut app, pre_propose.clone(), "cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq", reject_id);
 
     let is_pending: bool = app
         .wrap()
@@ -1251,11 +1251,11 @@ fn test_approval_and_rejection_permissions() {
     );
 
     // Non-member proposes.
-    mint_natives(&mut app, "nonmember", coins(10, "ujuno"));
+    mint_natives(&mut app, "cosmwasm17x0hnl6g3u98a480e3dtlacpck5t9823l7sl0vce7e37fpa2cvcsha6qn7", coins(10, "ujuno"));
     let pre_propose_id = make_pre_proposal(
         &mut app,
         pre_propose.clone(),
-        "nonmember",
+        "cosmwasm17x0hnl6g3u98a480e3dtlacpck5t9823l7sl0vce7e37fpa2cvcsha6qn7",
         &coins(10, "ujuno"),
     );
 
@@ -1329,11 +1329,11 @@ fn test_approval_and_rejection_permissions() {
     .unwrap();
 
     // Non-member proposes.
-    mint_natives(&mut app, "nonmember", coins(10, "ujuno"));
+    mint_natives(&mut app, "cosmwasm17x0hnl6g3u98a480e3dtlacpck5t9823l7sl0vce7e37fpa2cvcsha6qn7", coins(10, "ujuno"));
     let pre_propose_id = make_pre_proposal(
         &mut app,
         pre_propose.clone(),
-        "nonmember",
+        "cosmwasm17x0hnl6g3u98a480e3dtlacpck5t9823l7sl0vce7e37fpa2cvcsha6qn7",
         &coins(10, "ujuno"),
     );
 
@@ -1398,16 +1398,16 @@ fn test_propose_open_proposal_submission() {
     );
 
     // Non-member proposes.
-    mint_natives(&mut app, "nonmember", coins(10, "ujuno"));
+    mint_natives(&mut app, "cosmwasm17x0hnl6g3u98a480e3dtlacpck5t9823l7sl0vce7e37fpa2cvcsha6qn7", coins(10, "ujuno"));
     let pre_propose_id = make_pre_proposal(
         &mut app,
         pre_propose.clone(),
-        "nonmember",
+        "cosmwasm17x0hnl6g3u98a480e3dtlacpck5t9823l7sl0vce7e37fpa2cvcsha6qn7",
         &coins(10, "ujuno"),
     );
 
     // Approver approves
-    let id = approve_proposal(&mut app, pre_propose, "approver", pre_propose_id);
+    let id = approve_proposal(&mut app, pre_propose, "cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq", pre_propose_id);
 
     // Member votes.
     let new_status = vote(&mut app, proposal_multiple, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", id, 0);
@@ -1426,10 +1426,10 @@ fn test_no_deposit_required_open_submission() {
     );
 
     // Non-member proposes.
-    let pre_propose_id = make_pre_proposal(&mut app, pre_propose.clone(), "nonmember", &[]);
+    let pre_propose_id = make_pre_proposal(&mut app, pre_propose.clone(), "cosmwasm17x0hnl6g3u98a480e3dtlacpck5t9823l7sl0vce7e37fpa2cvcsha6qn7", &[]);
 
     // Approver approves
-    let id = approve_proposal(&mut app, pre_propose, "approver", pre_propose_id);
+    let id = approve_proposal(&mut app, pre_propose, "cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq", pre_propose_id);
 
     // Member votes.
     let new_status = vote(&mut app, proposal_multiple, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", id, 0);
@@ -1486,7 +1486,7 @@ fn test_no_deposit_required_members_submission() {
     let pre_propose_id = make_pre_proposal(&mut app, pre_propose.clone(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", &[]);
 
     // Approver approves
-    let id = approve_proposal(&mut app, pre_propose, "approver", pre_propose_id);
+    let id = approve_proposal(&mut app, pre_propose, "cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq", pre_propose_id);
 
     let new_status = vote(&mut app, proposal_multiple, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", id, 0);
     assert_eq!(Status::Passed, new_status)
@@ -1785,7 +1785,7 @@ fn test_instantiate_with_zero_native_deposit() {
                             denylist: vec![],
                         },
                         extension: InstantiateExt {
-                            approver: "approver".to_string(),
+                            approver: "cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq".to_string(),
                         },
                     })
                     .unwrap(),
@@ -1856,7 +1856,7 @@ fn test_instantiate_with_zero_cw20_deposit() {
                             denylist: vec![],
                         },
                         extension: InstantiateExt {
-                            approver: "approver".to_string(),
+                            approver: "cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq".to_string(),
                         },
                     })
                     .unwrap(),
@@ -1915,7 +1915,7 @@ fn test_update_config() {
     let pre_propose_id = make_pre_proposal(&mut app, pre_propose.clone(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", &[]);
 
     // Approver approves
-    let id = approve_proposal(&mut app, pre_propose.clone(), "approver", pre_propose_id);
+    let id = approve_proposal(&mut app, pre_propose.clone(), "cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq", pre_propose_id);
 
     update_config(
         &mut app,
@@ -1963,7 +1963,7 @@ fn test_update_config() {
     let new_id = approve_proposal(
         &mut app,
         pre_propose.clone(),
-        "approver",
+        "cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq",
         new_pre_propose_id,
     );
 
@@ -2564,7 +2564,7 @@ fn test_withdraw() {
     let native_id = approve_proposal(
         &mut app,
         pre_propose.clone(),
-        "approver",
+        "cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq",
         native_pre_propose_id,
     );
 
@@ -2601,7 +2601,7 @@ fn test_withdraw() {
     let cw20_id = approve_proposal(
         &mut app,
         pre_propose.clone(),
-        "approver",
+        "cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq",
         cw20_pre_propose_id,
     );
 

@@ -102,7 +102,7 @@ fn test_cw_vesting_staking(chain: &mut Chain) {
         .orc
         .execute(
             CONTRACT_NAME,
-            "delegate",
+            "cosmwasm1duskuv79e7ddm8tsulxcc28rmtlz0emj865njx9j03s0zxzny92qnefguq",
             &ExecuteMsg::Delegate {
                 validator: validator.clone(),
                 amount: Uint128::new(100_000_000),

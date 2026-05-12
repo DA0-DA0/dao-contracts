@@ -114,8 +114,8 @@ pub fn test_set_self_admin() {
 #[test]
 pub fn test_authorized_set_self_admin() {
     let mut app = App::default();
-    let admin = app.api().addr_make("admin");
-    let not_admin = app.api().addr_make("not_admin");
+    let admin = app.api().addr_make("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql");
+    let not_admin = app.api().addr_make("cosmwasm1xvg7279n5wvh2g9reua0cf2yyrzmlxf3fnurwarvzy47wt5pz33slsv9xw");
     let code_id = app.store_code(cw_admin_factory_contract());
     let cw20_code_id = app.store_code(cw20_base_contract());
     let cw20_instantiate = cw20_base::msg::InstantiateMsg {
@@ -235,7 +235,7 @@ pub fn test_authorized_set_self_admin() {
 #[test]
 pub fn test_set_self_admin_mock() {
     let mut deps = mock_dependencies();
-    let creator = deps.api.addr_make("creator");
+    let creator = deps.api.addr_make("cosmwasm1h34lmpywh4upnjdg90cjf4j70aee6z8qqfspugamjp42e4q28kqs8s7vcp");
     let contract2 = deps.api.addr_make("contract2");
     // Instantiate factory contract
     let instantiate_msg = InstantiateMsg { admin: None };

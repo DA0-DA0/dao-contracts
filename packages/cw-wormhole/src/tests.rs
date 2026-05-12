@@ -7,19 +7,19 @@ fn test_increment() {
     let storage = &mut mock_dependencies().storage;
     let w: Wormhole<String, Uint128> = Wormhole::new("ns");
 
-    w.increment(storage, "ekez".to_string(), 10, Uint128::new(1))
+    w.increment(storage, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(), 10, Uint128::new(1))
         .unwrap();
     // incrementing 9 shoud cause the value at 10 to become 3
-    w.increment(storage, "ekez".to_string(), 9, Uint128::new(2))
+    w.increment(storage, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(), 9, Uint128::new(2))
         .unwrap();
 
-    assert_eq!(w.load(storage, "ekez".to_string(), 8).unwrap(), None);
+    assert_eq!(w.load(storage, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(), 8).unwrap(), None);
     assert_eq!(
-        w.load(storage, "ekez".to_string(), 9).unwrap(),
+        w.load(storage, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(), 9).unwrap(),
         Some(Uint128::new(2))
     );
     assert_eq!(
-        w.load(storage, "ekez".to_string(), 10).unwrap(),
+        w.load(storage, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(), 10).unwrap(),
         Some(Uint128::new(3))
     );
 }

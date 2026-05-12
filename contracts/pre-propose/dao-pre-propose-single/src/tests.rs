@@ -904,12 +904,12 @@ fn test_propose_open_proposal_submission() {
     );
 
     // Non-member proposes.
-    mint_natives(&mut app, "nonmember", coins(10, "ujuno"));
+    mint_natives(&mut app, "cosmwasm17x0hnl6g3u98a480e3dtlacpck5t9823l7sl0vce7e37fpa2cvcsha6qn7", coins(10, "ujuno"));
     let id = make_proposal(
         &mut app,
         pre_propose,
         proposal_single.clone(),
-        "nonmember",
+        "cosmwasm17x0hnl6g3u98a480e3dtlacpck5t9823l7sl0vce7e37fpa2cvcsha6qn7",
         &coins(10, "ujuno"),
     );
     // Member votes.
@@ -933,7 +933,7 @@ fn test_no_deposit_required_open_submission() {
         &mut app,
         pre_propose,
         proposal_single.clone(),
-        "nonmember",
+        "cosmwasm17x0hnl6g3u98a480e3dtlacpck5t9823l7sl0vce7e37fpa2cvcsha6qn7",
         &[],
     );
     // Member votes.

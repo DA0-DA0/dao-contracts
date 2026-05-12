@@ -17,8 +17,8 @@ use super::{is_error, suite::SuiteBuilder};
 fn test_proposal_lifecycle_closed() {
     let mut suite = SuiteBuilder::default()
         .with_voters(&[
-            ("blue", 10),
-            ("violet", 10),
+            ("cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w", 10),
+            ("cosmwasm1ytfqsncpjdk9vnnfp5tsjkvhvermgmyy809nz0lhxyhuz6wu3zwqlf3qmz", 10),
             ("magenta", 10),
             ("gold", 10),
             ("crimson", 10),
@@ -27,8 +27,8 @@ fn test_proposal_lifecycle_closed() {
         .with_proposal(2)
         .build();
 
-    suite.vote("blue", 1, vec![0, 2, 1]).unwrap();
-    suite.vote("violet", 1, vec![1, 0, 2]).unwrap();
+    suite.vote("cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w", 1, vec![0, 2, 1]).unwrap();
+    suite.vote("cosmwasm1ytfqsncpjdk9vnnfp5tsjkvhvermgmyy809nz0lhxyhuz6wu3zwqlf3qmz", 1, vec![1, 0, 2]).unwrap();
     suite.vote("magenta", 1, vec![2, 1, 0]).unwrap();
     suite.vote("gold", 1, vec![1, 0, 2]).unwrap();
     suite.vote("crimson", 1, vec![0, 2, 1]).unwrap();

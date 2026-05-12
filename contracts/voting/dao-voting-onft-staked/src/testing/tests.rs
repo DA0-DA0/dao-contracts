@@ -560,7 +560,7 @@ fn test_add_remove_hooks() -> anyhow::Result<()> {
     let res = add_hook(&mut app, &module, DAO, "meow");
     is_error!(res => "Given address already registered as a hook");
 
-    let res = remove_hook(&mut app, &module, DAO, "blue");
+    let res = remove_hook(&mut app, &module, DAO, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w");
     is_error!(res => "Given address not registered as a hook");
 
     let res = add_hook(&mut app, &module, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", "evil");

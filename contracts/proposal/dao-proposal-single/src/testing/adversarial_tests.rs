@@ -189,7 +189,7 @@ pub fn test_executed_prop_state_remains_after_vote_swing() {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "threshold".to_string(),
+                address: "cosmwasm1f9lz9l59fgjte7u2545wg486yckdke9pp8spm2l40ya5vvnpgndqtjhc0s".to_string(),
                 amount: Uint128::new(20),
             },
             Cw20Coin {
@@ -197,7 +197,7 @@ pub fn test_executed_prop_state_remains_after_vote_swing() {
                 amount: Uint128::new(50),
             },
             Cw20Coin {
-                address: "overslept_vote".to_string(),
+                address: "cosmwasm1r32pc0ql83qyazkz5xygnc6prnf7a56yfkz3fkadjvrfa3mw9ytqzw7vau".to_string(),
                 amount: Uint128::new(30),
             },
         ]),
@@ -212,7 +212,7 @@ pub fn test_executed_prop_state_remains_after_vote_swing() {
     vote_on_proposal(
         &mut app,
         &proposal_module,
-        "threshold",
+        "cosmwasm1f9lz9l59fgjte7u2545wg486yckdke9pp8spm2l40ya5vvnpgndqtjhc0s",
         proposal_id,
         Vote::Yes,
     );
@@ -238,7 +238,7 @@ pub fn test_executed_prop_state_remains_after_vote_swing() {
     vote_on_proposal(
         &mut app,
         &proposal_module,
-        "overslept_vote",
+        "cosmwasm1r32pc0ql83qyazkz5xygnc6prnf7a56yfkz3fkadjvrfa3mw9ytqzw7vau",
         proposal_id,
         Vote::No,
     );
@@ -289,7 +289,7 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "threshold".to_string(),
+                address: "cosmwasm1f9lz9l59fgjte7u2545wg486yckdke9pp8spm2l40ya5vvnpgndqtjhc0s".to_string(),
                 amount: Uint128::new(20),
             },
             Cw20Coin {
@@ -297,7 +297,7 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
                 amount: Uint128::new(50),
             },
             Cw20Coin {
-                address: "overslept_vote".to_string(),
+                address: "cosmwasm1r32pc0ql83qyazkz5xygnc6prnf7a56yfkz3fkadjvrfa3mw9ytqzw7vau".to_string(),
                 amount: Uint128::new(30),
             },
         ]),
@@ -305,9 +305,9 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
 
-    // if the proposal passes, it should mint 100_000_000 tokens to "threshold"
+    // if the proposal passes, it should mint 100_000_000 tokens to "cosmwasm1f9lz9l59fgjte7u2545wg486yckdke9pp8spm2l40ya5vvnpgndqtjhc0s"
     let msg = cw20::Cw20ExecuteMsg::Mint {
-        recipient: "threshold".to_string(),
+        recipient: "cosmwasm1f9lz9l59fgjte7u2545wg486yckdke9pp8spm2l40ya5vvnpgndqtjhc0s".to_string(),
         amount: Uint128::new(100_000_000),
     };
     let binary_msg = to_json_binary(&msg).unwrap();
@@ -326,15 +326,15 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
         None,
     );
 
-    // assert that the initial "threshold" address balance is 0
-    let balance = query_balance_cw20(&app, gov_token.to_string(), "threshold");
+    // assert that the initial "cosmwasm1f9lz9l59fgjte7u2545wg486yckdke9pp8spm2l40ya5vvnpgndqtjhc0s" address balance is 0
+    let balance = query_balance_cw20(&app, gov_token.to_string(), "cosmwasm1f9lz9l59fgjte7u2545wg486yckdke9pp8spm2l40ya5vvnpgndqtjhc0s");
     assert_eq!(balance, Uint128::zero());
 
     // vote enough to pass the proposal
     vote_on_proposal(
         &mut app,
         &proposal_module,
-        "threshold",
+        "cosmwasm1f9lz9l59fgjte7u2545wg486yckdke9pp8spm2l40ya5vvnpgndqtjhc0s",
         proposal_id,
         Vote::Yes,
     );
@@ -358,7 +358,7 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
     vote_on_proposal(
         &mut app,
         &proposal_module,
-        "overslept_vote",
+        "cosmwasm1r32pc0ql83qyazkz5xygnc6prnf7a56yfkz3fkadjvrfa3mw9ytqzw7vau",
         proposal_id,
         Vote::No,
     );
@@ -376,12 +376,12 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
 
     app.update_block(next_block);
 
-    // make sure that the initial "threshold" address balance is
+    // make sure that the initial "cosmwasm1f9lz9l59fgjte7u2545wg486yckdke9pp8spm2l40ya5vvnpgndqtjhc0s" address balance is
     // 100_000_000 and late votes did not make a difference
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Executed);
     assert_eq!(proposal.proposal.votes.yes, Uint128::new(20));
     assert_eq!(proposal.proposal.votes.no, Uint128::new(80));
-    let balance = query_balance_cw20(&app, gov_token.to_string(), "threshold");
+    let balance = query_balance_cw20(&app, gov_token.to_string(), "cosmwasm1f9lz9l59fgjte7u2545wg486yckdke9pp8spm2l40ya5vvnpgndqtjhc0s");
     assert_eq!(balance, Uint128::new(100_000_000));
 }

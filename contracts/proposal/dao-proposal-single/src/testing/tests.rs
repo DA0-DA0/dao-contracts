@@ -506,7 +506,7 @@ fn test_proposal_message_timelock_execution() -> anyhow::Result<()> {
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
     let veto_config = VetoConfig {
         timelock_duration: Duration::Time(100),
-        vetoer: "oversight".to_string(),
+        vetoer: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
         early_execute: false,
         veto_before_passed: false,
     };
@@ -629,7 +629,7 @@ fn test_open_proposal_veto_unauthorized() {
     instantiate.close_proposal_on_execution_failure = false;
     let veto_config = VetoConfig {
         timelock_duration: Duration::Time(100),
-        vetoer: "oversight".to_string(),
+        vetoer: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
         early_execute: false,
         veto_before_passed: true,
     };
@@ -692,7 +692,7 @@ fn test_open_proposal_veto_with_early_veto_flag_disabled() {
     instantiate.close_proposal_on_execution_failure = false;
     let veto_config = VetoConfig {
         timelock_duration: Duration::Time(100),
-        vetoer: "oversight".to_string(),
+        vetoer: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
         early_execute: false,
         veto_before_passed: false,
     };
@@ -816,7 +816,7 @@ fn test_vetoed_proposal_veto() {
     instantiate.close_proposal_on_execution_failure = false;
     let veto_config = VetoConfig {
         timelock_duration: Duration::Time(100),
-        vetoer: "oversight".to_string(),
+        vetoer: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
         early_execute: false,
         veto_before_passed: true,
     };
@@ -894,7 +894,7 @@ fn test_open_proposal_veto_early() {
     instantiate.close_proposal_on_execution_failure = false;
     let veto_config = VetoConfig {
         timelock_duration: Duration::Time(100),
-        vetoer: "oversight".to_string(),
+        vetoer: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
         early_execute: false,
         veto_before_passed: true,
     };
@@ -955,7 +955,7 @@ fn test_timelocked_proposal_veto_unauthorized() -> anyhow::Result<()> {
     instantiate.close_proposal_on_execution_failure = false;
     let veto_config = VetoConfig {
         timelock_duration: Duration::Time(100),
-        vetoer: "oversight".to_string(),
+        vetoer: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
         early_execute: true,
         veto_before_passed: false,
     };
@@ -1056,7 +1056,7 @@ fn test_timelocked_proposal_veto_expired_timelock() -> anyhow::Result<()> {
     instantiate.close_proposal_on_execution_failure = false;
     let veto_config = VetoConfig {
         timelock_duration: Duration::Time(100),
-        vetoer: "oversight".to_string(),
+        vetoer: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
         early_execute: true,
         veto_before_passed: false,
     };
@@ -1148,7 +1148,7 @@ fn test_timelocked_proposal_execute_no_early_exec() -> anyhow::Result<()> {
     instantiate.close_proposal_on_execution_failure = false;
     let veto_config = VetoConfig {
         timelock_duration: Duration::Time(100),
-        vetoer: "oversight".to_string(),
+        vetoer: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
         early_execute: false,
         veto_before_passed: false,
     };
@@ -1232,7 +1232,7 @@ fn test_timelocked_proposal_execute_early() -> anyhow::Result<()> {
     instantiate.close_proposal_on_execution_failure = false;
     let veto_config = VetoConfig {
         timelock_duration: Duration::Time(100),
-        vetoer: "oversight".to_string(),
+        vetoer: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
         early_execute: true,
         veto_before_passed: false,
     };
@@ -1322,7 +1322,7 @@ fn test_timelocked_proposal_execute_active_timelock_unauthorized() -> anyhow::Re
     instantiate.close_proposal_on_execution_failure = false;
     let veto_config = VetoConfig {
         timelock_duration: Duration::Time(100),
-        vetoer: "oversight".to_string(),
+        vetoer: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
         early_execute: true,
         veto_before_passed: false,
     };
@@ -1413,7 +1413,7 @@ fn test_timelocked_proposal_execute_expired_timelock_not_vetoer() -> anyhow::Res
     instantiate.close_proposal_on_execution_failure = false;
     let veto_config = VetoConfig {
         timelock_duration: Duration::Time(100),
-        vetoer: "oversight".to_string(),
+        vetoer: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
         early_execute: true,
         veto_before_passed: false,
     };
@@ -1499,7 +1499,7 @@ fn test_proposal_message_timelock_veto() -> anyhow::Result<()> {
     instantiate.close_proposal_on_execution_failure = false;
     let veto_config = VetoConfig {
         timelock_duration: Duration::Time(100),
-        vetoer: "oversight".to_string(),
+        vetoer: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
         early_execute: false,
         veto_before_passed: false,
     };
@@ -1618,7 +1618,7 @@ fn test_proposal_message_timelock_early_execution() -> anyhow::Result<()> {
     instantiate.close_proposal_on_execution_failure = false;
     let veto_config = VetoConfig {
         timelock_duration: Duration::Time(100),
-        vetoer: "oversight".to_string(),
+        vetoer: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
         early_execute: true,
         veto_before_passed: false,
     };
@@ -1692,7 +1692,7 @@ fn test_proposal_message_timelock_early_execution() -> anyhow::Result<()> {
     mint_natives(&mut app, core_addr.as_str(), coins(10, "ujuno"));
 
     // Proposal can be executed early by vetoer
-    execute_proposal(&mut app, &proposal_module, "oversight", proposal_id);
+    execute_proposal(&mut app, &proposal_module, "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk", proposal_id);
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Executed);
 
@@ -1706,7 +1706,7 @@ fn test_proposal_message_timelock_veto_before_passed() {
     instantiate.close_proposal_on_execution_failure = false;
     instantiate.veto = Some(VetoConfig {
         timelock_duration: Duration::Time(100),
-        vetoer: "oversight".to_string(),
+        vetoer: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
         early_execute: false,
         veto_before_passed: true,
     });
@@ -1772,7 +1772,7 @@ fn test_proposal_message_timelock_veto_before_passed() {
     // mint_natives(&mut app, core_addr.as_str(), coins(10, "ujuno"));
 
     // // Proposal can be executed early by vetoer
-    // execute_proposal(&mut app, &proposal_module, "oversight", proposal_id);
+    // execute_proposal(&mut app, &proposal_module, "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk", proposal_id);
     // let proposal = query_proposal(&app, &proposal_module, proposal_id);
     // assert_eq!(proposal.proposal.status, Status::Executed);
 }
@@ -1784,7 +1784,7 @@ fn test_veto_only_members_execute_proposal() -> anyhow::Result<()> {
     instantiate.close_proposal_on_execution_failure = false;
     let veto_config = VetoConfig {
         timelock_duration: Duration::Time(100),
-        vetoer: "oversight".to_string(),
+        vetoer: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
         early_execute: true,
         veto_before_passed: false,
     };
@@ -2289,7 +2289,7 @@ fn test_propose_non_member_auto_vote_fails() {
     make_proposal(
         &mut app,
         &proposal_module,
-        "anyone",
+        "cosmwasm1ztkc6999tld5wq0wsgvlzr70y7zeznccvke8lay45vde7sww6gpskvfask",
         vec![],
         Some(SingleChoiceAutoVote {
             vote: Vote::Yes,

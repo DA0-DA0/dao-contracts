@@ -38,7 +38,7 @@ const INSTANTIATE_NFT_REPLY_ID: u64 = 2;
 
 const DAO: Item<Addr> = Item::new("dao");
 const INITIAL_NFTS: Item<Vec<Binary>> = Item::new("initial_nfts");
-const NFT_CONTRACT: Item<Addr> = Item::new("nft_contract");
+const NFT_CONTRACT: Item<Addr> = Item::new("cosmwasm1pv9g4gkq46vjp58lwnd3pdwdrgvx0mmn46znu00ga9uue4z4nqgqle0d2c");
 const VOTING_MODULE: Item<Addr> = Item::new("voting_module");
 const TOKEN_INFO: Item<NewTokenInfo> = Item::new("token_info");
 

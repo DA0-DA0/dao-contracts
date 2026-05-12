@@ -35,7 +35,7 @@ fn test_update_owner() {
     let existing_owner = suite.get_ownership().owner.unwrap();
     assert_eq!(existing_owner.as_str(), OWNER);
 
-    let new_owner = "new_owner";
+    let new_owner = "cosmwasm1lk0ans8sykcdtc2u6ep502pjm6m2ep4aqe9qsupg5hwpweg4mxxqrsvg0k";
     suite.update_owner(existing_owner, new_owner);
 
     let owner = suite.get_ownership().owner.unwrap();
@@ -53,7 +53,7 @@ fn test_info() {
 #[test]
 fn test_auth() {
     let mut suite = SuiteBuilder::base().build();
-    let not_owner = "not_owner";
+    let not_owner = "cosmwasm1hclhm4dapgs8lxc9ya59jjyakln279wc0rh6ewx5ddrmhf0jlctq3mddc2";
 
     // only the owner can register
     let err = suite.register_err(not_owner, vec![]);

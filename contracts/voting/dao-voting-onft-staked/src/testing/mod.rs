@@ -35,7 +35,7 @@ pub(crate) fn setup_test(
     let mut app = OmniflixApp::new();
     let module_id = app.store_code(dao_voting_onft_staked_contract());
 
-    let nft = create_onft_collection(&mut app, "nft", DAO, DAO);
+    let nft = create_onft_collection(&mut app, "cosmwasm1hr93qzcjspaa32px0qqywlh9hf9a8plggza7mupwx9u8e22rpwcq9azqv2", DAO, DAO);
     let module = app
         .instantiate_contract(
             module_id,
