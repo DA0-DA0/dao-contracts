@@ -116,9 +116,8 @@ where
         let mut active = self.active.may_load(store, k.clone())?.unwrap_or_default();
 
         // remove expired items
-        active.retain(|(_, expiration)| {
-            expiration.is_none_or(|expiration| expiration > curr_height)
-        });
+        active
+            .retain(|(_, expiration)| expiration.is_none_or(|expiration| expiration > curr_height));
 
         // add new item and save list
         let expiration = expire_in.map(|d| curr_height + d);

@@ -11,8 +11,7 @@ use dao_pre_propose_base::{error::PreProposeError, msg::DepositInfoResponse, sta
 use dao_proposal_single as dps;
 use dao_testing::{
     contracts::{
-        cw20_base_contract, dao_pre_propose_approval_single_contract,
-        dao_proposal_single_contract,
+        cw20_base_contract, dao_pre_propose_approval_single_contract, dao_proposal_single_contract,
     },
     helpers::instantiate_with_cw4_groups_governance,
 };

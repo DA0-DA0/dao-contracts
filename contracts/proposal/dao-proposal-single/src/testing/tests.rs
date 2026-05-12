@@ -3,7 +3,8 @@ use std::ops::Add;
 use cosmwasm_std::{
     coins,
     testing::{mock_dependencies, mock_env},
-    to_json_binary, Addr, Attribute, BankMsg, Binary, ContractInfoResponse, CosmosMsg, Decimal, Reply, StdError, SubMsgResult, Uint128, WasmMsg, WasmQuery,
+    to_json_binary, Addr, Attribute, BankMsg, Binary, ContractInfoResponse, CosmosMsg, Decimal,
+    Reply, StdError, SubMsgResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::ContractVersion;
 use cw20::Cw20Coin;

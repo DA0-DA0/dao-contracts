@@ -25,8 +25,7 @@ use crate::msg::{
 };
 use crate::state::{
     register_staked_nft, register_unstaked_nfts, Config, ACTIVE_THRESHOLD, CONFIG, DAO, HOOKS,
-    INITIAL_NFTS, NFT_BALANCES, NFT_CLAIMS, STAKED_NFTS_PER_OWNER,
-    TOTAL_STAKED_NFTS,
+    INITIAL_NFTS, NFT_BALANCES, NFT_CLAIMS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
 };
 use crate::ContractError;
 

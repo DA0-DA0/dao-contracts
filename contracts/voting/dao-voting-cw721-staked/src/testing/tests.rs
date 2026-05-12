@@ -1,7 +1,5 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
-use cosmwasm_std::{
-    to_json_binary, Addr, Coin, Decimal, Empty, Uint128, WasmMsg,
-};
+use cosmwasm_std::{to_json_binary, Addr, Coin, Decimal, Empty, Uint128, WasmMsg};
 use cw721_base::msg::{ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg};
 use cw_multi_test::{next_block, App, BankSudo, Executor, SudoMsg};
 use cw_utils::Duration;

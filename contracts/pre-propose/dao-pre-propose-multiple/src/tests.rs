@@ -1,6 +1,4 @@
-use cosmwasm_std::{
-    coins, from_json, to_json_binary, Addr, Coin, Decimal, Empty, Uint128,
-};
+use cosmwasm_std::{coins, from_json, to_json_binary, Addr, Coin, Decimal, Empty, Uint128};
 use cw2::ContractVersion;
 use cw20::Cw20Coin;
 use cw_denom::UncheckedDenom;
@@ -13,8 +11,7 @@ use dao_pre_propose_base::{error::PreProposeError, msg::DepositInfoResponse, sta
 use dao_proposal_multiple as dpm;
 use dao_testing::{
     contracts::{
-        cw20_base_contract, dao_pre_propose_multiple_contract,
-        dao_proposal_multiple_contract,
+        cw20_base_contract, dao_pre_propose_multiple_contract, dao_proposal_multiple_contract,
     },
     helpers::instantiate_with_cw4_groups_governance,
 };

@@ -14,8 +14,7 @@ use cosmwasm_std::Uint128;
 /// assert_eq!(c, Cell::Negative(Uint128::new(1)));
 /// ```
 #[cw_serde]
-#[derive(Copy)]
-#[derive(Default)]
+#[derive(Copy, Default)]
 pub(crate) enum Cell {
     Positive(Uint128),
     #[default]
@@ -65,7 +64,6 @@ impl Cell {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
