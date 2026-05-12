@@ -257,7 +257,7 @@ fn test_update_owner() {
     suite.update_owner(existing_owner, new_owner);
 
     let owner = suite.get_ownership().owner.unwrap();
-    assert_eq!(owner, new_owner);
+    assert_eq!(owner.as_str(), new_owner);
 }
 
 #[test]
@@ -282,7 +282,7 @@ fn test_update_dao() {
 
     // Verify the DAO was updated
     let updated_dao = suite.get_dao();
-    assert_eq!(updated_dao, new_dao);
+    assert_eq!(updated_dao.as_str(), new_dao);
     assert_ne!(updated_dao, current_dao);
 }
 
@@ -915,7 +915,7 @@ fn test_action_execution() {
 
     let actions = suite.list_actions(None, None, None).actions;
     assert_eq!(actions.len(), 1);
-    assert_eq!(actions[0].addr, ADDR0);
+    assert_eq!(actions[0].addr.as_str(), ADDR0);
     assert_eq!(actions[0].role_id, role_id);
     assert_eq!(actions[0].authorization_id, authorization_id);
     assert_eq!(actions[0].msg, action_msg);
@@ -1384,20 +1384,20 @@ fn test_list_queries() {
     // Test list addresses with role
     let addr_with_role1 = suite.list_addresses_with_role(role_id1, None, None);
     assert_eq!(addr_with_role1.addresses.len(), 2);
-    assert_eq!(addr_with_role1.addresses[0], ADDR0.to_string());
-    assert_eq!(addr_with_role1.addresses[1], ADDR1.to_string());
+    assert_eq!(addr_with_role1.addresses[0].as_str(), ADDR0);
+    assert_eq!(addr_with_role1.addresses[1].as_str(), ADDR1);
 
     let addr_with_role1_with_start_after =
         suite.list_addresses_with_role(role_id1, Some(ADDR0.to_string()), None);
     assert_eq!(addr_with_role1_with_start_after.addresses.len(), 1);
     assert_eq!(
-        addr_with_role1_with_start_after.addresses[0],
-        ADDR1.to_string()
+        addr_with_role1_with_start_after.addresses[0].as_str(),
+        ADDR1
     );
 
     let addr_with_role1_with_limit = suite.list_addresses_with_role(role_id1, None, Some(1));
     assert_eq!(addr_with_role1_with_limit.addresses.len(), 1);
-    assert_eq!(addr_with_role1_with_limit.addresses[0], ADDR0.to_string());
+    assert_eq!(addr_with_role1_with_limit.addresses[0].as_str(), ADDR0);
 
     // Test list roles for address
     let addr0_roles = suite.list_roles_for_address(ADDR0.to_string(), None, None);
@@ -1945,7 +1945,7 @@ fn test_action_execution_with_multiple_actions() {
 
     // Verify they're all from ADDR0 with role 1 and auth 1
     for action in &logged_actions.actions {
-        assert_eq!(action.addr, ADDR0);
+        assert_eq!(action.addr.as_str(), ADDR0);
         assert_eq!(action.role_id, role_id);
         assert_eq!(action.authorization_id, authorization_id);
     }

@@ -20,13 +20,13 @@ fn test_update_owner() {
     let mut suite = SuiteBuilder::base().build();
 
     let existing_owner = suite.get_ownership().owner.unwrap();
-    assert_eq!(existing_owner, OWNER);
+    assert_eq!(existing_owner.as_str(), OWNER);
 
     let new_owner = "new_owner";
     suite.update_owner(existing_owner, new_owner);
 
     let owner = suite.get_ownership().owner.unwrap();
-    assert_eq!(owner, new_owner);
+    assert_eq!(owner.as_str(), new_owner);
 }
 
 #[test]
@@ -57,7 +57,7 @@ fn test_init_owner() {
     );
 
     let owner = suite.get_ownership().owner.unwrap();
-    assert_eq!(owner, other_owner);
+    assert_eq!(owner.as_str(), other_owner);
 
     let protobuf_registry_addr = suite.get_protobuf_registry();
     assert_eq!(protobuf_registry_addr, Some(suite.protobuf_registry_addr));

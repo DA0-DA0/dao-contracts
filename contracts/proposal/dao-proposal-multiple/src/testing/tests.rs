@@ -98,7 +98,7 @@ pub fn get_pre_propose_info(
             msg: to_json_binary(&cppm::InstantiateMsg {
                 deposit_info,
                 submission_policy,
-                extension: None,
+                extension: cosmwasm_std::Empty {},
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),

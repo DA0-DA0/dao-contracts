@@ -3565,6 +3565,8 @@ fn test_reply_proposal_mock() {
     // PROPOSALS
     let reply_msg = Reply {
         id: m_proposal_id,
+        gas_used: 0,
+        payload: cosmwasm_std::Binary::default(),
         result: SubMsgResult::Err("error_msg".to_string()),
     };
     let res = reply(deps.as_mut(), env, reply_msg).unwrap();
@@ -3745,6 +3747,8 @@ fn test_reply_hooks_mock() {
 
     let reply_msg = Reply {
         id: m_proposal_hook_idx,
+        gas_used: 0,
+        payload: cosmwasm_std::Binary::default(),
         result: SubMsgResult::Err("error_msg".to_string()),
     };
 
@@ -3769,6 +3773,8 @@ fn test_reply_hooks_mock() {
 
     let prepropose_reply_msg = Reply {
         id: failed_pre_propose_module_hook_id(),
+        gas_used: 0,
+        payload: cosmwasm_std::Binary::default(),
         result: SubMsgResult::Err("error_msg".to_string()),
     };
 
@@ -3802,6 +3808,8 @@ fn test_reply_hooks_mock() {
 
     let reply_msg = Reply {
         id: m_vote_hook_idx,
+        gas_used: 0,
+        payload: cosmwasm_std::Binary::default(),
         result: SubMsgResult::Err("error_msg".to_string()),
     };
     let res = reply(deps.as_mut(), env, reply_msg).unwrap();
@@ -4001,7 +4009,7 @@ fn test_update_pre_propose_module() {
                                 allowlist: vec![],
                                 denylist: vec![],
                             },
-                            extension: None,
+                            extension: cosmwasm_std::Empty {},
                         })
                         .unwrap(),
                         admin: Some(Admin::CoreModule {}),
@@ -4041,7 +4049,10 @@ fn test_update_pre_propose_module() {
             contract_addr: pre_propose.to_string(),
         }))
         .unwrap();
-    assert_eq!(info.admin, Some(core_addr.to_string()));
+    assert_eq!(
+        info.admin.as_ref().map(|a| a.as_str()),
+        Some(core_addr.as_str())
+    );
 
     let pre_propose_config = query_pre_proposal_single_config(&app, &pre_propose);
     assert_eq!(
@@ -4141,7 +4152,10 @@ fn test_pre_propose_admin_is_dao() {
             contract_addr: pre_propose.into_string(),
         }))
         .unwrap();
-    assert_eq!(info.admin, Some(core_addr.into_string()));
+    assert_eq!(
+        info.admin.as_ref().map(|a| a.as_str()),
+        Some(core_addr.as_str())
+    );
 }
 
 // I can add a rationale to my vote. My rational is queryable when
@@ -4401,5 +4415,5 @@ fn test_update_delegation_module() {
 
     let new_delegation_module = query_delegation_module(&app, &proposal_module).unwrap();
 
-    assert_eq!(delegation_module, new_delegation_module);
+    assert_eq!(delegation_module, new_delegation_module.as_str());
 }

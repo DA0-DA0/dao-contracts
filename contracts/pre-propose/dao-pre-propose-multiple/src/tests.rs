@@ -82,7 +82,7 @@ fn get_default_proposal_module_instantiate(
                 msg: to_json_binary(&InstantiateMsg {
                     deposit_info,
                     submission_policy,
-                    extension: None,
+                    extension: cosmwasm_std::Empty {},
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),

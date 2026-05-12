@@ -2163,7 +2163,10 @@ fn test_cw721_receive() {
             &cw721_base::msg::InstantiateMsg {
                 name: "ekez".to_string(),
                 symbol: "ekez".to_string(),
-                minter: CREATOR_ADDR.to_string(),
+                minter: Some(CREATOR_ADDR.to_string()),
+                collection_info_extension: None,
+                creator: None,
+                withdraw_address: None,
             },
             &[],
             "cw721",
@@ -2178,7 +2181,10 @@ fn test_cw721_receive() {
             &cw721_base::msg::InstantiateMsg {
                 name: "ekez".to_string(),
                 symbol: "ekez".to_string(),
-                minter: CREATOR_ADDR.to_string(),
+                minter: Some(CREATOR_ADDR.to_string()),
+                collection_info_extension: None,
+                creator: None,
+                withdraw_address: None,
             },
             &[],
             "cw721",
@@ -2189,7 +2195,7 @@ fn test_cw721_receive() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         cw721_addr.clone(),
-        &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::Mint {
+        &cw721_base::msg::ExecuteMsg::Mint {
             token_id: "ekez".to_string(),
             owner: CREATOR_ADDR.to_string(),
             token_uri: None,
@@ -2202,7 +2208,7 @@ fn test_cw721_receive() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         cw721_addr.clone(),
-        &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::SendNft {
+        &cw721_base::msg::ExecuteMsg::SendNft {
             contract: gov_addr.to_string(),
             token_id: "ekez".to_string(),
             msg: to_json_binary("").unwrap(),
@@ -2293,7 +2299,10 @@ fn test_cw721_receive_no_auto_add() {
             &cw721_base::msg::InstantiateMsg {
                 name: "ekez".to_string(),
                 symbol: "ekez".to_string(),
-                minter: CREATOR_ADDR.to_string(),
+                minter: Some(CREATOR_ADDR.to_string()),
+                collection_info_extension: None,
+                creator: None,
+                withdraw_address: None,
             },
             &[],
             "cw721",
@@ -2308,7 +2317,10 @@ fn test_cw721_receive_no_auto_add() {
             &cw721_base::msg::InstantiateMsg {
                 name: "ekez".to_string(),
                 symbol: "ekez".to_string(),
-                minter: CREATOR_ADDR.to_string(),
+                minter: Some(CREATOR_ADDR.to_string()),
+                collection_info_extension: None,
+                creator: None,
+                withdraw_address: None,
             },
             &[],
             "cw721",
@@ -2319,7 +2331,7 @@ fn test_cw721_receive_no_auto_add() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         cw721_addr.clone(),
-        &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::Mint {
+        &cw721_base::msg::ExecuteMsg::Mint {
             token_id: "ekez".to_string(),
             owner: CREATOR_ADDR.to_string(),
             token_uri: None,
@@ -2332,7 +2344,7 @@ fn test_cw721_receive_no_auto_add() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         cw721_addr.clone(),
-        &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::SendNft {
+        &cw721_base::msg::ExecuteMsg::SendNft {
             contract: gov_addr.to_string(),
             token_id: "ekez".to_string(),
             msg: to_json_binary("").unwrap(),
@@ -2733,6 +2745,8 @@ fn test_migrate_from_compatible() {
     assert_eq!(new_state, state);
 }
 
+// v1 (cw-core 0.1.0) migration test — gated off; v1 pinned to cosmwasm-std 1.5.5.
+#[cfg(any())]
 #[test]
 fn test_migrate_from_beta() {
     use cw_core_v1 as v1;

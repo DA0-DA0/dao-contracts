@@ -44,7 +44,7 @@ pub fn mint_nft(
     app.execute_contract(
         addr!(sender),
         cw721.clone(),
-        &cw721_base::ExecuteMsg::Mint::<Empty, Empty> {
+        &Cw721ExecuteMsg::Mint {
             token_id: token_id.to_string(),
             owner: receiver.to_string(),
             token_uri: None,

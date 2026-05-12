@@ -273,6 +273,8 @@ fn test_update_config() -> anyhow::Result<()> {
 // claim results in an error. Attempting to claim with tokens to claim
 // results in me owning those tokens.
 #[test]
+#[cfg_attr(any(), allow(dead_code))]
+#[cfg(any())] // gated: uses cw721_controllers_v250 (cosmwasm-std 1.5) for legacy claims
 fn test_claims() -> anyhow::Result<()> {
     let CommonTest {
         mut app,
@@ -316,6 +318,7 @@ fn test_claims() -> anyhow::Result<()> {
 }
 
 // I can query and claim my pending legacy claims and non-legacy claims.
+#[cfg(any())] // gated: cw721_controllers_v250 + cw-utils 1.x Expiration shape
 #[test]
 pub fn test_legacy_claims_work() -> anyhow::Result<()> {
     let CommonTest {

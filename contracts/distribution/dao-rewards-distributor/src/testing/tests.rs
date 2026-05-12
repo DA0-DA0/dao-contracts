@@ -2399,7 +2399,7 @@ fn test_update_hook_caller() {
     suite.update_hook_caller(1, new_hook_caller);
 
     let distribution = suite.get_distribution(1);
-    assert_eq!(distribution.hook_caller, new_hook_caller);
+    assert_eq!(distribution.hook_caller.as_str(), new_hook_caller);
 }
 
 #[test]
@@ -2410,7 +2410,7 @@ fn test_update_withdraw_destination() {
     suite.update_withdraw_destination(1, new_withdraw_destination);
 
     let distribution = suite.get_distribution(1);
-    assert_eq!(distribution.withdraw_destination, new_withdraw_destination);
+    assert_eq!(distribution.withdraw_destination.as_str(), new_withdraw_destination);
 }
 
 #[test]

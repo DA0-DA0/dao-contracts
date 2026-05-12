@@ -411,7 +411,7 @@ impl DaoVoteDelegationTestingSuiteBase {
         assert!(delegations
             .delegations
             .iter()
-            .any(|d| d.delegate == delegate.into()
+            .any(|d| d.delegate.as_str() == <_ as Into<String>>::into(delegate)
                 && d.percent == percent
                 && d.active
                 && d.expiration_height == expiration_height));

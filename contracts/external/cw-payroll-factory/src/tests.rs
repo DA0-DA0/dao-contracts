@@ -111,7 +111,7 @@ pub fn test_instantiate_native_payroll_contract() {
         .wrap()
         .query_wasm_contract_info(cw_vesting_addr)
         .unwrap();
-    assert_eq!(contract_info.admin, Some(ALICE.to_string()));
+    assert_eq!(contract_info.admin.map(|a| a.to_string()), Some(ALICE.to_string()));
 
     // Test query list of contracts
     let contracts: Vec<VestingContract> = app
@@ -291,7 +291,7 @@ pub fn test_instantiate_cw20_payroll_contract() {
         .wrap()
         .query_wasm_contract_info(cw_vesting_addr.clone())
         .unwrap();
-    assert_eq!(contract_info.admin, Some(ALICE.to_string()));
+    assert_eq!(contract_info.admin.map(|a| a.to_string()), Some(ALICE.to_string()));
 
     // Test query by instantiator
     let contracts: Vec<VestingContract> = app

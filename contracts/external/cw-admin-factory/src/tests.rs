@@ -106,7 +106,10 @@ pub fn test_set_self_admin() {
 
     // Check that admin of core address is itself
     let contract_info = app.wrap().query_wasm_contract_info(&core_addr).unwrap();
-    assert_eq!(contract_info.admin, Some(core_addr))
+    assert_eq!(
+        contract_info.admin.map(|a| a.to_string()),
+        Some(core_addr)
+    )
 }
 
 #[test]
@@ -222,7 +225,10 @@ pub fn test_authorized_set_self_admin() {
 
     // Check that admin of core address is itself
     let contract_info = app.wrap().query_wasm_contract_info(&core_addr).unwrap();
-    assert_eq!(contract_info.admin, Some(core_addr))
+    assert_eq!(
+        contract_info.admin.map(|a| a.to_string()),
+        Some(core_addr)
+    )
 }
 
 #[test]
@@ -236,9 +242,12 @@ pub fn test_set_self_admin_mock() {
     let bytes = vec![10, 9, 99, 111, 110, 116, 114, 97, 99, 116, 50];
     let reply_msg: Reply = Reply {
         id: INSTANTIATE_CONTRACT_REPLY_ID,
+        gas_used: 0,
+        payload: Binary::default(),
         result: SubMsgResult::Ok(SubMsgResponse {
             events: vec![],
-            data: (Some(Binary(bytes))),
+            data: Some(Binary::from(bytes)),
+            msg_responses: vec![],
         }),
     };
 
