@@ -11,9 +11,7 @@ use crate::{
 };
 
 pub fn adapter_contract() -> Box<dyn cw_multi_test::Contract<Empty>> {
-    Box::new(
-        ContractWrapper::new_with_empty(execute, instantiate, query).with_migrate(migrate),
-    )
+    Box::new(ContractWrapper::new_with_empty(execute, instantiate, query).with_migrate(migrate))
 }
 
 pub fn cw20_contract() -> Box<dyn cw_multi_test::Contract<Empty>> {
@@ -90,10 +88,7 @@ impl Suite {
         (suite, cw20)
     }
 
-    fn new_with_reward(
-        required_deposit: Option<AssetUnchecked>,
-        reward: AssetUnchecked,
-    ) -> Self {
+    fn new_with_reward(required_deposit: Option<AssetUnchecked>, reward: AssetUnchecked) -> Self {
         let mut app = App::default();
         let owner = addr("owner");
         let community_pool = addr("community_pool");
@@ -223,11 +218,7 @@ impl Suite {
     }
 
     pub fn native_balance(&self, who: &Addr, denom: &str) -> Uint128 {
-        self.app
-            .wrap()
-            .query_balance(who, denom)
-            .unwrap()
-            .amount
+        self.app.wrap().query_balance(who, denom).unwrap().amount
     }
 
     pub fn cw20_balance(&self, cw20: &Addr, who: &Addr) -> Uint128 {

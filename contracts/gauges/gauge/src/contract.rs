@@ -328,8 +328,9 @@ mod execute {
 
                     let old = vote.power;
 
-                    // Decrease voting power by number of token_ids
-                    let amount: u128 = token_ids.len().try_into().unwrap();
+                    // Decrease voting power by number of token_ids.
+                    // `usize` is always representable in u128.
+                    let amount = token_ids.len() as u128;
                     let new = vote.power - Uint128::new(amount);
 
                     if vote.is_expired(&gauge) {

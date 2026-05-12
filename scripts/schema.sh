@@ -82,3 +82,13 @@ do
   rm -rf ./schema/raw
   cd "$START_DIR"
 done
+
+for f in ./contracts/gauges/*
+do
+  echo "generating schema for ${f##*/}"
+  cd "$f"
+  CMD="cargo run --example schema"
+  eval $CMD > /dev/null
+  rm -rf ./schema/raw
+  cd "$START_DIR"
+done

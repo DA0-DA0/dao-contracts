@@ -23,8 +23,7 @@ fn option_queries() {
     suite.mint_native(&einstein, coin(1_000, "juno"));
     suite.mint_native(&owner, coin(1_000, "juno"));
 
-    let options: AllSubmissionsResponse =
-        suite.query(&AdapterQueryMsg::AllSubmissions {}).unwrap();
+    let options: AllSubmissionsResponse = suite.query(&AdapterQueryMsg::AllSubmissions {}).unwrap();
     // account for the default option (community pool refund target).
     assert_eq!(options.submissions.len(), 1);
 

@@ -27,9 +27,6 @@ pub enum ExecuteMsg {
     AddValidOption { option: String },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct EmptyMsg {}
-
 const OPTIONS: Map<String, bool> = Map::new("options");
 const TO_DISTRIBUTE: Item<Coin> = Item::new("to_spend");
 

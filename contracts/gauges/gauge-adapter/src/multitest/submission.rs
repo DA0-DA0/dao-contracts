@@ -52,9 +52,7 @@ fn create_submission_no_required_deposit() {
     );
 
     // Without funds it succeeds.
-    suite
-        .create_submission(&owner, &recipient, None)
-        .unwrap();
+    suite.create_submission(&owner, &recipient, None).unwrap();
 
     let res: SubmissionResponse = suite
         .query(&AdapterQueryMsg::Submission {
@@ -78,9 +76,7 @@ fn overwrite_existing_submission() {
     let owner = suite.owner.clone();
     let recipient = addr("recipient");
 
-    suite
-        .create_submission(&owner, &recipient, None)
-        .unwrap();
+    suite.create_submission(&owner, &recipient, None).unwrap();
 
     let res: SubmissionResponse = suite
         .query(&AdapterQueryMsg::Submission {
@@ -101,9 +97,7 @@ fn overwrite_existing_submission() {
     );
 
     // Overwriting as the original author works.
-    suite
-        .create_submission(&owner, &recipient, None)
-        .unwrap();
+    suite.create_submission(&owner, &recipient, None).unwrap();
 }
 
 #[test]
@@ -239,8 +233,7 @@ fn create_receive_required_deposit() {
         )
         .unwrap();
 
-    let all: AllSubmissionsResponse =
-        suite.query(&AdapterQueryMsg::AllSubmissions {}).unwrap();
+    let all: AllSubmissionsResponse = suite.query(&AdapterQueryMsg::AllSubmissions {}).unwrap();
     // default (community-pool refund) + the one we just added.
     assert_eq!(all.submissions.len(), 2);
 }
@@ -248,7 +241,9 @@ fn create_receive_required_deposit() {
 #[test]
 fn return_deposits_no_required_deposit() {
     let mut suite = Suite::new_native(None);
-    let err = suite.execute_owner(&ExecuteMsg::ReturnDeposits {}).unwrap_err();
+    let err = suite
+        .execute_owner(&ExecuteMsg::ReturnDeposits {})
+        .unwrap_err();
     assert_eq!(ContractError::NoDepositToRefund {}, err.downcast().unwrap());
 }
 
