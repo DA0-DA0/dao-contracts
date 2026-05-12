@@ -484,7 +484,7 @@ fn test_list_staked_nfts() -> anyhow::Result<()> {
     mint_and_stake_nft(&mut app, &nft, &module, STAKER, "2")?;
     mint_and_stake_nft(&mut app, &nft, &module, STAKER, "3")?;
 
-    let deardrie = "deardrie";
+    let deardrie = "cosmwasm1wc5xymumvjf22a5v7tql2tsqmfznpk6tcqc7a2qj6wug0l4mrchqkj99en";
     mint_nft(&mut app, &nft, deardrie, "4")?;
     mint_nft(&mut app, &nft, deardrie, "5")?;
 
