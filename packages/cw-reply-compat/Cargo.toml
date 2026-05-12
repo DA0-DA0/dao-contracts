@@ -1,0 +1,12 @@
+[package]
+name = "cw-reply-compat"
+description = "Tiny compatibility shims for cw-utils 2.x reply parsing — preserve the cw-utils 1.x function signatures expected by existing dao-contracts call sites."
+authors = ["DAO DAO Contributors"]
+version = { workspace = true }
+edition = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cw-utils = { workspace = true }

@@ -14,8 +14,8 @@ pub struct VestingContract {
 }
 
 pub struct TokenIndexes<'a> {
-    pub instantiator: MultiIndex<'a, String, VestingContract, String>,
-    pub recipient: MultiIndex<'a, String, VestingContract, String>,
+    pub instantiator: MultiIndex<String, VestingContract, String>,
+    pub recipient: MultiIndex<String, VestingContract, String>,
 }
 
 impl IndexList<VestingContract> for TokenIndexes<'_> {
@@ -25,7 +25,7 @@ impl IndexList<VestingContract> for TokenIndexes<'_> {
     }
 }
 
-pub fn vesting_contracts<'a>() -> IndexedMap<'a, &'a str, VestingContract, TokenIndexes<'a>> {
+pub fn vesting_contracts<'a>() -> IndexedMap<&'a str, VestingContract, TokenIndexes<'a>> {
     let indexes = TokenIndexes {
         instantiator: MultiIndex::new(
             |_pk: &[u8], d: &VestingContract| d.instantiator.clone(),

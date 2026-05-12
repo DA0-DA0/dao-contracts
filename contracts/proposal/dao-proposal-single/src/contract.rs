@@ -7,7 +7,8 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_hooks::Hooks;
 use cw_storage_plus::Bound;
-use cw_utils::{parse_reply_instantiate_data, Duration};
+use cw_reply_compat::parse_reply_instantiate_data;
+use cw_utils::Duration;
 use dao_hooks::proposal::{
     new_proposal_hooks, proposal_completed_hooks, proposal_status_changed_hooks,
 };

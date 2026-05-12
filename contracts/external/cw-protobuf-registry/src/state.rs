@@ -23,7 +23,7 @@ pub const MESSAGES: IndexedMap<String, String, MessagesIndexes<'_>> = IndexedMap
 
 /// Secondary index for protobuf descriptors to look up/iterate by file name.
 pub struct MessagesIndexes<'a> {
-    pub file_name: MultiIndex<'a, String, String, String>,
+    pub file_name: MultiIndex<String, String, String>,
 }
 impl IndexList<String> for MessagesIndexes<'_> {
     fn get_indexes(&self) -> Box<dyn Iterator<Item = &dyn Index<String>> + '_> {

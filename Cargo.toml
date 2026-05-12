@@ -47,7 +47,7 @@ cosm-orc = { version = "4.0" }
 cosm-tome = "0.2"
 cosmos-sdk-proto = "0.19"
 cosmwasm-schema = "2.0.4"
-cosmwasm-std = { version = "2.0.4", features = ["ibc3", "cosmwasm_2_0", "stargate"] }
+cosmwasm-std = { version = "2.0.4", features = ["cosmwasm_2_0", "stargate"] }
 cw-controllers = "2.0.0"
 cw-multi-test = { version = "2.4.0", features = ["cosmwasm_2_0"] }
 cw-storage-plus = "2.0.0"
@@ -101,6 +101,7 @@ cw-hooks = { path = "./packages/cw-hooks", version = "2.8.0-alpha.2" }
 cw-filter = { path = "./contracts/external/cw-filter", version = "2.8.0-alpha.2" }
 cw-jsonfilter = { path = "./packages/cw-jsonfilter", version = "2.8.0-alpha.2" }
 cw-paginate-storage = { path = "./packages/cw-paginate-storage", version = "2.8.0-alpha.2" }
+cw-reply-compat = { path = "./packages/cw-reply-compat", version = "2.8.0-alpha.2" }
 cw-payroll-factory = { path = "./contracts/external/cw-payroll-factory", version = "2.8.0-alpha.2" }
 cw-protobuf-registry = { path = "./contracts/external/cw-protobuf-registry", version = "2.8.0-alpha.2" }
 cw-snapshot-vector-map = { path = "./packages/cw-snapshot-vector-map", version = "2.8.0-alpha.2" }

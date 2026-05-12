@@ -16,9 +16,8 @@ use cw_tokenfactory_issuer::msg::{
 
 use cw_tokenfactory_issuer::msg::{DenomUnit, Metadata};
 
-use cw_utils::{
-    maybe_addr, must_pay, parse_reply_execute_data, parse_reply_instantiate_data, Duration,
-};
+use cw_reply_compat::{parse_reply_execute_data, parse_reply_instantiate_data};
+use cw_utils::{maybe_addr, must_pay, Duration};
 use dao_hooks::stake::{stake_hook_msgs, unstake_hook_msgs};
 use dao_interface::{
     state::{Admin, ModuleInstantiateCallback, ModuleInstantiateInfo},

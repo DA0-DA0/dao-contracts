@@ -12,7 +12,8 @@ use cw_storage_plus::Item;
 use cw_tokenfactory_issuer::msg::ExecuteMsg as IssuerExecuteMsg;
 #[cfg(feature = "osmosis_tokenfactory")]
 use cw_tokenfactory_issuer::msg::InstantiateMsg as IssuerInstantiateMsg;
-use cw_utils::{one_coin, parse_reply_instantiate_data};
+use cw_reply_compat::parse_reply_instantiate_data;
+use cw_utils::one_coin;
 use dao_interface::{
     nft::NftFactoryCallback,
     state::ModuleInstantiateCallback,

@@ -5,7 +5,7 @@ use cosmwasm_std::{
     Uint128,
 };
 use cw2::set_contract_version;
-use cw_utils::parse_reply_instantiate_data;
+use cw_reply_compat::parse_reply_instantiate_data;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 
 use crate::error::ContractError;

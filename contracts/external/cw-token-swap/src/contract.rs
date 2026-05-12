@@ -58,7 +58,7 @@ pub fn execute(
 struct CounterpartyResponse<'a> {
     pub counterparty: CheckedCounterparty,
     pub other_counterparty: CheckedCounterparty,
-    pub storage: Item<'a, CheckedCounterparty>,
+    pub storage: Item<CheckedCounterparty>,
 }
 
 fn get_counterparty<'a>(

@@ -10,7 +10,7 @@ use cw721_base::{
     ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg, QueryMsg as Cw721QueryMsg,
 };
 use cw_ownable::Action;
-use cw_utils::parse_reply_instantiate_data;
+use cw_reply_compat::parse_reply_instantiate_data;
 use dao_cw721_extensions::roles::{ExecuteExt, MetadataExt, QueryExt};
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 

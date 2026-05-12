@@ -52,6 +52,7 @@ cw-ownable = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 cw-utils = { workspace = true }
+cw-reply-compat = { workspace = true }
 cw-controllers = { workspace = true }
 cw-hooks = { workspace = true }
 thiserror = { workspace = true }

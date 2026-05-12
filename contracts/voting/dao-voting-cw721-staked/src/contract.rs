@@ -7,7 +7,8 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NumTokensResponse};
 use cw_storage_plus::Bound;
-use cw_utils::{parse_reply_execute_data, parse_reply_instantiate_data, Duration};
+use cw_reply_compat::{parse_reply_execute_data, parse_reply_instantiate_data};
+use cw_utils::Duration;
 use dao_hooks::nft_stake::{stake_nft_hook_msgs, unstake_nft_hook_msgs};
 use dao_interface::state::{Admin, ModuleInstantiateCallback, ModuleInstantiateInfo};
 use dao_interface::{nft::NftFactoryCallback, voting::IsActiveResponse};

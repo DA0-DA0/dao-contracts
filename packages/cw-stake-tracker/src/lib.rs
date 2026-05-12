@@ -5,10 +5,10 @@ use cw_wormhole::Wormhole;
 #[cfg(test)]
 mod tests;
 
-pub struct StakeTracker<'a> {
+pub struct StakeTracker {
     /// staked(t) := the total number of native tokens staked &
     /// unbonding with validators at time t.
-    total_staked: Wormhole<'a, (), Uint128>,
+    total_staked: Wormhole<(), Uint128>,
     /// validators(v, t) := the amount staked + amount unbonding with
     /// validator v at time t.
     ///
@@ -19,10 +19,10 @@ pub struct StakeTracker<'a> {
     /// staking module ought to error. this is checked in
     /// `test_cw_vesting_staking` in
     /// `ci/integration-tests/src/tests/cw_vesting_test.rs`.
-    validators: Wormhole<'a, String, Uint128>,
+    validators: Wormhole<String, Uint128>,
     /// cardinality(t) := the # of validators with staked and/or
     /// unbonding tokens at time t.
-    cardinality: Wormhole<'a, (), u64>,
+    cardinality: Wormhole<(), u64>,
 }
 
 #[cw_serde]
@@ -36,11 +36,11 @@ pub enum StakeTrackerQuery {
     ValidatorStaked { validator: String, t: Timestamp },
 }
 
-impl<'a> StakeTracker<'a> {
+impl StakeTracker {
     pub const fn new(
-        staked_prefix: &'a str,
-        validator_prefix: &'a str,
-        cardinality_prefix: &'a str,
+        staked_prefix: &'static str,
+        validator_prefix: &'static str,
+        cardinality_prefix: &'static str,
     ) -> Self {
         Self {
             total_staked: Wormhole::new(staked_prefix),

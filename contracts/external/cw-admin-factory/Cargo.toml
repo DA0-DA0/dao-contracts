@@ -28,6 +28,7 @@ cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 thiserror = { workspace = true }
 cw-utils = { workspace = true }
+cw-reply-compat = { workspace = true }
 
 [dev-dependencies]
 cw-admin-factory = { workspace = true }

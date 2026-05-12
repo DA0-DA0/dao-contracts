@@ -10,7 +10,8 @@ use cw_storage_plus::Bound;
 
 use cw2::set_contract_version;
 use cw_ownable::initialize_owner;
-use cw_utils::{nonpayable, parse_reply_instantiate_data};
+use cw_reply_compat::parse_reply_instantiate_data;
+use cw_utils::nonpayable;
 use dao_interface::helpers::OptionalUpdate;
 use dao_interface::proposal::InfoResponse;
 use dao_interface::state::ModuleUpdate;
