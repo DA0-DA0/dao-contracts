@@ -177,7 +177,7 @@ fn test_auth() {
     let err = suite.update_filter_err(
         not_owner,
         ModuleUpdate::Existing {
-            address: "new_filter".to_string(),
+            address: "cosmwasm1ev0sp55ht0j6kwcwkpgvjnhu3gy2me2rh6rdfvsdfkhygk7qjw8qt9k02y".to_string(),
         },
     );
     assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
@@ -185,7 +185,7 @@ fn test_auth() {
     let err = suite.update_protobuf_registry_err(
         not_owner,
         Some(ModuleUpdate::Existing {
-            address: "new_protobuf_registry".to_string(),
+            address: "cosmwasm17x88d48p4lwrcd6v0hh0vn5ttv6vqdxj5qq3e267hs2jlfg2kujqwc2ke3".to_string(),
         }),
     );
     assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
@@ -2035,7 +2035,7 @@ fn test_action_execution_with_multiple_actions() {
     suite.update_filter(
         &dao,
         ModuleUpdate::Existing {
-            address: "invalid_address".to_string(),
+            address: "cosmwasm1x0tyu0n84rz4dv2026zrlfa6gnhk5mfcv72qeu4fqvpmjczgje8q3p927d".to_string(),
         },
     );
 

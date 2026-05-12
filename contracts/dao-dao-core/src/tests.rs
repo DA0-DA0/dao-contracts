@@ -28,8 +28,8 @@ use crate::{
 };
 use dao_dao_core::ContractError;
 
-const CREATOR_ADDR: &str = "creator";
-const DENOM: &str = "udenom";
+const CREATOR_ADDR: &str = "cosmwasm1h34lmpywh4upnjdg90cjf4j70aee6z8qqfspugamjp42e4q28kqs8s7vcp";
+const DENOM: &str = "cosmwasm1tgs5t4t4x67hd6yz280gyj07fz6evqf4fjp4fweppw6nxcqfx3jqpx24un";
 
 fn instantiate_gov(app: &mut App, code_id: u64, msg: InstantiateMsg) -> Addr {
     app.instantiate_contract(
@@ -1042,7 +1042,7 @@ fn test_admin_permissions() {
 
     // Random address can't call ExecuteAdminMsgs
     let res = app.execute_contract(
-        Addr::unchecked("random"),
+        Addr::unchecked("cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6"),
         core_addr.clone(),
         &ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![WasmMsg::Execute {
@@ -1080,7 +1080,7 @@ fn test_admin_permissions() {
 
     // Update Admin can't be called by non-admins
     let res = app.execute_contract(
-        Addr::unchecked("rando"),
+        Addr::unchecked("cosmwasm1vwwk0y3vy2myq7q278aykgqz4yhtq0uvw4mrzh5zry5punhq4npqghgmss"),
         core_addr.clone(),
         &ExecuteMsg::NominateAdmin {
             admin: Some("rando".to_string()),
@@ -1111,7 +1111,7 @@ fn test_admin_permissions() {
 
     // Instantiate new DAO with an admin
     let (core_with_admin_addr, mut app) =
-        do_standard_instantiate(true, Some(Addr::unchecked("admin").to_string()));
+        do_standard_instantiate(true, Some(Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql").to_string()));
 
     // Non admins still can't call ExecuteAdminMsgs
     let res = app.execute_contract(
@@ -1134,7 +1134,7 @@ fn test_admin_permissions() {
 
     // Admin cannot directly pause the DAO
     let res = app.execute_contract(
-        Addr::unchecked("admin"),
+        Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql"),
         core_with_admin_addr.clone(),
         &ExecuteMsg::Pause {
             duration: Duration::Height(10),
@@ -1145,7 +1145,7 @@ fn test_admin_permissions() {
 
     // Random person cannot pause the DAO
     let res = app.execute_contract(
-        Addr::unchecked("random"),
+        Addr::unchecked("cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6"),
         core_with_admin_addr.clone(),
         &ExecuteMsg::Pause {
             duration: Duration::Height(10),
@@ -1156,7 +1156,7 @@ fn test_admin_permissions() {
 
     // Admin can call ExecuteAdminMsgs, here an admin pauses the DAO
     let res = app.execute_contract(
-        Addr::unchecked("admin"),
+        Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql"),
         core_with_admin_addr.clone(),
         &ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![WasmMsg::Execute {
@@ -1197,7 +1197,7 @@ fn test_admin_permissions() {
 
     // Admin pauses DAO again
     let res = app.execute_contract(
-        Addr::unchecked("admin"),
+        Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql"),
         core_with_admin_addr.clone(),
         &ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![WasmMsg::Execute {
@@ -1225,7 +1225,7 @@ fn test_admin_permissions() {
 
     // Random person cannot unpause the DAO
     let res = app.execute_contract(
-        Addr::unchecked("random"),
+        Addr::unchecked("cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6"),
         core_with_admin_addr.clone(),
         &ExecuteMsg::Unpause {},
         &[],
@@ -1234,7 +1234,7 @@ fn test_admin_permissions() {
 
     // Admin can unpause the DAO directly
     let res = app.execute_contract(
-        Addr::unchecked("admin"),
+        Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql"),
         core_with_admin_addr.clone(),
         &ExecuteMsg::Unpause {},
         &[],
@@ -1250,7 +1250,7 @@ fn test_admin_permissions() {
 
     // Admin can nominate a new admin.
     let res = app.execute_contract(
-        Addr::unchecked("admin"),
+        Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql"),
         core_with_admin_addr.clone(),
         &ExecuteMsg::NominateAdmin {
             admin: Some("meow".to_string()),
@@ -1266,7 +1266,7 @@ fn test_admin_permissions() {
     assert_eq!(
         nomination,
         AdminNominationResponse {
-            nomination: Some(Addr::unchecked("meow"))
+            nomination: Some(Addr::unchecked("cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt"))
         }
     );
 
@@ -1275,12 +1275,12 @@ fn test_admin_permissions() {
         .wrap()
         .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::Admin {})
         .unwrap();
-    assert_eq!(res, Addr::unchecked("admin"));
+    assert_eq!(res, Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql"));
 
     // Only the nominated address may accept the nomination.
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("random"),
+            Addr::unchecked("cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6"),
             core_with_admin_addr.clone(),
             &ExecuteMsg::AcceptAdminNomination {},
             &[],
@@ -1292,7 +1292,7 @@ fn test_admin_permissions() {
 
     // Accept the nomination.
     app.execute_contract(
-        Addr::unchecked("meow"),
+        Addr::unchecked("cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt"),
         core_with_admin_addr.clone(),
         &ExecuteMsg::AcceptAdminNomination {},
         &[],
@@ -1304,7 +1304,7 @@ fn test_admin_permissions() {
         .wrap()
         .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::Admin {})
         .unwrap();
-    assert_eq!(res, Addr::unchecked("meow"));
+    assert_eq!(res, Addr::unchecked("cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt"));
 
     // Check that the pending admin has been cleared.
     let nomination: AdminNominationResponse = app
@@ -1327,7 +1327,7 @@ fn test_admin_nomination() {
 
     // Nominate a new admin.
     app.execute_contract(
-        Addr::unchecked("admin"),
+        Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql"),
         core_addr.clone(),
         &ExecuteMsg::NominateAdmin {
             admin: Some("ekez".to_string()),
@@ -1344,14 +1344,14 @@ fn test_admin_nomination() {
     assert_eq!(
         nomination,
         AdminNominationResponse {
-            nomination: Some(Addr::unchecked("ekez"))
+            nomination: Some(Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"))
         }
     );
 
     // Non-admin can not withdraw.
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("ekez"),
+            Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
             core_addr.clone(),
             &ExecuteMsg::WithdrawAdminNomination {},
             &[],
@@ -1363,7 +1363,7 @@ fn test_admin_nomination() {
 
     // Admin can withdraw.
     app.execute_contract(
-        Addr::unchecked("admin"),
+        Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql"),
         core_addr.clone(),
         &ExecuteMsg::WithdrawAdminNomination {},
         &[],
@@ -1380,7 +1380,7 @@ fn test_admin_nomination() {
     // Can not withdraw if no nomination is pending.
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("admin"),
+            Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql"),
             core_addr.clone(),
             &ExecuteMsg::WithdrawAdminNomination {},
             &[],
@@ -1393,7 +1393,7 @@ fn test_admin_nomination() {
     // Can not claim nomination b/c it has been withdrawn.
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("ekez"),
+            Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
             core_addr.clone(),
             &ExecuteMsg::AcceptAdminNomination {},
             &[],
@@ -1405,7 +1405,7 @@ fn test_admin_nomination() {
 
     // Nominate a new admin.
     app.execute_contract(
-        Addr::unchecked("admin"),
+        Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql"),
         core_addr.clone(),
         &ExecuteMsg::NominateAdmin {
             admin: Some("meow".to_string()),
@@ -1418,7 +1418,7 @@ fn test_admin_nomination() {
     // pending nomination.
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("admin"),
+            Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql"),
             core_addr.clone(),
             &ExecuteMsg::NominateAdmin {
                 admin: Some("arthur".to_string()),
@@ -1433,7 +1433,7 @@ fn test_admin_nomination() {
     // Only nominated admin may accept.
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("ekez"),
+            Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
             core_addr.clone(),
             &ExecuteMsg::AcceptAdminNomination {},
             &[],
@@ -1444,7 +1444,7 @@ fn test_admin_nomination() {
     assert_eq!(err, ContractError::Unauthorized {});
 
     app.execute_contract(
-        Addr::unchecked("meow"),
+        Addr::unchecked("cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt"),
         core_addr.clone(),
         &ExecuteMsg::AcceptAdminNomination {},
         &[],
@@ -1462,7 +1462,7 @@ fn test_admin_nomination() {
     // Check that the new admin can do admin things and the old can not.
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("admin"),
+            Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql"),
             core_addr.clone(),
             &ExecuteMsg::ExecuteAdminMsgs {
                 msgs: vec![WasmMsg::Execute {
@@ -1483,7 +1483,7 @@ fn test_admin_nomination() {
     assert_eq!(err, ContractError::Unauthorized {});
 
     let res = app.execute_contract(
-        Addr::unchecked("meow"),
+        Addr::unchecked("cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt"),
         core_addr.clone(),
         &ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![WasmMsg::Execute {
@@ -1516,7 +1516,7 @@ fn test_admin_nomination() {
 
     // Remove the admin.
     app.execute_contract(
-        Addr::unchecked("meow"),
+        Addr::unchecked("cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt"),
         core_addr.clone(),
         &ExecuteMsg::NominateAdmin { admin: None },
         &[],
@@ -1612,7 +1612,7 @@ fn test_item_permissions() {
 
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("ekez"),
+            Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
             gov_addr.clone(),
             &ExecuteMsg::SetItem {
                 key: "k".to_string(),
@@ -1627,7 +1627,7 @@ fn test_item_permissions() {
 
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("ekez"),
+            Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
             gov_addr,
             &ExecuteMsg::RemoveItem {
                 key: "k".to_string(),
@@ -2028,7 +2028,7 @@ fn test_cw20_receive_auto_add() {
     // Test that non-DAO can not update the list.
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("ekez"),
+            Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
             gov_addr.clone(),
             &ExecuteMsg::UpdateCw20List {
                 to_add: vec![],
@@ -2248,7 +2248,7 @@ fn test_cw721_receive() {
     // Test that non-DAO can not update the list.
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("ekez"),
+            Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
             gov_addr.clone(),
             &ExecuteMsg::UpdateCw721List {
                 to_add: vec![],
@@ -2880,7 +2880,7 @@ fn test_migrate_mock() {
     set_contract_version(&mut deps.storage, CONTRACT_NAME, "0.1.0").unwrap();
 
     // Write to storage in old proposal module format
-    let proposal_modules_key = Addr::unchecked("addr");
+    let proposal_modules_key = Addr::unchecked("cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz");
     let old_map: Map<Addr, Empty> = Map::new("proposal_modules");
     let path = old_map.key(proposal_modules_key.clone());
     deps.storage.set(&path, &to_json_binary(&Empty {}).unwrap());
@@ -2912,7 +2912,7 @@ fn test_migrate_mock() {
     let new_path = PROPOSAL_MODULES.key(proposal_modules_key);
     let prop_module_bytes = deps.storage.get(&new_path).unwrap();
     let module: ProposalModule = from_json(prop_module_bytes).unwrap();
-    assert_eq!(module.address, Addr::unchecked("addr"));
+    assert_eq!(module.address, Addr::unchecked("cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz"));
     assert_eq!(module.prefix, derive_proposal_module_prefix(0).unwrap());
     assert_eq!(module.status, ProposalModuleStatus::Enabled {});
 
@@ -3099,19 +3099,19 @@ fn test_add_remove_subdaos() {
 
     let to_add: Vec<SubDao> = vec![
         SubDao {
-            addr: "subdao001".to_string(),
+            addr: "cosmwasm12e7ce0puz4qppesvvcrk8nx5l5van3jf5nzx9exsnhpc3n3xt9eshnj7qm".to_string(),
             charter: None,
         },
         SubDao {
-            addr: "subdao002".to_string(),
+            addr: "cosmwasm12ymla9ycz74zylj6me7g608wnl4cdxf9hvzfwlpscv0d92rg628q24zumh".to_string(),
             charter: Some("cool charter bro".to_string()),
         },
         SubDao {
-            addr: "subdao005".to_string(),
+            addr: "cosmwasm10hmthh8n866x8hqmjd2ssmhawdfk4y4wr3gdjwyw0mdufkdjquysc5zxvs".to_string(),
             charter: None,
         },
         SubDao {
-            addr: "subdao007".to_string(),
+            addr: "cosmwasm14k34xu6scqsgklxwu887grpahylagn0gg9ayw3z9z47kfpfmqwks2n49yl".to_string(),
             charter: None,
         },
     ];
@@ -3165,7 +3165,7 @@ fn test_add_remove_subdaos() {
     assert_eq!(res.len(), 3);
 
     let test_res: SubDao = SubDao {
-        addr: "subdao002".to_string(),
+        addr: "cosmwasm12ymla9ycz74zylj6me7g608wnl4cdxf9hvzfwlpscv0d92rg628q24zumh".to_string(),
         charter: Some("cool charter bro".to_string()),
     };
 
@@ -3173,15 +3173,15 @@ fn test_add_remove_subdaos() {
 
     let full_result_set: Vec<SubDao> = vec![
         SubDao {
-            addr: "subdao001".to_string(),
+            addr: "cosmwasm12e7ce0puz4qppesvvcrk8nx5l5van3jf5nzx9exsnhpc3n3xt9eshnj7qm".to_string(),
             charter: None,
         },
         SubDao {
-            addr: "subdao002".to_string(),
+            addr: "cosmwasm12ymla9ycz74zylj6me7g608wnl4cdxf9hvzfwlpscv0d92rg628q24zumh".to_string(),
             charter: Some("cool charter bro".to_string()),
         },
         SubDao {
-            addr: "subdao007".to_string(),
+            addr: "cosmwasm14k34xu6scqsgklxwu887grpahylagn0gg9ayw3z9z47kfpfmqwks2n49yl".to_string(),
             charter: None,
         },
     ];

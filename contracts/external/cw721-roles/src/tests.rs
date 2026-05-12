@@ -9,9 +9,9 @@ use dao_voting_cw721_staked::msg::{InstantiateMsg as Cw721StakedInstantiateMsg, 
 use crate::error::RolesContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
-const ALICE: &str = "alice";
-const BOB: &str = "bob";
-const DAO: &str = "dao";
+const ALICE: &str = "cosmwasm190vqdjtlpcq27xslcveglfmr4ynfwg7gmw86cnun4acakxrdd6gqvdcx9h";
+const BOB: &str = "cosmwasm1sxmr0k8u6trd5c6eu6trzyapzux7090ykujmsng7pdx0m8k93n5sjrh9we";
+const DAO: &str = "cosmwasm1vwr8z00ty7mqnk4dtchr9mn9j96nuh6w9v55nvy575c4rp0ha5xqwujcc7";
 
 pub fn setup() -> (App, Addr) {
     let mut app = App::default();

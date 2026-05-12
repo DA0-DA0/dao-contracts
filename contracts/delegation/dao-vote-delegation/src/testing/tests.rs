@@ -941,7 +941,7 @@ fn test_update_hook_callers() {
 
     assert_eq!(
         suite.voting_power_hook_callers(None, None),
-        vec![Addr::unchecked("addr"), dao.x.group_addr.clone()]
+        vec![Addr::unchecked("cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz"), dao.x.group_addr.clone()]
     );
 
     // add another proposal module to the DAO
@@ -1665,7 +1665,7 @@ fn test_unauthorized_stake_changed_hook_caller() {
         "not_registered_hook_caller",
         &delegation_addr,
         &crate::msg::ExecuteMsg::StakeChangeHook(StakeChangedHookMsg::Stake {
-            addr: Addr::unchecked("not_registered_hook_caller"),
+            addr: Addr::unchecked("cosmwasm14cya4vg65lear2fqe0dunrjf6rha968ltvfyvs5jn5sggl6qk6mshaj8de"),
             amount: Uint128::one(),
         }),
         &[],
@@ -1715,7 +1715,7 @@ fn test_unauthorized_execute_vote_hook_caller() {
         &delegation_addr,
         &crate::msg::ExecuteMsg::VoteHook(VoteHookMsg::NewVote {
             proposal_id: 1,
-            voter: "voter".to_string(),
+            voter: "cosmwasm12ehr5qctpa78s2r2luz4lqyuzm955nxvj5msmptpatlf3qzj0xds4lvke5".to_string(),
             vote: "vote".to_string(),
             power: Uint128::one(),
             individual_power: Uint128::one(),

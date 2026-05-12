@@ -517,7 +517,7 @@ fn test_proposal_message_timelock_execution() -> anyhow::Result<()> {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "oversight".to_string(),
+                address: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
                 amount: Uint128::new(15),
             },
             Cw20Coin {
@@ -584,7 +584,7 @@ fn test_proposal_message_timelock_execution() -> anyhow::Result<()> {
     // early execute not enabled.
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("oversight"),
+            Addr::unchecked("cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk"),
             proposal_module.clone(),
             &ExecuteMsg::Execute { proposal_id },
             &[],
@@ -673,7 +673,7 @@ fn test_open_proposal_veto_unauthorized() {
     // only the vetoer can veto
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("not-oversight"),
+            Addr::unchecked("cosmwasm1tsp55fz2lwmprrmrz5m8l6vuue0dn8fjegtr07cgmy2cym82w7qs5fk7ug"),
             proposal_module.clone(),
             &ExecuteMsg::Veto { proposal_id },
             &[],
@@ -735,7 +735,7 @@ fn test_open_proposal_veto_with_early_veto_flag_disabled() {
 
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("oversight"),
+            Addr::unchecked("cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk"),
             proposal_module.clone(),
             &ExecuteMsg::Veto { proposal_id },
             &[],
@@ -793,7 +793,7 @@ fn test_open_proposal_veto_with_no_timelock() {
 
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("oversight"),
+            Addr::unchecked("cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk"),
             proposal_module.clone(),
             &ExecuteMsg::Veto { proposal_id },
             &[],
@@ -858,7 +858,7 @@ fn test_vetoed_proposal_veto() {
     );
 
     app.execute_contract(
-        Addr::unchecked("oversight"),
+        Addr::unchecked("cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk"),
         proposal_module.clone(),
         &ExecuteMsg::Veto { proposal_id },
         &[],
@@ -870,7 +870,7 @@ fn test_vetoed_proposal_veto() {
 
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("oversight"),
+            Addr::unchecked("cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk"),
             proposal_module.clone(),
             &ExecuteMsg::Veto { proposal_id },
             &[],
@@ -936,7 +936,7 @@ fn test_open_proposal_veto_early() {
     );
 
     app.execute_contract(
-        Addr::unchecked("oversight"),
+        Addr::unchecked("cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk"),
         proposal_module.clone(),
         &ExecuteMsg::Veto { proposal_id },
         &[],
@@ -965,7 +965,7 @@ fn test_timelocked_proposal_veto_unauthorized() -> anyhow::Result<()> {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "oversight".to_string(),
+                address: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
                 amount: Uint128::new(15),
             },
             Cw20Coin {
@@ -1024,7 +1024,7 @@ fn test_timelocked_proposal_veto_unauthorized() -> anyhow::Result<()> {
 
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("not-oversight"),
+            Addr::unchecked("cosmwasm1tsp55fz2lwmprrmrz5m8l6vuue0dn8fjegtr07cgmy2cym82w7qs5fk7ug"),
             proposal_module.clone(),
             &ExecuteMsg::Veto { proposal_id },
             &[],
@@ -1066,7 +1066,7 @@ fn test_timelocked_proposal_veto_expired_timelock() -> anyhow::Result<()> {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "oversight".to_string(),
+                address: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
                 amount: Uint128::new(15),
             },
             Cw20Coin {
@@ -1126,7 +1126,7 @@ fn test_timelocked_proposal_veto_expired_timelock() -> anyhow::Result<()> {
 
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("oversight"),
+            Addr::unchecked("cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk"),
             proposal_module.clone(),
             &ExecuteMsg::Veto { proposal_id },
             &[],
@@ -1211,7 +1211,7 @@ fn test_timelocked_proposal_execute_no_early_exec() -> anyhow::Result<()> {
 
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("oversight"),
+            Addr::unchecked("cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk"),
             proposal_module.clone(),
             &ExecuteMsg::Execute { proposal_id },
             &[],
@@ -1301,7 +1301,7 @@ fn test_timelocked_proposal_execute_early() -> anyhow::Result<()> {
     mint_natives(&mut app, core_addr.as_str(), coins(10, "ujuno"));
 
     app.execute_contract(
-        Addr::unchecked("oversight"),
+        Addr::unchecked("cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk"),
         proposal_module.clone(),
         &ExecuteMsg::Execute { proposal_id },
         &[],
@@ -1547,7 +1547,7 @@ fn test_proposal_message_timelock_veto() -> anyhow::Result<()> {
     // Vetoer can't veto early
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("oversight"),
+            Addr::unchecked("cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk"),
             proposal_module.clone(),
             &ExecuteMsg::Veto { proposal_id },
             &[],
@@ -1598,7 +1598,7 @@ fn test_proposal_message_timelock_veto() -> anyhow::Result<()> {
 
     // Oversite vetos prop
     app.execute_contract(
-        Addr::unchecked("oversight"),
+        Addr::unchecked("cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk"),
         proposal_module.clone(),
         &ExecuteMsg::Veto { proposal_id },
         &[],
@@ -1628,7 +1628,7 @@ fn test_proposal_message_timelock_early_execution() -> anyhow::Result<()> {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "oversight".to_string(),
+                address: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
                 amount: Uint128::new(15),
             },
             Cw20Coin {
@@ -1715,7 +1715,7 @@ fn test_proposal_message_timelock_veto_before_passed() {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "oversight".to_string(),
+                address: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
                 amount: Uint128::new(15),
             },
             Cw20Coin {
@@ -1759,7 +1759,7 @@ fn test_proposal_message_timelock_veto_before_passed() {
 
     // Oversite vetos prop
     app.execute_contract(
-        Addr::unchecked("oversight"),
+        Addr::unchecked("cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk"),
         proposal_module.clone(),
         &ExecuteMsg::Veto { proposal_id },
         &[],
@@ -1859,7 +1859,7 @@ fn test_veto_only_members_execute_proposal() -> anyhow::Result<()> {
     // Proposal cannot be executed by vetoer once timelock expired
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("oversight"),
+            Addr::unchecked("cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk"),
             proposal_module.clone(),
             &ExecuteMsg::Execute { proposal_id },
             &[],
@@ -1913,7 +1913,7 @@ fn test_proposal_cant_close_after_expiry_is_passed() {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "quorum".to_string(),
+                address: "cosmwasm1tuy6ax4celnvn2uqvvwtxkwt44fcjkj3359jm98ftfw6pg0cca3s420x4l".to_string(),
                 amount: Uint128::new(15),
             },
             Cw20Coin {
@@ -2034,7 +2034,7 @@ fn test_cant_execute_not_member_when_proposal_created() {
         )
         .unwrap();
     app.execute_contract(
-        Addr::unchecked("noah"),
+        Addr::unchecked("cosmwasm1euarh03nrsu4p5t236v303dmsdqw0s80j976yh22jmuj6p6teczsmswfyh"),
         gov_token,
         &cw20::Cw20ExecuteMsg::Send {
             contract: staking_contract.to_string(),
@@ -2236,7 +2236,7 @@ fn test_anyone_may_propose_and_proposal_listing() {
     assert_eq!(five_and_four, four_and_five);
     assert_eq!(
         four_and_five.proposals[0].proposal.proposer,
-        Addr::unchecked("pppppp")
+        Addr::unchecked("cosmwasm13y0p9c2kmrrxp8rdtulqfvhu3kndnlea060eqcc5czgfmf5kxl4st8mj4g")
     );
 
     let current_block = app.block_info();
@@ -2247,7 +2247,7 @@ fn test_anyone_may_propose_and_proposal_listing() {
             proposal: SingleChoiceProposal {
                 title: "title".to_string(),
                 description: "description".to_string(),
-                proposer: Addr::unchecked("pppppp"),
+                proposer: Addr::unchecked("cosmwasm13y0p9c2kmrrxp8rdtulqfvhu3kndnlea060eqcc5czgfmf5kxl4st8mj4g"),
                 start_height: current_block.height,
                 min_voting_period: None,
                 expiration: Duration::Time(604800).after(&current_block),
@@ -2646,11 +2646,11 @@ fn test_min_duration_same_as_proposal_duration() {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "ekez".to_string(),
+                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 amount: Uint128::new(10),
             },
             Cw20Coin {
-                address: "whale".to_string(),
+                address: "cosmwasm15hf2u2rdpk0ytsrzrfhu0svprx2qm4ehh25d098x4u6h6gfk57ss3esk35".to_string(),
                 amount: Uint128::new(90),
             },
         ]),
@@ -2834,23 +2834,23 @@ fn test_three_of_five_multisig() {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "one".to_string(),
+                address: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "two".to_string(),
+                address: "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r".to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "three".to_string(),
+                address: "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7".to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "four".to_string(),
+                address: "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp".to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "five".to_string(),
+                address: "cosmwasm1yg4sh4glemm7vhpwvtdja4j52uqnh26kheh6l6ceacgag5c48jqqtfwsjj".to_string(),
                 amount: Uint128::new(1),
             },
         ]),
@@ -2916,23 +2916,23 @@ fn test_three_of_five_multisig_revoting() {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "one".to_string(),
+                address: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "two".to_string(),
+                address: "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r".to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "three".to_string(),
+                address: "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7".to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "four".to_string(),
+                address: "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp".to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "five".to_string(),
+                address: "cosmwasm1yg4sh4glemm7vhpwvtdja4j52uqnh26kheh6l6ceacgag5c48jqqtfwsjj".to_string(),
                 amount: Uint128::new(1),
             },
         ]),
@@ -2985,19 +2985,19 @@ fn test_absolute_count_threshold_non_multisig() {
     do_votes_staked_balances(
         vec![
             TestSingleChoiceVote {
-                voter: "one".to_string(),
+                voter: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
             TestSingleChoiceVote {
-                voter: "two".to_string(),
+                voter: "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(200),
                 should_execute: ShouldExecute::Yes,
             },
             TestSingleChoiceVote {
-                voter: "three".to_string(),
+                voter: "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(1),
                 should_execute: ShouldExecute::Yes,
@@ -3018,14 +3018,14 @@ fn test_large_absolute_count_threshold() {
     do_votes_staked_balances(
         vec![
             TestSingleChoiceVote {
-                voter: "two".to_string(),
+                voter: "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(1),
                 should_execute: ShouldExecute::Yes,
             },
             // Can vote up to expiration time.
             TestSingleChoiceVote {
-                voter: "one".to_string(),
+                voter: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(u128::MAX - 1),
                 should_execute: ShouldExecute::Yes,
@@ -3041,13 +3041,13 @@ fn test_large_absolute_count_threshold() {
     do_votes_staked_balances(
         vec![
             TestSingleChoiceVote {
-                voter: "one".to_string(),
+                voter: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(u128::MAX - 1),
                 should_execute: ShouldExecute::Yes,
             },
             TestSingleChoiceVote {
-                voter: "two".to_string(),
+                voter: "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(1),
                 should_execute: ShouldExecute::Yes,
@@ -3083,11 +3083,11 @@ fn test_proposal_count_initialized_to_zero() {
         },
         Some(vec![
             Cw20Coin {
-                address: "ekez".to_string(),
+                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 amount: Uint128::new(10),
             },
             Cw20Coin {
-                address: "innactive".to_string(),
+                address: "cosmwasm1a33vrh6d9hhst5wethjd9ytdwg9uyteut5p5wf8r3xc8ntt347fsqnfcjn".to_string(),
                 amount: Uint128::new(90),
             },
         ]),
@@ -3438,7 +3438,7 @@ fn test_execution_failed() {
         gov_token,
         proposal_id,
     } = setup_test(vec![BankMsg::Send {
-        to_address: "ekez".to_string(),
+        to_address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
         amount: coins(10, "ujuno"),
     }
     .into()]);
@@ -3468,7 +3468,7 @@ fn test_execution_failed() {
         &proposal_module,
         CREATOR_ADDR,
         vec![BankMsg::Send {
-            to_address: "ekez".to_string(),
+            to_address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             amount: coins(10, "ujuno"),
         }
         .into()],
@@ -3644,7 +3644,7 @@ fn test_proposal_creation_permissions() {
     // Non pre-propose may not propose.
     let err = app
         .execute_contract(
-            Addr::unchecked("notprepropose"),
+            Addr::unchecked("cosmwasm1apmevjcnfxfqjyu5jyuge8krajh4svc6xc6pa87zhssmw6eejsasj2tfmu"),
             proposal_module.clone(),
             &ExecuteMsg::Propose(ProposeMsg {
                 title: "title".to_string(),
@@ -3701,7 +3701,7 @@ fn test_proposal_creation_permissions() {
     // proposal.
     let err = app
         .execute_contract(
-            Addr::unchecked("ekez"),
+            Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
             proposal_module.clone(),
             &ExecuteMsg::Propose(ProposeMsg {
                 title: "title".to_string(),
@@ -3720,7 +3720,7 @@ fn test_proposal_creation_permissions() {
     // Works normally.
     let proposal_id = make_proposal(&mut app, &proposal_module, "ekez", vec![], None);
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
-    assert_eq!(proposal.proposal.proposer, Addr::unchecked("ekez"));
+    assert_eq!(proposal.proposal.proposer, Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"));
     vote_on_proposal(
         &mut app,
         &proposal_module,
@@ -3766,7 +3766,7 @@ fn test_reply_hooks_mock() {
         .save(
             deps.as_mut().storage,
             &ProposalCreationPolicy::Module {
-                addr: Addr::unchecked("ekez"),
+                addr: Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
             },
         )
         .unwrap();
@@ -3861,23 +3861,23 @@ fn test_query_list_votes() {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "one".to_string(),
+                address: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "two".to_string(),
+                address: "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r".to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "three".to_string(),
+                address: "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7".to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "four".to_string(),
+                address: "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp".to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "five".to_string(),
+                address: "cosmwasm1yg4sh4glemm7vhpwvtdja4j52uqnh26kheh6l6ceacgag5c48jqqtfwsjj".to_string(),
                 amount: Uint128::new(1),
             },
         ]),
@@ -3900,35 +3900,35 @@ fn test_query_list_votes() {
         vec![
             VoteInfo {
                 rationale: None,
-                voter: Addr::unchecked("five"),
+                voter: Addr::unchecked("cosmwasm1yg4sh4glemm7vhpwvtdja4j52uqnh26kheh6l6ceacgag5c48jqqtfwsjj"),
                 vote: Vote::Yes,
                 power: Uint128::new(1),
                 individual_power: Uint128::new(1),
             },
             VoteInfo {
                 rationale: None,
-                voter: Addr::unchecked("four"),
+                voter: Addr::unchecked("cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp"),
                 vote: Vote::Yes,
                 power: Uint128::new(1),
                 individual_power: Uint128::new(1),
             },
             VoteInfo {
                 rationale: None,
-                voter: Addr::unchecked("one"),
+                voter: Addr::unchecked("cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu"),
                 vote: Vote::Yes,
                 power: Uint128::new(1),
                 individual_power: Uint128::new(1),
             },
             VoteInfo {
                 rationale: None,
-                voter: Addr::unchecked("three"),
+                voter: Addr::unchecked("cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7"),
                 vote: Vote::No,
                 power: Uint128::new(1),
                 individual_power: Uint128::new(1),
             },
             VoteInfo {
                 rationale: None,
-                voter: Addr::unchecked("two"),
+                voter: Addr::unchecked("cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r"),
                 vote: Vote::No,
                 power: Uint128::new(1),
                 individual_power: Uint128::new(1),
@@ -3948,14 +3948,14 @@ fn test_query_list_votes() {
         vec![
             VoteInfo {
                 rationale: None,
-                voter: Addr::unchecked("one"),
+                voter: Addr::unchecked("cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu"),
                 vote: Vote::Yes,
                 power: Uint128::new(1),
                 individual_power: Uint128::new(1),
             },
             VoteInfo {
                 rationale: None,
-                voter: Addr::unchecked("three"),
+                voter: Addr::unchecked("cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7"),
                 vote: Vote::No,
                 power: Uint128::new(1),
                 individual_power: Uint128::new(1),

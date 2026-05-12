@@ -105,7 +105,7 @@ fn instantiate_cw20_base_default(app: &mut App) -> Addr {
         symbol: "cwtwenty".to_string(),
         decimals: 6,
         initial_balances: vec![Cw20Coin {
-            address: "ekez".to_string(),
+            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             amount: Uint128::new(10),
         }],
         mint: None,
@@ -113,7 +113,7 @@ fn instantiate_cw20_base_default(app: &mut App) -> Addr {
     };
     app.instantiate_contract(
         cw20_id,
-        Addr::unchecked("ekez"),
+        Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
         &cw20_instantiate,
         &[],
         "cw20-base",
@@ -144,11 +144,11 @@ fn setup_default_test(
         to_json_binary(&proposal_module_instantiate).unwrap(),
         Some(vec![
             cw20::Cw20Coin {
-                address: "ekez".to_string(),
+                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 amount: Uint128::new(9),
             },
             cw20::Cw20Coin {
-                address: "keze".to_string(),
+                address: "cosmwasm1mw84pqf8eyuhqwr9xre4l7aswr75ugex42gzjyvgueeza7vxv0dqx57dyx".to_string(),
                 amount: Uint128::new(8),
             },
         ]),
@@ -1197,7 +1197,7 @@ fn test_permissions() {
     // disabled.
     let err: PreProposeError = app
         .execute_contract(
-            Addr::unchecked("nonmember"),
+            Addr::unchecked("cosmwasm17x0hnl6g3u98a480e3dtlacpck5t9823l7sl0vce7e37fpa2cvcsha6qn7"),
             pre_propose,
             &ExecuteMsg::Propose {
                 msg: ProposeMessage::Propose {
@@ -1262,7 +1262,7 @@ fn test_approval_and_rejection_permissions() {
     // Only approver can approve
     let err: PreProposeError = app
         .execute_contract(
-            Addr::unchecked("nonapprover"),
+            Addr::unchecked("cosmwasm1s7ycexy09ky56u0x3wymfwt3dauqy6tw6f9wf3wwwd285hxqwclslypvqt"),
             pre_propose.clone(),
             &ExecuteMsg::Extension {
                 msg: ExecuteExt::Approve { id: pre_propose_id },
@@ -1277,7 +1277,7 @@ fn test_approval_and_rejection_permissions() {
     // Only approver can reject
     let err: PreProposeError = app
         .execute_contract(
-            Addr::unchecked("nonapprover"),
+            Addr::unchecked("cosmwasm1s7ycexy09ky56u0x3wymfwt3dauqy6tw6f9wf3wwwd285hxqwclslypvqt"),
             pre_propose.clone(),
             &ExecuteMsg::Extension {
                 msg: ExecuteExt::Reject { id: pre_propose_id },
@@ -1292,11 +1292,11 @@ fn test_approval_and_rejection_permissions() {
     // Updating approver after proposal created does not change old proposal's
     // approver
     app.execute_contract(
-        Addr::unchecked("approver"),
+        Addr::unchecked("cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq"),
         pre_propose.clone(),
         &ExecuteMsg::Extension {
             msg: ExecuteExt::UpdateApprover {
-                address: "newapprover".to_string(),
+                address: "cosmwasm1d269wsnyaqszvzktpp7fnk2zs9nks2kz3y3fw9yt8eve6jpwnynqyvn32h".to_string(),
             },
         },
         &[],
@@ -1305,7 +1305,7 @@ fn test_approval_and_rejection_permissions() {
 
     let err: PreProposeError = app
         .execute_contract(
-            Addr::unchecked("newapprover"),
+            Addr::unchecked("cosmwasm1d269wsnyaqszvzktpp7fnk2zs9nks2kz3y3fw9yt8eve6jpwnynqyvn32h"),
             pre_propose.clone(),
             &ExecuteMsg::Extension {
                 msg: ExecuteExt::Approve { id: pre_propose_id },
@@ -1319,7 +1319,7 @@ fn test_approval_and_rejection_permissions() {
 
     // Old approver can still approve.
     app.execute_contract(
-        Addr::unchecked("approver"),
+        Addr::unchecked("cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq"),
         pre_propose.clone(),
         &ExecuteMsg::Extension {
             msg: ExecuteExt::Approve { id: pre_propose_id },
@@ -1340,7 +1340,7 @@ fn test_approval_and_rejection_permissions() {
     // Old approver cannot approve nor reject.
     let err: PreProposeError = app
         .execute_contract(
-            Addr::unchecked("approver"),
+            Addr::unchecked("cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq"),
             pre_propose.clone(),
             &ExecuteMsg::Extension {
                 msg: ExecuteExt::Approve { id: pre_propose_id },
@@ -1354,7 +1354,7 @@ fn test_approval_and_rejection_permissions() {
 
     let err: PreProposeError = app
         .execute_contract(
-            Addr::unchecked("approver"),
+            Addr::unchecked("cosmwasm10gprma4l9yeym8pd6vqgdhy2eg2qq209ng6nz5hq2jqdzvkkakzs6wynpq"),
             pre_propose.clone(),
             &ExecuteMsg::Extension {
                 msg: ExecuteExt::Reject { id: pre_propose_id },
@@ -1368,7 +1368,7 @@ fn test_approval_and_rejection_permissions() {
 
     // New approver can now approve.
     app.execute_contract(
-        Addr::unchecked("newapprover"),
+        Addr::unchecked("cosmwasm1d269wsnyaqszvzktpp7fnk2zs9nks2kz3y3fw9yt8eve6jpwnynqyvn32h"),
         pre_propose.clone(),
         &ExecuteMsg::Extension {
             msg: ExecuteExt::Approve { id: pre_propose_id },
@@ -1450,7 +1450,7 @@ fn test_no_deposit_required_members_submission() {
     // Non-member proposes and this fails.
     let err: PreProposeError = app
         .execute_contract(
-            Addr::unchecked("nonmember"),
+            Addr::unchecked("cosmwasm17x0hnl6g3u98a480e3dtlacpck5t9823l7sl0vce7e37fpa2cvcsha6qn7"),
             pre_propose.clone(),
             &ExecuteMsg::Propose {
                 msg: ProposeMessage::Propose {
@@ -1655,7 +1655,7 @@ fn test_specific_allowlist_denylist() {
         PreProposeSubmissionPolicy::Specific {
             dao_members: true,
             allowlist: vec![Addr::unchecked(rando)],
-            denylist: vec![Addr::unchecked("ekez")],
+            denylist: vec![Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")],
         },
     );
 
@@ -1663,7 +1663,7 @@ fn test_specific_allowlist_denylist() {
     assert!(!query_can_propose(&app, pre_propose.clone(), "ekez"));
     let err: PreProposeError = app
         .execute_contract(
-            Addr::unchecked("ekez"),
+            Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
             pre_propose.clone(),
             &ExecuteMsg::Propose {
                 msg: ProposeMessage::Propose {
@@ -1712,7 +1712,7 @@ fn test_specific_allowlist_denylist() {
     assert!(!query_can_propose(&app, pre_propose.clone(), "ekez"));
     let err: PreProposeError = app
         .execute_contract(
-            Addr::unchecked("ekez"),
+            Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
             pre_propose.clone(),
             &ExecuteMsg::Propose {
                 msg: ProposeMessage::Propose {
@@ -1808,11 +1808,11 @@ fn test_instantiate_with_zero_native_deposit() {
         to_json_binary(&proposal_module_instantiate).unwrap(),
         Some(vec![
             cw20::Cw20Coin {
-                address: "ekez".to_string(),
+                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 amount: Uint128::new(9),
             },
             cw20::Cw20Coin {
-                address: "keze".to_string(),
+                address: "cosmwasm1mw84pqf8eyuhqwr9xre4l7aswr75ugex42gzjyvgueeza7vxv0dqx57dyx".to_string(),
                 amount: Uint128::new(8),
             },
         ]),
@@ -1879,11 +1879,11 @@ fn test_instantiate_with_zero_cw20_deposit() {
         to_json_binary(&proposal_module_instantiate).unwrap(),
         Some(vec![
             cw20::Cw20Coin {
-                address: "ekez".to_string(),
+                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 amount: Uint128::new(9),
             },
             cw20::Cw20Coin {
-                address: "keze".to_string(),
+                address: "cosmwasm1mw84pqf8eyuhqwr9xre4l7aswr75ugex42gzjyvgueeza7vxv0dqx57dyx".to_string(),
                 amount: Uint128::new(8),
             },
         ]),
@@ -1950,7 +1950,7 @@ fn test_update_config() {
         info,
         DepositInfoResponse {
             deposit_info: None,
-            proposer: Addr::unchecked("ekez"),
+            proposer: Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
         }
     );
 
@@ -1976,7 +1976,7 @@ fn test_update_config() {
                 amount: Uint128::new(10),
                 refund_policy: DepositRefundPolicy::Never
             }),
-            proposer: Addr::unchecked("ekez"),
+            proposer: Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
         }
     );
 
@@ -2024,8 +2024,8 @@ fn test_update_config() {
         None,
         PreProposeSubmissionPolicy::Specific {
             dao_members: false,
-            allowlist: vec![Addr::unchecked("ekez")],
-            denylist: vec![Addr::unchecked("ekez")],
+            allowlist: vec![Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")],
+            denylist: vec![Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")],
         },
     );
     assert_eq!(
@@ -2057,7 +2057,7 @@ fn test_update_submission_policy() {
     // Only the core module can update the submission policy.
     let err: PreProposeError = app
         .execute_contract(
-            Addr::unchecked("ekez"),
+            Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
             pre_propose.clone(),
             &ExecuteMsg::UpdateSubmissionPolicy {
                 denylist_add: Some(vec!["ekez".to_string()]),
@@ -2094,7 +2094,7 @@ fn test_update_submission_policy() {
         Config {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Anyone {
-                denylist: vec![Addr::unchecked("ekez")],
+                denylist: vec![Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")],
             },
         }
     );
@@ -2120,7 +2120,7 @@ fn test_update_submission_policy() {
         Config {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Anyone {
-                denylist: vec![Addr::unchecked("else"), Addr::unchecked("someone")],
+                denylist: vec![Addr::unchecked("cosmwasm10h2np3xndkj8e5enjeccau06r6xq7lv3ae236l7ur3e65e0dk32qhehvau"), Addr::unchecked("cosmwasm19fvat83cp8uz0nnsn5uptcu4pmh5565n4a2402f60l0m5u2xpppsn6r94c")],
             },
         }
     );
@@ -2269,7 +2269,7 @@ fn test_update_submission_policy() {
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
                 allowlist: vec![],
-                denylist: vec![Addr::unchecked("ekez")],
+                denylist: vec![Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")],
             },
         }
     );
@@ -2297,7 +2297,7 @@ fn test_update_submission_policy() {
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
                 allowlist: vec![],
-                denylist: vec![Addr::unchecked("else"), Addr::unchecked("someone")],
+                denylist: vec![Addr::unchecked("cosmwasm10h2np3xndkj8e5enjeccau06r6xq7lv3ae236l7ur3e65e0dk32qhehvau"), Addr::unchecked("cosmwasm19fvat83cp8uz0nnsn5uptcu4pmh5565n4a2402f60l0m5u2xpppsn6r94c")],
             },
         }
     );
@@ -2352,7 +2352,7 @@ fn test_update_submission_policy() {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
-                allowlist: vec![Addr::unchecked("ekez")],
+                allowlist: vec![Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")],
                 denylist: vec![],
             },
         }
@@ -2380,7 +2380,7 @@ fn test_update_submission_policy() {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
-                allowlist: vec![Addr::unchecked("else"), Addr::unchecked("someone")],
+                allowlist: vec![Addr::unchecked("cosmwasm10h2np3xndkj8e5enjeccau06r6xq7lv3ae236l7ur3e65e0dk32qhehvau"), Addr::unchecked("cosmwasm19fvat83cp8uz0nnsn5uptcu4pmh5565n4a2402f60l0m5u2xpppsn6r94c")],
                 denylist: vec![],
             },
         }
@@ -2458,7 +2458,7 @@ fn test_update_submission_policy() {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: false,
-                allowlist: vec![Addr::unchecked("ekez")],
+                allowlist: vec![Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")],
                 denylist: vec![]
             },
         }

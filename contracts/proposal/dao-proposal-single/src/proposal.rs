@@ -348,7 +348,7 @@ mod test {
         let prop = SingleChoiceProposal {
             title: "Demo".to_string(),
             description: "Info".to_string(),
-            proposer: Addr::unchecked("test"),
+            proposer: Addr::unchecked("cosmwasm1n7rdpqvgf37ktx30a2sv2kkszk3m7ncm9v9cytx3t4kptv8spgyqguyhme"),
             start_height: 100,
             expiration,
             min_voting_period: Some(min_voting_period),

@@ -793,7 +793,7 @@ fn test_update_active_threshold() {
     };
 
     // Expect failure as sender is not the DAO
-    app.execute_contract(Addr::unchecked("bob"), module.clone(), &msg, &[])
+    app.execute_contract(Addr::unchecked("cosmwasm1sxmr0k8u6trd5c6eu6trzyapzux7090ykujmsng7pdx0m8k93n5sjrh9we"), module.clone(), &msg, &[])
         .unwrap_err();
 
     // Expect success as sender is the DAO

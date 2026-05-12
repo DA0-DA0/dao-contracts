@@ -14,8 +14,8 @@ use crate::{
 };
 use cw20_stake_reward_distributor::ContractError;
 
-const OWNER: &str = "owner";
-const OWNER2: &str = "owner2";
+const OWNER: &str = "cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053y";
+const OWNER2: &str = "cosmwasm1wyarfg7rzwlyymg4khrze2wpzksl5636rdg63axxud6tqqdy2vgqagrnlk";
 
 fn instantiate_cw20(app: &mut App, initial_balances: Vec<Cw20Coin>) -> Addr {
     let cw20_id = app.store_code(cw20_base_contract());
@@ -176,7 +176,7 @@ fn test_update_config() {
 
     // non-owner may not update config.
     let err: ContractError = app
-        .execute_contract(Addr::unchecked("notowner"), distributor_addr, &msg, &[])
+        .execute_contract(Addr::unchecked("cosmwasm10waua5gf3cdnkgtdts0cf7yamyqmt0sgrcsym2y7evkmvwjhvxssm9w6wd"), distributor_addr, &msg, &[])
         .unwrap_err()
         .downcast()
         .unwrap();
@@ -443,7 +443,7 @@ fn test_withdraw() {
     // Unauthorized user cannot withdraw funds
     let err = app
         .execute_contract(
-            Addr::unchecked("notowner"),
+            Addr::unchecked("cosmwasm10waua5gf3cdnkgtdts0cf7yamyqmt0sgrcsym2y7evkmvwjhvxssm9w6wd"),
             distributor_addr.clone(),
             &ExecuteMsg::Withdraw {},
             &[],
@@ -646,7 +646,7 @@ fn test_ownership_expiry() {
 #[test]
 fn test_migrate_from_v1() {
     let mut app = App::default();
-    let sender = Addr::unchecked("sender");
+    let sender = Addr::unchecked("cosmwasm1pgm8hyk0pvphmlvfjc8wsvk4daluz5tgrw6pu5mfpemk74uxnx9qlm3aqg");
 
     let cw20_addr = instantiate_cw20(
         &mut app,

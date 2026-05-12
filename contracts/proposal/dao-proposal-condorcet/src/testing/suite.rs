@@ -299,7 +299,7 @@ impl Suite {
 
 pub fn unimportant_message() -> CosmosMsg {
     BankMsg::Send {
-        to_address: "someone".to_string(),
+        to_address: "cosmwasm19fvat83cp8uz0nnsn5uptcu4pmh5565n4a2402f60l0m5u2xpppsn6r94c".to_string(),
         amount: coins(10, "something"),
     }
     .into()

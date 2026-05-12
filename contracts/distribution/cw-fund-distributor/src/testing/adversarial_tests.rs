@@ -10,7 +10,7 @@ use dao_testing::contracts::{
 
 use super::cw_fund_distributor_contract;
 
-const CREATOR_ADDR: &str = "creator";
+const CREATOR_ADDR: &str = "cosmwasm1h34lmpywh4upnjdg90cjf4j70aee6z8qqfspugamjp42e4q28kqs8s7vcp";
 const FEE_DENOM: &str = "ujuno";
 
 struct BaseTest {
@@ -135,11 +135,11 @@ pub fn test_claim_lots_of_native_tokens() {
         distributor_address,
     } = setup_test(vec![
         Cw20Coin {
-            address: "bekauz".to_string(),
+            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj".to_string(),
             amount: Uint128::new(10),
         },
         Cw20Coin {
-            address: "ekez".to_string(),
+            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             amount: Uint128::new(20),
         },
     ]);
@@ -175,7 +175,7 @@ pub fn test_claim_lots_of_native_tokens() {
     app.update_block(|block| block.height += 11);
 
     app.execute_contract(
-        Addr::unchecked("bekauz"),
+        Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"),
         distributor_address,
         &ClaimAll {},
         &[],
@@ -204,11 +204,11 @@ pub fn test_claim_lots_of_cw20s() {
         distributor_address,
     } = setup_test(vec![
         Cw20Coin {
-            address: "bekauz".to_string(),
+            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj".to_string(),
             amount: Uint128::new(10),
         },
         Cw20Coin {
-            address: "ekez".to_string(),
+            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             amount: Uint128::new(20),
         },
     ]);
@@ -248,7 +248,7 @@ pub fn test_claim_lots_of_cw20s() {
     app.update_block(|block| block.height += 11);
 
     app.execute_contract(
-        Addr::unchecked("bekauz"),
+        Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"),
         distributor_address,
         &ClaimAll {},
         &[],
@@ -264,7 +264,7 @@ pub fn test_claim_lots_of_cw20s() {
             .query_wasm_smart(
                 addr,
                 &cw20::Cw20QueryMsg::Balance {
-                    address: "bekauz".to_string(),
+                    address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj".to_string(),
                 },
             )
             .unwrap();

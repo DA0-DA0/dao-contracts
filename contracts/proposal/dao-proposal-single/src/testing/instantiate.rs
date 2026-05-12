@@ -140,7 +140,7 @@ pub(crate) fn instantiate_with_staked_cw721_governance(
     let nft_address = app
         .instantiate_contract(
             cw721_id,
-            Addr::unchecked("ekez"),
+            Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
             &cw721_base::msg::InstantiateMsg {
                 minter: Some("ekez".to_string()),
 
@@ -214,7 +214,7 @@ pub(crate) fn instantiate_with_staked_cw721_governance(
     for Cw20Coin { address, amount } in initial_balances {
         for i in 0..amount.u128() {
             app.execute_contract(
-                Addr::unchecked("ekez"),
+                Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
                 nft_address.clone(),
                 &cw721_base::msg::ExecuteMsg::Mint {
                     token_id: format!("{address}_{i}"),

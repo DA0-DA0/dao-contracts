@@ -86,8 +86,8 @@ impl CheckedDenom {
     /// use cosmwasm_std::{Addr, coin};
     /// use cw_denom::CheckedDenom;
     ///
-    /// let cw20 = Addr::unchecked("fleesp");
-    /// assert!(CheckedDenom::Cw20(Addr::unchecked("fleesp")).is_cw20(&cw20));
+    /// let cw20 = Addr::unchecked("cosmwasm1dfga4lfgefrcmwzpsgkx2t3y6w89w0yvycmq2fwkrnkq0846kurs3ajp9g");
+    /// assert!(CheckedDenom::Cw20(Addr::unchecked("cosmwasm1dfga4lfgefrcmwzpsgkx2t3y6w89w0yvycmq2fwkrnkq0846kurs3ajp9g")).is_cw20(&cw20));
     /// assert!(!CheckedDenom::Native("fleesp".to_string()).is_cw20(&cw20));
     /// ```
     pub fn is_cw20(&self, cw20: &Addr) -> bool {
@@ -107,7 +107,7 @@ impl CheckedDenom {
     ///
     /// let coin = coin(10, "floob");
     /// assert!(CheckedDenom::Native("floob".to_string()).is_native(&coin.denom));
-    /// assert!(!CheckedDenom::Cw20(Addr::unchecked("floob")).is_native(&coin.denom));
+    /// assert!(!CheckedDenom::Cw20(Addr::unchecked("cosmwasm1ccjzz7hh9r4yjsxjn3z39rfk4l0q03apa2ltjpf7fc9spndjw40qj74mdm")).is_native(&coin.denom));
     /// ```
     pub fn is_native(&self, denom: &str) -> bool {
         match self {
@@ -209,7 +209,7 @@ mod tests {
 
     use super::*;
 
-    const CW20_ADDR: &str = "cw20";
+    const CW20_ADDR: &str = "cosmwasm1tckpxnyvy0tulzz56yenztghjkx3gqyl28sytat22v5zwr8nffds7j04g6";
 
     fn token_info_mock_querier(works: bool) -> impl Fn(&WasmQuery) -> QuerierResult {
         move |query: &WasmQuery| -> QuerierResult {
@@ -363,7 +363,7 @@ mod tests {
     fn test_display() {
         let denom = CheckedDenom::Native("hello".to_string());
         assert_eq!(denom.to_string(), "hello".to_string());
-        let denom = CheckedDenom::Cw20(Addr::unchecked("hello"));
+        let denom = CheckedDenom::Cw20(Addr::unchecked("cosmwasm19neymwjlkz3sufhg8v4vtw0zncd3v8jur7n5yhnnqsek9yutnqjqxc5p4v"));
         assert_eq!(denom.to_string(), "hello".to_string());
     }
 }

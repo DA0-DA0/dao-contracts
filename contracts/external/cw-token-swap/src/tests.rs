@@ -15,8 +15,8 @@ use crate::{
 };
 use cw_token_swap::ContractError;
 
-const DAO1: &str = "dao1";
-const DAO2: &str = "dao2";
+const DAO1: &str = "cosmwasm1nejsy3fa3dmdz3kcupjjttk4grshdlnd56twvfvxkx3rc7mwy2dqmvufys";
+const DAO2: &str = "cosmwasm18e203w56ugxctmkem4ds3r80enn2xcn3pnjecky4035cnjn9yyqqhsmjf7";
 
 #[test]
 fn test_simple_escrow() {
@@ -556,7 +556,7 @@ fn test_fund_non_counterparty() {
                 symbol: "coin".to_string(),
                 decimals: 6,
                 initial_balances: vec![Cw20Coin {
-                    address: "noah".to_string(),
+                    address: "cosmwasm1euarh03nrsu4p5t236v303dmsdqw0s80j976yh22jmuj6p6teczsmswfyh".to_string(),
                     amount: Uint128::new(100),
                 }],
                 mint: None,
@@ -596,7 +596,7 @@ fn test_fund_non_counterparty() {
 
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("noah"),
+            Addr::unchecked("cosmwasm1euarh03nrsu4p5t236v303dmsdqw0s80j976yh22jmuj6p6teczsmswfyh"),
             cw20,
             &cw20::Cw20ExecuteMsg::Send {
                 contract: escrow.to_string(),
@@ -612,7 +612,7 @@ fn test_fund_non_counterparty() {
     assert!(matches!(err, ContractError::Unauthorized {}));
 
     app.sudo(SudoMsg::Bank(BankSudo::Mint {
-        to_address: "noah".to_string(),
+        to_address: "cosmwasm1euarh03nrsu4p5t236v303dmsdqw0s80j976yh22jmuj6p6teczsmswfyh".to_string(),
         amount: vec![Coin {
             amount: Uint128::new(100),
             denom: "ujuno".to_string(),
@@ -622,7 +622,7 @@ fn test_fund_non_counterparty() {
 
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("noah"),
+            Addr::unchecked("cosmwasm1euarh03nrsu4p5t236v303dmsdqw0s80j976yh22jmuj6p6teczsmswfyh"),
             escrow,
             &ExecuteMsg::Fund {},
             &[Coin {

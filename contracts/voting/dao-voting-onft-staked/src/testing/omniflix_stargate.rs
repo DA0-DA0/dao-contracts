@@ -10,7 +10,7 @@ use omniflix_std::types::omniflix::onft::v1beta1::{
 use omniflix_std::types::omniflix::onft::v1beta1::{Onft, QueryOnftRequest, QueryOnftResponse};
 use prost::{DecodeError, Message};
 
-const COLLECTION_PREFIX: &str = "collection";
+const COLLECTION_PREFIX: &str = "cosmwasm1lf6fde9wsspsdh6ph4jcsqpe9cjdhzkywec4n44alz3rk2xyf6sqlgnlqr";
 
 pub struct StargateKeeper {}
 

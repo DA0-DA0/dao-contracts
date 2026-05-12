@@ -17,10 +17,10 @@ use crate::{
 };
 use cw_payroll_factory::ContractError;
 
-const ALICE: &str = "alice";
-const BOB: &str = "bob";
+const ALICE: &str = "cosmwasm190vqdjtlpcq27xslcveglfmr4ynfwg7gmw86cnun4acakxrdd6gqvdcx9h";
+const BOB: &str = "cosmwasm1sxmr0k8u6trd5c6eu6trzyapzux7090ykujmsng7pdx0m8k93n5sjrh9we";
 const INITIAL_BALANCE: u128 = 1000000000;
-const NATIVE_DENOM: &str = "denom";
+const NATIVE_DENOM: &str = "cosmwasm18afpdapfxxlvxcf95a3rd6p0fsw37mnfwcxyuqpgfdtlddjvzhsq0j4wf4";
 
 #[test]
 pub fn test_instantiate_native_payroll_contract() {
@@ -36,7 +36,7 @@ pub fn test_instantiate_native_payroll_contract() {
     let factory_addr = app
         .instantiate_contract(
             code_id,
-            Addr::unchecked("CREATOR"),
+            Addr::unchecked("cosmwasm1lh2lvaz78ts2etnp8c0xnscy9g97uxfws8vpy3yda3fqyt8l92ss3atz9h"),
             &instantiate,
             &[],
             "cw-admin-factory",
@@ -219,7 +219,7 @@ pub fn test_instantiate_cw20_payroll_contract() {
     let factory_addr = app
         .instantiate_contract(
             code_id,
-            Addr::unchecked("CREATOR"),
+            Addr::unchecked("cosmwasm1lh2lvaz78ts2etnp8c0xnscy9g97uxfws8vpy3yda3fqyt8l92ss3atz9h"),
             &instantiate,
             &[],
             "cw-admin-factory",
@@ -326,7 +326,7 @@ fn test_instantiate_wrong_ownership_native() {
 
     app.sudo(SudoMsg::Bank({
         BankSudo::Mint {
-            to_address: "ekez".to_string(),
+            to_address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             amount: coins(amount.u128() * 2, NATIVE_DENOM),
         }
     }))
@@ -348,7 +348,7 @@ fn test_instantiate_wrong_ownership_native() {
     let factory_addr = app
         .instantiate_contract(
             code_id,
-            Addr::unchecked("CREATOR"),
+            Addr::unchecked("cosmwasm1lh2lvaz78ts2etnp8c0xnscy9g97uxfws8vpy3yda3fqyt8l92ss3atz9h"),
             &instantiate,
             &[],
             "cw-admin-factory",
@@ -358,7 +358,7 @@ fn test_instantiate_wrong_ownership_native() {
 
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("ekez"),
+            Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
             factory_addr,
             &ExecuteMsg::InstantiateNativePayrollContract {
                 instantiate_msg: PayrollInstantiateMsg {
@@ -400,7 +400,7 @@ fn test_update_vesting_code_id() {
     let factory_addr = app
         .instantiate_contract(
             code_id,
-            Addr::unchecked("CREATOR"),
+            Addr::unchecked("cosmwasm1lh2lvaz78ts2etnp8c0xnscy9g97uxfws8vpy3yda3fqyt8l92ss3atz9h"),
             &instantiate,
             &[],
             "cw-admin-factory",
@@ -518,7 +518,7 @@ pub fn test_inconsistent_cw20_amount() {
     let factory_addr = app
         .instantiate_contract(
             code_id,
-            Addr::unchecked("CREATOR"),
+            Addr::unchecked("cosmwasm1lh2lvaz78ts2etnp8c0xnscy9g97uxfws8vpy3yda3fqyt8l92ss3atz9h"),
             &instantiate,
             &[],
             "cw-admin-factory",

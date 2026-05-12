@@ -18,7 +18,7 @@ use crate::msg::{CountResponse, InstantiateMsg, QueryMsg};
 use dao_proposal_single::state::Config;
 use dao_voting::proposal::SingleChoiceProposeMsg as ProposeMsg;
 
-const CREATOR_ADDR: &str = "creator";
+const CREATOR_ADDR: &str = "cosmwasm1h34lmpywh4upnjdg90cjf4j70aee6z8qqfspugamjp42e4q28kqs8s7vcp";
 
 fn instantiate_governance(
     app: &mut App,

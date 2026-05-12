@@ -108,12 +108,12 @@ mod tests {
             amount: Uint128::new(100),
             denom: "uekez".to_string(),
         };
-        let message = info.into_send_message(&Addr::unchecked("ekez")).unwrap();
+        let message = info.into_send_message(&Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")).unwrap();
 
         assert_eq!(
             message,
             CosmosMsg::Bank(BankMsg::Send {
-                to_address: "ekez".to_string(),
+                to_address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 amount: vec![Coin {
                     amount: Uint128::new(100),
                     denom: "uekez".to_string()
@@ -126,9 +126,9 @@ mod tests {
     fn test_into_spend_message_cw20() {
         let info = CheckedTokenInfo::Cw20 {
             amount: Uint128::new(100),
-            contract_addr: Addr::unchecked("ekez_token"),
+            contract_addr: Addr::unchecked("cosmwasm1pp7cpqha86unrfxejly6cepda3mw8nt9560ht52z8syrazyt6yusmahtkf"),
         };
-        let message = info.into_send_message(&Addr::unchecked("ekez")).unwrap();
+        let message = info.into_send_message(&Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")).unwrap();
 
         assert_eq!(
             message,
@@ -136,7 +136,7 @@ mod tests {
                 funds: vec![],
                 contract_addr: "ekez_token".to_string(),
                 msg: to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
-                    recipient: "ekez".to_string(),
+                    recipient: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                     amount: Uint128::new(100)
                 })
                 .unwrap()

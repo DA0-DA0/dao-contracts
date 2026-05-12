@@ -163,7 +163,7 @@ mod tests {
             salt: None,
         };
         assert_eq!(
-            no_admin.into_wasm_msg(Addr::unchecked("ekez")),
+            no_admin.into_wasm_msg(Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")),
             WasmMsg::Instantiate {
                 admin: None,
                 code_id: 42,
@@ -183,14 +183,14 @@ mod tests {
             code_id: 42,
             msg: to_json_binary("foo").unwrap(),
             admin: Some(Admin::Address {
-                addr: "core".to_string(),
+                addr: "cosmwasm1p4zltl2x9wx8p0lmzqpp4sdulul43u5mr7hh26ze2z25yl2zsykq5d450t".to_string(),
             }),
             label: "bar".to_string(),
             funds: None,
             salt: None,
         };
         assert_eq!(
-            no_admin.into_wasm_msg(Addr::unchecked("ekez")),
+            no_admin.into_wasm_msg(Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")),
             WasmMsg::Instantiate {
                 admin: Some("core".to_string()),
                 code_id: 42,
@@ -212,7 +212,7 @@ mod tests {
             salt: None,
         };
         assert_eq!(
-            no_admin.into_wasm_msg(Addr::unchecked("ekez")),
+            no_admin.into_wasm_msg(Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")),
             WasmMsg::Instantiate {
                 admin: Some("ekez".to_string()),
                 code_id: 42,
@@ -234,7 +234,7 @@ mod tests {
             salt: Some(to_json_binary("test_salt").unwrap()),
         };
         assert_eq!(
-            no_admin.into_wasm_msg(Addr::unchecked("ekez")),
+            no_admin.into_wasm_msg(Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")),
             WasmMsg::Instantiate2 {
                 admin: None,
                 code_id: 42,
@@ -255,14 +255,14 @@ mod tests {
             code_id: 42,
             msg: to_json_binary("foo").unwrap(),
             admin: Some(Admin::Address {
-                addr: "core".to_string(),
+                addr: "cosmwasm1p4zltl2x9wx8p0lmzqpp4sdulul43u5mr7hh26ze2z25yl2zsykq5d450t".to_string(),
             }),
             label: "bar".to_string(),
             funds: None,
             salt: Some(to_json_binary("test_salt").unwrap()),
         };
         assert_eq!(
-            no_admin.into_wasm_msg(Addr::unchecked("ekez")),
+            no_admin.into_wasm_msg(Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")),
             WasmMsg::Instantiate2 {
                 admin: Some("core".to_string()),
                 code_id: 42,
@@ -285,7 +285,7 @@ mod tests {
             salt: Some(to_json_binary("test_salt").unwrap()),
         };
         assert_eq!(
-            no_admin.into_wasm_msg(Addr::unchecked("ekez")),
+            no_admin.into_wasm_msg(Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")),
             WasmMsg::Instantiate2 {
                 admin: Some("ekez".to_string()),
                 code_id: 42,
@@ -339,7 +339,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let item = Item::new("module");
         let update = ModuleUpdate::Existing {
-            address: "ekez".to_string(),
+            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
         };
 
         let submessages = update.update(deps.as_mut(), &item, 1, "unused").unwrap();
@@ -350,7 +350,7 @@ mod tests {
         // Item updated.
         assert_eq!(
             item.may_load(deps.as_mut().storage).unwrap(),
-            Some(Addr::unchecked("ekez"))
+            Some(Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"))
         );
     }
 }

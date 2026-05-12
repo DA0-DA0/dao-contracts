@@ -306,7 +306,7 @@ pub(crate) fn instantiate_cw20_base_default(app: &mut App) -> Addr {
     };
     app.instantiate_contract(
         cw20_id,
-        Addr::unchecked("ekez"),
+        Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
         &cw20_instantiate,
         &[],
         "cw20-base",

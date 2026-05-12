@@ -7,8 +7,8 @@ use dao_testing::contracts::{cw20_base_contract, dao_voting_cw20_balance_contrac
 
 use crate::msg::{InstantiateMsg, QueryMsg};
 
-const DAO_ADDR: &str = "dao";
-const CREATOR_ADDR: &str = "creator";
+const DAO_ADDR: &str = "cosmwasm1vwr8z00ty7mqnk4dtchr9mn9j96nuh6w9v55nvy575c4rp0ha5xqwujcc7";
+const CREATOR_ADDR: &str = "cosmwasm1h34lmpywh4upnjdg90cjf4j70aee6z8qqfspugamjp42e4q28kqs8s7vcp";
 
 fn instantiate_voting(app: &mut App, voting_id: u64, msg: InstantiateMsg) -> Addr {
     app.instantiate_contract(

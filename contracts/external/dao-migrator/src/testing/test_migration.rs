@@ -224,7 +224,7 @@ fn test_multiple_proposal_modules_failing() {
     // `module_addrs.proposals` is only used to set migration params based on how many proposals we have here
     // Its safe to add/remove 2nd proposal in this tests because the actual proposals are taken within the contract
     // and are not provided externally
-    module_addrs.proposals.push(Addr::unchecked("proposal2"));
+    module_addrs.proposals.push(Addr::unchecked("cosmwasm1ejahwer686l2wfjz34yjszjthk5e6efyvhgk8rwwwnjxxkxs0dlqllyje9"));
     let err = execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None, None)
         .unwrap_err()
         .downcast::<ContractError>()
@@ -334,7 +334,7 @@ fn test_dont_migrate_cw20() {
 fn test_sub_daos() {
     let (mut app, module_addrs, v1_code_ids) = setup_dao_v1(VotingType::Cw20);
     let sub_dao = SubDao {
-        addr: "sub_dao_1".to_string(),
+        addr: "cosmwasm1pw95a0rf3ncyk8pd539tvpl20cs8m3mda3vc7mpuj276pwh3c03s30fylf".to_string(),
         charter: None,
     };
 

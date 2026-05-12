@@ -38,7 +38,7 @@ use crate::msg::{
 };
 
 // The approver dao contract is the 6th contract instantiated
-const APPROVER: &str = "contract6";
+const APPROVER: &str = "cosmwasm1fsnry896s2ks9e3v5qqtaz6d0xmm64cw0tgmluln695wk3fr83wqmvtlrm";
 
 fn get_proposal_module_approval_single_instantiate(
     app: &mut App,
@@ -130,7 +130,7 @@ fn instantiate_cw20_base_default(app: &mut App) -> Addr {
         symbol: "cwtwenty".to_string(),
         decimals: 6,
         initial_balances: vec![Cw20Coin {
-            address: "ekez".to_string(),
+            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             amount: Uint128::new(10),
         }],
         mint: None,
@@ -138,7 +138,7 @@ fn instantiate_cw20_base_default(app: &mut App) -> Addr {
     };
     app.instantiate_contract(
         cw20_id,
-        Addr::unchecked("ekez"),
+        Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
         &cw20_instantiate,
         &[],
         "cw20-base",
@@ -175,11 +175,11 @@ fn setup_default_test(
         to_json_binary(&proposal_module_instantiate).unwrap(),
         Some(vec![
             cw20::Cw20Coin {
-                address: "ekez".to_string(),
+                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 amount: Uint128::new(9),
             },
             cw20::Cw20Coin {
-                address: "keze".to_string(),
+                address: "cosmwasm1mw84pqf8eyuhqwr9xre4l7aswr75ugex42gzjyvgueeza7vxv0dqx57dyx".to_string(),
                 amount: Uint128::new(8),
             },
         ]),
@@ -229,11 +229,11 @@ fn setup_default_test(
         to_json_binary(&proposal_module_instantiate).unwrap(),
         Some(vec![
             cw20::Cw20Coin {
-                address: "ekez".to_string(),
+                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 amount: Uint128::new(9),
             },
             cw20::Cw20Coin {
-                address: "keze".to_string(),
+                address: "cosmwasm1mw84pqf8eyuhqwr9xre4l7aswr75ugex42gzjyvgueeza7vxv0dqx57dyx".to_string(),
                 amount: Uint128::new(8),
             },
         ]),
@@ -1153,7 +1153,7 @@ fn test_permissions() {
     // disabled.
     let err: PreProposeError = app
         .execute_contract(
-            Addr::unchecked("nonmember"),
+            Addr::unchecked("cosmwasm17x0hnl6g3u98a480e3dtlacpck5t9823l7sl0vce7e37fpa2cvcsha6qn7"),
             pre_propose,
             &ExecuteMsg::Propose {
                 msg: ProposeMessage::Propose {
@@ -1212,7 +1212,7 @@ fn test_approval_and_rejection_permissions() {
     // Only approver can propose
     let err: PreProposeError = app
         .execute_contract(
-            Addr::unchecked("nonmember"),
+            Addr::unchecked("cosmwasm17x0hnl6g3u98a480e3dtlacpck5t9823l7sl0vce7e37fpa2cvcsha6qn7"),
             pre_propose.clone(),
             &ExecuteMsg::Extension {
                 msg: ExecuteExt::Approve { id: pre_propose_id },
@@ -1227,7 +1227,7 @@ fn test_approval_and_rejection_permissions() {
     // Only approver can propose
     let err: PreProposeError = app
         .execute_contract(
-            Addr::unchecked("nonmember"),
+            Addr::unchecked("cosmwasm17x0hnl6g3u98a480e3dtlacpck5t9823l7sl0vce7e37fpa2cvcsha6qn7"),
             pre_propose,
             &ExecuteMsg::Extension {
                 msg: ExecuteExt::Reject { id: pre_propose_id },
@@ -1380,7 +1380,7 @@ fn test_update_config() {
         info,
         DepositInfoResponse {
             deposit_info: None,
-            proposer: Addr::unchecked("ekez"),
+            proposer: Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
         }
     );
 
@@ -1408,7 +1408,7 @@ fn test_update_config() {
                 amount: Uint128::new(10),
                 refund_policy: DepositRefundPolicy::Never
             }),
-            proposer: Addr::unchecked("ekez"),
+            proposer: Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
         }
     );
 
@@ -1456,8 +1456,8 @@ fn test_update_config() {
         None,
         PreProposeSubmissionPolicy::Specific {
             dao_members: false,
-            allowlist: vec![Addr::unchecked("ekez")],
-            denylist: vec![Addr::unchecked("ekez")],
+            allowlist: vec![Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")],
+            denylist: vec![Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")],
         },
     );
     assert_eq!(
@@ -1490,7 +1490,7 @@ fn test_approver_unsupported_update_config() {
         None,
         PreProposeSubmissionPolicy::Specific {
             dao_members: false,
-            allowlist: vec![Addr::unchecked("ekez")],
+            allowlist: vec![Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")],
             denylist: vec![],
         },
     );
@@ -1771,11 +1771,11 @@ fn test_reset_approver() {
     // Fail to change approver by non-approver.
     let err: PreProposeError = app
         .execute_contract(
-            Addr::unchecked("someone"),
+            Addr::unchecked("cosmwasm19fvat83cp8uz0nnsn5uptcu4pmh5565n4a2402f60l0m5u2xpppsn6r94c"),
             pre_propose.clone(),
             &ExecuteMsg::Extension {
                 msg: ExecuteExt::UpdateApprover {
-                    address: "someone".to_string(),
+                    address: "cosmwasm19fvat83cp8uz0nnsn5uptcu4pmh5565n4a2402f60l0m5u2xpppsn6r94c".to_string(),
                 },
             },
             &[],
@@ -1788,7 +1788,7 @@ fn test_reset_approver() {
     // Fail to reset approver back to approver DAO by non-approver.
     let err: PreProposeError = app
         .execute_contract(
-            Addr::unchecked("someone"),
+            Addr::unchecked("cosmwasm19fvat83cp8uz0nnsn5uptcu4pmh5565n4a2402f60l0m5u2xpppsn6r94c"),
             pre_propose_approver.clone(),
             &ApproverExecuteMsg::Extension {
                 msg: ApproverExecuteExt::ResetApprover {},

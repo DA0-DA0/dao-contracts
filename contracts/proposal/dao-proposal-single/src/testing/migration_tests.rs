@@ -40,7 +40,7 @@ use crate::testing::{
 /// - Items are not overriden during migration.
 #[test]
 fn test_v1_v2_full_migration() {
-    let sender = Addr::unchecked("sender");
+    let sender = Addr::unchecked("cosmwasm1pgm8hyk0pvphmlvfjc8wsvk4daluz5tgrw6pu5mfpemk74uxnx9qlm3aqg");
 
     let mut app = App::default();
 

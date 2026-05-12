@@ -18,7 +18,7 @@ use dao_rewards_distributor::ContractError;
 
 use super::suite::{RewardsConfig, SuiteBuilder};
 
-const ALT_DENOM: &str = "ualtgovtoken";
+const ALT_DENOM: &str = "cosmwasm1g8dzmje6a5r4sw7rxr8mcq7cdk5m3fekard0qupnv4epnla9yw9qq6pg0p";
 
 // By default, the tests are set up to distribute rewards over 1_000_000 units of time.
 // Over that time, 100_000_000 token rewards will be distributed.

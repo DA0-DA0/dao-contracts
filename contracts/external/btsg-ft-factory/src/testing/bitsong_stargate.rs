@@ -11,8 +11,8 @@ use crate::bitsong::{
     MsgSetMinterResponse, MsgSetUri, MsgSetUriResponse,
 };
 
-const DENOMS_PREFIX: &str = "denoms";
-const DENOMS_COUNT_KEY: &str = "denoms_count";
+const DENOMS_PREFIX: &str = "cosmwasm1txcq95x3uy5ucperyj3njq4actah4q9yc82ky9am8zu4j6lheeusjlechq";
+const DENOMS_COUNT_KEY: &str = "cosmwasm1zaw49jfy9muvxtdhk9kunfuxe6srehdmf246htwp6j922ka79wtqnj38tt";
 
 #[cw_serde]
 struct FanToken {
