@@ -1,77 +1,63 @@
-use cosmwasm_std::{coin, coins};
+use cosmwasm_std::{coin, Uint128};
 use cw_denom::UncheckedDenom;
-use cw_orch::{contract::interface_traits::CwOrchQuery, mock::MockBech32};
 
 use crate::{
     msg::{
         AdapterQueryMsg, AllOptionsResponse, AllSubmissionsResponse, AssetUnchecked,
         CheckOptionResponse,
     },
-    multitest::suite::{native_submission_helper, setup_gauge_adapter},
+    multitest::suite::{addr, Suite},
 };
 
 #[test]
 fn option_queries() {
-    let mock = MockBech32::new("mock");
-    let adapter = setup_gauge_adapter(
-        mock.clone(),
-        Some(AssetUnchecked {
-            denom: UncheckedDenom::Native("juno".into()),
-            amount: 1_000u128.into(),
-        }),
-    );
+    let mut suite = Suite::new_native(Some(AssetUnchecked {
+        denom: UncheckedDenom::Native("juno".into()),
+        amount: Uint128::new(1_000),
+    }));
 
-    let recipient = mock.addr_make("recipient");
-    let newton = mock.addr_make("newton");
-    let einstein = mock
-        .addr_make_with_balance("einstein", coins(1_000, "juno"))
-        .unwrap();
+    let owner = suite.owner.clone();
+    let recipient = addr("recipient");
+    let newton = addr("newton");
+    let einstein = addr("einstein");
+    suite.mint_native(&einstein, coin(1_000, "juno"));
+    suite.mint_native(&owner, coin(1_000, "juno"));
 
-    mock.add_balance(&mock.sender, coins(1_000, "juno"))
-        .unwrap();
     let options: AllSubmissionsResponse =
-        adapter.query(&AdapterQueryMsg::AllSubmissions {}).unwrap();
-    // account for a default option
+        suite.query(&AdapterQueryMsg::AllSubmissions {}).unwrap();
+    // account for the default option (community pool refund target).
     assert_eq!(options.submissions.len(), 1);
 
-    // Valid submission.
-    native_submission_helper(
-        adapter.clone(),
-        mock.sender.clone(),
-        recipient.clone(),
-        Some(coin(1_000u128, "juno")),
-    )
-    .unwrap();
+    // Valid submission from owner.
+    suite
+        .create_submission(&owner, &recipient, Some(coin(1_000, "juno")))
+        .unwrap();
 
-    // Valid submission.
-    native_submission_helper(
-        adapter.clone(),
-        einstein.clone(),
-        einstein.clone(),
-        Some(coin(1_000u128, "juno")),
-    )
-    .unwrap();
+    // Valid submission from einstein (recipient = self).
+    suite
+        .create_submission(&einstein, &einstein, Some(coin(1_000, "juno")))
+        .unwrap();
 
-    let options: AllOptionsResponse = adapter.query(&AdapterQueryMsg::AllOptions {}).unwrap();
-    assert_eq!(
-        options,
-        AllOptionsResponse {
-            options: vec![
-                einstein.to_string(),
-                mock.addr_make("community_pool").to_string(),
-                recipient.to_string()
-            ]
-        },
-    );
+    let options: AllOptionsResponse = suite.query(&AdapterQueryMsg::AllOptions {}).unwrap();
+    let community_pool = suite.community_pool.clone();
+    let mut expected = vec![
+        einstein.to_string(),
+        community_pool.to_string(),
+        recipient.to_string(),
+    ];
+    expected.sort();
+    let mut got = options.options.clone();
+    got.sort();
+    assert_eq!(got, expected);
 
-    let option: CheckOptionResponse = adapter
+    let option: CheckOptionResponse = suite
         .query(&AdapterQueryMsg::CheckOption {
             option: einstein.to_string(),
         })
         .unwrap();
     assert!(option.valid);
 
-    let option: CheckOptionResponse = adapter
+    let option: CheckOptionResponse = suite
         .query(&AdapterQueryMsg::CheckOption {
             option: newton.to_string(),
         })

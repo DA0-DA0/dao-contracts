@@ -1,545 +1,382 @@
+use cosmwasm_std::{coin, to_json_binary, Coin, CosmosMsg, Decimal, Uint128, WasmMsg};
+use cw20::Cw20ExecuteMsg;
+use cw_denom::UncheckedDenom;
+
 use crate::{
     msg::{
-        AdapterQueryMsg, AdapterQueryMsgFns, AllSubmissionsResponse, AssetUnchecked, ExecuteMsg,
-        ExecuteMsgFns, ReceiveMsg, SubmissionResponse,
+        AdapterQueryMsg, AllSubmissionsResponse, AssetUnchecked, ExecuteMsg, ReceiveMsg,
+        SampleGaugeMsgsResponse, SubmissionResponse,
     },
-    multitest::suite::{
-        cw20_helper, native_submission_helper, setup_cw20_reward_gauge_adapter, setup_gauge_adapter,
-    },
+    multitest::suite::{addr, submit_cw20_create, Suite},
     ContractError,
 };
 
-use abstract_cw20::{msg::Cw20ExecuteMsgFns, Cw20ExecuteMsg as AbsCw20ExecuteMsg};
-use abstract_cw20_base::msg::QueryMsgFns;
-use cosmwasm_std::{coin, to_json_binary, Addr, CosmosMsg, Decimal, Uint128, WasmMsg};
-use cw_denom::UncheckedDenom;
-use cw_orch::{contract::interface_traits::CwOrchExecute, mock::MockBech32, prelude::*};
-
 #[test]
 fn create_default_submission() {
-    let mock = MockBech32::new("mock");
-    let treasury = &mock.addr_make("community_pool");
+    let suite = Suite::new_native(None);
+    let community_pool = suite.community_pool.clone();
 
-    let adapter = setup_gauge_adapter(mock.clone(), None);
-
-    // this one is created by default during instantiation
+    // Created during instantiation.
+    let res: SubmissionResponse = suite
+        .query(&AdapterQueryMsg::Submission {
+            address: community_pool.to_string(),
+        })
+        .unwrap();
     assert_eq!(
+        res,
         SubmissionResponse {
-            sender: adapter.address().unwrap(),
+            sender: suite.adapter.clone(),
             name: "Unimpressed".to_owned(),
             url: "Those funds go back to the community pool".to_owned(),
-            address: treasury.clone(),
+            address: community_pool,
         },
-        adapter
-            .query(&crate::msg::AdapterQueryMsg::Submission {
-                address: treasury.to_string()
-            })
-            .unwrap()
-    )
+    );
 }
 
 #[test]
 fn create_submission_no_required_deposit() {
-    let mock = MockBech32::new("mock");
-    let adapter = setup_gauge_adapter(mock.clone(), None);
+    let mut suite = Suite::new_native(None);
+    let owner = suite.owner.clone();
+    let recipient = addr("recipient");
+    suite.mint_native(&owner, coin(1_000, "juno"));
 
-    let recipient = mock.addr_make("recipient");
-    mock.add_balance(&mock.sender, vec![coin(1_000, "juno")])
-        .unwrap();
-
-    // Fails send funds along with the tx.
-    let err = native_submission_helper(
-        adapter.clone(),
-        mock.sender.clone(),
-        recipient.clone(),
-        Some(coin(1_000, "juno")),
-    )
-    .unwrap_err();
-
+    // Sending funds when no deposit required is an error.
+    let err = suite
+        .create_submission(&owner, &recipient, Some(coin(1_000, "juno")))
+        .unwrap_err();
     assert_eq!(
         ContractError::InvalidDepositAmount {
-            correct_amount: Uint128::zero()
+            correct_amount: Uint128::zero(),
         },
         err.downcast().unwrap()
     );
 
-    // Valid submission.
-    let result = native_submission_helper(
-        adapter.clone(),
-        mock.sender.clone(),
-        recipient.clone(),
-        None,
-    );
-    assert!(result.is_ok());
+    // Without funds it succeeds.
+    suite
+        .create_submission(&owner, &recipient, None)
+        .unwrap();
 
+    let res: SubmissionResponse = suite
+        .query(&AdapterQueryMsg::Submission {
+            address: recipient.to_string(),
+        })
+        .unwrap();
     assert_eq!(
+        res,
         SubmissionResponse {
-            sender: mock.sender,
+            sender: owner,
             name: "DAOers".to_owned(),
             url: "https://daodao.zone".to_owned(),
-            address: recipient.clone(),
+            address: recipient,
         },
-        adapter
-            .query(&crate::msg::AdapterQueryMsg::Submission {
-                address: recipient.to_string()
-            })
-            .unwrap(),
-    )
+    );
 }
 
 #[test]
 fn overwrite_existing_submission() {
-    let mock = MockBech32::new("mock");
-    let adapter = setup_gauge_adapter(mock.clone(), None);
-    let recipient = mock.addr_make("recipient");
-    native_submission_helper(
-        adapter.clone(),
-        mock.sender.clone(),
-        recipient.clone(),
-        None,
-    )
-    .unwrap();
+    let mut suite = Suite::new_native(None);
+    let owner = suite.owner.clone();
+    let recipient = addr("recipient");
 
-    assert_eq!(
-        SubmissionResponse {
-            sender: mock.sender.clone(),
-            name: "DAOers".to_owned(),
-            url: "https://daodao.zone".to_string(),
-            address: recipient.clone(),
-        },
-        adapter.submission(recipient.to_string()).unwrap()
-    );
+    suite
+        .create_submission(&owner, &recipient, None)
+        .unwrap();
 
-    // Try to submit to the same address with different user
-    let err = native_submission_helper(
-        adapter.clone(),
-        Addr::unchecked("anotheruser"),
-        recipient.clone(),
-        None,
-    )
-    .unwrap_err();
+    let res: SubmissionResponse = suite
+        .query(&AdapterQueryMsg::Submission {
+            address: recipient.to_string(),
+        })
+        .unwrap();
+    assert_eq!(res.sender, owner);
+    assert_eq!(res.url, "https://daodao.zone");
 
+    // Submitting to the same recipient as a different sender is not allowed.
+    let intruder = addr("intruder");
+    let err = suite
+        .create_submission(&intruder, &recipient, None)
+        .unwrap_err();
     assert_eq!(
         ContractError::UnauthorizedSubmission {},
         err.downcast().unwrap()
     );
 
-    // Overwriting submission as same author works
-    native_submission_helper(adapter.clone(), mock.sender, recipient.clone(), None).unwrap();
-
-    let response = adapter.submission(recipient.to_string()).unwrap();
-    assert_eq!(response.url, "https://daodao.zone".to_owned());
+    // Overwriting as the original author works.
+    suite
+        .create_submission(&owner, &recipient, None)
+        .unwrap();
 }
 
 #[test]
 fn create_submission_required_deposit() {
-    let mock = MockBech32::new("mock");
-    let adapter = setup_gauge_adapter(
-        mock.clone(),
-        Some(AssetUnchecked {
-            denom: UncheckedDenom::Native("juno".into()),
-            amount: 1_000u128.into(),
-        }),
-    );
+    let mut suite = Suite::new_native(Some(AssetUnchecked {
+        denom: UncheckedDenom::Native("juno".into()),
+        amount: Uint128::new(1_000),
+    }));
+    let owner = suite.owner.clone();
+    let recipient = addr("recipient");
+    suite.mint_native(&owner, coin(1_000, "wynd"));
+    suite.mint_native(&owner, coin(1_000, "juno"));
 
-    let recipient = mock.addr_make("recipient");
-    mock.add_balance(&mock.sender.clone(), vec![coin(1_000, "wynd")])
-        .unwrap();
-    mock.add_balance(&mock.sender.clone(), vec![coin(1_000, "juno")])
-        .unwrap();
-
-    // Fails if no funds sent.
-    let err = native_submission_helper(
-        adapter.clone(),
-        mock.sender.clone(),
-        recipient.clone(),
-        None,
-    )
-    .unwrap_err();
-
+    // No funds → PaymentError.
+    let err = suite
+        .create_submission(&owner, &recipient, None)
+        .unwrap_err();
     assert_eq!(
         ContractError::PaymentError(cw_utils::PaymentError::NoFunds {}),
         err.downcast().unwrap()
     );
 
-    // Fails if correct denom but not enough amount.
-    // Fails if no funds sent.
-    let err = native_submission_helper(
-        adapter.clone(),
-        mock.sender.clone(),
-        recipient.clone(),
-        Some(Coin {
-            denom: "juno".into(),
-            amount: 999u128.into(),
-        }),
-    )
-    .unwrap_err();
-
+    // Right denom, wrong amount.
+    let err = suite
+        .create_submission(
+            &owner,
+            &recipient,
+            Some(Coin {
+                denom: "juno".into(),
+                amount: Uint128::new(999),
+            }),
+        )
+        .unwrap_err();
     assert_eq!(
         ContractError::InvalidDepositAmount {
-            correct_amount: Uint128::new(1_000)
+            correct_amount: Uint128::new(1_000),
         },
         err.downcast().unwrap()
     );
 
-    // Fails if enough amount but incorrect denom.
-    let err = native_submission_helper(
-        adapter.clone(),
-        mock.sender.clone(),
-        recipient.clone(),
-        Some(Coin {
-            denom: "wynd".into(),
-            amount: 1_000u128.into(),
-        }),
-    )
-    .unwrap_err();
-
+    // Wrong denom, right amount.
+    let err = suite
+        .create_submission(
+            &owner,
+            &recipient,
+            Some(Coin {
+                denom: "wynd".into(),
+                amount: Uint128::new(1_000),
+            }),
+        )
+        .unwrap_err();
     assert_eq!(
         ContractError::InvalidDepositType {},
         err.downcast().unwrap()
     );
 
     // Valid submission.
-    native_submission_helper(
-        adapter.clone(),
-        mock.sender.clone(),
-        recipient.clone(),
-        Some(Coin {
-            denom: "juno".into(),
-            amount: 1_000u128.into(),
-        }),
-    )
-    .unwrap();
+    suite
+        .create_submission(&owner, &recipient, Some(coin(1_000, "juno")))
+        .unwrap();
 
-    assert_eq!(
-        SubmissionResponse {
-            sender: mock.sender.clone(),
-            name: "DAOers".to_owned(),
-            url: "https://daodao.zone".to_owned(),
-            address: recipient.clone(),
-        },
-        adapter
-            .query(&AdapterQueryMsg::Submission {
-                address: recipient.to_string()
-            })
-            .unwrap()
-    )
+    let res: SubmissionResponse = suite
+        .query(&AdapterQueryMsg::Submission {
+            address: recipient.to_string(),
+        })
+        .unwrap();
+    assert_eq!(res.sender, owner);
+    assert_eq!(res.address, recipient);
 }
 
 #[test]
 fn create_receive_required_deposit() {
-    let mock = MockBech32::new("mock");
-    let cw20 = cw20_helper(mock.clone());
-    let bad_cw20 = cw20_helper(mock.clone());
-    let cw20_addr = cw20.address().unwrap();
-    let bad_cw20_addr = bad_cw20.address().unwrap();
-    println!("good cw20: {:#?}", cw20_addr);
-    println!("bad cw20: {:#?}", bad_cw20_addr);
-    let adapter = setup_gauge_adapter(
-        mock.clone(),
-        Some(AssetUnchecked {
-            denom: UncheckedDenom::Cw20(cw20_addr.to_string()),
-            amount: 1_000u128.into(),
-        }),
-    );
+    let (mut suite, deposit_cw20) = Suite::new_cw20_deposit();
+    let owner = suite.owner.clone();
+    let recipient_addr = owner.clone();
 
-    let recipient = mock.sender_addr().to_string();
+    // A second cw20 for the "wrong cw20" error path.
+    let bad_cw20 = suite.instantiate_cw20();
 
     let binary_msg = to_json_binary(&ReceiveMsg::CreateSubmission {
-        name: "DAOers".into(),
-        url: "https://daodao.zone".into(),
-        address: recipient.clone(),
+        name: "DAOers".to_string(),
+        url: "https://daodao.zone".to_string(),
+        address: recipient_addr.to_string(),
     })
     .unwrap();
-    // Fails by sending wrong cw20.
-    let err = adapter
-        .call_as(&Addr::unchecked(
-            "mock1mzdhwvvh22wrt07w59wxyd58822qavwkx5lcej7aqfkpqqlhaqfsetqc4t",
-        ))
+
+    // Sending from the wrong cw20 fails (we impersonate the cw20 contract).
+    let err = suite
         .execute(
+            &bad_cw20,
             &ExecuteMsg::Receive(cw20::Cw20ReceiveMsg {
-                sender: recipient.to_string(),
-                amount: Uint128::from(1_000u128),
+                sender: recipient_addr.to_string(),
+                amount: Uint128::new(1_000),
                 msg: binary_msg.clone(),
             }),
-            None,
+            &[],
         )
         .unwrap_err();
-
     assert_eq!(
         ContractError::InvalidDepositType {},
         err.downcast().unwrap(),
     );
 
-    // Fails by sending less tokens than required.
-    let err = adapter
-        .call_as(&cw20.address().unwrap())
+    // Right cw20 but less than required fails.
+    let err = suite
         .execute(
+            &deposit_cw20,
             &ExecuteMsg::Receive(cw20::Cw20ReceiveMsg {
-                sender: recipient.to_string(),
-                amount: Uint128::from(999u128),
+                sender: recipient_addr.to_string(),
+                amount: Uint128::new(999),
                 msg: binary_msg.clone(),
             }),
-            None,
+            &[],
         )
         .unwrap_err();
-
     assert_eq!(
         ContractError::InvalidDepositAmount {
-            correct_amount: Uint128::new(1_000)
+            correct_amount: Uint128::new(1_000),
         },
         err.downcast().unwrap()
     );
 
-    // Valid submission.
-    adapter
-        .call_as(&cw20.address().unwrap())
+    // Valid submission via correct cw20.
+    suite
         .execute(
+            &deposit_cw20,
             &ExecuteMsg::Receive(cw20::Cw20ReceiveMsg {
-                sender: recipient.to_string(),
-                amount: Uint128::from(1_000u128),
+                sender: recipient_addr.to_string(),
+                amount: Uint128::new(1_000),
                 msg: binary_msg,
             }),
-            None,
+            &[],
         )
         .unwrap();
 
-    assert_eq!(
-        SubmissionResponse {
-            sender: mock.sender.clone(),
-            name: "DAOers".to_owned(),
-            url: "https://daodao.zone".to_owned(),
-            address: Addr::unchecked(recipient.clone()),
-        },
-        adapter
-            .query(&AdapterQueryMsg::Submission {
-                address: recipient.to_string()
-            })
-            .unwrap()
-    );
-
-    assert_eq!(
-        2,
-        adapter
-            .query::<AllSubmissionsResponse>(&AdapterQueryMsg::AllSubmissions {})
-            .unwrap()
-            .submissions
-            .len()
-    )
+    let all: AllSubmissionsResponse =
+        suite.query(&AdapterQueryMsg::AllSubmissions {}).unwrap();
+    // default (community-pool refund) + the one we just added.
+    assert_eq!(all.submissions.len(), 2);
 }
 
 #[test]
 fn return_deposits_no_required_deposit() {
-    let mock = MockBech32::new("mock");
-    let adapter = setup_gauge_adapter(mock.clone(), None);
-
-    let err = adapter
-        .execute(&ExecuteMsg::ReturnDeposits {}, None)
-        .unwrap_err();
-
-    assert_eq!(ContractError::NoDepositToRefund {}, err.downcast().unwrap())
+    let mut suite = Suite::new_native(None);
+    let err = suite.execute_owner(&ExecuteMsg::ReturnDeposits {}).unwrap_err();
+    assert_eq!(ContractError::NoDepositToRefund {}, err.downcast().unwrap());
 }
 
 #[test]
 fn return_deposits_no_admin() {
-    let mock = MockBech32::new("mock");
-    let bad_addr = mock.addr_make("einstien");
-    let adapter = setup_gauge_adapter(
-        mock.clone(),
-        Some(AssetUnchecked {
-            denom: UncheckedDenom::Native("juno".into()),
-            amount: 1_000u128.into(),
-        }),
-    );
-
-    let err = adapter
-        .call_as(&bad_addr)
-        .execute(&ExecuteMsg::ReturnDeposits {}, None)
+    let mut suite = Suite::new_native(Some(AssetUnchecked {
+        denom: UncheckedDenom::Native("juno".into()),
+        amount: Uint128::new(1_000),
+    }));
+    let intruder = addr("intruder");
+    let err = suite
+        .execute(&intruder, &ExecuteMsg::ReturnDeposits {}, &[])
         .unwrap_err();
-
-    assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap())
+    assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
 }
 
 #[test]
 fn return_deposits_required_native_deposit() {
-    let mock = MockBech32::new("mock");
-    let adapter = setup_gauge_adapter(
-        mock.clone(),
-        Some(AssetUnchecked {
-            denom: UncheckedDenom::Native("juno".into()),
-            amount: 1_000u128.into(),
-        }),
-    );
-    mock.add_balance(&mock.sender, vec![coin(1_000u128, "juno")])
+    let mut suite = Suite::new_native(Some(AssetUnchecked {
+        denom: UncheckedDenom::Native("juno".into()),
+        amount: Uint128::new(1_000),
+    }));
+    let owner = suite.owner.clone();
+    let recipient = addr("recipient");
+
+    suite.mint_native(&owner, coin(1_000, "juno"));
+    suite
+        .create_submission(&owner, &recipient, Some(coin(1_000, "juno")))
         .unwrap();
-    let recipient = mock.addr_make("recipient");
 
-    // Valid submission.
-    native_submission_helper(
-        adapter.clone(),
-        mock.sender.clone(),
-        recipient.clone(),
-        Some(coin(1_000u128, "juno")),
-    )
-    .unwrap();
+    assert_eq!(suite.native_balance(&owner, "juno"), Uint128::zero());
+    assert_eq!(suite.native_balance(&recipient, "juno"), Uint128::zero());
+    let adapter = suite.adapter.clone();
+    assert_eq!(suite.native_balance(&adapter, "juno"), Uint128::new(1_000));
 
-    assert_eq!(
-        mock.query_balance(&mock.sender.clone(), "juno").unwrap(),
-        Uint128::zero()
-    );
-    assert_eq!(
-        mock.query_balance(&recipient, "juno").unwrap(),
-        Uint128::zero()
-    );
-    assert_eq!(
-        mock.query_balance(&adapter.address().unwrap(), "juno")
-            .unwrap(),
-        Uint128::from(1000u128)
-    );
-
-    adapter
-        .execute(&ExecuteMsg::ReturnDeposits {}, None)
-        .unwrap();
-    assert_eq!(
-        mock.query_balance(&mock.sender.clone(), "juno").unwrap(),
-        Uint128::from(1000u128)
-    );
-    assert_eq!(
-        mock.query_balance(&recipient, "juno").unwrap(),
-        Uint128::zero()
-    );
-    assert_eq!(
-        mock.query_balance(&adapter.address().unwrap(), "juno")
-            .unwrap(),
-        Uint128::zero()
-    );
+    suite.execute_owner(&ExecuteMsg::ReturnDeposits {}).unwrap();
+    assert_eq!(suite.native_balance(&owner, "juno"), Uint128::new(1_000));
+    assert_eq!(suite.native_balance(&recipient, "juno"), Uint128::zero());
+    assert_eq!(suite.native_balance(&adapter, "juno"), Uint128::zero());
 }
 
 #[test]
 fn return_deposits_required_native_deposit_multiple_deposits() {
-    let mock = MockBech32::new("mock");
-    let adapter = setup_gauge_adapter(
-        mock.clone(),
-        Some(AssetUnchecked {
-            denom: UncheckedDenom::Native("juno".into()),
-            amount: 1_000u128.into(),
-        }),
-    );
+    let mut suite = Suite::new_native(Some(AssetUnchecked {
+        denom: UncheckedDenom::Native("juno".into()),
+        amount: Uint128::new(1_000),
+    }));
+    let owner = suite.owner.clone();
+    let recipient = addr("recipient");
+    let einstein = addr("einstein");
 
-    let recipient = mock.addr_make("recipient");
-    let einstien = mock
-        .addr_make_with_balance("einstien", vec![coin(1_000u128, "juno")])
-        .unwrap();
-    mock.add_balance(&mock.sender, vec![coin(1_000u128, "juno")])
-        .unwrap();
-    // Valid submission.
-    native_submission_helper(
-        adapter.clone(),
-        mock.sender.clone(),
-        recipient.clone(),
-        Some(coin(1_000u128, "juno")),
-    )
-    .unwrap();
-    // Valid submission.
-    native_submission_helper(
-        adapter.clone(),
-        einstien.clone(),
-        einstien.clone(),
-        Some(coin(1_000u128, "juno")),
-    )
-    .unwrap();
+    suite.mint_native(&owner, coin(1_000, "juno"));
+    suite.mint_native(&einstein, coin(1_000, "juno"));
 
-    adapter.return_deposits().unwrap();
-    assert_eq!(
-        mock.query_balance(&mock.sender.clone(), "juno").unwrap(),
-        Uint128::from(1000u128)
-    );
-    assert_eq!(
-        mock.query_balance(&einstien, "juno").unwrap(),
-        Uint128::from(1000u128)
-    );
-    assert_eq!(
-        mock.query_balance(&recipient, "juno").unwrap(),
-        Uint128::zero()
-    );
-    assert_eq!(
-        mock.query_balance(&adapter.address().unwrap(), "juno")
-            .unwrap(),
-        Uint128::zero()
-    );
+    suite
+        .create_submission(&owner, &recipient, Some(coin(1_000, "juno")))
+        .unwrap();
+    suite
+        .create_submission(&einstein, &einstein, Some(coin(1_000, "juno")))
+        .unwrap();
+
+    suite.execute_owner(&ExecuteMsg::ReturnDeposits {}).unwrap();
+    assert_eq!(suite.native_balance(&owner, "juno"), Uint128::new(1_000));
+    assert_eq!(suite.native_balance(&einstein, "juno"), Uint128::new(1_000));
+    assert_eq!(suite.native_balance(&recipient, "juno"), Uint128::zero());
+    let adapter = suite.adapter.clone();
+    assert_eq!(suite.native_balance(&adapter, "juno"), Uint128::zero());
 }
 
 #[test]
 fn return_deposits_required_cw20_deposit() {
-    let mock = MockBech32::new("mock");
-    let cw20 = cw20_helper(mock.clone());
-    let recipient = mock.addr_make("recipient");
-    let adapter = setup_gauge_adapter(
-        mock.clone(),
-        Some(AssetUnchecked {
-            denom: UncheckedDenom::Cw20(cw20.addr_str().unwrap()),
-            amount: 1_000u128.into(),
-        }),
-    );
-    let binary_msg = to_json_binary(&ReceiveMsg::CreateSubmission {
-        name: "DAOers".into(),
-        url: "https://daodao.zone".into(),
+    let (mut suite, cw20) = Suite::new_cw20_deposit();
+    let owner = suite.owner.clone();
+    let adapter = suite.adapter.clone();
+    let recipient = addr("recipient");
+
+    let inner = to_json_binary(&ReceiveMsg::CreateSubmission {
+        name: "DAOers".to_string(),
+        url: "https://daodao.zone".to_string(),
         address: recipient.to_string(),
     })
     .unwrap();
-
-    // Valid submission.
-    cw20.send(1_000u128.into(), adapter.addr_str().unwrap(), binary_msg)
+    suite
+        .cw20_send(&cw20, &owner, &adapter, 1_000, inner)
         .unwrap();
 
-    assert_eq!(
-        cw20.balance(mock.sender.to_string()).unwrap().balance,
-        Uint128::from(999_000u128)
-    );
-    assert_eq!(
-        cw20.balance(recipient.to_string()).unwrap().balance,
-        Uint128::zero()
-    );
-    assert_eq!(
-        cw20.balance(adapter.address().unwrap().to_string())
-            .unwrap()
-            .balance,
-        Uint128::from(1_000u128),
-    );
+    assert_eq!(suite.cw20_balance(&cw20, &owner), Uint128::new(999_000));
+    assert_eq!(suite.cw20_balance(&cw20, &recipient), Uint128::zero());
+    assert_eq!(suite.cw20_balance(&cw20, &adapter), Uint128::new(1_000));
 
-    adapter.return_deposits().unwrap();
+    suite.execute_owner(&ExecuteMsg::ReturnDeposits {}).unwrap();
 
-    assert_eq!(
-        cw20.balance(mock.sender.to_string()).unwrap().balance,
-        Uint128::from(1_000_000u128),
-    );
-    // Tokens are sent back to submission sender, not recipient.
-    assert_eq!(
-        cw20.balance(recipient.to_string()).unwrap().balance,
-        Uint128::zero(),
-    );
-    assert_eq!(
-        cw20.balance(adapter.address().unwrap().to_string())
-            .unwrap()
-            .balance,
-        Uint128::zero(),
-    );
+    assert_eq!(suite.cw20_balance(&cw20, &owner), Uint128::new(1_000_000));
+    // Refund target is the submission sender (owner), not the recipient.
+    assert_eq!(suite.cw20_balance(&cw20, &recipient), Uint128::zero());
+    assert_eq!(suite.cw20_balance(&cw20, &adapter), Uint128::zero());
 }
 
 #[test]
 fn sample_gauge_msgs_cw20() {
-    let mock = MockBech32::new("mock");
-    let addr_1 = mock.addr_make("addr1");
-    let addr_2 = mock.addr_make("addr2");
-    let addr_3 = mock.addr_make("addr3");
+    let (mut suite, cw20) = Suite::new_cw20_reward(None);
+    let owner = suite.owner.clone();
+    let addr_1 = addr("addr1");
+    let addr_2 = addr("addr2");
+    let addr_3 = addr("addr3");
     let reward = Uint128::new(1_000_000);
-    let (adapter, cw20) = setup_cw20_reward_gauge_adapter(mock.clone(), None);
 
-    adapter
-        .create_submission(addr_1.to_string(), "name".into(), "https://test.url".into())
+    suite
+        .execute(
+            &owner,
+            &ExecuteMsg::CreateSubmission {
+                name: "name".to_string(),
+                url: "https://test.url".to_string(),
+                address: addr_1.to_string(),
+            },
+            &[],
+        )
         .unwrap();
-    adapter
-        .create_submission(addr_2.to_string(), "name".into(), "https://test.url".into())
+    suite
+        .execute(
+            &owner,
+            &ExecuteMsg::CreateSubmission {
+                name: "name".to_string(),
+                url: "https://test.url".to_string(),
+                address: addr_2.to_string(),
+            },
+            &[],
+        )
         .unwrap();
 
     let selected = vec![
@@ -548,39 +385,43 @@ fn sample_gauge_msgs_cw20() {
         (addr_3.to_string(), Decimal::percent(26)),
     ];
 
-    let res: crate::msg::SampleGaugeMsgsResponse =
-        adapter.sample_gauge_msgs(selected.clone()).unwrap();
+    let res: SampleGaugeMsgsResponse = suite
+        .query(&AdapterQueryMsg::SampleGaugeMsgs { selected })
+        .unwrap();
     assert_eq!(res.execute.len(), 3);
     assert_eq!(
         res.execute,
         [
             CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: cw20.addr_str().unwrap(),
-                msg: to_json_binary(&AbsCw20ExecuteMsg::Transfer {
+                contract_addr: cw20.to_string(),
+                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: addr_1.to_string(),
-                    amount: reward * Decimal::percent(41)
+                    amount: reward * Decimal::percent(41),
                 })
                 .unwrap(),
-                funds: vec![]
+                funds: vec![],
             }),
             CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: cw20.addr_str().unwrap(),
-                msg: to_json_binary(&AbsCw20ExecuteMsg::Transfer {
+                contract_addr: cw20.to_string(),
+                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: addr_2.to_string(),
-                    amount: reward * Decimal::percent(33)
+                    amount: reward * Decimal::percent(33),
                 })
                 .unwrap(),
-                funds: vec![]
+                funds: vec![],
             }),
             CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: cw20.addr_str().unwrap(),
-                msg: to_json_binary(&AbsCw20ExecuteMsg::Transfer {
+                contract_addr: cw20.to_string(),
+                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: addr_3.to_string(),
-                    amount: reward * Decimal::percent(26)
+                    amount: reward * Decimal::percent(26),
                 })
                 .unwrap(),
-                funds: vec![]
+                funds: vec![],
             }),
         ]
     );
+
+    // Suppress unused-import lint in case helper not used.
+    let _ = submit_cw20_create;
 }

@@ -143,6 +143,7 @@ impl SuiteBuilder {
                 group_contract: dao_voting_cw4::msg::GroupContract::New {
                     cw4_group_code_id: group_code_id,
                     initial_members: self.voting_members,
+                    cw4_group_salt: None,
                 },
             })
             .unwrap(),
@@ -150,7 +151,8 @@ impl SuiteBuilder {
                 addr: owner.to_string(),
             }),
             label: "CW4 Voting Contract".to_owned(),
-            funds: vec![],
+            funds: None,
+            salt: None,
         };
 
         // instantiate proposal_single module
@@ -168,13 +170,15 @@ impl SuiteBuilder {
                 pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
                 close_proposal_on_execution_failure: false,
                 veto: None,
+                delegation_module: None,
             })
             .unwrap(),
             admin: Some(Admin::Address {
                 addr: owner.to_string(),
             }),
             label: "Proposal Single Contract".to_owned(),
-            funds: vec![],
+            funds: None,
+            salt: None,
         };
 
         // intantiate core contract,
@@ -193,6 +197,7 @@ impl SuiteBuilder {
                     voting_module_instantiate_info: voting_module,
                     proposal_modules_instantiate_info: vec![proposal_module],
                     initial_items: None,
+                    initial_actions: None,
                     dao_uri: None,
                 },
                 &[],
@@ -525,7 +530,8 @@ impl Suite {
                             addr: self.owner.clone(),
                         }),
                         label: "CW4 Voting Contract".to_owned(),
-                        funds: vec![],
+                        funds: None,
+                        salt: None,
                     }],
                     to_disable: vec![],
                 })?,
@@ -566,7 +572,8 @@ impl Suite {
                             addr: self.owner.clone(),
                         }),
                         label: "CW4 Voting Contract".to_owned(),
-                        funds: vec![],
+                        funds: None,
+                        salt: None,
                     }],
                     to_disable: vec![],
                 })?,
