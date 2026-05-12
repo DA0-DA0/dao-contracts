@@ -1316,7 +1316,7 @@ fn test_admin_permissions() {
 
 #[test]
 fn test_admin_nomination() {
-    let (core_addr, mut app) = do_standard_instantiate(true, Some("admin".to_string()));
+    let (core_addr, mut app) = do_standard_instantiate(true, Some("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql".to_string()));
 
     // Check that there is no pending nominations.
     let nomination: AdminNominationResponse = app
@@ -1330,7 +1330,7 @@ fn test_admin_nomination() {
         Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql"),
         core_addr.clone(),
         &ExecuteMsg::NominateAdmin {
-            admin: Some("ekez".to_string()),
+            admin: Some("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string()),
         },
         &[],
     )
@@ -2161,8 +2161,8 @@ fn test_cw721_receive() {
             cw721_id,
             Addr::unchecked(CREATOR_ADDR),
             &cw721_base::msg::InstantiateMsg {
-                name: "ekez".to_string(),
-                symbol: "ekez".to_string(),
+                name: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+                symbol: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 minter: Some(CREATOR_ADDR.to_string()),
                 collection_info_extension: None,
                 creator: None,
@@ -2179,8 +2179,8 @@ fn test_cw721_receive() {
             cw721_id,
             Addr::unchecked(CREATOR_ADDR),
             &cw721_base::msg::InstantiateMsg {
-                name: "ekez".to_string(),
-                symbol: "ekez".to_string(),
+                name: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+                symbol: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 minter: Some(CREATOR_ADDR.to_string()),
                 collection_info_extension: None,
                 creator: None,
@@ -2196,7 +2196,7 @@ fn test_cw721_receive() {
         Addr::unchecked(CREATOR_ADDR),
         cw721_addr.clone(),
         &cw721_base::msg::ExecuteMsg::Mint {
-            token_id: "ekez".to_string(),
+            token_id: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             owner: CREATOR_ADDR.to_string(),
             token_uri: None,
             extension: None,
@@ -2210,7 +2210,7 @@ fn test_cw721_receive() {
         cw721_addr.clone(),
         &cw721_base::msg::ExecuteMsg::SendNft {
             contract: gov_addr.to_string(),
-            token_id: "ekez".to_string(),
+            token_id: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             msg: to_json_binary("").unwrap(),
         },
         &[],
@@ -2297,8 +2297,8 @@ fn test_cw721_receive_no_auto_add() {
             cw721_id,
             Addr::unchecked(CREATOR_ADDR),
             &cw721_base::msg::InstantiateMsg {
-                name: "ekez".to_string(),
-                symbol: "ekez".to_string(),
+                name: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+                symbol: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 minter: Some(CREATOR_ADDR.to_string()),
                 collection_info_extension: None,
                 creator: None,
@@ -2315,8 +2315,8 @@ fn test_cw721_receive_no_auto_add() {
             cw721_id,
             Addr::unchecked(CREATOR_ADDR),
             &cw721_base::msg::InstantiateMsg {
-                name: "ekez".to_string(),
-                symbol: "ekez".to_string(),
+                name: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+                symbol: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 minter: Some(CREATOR_ADDR.to_string()),
                 collection_info_extension: None,
                 creator: None,
@@ -2332,7 +2332,7 @@ fn test_cw721_receive_no_auto_add() {
         Addr::unchecked(CREATOR_ADDR),
         cw721_addr.clone(),
         &cw721_base::msg::ExecuteMsg::Mint {
-            token_id: "ekez".to_string(),
+            token_id: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             owner: CREATOR_ADDR.to_string(),
             token_uri: None,
             extension: None,
@@ -2346,7 +2346,7 @@ fn test_cw721_receive_no_auto_add() {
         cw721_addr.clone(),
         &cw721_base::msg::ExecuteMsg::SendNft {
             contract: gov_addr.to_string(),
-            token_id: "ekez".to_string(),
+            token_id: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             msg: to_json_binary("").unwrap(),
         },
         &[],

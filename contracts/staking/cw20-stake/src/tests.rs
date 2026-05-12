@@ -71,7 +71,7 @@ fn instantiate_staking(app: &mut App, cw20: Addr, unstaking_duration: Option<Dur
         &msg,
         &[],
         "staking",
-        Some("admin".to_string()),
+        Some("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql".to_string()),
     )
     .unwrap()
 }

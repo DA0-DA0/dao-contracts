@@ -67,7 +67,7 @@ fn test_simple_escrow() {
                 },
             },
             &[],
-            "escrow",
+            "cosmwasm14pphss726thpwws3yc458hggufynm9x7jvxtaw74a4zcr07cwjaqx9vxsa",
             None,
         )
         .unwrap();
@@ -168,7 +168,7 @@ fn test_withdraw() {
                 },
             },
             &[],
-            "escrow",
+            "cosmwasm14pphss726thpwws3yc458hggufynm9x7jvxtaw74a4zcr07cwjaqx9vxsa",
             None,
         )
         .unwrap();
@@ -352,7 +352,7 @@ fn test_withdraw_post_completion() {
                 },
             },
             &[],
-            "escrow",
+            "cosmwasm14pphss726thpwws3yc458hggufynm9x7jvxtaw74a4zcr07cwjaqx9vxsa",
             None,
         )
         .unwrap();
@@ -461,7 +461,7 @@ fn test_invalid_instantiate() {
                 },
             },
             &[],
-            "escrow",
+            "cosmwasm14pphss726thpwws3yc458hggufynm9x7jvxtaw74a4zcr07cwjaqx9vxsa",
             None,
         )
         .unwrap_err()
@@ -492,7 +492,7 @@ fn test_invalid_instantiate() {
                 },
             },
             &[],
-            "escrow",
+            "cosmwasm14pphss726thpwws3yc458hggufynm9x7jvxtaw74a4zcr07cwjaqx9vxsa",
             None,
         )
         .unwrap_err()
@@ -530,7 +530,7 @@ fn test_non_distincy_counterparties() {
                 },
             },
             &[],
-            "escrow",
+            "cosmwasm14pphss726thpwws3yc458hggufynm9x7jvxtaw74a4zcr07cwjaqx9vxsa",
             None,
         )
         .unwrap_err()
@@ -589,7 +589,7 @@ fn test_fund_non_counterparty() {
                 },
             },
             &[],
-            "escrow",
+            "cosmwasm14pphss726thpwws3yc458hggufynm9x7jvxtaw74a4zcr07cwjaqx9vxsa",
             None,
         )
         .unwrap();
@@ -686,7 +686,7 @@ fn test_fund_twice() {
                 },
             },
             &[],
-            "escrow",
+            "cosmwasm14pphss726thpwws3yc458hggufynm9x7jvxtaw74a4zcr07cwjaqx9vxsa",
             None,
         )
         .unwrap();
@@ -806,7 +806,7 @@ fn test_fund_invalid_amount() {
                 },
             },
             &[],
-            "escrow",
+            "cosmwasm14pphss726thpwws3yc458hggufynm9x7jvxtaw74a4zcr07cwjaqx9vxsa",
             None,
         )
         .unwrap();
@@ -889,7 +889,7 @@ fn test_fund_invalid_denom() {
                 },
             },
             &[],
-            "escrow",
+            "cosmwasm14pphss726thpwws3yc458hggufynm9x7jvxtaw74a4zcr07cwjaqx9vxsa",
             None,
         )
         .unwrap();
@@ -992,7 +992,7 @@ fn test_fund_invalid_cw20() {
                 },
             },
             &[],
-            "escrow",
+            "cosmwasm14pphss726thpwws3yc458hggufynm9x7jvxtaw74a4zcr07cwjaqx9vxsa",
             None,
         )
         .unwrap();

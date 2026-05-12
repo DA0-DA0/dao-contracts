@@ -2372,7 +2372,7 @@ fn test_update_continuous() {
 fn test_update_owner() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
-    let new_owner = "new_owner";
+    let new_owner = "cosmwasm1lk0ans8sykcdtc2u6ep502pjm6m2ep4aqe9qsupg5hwpweg4mxxqrsvg0k";
     suite.update_owner(new_owner);
 
     let owner = suite.get_owner().to_string();

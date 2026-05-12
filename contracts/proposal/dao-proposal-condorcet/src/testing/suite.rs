@@ -43,7 +43,7 @@ impl Default for SuiteBuilder {
                 close_proposals_on_execution_failure: true,
             },
             with_proposal: None,
-            with_voters: vec![("sender".to_string(), 10)],
+            with_voters: vec![("cosmwasm1pgm8hyk0pvphmlvfjc8wsvk4daluz5tgrw6pu5mfpemk74uxnx9qlm3aqg".to_string(), 10)],
         }
     }
 }

@@ -32,7 +32,7 @@ where
 {
     do_votes(
         vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
+            voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             position: Vote::Yes,
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
@@ -46,7 +46,7 @@ where
 
     do_votes(
         vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
+            voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             position: Vote::No,
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
@@ -65,7 +65,7 @@ where
 {
     do_votes(
         vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
+            voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             position: Vote::Yes,
             weight: Uint128::new(u128::MAX),
             should_execute: ShouldExecute::Yes,
@@ -84,7 +84,7 @@ where
 {
     do_votes(
         vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
+            voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             position: Vote::Yes,
             weight: Uint128::new(u128::MAX),
             should_execute: ShouldExecute::Yes,
@@ -99,13 +99,13 @@ where
     do_votes(
         vec![
             TestSingleChoiceVote {
-                voter: "zeke".to_string(),
+                voter: "cosmwasm1rs2hjzeaz59yc3n0unf0exm3uq7a4e49qwpqxhds6pr463g7uu9s4lrecg".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(1),
                 should_execute: ShouldExecute::Yes,
             },
             TestSingleChoiceVote {
-                voter: "ekez".to_string(),
+                voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(u128::MAX - 1),
                 should_execute: ShouldExecute::Yes,
@@ -125,7 +125,7 @@ where
 {
     do_votes(
         vec![TestSingleChoiceVote {
-            voter: "zeke".to_string(),
+            voter: "cosmwasm1rs2hjzeaz59yc3n0unf0exm3uq7a4e49qwpqxhds6pr463g7uu9s4lrecg".to_string(),
             position: Vote::No,
             weight: Uint128::new(1),
             should_execute: ShouldExecute::Yes,
@@ -139,7 +139,7 @@ where
 
     do_votes(
         vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
+            voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             position: Vote::No,
             weight: Uint128::new(1),
             should_execute: ShouldExecute::Yes,
@@ -158,7 +158,7 @@ where
 {
     do_votes(
         vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
+            voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             position: Vote::Abstain,
             weight: Uint128::new(u64::MAX.into()),
             should_execute: ShouldExecute::Yes,
@@ -175,7 +175,7 @@ where
     for i in 0..101 {
         do_votes(
             vec![TestSingleChoiceVote {
-                voter: "ekez".to_string(),
+                voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 position: Vote::Abstain,
                 weight: Uint128::new(u64::MAX.into()),
                 should_execute: ShouldExecute::Yes,
@@ -200,7 +200,7 @@ where
     // are more than 1 yes votes.
     do_votes(
         vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
+            voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             position: Vote::Yes,
             weight: Uint128::new(1),
             should_execute: ShouldExecute::Yes,
@@ -214,7 +214,7 @@ where
 
     do_votes(
         vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
+            voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             position: Vote::Yes,
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
@@ -229,7 +229,7 @@ where
     // HIGH PERCISION
     do_votes(
         vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
+            voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             position: Vote::Yes,
             weight: Uint128::new(9999999),
             should_execute: ShouldExecute::Yes,
@@ -243,7 +243,7 @@ where
 
     do_votes(
         vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
+            voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             position: Vote::Abstain,
             weight: Uint128::new(1),
             should_execute: ShouldExecute::Yes,
@@ -263,13 +263,13 @@ where
     do_votes(
         vec![
             TestSingleChoiceVote {
-                voter: "ekez".to_string(),
+                voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 position: Vote::Abstain,
                 weight: Uint128::new(2),
                 should_execute: ShouldExecute::Yes,
             },
             TestSingleChoiceVote {
-                voter: "ekez".to_string(),
+                voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(2),
                 should_execute: ShouldExecute::No,
@@ -297,19 +297,19 @@ where
     do_votes(
         vec![
             TestSingleChoiceVote {
-                voter: "ekez".to_string(),
+                voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 position: Vote::Abstain,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
             TestSingleChoiceVote {
-                voter: "keze".to_string(),
+                voter: "cosmwasm1mw84pqf8eyuhqwr9xre4l7aswr75ugex42gzjyvgueeza7vxv0dqx57dyx".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(5),
                 should_execute: ShouldExecute::Yes,
             },
             TestSingleChoiceVote {
-                voter: "ezek".to_string(),
+                voter: "cosmwasm1zdm6ufhhjn6cf79x8un6yxccx87gpyhewu9dyhj2cqnz4wk7l2rs2tg6md".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(5),
                 should_execute: ShouldExecute::Yes,
@@ -325,13 +325,13 @@ where
     do_votes(
         vec![
             TestSingleChoiceVote {
-                voter: "ekez".to_string(),
+                voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 position: Vote::Abstain,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
             TestSingleChoiceVote {
-                voter: "keze".to_string(),
+                voter: "cosmwasm1mw84pqf8eyuhqwr9xre4l7aswr75ugex42gzjyvgueeza7vxv0dqx57dyx".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(5),
                 should_execute: ShouldExecute::Yes,
@@ -347,20 +347,20 @@ where
     do_votes(
         vec![
             TestSingleChoiceVote {
-                voter: "ekez".to_string(),
+                voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 position: Vote::Abstain,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
             TestSingleChoiceVote {
-                voter: "keze".to_string(),
+                voter: "cosmwasm1mw84pqf8eyuhqwr9xre4l7aswr75ugex42gzjyvgueeza7vxv0dqx57dyx".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(5),
                 should_execute: ShouldExecute::Yes,
             },
             // Can vote up to expiration time.
             TestSingleChoiceVote {
-                voter: "ezek".to_string(),
+                voter: "cosmwasm1zdm6ufhhjn6cf79x8un6yxccx87gpyhewu9dyhj2cqnz4wk7l2rs2tg6md".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(5),
                 should_execute: ShouldExecute::Yes,
@@ -381,13 +381,13 @@ where
     do_votes(
         vec![
             TestSingleChoiceVote {
-                voter: "ekez".to_string(),
+                voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
             TestSingleChoiceVote {
-                voter: "keze".to_string(),
+                voter: "cosmwasm1mw84pqf8eyuhqwr9xre4l7aswr75ugex42gzjyvgueeza7vxv0dqx57dyx".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(5),
                 should_execute: ShouldExecute::Yes,
@@ -404,20 +404,20 @@ where
     do_votes(
         vec![
             TestSingleChoiceVote {
-                voter: "ekez".to_string(),
+                voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
             TestSingleChoiceVote {
-                voter: "keze".to_string(),
+                voter: "cosmwasm1mw84pqf8eyuhqwr9xre4l7aswr75ugex42gzjyvgueeza7vxv0dqx57dyx".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(5),
                 should_execute: ShouldExecute::Yes,
             },
             // Can vote up to expiration time.
             TestSingleChoiceVote {
-                voter: "ezek".to_string(),
+                voter: "cosmwasm1zdm6ufhhjn6cf79x8un6yxccx87gpyhewu9dyhj2cqnz4wk7l2rs2tg6md".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
@@ -439,13 +439,13 @@ where
     do_votes(
         vec![
             TestSingleChoiceVote {
-                voter: "ekez".to_string(),
+                voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
             TestSingleChoiceVote {
-                voter: "keze".to_string(),
+                voter: "cosmwasm1mw84pqf8eyuhqwr9xre4l7aswr75ugex42gzjyvgueeza7vxv0dqx57dyx".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
@@ -462,14 +462,14 @@ where
     do_votes(
         vec![
             TestSingleChoiceVote {
-                voter: "ekez".to_string(),
+                voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
             // Can vote up to expiration time, even if it already rejected.
             TestSingleChoiceVote {
-                voter: "keze".to_string(),
+                voter: "cosmwasm1mw84pqf8eyuhqwr9xre4l7aswr75ugex42gzjyvgueeza7vxv0dqx57dyx".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
@@ -490,7 +490,7 @@ where
 {
     do_votes(
         vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
+            voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             position: Vote::Yes,
             weight: Uint128::new(59),
             should_execute: ShouldExecute::Yes,
@@ -504,7 +504,7 @@ where
     );
     do_votes(
         vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
+            voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             position: Vote::No,
             weight: Uint128::new(59),
             should_execute: ShouldExecute::Yes,
@@ -526,7 +526,7 @@ where
 {
     do_votes(
         vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
+            voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             position: Vote::Yes,
             weight: Uint128::new(60),
             should_execute: ShouldExecute::Yes,
@@ -541,7 +541,7 @@ where
     do_votes(
         vec![
             TestSingleChoiceVote {
-                voter: "ekez".to_string(),
+                voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(59),
                 should_execute: ShouldExecute::Yes,
@@ -554,7 +554,7 @@ where
             // quorum higher than the threshold as it makes the
             // passing threshold the quorum threshold.
             TestSingleChoiceVote {
-                voter: "keze".to_string(),
+                voter: "cosmwasm1mw84pqf8eyuhqwr9xre4l7aswr75ugex42gzjyvgueeza7vxv0dqx57dyx".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(1),
                 should_execute: ShouldExecute::Yes,
@@ -569,7 +569,7 @@ where
     );
     do_votes(
         vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
+            voter: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
             position: Vote::No,
             weight: Uint128::new(60),
             should_execute: ShouldExecute::Yes,

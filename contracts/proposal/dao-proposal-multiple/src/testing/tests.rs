@@ -2208,7 +2208,7 @@ fn test_open_proposal_submission() {
     make_proposal(
         &mut app,
         &govmod,
-        "random",
+        "cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6",
         MultipleChoiceOptions {
             options: vec![
                 MultipleChoiceOption {

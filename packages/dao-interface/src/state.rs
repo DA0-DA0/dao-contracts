@@ -214,7 +214,7 @@ mod tests {
         assert_eq!(
             no_admin.into_wasm_msg(Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")),
             WasmMsg::Instantiate {
-                admin: Some("ekez".to_string()),
+                admin: Some("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string()),
                 code_id: 42,
                 msg: to_json_binary("foo").unwrap(),
                 funds: vec![],
@@ -287,7 +287,7 @@ mod tests {
         assert_eq!(
             no_admin.into_wasm_msg(Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")),
             WasmMsg::Instantiate2 {
-                admin: Some("ekez".to_string()),
+                admin: Some("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string()),
                 code_id: 42,
                 msg: to_json_binary("foo").unwrap(),
                 funds: vec![],
@@ -310,14 +310,14 @@ mod tests {
             salt: None,
         });
 
-        let submessages = update.update(deps.as_mut(), &item, 1, "ekez").unwrap();
+        let submessages = update.update(deps.as_mut(), &item, 1, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg").unwrap();
 
         // Submessage is correct.
         assert_eq!(
             submessages,
             vec![SubMsg::reply_on_success(
                 WasmMsg::Instantiate {
-                    admin: Some("ekez".to_string()),
+                    admin: Some("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string()),
                     code_id: 42,
                     msg: to_json_binary("foo").unwrap(),
                     funds: vec![Coin {

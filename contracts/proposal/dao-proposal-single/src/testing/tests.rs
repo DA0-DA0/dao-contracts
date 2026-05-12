@@ -2023,7 +2023,7 @@ fn test_cant_execute_not_member_when_proposal_created() {
     );
 
     // Give noah some tokens.
-    mint_cw20s(&mut app, &gov_token, &core_addr, "noah", 20_000_000);
+    mint_cw20s(&mut app, &gov_token, &core_addr, "cosmwasm1euarh03nrsu4p5t236v303dmsdqw0s80j976yh22jmuj6p6teczsmswfyh", 20_000_000);
     // Have noah stake some.
     let voting_module = query_voting_module(&app, &core_addr);
     let staking_contract: Addr = app
@@ -2049,7 +2049,7 @@ fn test_cant_execute_not_member_when_proposal_created() {
 
     // Can't execute from member who wasn't a member when the proposal was
     // created.
-    let err = execute_proposal_should_fail(&mut app, &proposal_module, "noah", proposal_id);
+    let err = execute_proposal_should_fail(&mut app, &proposal_module, "cosmwasm1euarh03nrsu4p5t236v303dmsdqw0s80j976yh22jmuj6p6teczsmswfyh", proposal_id);
     assert!(matches!(err, ContractError::Unauthorized {}));
 }
 
@@ -2658,13 +2658,13 @@ fn test_min_duration_same_as_proposal_duration() {
     let gov_token = query_dao_token(&app, &core_addr);
     let proposal_module = query_single_proposal_module(&app, &core_addr);
 
-    mint_cw20s(&mut app, &gov_token, &core_addr, "ekez", 10_000_000);
-    let proposal_id = make_proposal(&mut app, &proposal_module, "ekez", vec![], None);
+    mint_cw20s(&mut app, &gov_token, &core_addr, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", 10_000_000);
+    let proposal_id = make_proposal(&mut app, &proposal_module, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", vec![], None);
 
     // Whale votes yes. Normally the proposal would just pass and ekez
     // would be out of luck.
     vote_on_proposal(&mut app, &proposal_module, "whale", proposal_id, Vote::Yes);
-    vote_on_proposal(&mut app, &proposal_module, "ekez", proposal_id, Vote::No);
+    vote_on_proposal(&mut app, &proposal_module, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", proposal_id, Vote::No);
 
     app.update_block(|b| b.height += 100);
     let proposal_response = query_proposal(&app, &proposal_module, proposal_id);
@@ -3627,7 +3627,7 @@ fn test_vote_not_registered() {
     } = setup_test(vec![]);
 
     let err =
-        vote_on_proposal_should_fail(&mut app, &proposal_module, "ekez", proposal_id, Vote::Yes);
+        vote_on_proposal_should_fail(&mut app, &proposal_module, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", proposal_id, Vote::Yes);
     assert!(matches!(err, ContractError::NotRegistered {}))
 }
 
@@ -3707,7 +3707,7 @@ fn test_proposal_creation_permissions() {
                 title: "title".to_string(),
                 description: "description".to_string(),
                 msgs: vec![],
-                proposer: Some("ekez".to_string()),
+                proposer: Some("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string()),
                 vote: None,
             }),
             &[],
@@ -3718,7 +3718,7 @@ fn test_proposal_creation_permissions() {
     assert!(matches!(err, ContractError::InvalidProposer {}));
 
     // Works normally.
-    let proposal_id = make_proposal(&mut app, &proposal_module, "ekez", vec![], None);
+    let proposal_id = make_proposal(&mut app, &proposal_module, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", vec![], None);
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.proposer, Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"));
     vote_on_proposal(
@@ -3784,7 +3784,7 @@ fn test_reply_hooks_mock() {
         res.attributes[0],
         Attribute {
             key: "failed_prepropose_hook".to_string(),
-            value: "ekez".into()
+            value: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".into()
         }
     );
 

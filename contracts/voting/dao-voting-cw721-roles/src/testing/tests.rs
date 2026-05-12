@@ -82,7 +82,7 @@ fn test_voting_queries() {
         owner: CREATOR_ADDR.to_string(),
         token_uri: None,
         extension: MetadataExt {
-            role: Some("admin".to_string()),
+            role: Some("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql".to_string()),
             weight: 1,
         },
     }]);

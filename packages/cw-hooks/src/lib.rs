@@ -135,7 +135,7 @@ mod tests {
             .unwrap();
         assert_eq!(msgs, vec![]);
 
-        hooks.add_hook(storage, addr!("ekez")).unwrap();
+        hooks.add_hook(storage, addr!("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")).unwrap();
         hooks.add_hook(storage, addr!("meow")).unwrap();
 
         assert_eq!(hooks.hook_count(storage).unwrap(), 2);

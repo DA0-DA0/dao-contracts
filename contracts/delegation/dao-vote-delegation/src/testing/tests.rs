@@ -1639,7 +1639,7 @@ fn test_cannot_undelegate_twice() {
 }
 
 #[test]
-#[should_panic(expected = "unauthorized")]
+#[should_panic(expected = "cosmwasm1a8vr7qwf4lcr4a3cpc6p4tvs54286duw74zcywpudjdrt3f3sxhswq38fm")]
 fn test_unauthorized_update_voting_power_hook_callers() {
     let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
     let delegation_addr = suite.delegation_addr.clone();
@@ -1727,7 +1727,7 @@ fn test_unauthorized_execute_vote_hook_caller() {
 }
 
 #[test]
-#[should_panic(expected = "unauthorized")]
+#[should_panic(expected = "cosmwasm1a8vr7qwf4lcr4a3cpc6p4tvs54286duw74zcywpudjdrt3f3sxhswq38fm")]
 fn test_unauthorized_config_update() {
     let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
     let delegation_addr = suite.delegation_addr.clone();

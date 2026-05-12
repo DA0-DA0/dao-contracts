@@ -119,7 +119,7 @@ fn test_instantiate_no_protobuf_registry() {
 #[test]
 fn test_instantiate_with_initial_roles() {
     let initial_role = InitialRole {
-        name: "admin".to_string(),
+        name: "cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql".to_string(),
         metadata: Some("Admin role".to_string()),
         enabled: Some(true),
         authorizations: Some(vec![InitialAuthorization {
@@ -141,7 +141,7 @@ fn test_instantiate_with_initial_roles() {
 
     // Check role details
     let role = suite.get_role(1);
-    assert_eq!(role.name, "admin");
+    assert_eq!(role.name, "cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql");
     assert_eq!(role.metadata, Some("Admin role".to_string()));
     assert!(role.enabled);
 
@@ -169,7 +169,7 @@ fn test_instantiate_with_initial_roles() {
 #[test]
 fn test_auth() {
     let mut suite = SuiteBuilder::base().build();
-    let not_owner = "not_owner";
+    let not_owner = "cosmwasm1hclhm4dapgs8lxc9ya59jjyakln279wc0rh6ewx5ddrmhf0jlctq3mddc2";
 
     let err = suite.update_dao_err(not_owner, "new_dao".to_string());
     assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
@@ -253,7 +253,7 @@ fn test_update_owner() {
     let existing_owner = suite.get_ownership().owner.unwrap();
     assert_eq!(existing_owner, suite.core_addr);
 
-    let new_owner = "new_owner";
+    let new_owner = "cosmwasm1lk0ans8sykcdtc2u6ep502pjm6m2ep4aqe9qsupg5hwpweg4mxxqrsvg0k";
     suite.update_owner(existing_owner, new_owner);
 
     let owner = suite.get_ownership().owner.unwrap();
