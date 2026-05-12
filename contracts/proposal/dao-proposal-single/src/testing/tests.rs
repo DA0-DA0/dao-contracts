@@ -2663,7 +2663,7 @@ fn test_min_duration_same_as_proposal_duration() {
 
     // Whale votes yes. Normally the proposal would just pass and ekez
     // would be out of luck.
-    vote_on_proposal(&mut app, &proposal_module, "whale", proposal_id, Vote::Yes);
+    vote_on_proposal(&mut app, &proposal_module, "cosmwasm15hf2u2rdpk0ytsrzrfhu0svprx2qm4ehh25d098x4u6h6gfk57ss3esk35", proposal_id, Vote::Yes);
     vote_on_proposal(&mut app, &proposal_module, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", proposal_id, Vote::No);
 
     app.update_block(|b| b.height += 100);

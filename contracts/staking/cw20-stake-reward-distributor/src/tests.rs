@@ -644,6 +644,7 @@ fn test_ownership_expiry() {
 // v1 migration test — gated off; v1 contract pinned to cosmwasm-std 1.5.5.
 #[cfg(any())]
 #[test]
+#[ignore = "V1 migration stubbed for cw-std 2.x — needs Stage 3 storage-bytes shim"]
 fn test_migrate_from_v1() {
     let mut app = App::default();
     let sender = Addr::unchecked("cosmwasm1pgm8hyk0pvphmlvfjc8wsvk4daluz5tgrw6pu5mfpemk74uxnx9qlm3aqg");

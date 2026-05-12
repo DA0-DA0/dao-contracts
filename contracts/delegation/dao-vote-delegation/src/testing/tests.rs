@@ -1596,7 +1596,7 @@ fn test_cannot_delegate_no_vp() {
     let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
 
     suite.register(ADDR0);
-    suite.delegate("not_member", ADDR0, Decimal::percent(100));
+    suite.delegate("cosmwasm1ja77520k0qvgrjaf4ldf65ffc2nmvqrcdk473h6me8yaz2hwv6vs5gvlqe", ADDR0, Decimal::percent(100));
 }
 
 #[test]
