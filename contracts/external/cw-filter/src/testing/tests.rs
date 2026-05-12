@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use cosmwasm_std::{coins, to_json_binary, BankMsg, CosmosMsg};
 use cw_filter::ContractError;
 use cw_ownable::OwnershipError;

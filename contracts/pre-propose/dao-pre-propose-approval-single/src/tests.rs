@@ -1,4 +1,4 @@
-use cosmwasm_std::{coins, from_json, to_json_binary, Addr, Coin, CosmosMsg, Uint128, WasmMsg};
+use cosmwasm_std::{coins, from_json, to_json_binary, Addr, Coin, Uint128};
 use cw2::ContractVersion;
 use cw20::Cw20Coin;
 use cw_denom::UncheckedDenom;
@@ -11,7 +11,7 @@ use dao_pre_propose_base::{error::PreProposeError, msg::DepositInfoResponse, sta
 use dao_proposal_single as dps;
 use dao_testing::{
     contracts::{
-        cw20_base_contract, cw4_group_contract, dao_pre_propose_approval_single_contract,
+        cw20_base_contract, dao_pre_propose_approval_single_contract,
         dao_proposal_single_contract,
     },
     helpers::instantiate_with_cw4_groups_governance,
@@ -29,7 +29,7 @@ use dao_voting::{
     pre_propose::{PreProposeInfo, ProposalCreationPolicy},
     status::Status,
     threshold::{PercentageThreshold, Threshold},
-    voting::{SingleChoiceAutoVote, Vote},
+    voting::Vote,
 };
 
 // v2.4.1 migration test imports — gated off; see `test_migrate_from_v241` for details.

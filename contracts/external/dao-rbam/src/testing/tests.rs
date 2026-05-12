@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use cosmwasm_std::{to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Uint128, WasmMsg};
 use cw_ownable::OwnershipError;
 use cw_protobuf_registry::protobuf::base64_encode_protobuf;

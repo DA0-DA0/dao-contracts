@@ -21,8 +21,7 @@ use crate::msg::{
 };
 use crate::omniflix::{get_onft_transfer_msg, query_onft_owner, query_onft_supply};
 use crate::state::{
-    register_staked_nfts, register_unstaked_nfts, Config, ACTIVE_THRESHOLD, CONFIG, DAO, HOOKS,
-    LEGACY_NFT_CLAIMS, NFT_BALANCES, NFT_CLAIMS, PREPARED_ONFTS, STAKED_NFTS_PER_OWNER,
+    register_staked_nfts, register_unstaked_nfts, Config, ACTIVE_THRESHOLD, CONFIG, DAO, HOOKS, NFT_BALANCES, NFT_CLAIMS, PREPARED_ONFTS, STAKED_NFTS_PER_OWNER,
     TOTAL_STAKED_NFTS,
 };
 use crate::ContractError;

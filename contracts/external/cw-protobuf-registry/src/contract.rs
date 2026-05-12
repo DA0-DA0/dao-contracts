@@ -323,8 +323,11 @@ fn execute_prepare(
     for message in messages {
         // Only prepare messages that are not already prepared.
         if !PREPARED.has(deps.storage, message.to_string()) {
-            let fds = create_file_descriptor_set_for_messages(&deps.as_ref(), &[message.clone()])?
-                .encode_to_vec();
+            let fds = create_file_descriptor_set_for_messages(
+                &deps.as_ref(),
+                std::slice::from_ref(&message),
+            )?
+            .encode_to_vec();
             PREPARED.save(deps.storage, message, &fds)?;
         }
     }
@@ -469,9 +472,13 @@ fn query_decode(deps: Deps, message_name: String, value: Vec<u8>) -> StdResult<D
         .may_load(deps.storage, message_name.clone())?
         .map_or_else(
             || {
-                create_file_descriptor_set_for_messages(&deps, &[message_name.clone()]).map_err(
-                    |e| StdError::generic_err(format!("failed to create file descriptor set: {e}")),
+                create_file_descriptor_set_for_messages(
+                    &deps,
+                    std::slice::from_ref(&message_name),
                 )
+                .map_err(|e| {
+                    StdError::generic_err(format!("failed to create file descriptor set: {e}"))
+                })
             },
             |fds| {
                 FileDescriptorSet::decode(fds.as_slice())

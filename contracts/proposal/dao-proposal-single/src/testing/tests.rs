@@ -3,8 +3,7 @@ use std::ops::Add;
 use cosmwasm_std::{
     coins,
     testing::{mock_dependencies, mock_env},
-    to_json_binary, Addr, Attribute, BankMsg, Binary, ContractInfoResponse, CosmosMsg, Decimal,
-    Empty, Reply, StdError, SubMsgResult, Uint128, WasmMsg, WasmQuery,
+    to_json_binary, Addr, Attribute, BankMsg, Binary, ContractInfoResponse, CosmosMsg, Decimal, Reply, StdError, SubMsgResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::ContractVersion;
 use cw20::Cw20Coin;
@@ -314,10 +313,10 @@ fn test_simple_proposal_auto_vote_no() {
 fn test_propose_supports_stargate_messages() {
     // If we can make a proposal with a stargate message, we support
     // stargate messages in proposals.
-    setup_test(vec![CosmosMsg::Stargate {
+    setup_test(vec![CosmosMsg::Any(cosmwasm_std::AnyMsg {
         type_url: "foo_type".to_string(),
         value: Binary::default(),
-    }]);
+    })]);
 }
 
 /// Test that the deposit token is properly set to the voting module

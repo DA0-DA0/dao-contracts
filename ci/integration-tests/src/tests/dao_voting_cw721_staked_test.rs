@@ -1,5 +1,5 @@
 use cosm_orc::orchestrator::SigningKey;
-use cosmwasm_std::{Binary, Empty, Uint128};
+use cosmwasm_std::{Binary, Uint128};
 use cw_utils::Duration;
 use test_context::test_context;
 

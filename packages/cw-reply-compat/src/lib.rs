@@ -15,6 +15,7 @@ use cw_utils::{
     MsgInstantiateContractResponse, ParseReplyError,
 };
 
+#[allow(deprecated)]
 pub fn parse_reply_instantiate_data(
     msg: Reply,
 ) -> Result<MsgInstantiateContractResponse, ParseReplyError> {
@@ -27,6 +28,7 @@ pub fn parse_reply_instantiate_data(
     parse_instantiate_response_data(&data)
 }
 
+#[allow(deprecated)]
 pub fn parse_reply_execute_data(msg: Reply) -> Result<MsgExecuteContractResponse, ParseReplyError> {
     let data = msg
         .result

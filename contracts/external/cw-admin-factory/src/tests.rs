@@ -251,6 +251,7 @@ pub fn test_set_self_admin_mock() {
     );
     let mut bytes = vec![0x0Au8, addr_str.len() as u8];
     bytes.extend_from_slice(addr_str.as_bytes());
+    #[allow(deprecated)]
     let reply_msg: Reply = Reply {
         id: INSTANTIATE_CONTRACT_REPLY_ID,
         gas_used: 0,

@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_json_binary, Addr, Coin, Empty, Uint128};
+use cosmwasm_std::{to_json_binary, Addr, Coin, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App, BankSudo, Executor, SudoMsg};
 use cw_utils::Duration;

@@ -215,7 +215,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     let update_minter_msg = WasmMsg::Execute {
                         contract_addr: nft_contract.clone(),
                         msg: to_json_binary(
-                            &Cw721ExecuteMsg::<MetadataExt, Empty, ExecuteExt>::UpdateOwnership(
+                            &Cw721ExecuteMsg::<MetadataExt, Empty, ExecuteExt>::UpdateMinterOwnership(
                                 Action::TransferOwnership {
                                     new_owner: dao.to_string(),
                                     expiry: None,

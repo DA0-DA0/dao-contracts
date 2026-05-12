@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_json_binary, CosmosMsg, Empty, WasmMsg};
+use cosmwasm_std::{to_json_binary, CosmosMsg, WasmMsg};
 use dao_proposal_single::query::ProposalResponse;
 use dao_voting::voting::Vote;
 use test_context::test_context;

@@ -1,15 +1,13 @@
-use cosmwasm_std::{to_json_binary, Addr, Uint128, WasmMsg};
+use cosmwasm_std::{Addr, Uint128};
 use cw20::Cw20Coin;
-use cw20_stake_reward_distributor_v1 as v1;
 use cw_multi_test::{next_block, App, Executor};
 use cw_ownable::{Action, Expiration, Ownership, OwnershipError};
 use dao_testing::contracts::{
     cw20_base_contract, cw20_stake_contract, cw20_stake_reward_distributor_contract,
-    v1::cw20_stake_reward_distributor_v1_contract,
 };
 
 use crate::{
-    msg::{ExecuteMsg, InfoResponse, InstantiateMsg, MigrateMsg, QueryMsg},
+    msg::{ExecuteMsg, InfoResponse, InstantiateMsg, QueryMsg},
     state::Config,
 };
 use cw20_stake_reward_distributor::ContractError;

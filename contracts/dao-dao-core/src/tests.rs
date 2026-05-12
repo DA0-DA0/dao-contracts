@@ -19,7 +19,7 @@ use dao_interface::{
 };
 use dao_testing::contracts::{
     cw20_base_contract, cw721_base_contract, dao_dao_core_contract, dao_proposal_sudo_contract,
-    dao_voting_cw20_balance_contract, v1::cw_core_v1_contract,
+    dao_voting_cw20_balance_contract,
 };
 
 use crate::{
@@ -3006,10 +3006,10 @@ fn test_execute_stargate_msg() {
         proposal_module.address,
         core_addr,
         &ExecuteMsg::ExecuteProposalHook {
-            msgs: vec![CosmosMsg::Stargate {
+            msgs: vec![CosmosMsg::Any(cosmwasm_std::AnyMsg {
                 type_url: "foo_type".to_string(),
                 value: to_json_binary("foo_bin").unwrap(),
-            }],
+            })],
         },
         &[],
     );

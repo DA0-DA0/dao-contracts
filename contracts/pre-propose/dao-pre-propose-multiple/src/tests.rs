@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    coins, from_json, to_json_binary, Addr, Coin, CosmosMsg, Decimal, Empty, Uint128, WasmMsg,
+    coins, from_json, to_json_binary, Addr, Coin, Decimal, Empty, Uint128,
 };
 use cw2::ContractVersion;
 use cw20::Cw20Coin;
@@ -13,7 +13,7 @@ use dao_pre_propose_base::{error::PreProposeError, msg::DepositInfoResponse, sta
 use dao_proposal_multiple as dpm;
 use dao_testing::{
     contracts::{
-        cw20_base_contract, cw4_group_contract, dao_pre_propose_multiple_contract,
+        cw20_base_contract, dao_pre_propose_multiple_contract,
         dao_proposal_multiple_contract,
     },
     helpers::instantiate_with_cw4_groups_governance,
@@ -24,7 +24,6 @@ use dao_testing::contracts::v241::{
     dao_dao_core_v241_contract, dao_pre_propose_multiple_v241_contract,
     dao_proposal_multiple_v241_contract, dao_voting_cw4_v241_contract,
 };
-use dao_voting::multiple_choice::MultipleChoiceAutoVote;
 use dao_voting::pre_propose::{PreProposeSubmissionPolicy, PreProposeSubmissionPolicyError};
 use dao_voting::{
     deposit::{CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo},

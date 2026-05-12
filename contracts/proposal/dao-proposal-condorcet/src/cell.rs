@@ -15,8 +15,10 @@ use cosmwasm_std::Uint128;
 /// ```
 #[cw_serde]
 #[derive(Copy)]
+#[derive(Default)]
 pub(crate) enum Cell {
     Positive(Uint128),
+    #[default]
     Zero,
     Negative(Uint128),
 }
@@ -64,11 +66,6 @@ impl Cell {
     }
 }
 
-impl Default for Cell {
-    fn default() -> Self {
-        Self::Zero
-    }
-}
 
 #[cfg(test)]
 mod tests {

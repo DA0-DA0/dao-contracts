@@ -117,7 +117,7 @@ where
 
         // remove expired items
         active.retain(|(_, expiration)| {
-            expiration.map_or(true, |expiration| expiration > curr_height)
+            expiration.is_none_or(|expiration| expiration > curr_height)
         });
 
         // add new item and save list
@@ -150,7 +150,7 @@ where
 
         // remove item and any expired items
         active.retain(|(active_id, expiration)| {
-            active_id != &id && expiration.map_or(true, |expiration| expiration > curr_height)
+            active_id != &id && expiration.is_none_or(|expiration| expiration > curr_height)
         });
 
         // save the new list
@@ -190,7 +190,7 @@ where
 
         // remove existing item and any expired items
         active.retain(|(active_id, expiration)| {
-            active_id != &id && expiration.map_or(true, |expiration: u64| expiration > curr_height)
+            active_id != &id && expiration.is_none_or(|expiration: u64| expiration > curr_height)
         });
 
         // get next ID for the key, defaulting to 0
@@ -252,7 +252,7 @@ where
         active
             .iter_mut()
             .find(|(item_id, expiration)| {
-                *item_id == id && expiration.map_or(true, |exp| exp > curr_height)
+                *item_id == id && expiration.is_none_or(|exp| exp > curr_height)
             })
             .map(|(_, expiration)| {
                 *expiration = new_expiration;
@@ -314,7 +314,7 @@ where
         // load paged items, skipping expired ones
         let items = active_ids
             .iter()
-            .filter(|(_, expiration)| expiration.map_or(true, |exp| exp > height))
+            .filter(|(_, expiration)| expiration.is_none_or(|exp| exp > height))
             .skip(offset)
             .take(limit)
             .map(|(id, expiration)| -> StdResult<LoadedItem<V>> {
@@ -365,7 +365,7 @@ where
         // load paged items, skipping expired ones
         let items = active_ids
             .iter()
-            .filter(|(_, expiration)| expiration.map_or(true, |exp| exp > current_height))
+            .filter(|(_, expiration)| expiration.is_none_or(|exp| exp > current_height))
             .skip(offset)
             .take(limit)
             .map(|(id, expiration)| -> StdResult<LoadedItem<V>> {

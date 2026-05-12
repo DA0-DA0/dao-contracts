@@ -1,11 +1,9 @@
-use cosmwasm_std::storage_keys::to_length_prefixed_nested;
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{
-    to_json_binary, to_json_vec, Addr, Coin, Decimal, Empty, Storage, Uint128, WasmMsg,
+    to_json_binary, Addr, Coin, Decimal, Empty, Uint128, WasmMsg,
 };
 use cw721_base::msg::{ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg};
 use cw_multi_test::{next_block, App, BankSudo, Executor, SudoMsg};
-use cw_storage_plus::Map;
 use cw_utils::Duration;
 use dao_interface::voting::IsActiveResponse;
 use dao_testing::contracts::{
@@ -13,7 +11,6 @@ use dao_testing::contracts::{
 };
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 
-use crate::testing::execute::{claim_legacy_nfts, claim_specific_nfts};
 use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
     msg::{

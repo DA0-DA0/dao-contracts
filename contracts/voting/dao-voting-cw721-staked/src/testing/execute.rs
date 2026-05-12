@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Binary, Empty};
+use cosmwasm_std::{Addr, Binary};
 use cw721_base::msg::ExecuteMsg as Cw721ExecuteMsg;
 use cw_multi_test::{App, AppResponse, Executor};
 
@@ -117,6 +117,7 @@ pub fn claim_nfts(app: &mut App, module: &Addr, sender: &str) -> AnyResult<AppRe
     )
 }
 
+#[allow(dead_code)]
 pub fn claim_specific_nfts(
     app: &mut App,
     module: &Addr,
@@ -133,6 +134,7 @@ pub fn claim_specific_nfts(
     )
 }
 
+#[allow(dead_code)]
 pub fn claim_legacy_nfts(app: &mut App, module: &Addr, sender: &str) -> AnyResult<AppResponse> {
     app.execute_contract(
         addr!(sender),

@@ -1,7 +1,7 @@
 use super::chain::Chain;
 use anyhow::Result;
 use cosm_orc::orchestrator::SigningKey;
-use cosmwasm_std::{to_json_binary, CosmosMsg, Decimal, Empty, Uint128};
+use cosmwasm_std::{to_json_binary, CosmosMsg, Decimal, Uint128};
 use cw20::Cw20Coin;
 use cw_utils::Duration;
 use dao_interface::query::DumpStateResponse;

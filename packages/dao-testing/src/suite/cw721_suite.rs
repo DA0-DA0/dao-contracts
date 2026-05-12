@@ -1,7 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_json_binary, Addr, Binary, Empty};
+use cosmwasm_std::{to_json_binary, Addr, Binary};
 use cw_utils::Duration;
 
 use super::*;

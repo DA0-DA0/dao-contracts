@@ -1,8 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_json, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    Order, Reply, Response, StdError, StdResult, SubMsg, WasmMsg,
+    from_json, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response, StdError, StdResult, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_paginate_storage::{paginate_map, paginate_map_keys, paginate_map_values};
@@ -16,7 +15,7 @@ use dao_interface::{
         GetItemResponse, PauseInfoResponse, ProposalModuleCountResponse, SubDao,
     },
     state::{
-        Admin, Config, ModuleInstantiateCallback, ModuleInstantiateInfo, ProposalModule,
+        Config, ModuleInstantiateCallback, ModuleInstantiateInfo, ProposalModule,
         ProposalModuleStatus,
     },
     voting,
@@ -479,7 +478,9 @@ pub fn execute_update_cw721_list(
         return Err(ContractError::Unauthorized {});
     }
     do_update_addr_list(deps, CW721_LIST, to_add, to_remove, |addr, deps| {
-        let _info: cw721::ContractInfoResponse = deps.querier.query_wasm_smart(
+        let _info: cw721::msg::CollectionInfoAndExtensionResponse<
+            cw721::DefaultOptionalCollectionExtension,
+        > = deps.querier.query_wasm_smart(
             addr,
             &cw721::msg::Cw721QueryMsg::<
                 cosmwasm_std::Empty,

@@ -26,6 +26,7 @@ pub enum ExecuteMsg {
 #[cw_ownable_query]
 #[cw_serde]
 #[derive(QueryResponses)]
+#[allow(clippy::large_enum_variant)]
 pub enum QueryMsg {
     #[returns(InfoResponse)]
     Info {},

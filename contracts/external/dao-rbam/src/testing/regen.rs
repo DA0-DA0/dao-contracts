@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use cosmwasm_std::{Binary, CosmosMsg};
 use cw_protobuf_registry::protobuf::base64_encode_protobuf;
 use dao_testing::ADDR0;

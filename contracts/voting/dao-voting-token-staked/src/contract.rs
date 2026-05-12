@@ -731,7 +731,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         }
 
                         // Sort denom units by exponent, must be in ascending order
-                        denom_units.sort_by(|a, b| a.exponent.cmp(&b.exponent));
+                        denom_units.sort_by_key(|a| a.exponent);
 
                         msgs.push(WasmMsg::Execute {
                             contract_addr: issuer_addr.clone(),

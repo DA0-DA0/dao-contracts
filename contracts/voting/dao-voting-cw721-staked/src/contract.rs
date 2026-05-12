@@ -25,7 +25,7 @@ use crate::msg::{
 };
 use crate::state::{
     register_staked_nft, register_unstaked_nfts, Config, ACTIVE_THRESHOLD, CONFIG, DAO, HOOKS,
-    INITIAL_NFTS, LEGACY_NFT_CLAIMS, NFT_BALANCES, NFT_CLAIMS, STAKED_NFTS_PER_OWNER,
+    INITIAL_NFTS, NFT_BALANCES, NFT_CLAIMS, STAKED_NFTS_PER_OWNER,
     TOTAL_STAKED_NFTS,
 };
 use crate::ContractError;
@@ -768,12 +768,14 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     submessages.push(SubMsg::reply_on_success(
                         WasmMsg::Execute {
                             contract_addr: nft_contract.clone(),
-                            msg: to_json_binary(&cw721_base::msg::ExecuteMsg::UpdateOwnership(
-                                cw721_base::Action::TransferOwnership {
-                                    new_owner: dao.to_string(),
-                                    expiry: None,
-                                },
-                            ))?,
+                            msg: to_json_binary(
+                                &cw721_base::msg::ExecuteMsg::UpdateMinterOwnership(
+                                    cw721_base::Action::TransferOwnership {
+                                        new_owner: dao.to_string(),
+                                        expiry: None,
+                                    },
+                                ),
+                            )?,
                             funds: vec![],
                         },
                         VALIDATE_SUPPLY_REPLY_ID,
@@ -822,7 +824,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             let callback = to_json_binary(&ModuleInstantiateCallback {
                 msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: collection_addr.to_string(),
-                    msg: to_json_binary(&&cw721_base::msg::ExecuteMsg::UpdateOwnership(
+                    msg: to_json_binary(&cw721_base::msg::ExecuteMsg::UpdateMinterOwnership(
                         cw721_base::Action::AcceptOwnership {},
                     ))?,
                     funds: vec![],
