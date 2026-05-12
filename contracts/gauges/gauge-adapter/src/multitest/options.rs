@@ -62,4 +62,29 @@ fn option_queries() {
         })
         .unwrap();
     assert!(!option.valid);
+
+    // SubmissionsBySender returns only submissions whose `sender` matches.
+    let by_owner: AllSubmissionsResponse = suite
+        .query(&AdapterQueryMsg::SubmissionsBySender {
+            sender: owner.to_string(),
+        })
+        .unwrap();
+    assert_eq!(by_owner.submissions.len(), 1);
+    assert_eq!(by_owner.submissions[0].address, recipient);
+
+    let by_einstein: AllSubmissionsResponse = suite
+        .query(&AdapterQueryMsg::SubmissionsBySender {
+            sender: einstein.to_string(),
+        })
+        .unwrap();
+    assert_eq!(by_einstein.submissions.len(), 1);
+    assert_eq!(by_einstein.submissions[0].address, einstein);
+
+    // A sender with no submissions returns empty.
+    let by_newton: AllSubmissionsResponse = suite
+        .query(&AdapterQueryMsg::SubmissionsBySender {
+            sender: newton.to_string(),
+        })
+        .unwrap();
+    assert!(by_newton.submissions.is_empty());
 }

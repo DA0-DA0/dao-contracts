@@ -3121,6 +3121,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "gauge-budget-allocator"
+version = "2.8.0-alpha.2"
+dependencies = [
+ "anyhow",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "gauge-adapter",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "gauge-orchestrator"
 version = "2.8.0-alpha.2"
 dependencies = [

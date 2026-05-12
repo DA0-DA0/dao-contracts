@@ -67,6 +67,10 @@ pub enum AdapterQueryMsg {
     Submission { address: String },
     #[returns(AllSubmissionsResponse)]
     AllSubmissions {},
+    /// Return all submissions made by `sender`. Useful for "my submissions"
+    /// views in registration flows.
+    #[returns(AllSubmissionsResponse)]
+    SubmissionsBySender { sender: String },
 }
 
 #[cw_serde]

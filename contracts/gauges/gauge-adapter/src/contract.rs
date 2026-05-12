@@ -198,6 +198,9 @@ pub fn query(deps: Deps, _env: Env, msg: AdapterQueryMsg) -> StdResult<Binary> {
             to_json_binary(&query::submission(deps, address)?)
         }
         AdapterQueryMsg::AllSubmissions {} => to_json_binary(&query::all_submissions(deps)?),
+        AdapterQueryMsg::SubmissionsBySender { sender } => {
+            to_json_binary(&query::submissions_by_sender(deps, sender)?)
+        }
     }
 }
 
@@ -274,6 +277,27 @@ mod query {
                         url: submission.url,
                         address,
                     })
+                })
+                .collect::<StdResult<Vec<SubmissionResponse>>>()?,
+        })
+    }
+
+    pub fn submissions_by_sender(deps: Deps, sender: String) -> StdResult<AllSubmissionsResponse> {
+        let sender = deps.api.addr_validate(&sender)?;
+        Ok(AllSubmissionsResponse {
+            submissions: SUBMISSIONS
+                .range(deps.storage, None, None, Order::Ascending)
+                .filter_map(|s| match s {
+                    Ok((address, submission)) if submission.sender == sender => {
+                        Some(Ok(SubmissionResponse {
+                            sender: submission.sender,
+                            name: submission.name,
+                            url: submission.url,
+                            address,
+                        }))
+                    }
+                    Ok(_) => None,
+                    Err(e) => Some(Err(e)),
                 })
                 .collect::<StdResult<Vec<SubmissionResponse>>>()?,
         })
