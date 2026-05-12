@@ -58,9 +58,8 @@ cw20-base = "2.0.0"
 cw3 = "2.0.0"
 cw4 = "2.0.0"
 cw4-group = "2.0.0"
-cw721 = "0.18"
-# TODO Stage 2: bump cw721 family to v3 via upstream cw-nfts PR
-cw721-base = "0.18"
+cw721 = "0.22"
+cw721-base = "0.22"
 env_logger = "0.10"
 once_cell = "1.18"
 omniflix-std = "0.1.8"
@@ -87,11 +86,9 @@ sg721-base = "3.1.0"
 syn = { version = "1.0", features = ["derive"] }
 test-context = "0.1"
 thiserror = { version = "1.0" }
-wynd-utils = "0.4"
+wynd-utils = { path = "./packages/wynd-utils", version = "2.8.0-alpha.2" }
 
-# One commit ahead of version 0.3.0. Allows initialization with an
-# optional owner.
-cw-ownable = "0.5"
+cw-ownable = "2.1"
 
 btsg-ft-factory = { path = "./contracts/external/btsg-ft-factory", version = "2.8.0-alpha.2" }
 cw-admin-factory = { path = "./contracts/external/cw-admin-factory", version = "2.8.0-alpha.2" }

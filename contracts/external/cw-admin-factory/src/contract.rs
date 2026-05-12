@@ -7,6 +7,8 @@ use cosmwasm_std::{
 
 use cw2::set_contract_version;
 use cw_reply_compat::parse_reply_instantiate_data;
+
+use crate::error::ContractError;
 use crate::msg::{AdminResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{ADMIN, EXPECT};
 
