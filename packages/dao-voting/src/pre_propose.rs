@@ -169,10 +169,14 @@ mod tests {
     #[test]
     fn test_module_is_permitted() {
         let policy = ProposalCreationPolicy::Module {
-            addr: Addr::unchecked("cosmwasm12959g25kud9vjtfpxmyu05mcymfque5yvmt7z3dm6qltwxcafmmscf7y56"),
+            addr: Addr::unchecked(
+                "cosmwasm12959g25kud9vjtfpxmyu05mcymfque5yvmt7z3dm6qltwxcafmmscf7y56",
+            ),
         };
         assert!(!policy.is_permitted(&Addr::unchecked("👩‍👩‍👧‍👦")));
-        assert!(policy.is_permitted(&Addr::unchecked("cosmwasm12959g25kud9vjtfpxmyu05mcymfque5yvmt7z3dm6qltwxcafmmscf7y56")));
+        assert!(policy.is_permitted(&Addr::unchecked(
+            "cosmwasm12959g25kud9vjtfpxmyu05mcymfque5yvmt7z3dm6qltwxcafmmscf7y56"
+        )));
     }
 
     #[test]

@@ -1,4 +1,4 @@
-use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info};
+use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 use cosmwasm_std::{coins, to_json_binary, Addr, Coin, Decimal, Uint128, Validator};
 use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_denom::{CheckedDenom, UncheckedDenom};
@@ -256,7 +256,7 @@ fn test_happy_cw20_path() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_happy_native_path() {
     let mut app = setup_app();
 
@@ -414,7 +414,7 @@ fn test_staking_rewards_go_to_receiver() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_cancel_vesting() {
     let mut app = setup_app();
 
@@ -589,8 +589,12 @@ fn test_execution_rejection_recv() {
                 schedule: Schedule::SaturatingLinear,
                 start_time: env().block.time,
                 duration_seconds: 60 * 60 * 24 * 7,
-                denom: CheckedDenom::Cw20(Addr::unchecked("cosmwasm1tckpxnyvy0tulzz56yenztghjkx3gqyl28sytat22v5zwr8nffds7j04g6")),
-                recipient: Addr::unchecked("cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9"),
+                denom: CheckedDenom::Cw20(Addr::unchecked(
+                    "cosmwasm1tckpxnyvy0tulzz56yenztghjkx3gqyl28sytat22v5zwr8nffds7j04g6",
+                )),
+                recipient: Addr::unchecked(
+                    "cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9",
+                ),
                 title: "title".to_string(),
                 description: Some("description".to_string()),
             },
@@ -604,7 +608,8 @@ fn test_execution_rejection_recv() {
         deps.branch(),
         info("notcw20"),
         Cw20ReceiveMsg {
-            sender: "cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6".to_string(),
+            sender: "cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6"
+                .to_string(),
             amount: Uint128::new(100),
             msg: to_json_binary(&ReceiveMsg::Fund {}).unwrap(),
         },
@@ -617,7 +622,8 @@ fn test_execution_rejection_recv() {
         deps.branch(),
         info("cw20"),
         Cw20ReceiveMsg {
-            sender: "cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6".to_string(),
+            sender: "cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6"
+                .to_string(),
             amount: Uint128::new(101),
             msg: to_json_binary(&ReceiveMsg::Fund {}).unwrap(),
         },
@@ -647,8 +653,12 @@ fn test_illiquid_when_unfunfed() {
                 schedule: Schedule::SaturatingLinear,
                 start_time: env().block.time,
                 duration_seconds: 60 * 60 * 24 * 7,
-                denom: CheckedDenom::Cw20(Addr::unchecked("cosmwasm1tckpxnyvy0tulzz56yenztghjkx3gqyl28sytat22v5zwr8nffds7j04g6")),
-                recipient: Addr::unchecked("cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9"),
+                denom: CheckedDenom::Cw20(Addr::unchecked(
+                    "cosmwasm1tckpxnyvy0tulzz56yenztghjkx3gqyl28sytat22v5zwr8nffds7j04g6",
+                )),
+                recipient: Addr::unchecked(
+                    "cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9",
+                ),
                 title: "title".to_string(),
                 description: Some("description".to_string()),
             },
@@ -685,8 +695,12 @@ fn test_update_owner() {
                 schedule: Schedule::SaturatingLinear,
                 start_time: env().block.time,
                 duration_seconds: 60 * 60 * 24 * 7,
-                denom: CheckedDenom::Cw20(Addr::unchecked("cosmwasm1tckpxnyvy0tulzz56yenztghjkx3gqyl28sytat22v5zwr8nffds7j04g6")),
-                recipient: Addr::unchecked("cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9"),
+                denom: CheckedDenom::Cw20(Addr::unchecked(
+                    "cosmwasm1tckpxnyvy0tulzz56yenztghjkx3gqyl28sytat22v5zwr8nffds7j04g6",
+                )),
+                recipient: Addr::unchecked(
+                    "cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9",
+                ),
                 title: "title".to_string(),
                 description: Some("description".to_string()),
             },
@@ -703,12 +717,19 @@ fn test_update_owner() {
         )
         .unwrap();
     PAYMENT
-        .cancel(deps.storage, env().block.time, &Addr::unchecked("cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053y"))
+        .cancel(
+            deps.storage,
+            env().block.time,
+            &Addr::unchecked("cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053y"),
+        )
         .unwrap();
     let err = execute(
         deps,
         env(),
-        message_info(&Addr::unchecked("cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053y"), &[]),
+        message_info(
+            &Addr::unchecked("cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053y"),
+            &[],
+        ),
         ExecuteMsg::UpdateOwnership(Action::RenounceOwnership),
     )
     .unwrap_err();

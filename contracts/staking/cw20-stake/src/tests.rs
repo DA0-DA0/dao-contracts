@@ -1,5 +1,5 @@
 use anyhow::Result as AnyResult;
-use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info};
+use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 use cosmwasm_std::{to_json_binary, Addr, MessageInfo, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_controllers::{Claim, ClaimsResponse};
@@ -197,7 +197,8 @@ fn claim_tokens(app: &mut App, staking_addr: &Addr, info: MessageInfo) -> AnyRes
 fn test_instantiate_invalid_unstaking_duration() {
     let mut app = mock_app();
     let amount1 = Uint128::from(100u128);
-    let _token_address = Addr::unchecked("cosmwasm18lu94juelnkcmrkdcy9s46889wc6lqfgwdp8eh2w9fhtrn09j07sfyrn8x");
+    let _token_address =
+        Addr::unchecked("cosmwasm18lu94juelnkcmrkdcy9s46889wc6lqfgwdp8eh2w9fhtrn09j07sfyrn8x");
     let initial_balances = vec![Cw20Coin {
         address: ADDR1.to_string(),
         amount: amount1,
@@ -210,7 +211,11 @@ fn test_instantiate_invalid_unstaking_duration() {
 #[should_panic(expected = "Provided cw20 errored in response to TokenInfo query")]
 fn test_instantiate_with_non_cw20_token() {
     let app = &mut mock_app();
-    instantiate_staking(app, Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"), None);
+    instantiate_staking(
+        app,
+        Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
+        None,
+    );
 }
 
 #[test]
@@ -266,7 +271,8 @@ fn test_staking() {
 
     let mut app = mock_app();
     let amount1 = Uint128::from(100u128);
-    let _token_address = Addr::unchecked("cosmwasm18lu94juelnkcmrkdcy9s46889wc6lqfgwdp8eh2w9fhtrn09j07sfyrn8x");
+    let _token_address =
+        Addr::unchecked("cosmwasm18lu94juelnkcmrkdcy9s46889wc6lqfgwdp8eh2w9fhtrn09j07sfyrn8x");
     let initial_balances = vec![Cw20Coin {
         address: ADDR1.to_string(),
         amount: amount1,
@@ -373,7 +379,8 @@ fn text_max_claims() {
     let mut app = mock_app();
     let amount1 = Uint128::from(MAX_CLAIMS + 1);
     let unstaking_blocks = 1u64;
-    let _token_address = Addr::unchecked("cosmwasm18lu94juelnkcmrkdcy9s46889wc6lqfgwdp8eh2w9fhtrn09j07sfyrn8x");
+    let _token_address =
+        Addr::unchecked("cosmwasm18lu94juelnkcmrkdcy9s46889wc6lqfgwdp8eh2w9fhtrn09j07sfyrn8x");
     let initial_balances = vec![Cw20Coin {
         address: ADDR1.to_string(),
         amount: amount1,
@@ -414,7 +421,8 @@ fn test_unstaking_with_claims() {
     let mut app = mock_app();
     let amount1 = Uint128::from(100u128);
     let unstaking_blocks = 10u64;
-    let _token_address = Addr::unchecked("cosmwasm18lu94juelnkcmrkdcy9s46889wc6lqfgwdp8eh2w9fhtrn09j07sfyrn8x");
+    let _token_address =
+        Addr::unchecked("cosmwasm18lu94juelnkcmrkdcy9s46889wc6lqfgwdp8eh2w9fhtrn09j07sfyrn8x");
     let initial_balances = vec![Cw20Coin {
         address: ADDR1.to_string(),
         amount: amount1,
@@ -537,7 +545,8 @@ fn multiple_address_staking() {
     let mut app = mock_app();
     let amount1 = Uint128::from(100u128);
     let unstaking_blocks = 10u64;
-    let _token_address = Addr::unchecked("cosmwasm18lu94juelnkcmrkdcy9s46889wc6lqfgwdp8eh2w9fhtrn09j07sfyrn8x");
+    let _token_address =
+        Addr::unchecked("cosmwasm18lu94juelnkcmrkdcy9s46889wc6lqfgwdp8eh2w9fhtrn09j07sfyrn8x");
     let (staking_addr, cw20_addr) = setup_test_case(
         &mut app,
         initial_balances,
@@ -586,7 +595,8 @@ fn test_auto_compounding_staking() {
 
     let mut app = mock_app();
     let amount1 = Uint128::from(1000u128);
-    let _token_address = Addr::unchecked("cosmwasm18lu94juelnkcmrkdcy9s46889wc6lqfgwdp8eh2w9fhtrn09j07sfyrn8x");
+    let _token_address =
+        Addr::unchecked("cosmwasm18lu94juelnkcmrkdcy9s46889wc6lqfgwdp8eh2w9fhtrn09j07sfyrn8x");
     let initial_balances = vec![Cw20Coin {
         address: ADDR1.to_string(),
         amount: amount1,
@@ -755,7 +765,8 @@ fn test_simple_unstaking_with_duration() {
 
     let mut app = mock_app();
     let amount1 = Uint128::from(100u128);
-    let _token_address = Addr::unchecked("cosmwasm18lu94juelnkcmrkdcy9s46889wc6lqfgwdp8eh2w9fhtrn09j07sfyrn8x");
+    let _token_address =
+        Addr::unchecked("cosmwasm18lu94juelnkcmrkdcy9s46889wc6lqfgwdp8eh2w9fhtrn09j07sfyrn8x");
     let initial_balances = vec![
         Cw20Coin {
             address: ADDR1.to_string(),
@@ -845,7 +856,8 @@ fn test_double_unstake_at_height() {
     let (staking_addr, cw20_addr) = setup_test_case(
         &mut app,
         vec![Cw20Coin {
-            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             amount: Uint128::new(10),
         }],
         None,
@@ -855,7 +867,10 @@ fn test_double_unstake_at_height() {
         &mut app,
         &staking_addr,
         &cw20_addr,
-        message_info(&Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"), &[]),
+        message_info(
+            &Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
+            &[],
+        ),
         Uint128::new(10),
     )
     .unwrap();
@@ -865,7 +880,10 @@ fn test_double_unstake_at_height() {
     unstake_tokens(
         &mut app,
         &staking_addr,
-        message_info(&Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"), &[]),
+        message_info(
+            &Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
+            &[],
+        ),
         Uint128::new(1),
     )
     .unwrap();
@@ -873,7 +891,10 @@ fn test_double_unstake_at_height() {
     unstake_tokens(
         &mut app,
         &staking_addr,
-        message_info(&Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"), &[]),
+        message_info(
+            &Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
+            &[],
+        ),
         Uint128::new(9),
     )
     .unwrap();
@@ -896,7 +917,8 @@ fn test_double_unstake_at_height() {
         .query_wasm_smart(
             staking_addr.clone(),
             &QueryMsg::StakedBalanceAtHeight {
-                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                    .to_string(),
                 height: Some(app.block_info().height - 1),
             },
         )
@@ -909,7 +931,8 @@ fn test_double_unstake_at_height() {
         .query_wasm_smart(
             staking_addr,
             &QueryMsg::StakedBalanceAtHeight {
-                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                    .to_string(),
                 height: Some(app.block_info().height),
             },
         )
@@ -919,7 +942,7 @@ fn test_double_unstake_at_height() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_query_list_stakers() {
     let mut app = App::default();
 
@@ -927,19 +950,23 @@ fn test_query_list_stakers() {
         &mut app,
         vec![
             Cw20Coin {
-                address: "cosmwasm18efds2y9je6aywd6e8kcgg7v5zj8hfj89d55rh39nz5pfk7up9gs7vsskd".to_string(),
+                address: "cosmwasm18efds2y9je6aywd6e8kcgg7v5zj8hfj89d55rh39nz5pfk7up9gs7vsskd"
+                    .to_string(),
                 amount: Uint128::new(10),
             },
             Cw20Coin {
-                address: "cosmwasm1s2j8n93fgfnsa7fd7x9sarcqgg2zq99ytyhp7td9zvrce39w6las33q0tj".to_string(),
+                address: "cosmwasm1s2j8n93fgfnsa7fd7x9sarcqgg2zq99ytyhp7td9zvrce39w6las33q0tj"
+                    .to_string(),
                 amount: Uint128::new(20),
             },
             Cw20Coin {
-                address: "cosmwasm1nal6cdctjk63cuv3hxsnvku23frwy368flzcq6h05pxp8wucka4sfn3ltg".to_string(),
+                address: "cosmwasm1nal6cdctjk63cuv3hxsnvku23frwy368flzcq6h05pxp8wucka4sfn3ltg"
+                    .to_string(),
                 amount: Uint128::new(30),
             },
             Cw20Coin {
-                address: "cosmwasm1eksjat2v5r4syyyv2esrh4hcuw8fumfnccy2w30r5jasm2zfyknq33xspn".to_string(),
+                address: "cosmwasm1eksjat2v5r4syyyv2esrh4hcuw8fumfnccy2w30r5jasm2zfyknq33xspn"
+                    .to_string(),
                 amount: Uint128::new(40),
             },
         ],
@@ -950,7 +977,10 @@ fn test_query_list_stakers() {
         &mut app,
         &staking_addr,
         &cw20_addr,
-        message_info(&Addr::unchecked("cosmwasm18efds2y9je6aywd6e8kcgg7v5zj8hfj89d55rh39nz5pfk7up9gs7vsskd"), &[]),
+        message_info(
+            &Addr::unchecked("cosmwasm18efds2y9je6aywd6e8kcgg7v5zj8hfj89d55rh39nz5pfk7up9gs7vsskd"),
+            &[],
+        ),
         Uint128::new(10),
     )
     .unwrap();
@@ -959,7 +989,10 @@ fn test_query_list_stakers() {
         &mut app,
         &staking_addr,
         &cw20_addr,
-        message_info(&Addr::unchecked("cosmwasm1s2j8n93fgfnsa7fd7x9sarcqgg2zq99ytyhp7td9zvrce39w6las33q0tj"), &[]),
+        message_info(
+            &Addr::unchecked("cosmwasm1s2j8n93fgfnsa7fd7x9sarcqgg2zq99ytyhp7td9zvrce39w6las33q0tj"),
+            &[],
+        ),
         Uint128::new(20),
     )
     .unwrap();
@@ -968,7 +1001,10 @@ fn test_query_list_stakers() {
         &mut app,
         &staking_addr,
         &cw20_addr,
-        message_info(&Addr::unchecked("cosmwasm1nal6cdctjk63cuv3hxsnvku23frwy368flzcq6h05pxp8wucka4sfn3ltg"), &[]),
+        message_info(
+            &Addr::unchecked("cosmwasm1nal6cdctjk63cuv3hxsnvku23frwy368flzcq6h05pxp8wucka4sfn3ltg"),
+            &[],
+        ),
         Uint128::new(30),
     )
     .unwrap();
@@ -977,7 +1013,10 @@ fn test_query_list_stakers() {
         &mut app,
         &staking_addr,
         &cw20_addr,
-        message_info(&Addr::unchecked("cosmwasm1eksjat2v5r4syyyv2esrh4hcuw8fumfnccy2w30r5jasm2zfyknq33xspn"), &[]),
+        message_info(
+            &Addr::unchecked("cosmwasm1eksjat2v5r4syyyv2esrh4hcuw8fumfnccy2w30r5jasm2zfyknq33xspn"),
+            &[],
+        ),
         Uint128::new(40),
     )
     .unwrap();
@@ -997,11 +1036,13 @@ fn test_query_list_stakers() {
     let test_res = ListStakersResponse {
         stakers: vec![
             StakerBalanceResponse {
-                address: "cosmwasm18efds2y9je6aywd6e8kcgg7v5zj8hfj89d55rh39nz5pfk7up9gs7vsskd".to_string(),
+                address: "cosmwasm18efds2y9je6aywd6e8kcgg7v5zj8hfj89d55rh39nz5pfk7up9gs7vsskd"
+                    .to_string(),
                 balance: Uint128::new(10),
             },
             StakerBalanceResponse {
-                address: "cosmwasm1s2j8n93fgfnsa7fd7x9sarcqgg2zq99ytyhp7td9zvrce39w6las33q0tj".to_string(),
+                address: "cosmwasm1s2j8n93fgfnsa7fd7x9sarcqgg2zq99ytyhp7td9zvrce39w6las33q0tj"
+                    .to_string(),
                 balance: Uint128::new(20),
             },
         ],
@@ -1024,11 +1065,13 @@ fn test_query_list_stakers() {
     let test_res = ListStakersResponse {
         stakers: vec![
             StakerBalanceResponse {
-                address: "cosmwasm1s2j8n93fgfnsa7fd7x9sarcqgg2zq99ytyhp7td9zvrce39w6las33q0tj".to_string(),
+                address: "cosmwasm1s2j8n93fgfnsa7fd7x9sarcqgg2zq99ytyhp7td9zvrce39w6las33q0tj"
+                    .to_string(),
                 balance: Uint128::new(20),
             },
             StakerBalanceResponse {
-                address: "cosmwasm1nal6cdctjk63cuv3hxsnvku23frwy368flzcq6h05pxp8wucka4sfn3ltg".to_string(),
+                address: "cosmwasm1nal6cdctjk63cuv3hxsnvku23frwy368flzcq6h05pxp8wucka4sfn3ltg"
+                    .to_string(),
                 balance: Uint128::new(30),
             },
         ],

@@ -999,7 +999,9 @@ impl Suite {
         self.base
             .app
             .execute_contract(
-                Addr::unchecked("cosmwasm1tgrv5m9jtkwztw8hpshva5k35t0vae6z6luap9s9kva0l8g9e7vq9trqrx"),
+                Addr::unchecked(
+                    "cosmwasm1tgrv5m9jtkwztw8hpshva5k35t0vae6z6luap9s9kva0l8g9e7vq9trqrx",
+                ),
                 self.distribution_contract.clone(),
                 &msg,
                 &[],

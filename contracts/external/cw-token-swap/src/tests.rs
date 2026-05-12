@@ -556,7 +556,8 @@ fn test_fund_non_counterparty() {
                 symbol: "coin".to_string(),
                 decimals: 6,
                 initial_balances: vec![Cw20Coin {
-                    address: "cosmwasm1euarh03nrsu4p5t236v303dmsdqw0s80j976yh22jmuj6p6teczsmswfyh".to_string(),
+                    address: "cosmwasm1euarh03nrsu4p5t236v303dmsdqw0s80j976yh22jmuj6p6teczsmswfyh"
+                        .to_string(),
                     amount: Uint128::new(100),
                 }],
                 mint: None,
@@ -612,7 +613,8 @@ fn test_fund_non_counterparty() {
     assert!(matches!(err, ContractError::Unauthorized {}));
 
     app.sudo(SudoMsg::Bank(BankSudo::Mint {
-        to_address: "cosmwasm1euarh03nrsu4p5t236v303dmsdqw0s80j976yh22jmuj6p6teczsmswfyh".to_string(),
+        to_address: "cosmwasm1euarh03nrsu4p5t236v303dmsdqw0s80j976yh22jmuj6p6teczsmswfyh"
+            .to_string(),
         amount: vec![Coin {
             amount: Uint128::new(100),
             denom: "ujuno".to_string(),

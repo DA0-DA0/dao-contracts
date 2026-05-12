@@ -517,7 +517,8 @@ fn test_proposal_message_timelock_execution() -> anyhow::Result<()> {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
+                address: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk"
+                    .to_string(),
                 amount: Uint128::new(15),
             },
             Cw20Coin {
@@ -965,7 +966,8 @@ fn test_timelocked_proposal_veto_unauthorized() -> anyhow::Result<()> {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
+                address: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk"
+                    .to_string(),
                 amount: Uint128::new(15),
             },
             Cw20Coin {
@@ -1066,7 +1068,8 @@ fn test_timelocked_proposal_veto_expired_timelock() -> anyhow::Result<()> {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
+                address: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk"
+                    .to_string(),
                 amount: Uint128::new(15),
             },
             Cw20Coin {
@@ -1628,7 +1631,8 @@ fn test_proposal_message_timelock_early_execution() -> anyhow::Result<()> {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
+                address: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk"
+                    .to_string(),
                 amount: Uint128::new(15),
             },
             Cw20Coin {
@@ -1692,7 +1696,12 @@ fn test_proposal_message_timelock_early_execution() -> anyhow::Result<()> {
     mint_natives(&mut app, core_addr.as_str(), coins(10, "ujuno"));
 
     // Proposal can be executed early by vetoer
-    execute_proposal(&mut app, &proposal_module, "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk", proposal_id);
+    execute_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk",
+        proposal_id,
+    );
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Executed);
 
@@ -1715,7 +1724,8 @@ fn test_proposal_message_timelock_veto_before_passed() {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk".to_string(),
+                address: "cosmwasm1m4w9xch99yyvqlr4r9dhw5utak87x7zd54qzu4r82yft4wdk5h2qepxmyk"
+                    .to_string(),
                 amount: Uint128::new(15),
             },
             Cw20Coin {
@@ -1905,7 +1915,7 @@ fn test_proposal_close_after_expiry() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_proposal_cant_close_after_expiry_is_passed() {
     let mut app = App::default();
     let instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
@@ -1914,7 +1924,8 @@ fn test_proposal_cant_close_after_expiry_is_passed() {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1tuy6ax4celnvn2uqvvwtxkwt44fcjkj3359jm98ftfw6pg0cca3s420x4l".to_string(),
+                address: "cosmwasm1tuy6ax4celnvn2uqvvwtxkwt44fcjkj3359jm98ftfw6pg0cca3s420x4l"
+                    .to_string(),
                 amount: Uint128::new(15),
             },
             Cw20Coin {
@@ -2024,7 +2035,13 @@ fn test_cant_execute_not_member_when_proposal_created() {
     );
 
     // Give noah some tokens.
-    mint_cw20s(&mut app, &gov_token, &core_addr, "cosmwasm1euarh03nrsu4p5t236v303dmsdqw0s80j976yh22jmuj6p6teczsmswfyh", 20_000_000);
+    mint_cw20s(
+        &mut app,
+        &gov_token,
+        &core_addr,
+        "cosmwasm1euarh03nrsu4p5t236v303dmsdqw0s80j976yh22jmuj6p6teczsmswfyh",
+        20_000_000,
+    );
     // Have noah stake some.
     let voting_module = query_voting_module(&app, &core_addr);
     let staking_contract: Addr = app
@@ -2050,7 +2067,12 @@ fn test_cant_execute_not_member_when_proposal_created() {
 
     // Can't execute from member who wasn't a member when the proposal was
     // created.
-    let err = execute_proposal_should_fail(&mut app, &proposal_module, "cosmwasm1euarh03nrsu4p5t236v303dmsdqw0s80j976yh22jmuj6p6teczsmswfyh", proposal_id);
+    let err = execute_proposal_should_fail(
+        &mut app,
+        &proposal_module,
+        "cosmwasm1euarh03nrsu4p5t236v303dmsdqw0s80j976yh22jmuj6p6teczsmswfyh",
+        proposal_id,
+    );
     assert!(matches!(err, ContractError::Unauthorized {}));
 }
 
@@ -2190,7 +2212,7 @@ fn test_update_config() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_anyone_may_propose_and_proposal_listing() {
     let mut app = App::default();
     let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
@@ -2249,7 +2271,9 @@ fn test_anyone_may_propose_and_proposal_listing() {
             proposal: SingleChoiceProposal {
                 title: "title".to_string(),
                 description: "description".to_string(),
-                proposer: Addr::unchecked("cosmwasm13y0p9c2kmrrxp8rdtulqfvhu3kndnlea060eqcc5czgfmf5kxl4st8mj4g"),
+                proposer: Addr::unchecked(
+                    "cosmwasm13y0p9c2kmrrxp8rdtulqfvhu3kndnlea060eqcc5czgfmf5kxl4st8mj4g"
+                ),
                 start_height: current_block.height,
                 min_voting_period: None,
                 expiration: Duration::Time(604800).after(&current_block),
@@ -2318,8 +2342,12 @@ fn test_proposal_hook_registration() {
     );
 
     // non-dao may not add a hook.
-    let err =
-        add_proposal_hook_should_fail(&mut app, &proposal_module, CREATOR_ADDR, "cosmwasm18kdemsegp8zkggr204an7mds95e6lkcnl24v9lpa2jw65gaw2zqsmf2jey");
+    let err = add_proposal_hook_should_fail(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        "cosmwasm18kdemsegp8zkggr204an7mds95e6lkcnl24v9lpa2jw65gaw2zqsmf2jey",
+    );
     assert!(matches!(err, ContractError::Unauthorized {}));
 
     add_proposal_hook(
@@ -2340,11 +2368,18 @@ fn test_proposal_hook_registration() {
     ));
 
     let proposal_hooks = query_proposal_hooks(&app, &proposal_module);
-    assert_eq!(proposal_hooks.hooks[0], "cosmwasm18kdemsegp8zkggr204an7mds95e6lkcnl24v9lpa2jw65gaw2zqsmf2jey".to_string());
+    assert_eq!(
+        proposal_hooks.hooks[0],
+        "cosmwasm18kdemsegp8zkggr204an7mds95e6lkcnl24v9lpa2jw65gaw2zqsmf2jey".to_string()
+    );
 
     // Only DAO can remove proposal hooks.
-    let err =
-        remove_proposal_hook_should_fail(&mut app, &proposal_module, CREATOR_ADDR, "cosmwasm18kdemsegp8zkggr204an7mds95e6lkcnl24v9lpa2jw65gaw2zqsmf2jey");
+    let err = remove_proposal_hook_should_fail(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        "cosmwasm18kdemsegp8zkggr204an7mds95e6lkcnl24v9lpa2jw65gaw2zqsmf2jey",
+    );
     assert!(matches!(err, ContractError::Unauthorized {}));
     remove_proposal_hook(
         &mut app,
@@ -2382,39 +2417,73 @@ fn test_vote_hook_registration() {
     assert!(vote_hooks.hooks.is_empty(),);
 
     // non-dao may not add a hook.
-    let err = add_vote_hook_should_fail(&mut app, &proposal_module, CREATOR_ADDR, "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t");
+    let err = add_vote_hook_should_fail(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t",
+    );
     assert!(matches!(err, ContractError::Unauthorized {}));
 
-    add_vote_hook(&mut app, &proposal_module, core_addr.as_str(), "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t");
+    add_vote_hook(
+        &mut app,
+        &proposal_module,
+        core_addr.as_str(),
+        "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t",
+    );
 
     let vote_hooks = query_vote_hooks(&app, &proposal_module);
     assert_eq!(
         vote_hooks,
         HooksResponse {
-            hooks: vec!["cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t".to_string()]
+            hooks: vec![
+                "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t".to_string()
+            ]
         }
     );
 
-    let err = add_vote_hook_should_fail(&mut app, &proposal_module, core_addr.as_str(), "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t");
+    let err = add_vote_hook_should_fail(
+        &mut app,
+        &proposal_module,
+        core_addr.as_str(),
+        "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t",
+    );
     assert!(matches!(
         err,
         ContractError::HookError(HookError::HookAlreadyRegistered {})
     ));
 
     let vote_hooks = query_vote_hooks(&app, &proposal_module);
-    assert_eq!(vote_hooks.hooks[0], "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t".to_string());
+    assert_eq!(
+        vote_hooks.hooks[0],
+        "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t".to_string()
+    );
 
     // Only DAO can remove vote hooks.
-    let err = remove_vote_hook_should_fail(&mut app, &proposal_module, CREATOR_ADDR, "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t");
+    let err = remove_vote_hook_should_fail(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t",
+    );
     assert!(matches!(err, ContractError::Unauthorized {}));
-    remove_vote_hook(&mut app, &proposal_module, core_addr.as_str(), "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t");
+    remove_vote_hook(
+        &mut app,
+        &proposal_module,
+        core_addr.as_str(),
+        "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t",
+    );
 
     let vote_hooks = query_vote_hooks(&app, &proposal_module);
     assert!(vote_hooks.hooks.is_empty(),);
 
     // Can not remove that which does not exist.
-    let err =
-        remove_vote_hook_should_fail(&mut app, &proposal_module, core_addr.as_str(), "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t");
+    let err = remove_vote_hook_should_fail(
+        &mut app,
+        &proposal_module,
+        core_addr.as_str(),
+        "cosmwasm1xgc9zjmqm9a9s7umanupjfywc5hwyqehmyjepz92ygsrmcxrqa8sf0e55t",
+    );
     assert!(matches!(
         err,
         ContractError::HookError(HookError::HookNotRegistered {})
@@ -2648,11 +2717,13 @@ fn test_min_duration_same_as_proposal_duration() {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                    .to_string(),
                 amount: Uint128::new(10),
             },
             Cw20Coin {
-                address: "cosmwasm15hf2u2rdpk0ytsrzrfhu0svprx2qm4ehh25d098x4u6h6gfk57ss3esk35".to_string(),
+                address: "cosmwasm15hf2u2rdpk0ytsrzrfhu0svprx2qm4ehh25d098x4u6h6gfk57ss3esk35"
+                    .to_string(),
                 amount: Uint128::new(90),
             },
         ]),
@@ -2660,13 +2731,37 @@ fn test_min_duration_same_as_proposal_duration() {
     let gov_token = query_dao_token(&app, &core_addr);
     let proposal_module = query_single_proposal_module(&app, &core_addr);
 
-    mint_cw20s(&mut app, &gov_token, &core_addr, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", 10_000_000);
-    let proposal_id = make_proposal(&mut app, &proposal_module, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", vec![], None);
+    mint_cw20s(
+        &mut app,
+        &gov_token,
+        &core_addr,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        10_000_000,
+    );
+    let proposal_id = make_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        vec![],
+        None,
+    );
 
     // Whale votes yes. Normally the proposal would just pass and ekez
     // would be out of luck.
-    vote_on_proposal(&mut app, &proposal_module, "cosmwasm15hf2u2rdpk0ytsrzrfhu0svprx2qm4ehh25d098x4u6h6gfk57ss3esk35", proposal_id, Vote::Yes);
-    vote_on_proposal(&mut app, &proposal_module, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", proposal_id, Vote::No);
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm15hf2u2rdpk0ytsrzrfhu0svprx2qm4ehh25d098x4u6h6gfk57ss3esk35",
+        proposal_id,
+        Vote::Yes,
+    );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        proposal_id,
+        Vote::No,
+    );
 
     app.update_block(|b| b.height += 100);
     let proposal_response = query_proposal(&app, &proposal_module, proposal_id);
@@ -2836,23 +2931,28 @@ fn test_three_of_five_multisig() {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string(),
+                address: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu"
+                    .to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r".to_string(),
+                address: "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r"
+                    .to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7".to_string(),
+                address: "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7"
+                    .to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp".to_string(),
+                address: "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp"
+                    .to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "cosmwasm1yg4sh4glemm7vhpwvtdja4j52uqnh26kheh6l6ceacgag5c48jqqtfwsjj".to_string(),
+                address: "cosmwasm1yg4sh4glemm7vhpwvtdja4j52uqnh26kheh6l6ceacgag5c48jqqtfwsjj"
+                    .to_string(),
                 amount: Uint128::new(1),
             },
         ]),
@@ -2871,35 +2971,93 @@ fn test_three_of_five_multisig() {
 
     let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, vec![], None);
 
-    vote_on_proposal(&mut app, &proposal_module, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu", proposal_id, Vote::Yes);
-    vote_on_proposal(&mut app, &proposal_module, "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r", proposal_id, Vote::Yes);
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu",
+        proposal_id,
+        Vote::Yes,
+    );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r",
+        proposal_id,
+        Vote::Yes,
+    );
 
     // Make sure it doesn't pass early.
     let proposal: ProposalResponse = query_proposal(&app, &proposal_module, 1);
     assert_eq!(proposal.proposal.status, Status::Open);
 
-    vote_on_proposal(&mut app, &proposal_module, "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7", proposal_id, Vote::Yes);
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7",
+        proposal_id,
+        Vote::Yes,
+    );
 
     let proposal: ProposalResponse = query_proposal(&app, &proposal_module, 1);
     assert_eq!(proposal.proposal.status, Status::Passed);
 
-    execute_proposal(&mut app, &proposal_module, "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp", proposal_id);
+    execute_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp",
+        proposal_id,
+    );
 
     let proposal: ProposalResponse = query_proposal(&app, &proposal_module, 1);
     assert_eq!(proposal.proposal.status, Status::Executed);
 
     // Make another proposal which we'll reject.
-    let proposal_id = make_proposal(&mut app, &proposal_module, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu", vec![], None);
+    let proposal_id = make_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu",
+        vec![],
+        None,
+    );
 
-    vote_on_proposal(&mut app, &proposal_module, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu", proposal_id, Vote::Yes);
-    vote_on_proposal(&mut app, &proposal_module, "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r", proposal_id, Vote::No);
-    vote_on_proposal(&mut app, &proposal_module, "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7", proposal_id, Vote::No);
-    vote_on_proposal(&mut app, &proposal_module, "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp", proposal_id, Vote::No);
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu",
+        proposal_id,
+        Vote::Yes,
+    );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r",
+        proposal_id,
+        Vote::No,
+    );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7",
+        proposal_id,
+        Vote::No,
+    );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp",
+        proposal_id,
+        Vote::No,
+    );
 
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Rejected);
 
-    close_proposal(&mut app, &proposal_module, "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp", proposal_id);
+    close_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp",
+        proposal_id,
+    );
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Closed);
 }
@@ -2918,23 +3076,28 @@ fn test_three_of_five_multisig_revoting() {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string(),
+                address: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu"
+                    .to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r".to_string(),
+                address: "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r"
+                    .to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7".to_string(),
+                address: "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7"
+                    .to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp".to_string(),
+                address: "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp"
+                    .to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "cosmwasm1yg4sh4glemm7vhpwvtdja4j52uqnh26kheh6l6ceacgag5c48jqqtfwsjj".to_string(),
+                address: "cosmwasm1yg4sh4glemm7vhpwvtdja4j52uqnh26kheh6l6ceacgag5c48jqqtfwsjj"
+                    .to_string(),
                 amount: Uint128::new(1),
             },
         ]),
@@ -2953,25 +3116,60 @@ fn test_three_of_five_multisig_revoting() {
 
     let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, vec![], None);
 
-    vote_on_proposal(&mut app, &proposal_module, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu", proposal_id, Vote::Yes);
-    vote_on_proposal(&mut app, &proposal_module, "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r", proposal_id, Vote::Yes);
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu",
+        proposal_id,
+        Vote::Yes,
+    );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r",
+        proposal_id,
+        Vote::Yes,
+    );
 
     // Make sure it doesn't pass early.
     let proposal: ProposalResponse = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Open);
 
-    vote_on_proposal(&mut app, &proposal_module, "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7", proposal_id, Vote::Yes);
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7",
+        proposal_id,
+        Vote::Yes,
+    );
 
     // Revoting is enabled so the proposal is still open.
     let proposal: ProposalResponse = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Open);
 
     // Change our minds.
-    vote_on_proposal(&mut app, &proposal_module, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu", proposal_id, Vote::No);
-    vote_on_proposal(&mut app, &proposal_module, "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r", proposal_id, Vote::No);
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu",
+        proposal_id,
+        Vote::No,
+    );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r",
+        proposal_id,
+        Vote::No,
+    );
 
-    let err =
-        vote_on_proposal_should_fail(&mut app, &proposal_module, "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r", proposal_id, Vote::No);
+    let err = vote_on_proposal_should_fail(
+        &mut app,
+        &proposal_module,
+        "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r",
+        proposal_id,
+        Vote::No,
+    );
     assert!(matches!(err, ContractError::AlreadyCast {}));
 
     // Expire the revoting proposal and close it.
@@ -2987,19 +3185,22 @@ fn test_absolute_count_threshold_non_multisig() {
     do_votes_staked_balances(
         vec![
             TestSingleChoiceVote {
-                voter: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string(),
+                voter: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu"
+                    .to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
             TestSingleChoiceVote {
-                voter: "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r".to_string(),
+                voter: "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r"
+                    .to_string(),
                 position: Vote::No,
                 weight: Uint128::new(200),
                 should_execute: ShouldExecute::Yes,
             },
             TestSingleChoiceVote {
-                voter: "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7".to_string(),
+                voter: "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7"
+                    .to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(1),
                 should_execute: ShouldExecute::Yes,
@@ -3020,14 +3221,16 @@ fn test_large_absolute_count_threshold() {
     do_votes_staked_balances(
         vec![
             TestSingleChoiceVote {
-                voter: "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r".to_string(),
+                voter: "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r"
+                    .to_string(),
                 position: Vote::No,
                 weight: Uint128::new(1),
                 should_execute: ShouldExecute::Yes,
             },
             // Can vote up to expiration time.
             TestSingleChoiceVote {
-                voter: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string(),
+                voter: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu"
+                    .to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(u128::MAX - 1),
                 should_execute: ShouldExecute::Yes,
@@ -3043,13 +3246,15 @@ fn test_large_absolute_count_threshold() {
     do_votes_staked_balances(
         vec![
             TestSingleChoiceVote {
-                voter: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string(),
+                voter: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu"
+                    .to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(u128::MAX - 1),
                 should_execute: ShouldExecute::Yes,
             },
             TestSingleChoiceVote {
-                voter: "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r".to_string(),
+                voter: "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r"
+                    .to_string(),
                 position: Vote::No,
                 weight: Uint128::new(1),
                 should_execute: ShouldExecute::Yes,
@@ -3085,11 +3290,13 @@ fn test_proposal_count_initialized_to_zero() {
         },
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                    .to_string(),
                 amount: Uint128::new(10),
             },
             Cw20Coin {
-                address: "cosmwasm1a33vrh6d9hhst5wethjd9ytdwg9uyteut5p5wf8r3xc8ntt347fsqnfcjn".to_string(),
+                address: "cosmwasm1a33vrh6d9hhst5wethjd9ytdwg9uyteut5p5wf8r3xc8ntt347fsqnfcjn"
+                    .to_string(),
                 amount: Uint128::new(90),
             },
         ]),
@@ -3440,7 +3647,8 @@ fn test_execution_failed() {
         gov_token,
         proposal_id,
     } = setup_test(vec![BankMsg::Send {
-        to_address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+        to_address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+            .to_string(),
         amount: coins(10, "ujuno"),
     }
     .into()]);
@@ -3470,7 +3678,8 @@ fn test_execution_failed() {
         &proposal_module,
         CREATOR_ADDR,
         vec![BankMsg::Send {
-            to_address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            to_address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             amount: coins(10, "ujuno"),
         }
         .into()],
@@ -3628,8 +3837,13 @@ fn test_vote_not_registered() {
         proposal_id,
     } = setup_test(vec![]);
 
-    let err =
-        vote_on_proposal_should_fail(&mut app, &proposal_module, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", proposal_id, Vote::Yes);
+    let err = vote_on_proposal_should_fail(
+        &mut app,
+        &proposal_module,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        proposal_id,
+        Vote::Yes,
+    );
     assert!(matches!(err, ContractError::NotRegistered {}))
 }
 
@@ -3709,7 +3923,10 @@ fn test_proposal_creation_permissions() {
                 title: "title".to_string(),
                 description: "description".to_string(),
                 msgs: vec![],
-                proposer: Some("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string()),
+                proposer: Some(
+                    "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                        .to_string(),
+                ),
                 vote: None,
             }),
             &[],
@@ -3720,9 +3937,18 @@ fn test_proposal_creation_permissions() {
     assert!(matches!(err, ContractError::InvalidProposer {}));
 
     // Works normally.
-    let proposal_id = make_proposal(&mut app, &proposal_module, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", vec![], None);
+    let proposal_id = make_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        vec![],
+        None,
+    );
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
-    assert_eq!(proposal.proposal.proposer, Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"));
+    assert_eq!(
+        proposal.proposal.proposer,
+        Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")
+    );
     vote_on_proposal(
         &mut app,
         &proposal_module,
@@ -3768,7 +3994,9 @@ fn test_reply_hooks_mock() {
         .save(
             deps.as_mut().storage,
             &ProposalCreationPolicy::Module {
-                addr: Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
+                addr: Addr::unchecked(
+                    "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+                ),
             },
         )
         .unwrap();
@@ -3851,7 +4079,7 @@ fn test_query_info() {
 // Make a little multisig and test that queries to list votes work as
 // expected.
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_query_list_votes() {
     let mut app = App::default();
     let mut instantiate = get_default_non_token_dao_proposal_module_instantiate(&mut app);
@@ -3864,38 +4092,79 @@ fn test_query_list_votes() {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string(),
+                address: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu"
+                    .to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r".to_string(),
+                address: "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r"
+                    .to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7".to_string(),
+                address: "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7"
+                    .to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp".to_string(),
+                address: "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp"
+                    .to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "cosmwasm1yg4sh4glemm7vhpwvtdja4j52uqnh26kheh6l6ceacgag5c48jqqtfwsjj".to_string(),
+                address: "cosmwasm1yg4sh4glemm7vhpwvtdja4j52uqnh26kheh6l6ceacgag5c48jqqtfwsjj"
+                    .to_string(),
                 amount: Uint128::new(1),
             },
         ]),
     );
     let proposal_module = query_single_proposal_module(&app, &core_addr);
-    let proposal_id = make_proposal(&mut app, &proposal_module, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu", vec![], None);
+    let proposal_id = make_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu",
+        vec![],
+        None,
+    );
 
     let votes = query_list_votes(&app, &proposal_module, proposal_id, None, None);
     assert_eq!(votes.votes, vec![]);
 
-    vote_on_proposal(&mut app, &proposal_module, "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r", proposal_id, Vote::No);
-    vote_on_proposal(&mut app, &proposal_module, "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7", proposal_id, Vote::No);
-    vote_on_proposal(&mut app, &proposal_module, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu", proposal_id, Vote::Yes);
-    vote_on_proposal(&mut app, &proposal_module, "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp", proposal_id, Vote::Yes);
-    vote_on_proposal(&mut app, &proposal_module, "cosmwasm1yg4sh4glemm7vhpwvtdja4j52uqnh26kheh6l6ceacgag5c48jqqtfwsjj", proposal_id, Vote::Yes);
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r",
+        proposal_id,
+        Vote::No,
+    );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7",
+        proposal_id,
+        Vote::No,
+    );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu",
+        proposal_id,
+        Vote::Yes,
+    );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp",
+        proposal_id,
+        Vote::Yes,
+    );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "cosmwasm1yg4sh4glemm7vhpwvtdja4j52uqnh26kheh6l6ceacgag5c48jqqtfwsjj",
+        proposal_id,
+        Vote::Yes,
+    );
 
     let votes = query_list_votes(&app, &proposal_module, proposal_id, None, None);
     assert_eq!(
@@ -3903,35 +4172,45 @@ fn test_query_list_votes() {
         vec![
             VoteInfo {
                 rationale: None,
-                voter: Addr::unchecked("cosmwasm1yg4sh4glemm7vhpwvtdja4j52uqnh26kheh6l6ceacgag5c48jqqtfwsjj"),
+                voter: Addr::unchecked(
+                    "cosmwasm1yg4sh4glemm7vhpwvtdja4j52uqnh26kheh6l6ceacgag5c48jqqtfwsjj"
+                ),
                 vote: Vote::Yes,
                 power: Uint128::new(1),
                 individual_power: Uint128::new(1),
             },
             VoteInfo {
                 rationale: None,
-                voter: Addr::unchecked("cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp"),
+                voter: Addr::unchecked(
+                    "cosmwasm1qnh67zq0tgl8fcwzn5w2dfy9dyuzew7dxf8g6kwjhql0y8qrnuqqkgl6yp"
+                ),
                 vote: Vote::Yes,
                 power: Uint128::new(1),
                 individual_power: Uint128::new(1),
             },
             VoteInfo {
                 rationale: None,
-                voter: Addr::unchecked("cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu"),
+                voter: Addr::unchecked(
+                    "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu"
+                ),
                 vote: Vote::Yes,
                 power: Uint128::new(1),
                 individual_power: Uint128::new(1),
             },
             VoteInfo {
                 rationale: None,
-                voter: Addr::unchecked("cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7"),
+                voter: Addr::unchecked(
+                    "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7"
+                ),
                 vote: Vote::No,
                 power: Uint128::new(1),
                 individual_power: Uint128::new(1),
             },
             VoteInfo {
                 rationale: None,
-                voter: Addr::unchecked("cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r"),
+                voter: Addr::unchecked(
+                    "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r"
+                ),
                 vote: Vote::No,
                 power: Uint128::new(1),
                 individual_power: Uint128::new(1),
@@ -3951,14 +4230,18 @@ fn test_query_list_votes() {
         vec![
             VoteInfo {
                 rationale: None,
-                voter: Addr::unchecked("cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu"),
+                voter: Addr::unchecked(
+                    "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu"
+                ),
                 vote: Vote::Yes,
                 power: Uint128::new(1),
                 individual_power: Uint128::new(1),
             },
             VoteInfo {
                 rationale: None,
-                voter: Addr::unchecked("cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7"),
+                voter: Addr::unchecked(
+                    "cosmwasm13ddemvxp8keyy4kg9x4rvj4fp3kjaw333wfr9f9tjvfmj4xn240s9ecln7"
+                ),
                 vote: Vote::No,
                 power: Uint128::new(1),
                 individual_power: Uint128::new(1),
@@ -4378,7 +4661,7 @@ fn test_update_delegation_module_validates_addr() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_update_delegation_module() {
     let CommonTest {
         mut app,

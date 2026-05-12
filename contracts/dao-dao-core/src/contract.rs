@@ -6,8 +6,8 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_paginate_storage::{paginate_map, paginate_map_keys, paginate_map_values};
-use cw_storage_plus::Map;
 use cw_reply_compat::parse_reply_instantiate_data;
+use cw_storage_plus::Map;
 use cw_utils::Duration;
 use dao_interface::{
     msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg},
@@ -479,9 +479,14 @@ pub fn execute_update_cw721_list(
         return Err(ContractError::Unauthorized {});
     }
     do_update_addr_list(deps, CW721_LIST, to_add, to_remove, |addr, deps| {
-        let _info: cw721::ContractInfoResponse = deps
-            .querier
-            .query_wasm_smart(addr, &cw721::msg::Cw721QueryMsg::<cosmwasm_std::Empty, cosmwasm_std::Empty, cosmwasm_std::Empty>::GetCollectionInfoAndExtension {})?;
+        let _info: cw721::ContractInfoResponse = deps.querier.query_wasm_smart(
+            addr,
+            &cw721::msg::Cw721QueryMsg::<
+                cosmwasm_std::Empty,
+                cosmwasm_std::Empty,
+                cosmwasm_std::Empty,
+            >::GetCollectionInfoAndExtension {},
+        )?;
         Ok(())
     })?;
     Ok(Response::default().add_attribute("action", "update_cw721_list"))
@@ -894,7 +899,10 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
     let ContractVersion { version, .. } = get_contract_version(deps.storage)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     match msg {
-        MigrateMsg::FromV1 { dao_uri: _, params: _ } => {
+        MigrateMsg::FromV1 {
+            dao_uri: _,
+            params: _,
+        } => {
             // v1 -> v2.9+ direct migration is disabled. The cosmwasm-std 1.x → 2.x bump
             // breaks Storage trait identity between cw-core-v1 (pinned to cosmwasm-std 1.5.5)
             // and the workspace's cosmwasm-std 2.x — there is no zero-cost way to load

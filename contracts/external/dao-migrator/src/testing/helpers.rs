@@ -18,7 +18,8 @@ use crate::{
     ContractError,
 };
 
-pub(crate) const SENDER_ADDR: &str = "cosmwasm1h34lmpywh4upnjdg90cjf4j70aee6z8qqfspugamjp42e4q28kqs8s7vcp";
+pub(crate) const SENDER_ADDR: &str =
+    "cosmwasm1h34lmpywh4upnjdg90cjf4j70aee6z8qqfspugamjp42e4q28kqs8s7vcp";
 
 #[derive(Clone)]
 pub struct CodeIds {

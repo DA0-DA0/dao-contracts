@@ -227,10 +227,7 @@ pub fn execute_burn(
     })?;
 
     // Remove the token
-    contract
-        .config
-        .nft_info
-        .remove(deps.storage, &token_id)?;
+    contract.config.nft_info.remove(deps.storage, &token_id)?;
     // Decrement the count
     contract.config.decrement_tokens(deps.storage)?;
 

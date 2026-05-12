@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    testing::{mock_dependencies, mock_env, message_info},
+    testing::{message_info, mock_dependencies, mock_env},
     Addr,
 };
 use dao_hooks::nft_stake::{stake_nft_hook_msgs, unstake_nft_hook_msgs};
@@ -32,8 +32,11 @@ fn test_hooks() {
     assert_eq!(messages.len(), 0);
 
     // Save a DAO address for the execute messages we're testing.
-    DAO.save(deps.as_mut().storage, &Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"))
-        .unwrap();
+    DAO.save(
+        deps.as_mut().storage,
+        &Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
+    )
+    .unwrap();
 
     // Save a config for the execute messages we're testing.
     CONFIG
@@ -47,7 +50,10 @@ fn test_hooks() {
         .unwrap();
 
     let env = mock_env();
-    let info = message_info(&Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"), &[]);
+    let info = message_info(
+        &Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
+        &[],
+    );
 
     execute(
         deps.as_mut(),
@@ -78,7 +84,10 @@ fn test_hooks() {
     assert_eq!(messages.len(), 1);
 
     let env = mock_env();
-    let info = message_info(&Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"), &[]);
+    let info = message_info(
+        &Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
+        &[],
+    );
 
     execute(
         deps.as_mut(),

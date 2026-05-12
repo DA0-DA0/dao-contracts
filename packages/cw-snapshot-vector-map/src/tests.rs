@@ -13,8 +13,10 @@ fn test_basic() {
         "svm__active__changelog",
         "svm__active__last_update",
     );
-    let k1 = &Addr::unchecked("cosmwasm1y8wfu8et06fkduz6m9nlymv2h8ee85gtluy57e5362ehksrslvjsphdpc0");
-    let k2 = &Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg");
+    let k1 =
+        &Addr::unchecked("cosmwasm1y8wfu8et06fkduz6m9nlymv2h8ee85gtluy57e5362ehksrslvjsphdpc0");
+    let k2 =
+        &Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg");
 
     // add 1, 2, 3 to k1 at corresponding blocks
     svm.push(storage, k1, &1, 1, None).unwrap();
@@ -128,7 +130,8 @@ fn test_expiration() {
         "svm__active__changelog",
         "svm__active__last_update",
     );
-    let k1 = &Addr::unchecked("cosmwasm1y8wfu8et06fkduz6m9nlymv2h8ee85gtluy57e5362ehksrslvjsphdpc0");
+    let k1 =
+        &Addr::unchecked("cosmwasm1y8wfu8et06fkduz6m9nlymv2h8ee85gtluy57e5362ehksrslvjsphdpc0");
 
     svm.push(storage, k1, &1, 1, Some(3)).unwrap();
     svm.push(storage, k1, &4, 4, None).unwrap();
@@ -444,7 +447,8 @@ fn test_update() {
         "svm__active__changelog",
         "svm__active__last_update",
     );
-    let k1 = &Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj");
+    let k1 =
+        &Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj");
     let item_1_value = 13;
     let item_2_value = 23;
 
@@ -564,7 +568,8 @@ fn test_update_before_last_update() {
         "svm__active__changelog",
         "svm__active__last_update",
     );
-    let k1 = &Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj");
+    let k1 =
+        &Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj");
 
     // push an item at block #1
     let ((item_id, _), _) = svm.push(storage, k1, &69, 1, None).unwrap();
@@ -586,7 +591,8 @@ fn test_update_in_past() {
         "svm__active__changelog",
         "svm__active__last_update",
     );
-    let k1 = &Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj");
+    let k1 =
+        &Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj");
 
     // push an item at block #1
     let ((item_id, _), _) = svm.push(storage, k1, &69, 1, None).unwrap();
@@ -613,7 +619,8 @@ fn test_update_non_existent_item() {
         "svm__active__last_update",
     );
 
-    let k1 = &Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj");
+    let k1 =
+        &Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj");
 
     // attempt to update non-existent item when vector is empty
     svm.update(storage, k1, 0, 1, |v| *v += 1, None).unwrap();
@@ -630,7 +637,8 @@ fn test_update_expired_item_creates_new_entry() {
         "svm__active__changelog",
         "svm__active__last_update",
     );
-    let k1 = &Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj");
+    let k1 =
+        &Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj");
 
     // at block #1, push item that expires in 4 blocks (at block #5)
     let ((expired_id, _), _) = svm.push(storage, k1, &24, 1, Some(4)).unwrap();

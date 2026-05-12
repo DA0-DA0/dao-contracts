@@ -301,11 +301,13 @@ fn test_instantiate_cw_fund_distributor() {
         ..
     } = setup_test(vec![
         Cw20Coin {
-            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj".to_string(),
+            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"
+                .to_string(),
             amount: Uint128::new(10),
         },
         Cw20Coin {
-            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             amount: Uint128::new(20),
         },
     ]);
@@ -327,11 +329,13 @@ fn test_fund_cw20() {
         token_address,
     } = setup_test(vec![
         Cw20Coin {
-            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj".to_string(),
+            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"
+                .to_string(),
             amount: Uint128::new(10),
         },
         Cw20Coin {
-            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             amount: Uint128::new(20),
         },
     ]);
@@ -384,11 +388,13 @@ pub fn test_fund_cw20_zero_amount() {
         token_address,
     } = setup_test(vec![
         Cw20Coin {
-            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj".to_string(),
+            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"
+                .to_string(),
             amount: Uint128::new(10),
         },
         Cw20Coin {
-            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             amount: Uint128::new(20),
         },
     ]);
@@ -423,11 +429,13 @@ pub fn test_fund_natives() {
         token_address: _,
     } = setup_test(vec![
         Cw20Coin {
-            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj".to_string(),
+            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"
+                .to_string(),
             amount: Uint128::new(10),
         },
         Cw20Coin {
-            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             amount: Uint128::new(20),
         },
     ]);
@@ -446,7 +454,11 @@ pub fn test_fund_natives() {
     assert_eq!(amount, balance);
 
     // fund again with an existing balance with an existing balance, fund
-    mint_natives(&mut app, Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"), amount);
+    mint_natives(
+        &mut app,
+        Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"),
+        amount,
+    );
     fund_cw_fund_distributor_contract_natives(
         &mut app,
         distributor_address.clone(),
@@ -467,11 +479,13 @@ pub fn test_fund_natives_zero_amount() {
         token_address: _,
     } = setup_test(vec![
         Cw20Coin {
-            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj".to_string(),
+            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"
+                .to_string(),
             amount: Uint128::new(10),
         },
         Cw20Coin {
-            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             amount: Uint128::new(20),
         },
     ]);
@@ -523,11 +537,13 @@ pub fn test_claim_cw20() {
         token_address,
     } = setup_test(vec![
         Cw20Coin {
-            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj".to_string(),
+            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"
+                .to_string(),
             amount: Uint128::new(10),
         },
         Cw20Coin {
-            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             amount: Uint128::new(20),
         },
     ]);
@@ -572,8 +588,11 @@ pub fn test_claim_cw20() {
     // assert user has received the expected funds
     let expected_balance = Uint128::new(166666);
 
-    let user_balance_after_claim =
-        query_cw20_balance(&mut app, token_address.clone(), Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"));
+    let user_balance_after_claim = query_cw20_balance(
+        &mut app,
+        token_address.clone(),
+        Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"),
+    );
     assert_eq!(expected_balance, user_balance_after_claim.balance);
 
     // assert funds have been deducted from distributor
@@ -593,11 +612,13 @@ pub fn test_claim_cw20_twice() {
         token_address,
     } = setup_test(vec![
         Cw20Coin {
-            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj".to_string(),
+            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"
+                .to_string(),
             amount: Uint128::new(10),
         },
         Cw20Coin {
-            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             amount: Uint128::new(20),
         },
     ]);
@@ -651,8 +672,11 @@ pub fn test_claim_cw20_twice() {
     // assert user has received the expected funds (once)
     let expected_balance = Uint128::new(166666);
 
-    let user_balance_after_claim =
-        query_cw20_balance(&mut app, token_address.clone(), Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"));
+    let user_balance_after_claim = query_cw20_balance(
+        &mut app,
+        token_address.clone(),
+        Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"),
+    );
 
     // assert only a single claim has been deducted from the distributor
     let distributor_balance_after_claim =
@@ -719,11 +743,13 @@ pub fn test_claim_natives_twice() {
         token_address: _,
     } = setup_test(vec![
         Cw20Coin {
-            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj".to_string(),
+            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"
+                .to_string(),
             amount: Uint128::new(10),
         },
         Cw20Coin {
-            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             amount: Uint128::new(20),
         },
     ]);
@@ -761,7 +787,10 @@ pub fn test_claim_natives_twice() {
     .unwrap();
 
     let expected_balance = Uint128::new(166666);
-    let user_balance_after_claim = query_native_balance(&mut app, Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"));
+    let user_balance_after_claim = query_native_balance(
+        &mut app,
+        Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"),
+    );
 
     let distributor_balance_after_claim = query_native_balance(&mut app, distributor_address);
 
@@ -782,11 +811,13 @@ pub fn test_claim_natives() {
         token_address: _,
     } = setup_test(vec![
         Cw20Coin {
-            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj".to_string(),
+            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"
+                .to_string(),
             amount: Uint128::new(10),
         },
         Cw20Coin {
-            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             amount: Uint128::new(20),
         },
     ]);
@@ -816,7 +847,10 @@ pub fn test_claim_natives() {
     // 1/3rd of the total amount (500000) floored down
     let expected_balance = Uint128::new(166666);
 
-    let user_balance_after_claim = query_native_balance(&mut app, Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"));
+    let user_balance_after_claim = query_native_balance(
+        &mut app,
+        Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"),
+    );
     assert_eq!(expected_balance, user_balance_after_claim.amount);
 
     // assert funds have been deducted from distributor
@@ -835,11 +869,13 @@ pub fn test_claim_all() {
         token_address,
     } = setup_test(vec![
         Cw20Coin {
-            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj".to_string(),
+            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"
+                .to_string(),
             amount: Uint128::new(10),
         },
         Cw20Coin {
-            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             amount: Uint128::new(20),
         },
     ]);
@@ -882,7 +918,10 @@ pub fn test_claim_all() {
     let expected_balance = Uint128::new(166666);
 
     // assert the native claim
-    let user_balance_after_claim = query_native_balance(&mut app, Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"));
+    let user_balance_after_claim = query_native_balance(
+        &mut app,
+        Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"),
+    );
     let distributor_balance_after_claim =
         query_native_balance(&mut app, distributor_address.clone());
     // assert funds have been deducted from distributor and
@@ -894,8 +933,11 @@ pub fn test_claim_all() {
     );
 
     // assert the cw20 claim
-    let user_balance_after_claim =
-        query_cw20_balance(&mut app, token_address.clone(), Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"));
+    let user_balance_after_claim = query_cw20_balance(
+        &mut app,
+        token_address.clone(),
+        Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"),
+    );
     let distributor_balance_after_claim =
         query_cw20_balance(&mut app, token_address, distributor_address);
     // assert funds have been deducted from distributor and
@@ -915,11 +957,13 @@ pub fn test_claim_natives_empty_list_of_denoms() {
         token_address: _,
     } = setup_test(vec![
         Cw20Coin {
-            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj".to_string(),
+            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"
+                .to_string(),
             amount: Uint128::new(10),
         },
         Cw20Coin {
-            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             amount: Uint128::new(20),
         },
     ]);
@@ -949,7 +993,10 @@ pub fn test_claim_natives_empty_list_of_denoms() {
 
     assert!(matches!(err, ContractError::EmptyClaim {}));
 
-    let user_balance_after_claim = query_native_balance(&mut app, Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"));
+    let user_balance_after_claim = query_native_balance(
+        &mut app,
+        Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"),
+    );
     assert_eq!(Uint128::zero(), user_balance_after_claim.amount);
 
     // assert no funds have been deducted from distributor
@@ -965,11 +1012,13 @@ pub fn test_redistribute_unclaimed_funds() {
         token_address: _,
     } = setup_test(vec![
         Cw20Coin {
-            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj".to_string(),
+            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"
+                .to_string(),
             amount: Uint128::new(10),
         },
         Cw20Coin {
-            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             amount: Uint128::new(20),
         },
     ]);
@@ -998,7 +1047,10 @@ pub fn test_redistribute_unclaimed_funds() {
     .unwrap();
 
     let expected_balance = Uint128::new(166666);
-    let user_balance_after_claim = query_native_balance(&mut app, Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"));
+    let user_balance_after_claim = query_native_balance(
+        &mut app,
+        Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"),
+    );
     assert_eq!(expected_balance, user_balance_after_claim.amount);
 
     // some time passes..
@@ -1045,7 +1097,10 @@ pub fn test_redistribute_unclaimed_funds() {
     )
     .unwrap();
 
-    let user_balance_after_second_claim = query_native_balance(&mut app, Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"));
+    let user_balance_after_second_claim = query_native_balance(
+        &mut app,
+        Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"),
+    );
     assert_eq!(
         user_balance_after_second_claim.amount,
         expected_balance + expected_claim
@@ -1061,11 +1116,13 @@ pub fn test_unauthorized_redistribute_unclaimed_funds() {
         token_address: _,
     } = setup_test(vec![
         Cw20Coin {
-            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj".to_string(),
+            address: "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"
+                .to_string(),
             amount: Uint128::new(10),
         },
         Cw20Coin {
-            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             amount: Uint128::new(20),
         },
     ]);
@@ -1330,7 +1387,9 @@ fn test_query_cw20_entitlements() {
         .query_wasm_smart(
             distributor_address.clone(),
             &QueryMsg::CW20Entitlements {
-                sender: Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"),
+                sender: Addr::unchecked(
+                    "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj",
+                ),
                 start_at: None,
                 limit: None,
             },
@@ -1361,7 +1420,9 @@ fn test_query_cw20_entitlements() {
         .query_wasm_smart(
             distributor_address,
             &QueryMsg::CW20Entitlements {
-                sender: Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"),
+                sender: Addr::unchecked(
+                    "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj",
+                ),
                 start_at: None,
                 limit: None,
             },
@@ -1390,7 +1451,9 @@ fn test_query_native_entitlements() {
         .query_wasm_smart(
             distributor_address.clone(),
             &QueryMsg::NativeEntitlements {
-                sender: Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"),
+                sender: Addr::unchecked(
+                    "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj",
+                ),
                 start_at: None,
                 limit: None,
             },
@@ -1414,7 +1477,9 @@ fn test_query_native_entitlements() {
         .query_wasm_smart(
             distributor_address,
             &QueryMsg::NativeEntitlements {
-                sender: Addr::unchecked("cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj"),
+                sender: Addr::unchecked(
+                    "cosmwasm15mlcmfprhnh9q2n9fles2h0kswzuxscdgppss3rd7krr5zh0r7es209ucj",
+                ),
                 start_at: None,
                 limit: None,
             },
@@ -1428,7 +1493,7 @@ fn test_query_native_entitlements() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_query_cw20_entitlement() {
     let BaseTest {
         mut app,
@@ -1530,7 +1595,7 @@ fn test_query_native_entitlement() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_query_cw20_tokens() {
     let BaseTest {
         mut app,
@@ -1640,7 +1705,7 @@ fn test_query_total_power() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_query_voting_contract() {
     let BaseTest {
         app,

@@ -142,7 +142,10 @@ pub fn _instantiate_with_staked_cw721_governance(
             cw721_id,
             Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
             &cw721_base::msg::InstantiateMsg {
-                minter: Some("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string()),
+                minter: Some(
+                    "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                        .to_string(),
+                ),
                 symbol: "token".to_string(),
                 name: "ekez token best token".to_string(),
                 collection_info_extension: None,
@@ -213,7 +216,9 @@ pub fn _instantiate_with_staked_cw721_governance(
     for Cw20Coin { address, amount } in initial_balances {
         for i in 0..amount.u128() {
             app.execute_contract(
-                Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
+                Addr::unchecked(
+                    "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+                ),
                 nft_address.clone(),
                 &cw721_base::msg::ExecuteMsg::Mint {
                     token_id: format!("{address}_{i}"),

@@ -224,7 +224,9 @@ fn test_multiple_proposal_modules_failing() {
     // `module_addrs.proposals` is only used to set migration params based on how many proposals we have here
     // Its safe to add/remove 2nd proposal in this tests because the actual proposals are taken within the contract
     // and are not provided externally
-    module_addrs.proposals.push(Addr::unchecked("cosmwasm1ejahwer686l2wfjz34yjszjthk5e6efyvhgk8rwwwnjxxkxs0dlqllyje9"));
+    module_addrs.proposals.push(Addr::unchecked(
+        "cosmwasm1ejahwer686l2wfjz34yjszjthk5e6efyvhgk8rwwwnjxxkxs0dlqllyje9",
+    ));
     let err = execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None, None)
         .unwrap_err()
         .downcast::<ContractError>()

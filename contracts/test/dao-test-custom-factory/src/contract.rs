@@ -8,11 +8,11 @@ use cw2::set_contract_version;
 use cw721::msg::{Cw721QueryMsg, NumTokensResponse};
 use cw721_base::msg::InstantiateMsg as Cw721InstantiateMsg;
 use cw_ownable::Ownership;
+use cw_reply_compat::parse_reply_instantiate_data;
 use cw_storage_plus::Item;
 use cw_tokenfactory_issuer::msg::ExecuteMsg as IssuerExecuteMsg;
 #[cfg(feature = "osmosis_tokenfactory")]
 use cw_tokenfactory_issuer::msg::InstantiateMsg as IssuerInstantiateMsg;
-use cw_reply_compat::parse_reply_instantiate_data;
 use cw_utils::one_coin;
 use dao_interface::{
     nft::NftFactoryCallback,
@@ -38,7 +38,8 @@ const INSTANTIATE_NFT_REPLY_ID: u64 = 2;
 
 const DAO: Item<Addr> = Item::new("dao");
 const INITIAL_NFTS: Item<Vec<Binary>> = Item::new("initial_nfts");
-const NFT_CONTRACT: Item<Addr> = Item::new("cosmwasm1pv9g4gkq46vjp58lwnd3pdwdrgvx0mmn46znu00ga9uue4z4nqgqle0d2c");
+const NFT_CONTRACT: Item<Addr> =
+    Item::new("cosmwasm1pv9g4gkq46vjp58lwnd3pdwdrgvx0mmn46znu00ga9uue4z4nqgqle0d2c");
 const VOTING_MODULE: Item<Addr> = Item::new("voting_module");
 const TOKEN_INFO: Item<NewTokenInfo> = Item::new("token_info");
 
@@ -311,12 +312,10 @@ pub fn execute_validate_nft_dao(
     }
 
     // Query the total supply of the NFT contract
-    let nft_supply: NumTokensResponse = deps
-        .querier
-        .query_wasm_smart(
-            collection_addr.clone(),
-            &Cw721QueryMsg::<Empty, Empty, Empty>::NumTokens {},
-        )?;
+    let nft_supply: NumTokensResponse = deps.querier.query_wasm_smart(
+        collection_addr.clone(),
+        &Cw721QueryMsg::<Empty, Empty, Empty>::NumTokens {},
+    )?;
 
     // Check greater than zero
     if nft_supply.count == 0 {

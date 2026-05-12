@@ -21,8 +21,15 @@ use test_context::test_context;
 #[test]
 #[ignore]
 fn execute_execute_admin_msgs(chain: &mut Chain) {
-    let user_addr = chain.users["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"].account.address.clone();
-    let user_key = chain.users["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"].key.clone();
+    let user_addr = chain.users
+        ["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"]
+        .account
+        .address
+        .clone();
+    let user_key = chain.users
+        ["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"]
+        .key
+        .clone();
 
     // if you are not the admin, you cant execute admin msgs:
     let res = create_dao(
@@ -104,8 +111,15 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
 #[test]
 #[ignore]
 fn execute_items(chain: &mut Chain) {
-    let user_addr = chain.users["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"].account.address.clone();
-    let user_key = chain.users["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"].key.clone();
+    let user_addr = chain.users
+        ["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"]
+        .account
+        .address
+        .clone();
+    let user_key = chain.users
+        ["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"]
+        .key
+        .clone();
 
     // add item:
     let res = create_dao(
@@ -206,8 +220,15 @@ fn execute_items(chain: &mut Chain) {
 #[test]
 #[ignore]
 fn instantiate_with_no_admin(chain: &mut Chain) {
-    let user_addr = chain.users["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"].account.address.clone();
-    let user_key = chain.users["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"].key.clone();
+    let user_addr = chain.users
+        ["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"]
+        .account
+        .address
+        .clone();
+    let user_key = chain.users
+        ["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"]
+        .key
+        .clone();
 
     let res = create_dao(chain, None, "inst_dao_no_admin", user_addr, &user_key);
     let dao = res.unwrap();
@@ -232,8 +253,15 @@ fn instantiate_with_no_admin(chain: &mut Chain) {
 #[test]
 #[ignore]
 fn instantiate_with_admin(chain: &mut Chain) {
-    let user_addr = chain.users["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"].account.address.clone();
-    let user_key = chain.users["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"].key.clone();
+    let user_addr = chain.users
+        ["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"]
+        .account
+        .address
+        .clone();
+    let user_key = chain.users
+        ["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"]
+        .key
+        .clone();
     let voting_contract = "dao_voting_cw20_staked";
     let proposal_contract = "cw_proposal_single";
 

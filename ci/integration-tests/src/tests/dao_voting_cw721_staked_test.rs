@@ -79,7 +79,11 @@ pub fn send_nft(
         .execute(
             CW721_NAME,
             "stake_nft",
-            &cw721::msg::Cw721ExecuteMsg::<cosmwasm_std::Empty, cosmwasm_std::Empty, cosmwasm_std::Empty>::SendNft {
+            &cw721::msg::Cw721ExecuteMsg::<
+                cosmwasm_std::Empty,
+                cosmwasm_std::Empty,
+                cosmwasm_std::Empty,
+            >::SendNft {
                 contract: receiver.to_string(),
                 token_id: token_id.to_string(),
                 msg,
@@ -168,8 +172,15 @@ pub fn mint_and_stake_nft(
 #[test]
 #[ignore]
 fn cw721_stake_tokens(chain: &mut Chain) {
-    let user_addr = chain.users["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"].account.address.clone();
-    let user_key = chain.users["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"].key.clone();
+    let user_addr = chain.users
+        ["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"]
+        .account
+        .address
+        .clone();
+    let user_key = chain.users
+        ["cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"]
+        .key
+        .clone();
 
     let CommonTest { module, .. } = setup_test(chain, None, &user_key, &user_addr);
 

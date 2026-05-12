@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     from_json,
-    testing::{mock_dependencies, mock_env, message_info},
+    testing::{message_info, mock_dependencies, mock_env},
     to_json_binary, Addr, Binary, ContractResult, Empty, Response, SubMsg, WasmMsg,
 };
 use cw_hooks::HooksResponse;
@@ -17,13 +17,19 @@ type Contract = PreProposeContract<Empty, Empty, Empty, Empty, Empty>;
 #[test]
 fn test_completed_hook_status_invariant() {
     let mut deps = mock_dependencies();
-    let info = message_info(&Addr::unchecked("cosmwasm1jme0pqgalzxclsmthg0tle8ysswwwxc7ymz2czmheps0y63h5a3surh005"), &[]);
+    let info = message_info(
+        &Addr::unchecked("cosmwasm1jme0pqgalzxclsmthg0tle8ysswwwxc7ymz2czmheps0y63h5a3surh005"),
+        &[],
+    );
 
     let module = Contract::default();
 
     module
         .proposal_module
-        .save(&mut deps.storage, &Addr::unchecked("cosmwasm1jme0pqgalzxclsmthg0tle8ysswwwxc7ymz2czmheps0y63h5a3surh005"))
+        .save(
+            &mut deps.storage,
+            &Addr::unchecked("cosmwasm1jme0pqgalzxclsmthg0tle8ysswwwxc7ymz2czmheps0y63h5a3surh005"),
+        )
         .unwrap();
 
     let res = module.execute(
@@ -47,12 +53,18 @@ fn test_completed_hook_status_invariant() {
 #[test]
 fn test_completed_hook_auth() {
     let mut deps = mock_dependencies();
-    let info = message_info(&Addr::unchecked("cosmwasm1khqlkthud445vaxzlhxy3nspksarklqrwc7qcv64mcqfnms033eshh58j0"), &[]);
+    let info = message_info(
+        &Addr::unchecked("cosmwasm1khqlkthud445vaxzlhxy3nspksarklqrwc7qcv64mcqfnms033eshh58j0"),
+        &[],
+    );
     let module = Contract::default();
 
     module
         .proposal_module
-        .save(&mut deps.storage, &Addr::unchecked("cosmwasm1jme0pqgalzxclsmthg0tle8ysswwwxc7ymz2czmheps0y63h5a3surh005"))
+        .save(
+            &mut deps.storage,
+            &Addr::unchecked("cosmwasm1jme0pqgalzxclsmthg0tle8ysswwwxc7ymz2czmheps0y63h5a3surh005"),
+        )
         .unwrap();
 
     let res = module.execute(
@@ -75,11 +87,17 @@ fn test_proposal_submitted_hooks() {
 
     module
         .dao
-        .save(&mut deps.storage, &Addr::unchecked("cosmwasm1rzkruu6r7qtgjrz3p6fljdfxz95ancl4v4pkg2vrp7hsjd85lrjqwpk08g"))
+        .save(
+            &mut deps.storage,
+            &Addr::unchecked("cosmwasm1rzkruu6r7qtgjrz3p6fljdfxz95ancl4v4pkg2vrp7hsjd85lrjqwpk08g"),
+        )
         .unwrap();
     module
         .proposal_module
-        .save(&mut deps.storage, &Addr::unchecked("cosmwasm1jme0pqgalzxclsmthg0tle8ysswwwxc7ymz2czmheps0y63h5a3surh005"))
+        .save(
+            &mut deps.storage,
+            &Addr::unchecked("cosmwasm1jme0pqgalzxclsmthg0tle8ysswwwxc7ymz2czmheps0y63h5a3surh005"),
+        )
         .unwrap();
     module
         .config
@@ -93,9 +111,16 @@ fn test_proposal_submitted_hooks() {
         .unwrap();
 
     // The DAO can add a hook.
-    let info = message_info(&Addr::unchecked("cosmwasm1rzkruu6r7qtgjrz3p6fljdfxz95ancl4v4pkg2vrp7hsjd85lrjqwpk08g"), &[]);
+    let info = message_info(
+        &Addr::unchecked("cosmwasm1rzkruu6r7qtgjrz3p6fljdfxz95ancl4v4pkg2vrp7hsjd85lrjqwpk08g"),
+        &[],
+    );
     module
-        .execute_add_proposal_submitted_hook(deps.as_mut(), info, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string())
+        .execute_add_proposal_submitted_hook(
+            deps.as_mut(),
+            info,
+            "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string(),
+        )
         .unwrap();
     let hooks: HooksResponse = from_json(
         module
@@ -107,12 +132,22 @@ fn test_proposal_submitted_hooks() {
             .unwrap(),
     )
     .unwrap();
-    assert_eq!(hooks.hooks, vec!["cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string()]);
+    assert_eq!(
+        hooks.hooks,
+        vec!["cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string()]
+    );
 
     // Non-DAO addresses can not add hooks.
-    let info = message_info(&Addr::unchecked("cosmwasm1rvttrh6n3wsjmsle0mdmsh92wpgdgmq5sy6zjrlt4q8cydkg8kusr83amx"), &[]);
+    let info = message_info(
+        &Addr::unchecked("cosmwasm1rvttrh6n3wsjmsle0mdmsh92wpgdgmq5sy6zjrlt4q8cydkg8kusr83amx"),
+        &[],
+    );
     let err = module
-        .execute_add_proposal_submitted_hook(deps.as_mut(), info, "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r".to_string())
+        .execute_add_proposal_submitted_hook(
+            deps.as_mut(),
+            info,
+            "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r".to_string(),
+        )
         .unwrap_err();
     assert_eq!(err, PreProposeError::NotDao {});
 
@@ -126,7 +161,12 @@ fn test_proposal_submitted_hooks() {
         .execute(
             deps.as_mut(),
             mock_env(),
-            message_info(&Addr::unchecked("cosmwasm1e2tczyk2rw7u47kzxxee5g7ufkncdmlcz37yuu4espmcttlwfzasvcmsxa"), &[]),
+            message_info(
+                &Addr::unchecked(
+                    "cosmwasm1e2tczyk2rw7u47kzxxee5g7ufkncdmlcz37yuu4espmcttlwfzasvcmsxa",
+                ),
+                &[],
+            ),
             ExecuteMsg::Propose {
                 msg: Empty::default(),
             },
@@ -135,23 +175,38 @@ fn test_proposal_submitted_hooks() {
     assert_eq!(
         res.messages[1],
         SubMsg::new(WasmMsg::Execute {
-            contract_addr: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string(),
+            contract_addr: "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu"
+                .to_string(),
             msg: to_json_binary(&Empty::default()).unwrap(),
             funds: vec![],
         })
     );
 
     // Non-DAO addresses can not remove hooks.
-    let info = message_info(&Addr::unchecked("cosmwasm1rvttrh6n3wsjmsle0mdmsh92wpgdgmq5sy6zjrlt4q8cydkg8kusr83amx"), &[]);
+    let info = message_info(
+        &Addr::unchecked("cosmwasm1rvttrh6n3wsjmsle0mdmsh92wpgdgmq5sy6zjrlt4q8cydkg8kusr83amx"),
+        &[],
+    );
     let err = module
-        .execute_remove_proposal_submitted_hook(deps.as_mut(), info, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string())
+        .execute_remove_proposal_submitted_hook(
+            deps.as_mut(),
+            info,
+            "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string(),
+        )
         .unwrap_err();
     assert_eq!(err, PreProposeError::NotDao {});
 
     // The DAO can remove a hook.
-    let info = message_info(&Addr::unchecked("cosmwasm1rzkruu6r7qtgjrz3p6fljdfxz95ancl4v4pkg2vrp7hsjd85lrjqwpk08g"), &[]);
+    let info = message_info(
+        &Addr::unchecked("cosmwasm1rzkruu6r7qtgjrz3p6fljdfxz95ancl4v4pkg2vrp7hsjd85lrjqwpk08g"),
+        &[],
+    );
     module
-        .execute_remove_proposal_submitted_hook(deps.as_mut(), info, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string())
+        .execute_remove_proposal_submitted_hook(
+            deps.as_mut(),
+            info,
+            "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu".to_string(),
+        )
         .unwrap();
     let hooks: HooksResponse = from_json(
         module
@@ -192,7 +247,12 @@ fn test_execute_ext_does_nothing() {
         .execute(
             deps.as_mut(),
             mock_env(),
-            message_info(&Addr::unchecked("cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz"), &[]),
+            message_info(
+                &Addr::unchecked(
+                    "cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz",
+                ),
+                &[],
+            ),
             ExecuteMsg::Extension {
                 msg: Empty::default(),
             },

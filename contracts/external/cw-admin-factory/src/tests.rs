@@ -1,7 +1,7 @@
 use std::vec;
 
 use cosmwasm_std::{
-    testing::{mock_dependencies, mock_env, message_info},
+    testing::{message_info, mock_dependencies, mock_env},
     to_json_binary, Binary, Reply, SubMsg, SubMsgResponse, SubMsgResult, WasmMsg,
 };
 use cw_multi_test::{App, AppResponse, Executor};
@@ -105,17 +105,18 @@ pub fn test_set_self_admin() {
 
     // Check that admin of core address is itself
     let contract_info = app.wrap().query_wasm_contract_info(&core_addr).unwrap();
-    assert_eq!(
-        contract_info.admin.map(|a| a.to_string()),
-        Some(core_addr)
-    )
+    assert_eq!(contract_info.admin.map(|a| a.to_string()), Some(core_addr))
 }
 
 #[test]
 pub fn test_authorized_set_self_admin() {
     let mut app = App::default();
-    let admin = app.api().addr_make("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql");
-    let not_admin = app.api().addr_make("cosmwasm1xvg7279n5wvh2g9reua0cf2yyrzmlxf3fnurwarvzy47wt5pz33slsv9xw");
+    let admin = app
+        .api()
+        .addr_make("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql");
+    let not_admin = app
+        .api()
+        .addr_make("cosmwasm1xvg7279n5wvh2g9reua0cf2yyrzmlxf3fnurwarvzy47wt5pz33slsv9xw");
     let code_id = app.store_code(cw_admin_factory_contract());
     let cw20_code_id = app.store_code(cw20_base_contract());
     let cw20_instantiate = cw20_base::msg::InstantiateMsg {
@@ -226,16 +227,15 @@ pub fn test_authorized_set_self_admin() {
 
     // Check that admin of core address is itself
     let contract_info = app.wrap().query_wasm_contract_info(&core_addr).unwrap();
-    assert_eq!(
-        contract_info.admin.map(|a| a.to_string()),
-        Some(core_addr)
-    )
+    assert_eq!(contract_info.admin.map(|a| a.to_string()), Some(core_addr))
 }
 
 #[test]
 pub fn test_set_self_admin_mock() {
     let mut deps = mock_dependencies();
-    let creator = deps.api.addr_make("cosmwasm1h34lmpywh4upnjdg90cjf4j70aee6z8qqfspugamjp42e4q28kqs8s7vcp");
+    let creator = deps
+        .api
+        .addr_make("cosmwasm1h34lmpywh4upnjdg90cjf4j70aee6z8qqfspugamjp42e4q28kqs8s7vcp");
     let contract2 = deps.api.addr_make("contract2");
     // Instantiate factory contract
     let instantiate_msg = InstantiateMsg { admin: None };
@@ -245,7 +245,10 @@ pub fn test_set_self_admin_mock() {
     // Encode `MsgInstantiateContractResponse { contract_address: contract2.to_string() }`
     // as protobuf: field 1, wire type 2 (length-delimited).
     let addr_str = contract2.to_string();
-    assert!(addr_str.len() < 128, "bech32 addr len must fit single varint");
+    assert!(
+        addr_str.len() < 128,
+        "bech32 addr len must fit single varint"
+    );
     let mut bytes = vec![0x0Au8, addr_str.len() as u8];
     bytes.extend_from_slice(addr_str.as_bytes());
     let reply_msg: Reply = Reply {

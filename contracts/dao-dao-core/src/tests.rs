@@ -1083,7 +1083,9 @@ fn test_admin_permissions() {
         Addr::unchecked("cosmwasm1vwwk0y3vy2myq7q278aykgqz4yhtq0uvw4mrzh5zry5punhq4npqghgmss"),
         core_addr.clone(),
         &ExecuteMsg::NominateAdmin {
-            admin: Some("cosmwasm1vwwk0y3vy2myq7q278aykgqz4yhtq0uvw4mrzh5zry5punhq4npqghgmss".to_string()),
+            admin: Some(
+                "cosmwasm1vwwk0y3vy2myq7q278aykgqz4yhtq0uvw4mrzh5zry5punhq4npqghgmss".to_string(),
+            ),
         },
         &[],
     );
@@ -1098,7 +1100,10 @@ fn test_admin_permissions() {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: core_addr.to_string(),
                 msg: to_json_binary(&ExecuteMsg::NominateAdmin {
-                    admin: Some("cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt".to_string()),
+                    admin: Some(
+                        "cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt"
+                            .to_string(),
+                    ),
                 })
                 .unwrap(),
                 funds: vec![],
@@ -1110,8 +1115,13 @@ fn test_admin_permissions() {
     res.unwrap();
 
     // Instantiate new DAO with an admin
-    let (core_with_admin_addr, mut app) =
-        do_standard_instantiate(true, Some(Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql").to_string()));
+    let (core_with_admin_addr, mut app) = do_standard_instantiate(
+        true,
+        Some(
+            Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql")
+                .to_string(),
+        ),
+    );
 
     // Non admins still can't call ExecuteAdminMsgs
     let res = app.execute_contract(
@@ -1253,7 +1263,9 @@ fn test_admin_permissions() {
         Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql"),
         core_with_admin_addr.clone(),
         &ExecuteMsg::NominateAdmin {
-            admin: Some("cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt".to_string()),
+            admin: Some(
+                "cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt".to_string(),
+            ),
         },
         &[],
     );
@@ -1266,7 +1278,9 @@ fn test_admin_permissions() {
     assert_eq!(
         nomination,
         AdminNominationResponse {
-            nomination: Some(Addr::unchecked("cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt"))
+            nomination: Some(Addr::unchecked(
+                "cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt"
+            ))
         }
     );
 
@@ -1275,7 +1289,10 @@ fn test_admin_permissions() {
         .wrap()
         .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::Admin {})
         .unwrap();
-    assert_eq!(res, Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql"));
+    assert_eq!(
+        res,
+        Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql")
+    );
 
     // Only the nominated address may accept the nomination.
     let err: ContractError = app
@@ -1304,7 +1321,10 @@ fn test_admin_permissions() {
         .wrap()
         .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::Admin {})
         .unwrap();
-    assert_eq!(res, Addr::unchecked("cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt"));
+    assert_eq!(
+        res,
+        Addr::unchecked("cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt")
+    );
 
     // Check that the pending admin has been cleared.
     let nomination: AdminNominationResponse = app
@@ -1315,9 +1335,12 @@ fn test_admin_permissions() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_admin_nomination() {
-    let (core_addr, mut app) = do_standard_instantiate(true, Some("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql".to_string()));
+    let (core_addr, mut app) = do_standard_instantiate(
+        true,
+        Some("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql".to_string()),
+    );
 
     // Check that there is no pending nominations.
     let nomination: AdminNominationResponse = app
@@ -1331,7 +1354,9 @@ fn test_admin_nomination() {
         Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql"),
         core_addr.clone(),
         &ExecuteMsg::NominateAdmin {
-            admin: Some("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string()),
+            admin: Some(
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            ),
         },
         &[],
     )
@@ -1345,7 +1370,9 @@ fn test_admin_nomination() {
     assert_eq!(
         nomination,
         AdminNominationResponse {
-            nomination: Some(Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"))
+            nomination: Some(Addr::unchecked(
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+            ))
         }
     );
 
@@ -1409,7 +1436,9 @@ fn test_admin_nomination() {
         Addr::unchecked("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql"),
         core_addr.clone(),
         &ExecuteMsg::NominateAdmin {
-            admin: Some("cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt".to_string()),
+            admin: Some(
+                "cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt".to_string(),
+            ),
         },
         &[],
     )
@@ -1457,7 +1486,12 @@ fn test_admin_nomination() {
         .wrap()
         .query_wasm_smart(core_addr.clone(), &QueryMsg::Admin {})
         .unwrap();
-    assert_eq!(admin, Addr::unchecked("cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt".to_string()));
+    assert_eq!(
+        admin,
+        Addr::unchecked(
+            "cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt".to_string()
+        )
+    );
 
     let start_height = app.block_info().height;
     // Check that the new admin can do admin things and the old can not.
@@ -2067,7 +2101,7 @@ fn test_cw20_receive_auto_add() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_cw20_receive_no_auto_add() {
     let (gov_addr, mut app) = do_standard_instantiate(false, None);
 
@@ -2163,8 +2197,10 @@ fn test_cw721_receive() {
             cw721_id,
             Addr::unchecked(CREATOR_ADDR),
             &cw721_base::msg::InstantiateMsg {
-                name: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
-                symbol: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+                name: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                    .to_string(),
+                symbol: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                    .to_string(),
                 minter: Some(CREATOR_ADDR.to_string()),
                 collection_info_extension: None,
                 creator: None,
@@ -2181,8 +2217,10 @@ fn test_cw721_receive() {
             cw721_id,
             Addr::unchecked(CREATOR_ADDR),
             &cw721_base::msg::InstantiateMsg {
-                name: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
-                symbol: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+                name: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                    .to_string(),
+                symbol: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                    .to_string(),
                 minter: Some(CREATOR_ADDR.to_string()),
                 collection_info_extension: None,
                 creator: None,
@@ -2198,7 +2236,8 @@ fn test_cw721_receive() {
         Addr::unchecked(CREATOR_ADDR),
         cw721_addr.clone(),
         &cw721_base::msg::ExecuteMsg::Mint {
-            token_id: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            token_id: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             owner: CREATOR_ADDR.to_string(),
             token_uri: None,
             extension: None,
@@ -2212,7 +2251,8 @@ fn test_cw721_receive() {
         cw721_addr.clone(),
         &cw721_base::msg::ExecuteMsg::SendNft {
             contract: gov_addr.to_string(),
-            token_id: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            token_id: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             msg: to_json_binary("").unwrap(),
         },
         &[],
@@ -2299,8 +2339,10 @@ fn test_cw721_receive_no_auto_add() {
             cw721_id,
             Addr::unchecked(CREATOR_ADDR),
             &cw721_base::msg::InstantiateMsg {
-                name: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
-                symbol: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+                name: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                    .to_string(),
+                symbol: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                    .to_string(),
                 minter: Some(CREATOR_ADDR.to_string()),
                 collection_info_extension: None,
                 creator: None,
@@ -2317,8 +2359,10 @@ fn test_cw721_receive_no_auto_add() {
             cw721_id,
             Addr::unchecked(CREATOR_ADDR),
             &cw721_base::msg::InstantiateMsg {
-                name: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
-                symbol: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+                name: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                    .to_string(),
+                symbol: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                    .to_string(),
                 minter: Some(CREATOR_ADDR.to_string()),
                 collection_info_extension: None,
                 creator: None,
@@ -2334,7 +2378,8 @@ fn test_cw721_receive_no_auto_add() {
         Addr::unchecked(CREATOR_ADDR),
         cw721_addr.clone(),
         &cw721_base::msg::ExecuteMsg::Mint {
-            token_id: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            token_id: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             owner: CREATOR_ADDR.to_string(),
             token_uri: None,
             extension: None,
@@ -2348,7 +2393,8 @@ fn test_cw721_receive_no_auto_add() {
         cw721_addr.clone(),
         &cw721_base::msg::ExecuteMsg::SendNft {
             contract: gov_addr.to_string(),
-            token_id: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            token_id: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             msg: to_json_binary("").unwrap(),
         },
         &[],
@@ -2869,7 +2915,7 @@ fn test_migrate_from_beta() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_migrate_mock() {
     let mut deps = mock_dependencies();
     let dao_uri: String = "/dao/uri".to_string();
@@ -2883,7 +2929,8 @@ fn test_migrate_mock() {
     set_contract_version(&mut deps.storage, CONTRACT_NAME, "0.1.0").unwrap();
 
     // Write to storage in old proposal module format
-    let proposal_modules_key = Addr::unchecked("cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz");
+    let proposal_modules_key =
+        Addr::unchecked("cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz");
     let old_map: Map<Addr, Empty> = Map::new("proposal_modules");
     let path = old_map.key(proposal_modules_key.clone());
     deps.storage.set(&path, &to_json_binary(&Empty {}).unwrap());
@@ -2915,7 +2962,10 @@ fn test_migrate_mock() {
     let new_path = PROPOSAL_MODULES.key(proposal_modules_key);
     let prop_module_bytes = deps.storage.get(&new_path).unwrap();
     let module: ProposalModule = from_json(prop_module_bytes).unwrap();
-    assert_eq!(module.address, Addr::unchecked("cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz"));
+    assert_eq!(
+        module.address,
+        Addr::unchecked("cosmwasm15fvnexrvsm9ryw3nn4mcrnqyhvhazkkr48xnwtlegjz2uaxmhg0sjzfhfz")
+    );
     assert_eq!(module.prefix, derive_proposal_module_prefix(0).unwrap());
     assert_eq!(module.status, ProposalModuleStatus::Enabled {});
 
@@ -2968,7 +3018,7 @@ fn test_execute_stargate_msg() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_module_prefixes() {
     let mut app = App::default();
     let govmod_id = app.store_code(dao_proposal_sudo_contract());
@@ -3089,7 +3139,7 @@ fn query_proposal_module_count(app: &App, core_addr: &Addr) -> ProposalModuleCou
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_add_remove_subdaos() {
     let (core_addr, mut app) = do_standard_instantiate(false, None);
 
@@ -3223,7 +3273,7 @@ fn test_query_info() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_initial_actions() {
     let mut app = App::default();
     let govmod_id = app.store_code(dao_proposal_sudo_contract());

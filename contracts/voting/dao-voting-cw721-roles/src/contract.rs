@@ -6,9 +6,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw4::{MemberResponse, TotalWeightResponse};
-use cw721::msg::{
-    Cw721ExecuteMsg, Cw721InstantiateMsg, Cw721QueryMsg,
-};
+use cw721::msg::{Cw721ExecuteMsg, Cw721InstantiateMsg, Cw721QueryMsg};
 use cw_ownable::Action;
 use cw_reply_compat::parse_reply_instantiate_data;
 use dao_cw721_extensions::roles::{ExecuteExt, MetadataExt, QueryExt};
@@ -193,17 +191,19 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                             Ok(SubMsg::new(WasmMsg::Execute {
                                 contract_addr: nft_contract.clone(),
                                 funds: vec![],
-                                msg: to_json_binary(
-                                    &Cw721ExecuteMsg::<MetadataExt, Empty, ExecuteExt>::Mint {
-                                        token_id: nft.token_id.clone(),
-                                        owner: nft.owner.clone(),
-                                        token_uri: nft.token_uri.clone(),
-                                        extension: MetadataExt {
-                                            role: nft.clone().extension.role,
-                                            weight: nft.extension.weight,
-                                        },
+                                msg: to_json_binary(&Cw721ExecuteMsg::<
+                                    MetadataExt,
+                                    Empty,
+                                    ExecuteExt,
+                                >::Mint {
+                                    token_id: nft.token_id.clone(),
+                                    owner: nft.owner.clone(),
+                                    token_uri: nft.token_uri.clone(),
+                                    extension: MetadataExt {
+                                        role: nft.clone().extension.role,
+                                        weight: nft.extension.weight,
                                     },
-                                )?,
+                                })?,
                             }))
                         })
                         .collect::<Vec<SubMsg>>();

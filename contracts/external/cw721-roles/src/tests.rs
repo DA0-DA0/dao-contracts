@@ -209,7 +209,9 @@ fn test_minting_and_transfer_permissions() {
         owner: ALICE.to_string(),
         token_uri: Some("ipfs://xyz...".to_string()),
         extension: MetadataExt {
-            role: Some("cosmwasm1uvdtvs7yfaaqajpykkw3r9xkpkkrxssqmpz7v8fd9zw65rcg06jqfd9qlh".to_string()),
+            role: Some(
+                "cosmwasm1uvdtvs7yfaaqajpykkw3r9xkpkkrxssqmpz7v8fd9zw65rcg06jqfd9qlh".to_string(),
+            ),
             weight: 1,
         },
     };
@@ -248,7 +250,9 @@ fn test_send_permissions() {
         owner: ALICE.to_string(),
         token_uri: Some("ipfs://xyz...".to_string()),
         extension: MetadataExt {
-            role: Some("cosmwasm1uvdtvs7yfaaqajpykkw3r9xkpkkrxssqmpz7v8fd9zw65rcg06jqfd9qlh".to_string()),
+            role: Some(
+                "cosmwasm1uvdtvs7yfaaqajpykkw3r9xkpkkrxssqmpz7v8fd9zw65rcg06jqfd9qlh".to_string(),
+            ),
             weight: 1,
         },
     };

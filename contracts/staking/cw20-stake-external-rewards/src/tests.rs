@@ -905,7 +905,12 @@ fn update_reward_duration() {
     let msg = ExecuteMsg::UpdateRewardDuration { new_duration: 100 };
     let err: ContractError = app
         .borrow_mut()
-        .execute_contract(Addr::unchecked("cosmwasm1qvxevcvdfzpql4adz8jl63jew2cp8tkclhftmlrmqtvhngk5h6vq7mmu6q"), reward_addr.clone(), &msg, &[])
+        .execute_contract(
+            Addr::unchecked("cosmwasm1qvxevcvdfzpql4adz8jl63jew2cp8tkclhftmlrmqtvhngk5h6vq7mmu6q"),
+            reward_addr.clone(),
+            &msg,
+            &[],
+        )
         .unwrap_err()
         .downcast()
         .unwrap();
@@ -1227,7 +1232,9 @@ fn test_cannot_fund_with_wrong_coin_cw20() {
     let reward_addr = setup_reward_contract(
         &mut app,
         staking_addr,
-        Denom::Cw20(Addr::unchecked("cosmwasm1xpw6x2p5gsvy9sfn8h7zwzvwjcdc0yttg5y5x40pf572k4u0mskqr5ljmr")),
+        Denom::Cw20(Addr::unchecked(
+            "cosmwasm1xpw6x2p5gsvy9sfn8h7zwzvwjcdc0yttg5y5x40pf572k4u0mskqr5ljmr",
+        )),
         admin.clone(),
     );
 

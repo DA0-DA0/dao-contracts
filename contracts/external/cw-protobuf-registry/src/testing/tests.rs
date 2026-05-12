@@ -9,7 +9,7 @@ use prost_types::FileDescriptorSet;
 use crate::{msg::InstantiateMsg, protobuf::encode_protobuf, testing::suite::SuiteBuilder};
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_init_with_owner() {
     let mut suite = SuiteBuilder::base().build();
     let other_owner = "other_owner";

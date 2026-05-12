@@ -100,7 +100,8 @@ fn instantiate_cw20_base_default(app: &mut App) -> Addr {
         symbol: "cwtwenty".to_string(),
         decimals: 6,
         initial_balances: vec![Cw20Coin {
-            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             amount: Uint128::new(10),
         }],
         mint: None,
@@ -138,11 +139,13 @@ fn setup_default_test(
         to_json_binary(&proposal_module_instantiate).unwrap(),
         Some(vec![
             cw20::Cw20Coin {
-                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                    .to_string(),
                 amount: Uint128::new(9),
             },
             cw20::Cw20Coin {
-                address: "cosmwasm1mw84pqf8eyuhqwr9xre4l7aswr75ugex42gzjyvgueeza7vxv0dqx57dyx".to_string(),
+                address: "cosmwasm1mw84pqf8eyuhqwr9xre4l7aswr75ugex42gzjyvgueeza7vxv0dqx57dyx"
+                    .to_string(),
                 amount: Uint128::new(8),
             },
         ]),
@@ -493,7 +496,11 @@ fn test_native_permutation(
         false,
     );
 
-    mint_natives(&mut app, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", coins(10, "ujuno"));
+    mint_natives(
+        &mut app,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        coins(10, "ujuno"),
+    );
     let id = make_proposal(
         &mut app,
         pre_propose,
@@ -503,7 +510,11 @@ fn test_native_permutation(
     );
 
     // Make sure it went away.
-    let balance = get_balance_native(&app, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", "ujuno");
+    let balance = get_balance_native(
+        &app,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        "ujuno",
+    );
     assert_eq!(balance, Uint128::zero());
 
     #[allow(clippy::type_complexity)]
@@ -515,18 +526,33 @@ fn test_native_permutation(
         EndStatus::Passed => (Vote::Yes, Status::Passed, execute_proposal),
         EndStatus::Failed => (Vote::No, Status::Rejected, close_proposal),
     };
-    let new_status = vote(&mut app, proposal_single.clone(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", id, position);
+    let new_status = vote(
+        &mut app,
+        proposal_single.clone(),
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        id,
+        position,
+    );
     assert_eq!(new_status, expected_status);
 
     // Close or execute the proposal to trigger a refund.
-    trigger_refund(&mut app, proposal_single, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", id);
+    trigger_refund(
+        &mut app,
+        proposal_single,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        id,
+    );
 
     let (dao_expected, proposer_expected) = match receiver {
         RefundReceiver::Proposer => (0, 10),
         RefundReceiver::Dao => (10, 0),
     };
 
-    let proposer_balance = get_balance_native(&app, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", "ujuno");
+    let proposer_balance = get_balance_native(
+        &app,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        "ujuno",
+    );
     let dao_balance = get_balance_native(&app, core_addr.as_str(), "ujuno");
     assert_eq!(proposer_expected, proposer_balance.u128());
     assert_eq!(dao_expected, dao_balance.u128())
@@ -573,7 +599,11 @@ fn test_cw20_permutation(
     );
 
     // Make sure it went await.
-    let balance = get_balance_cw20(&app, cw20_address.clone(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg");
+    let balance = get_balance_cw20(
+        &app,
+        cw20_address.clone(),
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+    );
     assert_eq!(balance, Uint128::zero());
 
     #[allow(clippy::type_complexity)]
@@ -585,18 +615,33 @@ fn test_cw20_permutation(
         EndStatus::Passed => (Vote::Yes, Status::Passed, execute_proposal),
         EndStatus::Failed => (Vote::No, Status::Rejected, close_proposal),
     };
-    let new_status = vote(&mut app, proposal_single.clone(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", id, position);
+    let new_status = vote(
+        &mut app,
+        proposal_single.clone(),
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        id,
+        position,
+    );
     assert_eq!(new_status, expected_status);
 
     // Close or execute the proposal to trigger a refund.
-    trigger_refund(&mut app, proposal_single, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", id);
+    trigger_refund(
+        &mut app,
+        proposal_single,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        id,
+    );
 
     let (dao_expected, proposer_expected) = match receiver {
         RefundReceiver::Proposer => (0, 10),
         RefundReceiver::Dao => (10, 0),
     };
 
-    let proposer_balance = get_balance_cw20(&app, &cw20_address, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg");
+    let proposer_balance = get_balance_cw20(
+        &app,
+        &cw20_address,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+    );
     let dao_balance = get_balance_cw20(&app, &cw20_address, core_addr);
     assert_eq!(proposer_expected, proposer_balance.u128());
     assert_eq!(dao_expected, dao_balance.u128())
@@ -726,7 +771,11 @@ fn test_multiple_open_proposals() {
         false,
     );
 
-    mint_natives(&mut app, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", coins(20, "ujuno"));
+    mint_natives(
+        &mut app,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        coins(20, "ujuno"),
+    );
     let first_id = make_proposal(
         &mut app,
         pre_propose.clone(),
@@ -734,7 +783,11 @@ fn test_multiple_open_proposals() {
         "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
         &coins(10, "ujuno"),
     );
-    let balance = get_balance_native(&app, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", "ujuno");
+    let balance = get_balance_native(
+        &app,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        "ujuno",
+    );
     assert_eq!(10, balance.u128());
 
     let second_id = make_proposal(
@@ -744,7 +797,11 @@ fn test_multiple_open_proposals() {
         "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
         &coins(10, "ujuno"),
     );
-    let balance = get_balance_native(&app, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", "ujuno");
+    let balance = get_balance_native(
+        &app,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        "ujuno",
+    );
     assert_eq!(0, balance.u128());
 
     // Finish up the first proposal.
@@ -758,13 +815,26 @@ fn test_multiple_open_proposals() {
     assert_eq!(Status::Passed, new_status);
 
     // Still zero.
-    let balance = get_balance_native(&app, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", "ujuno");
+    let balance = get_balance_native(
+        &app,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        "ujuno",
+    );
     assert_eq!(0, balance.u128());
 
-    execute_proposal(&mut app, proposal_single.clone(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", first_id);
+    execute_proposal(
+        &mut app,
+        proposal_single.clone(),
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        first_id,
+    );
 
     // First proposal refunded.
-    let balance = get_balance_native(&app, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", "ujuno");
+    let balance = get_balance_native(
+        &app,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        "ujuno",
+    );
     assert_eq!(10, balance.u128());
 
     // Finish up the second proposal.
@@ -778,13 +848,26 @@ fn test_multiple_open_proposals() {
     assert_eq!(Status::Rejected, new_status);
 
     // Still zero.
-    let balance = get_balance_native(&app, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", "ujuno");
+    let balance = get_balance_native(
+        &app,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        "ujuno",
+    );
     assert_eq!(10, balance.u128());
 
-    close_proposal(&mut app, proposal_single, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", second_id);
+    close_proposal(
+        &mut app,
+        proposal_single,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        second_id,
+    );
 
     // All deposits have been refunded.
-    let balance = get_balance_native(&app, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", "ujuno");
+    let balance = get_balance_native(
+        &app,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        "ujuno",
+    );
     assert_eq!(20, balance.u128());
 }
 
@@ -904,7 +987,11 @@ fn test_propose_open_proposal_submission() {
     );
 
     // Non-member proposes.
-    mint_natives(&mut app, "cosmwasm17x0hnl6g3u98a480e3dtlacpck5t9823l7sl0vce7e37fpa2cvcsha6qn7", coins(10, "ujuno"));
+    mint_natives(
+        &mut app,
+        "cosmwasm17x0hnl6g3u98a480e3dtlacpck5t9823l7sl0vce7e37fpa2cvcsha6qn7",
+        coins(10, "ujuno"),
+    );
     let id = make_proposal(
         &mut app,
         pre_propose,
@@ -913,7 +1000,13 @@ fn test_propose_open_proposal_submission() {
         &coins(10, "ujuno"),
     );
     // Member votes.
-    let new_status = vote(&mut app, proposal_single, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", id, Vote::Yes);
+    let new_status = vote(
+        &mut app,
+        proposal_single,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        id,
+        Vote::Yes,
+    );
     assert_eq!(Status::Passed, new_status)
 }
 
@@ -937,7 +1030,13 @@ fn test_no_deposit_required_open_submission() {
         &[],
     );
     // Member votes.
-    let new_status = vote(&mut app, proposal_single, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", id, Vote::Yes);
+    let new_status = vote(
+        &mut app,
+        proposal_single,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        id,
+        Vote::Yes,
+    );
     assert_eq!(Status::Passed, new_status)
 }
 
@@ -975,8 +1074,20 @@ fn test_no_deposit_required_members_submission() {
         PreProposeError::SubmissionPolicy(PreProposeSubmissionPolicyError::Unauthorized {})
     );
 
-    let id = make_proposal(&mut app, pre_propose, proposal_single.clone(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", &[]);
-    let new_status = vote(&mut app, proposal_single, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", id, Vote::Yes);
+    let id = make_proposal(
+        &mut app,
+        pre_propose,
+        proposal_single.clone(),
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        &[],
+    );
+    let new_status = vote(
+        &mut app,
+        proposal_single,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        id,
+        Vote::Yes,
+    );
     assert_eq!(Status::Passed, new_status)
 }
 
@@ -1044,8 +1155,18 @@ fn test_anyone_denylist() {
     );
 
     // Proposing succeeds if not on denylist.
-    assert!(query_can_propose(&app, pre_propose.clone(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"));
-    make_proposal(&mut app, pre_propose, proposal_single.clone(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", &[]);
+    assert!(query_can_propose(
+        &app,
+        pre_propose.clone(),
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+    ));
+    make_proposal(
+        &mut app,
+        pre_propose,
+        proposal_single.clone(),
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        &[],
+    );
 }
 
 #[test]
@@ -1070,7 +1191,11 @@ fn test_specific_allowlist_denylist() {
     );
 
     // Proposal succeeds for member.
-    assert!(query_can_propose(&app, pre_propose.clone(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"));
+    assert!(query_can_propose(
+        &app,
+        pre_propose.clone(),
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+    ));
     make_proposal(
         &mut app,
         pre_propose.clone(),
@@ -1135,12 +1260,18 @@ fn test_specific_allowlist_denylist() {
         PreProposeSubmissionPolicy::Specific {
             dao_members: true,
             allowlist: vec![Addr::unchecked(rando)],
-            denylist: vec![Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")],
+            denylist: vec![Addr::unchecked(
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+            )],
         },
     );
 
     // Proposing fails if on denylist.
-    assert!(!query_can_propose(&app, pre_propose.clone(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"));
+    assert!(!query_can_propose(
+        &app,
+        pre_propose.clone(),
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+    ));
     let err: PreProposeError = app
         .execute_contract(
             Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
@@ -1176,7 +1307,11 @@ fn test_specific_allowlist_denylist() {
     );
 
     // Proposing fails if members not allowed.
-    assert!(!query_can_propose(&app, pre_propose.clone(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"));
+    assert!(!query_can_propose(
+        &app,
+        pre_propose.clone(),
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+    ));
     let err: PreProposeError = app
         .execute_contract(
             Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
@@ -1298,11 +1433,13 @@ fn test_instantiate_with_zero_native_deposit() {
         to_json_binary(&proposal_module_instantiate).unwrap(),
         Some(vec![
             cw20::Cw20Coin {
-                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                    .to_string(),
                 amount: Uint128::new(9),
             },
             cw20::Cw20Coin {
-                address: "cosmwasm1mw84pqf8eyuhqwr9xre4l7aswr75ugex42gzjyvgueeza7vxv0dqx57dyx".to_string(),
+                address: "cosmwasm1mw84pqf8eyuhqwr9xre4l7aswr75ugex42gzjyvgueeza7vxv0dqx57dyx"
+                    .to_string(),
                 amount: Uint128::new(8),
             },
         ]),
@@ -1367,11 +1504,13 @@ fn test_instantiate_with_zero_cw20_deposit() {
         to_json_binary(&proposal_module_instantiate).unwrap(),
         Some(vec![
             cw20::Cw20Coin {
-                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+                address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                    .to_string(),
                 amount: Uint128::new(9),
             },
             cw20::Cw20Coin {
-                address: "cosmwasm1mw84pqf8eyuhqwr9xre4l7aswr75ugex42gzjyvgueeza7vxv0dqx57dyx".to_string(),
+                address: "cosmwasm1mw84pqf8eyuhqwr9xre4l7aswr75ugex42gzjyvgueeza7vxv0dqx57dyx"
+                    .to_string(),
                 amount: Uint128::new(8),
             },
         ]),
@@ -1441,12 +1580,18 @@ fn test_update_config() {
         info,
         DepositInfoResponse {
             deposit_info: None,
-            proposer: Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
+            proposer: Addr::unchecked(
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+            ),
         }
     );
 
     // New proposals should have the new deposit info.
-    mint_natives(&mut app, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", coins(10, "ujuno"));
+    mint_natives(
+        &mut app,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        coins(10, "ujuno"),
+    );
     let new_id = make_proposal(
         &mut app,
         pre_propose.clone(),
@@ -1463,17 +1608,45 @@ fn test_update_config() {
                 amount: Uint128::new(10),
                 refund_policy: DepositRefundPolicy::Never
             }),
-            proposer: Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
+            proposer: Addr::unchecked(
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+            ),
         }
     );
 
     // Both proposals should be allowed to complete.
-    vote(&mut app, proposal_single.clone(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", id, Vote::Yes);
-    vote(&mut app, proposal_single.clone(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", new_id, Vote::Yes);
-    execute_proposal(&mut app, proposal_single.clone(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", id);
-    execute_proposal(&mut app, proposal_single.clone(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", new_id);
+    vote(
+        &mut app,
+        proposal_single.clone(),
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        id,
+        Vote::Yes,
+    );
+    vote(
+        &mut app,
+        proposal_single.clone(),
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        new_id,
+        Vote::Yes,
+    );
+    execute_proposal(
+        &mut app,
+        proposal_single.clone(),
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        id,
+    );
+    execute_proposal(
+        &mut app,
+        proposal_single.clone(),
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        new_id,
+    );
     // Deposit should not have been refunded (never policy in use).
-    let balance = get_balance_native(&app, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", "ujuno");
+    let balance = get_balance_native(
+        &app,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        "ujuno",
+    );
     assert_eq!(balance, Uint128::new(0));
 
     // Only the core module can update the config.
@@ -1511,8 +1684,12 @@ fn test_update_config() {
         None,
         PreProposeSubmissionPolicy::Specific {
             dao_members: false,
-            allowlist: vec![Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")],
-            denylist: vec![Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")],
+            allowlist: vec![Addr::unchecked(
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+            )],
+            denylist: vec![Addr::unchecked(
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+            )],
         },
     );
     assert_eq!(
@@ -1545,7 +1722,7 @@ fn test_update_config() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_update_submission_policy() {
     let mut app = App::default();
     let DefaultTestSetup {
@@ -1569,7 +1746,10 @@ fn test_update_submission_policy() {
             Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
             pre_propose.clone(),
             &ExecuteMsg::UpdateSubmissionPolicy {
-                denylist_add: Some(vec!["cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string()]),
+                denylist_add: Some(vec![
+                    "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                        .to_string(),
+                ]),
                 denylist_remove: None,
                 set_dao_members: None,
                 allowlist_add: None,
@@ -1587,7 +1767,10 @@ fn test_update_submission_policy() {
         core_addr.clone(),
         pre_propose.clone(),
         &ExecuteMsg::UpdateSubmissionPolicy {
-            denylist_add: Some(vec!["cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string()]),
+            denylist_add: Some(vec![
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            ]),
             denylist_remove: None,
             set_dao_members: None,
             allowlist_add: None,
@@ -1603,7 +1786,9 @@ fn test_update_submission_policy() {
         Config {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Anyone {
-                denylist: vec![Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")],
+                denylist: vec![Addr::unchecked(
+                    "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                )],
             },
         }
     );
@@ -1614,7 +1799,9 @@ fn test_update_submission_policy() {
         pre_propose.clone(),
         &ExecuteMsg::UpdateSubmissionPolicy {
             denylist_add: Some(vec!["someone".to_string(), "else".to_string()]),
-            denylist_remove: Some(vec!["cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string()]),
+            denylist_remove: Some(vec![
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            ]),
             set_dao_members: None,
             allowlist_add: None,
             allowlist_remove: None,
@@ -1629,7 +1816,14 @@ fn test_update_submission_policy() {
         Config {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Anyone {
-                denylist: vec![Addr::unchecked("cosmwasm10h2np3xndkj8e5enjeccau06r6xq7lv3ae236l7ur3e65e0dk32qhehvau"), Addr::unchecked("cosmwasm19fvat83cp8uz0nnsn5uptcu4pmh5565n4a2402f60l0m5u2xpppsn6r94c")],
+                denylist: vec![
+                    Addr::unchecked(
+                        "cosmwasm10h2np3xndkj8e5enjeccau06r6xq7lv3ae236l7ur3e65e0dk32qhehvau"
+                    ),
+                    Addr::unchecked(
+                        "cosmwasm19fvat83cp8uz0nnsn5uptcu4pmh5565n4a2402f60l0m5u2xpppsn6r94c"
+                    )
+                ],
             },
         }
     );
@@ -1689,7 +1883,10 @@ fn test_update_submission_policy() {
                 denylist_add: None,
                 denylist_remove: None,
                 set_dao_members: None,
-                allowlist_add: Some(vec!["cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string()]),
+                allowlist_add: Some(vec![
+                    "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                        .to_string(),
+                ]),
                 allowlist_remove: None,
             },
             &[],
@@ -1712,7 +1909,10 @@ fn test_update_submission_policy() {
                 denylist_remove: None,
                 set_dao_members: None,
                 allowlist_add: None,
-                allowlist_remove: Some(vec!["cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string()]),
+                allowlist_remove: Some(vec![
+                    "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                        .to_string(),
+                ]),
             },
             &[],
         )
@@ -1760,7 +1960,10 @@ fn test_update_submission_policy() {
         core_addr.clone(),
         pre_propose.clone(),
         &ExecuteMsg::UpdateSubmissionPolicy {
-            denylist_add: Some(vec!["cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string()]),
+            denylist_add: Some(vec![
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            ]),
             denylist_remove: None,
             set_dao_members: None,
             allowlist_add: None,
@@ -1778,7 +1981,9 @@ fn test_update_submission_policy() {
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
                 allowlist: vec![],
-                denylist: vec![Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")],
+                denylist: vec![Addr::unchecked(
+                    "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                )],
             },
         }
     );
@@ -1789,7 +1994,9 @@ fn test_update_submission_policy() {
         pre_propose.clone(),
         &ExecuteMsg::UpdateSubmissionPolicy {
             denylist_add: Some(vec!["someone".to_string(), "else".to_string()]),
-            denylist_remove: Some(vec!["cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string()]),
+            denylist_remove: Some(vec![
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            ]),
             set_dao_members: None,
             allowlist_add: None,
             allowlist_remove: None,
@@ -1806,7 +2013,14 @@ fn test_update_submission_policy() {
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
                 allowlist: vec![],
-                denylist: vec![Addr::unchecked("cosmwasm10h2np3xndkj8e5enjeccau06r6xq7lv3ae236l7ur3e65e0dk32qhehvau"), Addr::unchecked("cosmwasm19fvat83cp8uz0nnsn5uptcu4pmh5565n4a2402f60l0m5u2xpppsn6r94c")],
+                denylist: vec![
+                    Addr::unchecked(
+                        "cosmwasm10h2np3xndkj8e5enjeccau06r6xq7lv3ae236l7ur3e65e0dk32qhehvau"
+                    ),
+                    Addr::unchecked(
+                        "cosmwasm19fvat83cp8uz0nnsn5uptcu4pmh5565n4a2402f60l0m5u2xpppsn6r94c"
+                    )
+                ],
             },
         }
     );
@@ -1847,7 +2061,10 @@ fn test_update_submission_policy() {
             denylist_add: None,
             denylist_remove: None,
             set_dao_members: None,
-            allowlist_add: Some(vec!["cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string()]),
+            allowlist_add: Some(vec![
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            ]),
             allowlist_remove: None,
         },
         &[],
@@ -1861,7 +2078,9 @@ fn test_update_submission_policy() {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
-                allowlist: vec![Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")],
+                allowlist: vec![Addr::unchecked(
+                    "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                )],
                 denylist: vec![],
             },
         }
@@ -1876,7 +2095,9 @@ fn test_update_submission_policy() {
             denylist_remove: None,
             set_dao_members: None,
             allowlist_add: Some(vec!["someone".to_string(), "else".to_string()]),
-            allowlist_remove: Some(vec!["cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string()]),
+            allowlist_remove: Some(vec![
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            ]),
         },
         &[],
     )
@@ -1889,7 +2110,14 @@ fn test_update_submission_policy() {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: true,
-                allowlist: vec![Addr::unchecked("cosmwasm10h2np3xndkj8e5enjeccau06r6xq7lv3ae236l7ur3e65e0dk32qhehvau"), Addr::unchecked("cosmwasm19fvat83cp8uz0nnsn5uptcu4pmh5565n4a2402f60l0m5u2xpppsn6r94c")],
+                allowlist: vec![
+                    Addr::unchecked(
+                        "cosmwasm10h2np3xndkj8e5enjeccau06r6xq7lv3ae236l7ur3e65e0dk32qhehvau"
+                    ),
+                    Addr::unchecked(
+                        "cosmwasm19fvat83cp8uz0nnsn5uptcu4pmh5565n4a2402f60l0m5u2xpppsn6r94c"
+                    )
+                ],
                 denylist: vec![],
             },
         }
@@ -1953,7 +2181,9 @@ fn test_update_submission_policy() {
             denylist_add: None,
             denylist_remove: None,
             set_dao_members: Some(false),
-            allowlist_add: Some(vec!["cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string()]),
+            allowlist_add: Some(vec![
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            ]),
             allowlist_remove: None,
         },
         &[],
@@ -1967,7 +2197,9 @@ fn test_update_submission_policy() {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: false,
-                allowlist: vec![Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")],
+                allowlist: vec![Addr::unchecked(
+                    "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                )],
                 denylist: vec![]
             },
         }
@@ -1979,7 +2211,10 @@ fn test_update_submission_policy() {
             core_addr.clone(),
             pre_propose.clone(),
             &ExecuteMsg::UpdateSubmissionPolicy {
-                denylist_add: Some(vec!["cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string()]),
+                denylist_add: Some(vec![
+                    "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                        .to_string(),
+                ]),
                 denylist_remove: None,
                 set_dao_members: None,
                 allowlist_add: None,
@@ -2065,7 +2300,11 @@ fn test_withdraw() {
     assert_eq!(balance, Uint128::new(20));
 
     // Make a proposal with the native tokens to put some in the system.
-    mint_natives(&mut app, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", coins(10, "ujuno"));
+    mint_natives(
+        &mut app,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        coins(10, "ujuno"),
+    );
     let native_id = make_proposal(
         &mut app,
         pre_propose.clone(),
@@ -2128,7 +2367,12 @@ fn test_withdraw() {
         cw20_id,
         Vote::Yes,
     );
-    execute_proposal(&mut app, proposal_single.clone(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", cw20_id);
+    execute_proposal(
+        &mut app,
+        proposal_single.clone(),
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        cw20_id,
+    );
 
     // Make sure the proposal module has fallen back to anyone can
     // propose becuase of our malfunction.
@@ -2150,7 +2394,12 @@ fn test_withdraw() {
         native_id,
         Vote::No,
     );
-    close_proposal(&mut app, proposal_single.clone(), "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", native_id);
+    close_proposal(
+        &mut app,
+        proposal_single.clone(),
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        native_id,
+    );
     withdraw(
         &mut app,
         pre_propose.clone(),
@@ -2170,13 +2419,31 @@ fn test_hook_management() {
         pre_propose,
     } = setup_default_test(app, None, true);
 
-    add_hook(app, core_addr.as_str(), &pre_propose, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu");
-    add_hook(app, core_addr.as_str(), &pre_propose, "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r");
+    add_hook(
+        app,
+        core_addr.as_str(),
+        &pre_propose,
+        "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu",
+    );
+    add_hook(
+        app,
+        core_addr.as_str(),
+        &pre_propose,
+        "cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r",
+    );
 
-    remove_hook(app, core_addr.as_str(), &pre_propose, "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu");
+    remove_hook(
+        app,
+        core_addr.as_str(),
+        &pre_propose,
+        "cosmwasm1w6fv8tf4gzacq0qzpvawuekd3zr3yv35agxxuu2rczkaw0l5x8ksvfjauu",
+    );
 
     let hooks = query_hooks(app, pre_propose).hooks;
-    assert_eq!(hooks, vec!["cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r".to_string()])
+    assert_eq!(
+        hooks,
+        vec!["cosmwasm18lzveln5tpcw9sxenaclxrlsv4kgmmw5rnqa057nw6cdhe59uteszh007r".to_string()]
+    )
 }
 
 // v241 migration test — gated off while the v2.4.1 contract stack is stubbed
@@ -2344,7 +2611,10 @@ fn test_migrate_from_v241() {
         .unwrap();
 
     assert_eq!(proposal.proposal.status, dv_v241::status::Status::Passed);
-    assert_eq!(proposal.proposal.proposer, Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"));
+    assert_eq!(
+        proposal.proposal.proposer,
+        Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")
+    );
     assert_eq!(proposal.proposal.title, "title1".to_string());
     assert_eq!(proposal.proposal.description, "d".to_string());
     assert_eq!(proposal.proposal.msgs, vec![]);
@@ -2642,7 +2912,10 @@ fn test_migrate_from_v241_with_policy_update() {
         .unwrap();
 
     assert_eq!(proposal.proposal.status, dv_v241::status::Status::Passed);
-    assert_eq!(proposal.proposal.proposer, Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"));
+    assert_eq!(
+        proposal.proposal.proposer,
+        Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg")
+    );
     assert_eq!(proposal.proposal.title, "title1".to_string());
     assert_eq!(proposal.proposal.description, "d".to_string());
     assert_eq!(proposal.proposal.msgs, vec![]);
@@ -2741,7 +3014,9 @@ fn test_migrate_from_v241_with_policy_update() {
             deposit_info: None,
             submission_policy: PreProposeSubmissionPolicy::Specific {
                 dao_members: false,
-                allowlist: vec![Addr::unchecked("cosmwasm14rpscp726yrwax8gmczwj93c6c29g6s3vkqv0kqatqrkzm96sztq53apzd")],
+                allowlist: vec![Addr::unchecked(
+                    "cosmwasm14rpscp726yrwax8gmczwj93c6c29g6s3vkqv0kqatqrkzm96sztq53apzd"
+                )],
                 denylist: vec![]
             }
         },

@@ -61,8 +61,10 @@ use dao_testing::{
     ShouldExecute,
 };
 
-pub const CREATOR_ADDR: &str = "cosmwasm1h34lmpywh4upnjdg90cjf4j70aee6z8qqfspugamjp42e4q28kqs8s7vcp";
-pub const ALTERNATIVE_ADDR: &str = "cosmwasm1ya68dzd6lxgrex4wd8vz490gmn6z2nry3jsnunyl7jddk8j5dwmq64tzpt";
+pub const CREATOR_ADDR: &str =
+    "cosmwasm1h34lmpywh4upnjdg90cjf4j70aee6z8qqfspugamjp42e4q28kqs8s7vcp";
+pub const ALTERNATIVE_ADDR: &str =
+    "cosmwasm1ya68dzd6lxgrex4wd8vz490gmn6z2nry3jsnunyl7jddk8j5dwmq64tzpt";
 
 pub struct TestMultipleChoiceVote {
     /// The address casting the vote.
@@ -600,11 +602,13 @@ fn test_no_early_pass_with_min_duration() {
         msg,
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                    .to_string(),
                 amount: Uint128::new(10),
             },
             Cw20Coin {
-                address: "cosmwasm15hf2u2rdpk0ytsrzrfhu0svprx2qm4ehh25d098x4u6h6gfk57ss3esk35".to_string(),
+                address: "cosmwasm15hf2u2rdpk0ytsrzrfhu0svprx2qm4ehh25d098x4u6h6gfk57ss3esk35"
+                    .to_string(),
                 amount: Uint128::new(90),
             },
         ]),
@@ -697,11 +701,13 @@ fn test_propose_with_messages() {
         msg,
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                    .to_string(),
                 amount: Uint128::new(10),
             },
             Cw20Coin {
-                address: "cosmwasm15hf2u2rdpk0ytsrzrfhu0svprx2qm4ehh25d098x4u6h6gfk57ss3esk35".to_string(),
+                address: "cosmwasm15hf2u2rdpk0ytsrzrfhu0svprx2qm4ehh25d098x4u6h6gfk57ss3esk35"
+                    .to_string(),
                 amount: Uint128::new(90),
             },
         ]),
@@ -819,11 +825,13 @@ fn test_min_duration_units_missmatch() {
         msg,
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                    .to_string(),
                 amount: Uint128::new(10),
             },
             Cw20Coin {
-                address: "cosmwasm1d88mpg2qarl3pd03dsf3qnznt0p8ztlf2hkepwm7pc46qa5h93yq8mfgk4".to_string(),
+                address: "cosmwasm1d88mpg2qarl3pd03dsf3qnznt0p8ztlf2hkepwm7pc46qa5h93yq8mfgk4"
+                    .to_string(),
                 amount: Uint128::new(90),
             },
         ]),
@@ -853,11 +861,13 @@ fn test_min_duration_larger_than_proposal_duration() {
         msg,
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                    .to_string(),
                 amount: Uint128::new(10),
             },
             Cw20Coin {
-                address: "cosmwasm1d88mpg2qarl3pd03dsf3qnznt0p8ztlf2hkepwm7pc46qa5h93yq8mfgk4".to_string(),
+                address: "cosmwasm1d88mpg2qarl3pd03dsf3qnznt0p8ztlf2hkepwm7pc46qa5h93yq8mfgk4"
+                    .to_string(),
                 amount: Uint128::new(90),
             },
         ]),
@@ -887,11 +897,13 @@ fn test_min_duration_same_as_proposal_duration() {
         msg,
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                    .to_string(),
                 amount: Uint128::new(10),
             },
             Cw20Coin {
-                address: "cosmwasm15hf2u2rdpk0ytsrzrfhu0svprx2qm4ehh25d098x4u6h6gfk57ss3esk35".to_string(),
+                address: "cosmwasm15hf2u2rdpk0ytsrzrfhu0svprx2qm4ehh25d098x4u6h6gfk57ss3esk35"
+                    .to_string(),
                 amount: Uint128::new(90),
             },
         ]),
@@ -1186,7 +1198,8 @@ fn test_take_proposal_deposit() {
         &mut app,
         instantiate,
         Some(vec![Cw20Coin {
-            address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+            address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                .to_string(),
             amount: Uint128::new(2),
         }]),
     );
@@ -1250,10 +1263,20 @@ fn test_take_proposal_deposit() {
         )
         .unwrap();
 
-        make_proposal(&mut app, &govmod, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w", mc_options, None);
+        make_proposal(
+            &mut app,
+            &govmod,
+            "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w",
+            mc_options,
+            None,
+        );
 
         // Proposal has been executed so deposit has been refunded.
-        let balance = query_balance_cw20(&app, token, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string());
+        let balance = query_balance_cw20(
+            &app,
+            token,
+            "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+        );
         assert_eq!(balance, Uint128::new(1));
     } else {
         panic!()
@@ -1295,7 +1318,8 @@ fn test_take_native_proposal_deposit() {
         &mut app,
         instantiate,
         Some(vec![Cw20Coin {
-            address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+            address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                .to_string(),
             amount: Uint128::new(2),
         }]),
     );
@@ -1346,10 +1370,20 @@ fn test_take_native_proposal_deposit() {
         )
         .unwrap_err();
 
-        make_proposal(&mut app, &govmod, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w", mc_options, None);
+        make_proposal(
+            &mut app,
+            &govmod,
+            "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w",
+            mc_options,
+            None,
+        );
 
         // Proposal has been executed so deposit has been refunded.
-        let balance = query_balance_native(&app, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w", denom);
+        let balance = query_balance_native(
+            &app,
+            "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w",
+            denom,
+        );
         assert_eq!(balance, Uint128::new(1));
     } else {
         panic!()
@@ -1390,7 +1424,8 @@ fn test_native_proposal_deposit() {
         &mut app,
         instantiate,
         Some(vec![Cw20Coin {
-            address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+            address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                .to_string(),
             amount: Uint128::new(2),
         }]),
     );
@@ -1447,7 +1482,8 @@ fn test_native_proposal_deposit() {
 
         // Mint blue some tokens
         app.sudo(SudoMsg::Bank(BankSudo::Mint {
-            to_address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+            to_address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                .to_string(),
             amount: vec![Coin {
                 denom: "ujuno".to_string(),
                 amount: Uint128::new(100),
@@ -1456,10 +1492,20 @@ fn test_native_proposal_deposit() {
         .unwrap();
 
         // Adding deposit will work
-        make_proposal(&mut app, &govmod, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w", mc_options, None);
+        make_proposal(
+            &mut app,
+            &govmod,
+            "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w",
+            mc_options,
+            None,
+        );
 
         // "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w" has been refunded
-        let balance = query_balance_native(&app, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w", "ujuno");
+        let balance = query_balance_native(
+            &app,
+            "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w",
+            "ujuno",
+        );
         assert_eq!(balance, Uint128::new(99));
 
         // Govmod has refunded the token
@@ -1490,7 +1536,11 @@ fn test_native_proposal_deposit() {
         .unwrap();
 
         // "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w" has been refunded
-        let balance = query_balance_native(&app, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w", "ujuno");
+        let balance = query_balance_native(
+            &app,
+            "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w",
+            "ujuno",
+        );
         assert_eq!(balance, Uint128::new(100));
 
         // Govmod has refunded the token
@@ -1508,7 +1558,8 @@ fn test_deposit_return_on_execute() {
     // token is then returned once the proposal is executed.
     let (mut app, core_addr) = do_test_votes_cw20_balances(
         vec![TestMultipleChoiceVote {
-            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                .to_string(),
             position: MultipleChoiceVote { option_id: 0 },
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
@@ -1545,7 +1596,11 @@ fn test_deposit_return_on_execute() {
     } = deposit_config.deposit_info.unwrap()
     {
         // Proposal has not been executed so deposit has not been refunded.
-        let balance = query_balance_cw20(&app, token, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string());
+        let balance = query_balance_cw20(
+            &app,
+            token,
+            "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+        );
         assert_eq!(balance, Uint128::new(9));
 
         // Execute the proposal, this should cause the deposit to be
@@ -1559,7 +1614,11 @@ fn test_deposit_return_on_execute() {
         .unwrap();
 
         // Proposal has been executed so deposit has been refunded.
-        let balance = query_balance_cw20(&app, token, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string());
+        let balance = query_balance_cw20(
+            &app,
+            token,
+            "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+        );
         assert_eq!(balance, Uint128::new(10));
     } else {
         panic!()
@@ -1571,7 +1630,8 @@ fn test_deposit_return_zero() {
     // Test that balance does not change when deposit is zero.
     let (mut app, core_addr) = do_test_votes_cw20_balances(
         vec![TestMultipleChoiceVote {
-            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                .to_string(),
             position: MultipleChoiceVote { option_id: 0 },
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
@@ -1610,23 +1670,29 @@ fn test_deposit_return_zero() {
     .unwrap();
 
     // Proposal has been executed so deposit has been refunded.
-    let balance = query_balance_cw20(&app, token, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string());
+    let balance = query_balance_cw20(
+        &app,
+        token,
+        "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+    );
     assert_eq!(balance, Uint128::new(10));
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_query_list_votes() {
     let (app, core_addr) = do_test_votes_cw20_balances(
         vec![
             TestMultipleChoiceVote {
-                voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+                voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                    .to_string(),
                 position: MultipleChoiceVote { option_id: 0 },
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
             TestMultipleChoiceVote {
-                voter: "cosmwasm1ak6x2cjzj8jq20rvt6jt06ejphk8w0ss547jdw2aeuzkf78rzruqrc6jdm".to_string(),
+                voter: "cosmwasm1ak6x2cjzj8jq20rvt6jt06ejphk8w0ss547jdw2aeuzkf78rzruqrc6jdm"
+                    .to_string(),
                 position: MultipleChoiceVote { option_id: 1 },
                 weight: Uint128::new(20),
                 should_execute: ShouldExecute::Yes,
@@ -1664,14 +1730,18 @@ fn test_query_list_votes() {
 
     let expected = vec![
         VoteInfo {
-            voter: Addr::unchecked("cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"),
+            voter: Addr::unchecked(
+                "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w",
+            ),
             vote: MultipleChoiceVote { option_id: 0 },
             power: Uint128::new(10),
             individual_power: Uint128::new(10),
             rationale: None,
         },
         VoteInfo {
-            voter: Addr::unchecked("cosmwasm1ak6x2cjzj8jq20rvt6jt06ejphk8w0ss547jdw2aeuzkf78rzruqrc6jdm"),
+            voter: Addr::unchecked(
+                "cosmwasm1ak6x2cjzj8jq20rvt6jt06ejphk8w0ss547jdw2aeuzkf78rzruqrc6jdm",
+            ),
             vote: MultipleChoiceVote { option_id: 1 },
             power: Uint128::new(20),
             individual_power: Uint128::new(20),
@@ -1687,7 +1757,8 @@ fn test_invalid_quorum() {
     // Create a proposal that will be rejected
     let (_app, _core_addr) = do_test_votes_cw20_balances(
         vec![TestMultipleChoiceVote {
-            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                .to_string(),
             position: MultipleChoiceVote { option_id: 2 },
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
@@ -1707,7 +1778,8 @@ fn test_cant_vote_executed_or_closed() {
     // Create a proposal that will be rejected
     let (mut app, core_addr) = do_test_votes_cw20_balances(
         vec![TestMultipleChoiceVote {
-            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                .to_string(),
             position: MultipleChoiceVote { option_id: 2 },
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
@@ -1755,7 +1827,8 @@ fn test_cant_vote_executed_or_closed() {
     // Create a proposal that will pass
     let (mut app, _core_addr) = do_test_votes_cw20_balances(
         vec![TestMultipleChoiceVote {
-            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                .to_string(),
             position: MultipleChoiceVote { option_id: 0 },
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
@@ -1826,11 +1899,13 @@ fn test_cant_propose_zero_power() {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                    .to_string(),
                 amount: Uint128::new(1),
             },
             Cw20Coin {
-                address: "cosmwasm14el6ucn8fqylvkw8kz5vgn3vawatrdvt2f36nllsaydtynrzgtgsynds4f".to_string(),
+                address: "cosmwasm14el6ucn8fqylvkw8kz5vgn3vawatrdvt2f36nllsaydtynrzgtgsynds4f"
+                    .to_string(),
                 amount: Uint128::new(10),
             },
         ]),
@@ -1919,7 +1994,8 @@ fn test_cant_propose_zero_power() {
 fn test_cant_vote_not_registered() {
     let (mut app, core_addr) = do_test_votes_cw20_balances(
         vec![TestMultipleChoiceVote {
-            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                .to_string(),
             position: MultipleChoiceVote { option_id: 2 },
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
@@ -1995,7 +2071,8 @@ fn test_cant_execute_not_member() {
         &mut app,
         instantiate,
         Some(vec![Cw20Coin {
-            address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+            address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                .to_string(),
             amount: Uint128::new(10),
         }]),
     );
@@ -2088,7 +2165,8 @@ fn test_cant_execute_not_member_when_proposal_created() {
         &mut app,
         instantiate,
         Some(vec![Cw20Coin {
-            address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+            address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                .to_string(),
             amount: Uint128::new(10),
         }]),
     );
@@ -2143,7 +2221,8 @@ fn test_cant_execute_not_member_when_proposal_created() {
         core_addr,
         token_contract.clone(),
         &cw20::Cw20ExecuteMsg::Mint {
-            recipient: "cosmwasm14el6ucn8fqylvkw8kz5vgn3vawatrdvt2f36nllsaydtynrzgtgsynds4f".to_string(),
+            recipient: "cosmwasm14el6ucn8fqylvkw8kz5vgn3vawatrdvt2f36nllsaydtynrzgtgsynds4f"
+                .to_string(),
             amount: Uint128::new(10),
         },
         &[],
@@ -2232,7 +2311,9 @@ fn test_open_proposal_submission() {
     let expected = MultipleChoiceProposal {
         title: "title".to_string(),
         description: "description".to_string(),
-        proposer: Addr::unchecked("cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6"),
+        proposer: Addr::unchecked(
+            "cosmwasm153qmzhlf5084ves3jzstjwuaa37sgynj3rxgwfgfvl8nk55ff5gsk3dxc6",
+        ),
         start_height: current_block.height,
         expiration: max_voting_period.after(&current_block),
         min_voting_period: None,
@@ -2286,7 +2367,8 @@ fn test_open_proposal_submission() {
 fn test_close_open_proposal() {
     let (mut app, core_addr) = do_test_votes_cw20_balances(
         vec![TestMultipleChoiceVote {
-            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                .to_string(),
             position: MultipleChoiceVote { option_id: 2 },
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
@@ -2345,7 +2427,11 @@ fn test_close_open_proposal() {
     } = deposit_config.deposit_info.unwrap()
     {
         // Proposal has been executed so deposit has been refunded.
-        let balance = query_balance_cw20(&app, token, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string());
+        let balance = query_balance_cw20(
+            &app,
+            token,
+            "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+        );
         assert_eq!(balance, Uint128::new(10));
     } else {
         panic!()
@@ -2356,7 +2442,8 @@ fn test_close_open_proposal() {
 fn test_no_refund_failed_proposal() {
     let (mut app, core_addr) = do_test_votes_cw20_balances(
         vec![TestMultipleChoiceVote {
-            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                .to_string(),
             position: MultipleChoiceVote { option_id: 2 },
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
@@ -2405,7 +2492,11 @@ fn test_no_refund_failed_proposal() {
     } = deposit_config.deposit_info.unwrap()
     {
         // Proposal has been executed so deposit has been refunded.
-        let balance = query_balance_cw20(&app, token, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string());
+        let balance = query_balance_cw20(
+            &app,
+            token,
+            "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+        );
         assert_eq!(balance, Uint128::new(9));
     } else {
         panic!()
@@ -2416,7 +2507,8 @@ fn test_no_refund_failed_proposal() {
 fn test_zero_deposit() {
     do_test_votes_cw20_balances(
         vec![TestMultipleChoiceVote {
-            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                .to_string(),
             position: MultipleChoiceVote { option_id: 0 },
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
@@ -2438,7 +2530,8 @@ fn test_deposit_return_on_close() {
 
     let (mut app, core_addr) = do_test_votes_cw20_balances(
         vec![TestMultipleChoiceVote {
-            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                .to_string(),
             position: MultipleChoiceVote { option_id: 2 },
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
@@ -2471,7 +2564,11 @@ fn test_deposit_return_on_close() {
     } = deposit_config.deposit_info.unwrap()
     {
         // Proposal has been executed so deposit has been refunded.
-        let balance = query_balance_cw20(&app, token, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string());
+        let balance = query_balance_cw20(
+            &app,
+            token,
+            "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+        );
         assert_eq!(balance, Uint128::new(9));
 
         // Close the proposal, this should cause the deposit to be
@@ -2485,7 +2582,11 @@ fn test_deposit_return_on_close() {
         .unwrap();
 
         // Proposal has been executed so deposit has been refunded.
-        let balance = query_balance_cw20(&app, token, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string());
+        let balance = query_balance_cw20(
+            &app,
+            token,
+            "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+        );
         assert_eq!(balance, Uint128::new(10));
     } else {
         panic!()
@@ -2516,11 +2617,13 @@ fn test_execute_expired_proposal() {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                    .to_string(),
                 amount: Uint128::new(10),
             },
             Cw20Coin {
-                address: "cosmwasm16ypzvx9en2t5k4k2at5eknu796kygse4zglr4w2th0yp0scx7tqqvam4s8".to_string(),
+                address: "cosmwasm16ypzvx9en2t5k4k2at5eknu796kygse4zglr4w2th0yp0scx7tqqvam4s8"
+                    .to_string(),
                 amount: Uint128::new(90),
             },
         ]),
@@ -2623,7 +2726,8 @@ fn test_execute_expired_proposal() {
 fn test_update_config() {
     let (mut app, core_addr) = do_test_votes_cw20_balances(
         vec![TestMultipleChoiceVote {
-            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                .to_string(),
             position: MultipleChoiceVote { option_id: 0 },
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
@@ -2740,7 +2844,8 @@ fn test_update_config() {
 fn test_no_return_if_no_refunds() {
     let (mut app, core_addr) = do_test_votes_cw20_balances(
         vec![TestMultipleChoiceVote {
-            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                .to_string(),
             position: MultipleChoiceVote { option_id: 2 },
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
@@ -2785,7 +2890,11 @@ fn test_no_return_if_no_refunds() {
         .unwrap();
 
         // Proposal has been executed so deposit has been refunded.
-        let balance = query_balance_cw20(&app, token, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string());
+        let balance = query_balance_cw20(
+            &app,
+            token,
+            "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+        );
         assert_eq!(balance, Uint128::new(9));
     } else {
         panic!()
@@ -2998,7 +3107,8 @@ fn test_hooks() {
             dao.clone(),
             govmod.clone(),
             &ExecuteMsg::RemoveProposalHook {
-                address: "cosmwasm183z72yjhalu5g2kzhhgzen828jvkc0rypqjqhwn7h5nvxwy4lm7q8qct29".to_string(),
+                address: "cosmwasm183z72yjhalu5g2kzhhgzen828jvkc0rypqjqhwn7h5nvxwy4lm7q8qct29"
+                    .to_string(),
             },
             &[],
         )
@@ -3046,7 +3156,8 @@ fn test_hooks() {
             dao.clone(),
             govmod.clone(),
             &ExecuteMsg::RemoveVoteHook {
-                address: "cosmwasm183z72yjhalu5g2kzhhgzen828jvkc0rypqjqhwn7h5nvxwy4lm7q8qct29".to_string(),
+                address: "cosmwasm183z72yjhalu5g2kzhhgzen828jvkc0rypqjqhwn7h5nvxwy4lm7q8qct29"
+                    .to_string(),
             },
             &[],
         )
@@ -3465,11 +3576,13 @@ fn test_revoting() {
         },
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah".to_string(),
+                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
             Cw20Coin {
-                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a".to_string(),
+                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]),
@@ -3591,11 +3704,13 @@ fn test_allow_revoting_config_changes() {
         },
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah".to_string(),
+                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
             Cw20Coin {
-                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a".to_string(),
+                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]),
@@ -3747,11 +3862,13 @@ fn test_revoting_same_vote_twice() {
         },
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah".to_string(),
+                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
             Cw20Coin {
-                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a".to_string(),
+                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]),
@@ -3844,11 +3961,13 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
         },
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah".to_string(),
+                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
             Cw20Coin {
-                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a".to_string(),
+                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]),
@@ -3948,7 +4067,8 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
 fn test_return_deposit_to_dao_on_proposal_failure() {
     let (mut app, core_addr) = do_test_votes_cw20_balances(
         vec![TestMultipleChoiceVote {
-            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+            voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                .to_string(),
             position: MultipleChoiceVote { option_id: 2 },
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
@@ -4468,11 +4588,13 @@ pub fn test_not_allow_voting_on_expired_proposal() {
         instantiate,
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah".to_string(),
+                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
             Cw20Coin {
-                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a".to_string(),
+                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]),
@@ -4559,11 +4681,13 @@ fn test_next_proposal_id() {
         },
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah".to_string(),
+                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
             Cw20Coin {
-                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a".to_string(),
+                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]),
@@ -4633,11 +4757,13 @@ fn test_vote_with_rationale() {
         },
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
             Cw20Coin {
-                address: "cosmwasm1s4gj446r9l0ahvny3ljfmr3ytsey6cylq5xgqqlzrf85n24e9e8q9dxaud".to_string(),
+                address: "cosmwasm1s4gj446r9l0ahvny3ljfmr3ytsey6cylq5xgqqlzrf85n24e9e8q9dxaud"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]),
@@ -4699,7 +4825,8 @@ fn test_vote_with_rationale() {
             govmod,
             &QueryMsg::GetVote {
                 proposal_id: 1,
-                voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+                voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                    .to_string(),
             },
         )
         .unwrap();
@@ -4732,11 +4859,13 @@ fn test_revote_with_rationale() {
         },
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
             Cw20Coin {
-                address: "cosmwasm1s4gj446r9l0ahvny3ljfmr3ytsey6cylq5xgqqlzrf85n24e9e8q9dxaud".to_string(),
+                address: "cosmwasm1s4gj446r9l0ahvny3ljfmr3ytsey6cylq5xgqqlzrf85n24e9e8q9dxaud"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]),
@@ -4798,7 +4927,8 @@ fn test_revote_with_rationale() {
             govmod.clone(),
             &QueryMsg::GetVote {
                 proposal_id: 1,
-                voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+                voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                    .to_string(),
             },
         )
         .unwrap();
@@ -4830,7 +4960,8 @@ fn test_revote_with_rationale() {
             govmod.clone(),
             &QueryMsg::GetVote {
                 proposal_id: 1,
-                voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+                voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                    .to_string(),
             },
         )
         .unwrap();
@@ -4859,7 +4990,8 @@ fn test_revote_with_rationale() {
             govmod,
             &QueryMsg::GetVote {
                 proposal_id: 1,
-                voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+                voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                    .to_string(),
             },
         )
         .unwrap();
@@ -4889,11 +5021,13 @@ fn test_update_rationale() {
         },
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
             Cw20Coin {
-                address: "cosmwasm1s4gj446r9l0ahvny3ljfmr3ytsey6cylq5xgqqlzrf85n24e9e8q9dxaud".to_string(),
+                address: "cosmwasm1s4gj446r9l0ahvny3ljfmr3ytsey6cylq5xgqqlzrf85n24e9e8q9dxaud"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]),
@@ -4957,7 +5091,8 @@ fn test_update_rationale() {
             govmod.clone(),
             &QueryMsg::GetVote {
                 proposal_id: 1,
-                voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+                voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                    .to_string(),
             },
         )
         .unwrap();
@@ -4988,7 +5123,8 @@ fn test_update_rationale() {
             govmod,
             &QueryMsg::GetVote {
                 proposal_id: 1,
-                voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+                voter: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                    .to_string(),
             },
         )
         .unwrap();
@@ -5029,11 +5165,13 @@ fn test_open_proposal_passes_with_zero_timelock_veto_duration() {
         },
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah".to_string(),
+                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah"
+                    .to_string(),
                 amount: Uint128::new(110_000_000),
             },
             Cw20Coin {
-                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a".to_string(),
+                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]),
@@ -5139,11 +5277,13 @@ fn test_veto_non_existing_prop_id() {
         },
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah".to_string(),
+                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah"
+                    .to_string(),
                 amount: Uint128::new(110_000_000),
             },
             Cw20Coin {
-                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a".to_string(),
+                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]),
@@ -5186,11 +5326,13 @@ fn test_veto_with_no_veto_configuration() {
         },
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah".to_string(),
+                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah"
+                    .to_string(),
                 amount: Uint128::new(110_000_000),
             },
             Cw20Coin {
-                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a".to_string(),
+                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]),
@@ -5279,11 +5421,13 @@ fn test_veto_open_prop_with_veto_before_passed_disabled() {
         },
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah".to_string(),
+                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah"
+                    .to_string(),
                 amount: Uint128::new(110_000_000),
             },
             Cw20Coin {
-                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a".to_string(),
+                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]),
@@ -5388,11 +5532,13 @@ fn test_veto_when_veto_timelock_expired() -> anyhow::Result<()> {
         },
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah".to_string(),
+                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah"
+                    .to_string(),
                 amount: Uint128::new(110_000_000),
             },
             Cw20Coin {
-                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a".to_string(),
+                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]),
@@ -5504,11 +5650,13 @@ fn test_veto_sets_prop_status_to_vetoed() -> anyhow::Result<()> {
         },
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah".to_string(),
+                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah"
+                    .to_string(),
                 amount: Uint128::new(110_000_000),
             },
             Cw20Coin {
-                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a".to_string(),
+                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]),
@@ -5616,11 +5764,13 @@ fn test_veto_from_catchall_state() {
         },
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah".to_string(),
+                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah"
+                    .to_string(),
                 amount: Uint128::new(110_000_000),
             },
             Cw20Coin {
-                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a".to_string(),
+                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]),
@@ -5738,11 +5888,13 @@ fn test_veto_timelock_early_execute_happy() -> anyhow::Result<()> {
         },
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah".to_string(),
+                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah"
+                    .to_string(),
                 amount: Uint128::new(110_000_000),
             },
             Cw20Coin {
-                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a".to_string(),
+                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]),
@@ -5863,11 +6015,13 @@ fn test_veto_timelock_expires_happy() -> anyhow::Result<()> {
         },
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah".to_string(),
+                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah"
+                    .to_string(),
                 amount: Uint128::new(110_000_000),
             },
             Cw20Coin {
-                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a".to_string(),
+                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]),
@@ -5977,11 +6131,13 @@ fn test_veto_only_members_execute_proposal() -> anyhow::Result<()> {
         },
         Some(vec![
             Cw20Coin {
-                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah".to_string(),
+                address: "cosmwasm19787vwnzysepmews5fx0xqr86dartpcxk8kn3vq49q4tdrwxnt5s4jkrah"
+                    .to_string(),
                 amount: Uint128::new(110_000_000),
             },
             Cw20Coin {
-                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a".to_string(),
+                address: "cosmwasm16uhx2npkgkczmh3elc97t900zu6qj4z0dcgw5ytywkwkc2zdht0qe6e62a"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]),

@@ -1263,7 +1263,10 @@ fn test_add_remove_hooks() {
         .wrap()
         .query_wasm_smart(addr.clone(), &QueryMsg::GetHooks {})
         .unwrap();
-    assert_eq!(resp.hooks, vec!["cosmwasm1qeyznz6ghcp3n9380tj8yy26gmnevnf2cwyzucdcgdgl8slc54rssydn7s".to_string()]);
+    assert_eq!(
+        resp.hooks,
+        vec!["cosmwasm1qeyznz6ghcp3n9380tj8yy26gmnevnf2cwyzucdcgdgl8slc54rssydn7s".to_string()]
+    );
 
     // Remove hook.
     app.execute_contract(

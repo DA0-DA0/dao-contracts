@@ -581,7 +581,9 @@ fn execute_redistribute_unclaimed_funds(
                 Some(cw20_balance) => cw20_balance
                     .checked_sub(amount)
                     .map_err(ContractError::OverflowErr),
-                None => Err(ContractError::Std(StdError::not_found(cw20_addr.to_string()))),
+                None => Err(ContractError::Std(StdError::not_found(
+                    cw20_addr.to_string(),
+                ))),
             }
         })?;
     }

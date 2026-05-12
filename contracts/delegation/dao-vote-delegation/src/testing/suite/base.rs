@@ -408,13 +408,11 @@ impl DaoVoteDelegationTestingSuiteBase {
         expiration_height: Option<u64>,
     ) {
         let delegations = self.delegations(delegator, height, None, None);
-        assert!(delegations
-            .delegations
-            .iter()
-            .any(|d| d.delegate.as_str() == <_ as Into<String>>::into(delegate)
-                && d.percent == percent
-                && d.active
-                && d.expiration_height == expiration_height));
+        assert!(delegations.delegations.iter().any(|d| d.delegate.as_str()
+            == <_ as Into<String>>::into(delegate)
+            && d.percent == percent
+            && d.active
+            && d.expiration_height == expiration_height));
     }
 
     /// assert that an active delegation exists

@@ -25,7 +25,8 @@ use crate::msg::{InstantiateMsg, NftContract};
 use self::instantiate::instantiate_cw721_base;
 
 /// Address used as the owner, instantiator, and minter.
-pub(crate) const CREATOR_ADDR: &str = "cosmwasm1h34lmpywh4upnjdg90cjf4j70aee6z8qqfspugamjp42e4q28kqs8s7vcp";
+pub(crate) const CREATOR_ADDR: &str =
+    "cosmwasm1h34lmpywh4upnjdg90cjf4j70aee6z8qqfspugamjp42e4q28kqs8s7vcp";
 
 pub(crate) struct CommonTest {
     app: App,

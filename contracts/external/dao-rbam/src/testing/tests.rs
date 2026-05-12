@@ -141,7 +141,10 @@ fn test_instantiate_with_initial_roles() {
 
     // Check role details
     let role = suite.get_role(1);
-    assert_eq!(role.name, "cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql");
+    assert_eq!(
+        role.name,
+        "cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql"
+    );
     assert_eq!(role.metadata, Some("Admin role".to_string()));
     assert!(role.enabled);
 
@@ -177,7 +180,8 @@ fn test_auth() {
     let err = suite.update_filter_err(
         not_owner,
         ModuleUpdate::Existing {
-            address: "cosmwasm1ev0sp55ht0j6kwcwkpgvjnhu3gy2me2rh6rdfvsdfkhygk7qjw8qt9k02y".to_string(),
+            address: "cosmwasm1ev0sp55ht0j6kwcwkpgvjnhu3gy2me2rh6rdfvsdfkhygk7qjw8qt9k02y"
+                .to_string(),
         },
     );
     assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
@@ -185,7 +189,8 @@ fn test_auth() {
     let err = suite.update_protobuf_registry_err(
         not_owner,
         Some(ModuleUpdate::Existing {
-            address: "cosmwasm17x88d48p4lwrcd6v0hh0vn5ttv6vqdxj5qq3e267hs2jlfg2kujqwc2ke3".to_string(),
+            address: "cosmwasm17x88d48p4lwrcd6v0hh0vn5ttv6vqdxj5qq3e267hs2jlfg2kujqwc2ke3"
+                .to_string(),
         }),
     );
     assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
@@ -269,7 +274,7 @@ fn test_info() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_update_dao() {
     let mut suite = SuiteBuilder::base().build();
     let dao = suite.core_addr.clone();
@@ -1280,7 +1285,7 @@ fn test_message_authorization_queries() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_list_queries() {
     let mut suite = SuiteBuilder::base().build();
     let dao = suite.core_addr.clone();
@@ -2037,7 +2042,8 @@ fn test_action_execution_with_multiple_actions() {
     suite.update_filter(
         &dao,
         ModuleUpdate::Existing {
-            address: "cosmwasm1x0tyu0n84rz4dv2026zrlfa6gnhk5mfcv72qeu4fqvpmjczgje8q3p927d".to_string(),
+            address: "cosmwasm1x0tyu0n84rz4dv2026zrlfa6gnhk5mfcv72qeu4fqvpmjczgje8q3p927d"
+                .to_string(),
         },
     );
 

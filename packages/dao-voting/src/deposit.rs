@@ -229,12 +229,16 @@ pub mod tests {
 
     use super::*;
 
-    const NATIVE_DENOM: &str = "cosmwasm13jnqted2qwd0cev0e5ls84jz3c3jvynasw3qu90kphndyv4wtu4qknj87n";
+    const NATIVE_DENOM: &str =
+        "cosmwasm13jnqted2qwd0cev0e5ls84jz3c3jvynasw3qu90kphndyv4wtu4qknj87n";
     const CW20: &str = "cosmwasm1tckpxnyvy0tulzz56yenztghjkx3gqyl28sytat22v5zwr8nffds7j04g6";
 
     #[test]
     fn test_check_native_deposit_paid_yes() {
-        let info = message_info(&Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"), &coins(10, NATIVE_DENOM));
+        let info = message_info(
+            &Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
+            &coins(10, NATIVE_DENOM),
+        );
         let deposit_info = CheckedDepositInfo {
             denom: CheckedDenom::Native(NATIVE_DENOM.to_string()),
             amount: Uint128::new(10),
@@ -256,7 +260,10 @@ pub mod tests {
 
     #[test]
     fn test_native_deposit_paid_wrong_amount() {
-        let info = message_info(&Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"), &coins(9, NATIVE_DENOM));
+        let info = message_info(
+            &Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
+            &coins(9, NATIVE_DENOM),
+        );
         let deposit_info = CheckedDepositInfo {
             denom: CheckedDenom::Native(NATIVE_DENOM.to_string()),
             amount: Uint128::new(10),
@@ -274,7 +281,10 @@ pub mod tests {
 
     #[test]
     fn check_native_deposit_paid_wrong_denom() {
-        let info = message_info(&Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"), &coins(10, "unotekez"));
+        let info = message_info(
+            &Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
+            &coins(10, "unotekez"),
+        );
         let deposit_info = CheckedDepositInfo {
             denom: CheckedDenom::Native(NATIVE_DENOM.to_string()),
             amount: Uint128::new(10),
@@ -294,7 +304,10 @@ pub mod tests {
     // deposit seems like a frontend bug off.
     #[test]
     fn check_sending_other_denoms_is_not_allowed() {
-        let info = message_info(&Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"), &[coin(10, "unotekez"), coin(10, "ekez")]);
+        let info = message_info(
+            &Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
+            &[coin(10, "unotekez"), coin(10, "ekez")],
+        );
         let deposit_info = CheckedDepositInfo {
             denom: CheckedDenom::Native(NATIVE_DENOM.to_string()),
             amount: Uint128::new(10),
@@ -307,7 +320,10 @@ pub mod tests {
 
     #[test]
     fn check_native_deposit_paid_no_denoms() {
-        let info = message_info(&Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"), &[]);
+        let info = message_info(
+            &Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"),
+            &[],
+        );
         let deposit_info = CheckedDepositInfo {
             denom: CheckedDenom::Native(NATIVE_DENOM.to_string()),
             amount: Uint128::new(10),
@@ -326,22 +342,37 @@ pub mod tests {
             refund_policy: DepositRefundPolicy::Always,
         };
         let messages = deposit_info
-            .get_take_deposit_messages(&Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"), &Addr::unchecked(CW20))
+            .get_take_deposit_messages(
+                &Addr::unchecked(
+                    "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+                ),
+                &Addr::unchecked(CW20),
+            )
             .unwrap();
         assert_eq!(messages, vec![]);
 
         // Does something for cw20s.
         deposit_info.denom = CheckedDenom::Cw20(Addr::unchecked(CW20));
         let messages = deposit_info
-            .get_take_deposit_messages(&Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"), &Addr::unchecked("cosmwasm1ejpjr43ht3y56pplm5pxpusmcrk9rkkvna4tklusnnwdxpqm0zls40599z"))
+            .get_take_deposit_messages(
+                &Addr::unchecked(
+                    "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+                ),
+                &Addr::unchecked(
+                    "cosmwasm1ejpjr43ht3y56pplm5pxpusmcrk9rkkvna4tklusnnwdxpqm0zls40599z",
+                ),
+            )
             .unwrap();
         assert_eq!(
             messages,
             vec![CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: CW20.to_string(),
                 msg: to_json_binary(&cw20::Cw20ExecuteMsg::TransferFrom {
-                    owner: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
-                    recipient: "cosmwasm1ejpjr43ht3y56pplm5pxpusmcrk9rkkvna4tklusnnwdxpqm0zls40599z".to_string(),
+                    owner: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                        .to_string(),
+                    recipient:
+                        "cosmwasm1ejpjr43ht3y56pplm5pxpusmcrk9rkkvna4tklusnnwdxpqm0zls40599z"
+                            .to_string(),
                     amount: Uint128::new(10)
                 })
                 .unwrap(),
@@ -353,7 +384,12 @@ pub mod tests {
         // tx to fail for a valid cw20).
         deposit_info.amount = Uint128::zero();
         let messages = deposit_info
-            .get_take_deposit_messages(&Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"), &Addr::unchecked(CW20))
+            .get_take_deposit_messages(
+                &Addr::unchecked(
+                    "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+                ),
+                &Addr::unchecked(CW20),
+            )
             .unwrap();
         assert_eq!(messages, vec![]);
     }
@@ -367,12 +403,15 @@ pub mod tests {
             refund_policy: DepositRefundPolicy::Always,
         };
         let messages = deposit_info
-            .get_return_deposit_message(&Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"))
+            .get_return_deposit_message(&Addr::unchecked(
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+            ))
             .unwrap();
         assert_eq!(
             messages,
             vec![CosmosMsg::Bank(BankMsg::Send {
-                to_address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+                to_address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                    .to_string(),
                 amount: coins(10, "uekez")
             })]
         );
@@ -380,7 +419,9 @@ pub mod tests {
         // Don't fire a message if there is nothing to send!
         deposit_info.amount = Uint128::zero();
         let messages = deposit_info
-            .get_return_deposit_message(&Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"))
+            .get_return_deposit_message(&Addr::unchecked(
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+            ))
             .unwrap();
         assert_eq!(messages, vec![]);
     }
@@ -393,14 +434,18 @@ pub mod tests {
             refund_policy: DepositRefundPolicy::Always,
         };
         let messages = deposit_info
-            .get_return_deposit_message(&Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"))
+            .get_return_deposit_message(&Addr::unchecked(
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+            ))
             .unwrap();
         assert_eq!(
             messages,
             vec![CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: CW20.to_string(),
                 msg: to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
-                    recipient: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+                    recipient:
+                        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                            .to_string(),
                     amount: Uint128::new(10)
                 })
                 .unwrap(),
@@ -411,7 +456,9 @@ pub mod tests {
         // Don't fire a message if there is nothing to send!
         deposit_info.amount = Uint128::zero();
         let messages = deposit_info
-            .get_return_deposit_message(&Addr::unchecked("cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"))
+            .get_return_deposit_message(&Addr::unchecked(
+                "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+            ))
             .unwrap();
         assert_eq!(messages, vec![]);
     }

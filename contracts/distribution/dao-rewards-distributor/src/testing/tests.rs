@@ -1410,7 +1410,7 @@ fn test_withdraw_finished_rewards_period() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_withdraw_alternative_destination_address() {
     let subdao_addr = "some_subdao_maybe".to_string();
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native)
@@ -2240,7 +2240,7 @@ fn test_fund_native_on_create() {
 
 #[test]
 #[should_panic(expected = "Must send reserve token 'ugovtoken'")]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_fund_native_with_other_denom() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
@@ -2408,11 +2408,15 @@ fn test_update_hook_caller() {
 fn test_update_withdraw_destination() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
 
-    let new_withdraw_destination = "cosmwasm1sh26mm60vafst2rqscqs0dk5p3kxxmun8px4enesn5m7usq9genqnmzr8g";
+    let new_withdraw_destination =
+        "cosmwasm1sh26mm60vafst2rqscqs0dk5p3kxxmun8px4enesn5m7usq9genqnmzr8g";
     suite.update_withdraw_destination(1, new_withdraw_destination);
 
     let distribution = suite.get_distribution(1);
-    assert_eq!(distribution.withdraw_destination.as_str(), new_withdraw_destination);
+    assert_eq!(
+        distribution.withdraw_destination.as_str(),
+        new_withdraw_destination
+    );
 }
 
 #[test]

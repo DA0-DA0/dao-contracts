@@ -17,22 +17,76 @@ use super::{is_error, suite::SuiteBuilder};
 fn test_proposal_lifecycle_closed() {
     let mut suite = SuiteBuilder::default()
         .with_voters(&[
-            ("cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w", 10),
-            ("cosmwasm1ytfqsncpjdk9vnnfp5tsjkvhvermgmyy809nz0lhxyhuz6wu3zwqlf3qmz", 10),
-            ("cosmwasm1c72pk6fqutk58e4mrg452z5qr20runn6k0qp3vfgkyzvnn3yma4q3xa6yl", 10),
-            ("cosmwasm1yntlq0vdc0pkv6tfuma9hv06c3ek60cn20pgxpld2xejp7wugtfs8ss8cl", 10),
-            ("cosmwasm1lk8d0uvtrh23jdtqwnyzkp3ge9ad3s9952fl6c6056wuc7dr8qdssjrvfh", 10),
-            ("cosmwasm1w5lc27xszzwqndrl7w2qcylegqlquk8vzc4t7egarwrtcwntaefsqqwzfd", 10),
+            (
+                "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w",
+                10,
+            ),
+            (
+                "cosmwasm1ytfqsncpjdk9vnnfp5tsjkvhvermgmyy809nz0lhxyhuz6wu3zwqlf3qmz",
+                10,
+            ),
+            (
+                "cosmwasm1c72pk6fqutk58e4mrg452z5qr20runn6k0qp3vfgkyzvnn3yma4q3xa6yl",
+                10,
+            ),
+            (
+                "cosmwasm1yntlq0vdc0pkv6tfuma9hv06c3ek60cn20pgxpld2xejp7wugtfs8ss8cl",
+                10,
+            ),
+            (
+                "cosmwasm1lk8d0uvtrh23jdtqwnyzkp3ge9ad3s9952fl6c6056wuc7dr8qdssjrvfh",
+                10,
+            ),
+            (
+                "cosmwasm1w5lc27xszzwqndrl7w2qcylegqlquk8vzc4t7egarwrtcwntaefsqqwzfd",
+                10,
+            ),
         ])
         .with_proposal(2)
         .build();
 
-    suite.vote("cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w", 1, vec![0, 2, 1]).unwrap();
-    suite.vote("cosmwasm1ytfqsncpjdk9vnnfp5tsjkvhvermgmyy809nz0lhxyhuz6wu3zwqlf3qmz", 1, vec![1, 0, 2]).unwrap();
-    suite.vote("cosmwasm1c72pk6fqutk58e4mrg452z5qr20runn6k0qp3vfgkyzvnn3yma4q3xa6yl", 1, vec![2, 1, 0]).unwrap();
-    suite.vote("cosmwasm1yntlq0vdc0pkv6tfuma9hv06c3ek60cn20pgxpld2xejp7wugtfs8ss8cl", 1, vec![1, 0, 2]).unwrap();
-    suite.vote("cosmwasm1lk8d0uvtrh23jdtqwnyzkp3ge9ad3s9952fl6c6056wuc7dr8qdssjrvfh", 1, vec![0, 2, 1]).unwrap();
-    suite.vote("cosmwasm1w5lc27xszzwqndrl7w2qcylegqlquk8vzc4t7egarwrtcwntaefsqqwzfd", 1, vec![2, 0, 1]).unwrap();
+    suite
+        .vote(
+            "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w",
+            1,
+            vec![0, 2, 1],
+        )
+        .unwrap();
+    suite
+        .vote(
+            "cosmwasm1ytfqsncpjdk9vnnfp5tsjkvhvermgmyy809nz0lhxyhuz6wu3zwqlf3qmz",
+            1,
+            vec![1, 0, 2],
+        )
+        .unwrap();
+    suite
+        .vote(
+            "cosmwasm1c72pk6fqutk58e4mrg452z5qr20runn6k0qp3vfgkyzvnn3yma4q3xa6yl",
+            1,
+            vec![2, 1, 0],
+        )
+        .unwrap();
+    suite
+        .vote(
+            "cosmwasm1yntlq0vdc0pkv6tfuma9hv06c3ek60cn20pgxpld2xejp7wugtfs8ss8cl",
+            1,
+            vec![1, 0, 2],
+        )
+        .unwrap();
+    suite
+        .vote(
+            "cosmwasm1lk8d0uvtrh23jdtqwnyzkp3ge9ad3s9952fl6c6056wuc7dr8qdssjrvfh",
+            1,
+            vec![0, 2, 1],
+        )
+        .unwrap();
+    suite
+        .vote(
+            "cosmwasm1w5lc27xszzwqndrl7w2qcylegqlquk8vzc4t7egarwrtcwntaefsqqwzfd",
+            1,
+            vec![2, 0, 1],
+        )
+        .unwrap();
 
     suite.a_day_passes();
 
@@ -40,7 +94,12 @@ fn test_proposal_lifecycle_closed() {
     assert_eq!(winner, Winner::Never);
     assert_eq!(status, Status::Rejected);
 
-    suite.close("cosmwasm1lk8d0uvtrh23jdtqwnyzkp3ge9ad3s9952fl6c6056wuc7dr8qdssjrvfh", 1).unwrap();
+    suite
+        .close(
+            "cosmwasm1lk8d0uvtrh23jdtqwnyzkp3ge9ad3s9952fl6c6056wuc7dr8qdssjrvfh",
+            1,
+        )
+        .unwrap();
 
     let (_, status) = suite.query_winner_and_status(1);
     assert_eq!(status, Status::Closed);
@@ -73,7 +132,7 @@ fn test_proposal_zero_choices() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_no_propose_zero_voting_power() {
     let mut suite = SuiteBuilder::default().build();
     let err = suite.propose("someone", vec![]);
@@ -105,11 +164,26 @@ fn test_proposal_lifeclyle_execution_failed() {
 #[test]
 fn test_proposal_never_reaches_quorum() {
     let mut suite = SuiteBuilder::default()
-        .with_voters(&[("cosmwasm1z27zaa9mlettjzlk2sxszvdxpm8572fr475ellq00takauwjv2lq7p8hr6", 1), ("cosmwasm17t3mkg0j7s6y5fvc4q36e5fqg73zvx2w083g733f94ylm3hvujestakna2", 10)])
+        .with_voters(&[
+            (
+                "cosmwasm1z27zaa9mlettjzlk2sxszvdxpm8572fr475ellq00takauwjv2lq7p8hr6",
+                1,
+            ),
+            (
+                "cosmwasm17t3mkg0j7s6y5fvc4q36e5fqg73zvx2w083g733f94ylm3hvujestakna2",
+                10,
+            ),
+        ])
         .with_proposal(2)
         .build();
 
-    suite.vote("cosmwasm1z27zaa9mlettjzlk2sxszvdxpm8572fr475ellq00takauwjv2lq7p8hr6", 1, vec![0, 2, 1]).unwrap();
+    suite
+        .vote(
+            "cosmwasm1z27zaa9mlettjzlk2sxszvdxpm8572fr475ellq00takauwjv2lq7p8hr6",
+            1,
+            vec![0, 2, 1],
+        )
+        .unwrap();
 
     // seven days pass
     suite.a_week_passes();
@@ -122,11 +196,26 @@ fn test_proposal_never_reaches_quorum() {
 #[test]
 fn test_proposal_passes_after_expiry() {
     let mut suite = SuiteBuilder::default()
-        .with_voters(&[("cosmwasm1z27zaa9mlettjzlk2sxszvdxpm8572fr475ellq00takauwjv2lq7p8hr6", 15), ("cosmwasm17t3mkg0j7s6y5fvc4q36e5fqg73zvx2w083g733f94ylm3hvujestakna2", 85)])
+        .with_voters(&[
+            (
+                "cosmwasm1z27zaa9mlettjzlk2sxszvdxpm8572fr475ellq00takauwjv2lq7p8hr6",
+                15,
+            ),
+            (
+                "cosmwasm17t3mkg0j7s6y5fvc4q36e5fqg73zvx2w083g733f94ylm3hvujestakna2",
+                85,
+            ),
+        ])
         .with_proposal(2)
         .build();
 
-    suite.vote("cosmwasm1z27zaa9mlettjzlk2sxszvdxpm8572fr475ellq00takauwjv2lq7p8hr6", 1, vec![0, 2, 1]).unwrap();
+    suite
+        .vote(
+            "cosmwasm1z27zaa9mlettjzlk2sxszvdxpm8572fr475ellq00takauwjv2lq7p8hr6",
+            1,
+            vec![0, 2, 1],
+        )
+        .unwrap();
 
     suite.a_week_passes();
 
@@ -156,7 +245,7 @@ fn test_no_revoting() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_no_vote_zero_power() {
     let mut suite = SuiteBuilder::default().with_proposal(1).build();
     let err = suite.vote("somebody", 1, vec![0, 1]);

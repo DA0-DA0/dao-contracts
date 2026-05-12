@@ -365,7 +365,9 @@ mod tests {
     fn test_display() {
         let denom = CheckedDenom::Native("hello".to_string());
         assert_eq!(denom.to_string(), "hello".to_string());
-        let denom = CheckedDenom::Cw20(Addr::unchecked("cosmwasm19neymwjlkz3sufhg8v4vtw0zncd3v8jur7n5yhnnqsek9yutnqjqxc5p4v"));
+        let denom = CheckedDenom::Cw20(Addr::unchecked(
+            "cosmwasm19neymwjlkz3sufhg8v4vtw0zncd3v8jur7n5yhnnqsek9yutnqjqxc5p4v",
+        ));
         assert_eq!(denom.to_string(), "hello".to_string());
     }
 }

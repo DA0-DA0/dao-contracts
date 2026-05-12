@@ -38,7 +38,7 @@ fn test_info() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_init_owner() {
     let mut suite = SuiteBuilder::base().build();
     let other_owner = "other_owner";
@@ -109,7 +109,10 @@ fn test_update_protobuf_registry() {
     let mut suite = SuiteBuilder::base().build();
 
     // only the owner can update the protobuf registry
-    let err = suite.update_protobuf_registry_err("cosmwasm1hclhm4dapgs8lxc9ya59jjyakln279wc0rh6ewx5ddrmhf0jlctq3mddc2", None);
+    let err = suite.update_protobuf_registry_err(
+        "cosmwasm1hclhm4dapgs8lxc9ya59jjyakln279wc0rh6ewx5ddrmhf0jlctq3mddc2",
+        None,
+    );
     assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner {}));
 
     suite.assert_protobuf_registry(Some(suite.protobuf_registry_addr.clone()));

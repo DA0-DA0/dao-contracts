@@ -72,7 +72,7 @@ fn test_use_existing_nft_contract() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_voting_queries() {
     let CommonTest {
         mut app,
@@ -83,7 +83,9 @@ fn test_voting_queries() {
         owner: CREATOR_ADDR.to_string(),
         token_uri: None,
         extension: MetadataExt {
-            role: Some("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql".to_string()),
+            role: Some(
+                "cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql".to_string(),
+            ),
             weight: 1,
         },
     }]);

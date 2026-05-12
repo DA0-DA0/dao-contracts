@@ -247,11 +247,13 @@ pub fn instantiate_with_staking_active_threshold(
     let initial_balances = initial_balances.unwrap_or_else(|| {
         vec![
             Cw20Coin {
-                address: "cosmwasm1lgkge38js9mthmk5kumd7456xnree5mj860vgtukwj6dg6kxhzuq3zeght".to_string(),
+                address: "cosmwasm1lgkge38js9mthmk5kumd7456xnree5mj860vgtukwj6dg6kxhzuq3zeght"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
             Cw20Coin {
-                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w".to_string(),
+                address: "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w"
+                    .to_string(),
                 amount: Uint128::new(100_000_000),
             },
         ]

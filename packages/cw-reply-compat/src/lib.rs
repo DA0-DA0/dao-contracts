@@ -27,9 +27,7 @@ pub fn parse_reply_instantiate_data(
     parse_instantiate_response_data(&data)
 }
 
-pub fn parse_reply_execute_data(
-    msg: Reply,
-) -> Result<MsgExecuteContractResponse, ParseReplyError> {
+pub fn parse_reply_execute_data(msg: Reply) -> Result<MsgExecuteContractResponse, ParseReplyError> {
     let data = msg
         .result
         .into_result()
@@ -38,4 +36,3 @@ pub fn parse_reply_execute_data(
         .ok_or_else(|| ParseReplyError::ParseFailure("Missing reply data".to_string()))?;
     parse_execute_response_data(&data)
 }
-

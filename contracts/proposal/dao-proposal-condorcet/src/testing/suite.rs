@@ -43,7 +43,10 @@ impl Default for SuiteBuilder {
                 close_proposals_on_execution_failure: true,
             },
             with_proposal: None,
-            with_voters: vec![("cosmwasm1pgm8hyk0pvphmlvfjc8wsvk4daluz5tgrw6pu5mfpemk74uxnx9qlm3aqg".to_string(), 10)],
+            with_voters: vec![(
+                "cosmwasm1pgm8hyk0pvphmlvfjc8wsvk4daluz5tgrw6pu5mfpemk74uxnx9qlm3aqg".to_string(),
+                10,
+            )],
         }
     }
 }
@@ -299,7 +302,8 @@ impl Suite {
 
 pub fn unimportant_message() -> CosmosMsg {
     BankMsg::Send {
-        to_address: "cosmwasm19fvat83cp8uz0nnsn5uptcu4pmh5565n4a2402f60l0m5u2xpppsn6r94c".to_string(),
+        to_address: "cosmwasm19fvat83cp8uz0nnsn5uptcu4pmh5565n4a2402f60l0m5u2xpppsn6r94c"
+            .to_string(),
         amount: coins(10, "something"),
     }
     .into()

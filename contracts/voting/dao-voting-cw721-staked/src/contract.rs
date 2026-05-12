@@ -7,8 +7,8 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw721::msg::{Cw721QueryMsg, NumTokensResponse};
 use cw721::receiver::Cw721ReceiveMsg;
-use cw_storage_plus::Bound;
 use cw_reply_compat::{parse_reply_execute_data, parse_reply_instantiate_data};
+use cw_storage_plus::Bound;
 use cw_utils::Duration;
 use dao_hooks::nft_stake::{stake_nft_hook_msgs, unstake_nft_hook_msgs};
 use dao_interface::state::{Admin, ModuleInstantiateCallback, ModuleInstantiateInfo};
@@ -306,7 +306,11 @@ pub fn execute_unstake(
                 .map(|token_id| -> StdResult<WasmMsg> {
                     Ok(cosmwasm_std::WasmMsg::Execute {
                         contract_addr: config.nft_address.to_string(),
-                        msg: to_json_binary(&cw721::msg::Cw721ExecuteMsg::<cosmwasm_std::Empty, cosmwasm_std::Empty, cosmwasm_std::Empty>::TransferNft {
+                        msg: to_json_binary(&cw721::msg::Cw721ExecuteMsg::<
+                            cosmwasm_std::Empty,
+                            cosmwasm_std::Empty,
+                            cosmwasm_std::Empty,
+                        >::TransferNft {
                             recipient: info.sender.to_string(),
                             token_id,
                         })?,
@@ -393,7 +397,11 @@ pub fn execute_claim_nfts(
         .map(|token_id| -> StdResult<CosmosMsg> {
             Ok(WasmMsg::Execute {
                 contract_addr: config.nft_address.to_string(),
-                msg: to_json_binary(&cw721::msg::Cw721ExecuteMsg::<cosmwasm_std::Empty, cosmwasm_std::Empty, cosmwasm_std::Empty>::TransferNft {
+                msg: to_json_binary(&cw721::msg::Cw721ExecuteMsg::<
+                    cosmwasm_std::Empty,
+                    cosmwasm_std::Empty,
+                    cosmwasm_std::Empty,
+                >::TransferNft {
                     recipient: info.sender.to_string(),
                     token_id,
                 })?,
@@ -497,12 +505,10 @@ pub fn execute_update_active_threshold(
                 assert_valid_percentage_threshold(percent)?;
             }
             ActiveThreshold::AbsoluteCount { count } => {
-                let nft_supply: NumTokensResponse = deps
-                    .querier
-                    .query_wasm_smart(
-                        config.nft_address,
-                        &Cw721QueryMsg::<Empty, Empty, Empty>::NumTokens {},
-                    )?;
+                let nft_supply: NumTokensResponse = deps.querier.query_wasm_smart(
+                    config.nft_address,
+                    &Cw721QueryMsg::<Empty, Empty, Empty>::NumTokens {},
+                )?;
                 assert_valid_absolute_count_threshold(
                     count,
                     Uint128::new(nft_supply.count.into()),
@@ -556,10 +562,9 @@ pub fn query_is_active(deps: Deps, env: Env) -> StdResult<Binary> {
         let staked_nfts = TOTAL_STAKED_NFTS
             .may_load_at_height(deps.storage, env.block.height)?
             .unwrap_or_default();
-        let total_nfts: NumTokensResponse = deps.querier.query_wasm_smart(
-            config.nft_address,
-            &cw721_base::msg::QueryMsg::NumTokens {},
-        )?;
+        let total_nfts: NumTokensResponse = deps
+            .querier
+            .query_wasm_smart(config.nft_address, &cw721_base::msg::QueryMsg::NumTokens {})?;
 
         match threshold {
             ActiveThreshold::AbsoluteCount { count } => to_json_binary(&IsActiveResponse {
@@ -763,14 +768,12 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     submessages.push(SubMsg::reply_on_success(
                         WasmMsg::Execute {
                             contract_addr: nft_contract.clone(),
-                            msg: to_json_binary(
-                                &cw721_base::msg::ExecuteMsg::UpdateOwnership(
-                                    cw721_base::Action::TransferOwnership {
-                                        new_owner: dao.to_string(),
-                                        expiry: None,
-                                    },
-                                ),
-                            )?,
+                            msg: to_json_binary(&cw721_base::msg::ExecuteMsg::UpdateOwnership(
+                                cw721_base::Action::TransferOwnership {
+                                    new_owner: dao.to_string(),
+                                    expiry: None,
+                                },
+                            ))?,
                             funds: vec![],
                         },
                         VALIDATE_SUPPLY_REPLY_ID,
@@ -792,12 +795,10 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             let collection_addr = CONFIG.load(deps.storage)?.nft_address;
 
             // Query the total supply of the NFT contract
-            let nft_supply: NumTokensResponse = deps
-                .querier
-                .query_wasm_smart(
-                    collection_addr.clone(),
-                    &Cw721QueryMsg::<Empty, Empty, Empty>::NumTokens {},
-                )?;
+            let nft_supply: NumTokensResponse = deps.querier.query_wasm_smart(
+                collection_addr.clone(),
+                &Cw721QueryMsg::<Empty, Empty, Empty>::NumTokens {},
+            )?;
 
             // Check greater than zero
             if nft_supply.count == 0 {
@@ -821,11 +822,9 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             let callback = to_json_binary(&ModuleInstantiateCallback {
                 msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: collection_addr.to_string(),
-                    msg: to_json_binary(
-                        &&cw721_base::msg::ExecuteMsg::UpdateOwnership(
-                            cw721_base::Action::AcceptOwnership {},
-                        ),
-                    )?,
+                    msg: to_json_binary(&&cw721_base::msg::ExecuteMsg::UpdateOwnership(
+                        cw721_base::Action::AcceptOwnership {},
+                    ))?,
                     funds: vec![],
                 })],
             })?;

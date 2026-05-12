@@ -23,7 +23,7 @@ const INITIAL_BALANCE: u128 = 1000000000;
 const NATIVE_DENOM: &str = "cosmwasm18afpdapfxxlvxcf95a3rd6p0fsw37mnfwcxyuqpgfdtlddjvzhsq0j4wf4";
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 pub fn test_instantiate_native_payroll_contract() {
     let mut app = App::default();
     let code_id = app.store_code(cw_payroll_factory_contract());
@@ -112,7 +112,10 @@ pub fn test_instantiate_native_payroll_contract() {
         .wrap()
         .query_wasm_contract_info(cw_vesting_addr)
         .unwrap();
-    assert_eq!(contract_info.admin.map(|a| a.to_string()), Some(ALICE.to_string()));
+    assert_eq!(
+        contract_info.admin.map(|a| a.to_string()),
+        Some(ALICE.to_string())
+    );
 
     // Test query list of contracts
     let contracts: Vec<VestingContract> = app
@@ -292,7 +295,10 @@ pub fn test_instantiate_cw20_payroll_contract() {
         .wrap()
         .query_wasm_contract_info(cw_vesting_addr.clone())
         .unwrap();
-    assert_eq!(contract_info.admin.map(|a| a.to_string()), Some(ALICE.to_string()));
+    assert_eq!(
+        contract_info.admin.map(|a| a.to_string()),
+        Some(ALICE.to_string())
+    );
 
     // Test query by instantiator
     let contracts: Vec<VestingContract> = app
@@ -327,7 +333,8 @@ fn test_instantiate_wrong_ownership_native() {
 
     app.sudo(SudoMsg::Bank({
         BankSudo::Mint {
-            to_address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg".to_string(),
+            to_address: "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg"
+                .to_string(),
             amount: coins(amount.u128() * 2, NATIVE_DENOM),
         }
     }))
@@ -387,7 +394,7 @@ fn test_instantiate_wrong_ownership_native() {
 }
 
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_update_vesting_code_id() {
     let mut app = App::default();
     let code_id = app.store_code(cw_payroll_factory_contract());

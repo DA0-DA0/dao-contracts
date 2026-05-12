@@ -1,8 +1,8 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
 use cw721::receiver::Cw721ReceiveMsg;
-use cw_utils::Expiration;
 use cw_utils::Duration;
+use cw_utils::Expiration;
 use dao_dao_macros::{active_query, voting_module_query};
 use dao_voting::threshold::{ActiveThreshold, ActiveThresholdResponse};
 

@@ -125,7 +125,7 @@ fn test_stake_tokens() -> anyhow::Result<()> {
 // another addresses' token. Voting power and total power is updated
 // when I unstake.
 #[test]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_unstake_tokens_no_claims() -> anyhow::Result<()> {
     let CommonTest {
         mut app,
@@ -553,29 +553,62 @@ fn test_add_remove_hooks() -> anyhow::Result<()> {
         nft,
     } = setup_test(None);
 
-    add_hook(&mut app, &module, CREATOR_ADDR, "cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt")?;
-    remove_hook(&mut app, &module, CREATOR_ADDR, "cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt")?;
+    add_hook(
+        &mut app,
+        &module,
+        CREATOR_ADDR,
+        "cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt",
+    )?;
+    remove_hook(
+        &mut app,
+        &module,
+        CREATOR_ADDR,
+        "cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt",
+    )?;
 
     // Minting NFT works if no hooks
     mint_and_stake_nft(&mut app, &nft, &module, CREATOR_ADDR, "1").unwrap();
 
     // Add a hook to a fake contract called "cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt"
-    add_hook(&mut app, &module, CREATOR_ADDR, "cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt")?;
+    add_hook(
+        &mut app,
+        &module,
+        CREATOR_ADDR,
+        "cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt",
+    )?;
 
     let hooks = query_hooks(&app, &module)?;
-    assert_eq!(hooks.hooks, vec!["cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt".to_string()]);
+    assert_eq!(
+        hooks.hooks,
+        vec!["cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt".to_string()]
+    );
 
     // Minting / staking now doesn't work because meow isn't a contract
     // This failure means the hook is working
     mint_and_stake_nft(&mut app, &nft, &module, CREATOR_ADDR, "1").unwrap_err();
 
-    let res = add_hook(&mut app, &module, CREATOR_ADDR, "cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt");
+    let res = add_hook(
+        &mut app,
+        &module,
+        CREATOR_ADDR,
+        "cosmwasm1gpxd677pp8zr97xvy3pmgk70a9vcpagswg2uv3frdethj2dv8efqtxgakt",
+    );
     is_error!(res => "Given address already registered as a hook");
 
-    let res = remove_hook(&mut app, &module, CREATOR_ADDR, "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w");
+    let res = remove_hook(
+        &mut app,
+        &module,
+        CREATOR_ADDR,
+        "cosmwasm1zerhdzxquqrfn3k053yh5dsj6l5rc5eqv2mykfg0akyssy5w64yq64cq6w",
+    );
     is_error!(res => "Given address not registered as a hook");
 
-    let res = add_hook(&mut app, &module, "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg", "evil");
+    let res = add_hook(
+        &mut app,
+        &module,
+        "cosmwasm1nq9dshj4pugmaas4qcqwslmcj2x7s3gy3fkcr0as0hs88spd528qgturlg",
+        "evil",
+    );
     is_error!(res => "Unauthorized");
 
     Ok(())
@@ -605,9 +638,9 @@ fn test_instantiate_with_invalid_duration_fails() {
                         withdraw_address: None,
                     })
                     .unwrap(),
-                    initial_nfts: vec![to_json_binary(
-                        &Cw721ExecuteMsg::UpdateExtension { msg: Empty {} },
-                    )
+                    initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::UpdateExtension {
+                        msg: Empty {},
+                    })
                     .unwrap()],
                 },
                 unstaking_duration: None,
@@ -1047,8 +1080,13 @@ fn test_update_active_threshold() {
     };
 
     // Expect failure as sender is not the DAO
-    app.execute_contract(Addr::unchecked("cosmwasm1sxmr0k8u6trd5c6eu6trzyapzux7090ykujmsng7pdx0m8k93n5sjrh9we"), voting_addr.clone(), &msg, &[])
-        .unwrap_err();
+    app.execute_contract(
+        Addr::unchecked("cosmwasm1sxmr0k8u6trd5c6eu6trzyapzux7090ykujmsng7pdx0m8k93n5sjrh9we"),
+        voting_addr.clone(),
+        &msg,
+        &[],
+    )
+    .unwrap_err();
 
     // Expect success as sender is the DAO (in this case the creator)
     app.execute_contract(
@@ -1227,9 +1265,9 @@ fn test_invalid_initial_nft_msg() {
                         withdraw_address: None,
                     })
                     .unwrap(),
-                    initial_nfts: vec![to_json_binary(
-                        &Cw721ExecuteMsg::UpdateExtension { msg: Empty {} },
-                    )
+                    initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::UpdateExtension {
+                        msg: Empty {},
+                    })
                     .unwrap()],
                 },
                 unstaking_duration: None,
@@ -1271,10 +1309,8 @@ fn test_invalid_initial_nft_msg_wrong_absolute_count() {
                     })
                     .unwrap(),
                     initial_nfts: vec![
-                        to_json_binary(&Cw721ExecuteMsg::UpdateExtension {
-                            msg: Empty {},
-                        })
-                        .unwrap(),
+                        to_json_binary(&Cw721ExecuteMsg::UpdateExtension { msg: Empty {} })
+                            .unwrap(),
                         to_json_binary(&Cw721ExecuteMsg::Mint {
                             owner: CREATOR_ADDR.to_string(),
                             token_uri: Some("https://example.com".to_string()),
@@ -1446,14 +1482,12 @@ fn test_factory_with_funds_pass_through() {
                                 creator: None,
                                 withdraw_address: None,
                             },
-                            initial_nfts: vec![to_json_binary(
-                                &Cw721ExecuteMsg::Mint {
-                                    owner: CREATOR_ADDR.to_string(),
-                                    token_uri: Some("https://example.com".to_string()),
-                                    token_id: "1".to_string(),
-                                    extension: None,
-                                },
-                            )
+                            initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::Mint {
+                                owner: CREATOR_ADDR.to_string(),
+                                token_uri: Some("https://example.com".to_string()),
+                                token_id: "1".to_string(),
+                                extension: None,
+                            })
                             .unwrap()],
                         },
                     )
@@ -1496,14 +1530,12 @@ fn test_factory_with_funds_pass_through() {
                                 creator: None,
                                 withdraw_address: None,
                             },
-                            initial_nfts: vec![to_json_binary(
-                                &Cw721ExecuteMsg::Mint {
-                                    owner: CREATOR_ADDR.to_string(),
-                                    token_uri: Some("https://example.com".to_string()),
-                                    token_id: "1".to_string(),
-                                    extension: None,
-                                },
-                            )
+                            initial_nfts: vec![to_json_binary(&Cw721ExecuteMsg::Mint {
+                                owner: CREATOR_ADDR.to_string(),
+                                token_uri: Some("https://example.com".to_string()),
+                                token_id: "1".to_string(),
+                                extension: None,
+                            })
                             .unwrap()],
                         },
                     )
@@ -1574,7 +1606,7 @@ fn test_unsupported_factory_msg() {
 #[should_panic(
     expected = "Error parsing into type dao_interface::nft::NftFactoryCallback: unknown field `denom`, expected `nft_contract`"
 )]
-    #[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
+#[ignore = "cw-2: needs test-design refactor (placeholder addresses / cw-multi-test 0.20 contractN naming / dynamic format!() addresses / cw-multi-test 2.x unimplemented features)"]
 fn test_factory_wrong_callback() {
     let mut app = App::default();
     let module_id = app.store_code(dao_voting_cw721_staked_contract());

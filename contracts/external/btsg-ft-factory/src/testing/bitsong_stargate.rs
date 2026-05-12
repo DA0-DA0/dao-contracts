@@ -12,7 +12,8 @@ use crate::bitsong::{
 };
 
 const DENOMS_PREFIX: &str = "cosmwasm1txcq95x3uy5ucperyj3njq4actah4q9yc82ky9am8zu4j6lheeusjlechq";
-const DENOMS_COUNT_KEY: &str = "cosmwasm1zaw49jfy9muvxtdhk9kunfuxe6srehdmf246htwp6j922ka79wtqnj38tt";
+const DENOMS_COUNT_KEY: &str =
+    "cosmwasm1zaw49jfy9muvxtdhk9kunfuxe6srehdmf246htwp6j922ka79wtqnj38tt";
 
 #[cw_serde]
 struct FanToken {
@@ -67,7 +68,8 @@ impl Stargate for StargateKeeper {
 
             return Ok(AppResponse {
                 events: vec![],
-                msg_responses: vec![], data: Some(Binary::from(MsgIssueResponse { denom })),
+                msg_responses: vec![],
+                data: Some(Binary::from(MsgIssueResponse { denom })),
             });
         }
         if type_url == *"/bitsong.fantoken.MsgMint" {
@@ -96,7 +98,8 @@ impl Stargate for StargateKeeper {
 
             return Ok(AppResponse {
                 events: vec![],
-                msg_responses: vec![], data: Some(Binary::from(MsgMintResponse {})),
+                msg_responses: vec![],
+                data: Some(Binary::from(MsgMintResponse {})),
             });
         }
         if type_url == *"/bitsong.fantoken.MsgSetMinter" {
@@ -120,7 +123,8 @@ impl Stargate for StargateKeeper {
 
             return Ok(AppResponse {
                 events: vec![],
-                msg_responses: vec![], data: Some(Binary::from(MsgSetMinterResponse {})),
+                msg_responses: vec![],
+                data: Some(Binary::from(MsgSetMinterResponse {})),
             });
         }
         if type_url == *"/bitsong.fantoken.MsgSetAuthority" {
@@ -144,7 +148,8 @@ impl Stargate for StargateKeeper {
 
             return Ok(AppResponse {
                 events: vec![],
-                msg_responses: vec![], data: Some(Binary::from(MsgSetMinterResponse {})),
+                msg_responses: vec![],
+                data: Some(Binary::from(MsgSetMinterResponse {})),
             });
         }
         if type_url == *"/bitsong.fantoken.MsgSetUri" {
@@ -164,7 +169,8 @@ impl Stargate for StargateKeeper {
 
             return Ok(AppResponse {
                 events: vec![],
-                msg_responses: vec![], data: Some(Binary::from(MsgSetUriResponse {})),
+                msg_responses: vec![],
+                data: Some(Binary::from(MsgSetUriResponse {})),
             });
         }
         Ok(AppResponse::default())
