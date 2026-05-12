@@ -267,9 +267,9 @@ mod tests {
         assert_eq!(
             err,
             DenomError::InvalidCw20 {
-                err: StdError::GenericErr {
-                    msg: format!("Querier system error: No such contract: {CW20_ADDR}",)
-                }
+                err: StdError::generic_err(format!(
+                    "Querier system error: No such contract: {CW20_ADDR}",
+                ))
             }
         )
     }
@@ -286,9 +286,9 @@ mod tests {
         let err = unchecked.into_checked(deps.as_ref()).unwrap_err();
         assert_eq!(
             err,
-            DenomError::Std(StdError::GenericErr {
-                msg: "Invalid input: address not normalized".to_string()
-            })
+            DenomError::Std(StdError::generic_err(
+                "Invalid input: address not normalized".to_string()
+            ))
         )
     }
 

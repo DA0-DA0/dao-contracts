@@ -1,4 +1,4 @@
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Empty};
 use cw_multi_test::{App, AppResponse, Executor};
 use dao_cw721_extensions::roles::{ExecuteExt, MetadataExt};
 
@@ -14,7 +14,7 @@ pub fn mint_nft(
     app.execute_contract(
         Addr::unchecked(sender),
         cw721.clone(),
-        &cw721_base::ExecuteMsg::<MetadataExt, ExecuteExt>::Mint {
+        &cw721::msg::Cw721ExecuteMsg::<MetadataExt, Empty, ExecuteExt>::Mint {
             token_id: token_id.to_string(),
             owner: receiver.to_string(),
             token_uri: None,

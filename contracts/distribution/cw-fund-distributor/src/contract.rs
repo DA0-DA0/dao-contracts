@@ -581,9 +581,7 @@ fn execute_redistribute_unclaimed_funds(
                 Some(cw20_balance) => cw20_balance
                     .checked_sub(amount)
                     .map_err(ContractError::OverflowErr),
-                None => Err(ContractError::Std(StdError::NotFound {
-                    kind: cw20_addr.to_string(),
-                })),
+                None => Err(ContractError::Std(StdError::not_found(cw20_addr.to_string()))),
             }
         })?;
     }
@@ -597,9 +595,7 @@ fn execute_redistribute_unclaimed_funds(
                 Some(native_balance) => native_balance
                     .checked_sub(amount)
                     .map_err(ContractError::OverflowErr),
-                None => Err(ContractError::Std(StdError::NotFound {
-                    kind: denom.to_string(),
-                })),
+                None => Err(ContractError::Std(StdError::not_found(denom.to_string()))),
             }
         })?;
     }

@@ -213,7 +213,7 @@ fn instantiate_with_no_admin(chain: &mut Chain) {
     let dao = res.unwrap();
 
     // ensure the dao is the admin:
-    assert_eq!(dao.state.admin, dao.addr);
+    assert_eq!(dao.state.admin.as_str(), dao.addr);
     assert_eq!(dao.state.pause_info, PauseInfoResponse::Unpaused {});
     assert_eq!(
         dao.state.config,
@@ -247,7 +247,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
     let dao = res.unwrap();
 
     // general dao info is valid:
-    assert_eq!(dao.state.admin, user_addr);
+    assert_eq!(dao.state.admin.as_str(), user_addr);
     assert_eq!(dao.state.pause_info, PauseInfoResponse::Unpaused {});
     assert_eq!(
         dao.state.config,
@@ -325,7 +325,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
         )
         .unwrap();
     let token_addr: &str = res.data().unwrap();
-    assert_eq!(config_res.token_address, token_addr);
+    assert_eq!(config_res.token_address.as_str(), token_addr);
 
     assert_eq!(config_res.unstaking_duration, Some(Duration::Time(1209600)));
 
@@ -376,7 +376,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
         }
     );
     assert_eq!(
-        config_res.dao,
+        config_res.dao.as_str(),
         chain.orc.contract_map.address("dao_dao_core").unwrap()
     );
 }

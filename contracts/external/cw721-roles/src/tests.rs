@@ -1,6 +1,6 @@
-use cosmwasm_std::{to_json_binary, Addr, Binary};
+use cosmwasm_std::{to_json_binary, Addr, Binary, Empty};
 use cw4::{HooksResponse, Member, MemberListResponse, MemberResponse, TotalWeightResponse};
-use cw721::{NftInfoResponse, OwnerOfResponse};
+use cw721::msg::{NftInfoResponse, OwnerOfResponse};
 use cw_multi_test::{App, Executor};
 use dao_cw721_extensions::roles::{ExecuteExt, MetadataExt, QueryExt};
 use dao_testing::contracts::{cw721_roles_contract, dao_voting_cw721_staked_contract};
@@ -24,7 +24,10 @@ pub fn setup() -> (App, Addr) {
             &InstantiateMsg {
                 name: "bad kids".to_string(),
                 symbol: "bad kids".to_string(),
-                minter: DAO.to_string(),
+                minter: Some(DAO.to_string()),
+                collection_info_extension: Empty {},
+                creator: None,
+                withdraw_address: None,
             },
             &[],
             "cw721_roles".to_string(),
@@ -39,7 +42,7 @@ pub fn query_nft_owner(
     app: &App,
     nft: &Addr,
     token_id: &str,
-) -> Result<cw721::OwnerOfResponse, RolesContractError> {
+) -> Result<OwnerOfResponse, RolesContractError> {
     let owner = app.wrap().query_wasm_smart(
         nft,
         &QueryMsg::OwnerOf {
@@ -307,7 +310,7 @@ fn test_update_token_role() {
     app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
         .unwrap();
 
-    let msg = ExecuteMsg::Extension {
+    let msg = ExecuteMsg::UpdateExtension {
         msg: ExecuteExt::UpdateTokenRole {
             token_id: "1".to_string(),
             role: Some("queen".to_string()),
@@ -330,7 +333,7 @@ fn test_update_token_role() {
     app.execute_contract(
         Addr::unchecked(DAO),
         cw721_addr.clone(),
-        &ExecuteMsg::Extension {
+        &ExecuteMsg::UpdateExtension {
             msg: ExecuteExt::UpdateTokenRole {
                 token_id: "1".to_string(),
                 role: None,
@@ -358,7 +361,7 @@ fn test_update_token_uri() {
     app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
         .unwrap();
 
-    let msg = ExecuteMsg::Extension {
+    let msg = ExecuteMsg::UpdateExtension {
         msg: ExecuteExt::UpdateTokenUri {
             token_id: "1".to_string(),
             token_uri: Some("ipfs://abc...".to_string()),
@@ -395,7 +398,7 @@ fn test_update_token_weight() {
     app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
         .unwrap();
 
-    let msg = ExecuteMsg::Extension {
+    let msg = ExecuteMsg::UpdateExtension {
         msg: ExecuteExt::UpdateTokenWeight {
             token_id: "1".to_string(),
             weight: 2,
@@ -422,7 +425,7 @@ fn test_update_token_weight() {
     app.execute_contract(
         Addr::unchecked(DAO),
         cw721_addr.clone(),
-        &ExecuteMsg::Extension {
+        &ExecuteMsg::UpdateExtension {
             msg: ExecuteExt::UpdateTokenWeight {
                 token_id: "1".to_string(),
                 weight: 1,
@@ -458,7 +461,7 @@ fn test_update_token_weight() {
     app.execute_contract(
         Addr::unchecked(DAO),
         cw721_addr.clone(),
-        &ExecuteMsg::Extension {
+        &ExecuteMsg::UpdateExtension {
             msg: ExecuteExt::UpdateTokenWeight {
                 token_id: "2".to_string(),
                 weight: 0,
@@ -516,7 +519,7 @@ fn test_hooks() {
     app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
         .unwrap();
 
-    let msg = ExecuteMsg::Extension {
+    let msg = ExecuteMsg::UpdateExtension {
         msg: ExecuteExt::AddHook {
             addr: DAO.to_string(),
         },
@@ -568,7 +571,7 @@ fn test_hooks() {
     app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
         .unwrap_err();
 
-    let msg = ExecuteMsg::Extension {
+    let msg = ExecuteMsg::UpdateExtension {
         msg: ExecuteExt::RemoveHook {
             addr: DAO.to_string(),
         },

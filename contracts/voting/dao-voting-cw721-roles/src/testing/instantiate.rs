@@ -9,10 +9,13 @@ pub fn instantiate_cw721_roles(app: &mut App, sender: &str, minter: &str) -> (Ad
         .instantiate_contract(
             cw721_id,
             Addr::unchecked(sender),
-            &cw721_base::InstantiateMsg {
+            &cw721_roles::msg::InstantiateMsg {
                 name: "bad kids".to_string(),
                 symbol: "bad kids".to_string(),
-                minter: minter.to_string(),
+                minter: Some(minter.to_string()),
+                collection_info_extension: cosmwasm_std::Empty {},
+                creator: None,
+                withdraw_address: None,
             },
             &[],
             "cw721_roles".to_string(),

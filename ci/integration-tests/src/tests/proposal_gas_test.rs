@@ -15,11 +15,11 @@ fn mint_mint_mint_mint(cw721: &str, owner: &str, mints: u64) -> Vec<CosmosMsg> {
         .map(|mint| {
             WasmMsg::Execute {
                 contract_addr: cw721.to_string(),
-                msg: to_json_binary(&cw721_base::msg::ExecuteMsg::Mint::<Empty, Empty>{
+                msg: to_json_binary(&cw721_base::msg::ExecuteMsg::Mint{
                         token_id: mint.to_string(),
                         owner: owner.to_string(),
                         token_uri: Some("https://bafkreibufednctf2f2bpduiibgkvpqcw5rtdmhqh2htqx3qbdnji4h55hy.ipfs.nftstorage.link".to_string()),
-                        extension: Empty::default(),
+                        extension: None,
                     },
                 )
                 .unwrap(),
