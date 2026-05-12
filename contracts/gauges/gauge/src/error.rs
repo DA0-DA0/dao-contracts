@@ -1,4 +1,4 @@
-use cosmwasm_std::{Decimal, StdError};
+use cosmwasm_std::{Decimal, StdError, Uint128};
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
@@ -17,6 +17,16 @@ pub enum ContractError {
 
     #[error("User {0} has no voting power")]
     NoVotingPower(String),
+
+    #[error(
+        "Vote weight {weight} rounds to zero against voting power {voting_power} — \
+         your voting power is too small to split this finely; vote for fewer options \
+         or use larger per-option weights"
+    )]
+    VoteWeightRoundsToZero {
+        weight: Decimal,
+        voting_power: Uint128,
+    },
 
     #[error("Option {option} already exists for gauge ID {gauge_id}")]
     OptionAlreadyExists { option: String, gauge_id: u64 },

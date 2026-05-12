@@ -1261,3 +1261,93 @@ fn nft_staking_voting_power_change() {
         ])
     );
 }
+
+/// Regression test for the small-voting-power split (PR #844 checklist).
+/// A voter with 1 unit of power who splits 50/50 across two options used to
+/// have *both* options counted as 0 (Uint128 * Decimal rounds toward zero),
+/// silently erasing their voice. The contract now rejects this with
+/// `VoteWeightRoundsToZero` so the user can adjust.
+#[test]
+fn small_voting_power_rejects_round_to_zero_split() {
+    let voter1 = "voter1";
+    let voter2 = "voter2";
+    let mut suite = SuiteBuilder::new()
+        // voter1 has only 1 unit of power.
+        .with_voting_members(&[(voter1, 1), (voter2, 10)])
+        .build();
+
+    suite.next_block();
+    suite
+        .propose_update_proposal_module(voter1.to_string(), None)
+        .unwrap();
+
+    suite.next_block();
+    let proposal = suite.list_proposals().unwrap()[0];
+    suite
+        .place_vote_single(voter1, proposal, Vote::Yes)
+        .unwrap();
+    suite
+        .place_vote_single(voter2, proposal, Vote::Yes)
+        .unwrap();
+
+    suite.next_block();
+    suite
+        .execute_single_proposal(voter1.to_string(), proposal)
+        .unwrap();
+    let proposal_modules = suite.query_proposal_modules().unwrap();
+    let gauge_contract = proposal_modules[1].clone();
+
+    suite
+        .instantiate_adapter_and_create_gauge(
+            gauge_contract.clone(),
+            &[voter1, voter2],
+            (1000, "ujuno"),
+            None,
+            None,
+        )
+        .unwrap();
+    let gauge_id = 0;
+
+    // 50/50 split with 1 unit of power: both options round to 0 → reject.
+    let err = suite
+        .place_votes(
+            &gauge_contract,
+            voter1.to_owned(),
+            gauge_id,
+            Some(vec![
+                (voter1.to_owned(), Decimal::percent(50)),
+                (voter2.to_owned(), Decimal::percent(50)),
+            ]),
+        )
+        .unwrap_err();
+    assert_eq!(
+        ContractError::VoteWeightRoundsToZero {
+            weight: Decimal::percent(50),
+            voting_power: Uint128::new(1),
+        },
+        err.downcast().unwrap(),
+    );
+
+    // 100% to a single option works (1 * 1.0 = 1).
+    suite
+        .place_votes(
+            &gauge_contract,
+            voter1.to_owned(),
+            gauge_id,
+            Some(vec![(voter1.to_owned(), Decimal::one())]),
+        )
+        .unwrap();
+
+    // voter2 has 10 units, so a 50/50 split (5 + 5) is fine.
+    suite
+        .place_votes(
+            &gauge_contract,
+            voter2.to_owned(),
+            gauge_id,
+            Some(vec![
+                (voter1.to_owned(), Decimal::percent(50)),
+                (voter2.to_owned(), Decimal::percent(50)),
+            ]),
+        )
+        .unwrap();
+}

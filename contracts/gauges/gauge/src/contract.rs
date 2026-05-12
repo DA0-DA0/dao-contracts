@@ -90,7 +90,7 @@ pub fn execute(
             execute::reset_gauge(deps, env, gauge, batch_size)
         }
         ExecuteMsg::AddOption { gauge, option } => {
-            execute::add_option(deps, info.sender, gauge, option, true)
+            execute::add_option(deps, info.sender, gauge, option)
         }
         ExecuteMsg::RemoveOption { gauge, option } => {
             execute::remove_option(deps, info.sender, gauge, option)
@@ -136,10 +136,15 @@ mod execute {
                 let old = Uint128::new(diff.old.unwrap_or_default().into());
                 let new = Uint128::new(diff.new.unwrap_or_default().into());
 
-                // load gauge if not already loaded
-                let gauge = gauges
-                    .entry(vote.gauge_id)
-                    .or_insert_with(|| GAUGES.load(deps.storage, vote.gauge_id).unwrap());
+                // Load gauge if not already cached for this batch. We cannot use
+                // `or_insert_with(|| GAUGES.load(...).unwrap())` here because the
+                // staking-hook caller (x/cw-hooks) treats any panic as a failure
+                // and counts it toward the auto-unregister threshold; propagate
+                // the error instead.
+                if let std::collections::hash_map::Entry::Vacant(e) = gauges.entry(vote.gauge_id) {
+                    e.insert(GAUGES.load(deps.storage, vote.gauge_id)?);
+                }
+                let gauge = &gauges[&vote.gauge_id];
 
                 if vote.is_expired(gauge) {
                     continue;
@@ -424,16 +429,15 @@ mod execute {
         let last_id: GaugeId = fetch_last_id(deps.storage)?;
         GAUGES.save(deps.storage, last_id, &gauge)?;
 
-        // fetch adapter options
+        // Fetch adapter options and bulk-register them. The adapter is the
+        // source of truth for what options exist; no per-option validation
+        // or voting-power check applies here.
         let adapter_options: AllOptionsResponse =
             deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: adapter.to_string(),
                 msg: to_json_binary(&AdapterQueryMsg::AllOptions {})?,
             }))?;
-        adapter_options.options.into_iter().try_for_each(|option| {
-            execute::add_option(deps.branch(), adapter.clone(), last_id, option, false)?;
-            Ok::<_, ContractError>(())
-        })?;
+        execute::add_adapter_options(deps.branch(), last_id, adapter_options.options)?;
 
         Ok(adapter)
     }
@@ -583,65 +587,85 @@ mod execute {
             .add_attribute("gauge_id", gauge_id.to_string()))
     }
 
-    // TODO this doesn't seem very safe... double check permissions here
-    // Why is check option optional?
+    /// Handler for `ExecuteMsg::AddOption`. Validates the option against the
+    /// gauge's adapter and requires the sender to hold nonzero voting power
+    /// (anti-spam). Use `add_adapter_options` for the trusted bulk-add path
+    /// during gauge attachment.
     pub fn add_option(
         deps: DepsMut,
         sender: Addr,
         gauge_id: GaugeId,
         option: String,
-        // must be true if option is added by execute message
-        check_option: bool,
     ) -> Result<Response, ContractError> {
-        // check is such option already exists
         if TALLY.has(deps.as_ref().storage, (gauge_id, &option)) {
             return Err(ContractError::OptionAlreadyExists { option, gauge_id });
         };
 
-        // only options added from gauge creation level should not be validated and can
-        // have 0 points as assigned voting power.
-        if check_option {
-            let gauge = GAUGES.load(deps.storage, gauge_id)?;
-            // query gauge adapter if it is valid
-            let adapter_option: CheckOptionResponse = deps
-                .querier
-                .query_wasm_smart(
-                    gauge.adapter,
-                    &AdapterQueryMsg::CheckOption {
-                        option: option.clone(),
-                    },
-                )
-                .map_err(|_| ContractError::OptionInvalidByAdapter {
+        let gauge = GAUGES.load(deps.storage, gauge_id)?;
+        let adapter_option: CheckOptionResponse = deps
+            .querier
+            .query_wasm_smart(
+                gauge.adapter,
+                &AdapterQueryMsg::CheckOption {
                     option: option.clone(),
-                    gauge_id,
-                })?;
-            if !adapter_option.valid {
-                return Err(ContractError::OptionInvalidByAdapter { option, gauge_id });
-            }
-            // If it is a user adding option, query him for voting power in order to prevent
-            // spam from nonvoting users
-            let voting_power = deps
-                .querier
-                .query::<VotingPowerAtHeightResponse>(&QueryRequest::Wasm(WasmQuery::Smart {
-                    contract_addr: CONFIG.load(deps.storage)?.voting_powers.to_string(),
-                    msg: to_json_binary(&DaoQuery::VotingPowerAtHeight {
-                        address: sender.to_string(),
-                        height: None,
-                    })?,
-                }))?
-                .power;
-            if voting_power.is_zero() {
-                return Err(ContractError::NoVotingPower(sender.to_string()));
-            }
+                },
+            )
+            .map_err(|_| ContractError::OptionInvalidByAdapter {
+                option: option.clone(),
+                gauge_id,
+            })?;
+        if !adapter_option.valid {
+            return Err(ContractError::OptionInvalidByAdapter { option, gauge_id });
         }
 
-        update_tally(deps.storage, gauge_id, &option, 0u128, 0u128)?;
+        // Anti-spam: require sender to hold nonzero voting power.
+        let voting_power = deps
+            .querier
+            .query::<VotingPowerAtHeightResponse>(&QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: CONFIG.load(deps.storage)?.voting_powers.to_string(),
+                msg: to_json_binary(&DaoQuery::VotingPowerAtHeight {
+                    address: sender.to_string(),
+                    height: None,
+                })?,
+            }))?
+            .power;
+        if voting_power.is_zero() {
+            return Err(ContractError::NoVotingPower(sender.to_string()));
+        }
+
+        register_option(deps.storage, gauge_id, &option)?;
 
         Ok(Response::new()
             .add_attribute("action", "add_option")
             .add_attribute("sender", &sender)
             .add_attribute("gauge_id", gauge_id.to_string())
             .add_attribute("option", option))
+    }
+
+    /// Bulk-add options reported by the gauge's adapter during attachment.
+    /// Trusts the adapter's option list — skips per-option validation and
+    /// voting-power checks. Must only be called by trusted internal code.
+    pub(super) fn add_adapter_options(
+        mut deps: DepsMut,
+        gauge_id: GaugeId,
+        options: Vec<String>,
+    ) -> Result<(), ContractError> {
+        for option in options {
+            if TALLY.has(deps.as_ref().storage, (gauge_id, &option)) {
+                return Err(ContractError::OptionAlreadyExists { option, gauge_id });
+            }
+            register_option(deps.branch().storage, gauge_id, &option)?;
+        }
+        Ok(())
+    }
+
+    fn register_option(
+        storage: &mut dyn cosmwasm_std::Storage,
+        gauge_id: GaugeId,
+        option: &str,
+    ) -> Result<(), ContractError> {
+        update_tally(storage, gauge_id, option, 0u128, 0u128)?;
+        Ok(())
     }
 
     pub fn place_votes(
@@ -680,6 +704,20 @@ mod execute {
             .power;
         if voting_power.is_zero() {
             return Err(ContractError::NoVotingPower(sender.to_string()));
+        }
+
+        // Reject votes whose per-option weight rounds to zero against the
+        // voter's power. Without this, a user with e.g. 1 staked NFT and a
+        // 50/50 split would have *both* options counted as 0 — silently
+        // erasing their voice. Fail loudly instead so they can retry with
+        // larger weights or fewer options.
+        for v in new_votes.iter() {
+            if !v.weight.is_zero() && (voting_power * v.weight).is_zero() {
+                return Err(ContractError::VoteWeightRoundsToZero {
+                    weight: v.weight,
+                    voting_power,
+                });
+            }
         }
 
         let mut previous_vote = votes().may_load(deps.storage, &sender, gauge_id)?;
@@ -964,18 +1002,23 @@ mod query {
         }
 
         // This is sorted index, but requires manual filtering - cannot be prefixed
-        // given our requirements
+        // given our requirements. Storage iteration errors are not consumed
+        // here; they pass through the filter and are propagated by the `?`
+        // inside the `.map(...)` below.
         let votes = OPTION_BY_POINTS
             .sub_prefix(gauge_id)
             .range(deps.storage, None, None, Order::Descending)
-            .filter(|o| {
-                let ((power, _), _) = o.as_ref().unwrap();
-                if let Some(min_percent_selected) = gauge.min_percent_selected {
-                    Decimal::from_ratio(*power, total_cast) >= min_percent_selected
-                } else {
-                    // filter out options without a vote
-                    *power != 0u128
+            .filter(|item| match item {
+                Ok(((power, _), _)) => {
+                    if let Some(min_percent_selected) = gauge.min_percent_selected {
+                        Decimal::from_ratio(*power, total_cast) >= min_percent_selected
+                    } else {
+                        // filter out options without a vote
+                        *power != 0u128
+                    }
                 }
+                // Let errors through so they propagate via `?` in the map.
+                Err(_) => true,
             })
             .map(|o| {
                 let ((power, option), _) = o?;
