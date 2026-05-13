@@ -1,0 +1,37 @@
+[package]
+name = "dao-voting-juno-staked"
+authors = [
+  "Jake Hartnell <no-reply@no-reply.com>",
+  "Juno AI <juno-ai-dev@users.noreply.github.com>",
+  "Noah Saso <no-reply@no-reply.com>",
+]
+description = "A DAO DAO voting module that derives voting power from Juno's x/voting-snapshot module. Historical staking power with LST exclusion enforced at the chain layer."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = { workspace = true, features = ["cosmwasm_1_2", "stargate"] }
+cosmwasm-schema = { workspace = true }
+cw-hooks = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+dao-dao-macros = { workspace = true }
+dao-hooks = { workspace = true }
+dao-interface = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+cw-multi-test = { workspace = true }

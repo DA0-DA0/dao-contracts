@@ -2702,6 +2702,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "dao-voting-juno-staked"
+version = "2.8.0-alpha.2"
+dependencies = [
+ "anyhow",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-hooks 2.8.0-alpha.2",
+ "cw-multi-test",
+ "cw-storage-plus 1.2.0",
+ "cw2 1.1.2",
+ "dao-dao-macros 2.8.0-alpha.2",
+ "dao-hooks 2.8.0-alpha.2",
+ "dao-interface 2.8.0-alpha.2",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "dao-voting-onft-staked"
 version = "2.8.0-alpha.2"
 dependencies = [
