@@ -1,8 +1,8 @@
-//! Envelope verification flow — Path A: defer signature check to the configured service-manager.
+//! Envelope verification flow — defer signature check to the configured service-manager.
 //!
-//! Once `cw-middleware`'s service-manager ships real verification (currently placeholder per
-//! the source comments), this module benefits without code changes — we already use the
-//! canonical `WavsValidate` query.
+//! As of `cw-middleware` v0.3.0 (PR #77), both the ECDSA and BLS service-managers ship
+//! real signature verification with snapshot reads at `signature_data.reference_block`.
+//! This module just forwards the envelope and decodes the typed result.
 
 use cosmwasm_std::{Deps, StdResult};
 
@@ -29,7 +29,9 @@ pub fn validate_envelope(
 
     match result {
         WavsValidateResult::Ok => Ok(()),
-        WavsValidateResult::Err(e) => Err(ContractError::SignatureInvalid { reason: e }),
+        WavsValidateResult::Err(e) => Err(ContractError::SignatureInvalid {
+            reason: e.to_string(),
+        }),
     }
 }
 

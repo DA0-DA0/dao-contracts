@@ -380,11 +380,13 @@ fn execute_service_handler(
     }
 }
 
-/// Full v0.2 flow per `memory/wavs-proposal-module.md` Path A:
-///   1. Authorize sender against `Config.authorized_service` (v0.2: SingleOperator path).
-///   2. Defer signature/quorum check to `service_manager.WavsValidate`.
+/// Per `memory/wavs-proposal-module.md`:
+///   1. Authorize sender against `Config.authorized_service` (currently only SingleOperator).
+///   2. Defer signature/quorum check to `service_manager.WavsValidate`. As of cw-middleware
+///      v0.3.0 this runs real secp256k1 / BLS12-381 verification with snapshot reads at
+///      `signature_data.reference_block`.
 ///   3. Replay-check `envelope.eventId` against `ATTESTATIONS_SEEN`.
-///   4. Decode `envelope.payload` (bytes 32..) as `ProposalPayload` JSON.
+///   4. ABI-decode `envelope.payload` and JSON-decode it as `ProposalPayload`.
 ///   5. (Optional) Run cw-filter on each msg in the payload.
 ///   6. Create the `WavsProposal` record + advance counter + mark eventId as seen.
 ///   7. If `auto_execute` and no veto configured: dispatch immediately. If `auto_execute` and
@@ -408,13 +410,12 @@ fn execute_wavs_handle_signed_envelope(
         }
         AuthorizedService::Quorum { .. } | AuthorizedService::Registry { .. } => {
             return Err(ContractError::InvalidPayload {
-                reason: "Quorum / Registry authorization not implemented in v0.2".into(),
+                reason: "Quorum / Registry authorization variants not yet wired".into(),
             });
         }
     }
 
-    // 2. Defer to service-manager. (Currently rubber-stamps per cw-middleware's TODO; will
-    //    become real verification when Lay3rLabs ships it. Our contract doesn't change.)
+    // 2. Defer to service-manager. cw-middleware v0.3.0+ runs real signature verification.
     validate_envelope(
         deps.as_ref(),
         cfg.service_manager.as_str(),

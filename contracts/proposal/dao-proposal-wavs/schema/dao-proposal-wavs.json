@@ -587,6 +587,10 @@
           }
         ]
       },
+      "HexBinary": {
+        "description": "This is a wrapper around Vec<u8> to add hex de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      },
       "MandateFilterConfig": {
         "description": "Configuration for the cw-filter mandate gate.",
         "type": "object",
@@ -672,7 +676,7 @@
         "additionalProperties": false
       },
       "WavsEnvelope": {
-        "description": "`WavsEnvelope` is an ABI-encoded `Envelope { eventId, ordering, payload }` wrapped as opaque bytes. We don't need to decode the Solidity layout on-chain; we extract the `eventId` (first 20 bytes) and `payload` via index slicing in the verify path.",
+        "description": "`WavsEnvelope` is the ABI-encoded `Envelope { eventId, ordering, payload }` wrapped as opaque bytes. JSON-serializes as base64, matching `wavs-types`' `WavsEnvelope(Binary)` newtype byte-for-byte. The service-manager hashes these exact bytes for verification (ECDSA: `eip191(keccak256(envelope))`, BLS: hash-to-curve over DST), so the off-chain signer's view of the envelope and our on-chain `WavsValidate` argument must be bit-identical.",
         "allOf": [
           {
             "$ref": "#/definitions/Binary"
@@ -680,7 +684,7 @@
         ]
       },
       "WavsSignatureData": {
-        "description": "Mirror of `WavsSignatureData`. `signers` are bech32 addresses; `signatures` are opaque bytes.",
+        "description": "Mirror of `wavs-types::WavsSignatureData`.\n\n`signers` carries 20-byte signing-key identifiers as `0x`-prefixed lowercase hex strings — the JSON shape `layer_climb_address::EvmAddr` produces. We keep `String` here to avoid pulling in `layer-climb-address`; cw-middleware deserializes either way since `EvmAddr` derives `Deserialize` from a hex string.\n\n`signatures` carries opaque per-signer signatures as `HexBinary` — for ECDSA 65-byte secp256k1 (r||s||v with v ∈ {0,1,27,28}), for BLS one aggregate G2 signature (96-byte compressed). JSON shape is the lower-case hex string without 0x prefix, matching `wavs-types`.",
         "type": "object",
         "required": [
           "reference_block",
@@ -696,7 +700,7 @@
           "signatures": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/Binary"
+              "$ref": "#/definitions/HexBinary"
             }
           },
           "signers": {

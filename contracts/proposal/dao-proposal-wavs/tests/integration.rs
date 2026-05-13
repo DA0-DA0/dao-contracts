@@ -1,18 +1,24 @@
-//! cw-multi-test integration tests for dao-proposal-wavs v0.2.
+//! cw-multi-test integration tests for dao-proposal-wavs.
 //!
-//! v0.2 happy-path coverage:
+//! Envelopes follow the canonical Solidity-ABI shape that `cw-middleware` v0.3.0
+//! expects: `Envelope { bytes20 eventId; bytes12 ordering; bytes payload }` head-tail
+//! encoded as raw bytes wrapped by `WavsEnvelope(Binary)`. Signatures travel as hex
+//! in `WavsSignatureData`.
+//!
+//! Coverage:
 //!   1. instantiate
 //!   2. single-operator authorization (positive)
 //!   3. WavsHandleSignedEnvelope full flow → proposal stored
 //!   4. replay protection (second submission with same eventId rejected)
 //!   5. payload-decode failure rejected
 //!   6. unauthorized operator rejected
-//!
-//! v0.3+ tests TODO: cw-filter mandate gate, auto-execute dispatching to a real DAO core,
-//! Veto path, Close path, timelock-not-expired rejection, time-based timelocks.
+//!   7. mandate filter Pass / Fail / Fatal
+//!   8. auto-execute (no veto / with timelock)
+//!   9. Veto lifecycle
+//!  10. Close lifecycle
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_json_binary, Addr, Binary, CosmosMsg, Empty, StdError};
+use cosmwasm_std::{to_json_binary, Addr, Binary, CosmosMsg, Empty, HexBinary, StdError};
 use cw_multi_test::{App, ContractWrapper, Executor};
 use cw_storage_plus::Item;
 use cw_utils::Duration;
@@ -199,21 +205,45 @@ fn dao_proposal_wavs_contract() -> Box<dyn cw_multi_test::Contract<Empty>> {
 }
 
 // ----------------------------------------------------------------------------
-// Helpers — build a v0.2 envelope: [20-byte eventId][12-byte ordering][JSON payload]
+// Helpers — build a canonical Solidity-ABI-encoded envelope:
+//   Envelope { bytes20 eventId; bytes12 ordering; bytes payload }
+// matches `wavs-types::WavsEnvelope(Binary)` byte-for-byte so envelopes built here
+// would round-trip through cw-middleware v0.3.0's real verification path if signed.
 // ----------------------------------------------------------------------------
 
+fn abi_encode_envelope(event_id: [u8; 20], payload: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(96 + 32 + ((payload.len() + 31) / 32) * 32);
+    // Slot 0: eventId, right-padded.
+    out.extend_from_slice(&event_id);
+    out.extend_from_slice(&[0u8; 12]);
+    // Slot 1: ordering, right-padded (zero by default — unused by our handler).
+    out.extend_from_slice(&[0u8; 32]);
+    // Slot 2: offset pointer to payload tail.
+    let mut slot = [0u8; 32];
+    slot[24..32].copy_from_slice(&96u64.to_be_bytes());
+    out.extend_from_slice(&slot);
+    // Tail: payload length.
+    let mut slot = [0u8; 32];
+    slot[24..32].copy_from_slice(&(payload.len() as u64).to_be_bytes());
+    out.extend_from_slice(&slot);
+    // Tail: payload data, padded to 32-byte multiple.
+    out.extend_from_slice(payload);
+    let pad = (32 - (payload.len() % 32)) % 32;
+    if pad > 0 {
+        out.extend(std::iter::repeat(0u8).take(pad));
+    }
+    out
+}
+
 fn build_envelope(event_id: [u8; 20], payload: &ProposalPayload) -> WavsEnvelope {
-    let mut bytes = Vec::with_capacity(32 + 256);
-    bytes.extend_from_slice(&event_id);
-    bytes.extend_from_slice(&[0u8; 12]); // ordering reserved
-    bytes.extend_from_slice(&serde_json::to_vec(payload).unwrap());
-    WavsEnvelope(Binary::from(bytes))
+    let payload_bytes = serde_json::to_vec(payload).unwrap();
+    WavsEnvelope(Binary::from(abi_encode_envelope(event_id, &payload_bytes)))
 }
 
 fn empty_sigs() -> WavsSignatureData {
     WavsSignatureData {
         signers: vec![OPERATOR.to_string()],
-        signatures: vec![Binary::from(b"sig".to_vec())],
+        signatures: vec![HexBinary::from(b"sig".to_vec())],
         reference_block: 0,
     }
 }
@@ -472,10 +502,11 @@ fn unauthorized_operator_rejected() {
 fn malformed_payload_rejected() {
     let (mut app, _, prop_addr) = setup_app();
 
-    // Build an envelope with non-JSON payload bytes.
-    let mut bytes = vec![0u8; 32];
-    bytes.extend_from_slice(b"not valid json {{");
-    let envelope = WavsEnvelope(Binary::from(bytes));
+    // Canonical ABI envelope, but the payload bytes are not valid JSON.
+    let envelope = WavsEnvelope(Binary::from(abi_encode_envelope(
+        [9u8; 20],
+        b"not valid json {{",
+    )));
 
     let result = app.execute_contract(
         Addr::unchecked(OPERATOR),
@@ -498,8 +529,8 @@ fn malformed_payload_rejected() {
 fn short_envelope_rejected() {
     let (mut app, _, prop_addr) = setup_app();
 
-    // Envelope shorter than 32 bytes — should be rejected at payload extraction.
-    let envelope = WavsEnvelope(Binary::from(vec![0u8; 10]));
+    // Envelope shorter than the 96-byte ABI head — rejected at eventId extraction.
+    let envelope = WavsEnvelope(Binary::from(vec![0u8; 50]));
 
     let result = app.execute_contract(
         Addr::unchecked(OPERATOR),
