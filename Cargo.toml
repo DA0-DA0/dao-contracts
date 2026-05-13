@@ -142,6 +142,7 @@ dao-voting-cw4 = { path = "./contracts/voting/dao-voting-cw4", version = "2.8.0-
 dao-voting-cw721-roles = { path = "./contracts/voting/dao-voting-cw721-roles", version = "2.8.0-alpha.2" }
 dao-voting-cw721-staked = { path = "./contracts/voting/dao-voting-cw721-staked", version = "2.8.0-alpha.2" }
 dao-voting-onft-staked = { path = "./contracts/voting/dao-voting-onft-staked", version = "2.8.0-alpha.2" }
+dao-voting-juno-staked = { path = "./contracts/voting/dao-voting-juno-staked", version = "2.8.0-alpha.2" }
 dao-voting-token-staked = { path = "./contracts/voting/dao-voting-token-staked", version = "2.8.0-alpha.2" }
 nft-controllers = { path = "./packages/nft-controllers", version = "2.8.0-alpha.2" }
 
