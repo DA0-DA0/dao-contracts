@@ -1,0 +1,35 @@
+[package]
+name = "gauge-budget-allocator"
+description = "Minimal gauge adapter: distributes a fixed native-token budget proportional to gauge weights, over an admin-curated option list."
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+cw-ownable = { workspace = true }
+cw-utils = { workspace = true }
+thiserror = { workspace = true }
+
+# Re-use the orchestrator's adapter query/response types so this contract
+# stays drop-in compatible with the orchestrator. `library` skips the
+# adapter's own contract entry-points so its exports don't collide with
+# ours at link time.
+gauge-adapter = { workspace = true, features = ["library"] }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+cw-multi-test = { workspace = true }
+serde = { workspace = true }
