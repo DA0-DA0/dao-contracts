@@ -4,8 +4,8 @@ mod queries;
 mod tests;
 
 use cosmwasm_std::Addr;
-use cw_ownable::Action;
 use cw_multi_test::{App, Executor};
+use cw_ownable::Action;
 use dao_cw721_extensions::roles::{ExecuteExt, MetadataExt};
 use dao_testing::contracts::dao_voting_cw721_roles_contract;
 

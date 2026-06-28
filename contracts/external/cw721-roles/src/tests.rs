@@ -220,23 +220,41 @@ fn test_minting_and_transfer_permissions() {
         .unwrap();
 
     // Soulbound: nobody can transfer, not even the DAO (which owns the contract).
+    //
+    // We assert against the error's Display string rather than `.downcast()` to
+    // `RolesContractError`: dao-testing depends on cw721-roles and is also a
+    // dev-dependency of cw721-roles, so the unit-test build ends up with the
+    // contract's error type compiled in two different cargo units. The TypeIds
+    // do not match across those units even though the source is the same, so a
+    // typed downcast inside `src/tests.rs` always returns None.
     let transfer_msg = ExecuteMsg::TransferNft {
         recipient: BOB.to_string(),
         token_id: "1".to_string(),
     };
-    let err: RolesContractError = app
-        .execute_contract(Addr::unchecked(ALICE), cw721_addr.clone(), &transfer_msg, &[])
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert_eq!(err, RolesContractError::Ownable(cw_ownable::OwnershipError::NotOwner));
+    let err = app
+        .execute_contract(
+            Addr::unchecked(ALICE),
+            cw721_addr.clone(),
+            &transfer_msg,
+            &[],
+        )
+        .unwrap_err();
+    let chain: Vec<String> = err.chain().map(|c| format!("{c}")).collect();
+    assert!(
+        chain
+            .iter()
+            .any(|s| s.contains("not the contract's current owner")),
+        "expected NotOwner error for alice, got chain: {chain:?}",
+    );
 
-    let err: RolesContractError = app
+    let err = app
         .execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &transfer_msg, &[])
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert_eq!(err, RolesContractError::Soulbound {});
+        .unwrap_err();
+    let chain: Vec<String> = err.chain().map(|c| format!("{c}")).collect();
+    assert!(
+        chain.iter().any(|s| s.contains("soulbound")),
+        "expected Soulbound error for DAO, got chain: {chain:?}",
+    );
 
     // Ownership unchanged after rejected transfers.
     let owner: OwnerOfResponse = query_nft_owner(&app, &cw721_addr, "1").unwrap();
@@ -287,24 +305,32 @@ fn test_send_permissions() {
         .unwrap();
 
     // Soulbound: SendNft is also rejected, even when called by the DAO/minter.
+    // See `test_minting_and_transfer_permissions` for why we match on the
+    // error chain's Display string instead of `.downcast()`.
     let send_msg = ExecuteMsg::SendNft {
         contract: cw721_staked_addr.to_string(),
         token_id: "1".to_string(),
         msg: to_json_binary(&Binary::default()).unwrap(),
     };
-    let err: RolesContractError = app
+    let err = app
         .execute_contract(Addr::unchecked(ALICE), cw721_addr.clone(), &send_msg, &[])
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert_eq!(err, RolesContractError::Ownable(cw_ownable::OwnershipError::NotOwner));
+        .unwrap_err();
+    let chain: Vec<String> = err.chain().map(|c| format!("{c}")).collect();
+    assert!(
+        chain
+            .iter()
+            .any(|s| s.contains("not the contract's current owner")),
+        "expected NotOwner error for alice, got chain: {chain:?}",
+    );
 
-    let err: RolesContractError = app
+    let err = app
         .execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &send_msg, &[])
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert_eq!(err, RolesContractError::Soulbound {});
+        .unwrap_err();
+    let chain: Vec<String> = err.chain().map(|c| format!("{c}")).collect();
+    assert!(
+        chain.iter().any(|s| s.contains("soulbound")),
+        "expected Soulbound error for DAO, got chain: {chain:?}",
+    );
 
     // Alice still owns the NFT.
     let owner: OwnerOfResponse = query_nft_owner(&app, &cw721_addr, "1").unwrap();
