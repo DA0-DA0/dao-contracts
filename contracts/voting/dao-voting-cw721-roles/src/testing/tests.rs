@@ -91,12 +91,12 @@ fn test_voting_queries() {
     let config: Config = query_config(&app, &module_addr).unwrap();
     let cw721_addr = config.nft_address;
 
-    // Get NFT minter
+    // Get NFT minter. After the ownership handshake completes (setup_test
+    // performs AcceptOwnership on behalf of the DAO), the minter / owner of
+    // the cw721-roles contract is CREATOR_ADDR — i.e. the "DAO core" in this
+    // test setup. The voting module no longer holds privileged rights.
     let minter = query_minter(&app, &cw721_addr.clone()).unwrap();
-    // Minter should be the contract that instantiated the cw721 contract.
-    // In the test setup, this is the module_addr but would normally be
-    // the dao-core contract.
-    assert_eq!(minter.minter, Some(module_addr.to_string()));
+    assert_eq!(minter.minter, Some(CREATOR_ADDR.to_string()));
 
     // Get total power
     let total = query_total_power(&app, &module_addr, None).unwrap();
@@ -106,15 +106,8 @@ fn test_voting_queries() {
     let vp = query_voting_power(&app, &module_addr, CREATOR_ADDR, None).unwrap();
     assert_eq!(vp.power, Uint128::new(1));
 
-    // Mint a new NFT
-    mint_nft(
-        &mut app,
-        &cw721_addr,
-        module_addr.as_ref(),
-        CREATOR_ADDR,
-        "2",
-    )
-    .unwrap();
+    // Mint a new NFT as the DAO (CREATOR_ADDR).
+    mint_nft(&mut app, &cw721_addr, CREATOR_ADDR, CREATOR_ADDR, "2").unwrap();
 
     // Get total power
     let total = query_total_power(&app, &module_addr, None).unwrap();

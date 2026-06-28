@@ -219,20 +219,34 @@ fn test_minting_and_transfer_permissions() {
     app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
         .unwrap();
 
-    // Non-minter can't transfer
-    let msg = ExecuteMsg::TransferNft {
+    // Soulbound: nobody can transfer, not even the DAO (which owns the contract).
+    let transfer_msg = ExecuteMsg::TransferNft {
         recipient: BOB.to_string(),
         token_id: "1".to_string(),
     };
-    app.execute_contract(Addr::unchecked(ALICE), cw721_addr.clone(), &msg, &[])
-        .unwrap_err();
-
-    // DAO can transfer
-    app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
+    let err: RolesContractError = app
+        .execute_contract(Addr::unchecked(ALICE), cw721_addr.clone(), &transfer_msg, &[])
+        .unwrap_err()
+        .downcast()
         .unwrap();
+    assert_eq!(err, RolesContractError::Ownable(cw_ownable::OwnershipError::NotOwner));
 
+    let err: RolesContractError = app
+        .execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &transfer_msg, &[])
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, RolesContractError::Soulbound {});
+
+    // Ownership unchanged after rejected transfers.
     let owner: OwnerOfResponse = query_nft_owner(&app, &cw721_addr, "1").unwrap();
-    assert_eq!(owner.owner, BOB);
+    assert_eq!(owner.owner, ALICE);
+
+    // And the cw4 weight map is still in sync — Alice has weight 1, Bob has none.
+    let alice: MemberResponse = query_member(&app, &cw721_addr, ALICE, None).unwrap();
+    assert_eq!(alice.weight, Some(1));
+    let bob: MemberResponse = query_member(&app, &cw721_addr, BOB, None).unwrap();
+    assert_eq!(bob.weight, None);
 }
 
 #[test]
@@ -272,22 +286,29 @@ fn test_send_permissions() {
         )
         .unwrap();
 
-    // Non-minter can't send
-    let msg = ExecuteMsg::SendNft {
+    // Soulbound: SendNft is also rejected, even when called by the DAO/minter.
+    let send_msg = ExecuteMsg::SendNft {
         contract: cw721_staked_addr.to_string(),
         token_id: "1".to_string(),
         msg: to_json_binary(&Binary::default()).unwrap(),
     };
-    app.execute_contract(Addr::unchecked(ALICE), cw721_addr.clone(), &msg, &[])
-        .unwrap_err();
-
-    // DAO can send
-    app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
+    let err: RolesContractError = app
+        .execute_contract(Addr::unchecked(ALICE), cw721_addr.clone(), &send_msg, &[])
+        .unwrap_err()
+        .downcast()
         .unwrap();
+    assert_eq!(err, RolesContractError::Ownable(cw_ownable::OwnershipError::NotOwner));
 
-    // Staking contract now owns the NFT
+    let err: RolesContractError = app
+        .execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &send_msg, &[])
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, RolesContractError::Soulbound {});
+
+    // Alice still owns the NFT.
     let owner: OwnerOfResponse = query_nft_owner(&app, &cw721_addr, "1").unwrap();
-    assert_eq!(owner.owner, cw721_staked_addr.as_str());
+    assert_eq!(owner.owner, ALICE);
 }
 
 #[test]

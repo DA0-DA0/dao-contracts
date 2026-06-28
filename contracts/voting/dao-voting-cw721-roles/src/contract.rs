@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response, StdResult,
-    SubMsg, WasmMsg,
+    to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
+    StdResult, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw4::{MemberResponse, TotalWeightResponse};
@@ -12,9 +12,9 @@ use cw721_base::{
 use cw_ownable::Action;
 use cw_utils::parse_reply_instantiate_data;
 use dao_cw721_extensions::roles::{ExecuteExt, MetadataExt, QueryExt};
-use dao_interface::state::{Admin, ModuleInstantiateInfo};
+use dao_interface::state::{Admin, ModuleInstantiateCallback, ModuleInstantiateInfo};
 
-use crate::msg::{ExecuteMsg, InstantiateMsg, NftContract, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, NftContract, QueryMsg};
 use crate::state::{Config, CONFIG, DAO, INITIAL_NFTS};
 use crate::ContractError;
 
@@ -166,6 +166,18 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    // No state migration logic — just bump the cw2 version so this contract
+    // can be MigrateContract'd by the wasm-level admin if a future bug requires
+    // a patched wasm.
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    Ok(Response::default()
+        .add_attribute("action", "migrate")
+        .add_attribute("contract_name", CONTRACT_NAME)
+        .add_attribute("contract_version", CONTRACT_VERSION))
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
         INSTANTIATE_NFT_CONTRACT_REPLY_ID => {
@@ -208,8 +220,27 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     // Clear space
                     INITIAL_NFTS.remove(deps.storage);
 
-                    // Update minter message
-                    let update_minter_msg = WasmMsg::Execute {
+                    // cw-ownable's TransferOwnership is a two-phase handshake:
+                    // (1) the current owner (this voting module) initiates the
+                    //     transfer, which sets `pending_owner = dao` without
+                    //     changing the actual owner; (2) the new owner (the DAO
+                    //     core) must explicitly accept.
+                    //
+                    // The voting module's own execute() returns NoExecute, so
+                    // the voting module cannot call AcceptOwnership itself.
+                    // Instead we hand the AcceptOwnership message to the DAO
+                    // core via the ModuleInstantiateCallback channel — the DAO
+                    // core's VOTE_MODULE_INSTANTIATE_REPLY_ID handler reads
+                    // `res.data`, decodes it as ModuleInstantiateCallback, and
+                    // dispatches `msgs` as itself. That makes
+                    // info.sender = dao_core when AcceptOwnership lands on
+                    // cw721-roles, satisfying the pending_owner check.
+                    //
+                    // Without this, cw721-roles' owner remains this voting
+                    // module forever, and no future Mint/Burn/UpdateWeight
+                    // proposal can succeed — the DAO would be bricked at the
+                    // membership layer from block 1.
+                    let initiate_transfer_msg = WasmMsg::Execute {
                         contract_addr: nft_contract.clone(),
                         msg: to_json_binary(
                             &Cw721ExecuteMsg::<MetadataExt, ExecuteExt>::UpdateOwnership(
@@ -222,11 +253,27 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                         funds: vec![],
                     };
 
+                    let accept_ownership_msg: CosmosMsg = WasmMsg::Execute {
+                        contract_addr: nft_contract.clone(),
+                        msg: to_json_binary(
+                            &Cw721ExecuteMsg::<MetadataExt, ExecuteExt>::UpdateOwnership(
+                                Action::AcceptOwnership {},
+                            ),
+                        )?,
+                        funds: vec![],
+                    }
+                    .into();
+
+                    let callback = ModuleInstantiateCallback {
+                        msgs: vec![accept_ownership_msg],
+                    };
+
                     Ok(Response::default()
                         .add_attribute("method", "instantiate")
                         .add_attribute("nft_contract", nft_contract)
-                        .add_message(update_minter_msg)
-                        .add_submessages(mint_submessages))
+                        .add_message(initiate_transfer_msg)
+                        .add_submessages(mint_submessages)
+                        .set_data(to_json_binary(&callback)?))
                 }
                 Err(_) => Err(ContractError::NftInstantiateError {}),
             }

@@ -26,4 +26,7 @@ pub enum RolesContractError {
 
     #[error("The submitted weight is equal to the previous value, no change will occur")]
     NoWeightChange {},
+
+    #[error("cw721-roles NFTs are soulbound and cannot be transferred or sent")]
+    Soulbound {},
 }

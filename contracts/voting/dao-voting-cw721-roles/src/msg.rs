@@ -49,6 +49,9 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {}
 
+#[cw_serde]
+pub struct MigrateMsg {}
+
 #[voting_module_query]
 #[cw_serde]
 #[derive(QueryResponses)]
