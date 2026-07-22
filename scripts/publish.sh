@@ -178,6 +178,10 @@ cd contracts/voting/dao-voting-cw20-staked
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
 
+cd contracts/voting/dao-voting-juno-staked
+cargo hack publish --no-dev-deps --allow-dirty
+cd "$START_DIR"
+
 cd contracts/voting/dao-voting-cw721-roles
 cargo hack publish --no-dev-deps --allow-dirty
 cd "$START_DIR"
