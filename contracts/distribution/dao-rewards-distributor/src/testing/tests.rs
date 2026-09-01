@@ -775,9 +775,7 @@ fn test_small_linear_emission_survives_incremental_accumulator_updates() {
     );
     assert_eq!(
         distribution.active_epoch.total_earned_puvp,
-        scale_factor()
-            .checked_mul(Uint256::from(50u8))
-            .unwrap()
+        scale_factor().checked_mul(Uint256::from(50u8)).unwrap()
     );
 
     // ADDR0 retained half the voting power throughout the full 100-token
