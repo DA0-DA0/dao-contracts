@@ -2643,9 +2643,6 @@ fn changed_hook_caller_accepts_registered_fallback_and_skips_unchanged_validatio
     suite.update_hook_caller(1, hook_caller.as_str());
     assert_eq!(suite.get_distribution(1).hook_caller, hook_caller);
 
-    suite.update_open_funding(1, false);
-    assert!(!suite.get_distribution(1).open_funding);
-
     suite
         .base
         .app
@@ -2658,6 +2655,10 @@ fn changed_hook_caller_accepts_registered_fallback_and_skips_unchanged_validatio
             &[],
         )
         .unwrap();
+
+    suite.update_open_funding(1, false);
+    assert!(!suite.get_distribution(1).open_funding);
+
     suite.update_hook_caller(1, hook_caller.as_str());
     assert_eq!(suite.get_distribution(1).hook_caller, hook_caller);
 }
