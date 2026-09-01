@@ -2,8 +2,8 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    from_json, to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdError, StdResult, Uint128,
+    from_json, to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
+    Response, StdError, StdResult, SubMsgResult, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw20::{Cw20ReceiveMsg, TokenInfoResponse};
@@ -35,6 +35,8 @@ use crate::ContractError;
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cw20-stake";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub(crate) const STAKE_HOOK_REPLY_ID: u64 = 0;
+pub(crate) const UNSTAKE_HOOK_REPLY_ID: u64 = 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -453,6 +455,23 @@ pub fn query_list_stakers(
         .collect();
 
     to_json_binary(&ListStakersResponse { stakers })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    let hook = match msg.id {
+        STAKE_HOOK_REPLY_ID => "stake",
+        UNSTAKE_HOOK_REPLY_ID => "unstake",
+        id => return Err(ContractError::UnknownReplyId { id }),
+    };
+
+    Ok(match msg.result {
+        SubMsgResult::Ok(_) => Response::new(),
+        SubMsgResult::Err(error) => Response::new()
+            .add_attribute("action", "stake_hook_failed")
+            .add_attribute("hook", hook)
+            .add_attribute("error", error),
+    })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

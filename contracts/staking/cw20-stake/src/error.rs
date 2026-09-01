@@ -41,4 +41,7 @@ pub enum ContractError {
 
     #[error("Too many outstanding claims. Claim some tokens before unstaking more.")]
     TooManyClaims {},
+
+    #[error("Unknown reply ID {id}")]
+    UnknownReplyId { id: u64 },
 }
