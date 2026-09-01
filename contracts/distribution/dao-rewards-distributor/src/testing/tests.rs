@@ -11,6 +11,7 @@ use dao_interface::voting::InfoResponse;
 use dao_testing::{DaoTestingSuite, ADDR0, ADDR1, ADDR2, ADDR3, GOV_DENOM, OWNER};
 
 use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
+use crate::helpers::scale_factor;
 use crate::msg::ExecuteMsg;
 use crate::msg::{CreateMsg, FundMsg, InstantiateMsg, MigrateMsg};
 use crate::state::{EmissionRate, Epoch};
@@ -753,13 +754,37 @@ fn test_small_linear_emission_survives_incremental_accumulator_updates() {
                 vec![ADDR2.to_string()],
             );
         }
+
+        if height == 0 {
+            let distribution = suite.get_distribution(1);
+            assert_eq!(
+                distribution.active_epoch.last_updated_total_earned_puvp,
+                Expiration::AtHeight(1)
+            );
+            assert_eq!(
+                distribution.active_epoch.total_earned_puvp,
+                scale_factor().checked_div(Uint256::from(4u8)).unwrap()
+            );
+        }
     }
 
+    let distribution = suite.get_distribution(1);
+    assert_eq!(
+        distribution.active_epoch.last_updated_total_earned_puvp,
+        Expiration::AtHeight(200)
+    );
+    assert_eq!(
+        distribution.active_epoch.total_earned_puvp,
+        scale_factor()
+            .checked_mul(Uint256::from(50u8))
+            .unwrap()
+    );
+
     // ADDR0 retained half the voting power throughout the full 100-token
-    // emission. Its accrued share must remain claimable after all incremental
-    // updates consumed the distribution period.
+    // period. Its accrued share must remain claimable after all incremental
+    // updates consumed that period, even though the much larger funded
+    // distribution remains active.
     suite.assert_pending_rewards(ADDR0, 1, 50);
-    suite.assert_undistributed_rewards(1, 0);
     suite.claim_rewards(ADDR0, 1);
     suite.assert_native_balance(ADDR0, GOV_DENOM, 50);
 }
