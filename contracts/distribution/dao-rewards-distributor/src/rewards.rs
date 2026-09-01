@@ -127,8 +127,8 @@ pub fn get_active_total_earned_puvp(
                     new_reward_distribution_duration.ratio(&duration)?;
 
                 let new_rewards_distributed = Uint256::from(amount)
-                    .checked_mul_floor(complete_distribution_periods)?
-                    .checked_mul(scale_factor())?;
+                    .checked_mul(scale_factor())?
+                    .checked_mul_floor(complete_distribution_periods)?;
 
                 // the new rewards per unit voting power that have been
                 // distributed since the last update

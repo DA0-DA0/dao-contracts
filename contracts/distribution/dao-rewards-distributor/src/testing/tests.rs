@@ -708,6 +708,62 @@ fn test_native_dao_rewards_time_based() {
     suite.stake_native_tokens(ADDR1, addr2_balance);
 }
 
+#[test]
+fn test_small_linear_emission_survives_incremental_accumulator_updates() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::CW4)
+        .with_rewards_config(RewardsConfig {
+            amount: 100,
+            denom: UncheckedDenom::Native(GOV_DENOM.to_string()),
+            duration: Duration::Height(200),
+            destination: None,
+            continuous: true,
+        })
+        .with_cw4_members(vec![
+            Member {
+                addr: ADDR0.to_string(),
+                weight: 1,
+            },
+            Member {
+                addr: ADDR1.to_string(),
+                weight: 1,
+            },
+        ])
+        .build();
+
+    // Advance the accumulator once per block through ordinary membership
+    // changes while keeping total voting power constant. Each update emits
+    // half a token, so flooring before applying accumulator precision loses
+    // the entire emission.
+    for height in 0..200 {
+        suite.skip_blocks(1);
+        if height % 2 == 0 {
+            suite.update_members(
+                vec![Member {
+                    addr: ADDR2.to_string(),
+                    weight: 1,
+                }],
+                vec![ADDR1.to_string()],
+            );
+        } else {
+            suite.update_members(
+                vec![Member {
+                    addr: ADDR1.to_string(),
+                    weight: 1,
+                }],
+                vec![ADDR2.to_string()],
+            );
+        }
+    }
+
+    // ADDR0 retained half the voting power throughout the full 100-token
+    // emission. Its accrued share must remain claimable after all incremental
+    // updates consumed the distribution period.
+    suite.assert_pending_rewards(ADDR0, 1, 50);
+    suite.assert_undistributed_rewards(1, 0);
+    suite.claim_rewards(ADDR0, 1);
+    suite.assert_native_balance(ADDR0, GOV_DENOM, 50);
+}
+
 // all of the `+1` corrections highlight rounding
 #[test]
 fn test_native_dao_rewards_time_based_with_rounding() {
