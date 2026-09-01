@@ -4,7 +4,7 @@ use cosmwasm_std::{Uint128, Uint256};
 use cw2::ContractVersion;
 use cw20::{Cw20Coin, Expiration, UncheckedDenom};
 use cw4::Member;
-use cw_multi_test::Executor;
+use cw_multi_test::{AppResponse, Executor};
 use cw_ownable::OwnershipError;
 use cw_utils::Duration;
 use dao_interface::voting::InfoResponse;
@@ -19,6 +19,108 @@ use dao_rewards_distributor::ContractError;
 use super::suite::{RewardsConfig, SuiteBuilder};
 
 const ALT_DENOM: &str = "ualtgovtoken";
+
+fn test_rewards_config() -> RewardsConfig {
+    RewardsConfig {
+        amount: 1_000,
+        denom: UncheckedDenom::Native(GOV_DENOM.to_string()),
+        duration: Duration::Height(10),
+        destination: None,
+        continuous: true,
+    }
+}
+
+fn has_attr(response: &AppResponse, key: &str, value: &str) -> bool {
+    response.events.iter().any(|event| {
+        event
+            .attributes
+            .iter()
+            .any(|attribute| attribute.key == key && attribute.value == value)
+    })
+}
+
+#[test]
+fn stale_rewards_distributor_cannot_block_cw20_stake_or_unstake() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::CW20).build();
+    let old_staking_addr = suite.staking_addr.clone();
+
+    let new_dao = suite.base.cw4().dao();
+    let new_group_addr = new_dao.x.group_addr.clone();
+    suite
+        .base
+        .app
+        .execute_contract(
+            new_dao.core_addr,
+            new_group_addr.clone(),
+            &cw4_group::msg::ExecuteMsg::AddHook {
+                addr: suite.distribution_contract.to_string(),
+            },
+            &[],
+        )
+        .unwrap();
+    suite.update_hook_caller(1, new_group_addr.as_str());
+
+    let counter_code_id = suite
+        .base
+        .app
+        .store_code(dao_testing::contracts::dao_proposal_hook_counter_contract());
+    let counter = suite
+        .base
+        .app
+        .instantiate_contract(
+            counter_code_id,
+            Addr::unchecked(OWNER),
+            &dao_proposal_hook_counter::msg::InstantiateMsg {
+                should_error: false,
+            },
+            &[],
+            "successful stake hook",
+            None,
+        )
+        .unwrap();
+    suite
+        .base
+        .app
+        .execute_contract(
+            suite.core_addr.clone(),
+            old_staking_addr.clone(),
+            &cw20_stake::msg::ExecuteMsg::AddHook {
+                addr: counter.to_string(),
+            },
+            &[],
+        )
+        .unwrap();
+
+    let unstake_response = suite.unstake_cw20_tokens(10, ADDR0);
+    assert!(has_attr(&unstake_response, "action", "stake_hook_failed"));
+    assert!(has_attr(&unstake_response, "hook", "unstake"));
+
+    let stake_response = suite.stake_cw20_tokens(5, ADDR0);
+    assert!(has_attr(&stake_response, "action", "stake_hook_failed"));
+    assert!(has_attr(&stake_response, "hook", "stake"));
+
+    let successful_calls: Uint128 = suite
+        .base
+        .app
+        .wrap()
+        .query_wasm_smart(
+            counter.clone(),
+            &dao_proposal_hook_counter::msg::QueryMsg::StakeCounter {},
+        )
+        .unwrap();
+    assert_eq!(successful_calls, Uint128::new(2));
+
+    let hooks: cw20_stake::msg::GetHooksResponse = suite
+        .base
+        .app
+        .wrap()
+        .query_wasm_smart(old_staking_addr, &cw20_stake::msg::QueryMsg::GetHooks {})
+        .unwrap();
+    assert_eq!(
+        hooks.hooks,
+        vec![suite.distribution_contract.to_string(), counter.to_string()]
+    );
+}
 
 // By default, the tests are set up to distribute rewards over 1_000_000 units of time.
 // Over that time, 100_000_000 token rewards will be distributed.
@@ -2392,14 +2494,172 @@ fn test_update_vp_contract() {
 }
 
 #[test]
-fn test_update_hook_caller() {
+fn create_rejects_unregistered_hook_caller_get_hooks() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+    let new_dao = suite.base.cw20().dao();
+    let hook_caller = new_dao.x.staking_addr;
 
-    let new_hook_caller = "new_hook_caller";
-    suite.update_hook_caller(1, new_hook_caller);
+    let err = suite
+        .create_result(test_rewards_config(), hook_caller.as_str(), None)
+        .unwrap_err()
+        .downcast::<ContractError>()
+        .unwrap();
 
-    let distribution = suite.get_distribution(1);
-    assert_eq!(distribution.hook_caller, new_hook_caller);
+    assert_eq!(
+        err,
+        ContractError::HookCallerNotRegistered {
+            hook_caller: hook_caller.to_string(),
+            distributor: suite.distribution_contract.to_string(),
+        }
+    );
+}
+
+#[test]
+fn create_rejects_unsupported_hook_query() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+    let hook_caller = suite.base.instantiate_cw20("unsupported", vec![]);
+
+    let err = suite
+        .create_result(test_rewards_config(), hook_caller.as_str(), None)
+        .unwrap_err()
+        .downcast::<ContractError>()
+        .unwrap();
+
+    assert_eq!(
+        err,
+        ContractError::UnsupportedHookQuery {
+            hook_caller: hook_caller.to_string(),
+        }
+    );
+}
+
+#[test]
+fn create_accepts_registered_get_hooks_caller() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+    let new_dao = suite.base.cw20().dao();
+    let hook_caller = new_dao.x.staking_addr;
+    suite
+        .base
+        .app
+        .execute_contract(
+            new_dao.core_addr,
+            hook_caller.clone(),
+            &cw20_stake::msg::ExecuteMsg::AddHook {
+                addr: suite.distribution_contract.to_string(),
+            },
+            &[],
+        )
+        .unwrap();
+
+    suite
+        .create_result(test_rewards_config(), hook_caller.as_str(), None)
+        .unwrap();
+}
+
+#[test]
+fn create_accepts_registered_hooks_fallback_caller() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+    let new_dao = suite.base.cw4().dao();
+    let hook_caller = new_dao.x.group_addr;
+    suite
+        .base
+        .app
+        .execute_contract(
+            new_dao.core_addr,
+            hook_caller.clone(),
+            &cw4_group::msg::ExecuteMsg::AddHook {
+                addr: suite.distribution_contract.to_string(),
+            },
+            &[],
+        )
+        .unwrap();
+
+    suite
+        .create_result(test_rewards_config(), hook_caller.as_str(), None)
+        .unwrap();
+}
+
+#[test]
+fn changed_hook_caller_rejects_unregistered_and_preserves_current() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+    let current = suite.get_distribution(1).hook_caller;
+    let new_dao = suite.base.cw20().dao();
+    let hook_caller = new_dao.x.staking_addr;
+
+    let err = suite
+        .update_hook_caller_result(1, hook_caller.as_str())
+        .unwrap_err()
+        .downcast::<ContractError>()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::HookCallerNotRegistered {
+            hook_caller: hook_caller.to_string(),
+            distributor: suite.distribution_contract.to_string(),
+        }
+    );
+    assert_eq!(suite.get_distribution(1).hook_caller, current);
+}
+
+#[test]
+fn changed_hook_caller_rejects_unsupported_and_preserves_current() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+    let current = suite.get_distribution(1).hook_caller;
+    let hook_caller = suite.base.instantiate_cw20("unsupported", vec![]);
+
+    let err = suite
+        .update_hook_caller_result(1, hook_caller.as_str())
+        .unwrap_err()
+        .downcast::<ContractError>()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::UnsupportedHookQuery {
+            hook_caller: hook_caller.to_string(),
+        }
+    );
+    assert_eq!(suite.get_distribution(1).hook_caller, current);
+}
+
+#[test]
+fn changed_hook_caller_accepts_registered_fallback_and_skips_unchanged_validation() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+    let new_dao = suite.base.cw4().dao();
+    let hook_caller = new_dao.x.group_addr;
+    let core_addr = new_dao.core_addr;
+    suite
+        .base
+        .app
+        .execute_contract(
+            core_addr.clone(),
+            hook_caller.clone(),
+            &cw4_group::msg::ExecuteMsg::AddHook {
+                addr: suite.distribution_contract.to_string(),
+            },
+            &[],
+        )
+        .unwrap();
+
+    suite.update_hook_caller(1, hook_caller.as_str());
+    assert_eq!(suite.get_distribution(1).hook_caller, hook_caller);
+
+    suite.update_open_funding(1, false);
+    assert!(!suite.get_distribution(1).open_funding);
+
+    suite
+        .base
+        .app
+        .execute_contract(
+            core_addr,
+            hook_caller.clone(),
+            &cw4_group::msg::ExecuteMsg::RemoveHook {
+                addr: suite.distribution_contract.to_string(),
+            },
+            &[],
+        )
+        .unwrap();
+    suite.update_hook_caller(1, hook_caller.as_str());
+    assert_eq!(suite.get_distribution(1).hook_caller, hook_caller);
 }
 
 #[test]

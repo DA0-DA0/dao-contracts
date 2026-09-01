@@ -276,7 +276,13 @@ pub fn execute_stake(
     )?;
 
     // Add stake hook messages
-    let hook_msgs = stake_hook_msgs(HOOKS, deps.storage, info.sender.clone(), amount)?;
+    let hook_msgs = stake_hook_msgs(
+        HOOKS,
+        deps.storage,
+        info.sender.clone(),
+        amount,
+        STAKE_HOOK_REPLY_ID,
+    )?;
 
     Ok(Response::new()
         .add_submessages(hook_msgs)
@@ -318,7 +324,13 @@ pub fn execute_unstake(
     )?;
 
     // Add unstake hook messages
-    let hook_msgs = unstake_hook_msgs(HOOKS, deps.storage, info.sender.clone(), amount)?;
+    let hook_msgs = unstake_hook_msgs(
+        HOOKS,
+        deps.storage,
+        info.sender.clone(),
+        amount,
+        UNSTAKE_HOOK_REPLY_ID,
+    )?;
 
     let config = CONFIG.load(deps.storage)?;
     let denom = DENOM.load(deps.storage)?;

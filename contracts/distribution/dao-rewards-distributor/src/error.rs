@@ -45,6 +45,15 @@ pub enum ContractError {
     #[error("Voting power changed hook sender incorrect")]
     InvalidHookSender {},
 
+    #[error("Hook caller {hook_caller} does not support a hooks query")]
+    UnsupportedHookQuery { hook_caller: String },
+
+    #[error("Rewards distributor {distributor} is not registered on hook caller {hook_caller}")]
+    HookCallerNotRegistered {
+        hook_caller: String,
+        distributor: String,
+    },
+
     #[error("No rewards claimable")]
     NoRewardsClaimable {},
 
