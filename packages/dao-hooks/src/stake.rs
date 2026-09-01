@@ -62,7 +62,7 @@ pub enum StakeChangedExecuteMsg {
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::{from_json, testing::mock_dependencies, ReplyOn};
+    use cosmwasm_std::{from_json, testing::mock_dependencies, CosmosMsg, ReplyOn};
 
     use super::*;
 
@@ -88,7 +88,7 @@ mod tests {
 
         assert_eq!(messages[0].id, REPLY_ID);
         assert_eq!(messages[0].reply_on, ReplyOn::Always);
-        let WasmMsg::Execute { msg, .. } = &messages[0].msg else {
+        let CosmosMsg::Wasm(WasmMsg::Execute { msg, .. }) = &messages[0].msg else {
             panic!("expected Wasm execute message")
         };
         let payload: StakeChangedExecuteMsg = from_json(msg).unwrap();
@@ -110,7 +110,7 @@ mod tests {
 
         assert_eq!(messages[0].id, REPLY_ID);
         assert_eq!(messages[0].reply_on, ReplyOn::Always);
-        let WasmMsg::Execute { msg, .. } = &messages[0].msg else {
+        let CosmosMsg::Wasm(WasmMsg::Execute { msg, .. }) = &messages[0].msg else {
             panic!("expected Wasm execute message")
         };
         let payload: StakeChangedExecuteMsg = from_json(msg).unwrap();
