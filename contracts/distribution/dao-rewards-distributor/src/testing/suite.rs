@@ -549,16 +549,6 @@ impl Suite {
         hook_caller: &str,
         funds: Option<Uint128>,
     ) {
-        self.create_result(reward_config, hook_caller, funds)
-            .unwrap();
-    }
-
-    pub fn create_result(
-        &mut self,
-        reward_config: RewardsConfig,
-        hook_caller: &str,
-        funds: Option<Uint128>,
-    ) -> anyhow::Result<AppResponse> {
         let execute_create_msg = ExecuteMsg::Create(CreateMsg {
             denom: reward_config.denom.clone(),
             emission_rate: EmissionRate::Linear {
@@ -582,12 +572,15 @@ impl Suite {
             vec![]
         };
 
-        self.base.app.execute_contract(
-            Addr::unchecked(OWNER),
-            self.distribution_contract.clone(),
-            &execute_create_msg,
-            &send_funds,
-        )
+        self.base
+            .app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &execute_create_msg,
+                &send_funds,
+            )
+            .unwrap();
     }
 
     pub fn mint_native(&mut self, coin: Coin, dest: &str) {
@@ -860,14 +853,6 @@ impl Suite {
     }
 
     pub fn update_hook_caller(&mut self, id: u64, hook_caller: &str) {
-        self.update_hook_caller_result(id, hook_caller).unwrap();
-    }
-
-    pub fn update_hook_caller_result(
-        &mut self,
-        id: u64,
-        hook_caller: &str,
-    ) -> anyhow::Result<AppResponse> {
         let msg: ExecuteMsg = ExecuteMsg::Update {
             id,
             emission_rate: None,
@@ -877,12 +862,16 @@ impl Suite {
             withdraw_destination: None,
         };
 
-        self.base.app.execute_contract(
-            Addr::unchecked(OWNER),
-            self.distribution_contract.clone(),
-            &msg,
-            &[],
-        )
+        let _resp = self
+            .base
+            .app
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
     }
 
     pub fn update_open_funding(&mut self, id: u64, open_funding: bool) {

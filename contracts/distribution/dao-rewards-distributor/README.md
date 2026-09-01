@@ -36,12 +36,14 @@ voting power changes, such as:
 - `dao-voting-token-staked`
 - `cw20-stake`
 
-Creating a distribution, or changing an existing distribution's `hook_caller`,
-requires the caller to expose either `GetHooks {}` or `Hooks {}` and list this
-rewards distributor. Custom callers without either list query are rejected.
-Order setup atomically: `AddHook` then `Create`; or `AddHook(new)`, `Update`,
-then `RemoveHook(old)`. A runtime failure does not cause a fungible staking
-producer to remove the registered receiver.
+This contract rejects hook calls from any address that is not the
+`hook_caller` of at least one distribution. Staking contracts treat a failed
+hook call as non-fatal: the stake or unstake still succeeds, the hook stays
+registered, and the failure is recorded as attributes on the staking
+transaction (`action: stake_hook_failed`). This means a stale or premature hook
+registration can never block staking, but it also means rewards are not being
+tracked while the hook is misconfigured, so set up hooks and distributions
+together (ideally in the same proposal).
 
 ### Creating a new distribution
 
@@ -156,9 +158,9 @@ You can also update the `vp_contract`, `hook_caller`, and
 `withdraw_destination`.
 
 > **WARNING:** You probably always want to update `vp_contract` and
-> `hook_caller` together. Make sure you know what you're doing. Register the
-> distributor on the new caller before updating, then remove it from the old
-> caller after the update succeeds.
+> `hook_caller` together. Make sure you know what you're doing. And be sure to
+> add/remove hooks on the old and new `hook_caller`s accordingly, ideally in the
+> same proposal as the update.
 
 ### Withdrawing
 

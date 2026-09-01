@@ -20,16 +20,6 @@ use super::suite::{RewardsConfig, SuiteBuilder};
 
 const ALT_DENOM: &str = "ualtgovtoken";
 
-fn test_rewards_config() -> RewardsConfig {
-    RewardsConfig {
-        amount: 1_000,
-        denom: UncheckedDenom::Native(GOV_DENOM.to_string()),
-        duration: Duration::Height(10),
-        destination: None,
-        continuous: true,
-    }
-}
-
 fn has_attr(response: &AppResponse, key: &str, value: &str) -> bool {
     response.events.iter().any(|event| {
         event
@@ -2494,173 +2484,14 @@ fn test_update_vp_contract() {
 }
 
 #[test]
-fn create_rejects_unregistered_hook_caller_get_hooks() {
+fn test_update_hook_caller() {
     let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
-    let new_dao = suite.base.cw20().dao();
-    let hook_caller = new_dao.x.staking_addr;
 
-    let err = suite
-        .create_result(test_rewards_config(), hook_caller.as_str(), None)
-        .unwrap_err()
-        .downcast::<ContractError>()
-        .unwrap();
+    let new_hook_caller = "new_hook_caller";
+    suite.update_hook_caller(1, new_hook_caller);
 
-    assert_eq!(
-        err,
-        ContractError::HookCallerNotRegistered {
-            hook_caller: hook_caller.to_string(),
-            distributor: suite.distribution_contract.to_string(),
-        }
-    );
-}
-
-#[test]
-fn create_rejects_unsupported_hook_query() {
-    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
-    let hook_caller = suite.base.instantiate_cw20("unsupported", vec![]);
-
-    let err = suite
-        .create_result(test_rewards_config(), hook_caller.as_str(), None)
-        .unwrap_err()
-        .downcast::<ContractError>()
-        .unwrap();
-
-    assert_eq!(
-        err,
-        ContractError::UnsupportedHookQuery {
-            hook_caller: hook_caller.to_string(),
-        }
-    );
-}
-
-#[test]
-fn create_accepts_registered_get_hooks_caller() {
-    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
-    let new_dao = suite.base.cw20().dao();
-    let hook_caller = new_dao.x.staking_addr;
-    suite
-        .base
-        .app
-        .execute_contract(
-            new_dao.core_addr,
-            hook_caller.clone(),
-            &cw20_stake::msg::ExecuteMsg::AddHook {
-                addr: suite.distribution_contract.to_string(),
-            },
-            &[],
-        )
-        .unwrap();
-
-    suite
-        .create_result(test_rewards_config(), hook_caller.as_str(), None)
-        .unwrap();
-}
-
-#[test]
-fn create_accepts_registered_hooks_fallback_caller() {
-    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
-    let new_dao = suite.base.cw4().dao();
-    let hook_caller = new_dao.x.group_addr;
-    suite
-        .base
-        .app
-        .execute_contract(
-            new_dao.core_addr,
-            hook_caller.clone(),
-            &cw4_group::msg::ExecuteMsg::AddHook {
-                addr: suite.distribution_contract.to_string(),
-            },
-            &[],
-        )
-        .unwrap();
-
-    suite
-        .create_result(test_rewards_config(), hook_caller.as_str(), None)
-        .unwrap();
-}
-
-#[test]
-fn changed_hook_caller_rejects_unregistered_and_preserves_current() {
-    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
-    let current = suite.get_distribution(1).hook_caller;
-    let new_dao = suite.base.cw20().dao();
-    let hook_caller = new_dao.x.staking_addr;
-
-    let err = suite
-        .update_hook_caller_result(1, hook_caller.as_str())
-        .unwrap_err()
-        .downcast::<ContractError>()
-        .unwrap();
-    assert_eq!(
-        err,
-        ContractError::HookCallerNotRegistered {
-            hook_caller: hook_caller.to_string(),
-            distributor: suite.distribution_contract.to_string(),
-        }
-    );
-    assert_eq!(suite.get_distribution(1).hook_caller, current);
-}
-
-#[test]
-fn changed_hook_caller_rejects_unsupported_and_preserves_current() {
-    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
-    let current = suite.get_distribution(1).hook_caller;
-    let hook_caller = suite.base.instantiate_cw20("unsupported", vec![]);
-
-    let err = suite
-        .update_hook_caller_result(1, hook_caller.as_str())
-        .unwrap_err()
-        .downcast::<ContractError>()
-        .unwrap();
-    assert_eq!(
-        err,
-        ContractError::UnsupportedHookQuery {
-            hook_caller: hook_caller.to_string(),
-        }
-    );
-    assert_eq!(suite.get_distribution(1).hook_caller, current);
-}
-
-#[test]
-fn changed_hook_caller_accepts_registered_fallback_and_skips_unchanged_validation() {
-    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
-    let new_dao = suite.base.cw4().dao();
-    let hook_caller = new_dao.x.group_addr;
-    let core_addr = new_dao.core_addr;
-    suite
-        .base
-        .app
-        .execute_contract(
-            core_addr.clone(),
-            hook_caller.clone(),
-            &cw4_group::msg::ExecuteMsg::AddHook {
-                addr: suite.distribution_contract.to_string(),
-            },
-            &[],
-        )
-        .unwrap();
-
-    suite.update_hook_caller(1, hook_caller.as_str());
-    assert_eq!(suite.get_distribution(1).hook_caller, hook_caller);
-
-    suite
-        .base
-        .app
-        .execute_contract(
-            core_addr,
-            hook_caller.clone(),
-            &cw4_group::msg::ExecuteMsg::RemoveHook {
-                addr: suite.distribution_contract.to_string(),
-            },
-            &[],
-        )
-        .unwrap();
-
-    suite.update_open_funding(1, false);
-    assert!(!suite.get_distribution(1).open_funding);
-
-    suite.update_hook_caller(1, hook_caller.as_str());
-    assert_eq!(suite.get_distribution(1).hook_caller, hook_caller);
+    let distribution = suite.get_distribution(1);
+    assert_eq!(distribution.hook_caller, new_hook_caller);
 }
 
 #[test]

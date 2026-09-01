@@ -13,7 +13,7 @@ use semver::Version;
 
 use std::ops::Add;
 
-use crate::helpers::{get_transfer_msg, validate_hook_caller, validate_voting_power_contract};
+use crate::helpers::{get_transfer_msg, validate_voting_power_contract};
 use crate::hooks::{
     execute_membership_changed, execute_nft_stake_changed, execute_stake_changed,
     subscribe_distribution_to_hook, unsubscribe_distribution_from_hook,
@@ -165,10 +165,12 @@ fn execute_create(
     // only the owner can create a new distribution
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
+    // update count and use as the new distribution's ID
+    let id = COUNT.update(deps.storage, |count| -> StdResult<u64> { Ok(count + 1) })?;
+
     let checked_denom = msg.denom.into_checked(deps.as_ref())?;
     let hook_caller = deps.api.addr_validate(&msg.hook_caller)?;
     let vp_contract = validate_voting_power_contract(&deps, msg.vp_contract)?;
-    validate_hook_caller(deps.as_ref(), &hook_caller, &env.contract.address)?;
 
     let withdraw_destination = match msg.withdraw_destination {
         // if withdraw destination is specified, we validate it
@@ -180,9 +182,6 @@ fn execute_create(
     msg.emission_rate.validate()?;
 
     let open_funding = msg.open_funding.unwrap_or(true);
-
-    // Update count only after all external configuration has been validated.
-    let id = COUNT.update(deps.storage, |count| -> StdResult<u64> { Ok(count + 1) })?;
 
     // Initialize the distribution state
     let distribution = DistributionState {
@@ -272,13 +271,13 @@ fn execute_update(
     }
 
     if let Some(hook_caller) = hook_caller {
-        let new_hook_caller = deps.api.addr_validate(&hook_caller)?;
-        if new_hook_caller != distribution.hook_caller {
-            validate_hook_caller(deps.as_ref(), &new_hook_caller, &env.contract.address)?;
-            unsubscribe_distribution_from_hook(deps.storage, id, distribution.hook_caller.clone())?;
-            distribution.hook_caller = new_hook_caller;
-            subscribe_distribution_to_hook(deps.storage, id, distribution.hook_caller.clone())?;
-        }
+        // remove existing from registered hooks
+        unsubscribe_distribution_from_hook(deps.storage, id, distribution.hook_caller)?;
+
+        distribution.hook_caller = deps.api.addr_validate(&hook_caller)?;
+
+        // add new to registered hooks
+        subscribe_distribution_to_hook(deps.storage, id, distribution.hook_caller.clone())?;
     }
 
     if let Some(open_funding) = open_funding {

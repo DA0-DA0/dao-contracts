@@ -1,4 +1,3 @@
-use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     coins, to_json_binary, Addr, BankMsg, BlockInfo, CosmosMsg, Decimal, Deps, DepsMut, StdError,
     StdResult, Uint128, Uint256, WasmMsg,
@@ -10,41 +9,6 @@ use dao_interface::voting::{
 };
 
 use crate::ContractError;
-
-#[cw_serde]
-enum GetHooksQueryMsg {
-    GetHooks {},
-}
-
-pub(crate) fn validate_hook_caller(
-    deps: Deps,
-    hook_caller: &Addr,
-    distributor: &Addr,
-) -> Result<(), ContractError> {
-    let response: cw4::HooksResponse = deps
-        .querier
-        .query_wasm_smart(hook_caller, &GetHooksQueryMsg::GetHooks {})
-        .or_else(|_| {
-            deps.querier
-                .query_wasm_smart(hook_caller, &cw4::Cw4QueryMsg::Hooks {})
-        })
-        .map_err(|_| ContractError::UnsupportedHookQuery {
-            hook_caller: hook_caller.to_string(),
-        })?;
-
-    if !response
-        .hooks
-        .iter()
-        .any(|hook| hook == distributor.as_str())
-    {
-        return Err(ContractError::HookCallerNotRegistered {
-            hook_caller: hook_caller.to_string(),
-            distributor: distributor.to_string(),
-        });
-    }
-
-    Ok(())
-}
 
 pub fn get_total_voting_power_at_block(
     deps: Deps,
