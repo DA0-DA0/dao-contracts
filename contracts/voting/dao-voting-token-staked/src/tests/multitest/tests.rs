@@ -5,7 +5,9 @@ use crate::msg::{
 };
 use crate::state::Config;
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
-use cosmwasm_std::{coins, Addr, Coin, Decimal, Uint128};
+use cosmwasm_std::{
+    attr, coins, Addr, Coin, Decimal, Reply, SubMsgResponse, SubMsgResult, Uint128,
+};
 use cw_controllers::ClaimsResponse;
 use cw_multi_test::{next_block, App, AppResponse, BankSudo, Executor, SudoMsg};
 use cw_utils::Duration;
@@ -24,6 +26,87 @@ const ADDR2: &str = "addr2";
 const DENOM: &str = "ujuno";
 const INVALID_DENOM: &str = "uinvalid";
 const ODD_DENOM: &str = "uodd";
+
+#[test]
+fn stake_hook_reply_error_is_non_fatal_and_observable() {
+    let mut deps = mock_dependencies();
+    let response = crate::contract::reply(
+        deps.as_mut(),
+        mock_env(),
+        Reply {
+            id: crate::contract::STAKE_HOOK_REPLY_ID,
+            result: SubMsgResult::Err("receiver failed".to_string()),
+        },
+    )
+    .unwrap();
+
+    assert_eq!(
+        response.attributes,
+        vec![
+            attr("action", "stake_hook_failed"),
+            attr("hook", "stake"),
+            attr("error", "receiver failed"),
+        ]
+    );
+}
+
+#[test]
+fn unstake_hook_reply_error_is_non_fatal_and_observable() {
+    let mut deps = mock_dependencies();
+    let response = crate::contract::reply(
+        deps.as_mut(),
+        mock_env(),
+        Reply {
+            id: crate::contract::UNSTAKE_HOOK_REPLY_ID,
+            result: SubMsgResult::Err("receiver failed".to_string()),
+        },
+    )
+    .unwrap();
+
+    assert_eq!(
+        response.attributes,
+        vec![
+            attr("action", "stake_hook_failed"),
+            attr("hook", "unstake"),
+            attr("error", "receiver failed"),
+        ]
+    );
+}
+
+#[test]
+fn stake_hook_reply_success_is_empty() {
+    let mut deps = mock_dependencies();
+    let response = crate::contract::reply(
+        deps.as_mut(),
+        mock_env(),
+        Reply {
+            id: crate::contract::STAKE_HOOK_REPLY_ID,
+            result: SubMsgResult::Ok(SubMsgResponse {
+                events: vec![],
+                data: None,
+            }),
+        },
+    )
+    .unwrap();
+
+    assert!(response.attributes.is_empty());
+}
+
+#[test]
+fn unknown_reply_id_is_rejected() {
+    let mut deps = mock_dependencies();
+    let err = crate::contract::reply(
+        deps.as_mut(),
+        mock_env(),
+        Reply {
+            id: 99,
+            result: SubMsgResult::Err("irrelevant".to_string()),
+        },
+    )
+    .unwrap_err();
+
+    assert_eq!(err, crate::ContractError::UnknownReplyId { id: 99 });
+}
 
 fn mock_app() -> App {
     let mut app = App::default();
