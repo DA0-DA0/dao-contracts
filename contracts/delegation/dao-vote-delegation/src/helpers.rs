@@ -89,7 +89,7 @@ pub fn add_delegated_vp(
     storage: &mut dyn Storage,
     env: &Env,
     delegate: &Addr,
-    vp: Uint128,
+    delegated_vp: Uint128,
     expiration: Option<u64>,
 ) -> StdResult<()> {
     DELEGATED_VP.increment(
@@ -103,12 +103,12 @@ pub fn add_delegated_vp(
         // update the total that will be reflected in historical queries
         // starting from the next block.
         env.block.height + 1,
-        vp,
+        delegated_vp,
     )?;
 
     // if expiration exists, decrement in the future at expiration height
     if let Some(expiration) = expiration {
-        DELEGATED_VP.decrement(storage, delegate.clone(), expiration, vp)?;
+        DELEGATED_VP.decrement(storage, delegate.clone(), expiration, delegated_vp)?;
     }
 
     Ok(())
@@ -122,7 +122,7 @@ pub fn remove_delegated_vp_if_not_expired(
     storage: &mut dyn Storage,
     env: &Env,
     delegate: &Addr,
-    vp: Uint128,
+    delegated_vp: Uint128,
     original_expiration: Option<u64>,
 ) -> StdResult<()> {
     // if delegation already expired, do nothing.
@@ -136,7 +136,7 @@ pub fn remove_delegated_vp_if_not_expired(
     // decrement at end of expiration period. do this before undoing previous
     // increment to prevent underflow.
     if let Some(original_expiration) = original_expiration {
-        DELEGATED_VP.increment(storage, delegate.clone(), original_expiration, vp)?;
+        DELEGATED_VP.increment(storage, delegate.clone(), original_expiration, delegated_vp)?;
     }
 
     DELEGATED_VP.decrement(
@@ -150,7 +150,7 @@ pub fn remove_delegated_vp_if_not_expired(
         // update the total that will be reflected in historical queries
         // starting from the next block.
         env.block.height + 1,
-        vp,
+        delegated_vp,
     )?;
 
     Ok(())
@@ -161,7 +161,7 @@ pub fn update_delegated_vp_expiration(
     storage: &mut dyn Storage,
     env: &Env,
     delegate: &Addr,
-    vp: Uint128,
+    delegated_vp: Uint128,
     original_expiration: Option<u64>,
     new_expiration: Option<u64>,
 ) -> StdResult<()> {
@@ -174,7 +174,7 @@ pub fn update_delegated_vp_expiration(
             ));
         }
 
-        DELEGATED_VP.increment(storage, delegate.clone(), original_expiration, vp)?;
+        DELEGATED_VP.increment(storage, delegate.clone(), original_expiration, delegated_vp)?;
     }
 
     // if new expiration is set, decrement at new expiration
@@ -185,7 +185,7 @@ pub fn update_delegated_vp_expiration(
             ));
         }
 
-        DELEGATED_VP.decrement(storage, delegate.clone(), new_expiration, vp)?;
+        DELEGATED_VP.decrement(storage, delegate.clone(), new_expiration, delegated_vp)?;
     }
 
     Ok(())
@@ -239,7 +239,7 @@ pub fn handle_redelegation(
     new_percent: Decimal,
     config: &Config,
     current_percent_delegated: Decimal,
-    vp: Uint128,
+    delegator_vp: Uint128,
     existing_delegation_entry: SnapshotVectorMapItemRef,
 ) -> DelegationHandlerResult {
     let (existing_delegation_id, existing_delegation_expiration) = existing_delegation_entry;
@@ -269,11 +269,12 @@ pub fn handle_redelegation(
             config.delegation_validity_blocks,
         )?;
 
+        let delegated_vp = calculate_delegated_vp(delegator_vp, new_percent);
         update_delegated_vp_expiration(
             deps.storage,
             env,
             delegate,
-            vp,
+            delegated_vp,
             existing_delegation_expiration,
             new_expiration,
         )?;
@@ -294,12 +295,12 @@ pub fn handle_redelegation(
 
     if !expired {
         // remove current delegated VP based on existing percent
-        let old_vp = calculate_delegated_vp(vp, existing_delegation_percent);
+        let old_delegated_vp = calculate_delegated_vp(delegator_vp, existing_delegation_percent);
         remove_delegated_vp_if_not_expired(
             deps.storage,
             env,
             delegate,
-            old_vp,
+            old_delegated_vp,
             existing_delegation_expiration,
         )?;
     }

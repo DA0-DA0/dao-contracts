@@ -744,6 +744,138 @@ fn test_expiration_update() {
 }
 
 #[test]
+fn test_same_percent_refresh_moves_only_delegated_voting_power() {
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new()
+        .with_delegation_validity_blocks(10)
+        .build();
+
+    suite.register(ADDR0);
+
+    let refreshed_vp = Uint128::from(suite.members[1].weight).mul_floor(Decimal::percent(50));
+    let co_delegator_vp = Uint128::from(suite.members[2].weight).mul_floor(Decimal::percent(50));
+    assert!(!co_delegator_vp.is_zero());
+
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(50));
+    suite.delegate(ADDR2, ADDR0, Decimal::percent(50));
+    suite.advance_block();
+
+    suite.assert_delegate_total_delegated_vp(ADDR0, refreshed_vp + co_delegator_vp);
+
+    // Refresh ADDR1 halfway through the validity period without changing its
+    // percentage. ADDR2 retains the original expiration.
+    suite.advance_blocks(4);
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(50));
+
+    // Refreshing only moves ADDR1's scaled contribution to the new expiration.
+    suite.assert_delegate_total_delegated_vp(ADDR0, refreshed_vp + co_delegator_vp);
+
+    // At the original expiration, ADDR2's contribution expires while ADDR1's
+    // refreshed, scaled contribution remains.
+    suite.advance_blocks(5);
+    suite.assert_delegate_total_delegated_vp(ADDR0, refreshed_vp);
+
+    // The refreshed contribution expires at its new expiration.
+    suite.advance_blocks(5);
+    suite.assert_delegate_total_delegated_vp(ADDR0, 0u128);
+}
+
+#[test]
+fn test_same_percent_refresh_after_enabling_expiration_preserves_co_delegator_vp() {
+    // start with delegation expiration disabled.
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
+
+    suite.register(ADDR0);
+
+    let addr1_delegated_vp = Uint128::from(suite.members[1].weight).mul_floor(Decimal::percent(50));
+    let addr2_delegated_vp = Uint128::from(suite.members[2].weight).mul_floor(Decimal::percent(50));
+    assert!(!addr1_delegated_vp.is_zero());
+    assert!(!addr2_delegated_vp.is_zero());
+
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(50));
+    suite.delegate(ADDR2, ADDR0, Decimal::percent(50));
+    suite.advance_block();
+
+    suite.assert_delegate_total_delegated_vp(ADDR0, addr1_delegated_vp + addr2_delegated_vp);
+
+    // enable expiration. existing delegations keep no expiration until they
+    // are refreshed.
+    suite.update_delegation_validity_blocks(Some(10));
+
+    // ADDR1 refreshes with the same percent, picking up the new expiration.
+    // there is no original expiration to undo, so the only scheduled change
+    // must be the removal of ADDR1's scaled contribution at the new
+    // expiration.
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(50));
+    let expiration = suite.app.block_info().height + 10;
+    suite.assert_delegation(ADDR1, ADDR0, Decimal::percent(50), Some(expiration));
+    suite.assert_delegation(ADDR2, ADDR0, Decimal::percent(50), None);
+    suite.assert_delegate_total_delegated_vp(ADDR0, addr1_delegated_vp + addr2_delegated_vp);
+
+    // once ADDR1's refreshed delegation expires, only ADDR1's scaled
+    // contribution is removed. ADDR2's delegation never expires and must be
+    // untouched.
+    suite.advance_blocks(10);
+    suite.assert_delegations_count(ADDR1, 0);
+    suite.assert_delegations_count(ADDR2, 1);
+    suite.assert_delegate_total_delegated_vp(ADDR0, addr2_delegated_vp);
+}
+
+#[test]
+fn test_mixed_percent_refreshes_keep_total_equal_to_sum_of_scaled_delegations() {
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new()
+        .with_delegation_validity_blocks(10)
+        .build();
+
+    suite.register(ADDR0);
+
+    // delegators with different weights and percents, none of which delegate
+    // their full weight except the last, so that raw and scaled amounts differ.
+    let delegations = [
+        (ADDR1, suite.members[1].weight, Decimal::percent(60)),
+        (ADDR2, suite.members[2].weight, Decimal::percent(50)),
+        (ADDR3, suite.members[3].weight, Decimal::percent(75)),
+        (ADDR4, suite.members[4].weight, Decimal::percent(100)),
+    ];
+    let scaled = |i: usize| Uint128::from(delegations[i].1).mul_floor(delegations[i].2);
+    let raw_total: u64 = delegations.iter().map(|(_, weight, _)| weight).sum();
+    let scaled_total = (0..delegations.len()).map(scaled).sum::<Uint128>();
+    assert!(scaled_total < Uint128::from(raw_total));
+    assert!((0..delegations.len()).all(|i| !scaled(i).is_zero()));
+
+    for (delegator, _, percent) in delegations {
+        suite.delegate(delegator, ADDR0, percent);
+    }
+    let original_expiration = suite.app.block_info().height + 10;
+    suite.advance_block();
+
+    suite.assert_delegate_total_delegated_vp(ADDR0, scaled_total);
+
+    // refresh two of the delegations partway through the validity period.
+    suite.advance_blocks(3);
+    suite.delegate(ADDR1, ADDR0, delegations[0].2);
+    suite.delegate(ADDR3, ADDR0, delegations[2].2);
+    let refreshed_expiration = suite.app.block_info().height + 10;
+    assert!(refreshed_expiration > original_expiration);
+
+    suite.assert_delegate_total_delegated_vp(ADDR0, scaled_total);
+
+    // at the original expiration, only the two delegations that were not
+    // refreshed expire.
+    let blocks_until_original_expiration = original_expiration - suite.app.block_info().height;
+    suite.advance_blocks(blocks_until_original_expiration);
+    suite.assert_delegations_count(ADDR2, 0);
+    suite.assert_delegations_count(ADDR4, 0);
+    suite.assert_delegate_total_delegated_vp(ADDR0, scaled(0) + scaled(2));
+
+    // at the refreshed expiration, the remaining delegations expire.
+    let blocks_until_refreshed_expiration = refreshed_expiration - suite.app.block_info().height;
+    suite.advance_blocks(blocks_until_refreshed_expiration);
+    suite.assert_delegations_count(ADDR1, 0);
+    suite.assert_delegations_count(ADDR3, 0);
+    suite.assert_delegate_total_delegated_vp(ADDR0, 0u128);
+}
+
+#[test]
 fn test_max_delegations() {
     let mut suite = Cw4DaoVoteDelegationTestingSuite::new()
         .with_max_delegations(2)
