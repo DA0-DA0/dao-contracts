@@ -744,6 +744,42 @@ fn test_expiration_update() {
 }
 
 #[test]
+fn test_same_percent_refresh_moves_only_delegated_voting_power() {
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new()
+        .with_delegation_validity_blocks(10)
+        .build();
+
+    suite.register(ADDR0);
+
+    let refreshed_vp = Uint128::from(suite.members[1].weight).mul_floor(Decimal::percent(50));
+    let co_delegator_vp = Uint128::from(suite.members[2].weight).mul_floor(Decimal::percent(50));
+    assert!(!co_delegator_vp.is_zero());
+
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(50));
+    suite.delegate(ADDR2, ADDR0, Decimal::percent(50));
+    suite.advance_block();
+
+    suite.assert_delegate_total_delegated_vp(ADDR0, refreshed_vp + co_delegator_vp);
+
+    // Refresh ADDR1 halfway through the validity period without changing its
+    // percentage. ADDR2 retains the original expiration.
+    suite.advance_blocks(4);
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(50));
+
+    // Refreshing only moves ADDR1's scaled contribution to the new expiration.
+    suite.assert_delegate_total_delegated_vp(ADDR0, refreshed_vp + co_delegator_vp);
+
+    // At the original expiration, ADDR2's contribution expires while ADDR1's
+    // refreshed, scaled contribution remains.
+    suite.advance_blocks(5);
+    suite.assert_delegate_total_delegated_vp(ADDR0, refreshed_vp);
+
+    // The refreshed contribution expires at its new expiration.
+    suite.advance_blocks(5);
+    suite.assert_delegate_total_delegated_vp(ADDR0, 0u128);
+}
+
+#[test]
 fn test_max_delegations() {
     let mut suite = Cw4DaoVoteDelegationTestingSuite::new()
         .with_max_delegations(2)
