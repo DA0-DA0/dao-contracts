@@ -201,6 +201,7 @@ pub fn dao_voting_onft_staked_contract() -> Box<dyn Contract<Empty>> {
         dao_voting_onft_staked::contract::instantiate,
         dao_voting_onft_staked::contract::query,
     )
+    .with_reply(dao_voting_onft_staked::contract::reply)
     .with_migrate(dao_voting_onft_staked::contract::migrate);
     Box::new(contract)
 }

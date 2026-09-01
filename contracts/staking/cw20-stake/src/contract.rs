@@ -3,7 +3,7 @@ use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
     from_json, to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
-    Response, StdError, StdResult, SubMsgResult, Uint128,
+    Response, StdError, StdResult, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw20::{Cw20ReceiveMsg, TokenInfoResponse};
@@ -19,7 +19,7 @@ pub use cw20_base::contract::{
 pub use cw20_base::enumerable::{query_all_accounts, query_owner_allowances};
 use cw_controllers::ClaimsResponse;
 use cw_utils::Duration;
-use dao_hooks::stake::{stake_hook_msgs, unstake_hook_msgs};
+use dao_hooks::stake::{stake_hook_msgs, stake_hook_reply_response, unstake_hook_msgs};
 use dao_voting::duration::validate_duration;
 
 use crate::math;
@@ -477,13 +477,9 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
         id => return Err(ContractError::UnknownReplyId { id }),
     };
 
-    Ok(match msg.result {
-        SubMsgResult::Ok(_) => Response::new(),
-        SubMsgResult::Err(error) => Response::new()
-            .add_attribute("action", "stake_hook_failed")
-            .add_attribute("hook", hook)
-            .add_attribute("error", error),
-    })
+    // hook failures must never block staking or unstaking, and must not remove
+    // the hook. record the failure and let the transaction succeed.
+    Ok(stake_hook_reply_response(hook, msg.result))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

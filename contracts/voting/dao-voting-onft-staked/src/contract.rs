@@ -1,13 +1,14 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdResult, SubMsg, Uint128, Uint256,
+    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
+    Response, StdResult, SubMsg, Uint128, Uint256,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_storage_plus::Bound;
 use cw_utils::Duration;
 use dao_hooks::nft_stake::{stake_nft_hook_msgs, unstake_nft_hook_msgs};
+use dao_hooks::stake::stake_hook_reply_response;
 use dao_interface::voting::IsActiveResponse;
 use dao_voting::duration::validate_duration;
 use dao_voting::threshold::{
@@ -29,6 +30,9 @@ use crate::ContractError;
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-onft-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+pub(crate) const STAKE_HOOK_REPLY_ID: u64 = 0;
+pub(crate) const UNSTAKE_HOOK_REPLY_ID: u64 = 1;
 
 // We multiply by this when calculating needed power for being active
 // when using active threshold with percent
@@ -186,7 +190,13 @@ pub fn execute_confirm_stake(
     let hook_msgs = token_ids
         .iter()
         .map(|token_id| {
-            stake_nft_hook_msgs(HOOKS, deps.storage, info.sender.clone(), token_id.clone())
+            stake_nft_hook_msgs(
+                HOOKS,
+                deps.storage,
+                info.sender.clone(),
+                token_id.clone(),
+                STAKE_HOOK_REPLY_ID,
+            )
         })
         .collect::<StdResult<Vec<Vec<SubMsg>>>>()?
         .into_iter()
@@ -349,8 +359,13 @@ pub fn execute_unstake(
     // so if we reach this point in execution, we may safely create
     // claims.
 
-    let hook_msgs =
-        unstake_nft_hook_msgs(HOOKS, deps.storage, info.sender.clone(), token_ids.clone())?;
+    let hook_msgs = unstake_nft_hook_msgs(
+        HOOKS,
+        deps.storage,
+        info.sender.clone(),
+        token_ids.clone(),
+        UNSTAKE_HOOK_REPLY_ID,
+    )?;
 
     let config = CONFIG.load(deps.storage)?;
     match config.unstaking_duration {
@@ -764,4 +779,15 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     }
 
     Ok(Response::new().add_attribute("action", "migrate"))
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    match msg.id {
+        // hook failures must never block staking or unstaking, and must not
+        // remove the hook. record the failure and let the transaction succeed.
+        STAKE_HOOK_REPLY_ID => Ok(stake_hook_reply_response("stake", msg.result)),
+        UNSTAKE_HOOK_REPLY_ID => Ok(stake_hook_reply_response("unstake", msg.result)),
+        _ => Err(ContractError::UnknownReplyId { id: msg.id }),
+    }
 }

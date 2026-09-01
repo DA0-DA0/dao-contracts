@@ -5,8 +5,7 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::instantiate2_address;
 use cosmwasm_std::{
     coins, from_json, to_json_binary, BankMsg, BankQuery, Binary, Coin, CosmosMsg, Deps, DepsMut,
-    Env, MessageInfo, Order, Reply, Response, StdResult, SubMsg, SubMsgResult, Uint128, Uint256,
-    WasmMsg,
+    Env, MessageInfo, Order, Reply, Response, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_controllers::ClaimsResponse;
@@ -20,7 +19,7 @@ use cw_tokenfactory_issuer::msg::{DenomUnit, Metadata};
 use cw_utils::{
     maybe_addr, must_pay, parse_reply_execute_data, parse_reply_instantiate_data, Duration,
 };
-use dao_hooks::stake::{stake_hook_msgs, unstake_hook_msgs};
+use dao_hooks::stake::{stake_hook_msgs, stake_hook_reply_response, unstake_hook_msgs};
 use dao_interface::{
     state::{Admin, ModuleInstantiateCallback, ModuleInstantiateInfo},
     token::{InitialBalance, NewTokenInfo, TokenFactoryCallback},
@@ -658,16 +657,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     Ok(Response::new().add_attribute("action", "migrate"))
 }
 
-fn handle_stake_hook_reply(hook: &str, result: SubMsgResult) -> Response {
-    match result {
-        SubMsgResult::Ok(_) => Response::new(),
-        SubMsgResult::Err(error) => Response::new()
-            .add_attribute("action", "stake_hook_failed")
-            .add_attribute("hook", hook)
-            .add_attribute("error", error),
-    }
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
@@ -840,7 +829,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 _ => unreachable!(),
             }
         }
-        STAKE_HOOK_REPLY_ID => Ok(handle_stake_hook_reply("stake", msg.result)),
+        // hook failures must never block staking, and must not remove the
+        // hook. record the failure and let the transaction succeed.
+        STAKE_HOOK_REPLY_ID => Ok(stake_hook_reply_response("stake", msg.result)),
         FACTORY_EXECUTE_REPLY_ID => {
             // Parse reply
             let res = parse_reply_execute_data(msg)?;
@@ -904,7 +895,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 None => Err(ContractError::NoFactoryCallback {}),
             }
         }
-        UNSTAKE_HOOK_REPLY_ID => Ok(handle_stake_hook_reply("unstake", msg.result)),
+        // hook failures must never block unstaking, and must not remove the
+        // hook. record the failure and let the transaction succeed.
+        UNSTAKE_HOOK_REPLY_ID => Ok(stake_hook_reply_response("unstake", msg.result)),
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }
 }
