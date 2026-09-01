@@ -15,6 +15,11 @@ Our wiki contains more info on [Proposal Hooks](https://github.com/DA0-DA0/dao-c
 ### Stake Hooks
 Staking hooks are fired when tokens are staked or unstaked in a DAO.
 
+The fungible stake dispatch helpers require a producer-owned reply ID and reply
+on both successful and failed receiver calls. Producers must handle that ID,
+report receiver errors observably, and leave failed hooks registered for future
+calls.
+
 ### Vote Hooks
 Vote hooks are fired when new votes are cast.
 

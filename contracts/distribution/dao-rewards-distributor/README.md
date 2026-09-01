@@ -36,6 +36,13 @@ voting power changes, such as:
 - `dao-voting-token-staked`
 - `cw20-stake`
 
+Creating a distribution, or changing an existing distribution's `hook_caller`,
+requires the caller to expose either `GetHooks {}` or `Hooks {}` and list this
+rewards distributor. Custom callers without either list query are rejected.
+Order setup atomically: `AddHook` then `Create`; or `AddHook(new)`, `Update`,
+then `RemoveHook(old)`. A runtime failure does not cause a fungible staking
+producer to remove the registered receiver.
+
 ### Creating a new distribution
 
 Only the `owner` can create new distributions.
@@ -149,8 +156,9 @@ You can also update the `vp_contract`, `hook_caller`, and
 `withdraw_destination`.
 
 > **WARNING:** You probably always want to update `vp_contract` and
-> `hook_caller` together. Make sure you know what you're doing. And be sure to
-> add/remove hooks on the old and new `hook_caller`s accordingly.
+> `hook_caller` together. Make sure you know what you're doing. Register the
+> distributor on the new caller before updating, then remove it from the old
+> caller after the update succeeds.
 
 ### Withdrawing
 
