@@ -19,7 +19,7 @@ pub use cw20_base::contract::{
 pub use cw20_base::enumerable::{query_all_accounts, query_owner_allowances};
 use cw_controllers::ClaimsResponse;
 use cw_utils::Duration;
-use dao_hooks::stake::{stake_hook_msgs, stake_hook_reply_response, unstake_hook_msgs};
+use dao_hooks::stake::{handle_stake_hook_reply, stake_hook_msgs, unstake_hook_msgs};
 use dao_voting::duration::validate_duration;
 
 use crate::math;
@@ -35,8 +35,6 @@ use crate::ContractError;
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cw20-stake";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-pub(crate) const STAKE_HOOK_REPLY_ID: u64 = 0;
-pub(crate) const UNSTAKE_HOOK_REPLY_ID: u64 = 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -166,13 +164,7 @@ pub fn execute_stake(
         deps.storage,
         &balance.checked_add(amount).map_err(StdError::overflow)?,
     )?;
-    let hook_msgs = stake_hook_msgs(
-        HOOKS,
-        deps.storage,
-        sender.clone(),
-        amount_to_stake,
-        STAKE_HOOK_REPLY_ID,
-    )?;
+    let hook_msgs = stake_hook_msgs(HOOKS, deps.storage, sender.clone(), amount_to_stake)?;
     Ok(Response::new()
         .add_submessages(hook_msgs)
         .add_attribute("action", "stake")
@@ -220,13 +212,7 @@ pub fn execute_unstake(
             .checked_sub(amount_to_claim)
             .map_err(StdError::overflow)?,
     )?;
-    let hook_msgs = unstake_hook_msgs(
-        HOOKS,
-        deps.storage,
-        info.sender.clone(),
-        amount,
-        UNSTAKE_HOOK_REPLY_ID,
-    )?;
+    let hook_msgs = unstake_hook_msgs(HOOKS, deps.storage, info.sender.clone(), amount)?;
     match config.unstaking_duration {
         None => {
             let cw_send_msg = cw20::Cw20ExecuteMsg::Transfer {
@@ -470,16 +456,11 @@ pub fn query_list_stakers(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    let hook = match msg.id {
-        STAKE_HOOK_REPLY_ID => "stake",
-        UNSTAKE_HOOK_REPLY_ID => "unstake",
-        id => return Err(ContractError::UnknownReplyId { id }),
-    };
-
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     // hook failures must never block staking or unstaking, and must not remove
     // the hook. record the failure and let the transaction succeed.
-    Ok(stake_hook_reply_response(hook, msg.result))
+    handle_stake_hook_reply(HOOKS, deps.as_ref(), &msg)?
+        .ok_or(ContractError::UnknownReplyId { id: msg.id })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -19,7 +19,7 @@ use cw_tokenfactory_issuer::msg::{DenomUnit, Metadata};
 use cw_utils::{
     maybe_addr, must_pay, parse_reply_execute_data, parse_reply_instantiate_data, Duration,
 };
-use dao_hooks::stake::{stake_hook_msgs, stake_hook_reply_response, unstake_hook_msgs};
+use dao_hooks::stake::{handle_stake_hook_reply, stake_hook_msgs, unstake_hook_msgs};
 use dao_interface::{
     state::{Admin, ModuleInstantiateCallback, ModuleInstantiateInfo},
     token::{InitialBalance, NewTokenInfo, TokenFactoryCallback},
@@ -53,9 +53,7 @@ const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 
 const INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID: u64 = 0;
-pub(crate) const STAKE_HOOK_REPLY_ID: u64 = 1;
 const FACTORY_EXECUTE_REPLY_ID: u64 = 2;
-pub(crate) const UNSTAKE_HOOK_REPLY_ID: u64 = 3;
 
 // We multiply by this when calculating needed power for being active
 // when using active threshold with percent
@@ -275,13 +273,7 @@ pub fn execute_stake(
     )?;
 
     // Add stake hook messages
-    let hook_msgs = stake_hook_msgs(
-        HOOKS,
-        deps.storage,
-        info.sender.clone(),
-        amount,
-        STAKE_HOOK_REPLY_ID,
-    )?;
+    let hook_msgs = stake_hook_msgs(HOOKS, deps.storage, info.sender.clone(), amount)?;
 
     Ok(Response::new()
         .add_submessages(hook_msgs)
@@ -323,13 +315,7 @@ pub fn execute_unstake(
     )?;
 
     // Add unstake hook messages
-    let hook_msgs = unstake_hook_msgs(
-        HOOKS,
-        deps.storage,
-        info.sender.clone(),
-        amount,
-        UNSTAKE_HOOK_REPLY_ID,
-    )?;
+    let hook_msgs = unstake_hook_msgs(HOOKS, deps.storage, info.sender.clone(), amount)?;
 
     let config = CONFIG.load(deps.storage)?;
     let denom = DENOM.load(deps.storage)?;
@@ -659,6 +645,12 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
+    // hook failures must never block staking or unstaking, and must not remove
+    // the hook. record the failure and let the transaction succeed.
+    if let Some(res) = handle_stake_hook_reply(HOOKS, deps.as_ref(), &msg)? {
+        return Ok(res);
+    }
+
     match msg.id {
         INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID => {
             // Parse and save address of cw-tokenfactory-issuer
@@ -829,9 +821,6 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 _ => unreachable!(),
             }
         }
-        // hook failures must never block staking, and must not remove the
-        // hook. record the failure and let the transaction succeed.
-        STAKE_HOOK_REPLY_ID => Ok(stake_hook_reply_response("stake", msg.result)),
         FACTORY_EXECUTE_REPLY_ID => {
             // Parse reply
             let res = parse_reply_execute_data(msg)?;
@@ -895,9 +884,6 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 None => Err(ContractError::NoFactoryCallback {}),
             }
         }
-        // hook failures must never block unstaking, and must not remove the
-        // hook. record the failure and let the transaction succeed.
-        UNSTAKE_HOOK_REPLY_ID => Ok(stake_hook_reply_response("unstake", msg.result)),
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }
 }

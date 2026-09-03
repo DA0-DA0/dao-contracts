@@ -9,7 +9,7 @@ use cw721::{Cw721QueryMsg, Cw721ReceiveMsg, NumTokensResponse};
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_execute_data, parse_reply_instantiate_data, Duration};
 use dao_hooks::nft_stake::{stake_nft_hook_msgs, unstake_nft_hook_msgs};
-use dao_hooks::stake::stake_hook_reply_response;
+use dao_hooks::stake::handle_stake_hook_reply;
 use dao_interface::state::{Admin, ModuleInstantiateCallback, ModuleInstantiateInfo};
 use dao_interface::{nft::NftFactoryCallback, voting::IsActiveResponse};
 use dao_voting::duration::validate_duration;
@@ -35,8 +35,6 @@ pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const INSTANTIATE_NFT_CONTRACT_REPLY_ID: u64 = 0;
 const VALIDATE_SUPPLY_REPLY_ID: u64 = 1;
 const FACTORY_EXECUTE_REPLY_ID: u64 = 2;
-pub(crate) const STAKE_HOOK_REPLY_ID: u64 = 3;
-pub(crate) const UNSTAKE_HOOK_REPLY_ID: u64 = 4;
 
 // We multiply by this when calculating needed power for being active
 // when using active threshold with percent
@@ -244,7 +242,6 @@ pub fn execute_stake(
         deps.storage,
         staker.clone(),
         wrapper.token_id.clone(),
-        STAKE_HOOK_REPLY_ID,
     )?;
     Ok(Response::default()
         .add_submessages(hook_msgs)
@@ -296,13 +293,8 @@ pub fn execute_unstake(
     // so if we reach this point in execution, we may safely create
     // claims.
 
-    let hook_msgs = unstake_nft_hook_msgs(
-        HOOKS,
-        deps.storage,
-        info.sender.clone(),
-        token_ids.clone(),
-        UNSTAKE_HOOK_REPLY_ID,
-    )?;
+    let hook_msgs =
+        unstake_nft_hook_msgs(HOOKS, deps.storage, info.sender.clone(), token_ids.clone())?;
 
     let config = CONFIG.load(deps.storage)?;
     match config.unstaking_duration {
@@ -733,6 +725,12 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    // hook failures must never block staking or unstaking, and must not remove
+    // the hook. record the failure and let the transaction succeed.
+    if let Some(res) = handle_stake_hook_reply(HOOKS, deps.as_ref(), &msg)? {
+        return Ok(res);
+    }
+
     match msg.id {
         INSTANTIATE_NFT_CONTRACT_REPLY_ID => {
             let res = parse_reply_instantiate_data(msg);
@@ -872,10 +870,6 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                 None => Err(ContractError::NoFactoryCallback {}),
             }
         }
-        // hook failures must never block staking or unstaking, and must not
-        // remove the hook. record the failure and let the transaction succeed.
-        STAKE_HOOK_REPLY_ID => Ok(stake_hook_reply_response("stake", msg.result)),
-        UNSTAKE_HOOK_REPLY_ID => Ok(stake_hook_reply_response("unstake", msg.result)),
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }
 }

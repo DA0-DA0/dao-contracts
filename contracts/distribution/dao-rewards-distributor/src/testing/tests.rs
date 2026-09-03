@@ -81,13 +81,19 @@ fn stale_rewards_distributor_cannot_block_cw20_stake_or_unstake() {
         )
         .unwrap();
 
+    let distributor = suite.distribution_contract.to_string();
+
     let unstake_response = suite.unstake_cw20_tokens(10, ADDR0);
     assert!(has_attr(&unstake_response, "action", "stake_hook_failed"));
     assert!(has_attr(&unstake_response, "hook", "unstake"));
+    // the failure names the stale distributor, not the healthy counter.
+    assert!(has_attr(&unstake_response, "addr", &distributor));
+    assert!(!has_attr(&unstake_response, "addr", counter.as_str()));
 
     let stake_response = suite.stake_cw20_tokens(5, ADDR0);
     assert!(has_attr(&stake_response, "action", "stake_hook_failed"));
     assert!(has_attr(&stake_response, "hook", "stake"));
+    assert!(has_attr(&stake_response, "addr", &distributor));
 
     let successful_calls: Uint128 = suite
         .base

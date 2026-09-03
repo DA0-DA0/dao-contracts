@@ -20,12 +20,18 @@ Staking hooks are fired when tokens are staked or unstaked in a DAO.
 
 A hook receiver must never be able to block staking or unstaking, and a hook
 that fails must not be silently removed. The stake and NFT stake hook helpers
-therefore dispatch each hook with a producer-owned reply ID and reply on both
-success and failure. Producers must handle that reply ID (see
-`stake_hook_reply_response`), which records a failed hook call as attributes on
-the producer's transaction (`action: stake_hook_failed`, `hook: stake|unstake`,
-`error: <receiver error>`) while leaving the hook registered and the staking
-transaction successful.
+therefore dispatch every hook with `reply_always`, tagging each submessage with
+`STAKE_HOOK_REPLY_ID_BASE`/`UNSTAKE_HOOK_REPLY_ID_BASE` plus the hook's index in
+the producer's registry. Producers must call `handle_stake_hook_reply` from
+their `reply` entry point and must not use reply IDs inside either range.
+
+A failed hook leaves the receiver registered, lets the staking transaction
+succeed, and records the failure as attributes on that transaction:
+`action: stake_hook_failed`, `hook: stake|unstake`, `addr: <receiver>` and
+`error: <error>`. CosmWasm chains redact submessage errors before they reach a
+reply handler, so on chain `error` is a codespace and code rather than the
+receiver's own message. `addr` is the identifier a DAO needs in order to act on
+the failure, which is why the reply ID carries the hook's index.
 
 ### Vote Hooks
 Vote hooks are fired when new votes are cast.

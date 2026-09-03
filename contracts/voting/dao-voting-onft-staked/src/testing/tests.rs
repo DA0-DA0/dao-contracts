@@ -549,8 +549,8 @@ fn stake_hook_reply_error_is_non_fatal_and_observable() {
         deps.as_mut(),
         mock_env(),
         Reply {
-            id: crate::contract::STAKE_HOOK_REPLY_ID,
-            result: SubMsgResult::Err("receiver failed".to_string()),
+            id: dao_hooks::stake::STAKE_HOOK_REPLY_ID_BASE,
+            result: SubMsgResult::Err("codespace: wasm, code: 5".to_string()),
         },
     )
     .unwrap();
@@ -560,7 +560,8 @@ fn stake_hook_reply_error_is_non_fatal_and_observable() {
         vec![
             attr("action", "stake_hook_failed"),
             attr("hook", "stake"),
-            attr("error", "receiver failed"),
+            attr("addr", "unknown"),
+            attr("error", "codespace: wasm, code: 5"),
         ]
     );
 }
@@ -572,8 +573,8 @@ fn unstake_hook_reply_error_is_non_fatal_and_observable() {
         deps.as_mut(),
         mock_env(),
         Reply {
-            id: crate::contract::UNSTAKE_HOOK_REPLY_ID,
-            result: SubMsgResult::Err("receiver failed".to_string()),
+            id: dao_hooks::stake::UNSTAKE_HOOK_REPLY_ID_BASE,
+            result: SubMsgResult::Err("codespace: wasm, code: 5".to_string()),
         },
     )
     .unwrap();
@@ -583,7 +584,8 @@ fn unstake_hook_reply_error_is_non_fatal_and_observable() {
         vec![
             attr("action", "stake_hook_failed"),
             attr("hook", "unstake"),
-            attr("error", "receiver failed"),
+            attr("addr", "unknown"),
+            attr("error", "codespace: wasm, code: 5"),
         ]
     );
 }
@@ -595,7 +597,7 @@ fn stake_hook_reply_success_is_empty() {
         deps.as_mut(),
         mock_env(),
         Reply {
-            id: crate::contract::STAKE_HOOK_REPLY_ID,
+            id: dao_hooks::stake::STAKE_HOOK_REPLY_ID_BASE,
             result: SubMsgResult::Ok(SubMsgResponse {
                 events: vec![],
                 data: None,
@@ -654,6 +656,7 @@ fn test_add_remove_hooks() -> anyhow::Result<()> {
     let res = confirm_stake_nft(&mut app, &module, STAKER, "2")?;
     assert!(has_attr(&res, "action", "stake_hook_failed"));
     assert!(has_attr(&res, "hook", "stake"));
+    assert!(has_attr(&res, "addr", "meow"));
     app.update_block(next_block);
     let (total, voting) = query_total_and_voting_power(&app, &module, STAKER, None)?;
     assert_eq!(total, Uint128::new(2));
@@ -662,6 +665,7 @@ fn test_add_remove_hooks() -> anyhow::Result<()> {
     let res = unstake_nfts(&mut app, &module, STAKER, &["2"])?;
     assert!(has_attr(&res, "action", "stake_hook_failed"));
     assert!(has_attr(&res, "hook", "unstake"));
+    assert!(has_attr(&res, "addr", "meow"));
     app.update_block(next_block);
     let (total, voting) = query_total_and_voting_power(&app, &module, STAKER, None)?;
     assert_eq!(total, Uint128::new(1));

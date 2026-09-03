@@ -40,10 +40,11 @@ This contract rejects hook calls from any address that is not the
 `hook_caller` of at least one distribution. Staking contracts treat a failed
 hook call as non-fatal: the stake or unstake still succeeds, the hook stays
 registered, and the failure is recorded as attributes on the staking
-transaction (`action: stake_hook_failed`). This means a stale or premature hook
-registration can never block staking, but it also means rewards are not being
-tracked while the hook is misconfigured, so set up hooks and distributions
-together (ideally in the same proposal).
+transaction, naming the receiver that failed (`action: stake_hook_failed`,
+`addr: <receiver>`). This means a stale or premature hook registration can never
+block staking, but it also means rewards are not being tracked while the hook is
+misconfigured, so watch for that attribute and set up hooks and distributions
+together, ideally in the same proposal.
 
 ### Creating a new distribution
 

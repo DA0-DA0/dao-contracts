@@ -5,7 +5,7 @@ use cosmwasm_std::{
 use dao_hooks::nft_stake::{stake_nft_hook_msgs, unstake_nft_hook_msgs};
 
 use crate::{
-    contract::{execute, STAKE_HOOK_REPLY_ID, UNSTAKE_HOOK_REPLY_ID},
+    contract::execute,
     state::{Config, CONFIG, DAO, HOOKS},
 };
 
@@ -18,7 +18,6 @@ fn test_hooks() {
         &deps.storage,
         Addr::unchecked("ekez"),
         "ekez-token".to_string(),
-        STAKE_HOOK_REPLY_ID,
     )
     .unwrap();
     assert_eq!(messages.len(), 0);
@@ -28,7 +27,6 @@ fn test_hooks() {
         &deps.storage,
         Addr::unchecked("ekez"),
         vec!["ekez-token".to_string()],
-        UNSTAKE_HOOK_REPLY_ID,
     )
     .unwrap();
     assert_eq!(messages.len(), 0);
@@ -66,7 +64,6 @@ fn test_hooks() {
         &deps.storage,
         Addr::unchecked("ekez"),
         "ekez-token".to_string(),
-        STAKE_HOOK_REPLY_ID,
     )
     .unwrap();
     assert_eq!(messages.len(), 1);
@@ -76,7 +73,6 @@ fn test_hooks() {
         &deps.storage,
         Addr::unchecked("ekez"),
         vec!["ekez-token".to_string()],
-        UNSTAKE_HOOK_REPLY_ID,
     )
     .unwrap();
     assert_eq!(messages.len(), 1);
@@ -99,7 +95,6 @@ fn test_hooks() {
         &deps.storage,
         Addr::unchecked("ekez"),
         "ekez-token".to_string(),
-        STAKE_HOOK_REPLY_ID,
     )
     .unwrap();
     assert_eq!(messages.len(), 0);
@@ -109,7 +104,6 @@ fn test_hooks() {
         &deps.storage,
         Addr::unchecked("ekez"),
         vec!["ekez-token".to_string()],
-        UNSTAKE_HOOK_REPLY_ID,
     )
     .unwrap();
     assert_eq!(messages.len(), 0);

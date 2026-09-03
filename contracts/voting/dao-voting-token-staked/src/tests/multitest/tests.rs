@@ -43,8 +43,8 @@ fn stake_hook_reply_error_is_non_fatal_and_observable() {
         deps.as_mut(),
         mock_env(),
         Reply {
-            id: crate::contract::STAKE_HOOK_REPLY_ID,
-            result: SubMsgResult::Err("receiver failed".to_string()),
+            id: dao_hooks::stake::STAKE_HOOK_REPLY_ID_BASE,
+            result: SubMsgResult::Err("codespace: wasm, code: 5".to_string()),
         },
     )
     .unwrap();
@@ -54,7 +54,8 @@ fn stake_hook_reply_error_is_non_fatal_and_observable() {
         vec![
             attr("action", "stake_hook_failed"),
             attr("hook", "stake"),
-            attr("error", "receiver failed"),
+            attr("addr", "unknown"),
+            attr("error", "codespace: wasm, code: 5"),
         ]
     );
 }
@@ -66,8 +67,8 @@ fn unstake_hook_reply_error_is_non_fatal_and_observable() {
         deps.as_mut(),
         mock_env(),
         Reply {
-            id: crate::contract::UNSTAKE_HOOK_REPLY_ID,
-            result: SubMsgResult::Err("receiver failed".to_string()),
+            id: dao_hooks::stake::UNSTAKE_HOOK_REPLY_ID_BASE,
+            result: SubMsgResult::Err("codespace: wasm, code: 5".to_string()),
         },
     )
     .unwrap();
@@ -77,7 +78,8 @@ fn unstake_hook_reply_error_is_non_fatal_and_observable() {
         vec![
             attr("action", "stake_hook_failed"),
             attr("hook", "unstake"),
-            attr("error", "receiver failed"),
+            attr("addr", "unknown"),
+            attr("error", "codespace: wasm, code: 5"),
         ]
     );
 }
@@ -89,7 +91,7 @@ fn stake_hook_reply_success_is_empty() {
         deps.as_mut(),
         mock_env(),
         Reply {
-            id: crate::contract::STAKE_HOOK_REPLY_ID,
+            id: dao_hooks::stake::STAKE_HOOK_REPLY_ID_BASE,
             result: SubMsgResult::Ok(SubMsgResponse {
                 events: vec![],
                 data: None,
@@ -1433,11 +1435,15 @@ fn test_staking_hooks_continue_after_failure() {
     let stake_response = stake_tokens(&mut app, addr.clone(), ADDR1, 100, DENOM).unwrap();
     assert!(has_attr(&stake_response, "action", "stake_hook_failed"));
     assert!(has_attr(&stake_response, "hook", "stake"));
+    // the failure names the hook that actually failed, not the healthy one.
+    assert!(has_attr(&stake_response, "addr", failing_hook.as_str()));
+    assert!(!has_attr(&stake_response, "addr", successful_hook.as_str()));
 
     app.update_block(next_block);
     let unstake_response = unstake_tokens(&mut app, addr.clone(), ADDR1, 75).unwrap();
     assert!(has_attr(&unstake_response, "action", "stake_hook_failed"));
     assert!(has_attr(&unstake_response, "hook", "unstake"));
+    assert!(has_attr(&unstake_response, "addr", failing_hook.as_str()));
 
     let successful_calls: Uint128 = app
         .wrap()
