@@ -19,7 +19,7 @@ use cw_tokenfactory_issuer::msg::{DenomUnit, Metadata};
 use cw_utils::{
     maybe_addr, must_pay, parse_reply_execute_data, parse_reply_instantiate_data, Duration,
 };
-use dao_hooks::stake::{stake_hook_msgs, unstake_hook_msgs};
+use dao_hooks::stake::{handle_stake_hook_reply, stake_hook_msgs, unstake_hook_msgs};
 use dao_interface::{
     state::{Admin, ModuleInstantiateCallback, ModuleInstantiateInfo},
     token::{InitialBalance, NewTokenInfo, TokenFactoryCallback},
@@ -645,6 +645,12 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
+    // hook failures must never block staking or unstaking, and must not remove
+    // the hook. record the failure and let the transaction succeed.
+    if let Some(res) = handle_stake_hook_reply(HOOKS, deps.as_ref(), &msg)? {
+        return Ok(res);
+    }
+
     match msg.id {
         INSTANTIATE_TOKEN_FACTORY_ISSUER_REPLY_ID => {
             // Parse and save address of cw-tokenfactory-issuer

@@ -1,6 +1,8 @@
 use anyhow::Result as AnyResult;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{to_json_binary, Addr, MessageInfo, Uint128, WasmMsg};
+use cosmwasm_std::{
+    attr, to_json_binary, Addr, MessageInfo, Reply, SubMsgResponse, SubMsgResult, Uint128, WasmMsg,
+};
 use cw20::Cw20Coin;
 use cw_controllers::{Claim, ClaimsResponse};
 use cw_multi_test::{next_block, App, AppResponse, Executor};
@@ -26,6 +28,65 @@ const ADDR2: &str = "addr0002";
 const ADDR3: &str = "addr0003";
 const ADDR4: &str = "addr0004";
 const OWNER: &str = "owner";
+
+#[test]
+fn stake_hook_reply_error_is_non_fatal_and_observable() {
+    let mut deps = mock_dependencies();
+    let response = crate::contract::reply(
+        deps.as_mut(),
+        mock_env(),
+        Reply {
+            id: dao_hooks::stake::STAKE_HOOK_REPLY_ID_BASE,
+            result: SubMsgResult::Err("codespace: wasm, code: 5".to_string()),
+        },
+    )
+    .unwrap();
+
+    assert_eq!(
+        response.attributes,
+        vec![
+            attr("action", "stake_hook_failed"),
+            attr("hook", "stake"),
+            attr("addr", "unknown"),
+            attr("error", "codespace: wasm, code: 5"),
+        ]
+    );
+}
+
+#[test]
+fn stake_hook_reply_success_is_empty() {
+    let mut deps = mock_dependencies();
+    let response = crate::contract::reply(
+        deps.as_mut(),
+        mock_env(),
+        Reply {
+            id: dao_hooks::stake::UNSTAKE_HOOK_REPLY_ID_BASE,
+            result: SubMsgResult::Ok(SubMsgResponse {
+                events: vec![],
+                data: None,
+            }),
+        },
+    )
+    .unwrap();
+
+    assert!(response.attributes.is_empty());
+}
+
+#[test]
+fn unknown_reply_id_is_rejected() {
+    let mut deps = mock_dependencies();
+    let err = crate::contract::reply(
+        deps.as_mut(),
+        mock_env(),
+        Reply {
+            id: 99,
+            result: SubMsgResult::Err("irrelevant".to_string()),
+        },
+    )
+    .unwrap_err();
+
+    assert_eq!(err, crate::ContractError::UnknownReplyId { id: 99 });
+}
 
 fn mock_app() -> App {
     App::default()

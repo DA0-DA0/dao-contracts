@@ -2,7 +2,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{coin, to_json_binary, Addr, Coin, Timestamp, Uint128};
 use cw20::{Cw20Coin, Expiration, UncheckedDenom};
 use cw4::{Member, MemberListResponse};
-use cw_multi_test::{BankSudo, Executor, SudoMsg};
+use cw_multi_test::{AppResponse, BankSudo, Executor, SudoMsg};
 use cw_ownable::Action;
 use cw_utils::Duration;
 use dao_interface::{token::InitialBalance, voting::InfoResponse};
@@ -699,7 +699,7 @@ impl Suite {
     }
 
     #[allow(dead_code)]
-    pub fn stake_cw20_tokens(&mut self, amount: u128, sender: &str) {
+    pub fn stake_cw20_tokens(&mut self, amount: u128, sender: &str) -> AppResponse {
         let msg = cw20::Cw20ExecuteMsg::Send {
             contract: self.staking_addr.to_string(),
             amount: Uint128::new(amount),
@@ -708,10 +708,10 @@ impl Suite {
         self.base
             .app
             .execute_contract(Addr::unchecked(sender), self.cw20_addr.clone(), &msg, &[])
-            .unwrap();
+            .unwrap()
     }
 
-    pub fn unstake_cw20_tokens(&mut self, amount: u128, sender: &str) {
+    pub fn unstake_cw20_tokens(&mut self, amount: u128, sender: &str) -> AppResponse {
         let msg = cw20_stake::msg::ExecuteMsg::Unstake {
             amount: Uint128::new(amount),
         };
@@ -723,7 +723,7 @@ impl Suite {
                 &msg,
                 &[],
             )
-            .unwrap();
+            .unwrap()
     }
 
     pub fn stake_nft(&mut self, sender: &str, token_id: u64) {
