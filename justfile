@@ -40,6 +40,7 @@ deploy-local: download-deps
 		-e GAS_LIMIT={{gas_limit}} \
 		-e MAX_BYTES=22020096 \
 		-e UNSAFE_CORS=true \
+		-e JUNOD_GRPC_ADDRESS=0.0.0.0:9090 \
 		-p 1317:1317 \
 		-p 26656:26656 \
 		-p 26657:26657 \

@@ -456,6 +456,8 @@ impl<'a> TokenVotingContract<'a> {
     }
 
     fn get_wasm_byte_code() -> Vec<u8> {
+        // OsmosisTestApp requires the default optimizer build (osmosis_tokenfactory),
+        // not the separate Thorchain variant.
         let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         let byte_code = std::fs::read(
             manifest_path
@@ -463,18 +465,19 @@ impl<'a> TokenVotingContract<'a> {
                 .join("..")
                 .join("..")
                 .join("artifacts")
-                .join("dao_voting_token_staked.wasm"),
+                .join("dao_voting_token_staked-default.wasm"),
         );
         match byte_code {
             Ok(byte_code) => byte_code,
-            // On arm processors, the above path is not found, so we try the following path
+            // Retain compatibility with architecture-suffixed default artifacts.
+            // Optimizer 0.16.1 normally uses the primary name on both architectures.
             Err(_) => std::fs::read(
                 manifest_path
                     .join("..")
                     .join("..")
                     .join("..")
                     .join("artifacts")
-                    .join("dao_voting_token_staked-aarch64.wasm"),
+                    .join("dao_voting_token_staked-default-aarch64.wasm"),
             )
             .unwrap(),
         }
