@@ -68,6 +68,14 @@ Run `just bootstrap-dev` to spin up a local environment and `just integration-te
 
 See [ci/integration-tests/README.md](ci/integration-tests/README.md) for more information.
 
+### Runtime compatibility
+
+Workspace and release builds use optimizer 0.16.1, which lowers Wasm sign-extension instructions for older runtimes. This does **not** make every contract compatible with every CosmWasm 1.x chain: float-bearing RBAM/filter functionality requires CosmWasm/wasmvm **1.5 or later**, which [introduced float support with NaN canonicalization](https://github.com/CosmWasm/cosmwasm/blob/v1.5.0/CHANGELOG.md#150---2023-10-31).
+
+The integration-test Juno fixture is pinned to v19.0.0 (wasmvm 1.5.2) by image digest. It tests that runtime, not wasmvm 1.1 compatibility for the entire artifact set, and is not a production-node version recommendation. Test Tube keeps its existing runtime; its external CW721 artifact is pinned to 0.18.0 to match the Rust API and verified with `sha256sum` against a checked-in hash.
+
+The newer test VM does not add floating-point JSON serialization support: the existing `serde-json-wasm` 0.5.2 serializer still panics when asked to serialize an actual floating-point JSON value through `serde_json::Value`. The runtime change does not alter contract code or remove that limitation.
+
 ## Disclaimer
 
 DAO DAO TOOLING IS PROVIDED “AS IS”, AT YOUR OWN RISK, AND WITHOUT

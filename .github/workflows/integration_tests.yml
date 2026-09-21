@@ -62,6 +62,17 @@ jobs:
       - name: Run Integration Tests
         run: just integration-test
 
+      - name: Upload contract artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-contracts-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/*.wasm
+            artifacts/checksums.txt
+          retention-days: 3
+          if-no-files-found: warn
+
       - name: Combine Test Gas Reports
         run: cd ci/integration-tests/ && jq -rs 'reduce .[] as $item ({}; . * $item)' gas_reports/*.json > gas_report.json
 
