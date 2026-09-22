@@ -71,3 +71,22 @@ because we want to skip them when people run `cargo test` from the
 workspace root.
 
 Run `cargo c` to compile the tests.
+
+## Native client configuration
+
+Integration tests and `bootstrap-env` now share the native
+[`dao-chain-client`](../chain-client/README.md) facade. Configuration paths and
+code-ID/address maps are unchanged, but `chain_cfg.rpc_endpoint` is required.
+The local CI configuration uses `http://127.0.0.1:26657`. An existing
+`grpc_endpoint` is preserved in YAML but no longer used by this client.
+For a custom configuration, supply the matching chain's RPC endpoint yourself;
+do not substitute a gRPC URL, change the chain ID to fit an unrelated endpoint,
+or reuse historical deployment IDs on a different chain. The fixture client
+validates the chain ID and requires CometBFT 0.37.
+
+Transactions are submitted once and require committed execution success, not
+just CheckTx admission. An ambiguous timeout is not permission to resubmit.
+Failed global setup is cached so later tests cannot accidentally repeat uploads.
+Tests remain single-threaded because the fixture accounts are shared. Contract
+messages, application assertions, fee calculation and gas-report format are
+preserved; native-client changes do not upgrade the contract or Test Tube runtime.

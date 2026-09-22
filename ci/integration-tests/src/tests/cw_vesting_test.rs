@@ -1,12 +1,10 @@
 use std::{str::FromStr, time::Duration};
 
-use cosm_orc::orchestrator::{cosm_orc::tokio_block, Address, Coin, Denom};
-use cosm_tome::clients::client::{CosmTome, CosmosClient};
-use cosmos_sdk_proto::cosmos::staking::v1beta1::{QueryValidatorsRequest, QueryValidatorsResponse};
 use cw_vesting::{
     msg::{ExecuteMsg, InstantiateMsg},
     vesting::Schedule,
 };
+use dao_chain_client::{Coin, Denom};
 
 use cosmwasm_std::Uint128;
 use test_context::test_context;
@@ -14,18 +12,6 @@ use test_context::test_context;
 use crate::helpers::chain::Chain;
 
 const CONTRACT_NAME: &str = "cw_vesting-staking";
-
-async fn balance<C: CosmosClient>(addr: &str, client: &CosmTome<C>) -> u128 {
-    client
-        .bank_query_balance(
-            Address::from_str(addr).unwrap(),
-            Denom::from_str("ujunox").unwrap(),
-        )
-        .await
-        .unwrap()
-        .balance
-        .amount
-}
 
 // TODO CHECK INVALID ADDRESS (UN)DELEGATION ERRORS
 
@@ -40,18 +26,13 @@ fn test_cw_vesting_staking(chain: &mut Chain) {
     // measure the rewards w/o txn cost included.
     let withdraw_key = chain.users["user5"].key.clone();
 
-    let req = QueryValidatorsRequest {
-        status: "BOND_STATUS_BONDED".to_string(),
-        pagination: None,
-    };
-
-    let grpc_endpoint = chain.cfg.chain_cfg.grpc_endpoint.clone().unwrap();
-    let client = cosm_tome::clients::cosmos_grpc::CosmosgRPC::new(grpc_endpoint);
-    let vals = tokio_block(
-        client.query::<_, QueryValidatorsResponse>(req, "cosmos.staking.v1beta1.Query/Validators"),
-    )
-    .unwrap();
-    let validator = vals.validators.into_iter().next().unwrap().operator_address;
+    let validator = chain
+        .orc
+        .bonded_validators()
+        .unwrap()
+        .into_iter()
+        .next()
+        .unwrap();
     eprintln!("delegating to: {validator}");
 
     chain
@@ -117,7 +98,7 @@ fn test_cw_vesting_staking(chain: &mut Chain) {
         .poll_for_n_blocks(3, Duration::from_secs(40), false)
         .unwrap();
 
-    let start = tokio_block(balance(&user_addr, &chain.orc.client));
+    let start = chain.orc.balance(&user_addr, "ujunox").unwrap();
 
     chain
         .orc
@@ -132,7 +113,7 @@ fn test_cw_vesting_staking(chain: &mut Chain) {
         )
         .unwrap();
 
-    let end = tokio_block(balance(&user_addr, &chain.orc.client));
+    let end = chain.orc.balance(&user_addr, "ujunox").unwrap();
 
     assert!(end > start, "{end} > {start}");
 

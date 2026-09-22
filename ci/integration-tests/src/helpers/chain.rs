@@ -1,5 +1,4 @@
-use cosm_orc::orchestrator::{CosmosgRPC, Key, SigningKey};
-use cosm_orc::{config::cfg::Config, orchestrator::cosm_orc::CosmOrc};
+use dao_chain_client::{capture_setup_failure, ChainClient, Config, Key, SigningKey};
 use once_cell::sync::OnceCell;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -11,7 +10,9 @@ use std::path::Path;
 use std::time::Duration;
 use test_context::TestContext;
 
-static CONFIG: OnceCell<Cfg> = OnceCell::new();
+// Cache errors AND panics: a later test must not implicitly repeat a storage
+// transaction whose earlier outcome may be ambiguous.
+static CONFIG: OnceCell<Result<Cfg, String>> = OnceCell::new();
 
 #[derive(Debug)]
 pub struct Cfg {
@@ -21,7 +22,7 @@ pub struct Cfg {
 
 pub struct Chain {
     pub cfg: Config,
-    pub orc: CosmOrc<CosmosgRPC>,
+    pub orc: ChainClient,
     pub users: HashMap<String, SigningAccount>,
 }
 
@@ -44,14 +45,21 @@ pub struct Account {
 
 impl TestContext for Chain {
     fn setup() -> Self {
-        let cfg = CONFIG.get_or_init(global_setup).cfg.clone();
-        let orc = CosmOrc::new(cfg.clone(), true).unwrap();
+        let cfg = CONFIG
+            .get_or_init(|| capture_setup_failure(global_setup))
+            .as_ref()
+            .unwrap_or_else(|error| {
+                panic!("chain setup failed; storage will not be retried: {error}")
+            })
+            .cfg
+            .clone();
+        let orc = ChainClient::new(cfg.clone(), true).unwrap();
         let users = test_accounts(cfg.chain_cfg.derivation_path.clone());
         Self { cfg, orc, users }
     }
 
     fn teardown(self) {
-        let cfg = CONFIG.get().unwrap();
+        let cfg = CONFIG.get().unwrap().as_ref().unwrap();
         save_gas_report(&self.orc, &cfg.gas_report_dir);
     }
 }
@@ -84,7 +92,7 @@ fn global_setup() -> Cfg {
     let gas_report_dir = env::var("GAS_OUT_DIR").unwrap_or_else(|_| "gas_reports".to_string());
 
     let mut cfg = Config::from_yaml(&config).unwrap();
-    let mut orc = CosmOrc::new(cfg.clone(), true).unwrap();
+    let mut orc = ChainClient::new(cfg.clone(), true).unwrap();
 
     let accounts = test_accounts(cfg.chain_cfg.derivation_path.clone());
 
@@ -109,7 +117,7 @@ fn global_setup() -> Cfg {
     }
 }
 
-fn save_gas_report(orc: &CosmOrc<CosmosgRPC>, gas_report_dir: &str) {
+fn save_gas_report(orc: &ChainClient, gas_report_dir: &str) {
     let report = orc
         .gas_profiler_report()
         .expect("error fetching profile reports");

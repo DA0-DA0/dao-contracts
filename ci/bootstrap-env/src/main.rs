@@ -1,8 +1,7 @@
 use anyhow::Result;
-use cosm_orc::orchestrator::{Coin, Key, SigningKey};
-use cosm_orc::{config::cfg::Config, orchestrator::cosm_orc::CosmOrc};
 use cosmwasm_std::{to_json_binary, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
+use dao_chain_client::{Address, ChainClient, Coin, Config, Denom, Key, SigningKey};
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_voting::pre_propose::PreProposeSubmissionPolicy;
 use dao_voting::{
@@ -28,7 +27,7 @@ fn main() -> Result<()> {
 
     let config = env::var("CONFIG").expect("missing yaml CONFIG env var");
     let mut cfg = Config::from_yaml(&config)?;
-    let mut orc = CosmOrc::new(cfg.clone(), false)?;
+    let mut orc = ChainClient::new(cfg.clone(), false)?;
 
     // use first test user as DAO admin, and only DAO member:
     let accounts: Vec<Account> =
@@ -136,9 +135,16 @@ fn main() -> Result<()> {
         "dao_init",
         &msg,
         &key,
-        Some(addr.parse()?),
+        Some(
+            addr.parse::<Address>()
+                .map_err(|error| anyhow::anyhow!(error.to_string()))?,
+        ),
         vec![Coin {
-            denom: cfg.chain_cfg.denom.parse()?,
+            denom: cfg
+                .chain_cfg
+                .denom
+                .parse::<Denom>()
+                .map_err(|error| anyhow::anyhow!(error.to_string()))?,
             amount: 9000000,
         }],
     )?;
@@ -152,47 +158,7 @@ fn main() -> Result<()> {
         vec![],
     )?;
 
-    println!(" ------------------------ ");
-    println!("Config Variables\n");
-
-    println!("Admin user address: {addr}");
-
-    println!(
-        "NEXT_PUBLIC_CW20_CODE_ID={}",
-        orc.contract_map.code_id("cw20_base")?
-    );
-    println!(
-        "NEXT_PUBLIC_CW4GROUP_CODE_ID={}",
-        orc.contract_map.code_id("cw4_group")?
-    );
-    println!(
-        "NEXT_PUBLIC_CWCORE_CODE_ID={}",
-        orc.contract_map.code_id("dao_dao_core")?
-    );
-    println!(
-        "NEXT_PUBLIC_CWPROPOSALSINGLE_CODE_ID={}",
-        orc.contract_map.code_id("dao_proposal_single")?
-    );
-    println!(
-        "NEXT_PUBLIC_CW4VOTING_CODE_ID={}",
-        orc.contract_map.code_id("dao_voting_cw4")?
-    );
-    println!(
-        "NEXT_PUBLIC_CW20STAKEDBALANCEVOTING_CODE_ID={}",
-        orc.contract_map.code_id("dao_voting_cw20_staked")?
-    );
-    println!(
-        "NEXT_PUBLIC_STAKECW20_CODE_ID={}",
-        orc.contract_map.code_id("cw20_stake")?
-    );
-    println!(
-        "NEXT_PUBLIC_DAO_CONTRACT_ADDRESS={}",
-        orc.contract_map.address("dao_dao_core")?
-    );
-    println!(
-        "NEXT_PUBLIC_V1_FACTORY_CONTRACT_ADDRESS={}",
-        orc.contract_map.address("cw_admin_factory")?
-    );
+    write_frontend_config(&mut std::io::stdout(), &orc, &addr)?;
 
     // Persist contract code_ids in local.yaml so we can use SKIP_CONTRACT_STORE locally to avoid having to re-store them again
     cfg.contract_deploy_info
@@ -203,4 +169,118 @@ fn main() -> Result<()> {
     )?;
 
     Ok(())
+}
+
+fn write_frontend_config(
+    output: &mut impl std::io::Write,
+    orc: &ChainClient,
+    addr: &str,
+) -> Result<()> {
+    writeln!(output, " ------------------------ ")?;
+    writeln!(output, "Config Variables\n")?;
+
+    writeln!(output, "Admin user address: {addr}")?;
+
+    writeln!(
+        output,
+        "NEXT_PUBLIC_CW20_CODE_ID={}",
+        orc.contract_map.code_id("cw20_base")?
+    )?;
+    writeln!(
+        output,
+        "NEXT_PUBLIC_CW4GROUP_CODE_ID={}",
+        orc.contract_map.code_id("cw4_group")?
+    )?;
+    writeln!(
+        output,
+        "NEXT_PUBLIC_CWCORE_CODE_ID={}",
+        orc.contract_map.code_id("dao_dao_core")?
+    )?;
+    writeln!(
+        output,
+        "NEXT_PUBLIC_CWPROPOSALSINGLE_CODE_ID={}",
+        orc.contract_map.code_id("dao_proposal_single")?
+    )?;
+    writeln!(
+        output,
+        "NEXT_PUBLIC_CW4VOTING_CODE_ID={}",
+        orc.contract_map.code_id("dao_voting_cw4")?
+    )?;
+    writeln!(
+        output,
+        "NEXT_PUBLIC_CW20STAKEDBALANCEVOTING_CODE_ID={}",
+        orc.contract_map.code_id("dao_voting_cw20_staked")?
+    )?;
+    writeln!(
+        output,
+        "NEXT_PUBLIC_STAKECW20_CODE_ID={}",
+        orc.contract_map.code_id("cw20_stake")?
+    )?;
+    writeln!(
+        output,
+        "NEXT_PUBLIC_DAO_CONTRACT_ADDRESS={}",
+        orc.contract_map.address("dao_dao_core")?
+    )?;
+    writeln!(
+        output,
+        "NEXT_PUBLIC_V1_FACTORY_CONTRACT_ADDRESS={}",
+        orc.contract_map.address("cw_admin_factory")?
+    )?;
+
+    Ok(())
+}
+
+#[test]
+fn frontend_output_and_deployment_config_are_preserved() {
+    use dao_chain_client::config::DeployInfo;
+    let mut cfg: Config =
+        serde_yaml::from_str(include_str!("../../configs/cosm-orc/ci.yaml")).unwrap();
+    for (name, id) in [
+        ("cw20_base", 11),
+        ("cw4_group", 12),
+        ("dao_dao_core", 13),
+        ("dao_proposal_single", 14),
+        ("dao_voting_cw4", 15),
+        ("dao_voting_cw20_staked", 16),
+        ("cw20_stake", 17),
+    ] {
+        cfg.contract_deploy_info.insert(
+            name.into(),
+            DeployInfo {
+                code_id: Some(id),
+                address: None,
+            },
+        );
+    }
+    let mut client = ChainClient::new(cfg.clone(), false).unwrap();
+    client
+        .contract_map
+        .add_address("dao_dao_core", "core-address")
+        .unwrap();
+    client
+        .contract_map
+        .add_address("cw_admin_factory", "factory-address")
+        .unwrap();
+    let mut output = Vec::new();
+    write_frontend_config(&mut output, &client, "admin-address").unwrap();
+    assert_eq!(
+        String::from_utf8(output).unwrap(),
+        concat!(
+            " ------------------------ \nConfig Variables\n\nAdmin user address: admin-address\n",
+            "NEXT_PUBLIC_CW20_CODE_ID=11\nNEXT_PUBLIC_CW4GROUP_CODE_ID=12\n",
+            "NEXT_PUBLIC_CWCORE_CODE_ID=13\nNEXT_PUBLIC_CWPROPOSALSINGLE_CODE_ID=14\n",
+            "NEXT_PUBLIC_CW4VOTING_CODE_ID=15\nNEXT_PUBLIC_CW20STAKEDBALANCEVOTING_CODE_ID=16\n",
+            "NEXT_PUBLIC_STAKECW20_CODE_ID=17\nNEXT_PUBLIC_DAO_CONTRACT_ADDRESS=core-address\n",
+            "NEXT_PUBLIC_V1_FACTORY_CONTRACT_ADDRESS=factory-address\n",
+        )
+    );
+    cfg.contract_deploy_info
+        .clone_from(client.contract_map.deploy_info());
+    let restored: Config = serde_yaml::from_str(&serde_yaml::to_string(&cfg).unwrap()).unwrap();
+    assert_eq!(restored.contract_deploy_info, cfg.contract_deploy_info);
+    assert_eq!(restored.chain_cfg.rpc_endpoint, cfg.chain_cfg.rpc_endpoint);
+    assert_eq!(
+        restored.chain_cfg.grpc_endpoint,
+        cfg.chain_cfg.grpc_endpoint
+    );
 }

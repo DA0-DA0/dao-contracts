@@ -1,10 +1,10 @@
 use crate::helpers::chain::Chain;
 use crate::helpers::helper::create_dao;
 use assert_matches::assert_matches;
-use cosm_orc::orchestrator::error::CosmwasmError::TxError;
-use cosm_orc::orchestrator::error::ProcessError;
 use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Decimal, Uint128};
 use cw20_stake::msg::{StakedValueResponse, TotalValueResponse};
+use dao_chain_client::error::CosmwasmError::TxError;
+use dao_chain_client::error::ProcessError;
 
 use cw_utils::Duration;
 use dao_interface::query::{GetItemResponse, PauseInfoResponse};

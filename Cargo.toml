@@ -43,9 +43,7 @@ assert_matches = "1.5"
 base64 = "0.22.1"
 bech32 = "0.9.1"
 chrono = "0.4"
-cosm-orc = { version = "4.0" }
-cosm-tome = "0.2"
-cosmos-sdk-proto = "0.19"
+dao-chain-client = { path = "./ci/chain-client" }
 cosmwasm-schema = { version = "1.5.4" }
 cosmwasm-std = { version = "1.5.4", features = ["ibc3", "cosmwasm_1_2"] }
 cw-controllers = "1.1"

@@ -1,6 +1,6 @@
-use cosm_orc::orchestrator::SigningKey;
 use cosmwasm_std::{Binary, Empty, Uint128};
 use cw_utils::Duration;
+use dao_chain_client::SigningKey;
 use test_context::test_context;
 
 use dao_voting_cw721_staked as module;
@@ -32,7 +32,6 @@ pub fn instantiate_cw721_base(chain: &mut Chain, key: &SigningKey, minter: &str)
         )
         .unwrap()
         .address
-        .into()
 }
 
 fn setup_test(
@@ -59,8 +58,7 @@ fn setup_test(
             vec![],
         )
         .unwrap()
-        .address
-        .into();
+        .address;
     CommonTest { module, cw721 }
 }
 

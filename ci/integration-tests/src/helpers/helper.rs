@@ -1,9 +1,9 @@
 use super::chain::Chain;
 use anyhow::Result;
-use cosm_orc::orchestrator::SigningKey;
 use cosmwasm_std::{to_json_binary, CosmosMsg, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_utils::Duration;
+use dao_chain_client::SigningKey;
 use dao_interface::query::DumpStateResponse;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_voting::{
