@@ -8,14 +8,14 @@ use cw4::{
     Member, MemberChangedHookMsg, MemberDiff, MemberListResponse, MemberResponse,
     TotalWeightResponse,
 };
-use cw721::{Cw721ReceiveMsg, NftInfoResponse, OwnerOfResponse};
+use cw721::{NftInfoResponse, OwnerOfResponse};
 use cw721_base::{Cw721Contract, InstantiateMsg as Cw721BaseInstantiateMsg};
 use cw_storage_plus::Bound;
 use cw_utils::maybe_addr;
 use dao_cw721_extensions::roles::{ExecuteExt, MetadataExt, QueryExt};
 use std::cmp::Ordering;
 
-use crate::msg::{ExecuteMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, MigrateMsg, QueryMsg};
 use crate::state::{MEMBERS, TOTAL};
 use crate::{error::RolesContractError as ContractError, state::HOOKS};
 
@@ -55,7 +55,34 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    // Only owner / minter can execute
+    // UpdateOwnership has its own auth model — each Action is auth-checked
+    // separately by cw_ownable::update_ownership (current owner for
+    // TransferOwnership/RenounceOwnership; pending_owner for AcceptOwnership).
+    // It MUST be matched BEFORE the outer assert_owner gate below, otherwise
+    // the legitimate `AcceptOwnership` call from the pending owner (the DAO
+    // core during the dao-voting-cw721-roles bootstrap handover) is rejected
+    // with NotOwner and the cw721-roles ownership never transfers.
+    if let ExecuteMsg::UpdateOwnership(_) = &msg {
+        return Cw721Roles::default()
+            .execute(deps, env, info, msg)
+            .map_err(Into::into);
+    }
+
+    // Soulbound NFTs have no use for approvals — even though TransferNft and
+    // SendNft are blocked below, granting/revoking approvals would suggest
+    // transferability to anything that introspects the contract. Reject
+    // explicitly for design hygiene.
+    if matches!(
+        &msg,
+        ExecuteMsg::Approve { .. }
+            | ExecuteMsg::Revoke { .. }
+            | ExecuteMsg::ApproveAll { .. }
+            | ExecuteMsg::RevokeAll { .. }
+    ) {
+        return Err(ContractError::Soulbound {});
+    }
+
+    // Only owner / minter can execute the remaining mutating handlers.
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     match msg {
@@ -229,55 +256,29 @@ pub fn execute_burn(
 }
 
 pub fn execute_transfer(
-    deps: DepsMut,
+    _deps: DepsMut,
     _env: Env,
-    info: MessageInfo,
-    recipient: String,
-    token_id: String,
+    _info: MessageInfo,
+    _recipient: String,
+    _token_id: String,
 ) -> Result<Response, ContractError> {
-    let contract = Cw721Roles::default();
-
-    let mut token = contract.tokens.load(deps.storage, &token_id)?;
-    // set owner and remove existing approvals
-    token.owner = deps.api.addr_validate(&recipient)?;
-    token.approvals = vec![];
-    contract.tokens.save(deps.storage, &token_id, &token)?;
-
-    Ok(Response::new()
-        .add_attribute("action", "transfer_nft")
-        .add_attribute("sender", info.sender)
-        .add_attribute("recipient", recipient)
-        .add_attribute("token_id", token_id))
+    // Soulbound: NFTs represent on-chain identity / role membership and must
+    // not change hands. Reject all transfers even when called by the contract
+    // owner (the DAO), since a DAO-initiated transfer would also desync the
+    // cw4 voting weight map maintained by mint/burn/update_weight handlers.
+    Err(ContractError::Soulbound {})
 }
 
 pub fn execute_send(
-    deps: DepsMut,
+    _deps: DepsMut,
     _env: Env,
-    info: MessageInfo,
-    token_id: String,
-    recipient_contract: String,
-    msg: Binary,
+    _info: MessageInfo,
+    _token_id: String,
+    _recipient_contract: String,
+    _msg: Binary,
 ) -> Result<Response, ContractError> {
-    let contract = Cw721Roles::default();
-
-    let mut token = contract.tokens.load(deps.storage, &token_id)?;
-    // set owner and remove existing approvals
-    token.owner = deps.api.addr_validate(&recipient_contract)?;
-    token.approvals = vec![];
-    contract.tokens.save(deps.storage, &token_id, &token)?;
-
-    let send = Cw721ReceiveMsg {
-        sender: info.sender.to_string(),
-        token_id: token_id.clone(),
-        msg,
-    };
-
-    Ok(Response::new()
-        .add_message(send.into_cosmos_msg(recipient_contract.clone())?)
-        .add_attribute("action", "send_nft")
-        .add_attribute("sender", info.sender)
-        .add_attribute("recipient", recipient_contract)
-        .add_attribute("token_id", token_id))
+    // See execute_transfer — soulbound, no transfer paths.
+    Err(ContractError::Soulbound {})
 }
 
 pub fn execute_add_hook(
@@ -469,6 +470,18 @@ pub fn query_member(deps: Deps, addr: String, height: Option<u64>) -> StdResult<
         None => MEMBERS.may_load(deps.storage, &addr),
     }?;
     Ok(MemberResponse { weight })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    // No state migration logic — just bump the cw2 version so this contract
+    // can be MigrateContract'd by the wasm-level admin (e.g. an x/gov proposal
+    // on chain-governed deployments) if a future bug requires a patched wasm.
+    cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    Ok(Response::default()
+        .add_attribute("action", "migrate")
+        .add_attribute("contract_name", CONTRACT_NAME)
+        .add_attribute("contract_version", CONTRACT_VERSION))
 }
 
 pub fn query_list_members(
