@@ -385,7 +385,7 @@ async fn real_client_signs_once_preserves_envelopes_and_committed_events() {
     let fee = final_auth.fee.unwrap();
     assert_eq!(fee.gas_limit, 30002);
     assert_eq!(fee.amount[0].amount, "3001");
-    assert_eq!(fee.amount[0].denom, "ujunox");
+    assert_eq!(fee.amount[0].denom, "ujuno");
     let public = PubKey::decode(
         final_auth.signer_infos[0]
             .public_key
@@ -644,7 +644,7 @@ async fn node_and_account_validation_and_simulation_failure_happen_before_submis
                     value["node_info"]["network"] = json!("wrong-chain");
                 }
                 if case == "version" {
-                    value["node_info"]["version"] = json!("0.38.0");
+                    value["node_info"]["version"] = json!("0.39.0");
                 }
             }
             let path = req["params"]["path"].as_str().unwrap_or("");

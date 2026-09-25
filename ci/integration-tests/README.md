@@ -82,7 +82,9 @@ The local CI configuration uses `http://127.0.0.1:26657`. An existing
 For a custom configuration, supply the matching chain's RPC endpoint yourself;
 do not substitute a gRPC URL, change the chain ID to fit an unrelated endpoint,
 or reuse historical deployment IDs on a different chain. The fixture client
-validates the chain ID and requires CometBFT 0.37.
+validates the chain ID and requires CometBFT 0.37 or 0.38. The local fixture
+runs Juno v28.0.2 and funds fees in `ujuno`; the historical `uni-5` testnet
+configuration is unchanged and still expects its own endpoint and `ujunox`.
 
 Transactions are submitted once and require committed execution success, not
 just CheckTx admission. An ambiguous timeout is not permission to resubmit.

@@ -40,6 +40,66 @@ async fn members(rpc: &Rpc, address: &str) -> Value {
     serde_json::from_slice(&result.data).unwrap()
 }
 
+/// Opt-in full-storage reproduction of the CI setup path. Like the pilot, it
+/// never runs in ordinary unit tests and only targets an explicit throwaway
+/// loopback endpoint.
+// Synchronous on purpose: this mirrors the integration harness code path.
+#[test]
+#[ignore = "requires explicit throwaway pinned Juno endpoint and retained CI artifacts"]
+fn pinned_juno_store_all() {
+    let endpoint =
+        std::env::var("PILOT_RPC").expect("PILOT_RPC must name the disposable loopback node");
+    assert!(
+        endpoint.starts_with("http://127.0.0.1:"),
+        "pilot is restricted to loopback"
+    );
+    let artifacts =
+        PathBuf::from(std::env::var("PILOT_ARTIFACT_DIR").expect("retained CI artifacts required"));
+    let mut cfg: Config =
+        serde_yaml::from_str(include_str!("../../../configs/cosm-orc/ci.yaml")).unwrap();
+    cfg.chain_cfg.rpc_endpoint = Some(endpoint);
+    let accounts: Vec<Value> =
+        serde_json::from_str(include_str!("../../../configs/test_accounts.json")).unwrap();
+    let key = SigningKey {
+        name: accounts[0]["name"].as_str().unwrap().into(),
+        key: Key::Mnemonic(accounts[0]["mnemonic"].as_str().unwrap().into()),
+        derivation_path: cfg.chain_cfg.derivation_path.clone(),
+    };
+    let mut client = crate::ChainClient::new(cfg, true).unwrap();
+    client
+        .poll_for_n_blocks(1, Duration::from_secs(20), true)
+        .unwrap();
+    let mut names = std::fs::read_dir(&artifacts)
+        .unwrap()
+        .map(|entry| entry.map(|entry| entry.path()))
+        .collect::<std::io::Result<Vec<_>>>()
+        .unwrap();
+    names.sort();
+    names.retain(|path| {
+        path.extension()
+            .map(|extension| extension == "wasm")
+            .unwrap_or(false)
+    });
+    let started = std::time::Instant::now();
+    let result = client.store_contracts(artifacts.to_str().unwrap(), &key, None);
+    match &result {
+        Ok(stored) => println!(
+            "{}",
+            json!({"stage":"store-all-complete","stored":stored.len(),
+            "expected":names.len(),"seconds":started.elapsed().as_secs(),
+            "registry":client.contract_map.deploy_info().len()})
+        ),
+        Err(error) => println!(
+            "{}",
+            json!({"stage":"store-all-failed","expected":names.len(),
+            "registry":client.contract_map.deploy_info().len(),"seconds":started.elapsed().as_secs(),
+            "error":error.to_string()})
+        ),
+    }
+    result.unwrap();
+    assert_eq!(client.contract_map.deploy_info().len(), names.len());
+}
+
 #[tokio::test]
 #[ignore = "requires explicit throwaway pinned Juno endpoint and retained CI artifacts"]
 async fn pinned_juno() {

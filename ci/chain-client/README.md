@@ -21,9 +21,10 @@ supply an endpoint for the configured chain yourself. This migration does not
 retarget the historical `uni-5` configuration or its stored code IDs.
 
 Before signing, the client verifies the configured chain ID and requires a
-CometBFT **0.37** node. Its compatibility pilot targets the pinned Juno v19.0.0
-fixture (SDK 0.47.6, CometBFT 0.37.2, wasmd 0.45.0). Compatibility with other node
-versions is not implied by the upstream RPC crate's additional dialects.
+CometBFT **0.37 or 0.38** node, rejecting other versions. Its compatibility
+pilots target the pinned Juno v28.0.2 fixture (SDK 0.50.11, CometBFT 0.38.17,
+wasmd 0.54.0, wasmvm 2.2.2). Compatibility with other node versions is not
+implied by the upstream RPC crate's additional dialects.
 
 ## Transaction policy
 
@@ -31,14 +32,17 @@ versions is not implied by the upstream RPC crate's additional dialects.
   signing, network requests and the committed response, **per transaction**, not
   per artifact batch. Requests and the enclosing operation are bounded.
 - Sign once, calculate the local SHA256 hash, and submit once through
-  `broadcast_tx_commit` with the explicit 0.37 dialect. HTTP redirects are disabled.
+  `broadcast_tx_commit`. The 0.37 request encoding is identical on 0.38 and the
+  response type aliases both field spellings, which the pinned fixture's full
+  storage run verifies. HTTP redirects are disabled.
 - Require CheckTx success, the matching hash, positive committed height, and
   execution success. CheckTx alone is never an execution receipt. The maintained
   RPC decoder requires Comet's canonical uppercase hash encoding; noncanonical
   lowercase or malformed hashes are rejected, not normalized.
 - Preserve committed log, data, events, gas wanted and gas used. The RPC library's
   execution-data bytes retain base64 text, which is decoded explicitly. **Event
-  attributes are already plain strings in 0.37 and must not be base64-decoded.**
+  attributes are already plain strings in 0.37/0.38 and must not be
+  base64-decoded.**
 - Resolve code IDs and instantiated addresses from the single matching top-level
   protobuf response, not an arbitrary nested instantiation event. Verify a store
   response's checksum before updating the contract registry.
@@ -104,8 +108,11 @@ PILOT_RPC=http://127.0.0.1:26657 PILOT_ARTIFACT_DIR="$PWD/artifacts" \
   rpc::pinned_juno::pinned_juno -- --ignored --exact --nocapture --test-threads=1
 ```
 
-The pilot checks account/bank/validator queries, block polling, an actual
-checksum-verified upload, instantiate/execute/query and rejection handling. To
+The pilots check account/bank/validator queries, block polling, an actual
+checksum-verified upload, instantiate/execute/query and rejection handling.
+`pinned_juno_store_all` additionally stores every artifact in the directory —
+including the largest one, which only fits the RPC body limit the fixture
+bootstrap raises — and requires the complete registry at the end. To
 exercise committed execution failure, its **test-only** fault injection submits
 an unauthorized execute without simulation; production `transact` always
 simulates. No limits are raised, and no failed submission is retried.

@@ -34,9 +34,13 @@ bootstrap-dev: deploy-local workspace-optimize
 deploy-local: download-deps
 	docker kill cosmwasm || true
 	docker volume rm -f junod_data
+	# Juno v28.0.2 (wasmvm 2.2.2): earlier alpine/wasmer-4.2.2 images abort the
+	# node process during StoreCode (CosmWasm/wasmvm#523). v28 requires the real
+	# ujuno denom, so replicate the image's start script with matching fees, and
+	# raise the RPC body limit so large optimized artifacts fit one transaction.
 	docker run --rm -d --name cosmwasm \
 		-e PASSWORD=xxxxxxxxx \
-		-e STAKE_TOKEN=ujunox \
+		-e STAKE_TOKEN=ujuno \
 		-e GAS_LIMIT={{gas_limit}} \
 		-e MAX_BYTES=22020096 \
 		-e UNSAFE_CORS=true \
@@ -46,7 +50,8 @@ deploy-local: download-deps
 		-p 26657:26657 \
 		-p 9090:9090 \
 		--mount type=volume,source=junod_data,target=/root \
-		ghcr.io/cosmoscontracts/juno:v19.0.0@sha256:1ec8ecb4b2f5aa967de526526edcefeb8cc27bd77e292f7d4c36daf474e9ad5e /opt/setup_and_run.sh {{test_addrs}}
+		ghcr.io/cosmoscontracts/juno@sha256:256d5e441b9b2decdd0473a06df05be45c6fb067f8454ff3e81adddbc2bdbdc9 \
+		sh -c '/opt/setup_junod.sh "$@"; sed -i "s/^max_body_bytes = .*/max_body_bytes = 104857600/" /root/.juno/config/config.toml; junod start --rpc.laddr tcp://0.0.0.0:26657 --minimum-gas-prices 0.0001ujuno --trace' _ {{test_addrs}}
 
 download-deps:
 	mkdir -p artifacts target

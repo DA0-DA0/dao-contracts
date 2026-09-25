@@ -1,5 +1,5 @@
 chain_cfg:
-  denom: "ujunox"
+  denom: "ujuno"
   prefix: "juno"
   chain_id: "testing"
   rpc_endpoint: "http://127.0.0.1:26657"

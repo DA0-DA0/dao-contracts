@@ -68,13 +68,17 @@ pub struct Rpc {
 
 impl Rpc {
     pub fn new(cfg: ChainConfig) -> Result<Self> {
-        let endpoint = cfg.validate()?.try_into()?;
+        let endpoint: tendermint_rpc::HttpClientUrl = cfg.validate()?.try_into()?;
         let transport = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .timeout(OPERATION_TIMEOUT)
             .connect_timeout(OPERATION_TIMEOUT)
             .build()
             .map_err(|e| ProcessError::Rpc(e.to_string()))?;
+        // broadcast_tx_commit's request is identical for CometBFT 0.37 and
+        // 0.38, and the response type aliases both field spellings, so the
+        // 0.37 dialect also decodes 0.38 responses for the endpoints used
+        // here. status() still rejects unsupported node versions.
         let client = HttpClient::builder(endpoint)
             .compat_mode(CompatMode::V0_37)
             .client(transport)
@@ -97,8 +101,12 @@ impl Rpc {
         if status.node_info.network.as_str() != self.cfg.chain_id {
             return Err(protocol("node chain ID does not match configured chain_id"));
         }
-        if !status.node_info.version.to_string().starts_with("0.37.") {
-            return Err(protocol("this fixture client requires CometBFT 0.37"));
+        if !status.node_info.version.to_string().starts_with("0.37.")
+            && !status.node_info.version.to_string().starts_with("0.38.")
+        {
+            return Err(protocol(
+                "this fixture client requires CometBFT 0.37 or 0.38",
+            ));
         }
         Ok(status)
     }

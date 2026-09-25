@@ -48,7 +48,7 @@ fn test_cw_vesting_staking(chain: &mut Chain) {
                 description: Some("description".to_string()),
 
                 total: Uint128::new(100_000_000),
-                denom: cw_vesting::UncheckedDenom::Native("ujunox".to_string()),
+                denom: cw_vesting::UncheckedDenom::Native("ujuno".to_string()),
 
                 schedule: Schedule::SaturatingLinear,
                 start_time: None,
@@ -58,7 +58,7 @@ fn test_cw_vesting_staking(chain: &mut Chain) {
             &user_key,
             None,
             vec![Coin {
-                denom: Denom::from_str("ujunox").unwrap(),
+                denom: Denom::from_str("ujuno").unwrap(),
                 amount: 100_000_000,
             }],
         )
@@ -98,7 +98,7 @@ fn test_cw_vesting_staking(chain: &mut Chain) {
         .poll_for_n_blocks(3, Duration::from_secs(40), false)
         .unwrap();
 
-    let start = chain.orc.balance(&user_addr, "ujunox").unwrap();
+    let start = chain.orc.balance(&user_addr, "ujuno").unwrap();
 
     chain
         .orc
@@ -113,7 +113,7 @@ fn test_cw_vesting_staking(chain: &mut Chain) {
         )
         .unwrap();
 
-    let end = chain.orc.balance(&user_addr, "ujunox").unwrap();
+    let end = chain.orc.balance(&user_addr, "ujuno").unwrap();
 
     assert!(end > start, "{end} > {start}");
 
