@@ -234,3 +234,6 @@ pub enum QueryMsg {
     #[returns(::cosmwasm_std::Uint128)]
     Stake(StakeTrackerQuery),
 }
+
+#[cw_serde]
+pub struct MigrateMsg {}
