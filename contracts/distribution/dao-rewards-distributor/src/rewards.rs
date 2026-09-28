@@ -1,4 +1,4 @@
-use std::cmp::min;
+use std::cmp::{max, min};
 
 use cosmwasm_std::{Addr, BlockInfo, Decimal, Deps, DepsMut, Env, StdResult, Uint128, Uint256};
 use cw20::Expiration;
@@ -223,29 +223,26 @@ pub fn get_accrued_rewards_not_yet_accounted_for(
     let voting_power: Uint256 =
         get_voting_power_at_block(deps, &env.block, &distribution.vp_contract, addr)?.into();
 
-    // determine the height right after the user's last checkpoint for this
+    // determine the height of the user's last checkpoint for this
     // distribution, to use as the conservative voting power reference point.
-    // if the user has never been checkpointed for this distribution (their
-    // accounted for puvp is the default of 0, i.e. the distribution's
-    // start), fall back to the distribution's creation height, since that is
-    // the earliest point their voting power could be relevant from.
-    // if we don't know either (legacy distribution/user state stored before
-    // this field was introduced), we have no reference point to be
+    // it can never be earlier than the height from which the current
+    // `vp_contract` has been in use: the distribution's creation (for a user
+    // never checkpointed, whose accounted for puvp is the default of 0, i.e.
+    // the distribution's start) or the last time `vp_contract` was changed,
+    // since the new contract's earlier voting power is unrelated to this
+    // distribution. if neither is known (legacy distribution/user state stored
+    // before these fields were introduced), we have no reference point to be
     // conservative against, so fall back to the original behavior of only
     // using the current voting power.
-    let last_checkpoint_height = match user_reward_state
-        .last_updated_height
-        .get(&distribution.id)
-        .copied()
-    {
-        Some(height) => Some(height),
-        None if !user_reward_state
-            .accounted_for_rewards_puvp
-            .contains_key(&distribution.id) =>
-        {
-            distribution.created_at_height
-        }
-        None => None,
+    let last_checkpoint_height = match (
+        user_reward_state
+            .last_updated_height
+            .get(&distribution.id)
+            .copied(),
+        distribution.vp_contract_since_height,
+    ) {
+        (Some(last_updated), Some(since)) => Some(max(last_updated, since)),
+        (last_updated, since) => last_updated.or(since),
     };
 
     let voting_power = match last_checkpoint_height {

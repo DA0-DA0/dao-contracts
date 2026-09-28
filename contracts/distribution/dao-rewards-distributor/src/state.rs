@@ -203,17 +203,19 @@ pub struct DistributionState {
     /// changes in the emission rate. each time emission rate is changed, this
     /// value is increased by the `active_epoch`'s rewards earned puvp.
     pub historical_earned_puvp: Uint256,
-    /// the block height at which this distribution was created. used as the
-    /// voting power baseline reference for users who have never been
-    /// checkpointed for this distribution (i.e. whose accounted for rewards
-    /// puvp is still the default of 0, the distribution's start).
+    /// the block height from which `vp_contract` has been this distribution's
+    /// voting power contract: its creation height, or the height `vp_contract`
+    /// was last changed by `Update`. used as the voting power baseline for
+    /// users who have not been checkpointed since then, so that the
+    /// conservative accrual in
+    /// `rewards::get_accrued_rewards_not_yet_accounted_for` never queries the
+    /// current `vp_contract` at a height from before it was in use.
     /// `#[serde(default)]` so that distributions stored before this field was
-    /// introduced still deserialize as `None`, since we cannot know their
-    /// true creation height after the fact. `None` disables the conservative
-    /// voting power baseline for never-checkpointed users of that
-    /// distribution; see `rewards::get_accrued_rewards_not_yet_accounted_for`.
+    /// introduced still deserialize as `None`, since their creation height is
+    /// unknown. `None` disables the baseline for users who were never
+    /// checkpointed.
     #[serde(default)]
-    pub created_at_height: Option<u64>,
+    pub vp_contract_since_height: Option<u64>,
     /// funds deposited for this distribution (via `Fund`/`FundLatest`, or
     /// natively provided on `Create`) that have not yet been claimed (via
     /// `Claim`) or clawed back (via `Withdraw`). used as a per-distribution

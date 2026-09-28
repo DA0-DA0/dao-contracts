@@ -3153,7 +3153,7 @@ fn test_large_linear_emission_amount_does_not_overflow_puvp() {
         funded_amount: amount,
         withdraw_destination: Addr::unchecked(OWNER),
         historical_earned_puvp: Uint256::zero(),
-        created_at_height: None,
+        vp_contract_since_height: None,
         claimable_funds: None,
     };
 
@@ -3479,5 +3479,48 @@ fn test_claimable_funds_tracks_fund_and_withdraw() {
     assert_eq!(
         suite.get_distribution(1).claimable_funds,
         Some(Uint128::zero())
+    );
+}
+
+#[test]
+fn test_update_vp_contract_keeps_rewards_accrued_before_the_switch() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::Native).build();
+
+    // ADDR0 accrues rewards without being checkpointed.
+    suite.skip_blocks(100_000);
+    let pending_before = suite.get_pending_rewards(ADDR0, 1);
+    assert!(!pending_before.is_zero());
+
+    // switch to a newly instantiated voting power contract with the same
+    // voting power split, but no voting power history before now. the
+    // conservative accrual must not compare against the new contract's
+    // (empty) voting power from before the switch, or ADDR0 would lose
+    // everything accrued so far.
+    let new_vp_contract = suite
+        .base
+        .cw4()
+        .with_members(vec![
+            Member {
+                addr: ADDR0.to_string(),
+                weight: 100,
+            },
+            Member {
+                addr: ADDR1.to_string(),
+                weight: 50,
+            },
+            Member {
+                addr: ADDR2.to_string(),
+                weight: 50,
+            },
+        ])
+        .dao()
+        .voting_module_addr;
+    suite.update_vp_contract(1, new_vp_contract.as_str());
+    suite.skip_blocks(1);
+
+    let pending_after = suite.get_pending_rewards(ADDR0, 1);
+    assert!(
+        pending_after >= pending_before,
+        "pending rewards dropped from {pending_before} to {pending_after} after switching vp_contract"
     );
 }

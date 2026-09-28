@@ -200,7 +200,7 @@ fn execute_create(
         open_funding,
         withdraw_destination,
         historical_earned_puvp: Uint256::zero(),
-        created_at_height: Some(env.block.height),
+        vp_contract_since_height: Some(env.block.height),
         claimable_funds: Some(Uint128::zero()),
     };
 
@@ -270,6 +270,9 @@ fn execute_update(
 
     if let Some(vp_contract) = vp_contract {
         distribution.vp_contract = validate_voting_power_contract(&deps, vp_contract)?;
+        // the new contract's voting power history before now is unrelated to
+        // this distribution, so accrual must not look back past this height.
+        distribution.vp_contract_since_height = Some(env.block.height);
     }
 
     if let Some(hook_caller) = hook_caller {

@@ -203,13 +203,16 @@ not a behavior change. After a single missed stake or unstake, the address is
 conservatively *under*-credited for the affected period rather than
 over-credited.
 
-For an address that has never been checkpointed for a distribution, the
-distribution's creation block is used as the baseline instead of a prior
-checkpoint. Distributions and reward states stored before this behavior was
-introduced don't have this information (the distribution's creation height,
-or an address's last checkpoint height, respectively); in that case, the
-original behavior (using only the current voting power) applies, since there
-is no reference point to be conservative against.
+The baseline is never earlier than the block from which the distribution's
+current `vp_contract` has been in use: its creation block (which also serves as
+the baseline for an address that has never been checkpointed), or the block
+`vp_contract` was last changed by `update`, since the new contract's earlier
+voting power is unrelated to the distribution. Distributions and reward states
+stored before this behavior was introduced don't have this information (the
+distribution's creation height, or an address's last checkpoint height,
+respectively); in that case, the original behavior (using only the current
+voting power) applies, since there is no reference point to be conservative
+against.
 
 This mitigation only compares the two endpoints of a potentially-missed
 window, so it cannot catch a missed change that moves an address's voting
