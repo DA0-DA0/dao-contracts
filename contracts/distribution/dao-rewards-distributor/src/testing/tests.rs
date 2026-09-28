@@ -3093,3 +3093,79 @@ fn test_unsafe_force_withdraw() {
     let owner_balance = suite.get_balance_native(OWNER, &suite.reward_denom);
     assert_eq!(owner_balance, 100);
 }
+
+#[test]
+fn test_large_linear_emission_amount_does_not_overflow_puvp() {
+    use cosmwasm_std::{
+        from_json, testing::MockQuerier, ContractResult, QuerierResult, SystemResult, WasmQuery,
+    };
+    use dao_interface::voting::{Query as VotingQueryMsg, TotalPowerAtHeightResponse};
+
+    use crate::rewards::get_active_total_earned_puvp;
+    use crate::state::DistributionState;
+
+    const TOTAL_POWER: u128 = 1_000_000;
+
+    let mut deps = mock_dependencies();
+    let mut querier = MockQuerier::default();
+    querier.update_wasm(|query| -> QuerierResult {
+        match query {
+            WasmQuery::Smart { msg, .. } => match from_json(msg).unwrap() {
+                VotingQueryMsg::TotalPowerAtHeight { height } => {
+                    SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&TotalPowerAtHeightResponse {
+                            power: Uint128::new(TOTAL_POWER),
+                            height: height.unwrap_or_default(),
+                        })
+                        .unwrap(),
+                    ))
+                }
+                _ => panic!("unexpected query"),
+            },
+            _ => panic!("unexpected query"),
+        }
+    });
+    deps.querier = querier;
+
+    // a valid emission amount whose product with the precision scale factor
+    // (1e39) exceeds Uint256::MAX (~1.16e77). scaling must not overflow before
+    // the elapsed fraction of the period and total voting power are applied.
+    let amount = Uint128::new(200_000_000_000_000_000_000_000_000_000_000_000_000);
+    assert!(Uint256::from(amount).checked_mul(scale_factor()).is_err());
+
+    let distribution = DistributionState {
+        id: 1,
+        denom: cw20::Denom::Native(GOV_DENOM.to_string()),
+        active_epoch: Epoch {
+            emission_rate: EmissionRate::Linear {
+                amount,
+                duration: Duration::Height(200),
+                continuous: true,
+            },
+            started_at: Expiration::AtHeight(0),
+            ends_at: Expiration::AtHeight(1_000),
+            total_earned_puvp: Uint256::zero(),
+            last_updated_total_earned_puvp: Expiration::AtHeight(0),
+        },
+        vp_contract: Addr::unchecked("vp_contract"),
+        hook_caller: Addr::unchecked("hook_caller"),
+        open_funding: false,
+        funded_amount: amount,
+        withdraw_destination: Addr::unchecked(OWNER),
+        historical_earned_puvp: Uint256::zero(),
+    };
+
+    let mut env = mock_env();
+    env.block.height = 1;
+
+    // one block of a 200-block period: amount * 1e39 / 200 / total power.
+    let expected = Uint256::from(amount)
+        .checked_div(Uint256::from(200u128 * TOTAL_POWER))
+        .unwrap()
+        .checked_mul(scale_factor())
+        .unwrap();
+    assert_eq!(
+        get_active_total_earned_puvp(deps.as_ref(), &env.block, &distribution).unwrap(),
+        expected
+    );
+}
