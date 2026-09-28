@@ -156,6 +156,19 @@ impl DaoVoteDelegationTestingSuiteBase {
         );
     }
 
+    /// sync an address' delegated voting power. can be called by anyone.
+    pub fn sync(&mut self, caller: impl Into<String>, delegator: impl Into<String>) {
+        let delegation_addr = self.delegation_addr.clone();
+        self.execute_smart_ok(
+            caller,
+            delegation_addr,
+            &crate::msg::ExecuteMsg::Sync {
+                delegator: delegator.into(),
+            },
+            &[],
+        );
+    }
+
     /// sync proposal modules
     pub fn sync_proposal_modules(&mut self, start_after: Option<String>, limit: Option<u32>) {
         let core_addr = self.dao_core_addr.clone();

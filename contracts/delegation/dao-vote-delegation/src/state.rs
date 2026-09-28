@@ -69,3 +69,28 @@ pub const DELEGATION_ENTRIES: Map<(&Addr, &Addr), SnapshotVectorMapItemRef> = Ma
 
 /// map delegator -> percent delegated to all delegates.
 pub const PERCENT_DELEGATED: Map<&Addr, Decimal> = Map::new("pd");
+
+/// map (delegator, delegate) -> the exact delegated VP that this delegation
+/// currently contributes to the delegate's `DELEGATED_VP` total. this is also
+/// exactly the amount scheduled to be decremented from `DELEGATED_VP` at the
+/// delegation's expiration, if any.
+///
+/// this is stored explicitly, rather than always being re-derived from the
+/// delegator's current voting power and the delegation's percent, because
+/// `DELEGATED_VP` is a `Wormhole` that only tracks deltas over time: whenever
+/// a delegation's contribution is added, removed, or moved to a new
+/// expiration, we need to know exactly what was previously added so we
+/// add/remove the same amount. without this, if a delegator's voting power
+/// change hook is ever missed (e.g. due to a stake/unstake hook failure that
+/// is now tolerated rather than reverting the stake change, or any other
+/// voting power change that never reaches this contract), a later
+/// delegate/undelegate/refresh would recompute a *different* amount than what
+/// was actually scheduled, permanently drifting the delegate's total away
+/// from the sum of their delegations, or underflowing the decrement.
+///
+/// delegations created before this map was added will not have an entry
+/// here. paths that consume this map fall back to recomputing the legacy
+/// value the old code would have used in that case (see `sync_delegator` in
+/// `helpers.rs` and its callers), which lazily populates this map without
+/// requiring a state migration.
+pub const DELEGATED_VP_AMOUNTS: Map<(&Addr, &Addr), Uint128> = Map::new("dvpa");

@@ -41,6 +41,35 @@ For proposal modules, the corresponding hook is `add_vote_hook`:
 - `dao-proposal-single`
 - `dao-proposal-multiple`
 
+### Repairing Missed Voting Power Change Hooks
+
+Some voting/staking contracts (e.g. `dao-voting-token-staked`,
+`dao-voting-cw721-staked`) treat a failing voting power change hook receiver
+as non-fatal: the underlying stake/unstake still succeeds and the hook is
+simply skipped, rather than reverting the whole transaction. A voting power
+change could therefore, in principle, never reach this contract.
+
+Because a delegate's total delegated VP is tracked via deltas (see
+`DELEGATED_VP` above) rather than being recomputed from scratch, a missed hook
+would otherwise cause the delegate's total to drift permanently away from the
+sum of what their delegators actually delegate. To guard against this, this
+contract additionally stores, per delegation, the exact VP it currently
+contributes to its delegate's total (`DELEGATED_VP_AMOUNTS` in `state.rs`).
+Every path that adds, removes, or moves a delegation's contribution (creating
+or updating a delegation, undelegating, and the voting power change hook
+itself) uses this stored amount rather than recomputing it from the
+delegator's current voting power, so it always adds/removes exactly what was
+previously added, even if a hook was missed in between. Delegations created
+before this map existed simply have no stored entry, and fall back to
+recomputing the value the old code would have used; no state migration is
+needed to lazily populate them.
+
+Since a hook can still be missed entirely (leaving a delegate's total
+stale until something else touches that delegation), anyone can call
+`ExecuteMsg::Sync { delegator }` to force a resync of an address' delegated
+voting power from its current, actual voting power. This exists purely as a
+permissionless repair mechanism for exactly this scenario.
+
 ## Design Decisions
 
 ### Fractional Delegation via Percentages
