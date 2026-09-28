@@ -924,6 +924,202 @@ fn change_member_vp_without_hook(
     );
 }
 
+/// Changes a member's weight with the delegation module's voting power change
+/// hook connected, i.e. the normal path.
+fn change_member_vp(suite: &mut Cw4DaoVoteDelegationTestingSuite, addr: &str, new_weight: u64) {
+    let dao_core_addr = suite.dao.core_addr.clone();
+    let group_addr = suite.dao.x.group_addr.clone();
+    suite.execute_smart_ok(
+        &dao_core_addr,
+        &group_addr,
+        &cw4_group::msg::ExecuteMsg::UpdateMembers {
+            add: vec![cw4::Member {
+                addr: addr.to_string(),
+                weight: new_weight,
+            }],
+            remove: vec![],
+        },
+        &[],
+    );
+}
+
+/// Simulates a delegation created before `DELEGATED_VP_AMOUNTS` existed by
+/// deleting its stored amount from the delegation contract's storage.
+/// cw-multi-test namespaces each contract's storage under
+/// `wasm` / `contract_data/<address>`, both length-prefixed.
+fn remove_stored_delegated_vp(
+    suite: &mut Cw4DaoVoteDelegationTestingSuite,
+    delegator: &str,
+    delegate: &str,
+) {
+    use cosmwasm_std::Storage;
+
+    let delegation_addr = suite.delegation_addr.clone();
+    let mut contract_namespace = b"contract_data/".to_vec();
+    contract_namespace.extend_from_slice(delegation_addr.as_bytes());
+
+    let mut key = vec![];
+    for namespace in [b"wasm".as_slice(), contract_namespace.as_slice()] {
+        key.extend_from_slice(&(namespace.len() as u16).to_be_bytes());
+        key.extend_from_slice(namespace);
+    }
+    key.extend_from_slice(
+        &crate::state::DELEGATED_VP_AMOUNTS
+            .key((&Addr::unchecked(delegator), &Addr::unchecked(delegate))),
+    );
+
+    let storage = suite.app.storage_mut();
+    assert!(
+        storage.get(&key).is_some(),
+        "expected a stored delegated VP amount to remove"
+    );
+    storage.remove(&key);
+}
+
+#[test]
+fn test_hook_updates_stored_amount_through_less_equal_and_greater() {
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
+
+    suite.register(ADDR0);
+    change_member_vp(&mut suite, ADDR1, 4);
+    suite.advance_block();
+
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(50));
+    suite.advance_block();
+    suite.assert_delegate_total_delegated_vp(ADDR0, 2u128);
+
+    // 50% of 5 floors to the same 2, so nothing changes.
+    change_member_vp(&mut suite, ADDR1, 5);
+    suite.advance_block();
+    suite.assert_delegate_total_delegated_vp(ADDR0, 2u128);
+
+    // decrease, then increase.
+    change_member_vp(&mut suite, ADDR1, 2);
+    suite.advance_block();
+    suite.assert_delegate_total_delegated_vp(ADDR0, 1u128);
+
+    change_member_vp(&mut suite, ADDR1, 10);
+    suite.advance_block();
+    suite.assert_delegate_total_delegated_vp(ADDR0, 5u128);
+
+    // the stored amount tracked every change, so undelegating removes exactly
+    // what is counted.
+    suite.undelegate(ADDR1, ADDR0);
+    suite.advance_block();
+    suite.assert_delegate_total_delegated_vp(ADDR0, 0u128);
+}
+
+#[test]
+fn test_legacy_delegation_without_stored_amount() {
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
+
+    suite.register(ADDR0);
+
+    let weight = suite.members[1].weight;
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(100));
+    suite.advance_block();
+    suite.assert_delegate_total_delegated_vp(ADDR0, weight);
+
+    // a delegation created before the upgrade has no stored amount. `Sync`
+    // has no basis to infer its contribution from, so it leaves it alone.
+    remove_stored_delegated_vp(&mut suite, ADDR1, ADDR0);
+    suite.sync("anyone", ADDR1);
+    suite.advance_block();
+    suite.assert_delegate_total_delegated_vp(ADDR0, weight);
+
+    // the voting power change hook falls back to the hook's delta, as before
+    // the upgrade, and stores the new amount.
+    change_member_vp(&mut suite, ADDR1, weight * 3);
+    suite.advance_block();
+    suite.assert_delegate_total_delegated_vp(ADDR0, weight * 3);
+
+    // undelegating a legacy delegation falls back to its current voting power.
+    remove_stored_delegated_vp(&mut suite, ADDR1, ADDR0);
+    suite.undelegate(ADDR1, ADDR0);
+    suite.advance_block();
+    suite.assert_delegate_total_delegated_vp(ADDR0, 0u128);
+}
+
+#[test]
+fn test_sync_registered_delegate() {
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new().build();
+
+    suite.register(ADDR0);
+
+    // a delegate that still has voting power stays registered.
+    suite.sync("anyone", ADDR0);
+    suite.advance_block();
+    assert!(suite.registered(ADDR0, None));
+
+    // a delegate whose voting power dropped to zero without the hook firing
+    // is unregistered by `Sync`, like the hook would have done.
+    change_member_vp_without_hook(&mut suite, ADDR0, 0);
+    suite.advance_block();
+    assert!(suite.registered(ADDR0, None));
+
+    suite.sync("anyone", ADDR0);
+    suite.advance_block();
+    assert!(!suite.registered(ADDR0, None));
+}
+
+#[test]
+fn test_missed_vp_decrease_then_same_percent_refresh_then_expiration() {
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new()
+        .with_delegation_validity_blocks(10)
+        .build();
+
+    suite.register(ADDR0);
+
+    let old_weight = suite.members[1].weight;
+    let new_weight = 1u64;
+    assert!(new_weight < old_weight);
+
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(100));
+    suite.advance_block();
+    suite.assert_delegate_total_delegated_vp(ADDR0, old_weight);
+
+    change_member_vp_without_hook(&mut suite, ADDR1, new_weight);
+    suite.advance_block();
+    suite.assert_delegate_total_delegated_vp(ADDR0, old_weight);
+
+    // the refresh re-syncs down to the current voting power.
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(100));
+    let refreshed_expiration = suite.app.block_info().height + 10;
+    suite.advance_block();
+    suite.assert_delegate_total_delegated_vp(ADDR0, new_weight);
+
+    // and only that amount is removed at the new expiration.
+    let blocks_until_refreshed_expiration = refreshed_expiration - suite.app.block_info().height;
+    suite.advance_blocks(blocks_until_refreshed_expiration);
+    suite.assert_delegate_total_delegated_vp(ADDR0, 0u128);
+}
+
+#[test]
+fn test_hook_skips_delegation_expiring_next_block() {
+    let mut suite = Cw4DaoVoteDelegationTestingSuite::new()
+        .with_delegation_validity_blocks(10)
+        .build();
+
+    suite.register(ADDR0);
+
+    let weight = suite.members[1].weight;
+    suite.delegate(ADDR1, ADDR0, Decimal::percent(100));
+    let expiration = suite.app.block_info().height + 10;
+
+    // change voting power in the block right before the delegation expires.
+    // the change would only take effect as the delegation is removed, so the
+    // hook must leave it alone rather than reschedule its removal.
+    let blocks_until_last_block = expiration - suite.app.block_info().height - 1;
+    suite.advance_blocks(blocks_until_last_block);
+    suite.assert_delegate_total_delegated_vp(ADDR0, weight);
+    change_member_vp(&mut suite, ADDR1, weight * 2);
+
+    suite.advance_block();
+    suite.assert_delegate_total_delegated_vp(ADDR0, 0u128);
+    suite.advance_blocks(5);
+    suite.assert_delegate_total_delegated_vp(ADDR0, 0u128);
+}
+
 #[test]
 fn test_missed_vp_increase_then_same_percent_refresh_then_expiration() {
     let mut suite = Cw4DaoVoteDelegationTestingSuite::new()
