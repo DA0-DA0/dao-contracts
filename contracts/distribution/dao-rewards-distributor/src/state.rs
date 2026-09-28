@@ -36,6 +36,15 @@ pub struct UserRewardState {
     /// that have already been accounted for (added to pending and maybe
     /// claimed).
     pub accounted_for_rewards_puvp: HashMap<u64, Uint256>,
+    /// map distribution ID to the block height at which the user's reward
+    /// state was last checkpointed (updated) for that distribution. used to
+    /// conservatively bound the voting power used to accrue rewards in case a
+    /// voting power change hook was missed. `#[serde(default)]` so that state
+    /// stored before this field was introduced still deserializes (as an
+    /// empty map), since we cannot know the last checkpoint height for users
+    /// who were already accounted for at that point.
+    #[serde(default)]
+    pub last_updated_height: HashMap<u64, u64>,
 }
 
 /// defines how many tokens (amount) should be distributed per amount of time
@@ -194,6 +203,31 @@ pub struct DistributionState {
     /// changes in the emission rate. each time emission rate is changed, this
     /// value is increased by the `active_epoch`'s rewards earned puvp.
     pub historical_earned_puvp: Uint256,
+    /// the block height at which this distribution was created. used as the
+    /// voting power baseline reference for users who have never been
+    /// checkpointed for this distribution (i.e. whose accounted for rewards
+    /// puvp is still the default of 0, the distribution's start).
+    /// `#[serde(default)]` so that distributions stored before this field was
+    /// introduced still deserialize as `None`, since we cannot know their
+    /// true creation height after the fact. `None` disables the conservative
+    /// voting power baseline for never-checkpointed users of that
+    /// distribution; see `rewards::get_accrued_rewards_not_yet_accounted_for`.
+    #[serde(default)]
+    pub created_at_height: Option<u64>,
+    /// funds deposited for this distribution (via `Fund`/`FundLatest`, or
+    /// natively provided on `Create`) that have not yet been claimed (via
+    /// `Claim`) or clawed back (via `Withdraw`). used as a per-distribution
+    /// solvency cap so that a single distribution can never pay out more than
+    /// it has been funded, even if a bug (e.g. a missed voting power change
+    /// hook) causes it to compute that it owes more than that. `Some(0)` on
+    /// `Create`. `#[serde(default)]` so that distributions stored before this
+    /// field was introduced deserialize as `None`, since we don't know how
+    /// much of their already-funded amount is still outstanding; `None`
+    /// disables the cap for that distribution (uncapped, matching prior
+    /// behavior) and is never re-enabled. Untouched by
+    /// `UnsafeForceWithdraw`, which is intentionally unsafe/uncapped.
+    #[serde(default)]
+    pub claimable_funds: Option<Uint128>,
 }
 
 impl DistributionState {
@@ -408,6 +442,28 @@ impl DistributionState {
             self.active_epoch.total_earned_puvp = curr.checked_add(new_rewards_puvp)?;
 
             Ok(())
+        }
+    }
+
+    /// increase the distribution's claimable funds (funds deposited that have
+    /// not yet been claimed or clawed back) by the given amount, called on
+    /// every funding path. no-op if `claimable_funds` is `None`, which means
+    /// this distribution predates the field and is not capped.
+    pub fn add_claimable_funds(&mut self, amount: Uint128) {
+        if let Some(claimable_funds) = self.claimable_funds {
+            self.claimable_funds = Some(claimable_funds + amount);
+        }
+    }
+
+    /// decrease the distribution's claimable funds (funds deposited that have
+    /// not yet been claimed or clawed back) by the given clawback amount,
+    /// called on `Withdraw`. saturates at 0 instead of underflowing so that a
+    /// withdrawal can never fail due to this bookkeeping; in the healthy case
+    /// (floors everywhere) the clawback amount should never exceed the
+    /// claimable funds. no-op if `claimable_funds` is `None`.
+    pub fn subtract_claimable_funds(&mut self, amount: Uint128) {
+        if let Some(claimable_funds) = self.claimable_funds {
+            self.claimable_funds = Some(claimable_funds.saturating_sub(amount));
         }
     }
 }

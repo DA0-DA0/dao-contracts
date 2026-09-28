@@ -28,9 +28,21 @@ pub fn get_voting_power_at_block(
     contract_addr: &Addr,
     addr: &Addr,
 ) -> StdResult<Uint128> {
+    get_voting_power_at_height(deps, block.height, contract_addr, addr)
+}
+
+/// like `get_voting_power_at_block`, but takes an explicit height instead of
+/// the current block, allowing querying voting power at an arbitrary
+/// (typically historical) height.
+pub fn get_voting_power_at_height(
+    deps: Deps,
+    height: u64,
+    contract_addr: &Addr,
+    addr: &Addr,
+) -> StdResult<Uint128> {
     let msg = VotingQueryMsg::VotingPowerAtHeight {
         address: addr.into(),
-        height: Some(block.height),
+        height: Some(height),
     };
     let resp: VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(contract_addr, &msg)?;
     Ok(resp.power)

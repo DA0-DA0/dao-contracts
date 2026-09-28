@@ -395,6 +395,28 @@ impl Suite {
         undistributed_rewards
     }
 
+    pub fn get_pending_rewards(&mut self, address: &str, id: u64) -> Uint128 {
+        let res: PendingRewardsResponse = self
+            .base
+            .app
+            .wrap()
+            .query_wasm_smart(
+                self.distribution_contract.clone(),
+                &QueryMsg::PendingRewards {
+                    address: address.to_string(),
+                    start_after: None,
+                    limit: None,
+                },
+            )
+            .unwrap();
+
+        res.pending_rewards
+            .iter()
+            .find(|p| p.id == id)
+            .map(|p| p.pending_rewards)
+            .unwrap_or_default()
+    }
+
     pub fn get_owner(&mut self) -> Addr {
         let ownable_response: cw_ownable::Ownership<Addr> = self
             .base
@@ -451,30 +473,11 @@ impl Suite {
     }
 
     pub fn assert_pending_rewards(&mut self, address: &str, id: u64, expected: u128) {
-        let res: PendingRewardsResponse = self
-            .base
-            .app
-            .wrap()
-            .query_wasm_smart(
-                self.distribution_contract.clone(),
-                &QueryMsg::PendingRewards {
-                    address: address.to_string(),
-                    start_after: None,
-                    limit: None,
-                },
-            )
-            .unwrap();
-
-        let pending = res
-            .pending_rewards
-            .iter()
-            .find(|p| p.id == id)
-            .unwrap()
-            .pending_rewards;
+        let pending = self.get_pending_rewards(address, id);
 
         assert_eq!(
             pending,
-            &Uint128::new(expected),
+            Uint128::new(expected),
             "expected {} pending rewards, got {}",
             expected,
             pending
@@ -535,6 +538,21 @@ impl Suite {
 
     pub fn register_hook(&mut self, addr: Addr) {
         let msg = cw4_group::msg::ExecuteMsg::AddHook {
+            addr: self.distribution_contract.to_string(),
+        };
+        self.base
+            .app
+            .execute_contract(self.core_addr.clone(), addr, &msg, &[])
+            .unwrap();
+    }
+
+    /// disconnects the distributor from the given voting power/staking
+    /// contract's hooks, as the DAO/owner would (producer-side). used to
+    /// simulate a missed voting power change hook: while disconnected, stake
+    /// or unstake changes on `addr` will not notify the distributor, so it
+    /// won't have a chance to checkpoint the affected user's reward state.
+    pub fn unregister_hook(&mut self, addr: Addr) {
+        let msg = cw4_group::msg::ExecuteMsg::RemoveHook {
             addr: self.distribution_contract.to_string(),
         };
         self.base
@@ -696,6 +714,21 @@ impl Suite {
                 &[],
             )
             .unwrap();
+    }
+
+    pub fn claim_rewards_error(&mut self, address: &str, id: u64) -> ContractError {
+        let msg = ExecuteMsg::Claim { id };
+        self.base
+            .app
+            .execute_contract(
+                Addr::unchecked(address),
+                self.distribution_contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap()
     }
 
     #[allow(dead_code)]

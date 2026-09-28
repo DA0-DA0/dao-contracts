@@ -200,6 +200,8 @@ fn execute_create(
         open_funding,
         withdraw_destination,
         historical_earned_puvp: Uint256::zero(),
+        created_at_height: Some(env.block.height),
+        claimable_funds: Some(Uint128::zero()),
     };
 
     // store the new distribution state, erroring if it already exists. this
@@ -351,6 +353,7 @@ fn execute_fund_paused(
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     distribution.funded_amount += amount;
+    distribution.add_claimable_funds(amount);
 
     DISTRIBUTIONS.save(deps.storage, distribution.id, &distribution)?;
 
@@ -369,6 +372,7 @@ fn execute_fund_immediate(
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     distribution.funded_amount += amount;
+    distribution.add_claimable_funds(amount);
 
     // for immediate distribution, update total_earned_puvp instantly since we
     // need to know the change in funded_amount to calculate the new
@@ -448,6 +452,10 @@ fn execute_fund_linear(
         distribution.funded_amount += amount;
     }
 
+    // the newly deposited amount is claimable regardless of which branch
+    // above was taken, since it's always newly funded money.
+    distribution.add_claimable_funds(amount);
+
     // update the end block based on the new funds and potentially updated start
     let new_funded_duration = distribution
         .active_epoch
@@ -491,7 +499,7 @@ fn execute_claim(
 
     // load the updated states. previous `update_rewards` call ensures that
     // these states exist.
-    let distribution = DISTRIBUTIONS.load(deps.storage, id)?;
+    let mut distribution = DISTRIBUTIONS.load(deps.storage, id)?;
     let mut user_reward_state = USER_REWARDS.load(deps.storage, info.sender.clone())?;
 
     // updating the map returns the previous value if it existed. we set the
@@ -504,6 +512,24 @@ fn execute_claim(
     // if there are no rewards to claim, error out
     if claim_amount.is_zero() {
         return Err(ContractError::NoRewardsClaimable {});
+    }
+
+    // enforce the per-distribution solvency cap: this distribution can never
+    // pay out more than it has been funded (and not yet claimed or clawed
+    // back), so that it can never dip into another distribution's funds of
+    // the same denom, even if it was somehow over-credited (e.g. due to a
+    // missed voting power change hook). distributions created before this
+    // cap was introduced have `claimable_funds: None` and are uncapped.
+    if let Some(claimable_funds) = distribution.claimable_funds {
+        distribution.claimable_funds =
+            Some(claimable_funds.checked_sub(claim_amount).map_err(|_| {
+                ContractError::InsufficientDistributionFunds {
+                    id,
+                    claimable_funds,
+                    claim_amount,
+                }
+            })?);
+        DISTRIBUTIONS.save(deps.storage, id, &distribution)?;
     }
 
     // otherwise reflect the updated user reward state and transfer out the
@@ -564,6 +590,10 @@ fn execute_withdraw(
 
     // remove withdrawn funds from amount funded since they are no longer funded
     distribution.funded_amount = rewards_distributed;
+
+    // the clawed back funds are no longer claimable, since they're being sent
+    // to the withdraw destination instead.
+    distribution.subtract_claimable_funds(clawback_amount);
 
     let clawback_msg = get_transfer_msg(
         distribution.withdraw_destination.clone(),

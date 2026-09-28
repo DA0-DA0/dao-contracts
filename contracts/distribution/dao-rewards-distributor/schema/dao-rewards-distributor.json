@@ -965,6 +965,28 @@
             }
           ]
         },
+        "claimable_funds": {
+          "description": "funds deposited for this distribution (via `Fund`/`FundLatest`, or natively provided on `Create`) that have not yet been claimed (via `Claim`) or clawed back (via `Withdraw`). used as a per-distribution solvency cap so that a single distribution can never pay out more than it has been funded, even if a bug (e.g. a missed voting power change hook) causes it to compute that it owes more than that. `Some(0)` on `Create`. `#[serde(default)]` so that distributions stored before this field was introduced deserialize as `None`, since we don't know how much of their already-funded amount is still outstanding; `None` disables the cap for that distribution (uncapped, matching prior behavior) and is never re-enabled. Untouched by `UnsafeForceWithdraw`, which is intentionally unsafe/uncapped.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Uint128"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at_height": {
+          "description": "the block height at which this distribution was created. used as the voting power baseline reference for users who have never been checkpointed for this distribution (i.e. whose accounted for rewards puvp is still the default of 0, the distribution's start). `#[serde(default)]` so that distributions stored before this field was introduced still deserialize as `None`, since we cannot know their true creation height after the fact. `None` disables the conservative voting power baseline for never-checkpointed users of that distribution; see `rewards::get_accrued_rewards_not_yet_accounted_for`.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
         "denom": {
           "description": "validated denom (native or cw20)",
           "allOf": [
@@ -1359,6 +1381,28 @@
                   "$ref": "#/definitions/Epoch"
                 }
               ]
+            },
+            "claimable_funds": {
+              "description": "funds deposited for this distribution (via `Fund`/`FundLatest`, or natively provided on `Create`) that have not yet been claimed (via `Claim`) or clawed back (via `Withdraw`). used as a per-distribution solvency cap so that a single distribution can never pay out more than it has been funded, even if a bug (e.g. a missed voting power change hook) causes it to compute that it owes more than that. `Some(0)` on `Create`. `#[serde(default)]` so that distributions stored before this field was introduced deserialize as `None`, since we don't know how much of their already-funded amount is still outstanding; `None` disables the cap for that distribution (uncapped, matching prior behavior) and is never re-enabled. Untouched by `UnsafeForceWithdraw`, which is intentionally unsafe/uncapped.",
+              "default": null,
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "created_at_height": {
+              "description": "the block height at which this distribution was created. used as the voting power baseline reference for users who have never been checkpointed for this distribution (i.e. whose accounted for rewards puvp is still the default of 0, the distribution's start). `#[serde(default)]` so that distributions stored before this field was introduced still deserialize as `None`, since we cannot know their true creation height after the fact. `None` disables the conservative voting power baseline for never-checkpointed users of that distribution; see `rewards::get_accrued_rewards_not_yet_accounted_for`.",
+              "default": null,
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
             },
             "denom": {
               "description": "validated denom (native or cw20)",
