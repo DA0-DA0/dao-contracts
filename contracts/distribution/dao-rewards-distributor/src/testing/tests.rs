@@ -3168,4 +3168,20 @@ fn test_large_linear_emission_amount_does_not_overflow_puvp() {
         get_active_total_earned_puvp(deps.as_ref(), &env.block, &distribution).unwrap(),
         expected
     );
+
+    // a rewards per unit voting power value that cannot be represented at all
+    // (here, the maximum amount per block over a million blocks) is reported
+    // as an error rather than wrapping or panicking.
+    let mut unrepresentable = distribution.clone();
+    unrepresentable.active_epoch.emission_rate = EmissionRate::Linear {
+        amount: Uint128::MAX,
+        duration: Duration::Height(1),
+        continuous: true,
+    };
+    unrepresentable.active_epoch.ends_at = Expiration::AtHeight(u64::MAX);
+    env.block.height = 1_000_000;
+    assert!(matches!(
+        get_active_total_earned_puvp(deps.as_ref(), &env.block, &unrepresentable).unwrap_err(),
+        crate::ContractError::CheckedMultiplyRatio(_)
+    ));
 }
