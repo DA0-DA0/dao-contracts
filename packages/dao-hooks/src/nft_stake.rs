@@ -14,7 +14,7 @@ pub enum NftStakeChangedHookMsg {
 /// Prepares NftStakeChangedHookMsg::Stake hook SubMsgs containing the address
 /// and the token_id staked.
 ///
-/// Each hook is dispatched with `reply_always` so that a failing receiver
+/// Each hook is dispatched with `reply_on_error` so that a failing receiver
 /// cannot abort the producer's transaction. Producers must handle the reply
 /// with [`crate::stake::handle_stake_hook_reply`].
 pub fn stake_nft_hook_msgs(
@@ -32,7 +32,7 @@ pub fn stake_nft_hook_msgs(
 /// Prepares NftStakeChangedHookMsg::Unstake hook SubMsgs containing the
 /// address and the token_ids unstaked.
 ///
-/// Each hook is dispatched with `reply_always` so that a failing receiver
+/// Each hook is dispatched with `reply_on_error` so that a failing receiver
 /// cannot abort the producer's transaction. Producers must handle the reply
 /// with [`crate::stake::handle_stake_hook_reply`].
 pub fn unstake_nft_hook_msgs(
@@ -67,7 +67,7 @@ mod tests {
     }
 
     #[test]
-    fn stake_messages_reply_always_with_indexed_ids_and_unchanged_payload() {
+    fn stake_messages_reply_on_error_with_indexed_ids_and_unchanged_payload() {
         let mut deps = mock_dependencies();
         let hooks = hooks_with_receivers(&mut deps.storage, &["first", "second"]);
         let addr = Addr::unchecked("staker");
@@ -80,7 +80,7 @@ mod tests {
         assert_eq!(messages[0].id, STAKE_HOOK_REPLY_ID_BASE);
         assert_eq!(messages[1].id, STAKE_HOOK_REPLY_ID_BASE + 1);
         for message in &messages {
-            assert_eq!(message.reply_on, ReplyOn::Always);
+            assert_eq!(message.reply_on, ReplyOn::Error);
         }
         let CosmosMsg::Wasm(WasmMsg::Execute { msg, .. }) = &messages[0].msg else {
             panic!("expected Wasm execute message")
@@ -96,7 +96,7 @@ mod tests {
     }
 
     #[test]
-    fn unstake_messages_reply_always_with_indexed_ids_and_unchanged_payload() {
+    fn unstake_messages_reply_on_error_with_indexed_ids_and_unchanged_payload() {
         let mut deps = mock_dependencies();
         let hooks = hooks_with_receivers(&mut deps.storage, &["first", "second"]);
         let addr = Addr::unchecked("staker");
@@ -109,7 +109,7 @@ mod tests {
         assert_eq!(messages[0].id, UNSTAKE_HOOK_REPLY_ID_BASE);
         assert_eq!(messages[1].id, UNSTAKE_HOOK_REPLY_ID_BASE + 1);
         for message in &messages {
-            assert_eq!(message.reply_on, ReplyOn::Always);
+            assert_eq!(message.reply_on, ReplyOn::Error);
         }
         let CosmosMsg::Wasm(WasmMsg::Execute { msg, .. }) = &messages[0].msg else {
             panic!("expected Wasm execute message")

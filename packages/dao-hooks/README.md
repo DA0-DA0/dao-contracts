@@ -20,7 +20,7 @@ Staking hooks are fired when tokens are staked or unstaked in a DAO.
 
 A hook receiver must never be able to block staking or unstaking, and a hook
 that fails must not be silently removed. The stake and NFT stake hook helpers
-therefore dispatch every hook with `reply_always`, tagging each submessage with
+therefore dispatch every hook with `reply_on_error`, tagging each submessage with
 `STAKE_HOOK_REPLY_ID_BASE`/`UNSTAKE_HOOK_REPLY_ID_BASE` plus the hook's index in
 the producer's registry. Producers must call `handle_stake_hook_reply` from
 their `reply` entry point and must not use reply IDs inside either range.
@@ -32,6 +32,15 @@ succeed, and records the failure as attributes on that transaction:
 reply handler, so on chain `error` is a codespace and code rather than the
 receiver's own message. `addr` is the identifier a DAO needs in order to act on
 the failure, which is why the reply ID carries the hook's index.
+
+This covers errors a receiver returns. Hooks are dispatched without a gas
+limit, so a receiver that runs out of gas still aborts the staking transaction;
+only register receivers the DAO trusts, and remove one that misbehaves.
+
+Because a failed hook no longer reverts the stake or unstake, a receiver may
+miss a voting power change. Receivers that keep per-staker state must tolerate
+this and resynchronize from the voting power they query, rather than assume
+they observed every change.
 
 ### Vote Hooks
 Vote hooks are fired when new votes are cast.

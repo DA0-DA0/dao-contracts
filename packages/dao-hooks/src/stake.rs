@@ -27,7 +27,7 @@ pub enum StakeChangedHookMsg {
 /// Prepares StakeChangedHookMsg::Stake hook SubMsgs containing the address and
 /// amount staked.
 ///
-/// Each hook is dispatched with `reply_always` so that a failing receiver
+/// Each hook is dispatched with `reply_on_error` so that a failing receiver
 /// cannot abort the producer's transaction. Producers must handle the reply
 /// with [`handle_stake_hook_reply`].
 pub fn stake_hook_msgs(
@@ -45,7 +45,7 @@ pub fn stake_hook_msgs(
 /// Prepares StakeChangedHookMsg::Unstake hook SubMsgs containing the address
 /// and amount unstaked.
 ///
-/// Each hook is dispatched with `reply_always` so that a failing receiver
+/// Each hook is dispatched with `reply_on_error` so that a failing receiver
 /// cannot abort the producer's transaction. Producers must handle the reply
 /// with [`handle_stake_hook_reply`].
 pub fn unstake_hook_msgs(
@@ -60,7 +60,7 @@ pub fn unstake_hook_msgs(
     prepare_hook_msgs(hooks, storage, msg, UNSTAKE_HOOK_REPLY_ID_BASE)
 }
 
-/// Dispatches `msg` to every registered hook with `reply_always`, tagging each
+/// Dispatches `msg` to every registered hook with `reply_on_error`, tagging each
 /// submessage with `base + <index of the hook in the registry>` so the reply
 /// handler can name the receiver that failed.
 pub(crate) fn prepare_hook_msgs(
@@ -76,7 +76,7 @@ pub(crate) fn prepare_hook_msgs(
             msg: msg.clone(),
             funds: vec![],
         };
-        let sub_msg = SubMsg::reply_always(execute, base + index);
+        let sub_msg = SubMsg::reply_on_error(execute, base + index);
         index += 1;
         Ok(sub_msg)
     })
@@ -93,9 +93,11 @@ pub enum StakeChangedExecuteMsg {
 /// producer with reply IDs of its own can fall through to them.
 ///
 /// A hook receiver must not be able to block staking or unstaking, and a hook
-/// that fails must not be silently removed. A successful hook produces an
-/// empty response. A failed hook leaves the receiver registered, lets the
-/// staking transaction succeed, and records the failure as attributes:
+/// that fails must not be silently removed. Hooks are dispatched with
+/// `reply_on_error`, so a successful hook does not reply (a success reply, if
+/// one arrives, produces an empty response). A failed hook leaves the receiver
+/// registered, lets the staking transaction succeed, and records the failure as
+/// attributes:
 ///
 /// - `action`: `stake_hook_failed`
 /// - `hook`: `stake` or `unstake`
@@ -165,7 +167,7 @@ mod tests {
     }
 
     #[test]
-    fn stake_messages_reply_always_with_indexed_ids_and_unchanged_payload() {
+    fn stake_messages_reply_on_error_with_indexed_ids_and_unchanged_payload() {
         let mut deps = mock_dependencies();
         let hooks = hooks_with_receivers(&mut deps.storage, &["first", "second"]);
         let addr = Addr::unchecked("staker");
@@ -177,7 +179,7 @@ mod tests {
         assert_eq!(messages[0].id, STAKE_HOOK_REPLY_ID_BASE);
         assert_eq!(messages[1].id, STAKE_HOOK_REPLY_ID_BASE + 1);
         for message in &messages {
-            assert_eq!(message.reply_on, ReplyOn::Always);
+            assert_eq!(message.reply_on, ReplyOn::Error);
         }
         let CosmosMsg::Wasm(WasmMsg::Execute { msg, .. }) = &messages[0].msg else {
             panic!("expected Wasm execute message")
@@ -190,7 +192,7 @@ mod tests {
     }
 
     #[test]
-    fn unstake_messages_reply_always_with_indexed_ids_and_unchanged_payload() {
+    fn unstake_messages_reply_on_error_with_indexed_ids_and_unchanged_payload() {
         let mut deps = mock_dependencies();
         let hooks = hooks_with_receivers(&mut deps.storage, &["first", "second"]);
         let addr = Addr::unchecked("staker");
@@ -202,7 +204,7 @@ mod tests {
         assert_eq!(messages[0].id, UNSTAKE_HOOK_REPLY_ID_BASE);
         assert_eq!(messages[1].id, UNSTAKE_HOOK_REPLY_ID_BASE + 1);
         for message in &messages {
-            assert_eq!(message.reply_on, ReplyOn::Always);
+            assert_eq!(message.reply_on, ReplyOn::Error);
         }
         let CosmosMsg::Wasm(WasmMsg::Execute { msg, .. }) = &messages[0].msg else {
             panic!("expected Wasm execute message")
