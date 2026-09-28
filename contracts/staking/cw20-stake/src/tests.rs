@@ -1341,6 +1341,7 @@ fn test_migrate_from_compatible_rejects_v1_contracts() {
 #[test]
 fn test_migrate_rejects_other_contracts() {
     let mut deps = mock_dependencies();
+    seed_v2_contract(&mut deps.storage, &deps.api, "2.7.0", None);
     cw2::set_contract_version(&mut deps.storage, "crates.io:other", "0.1.0").unwrap();
     let err = crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg::FromCompatible {})
         .unwrap_err();
