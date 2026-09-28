@@ -21,6 +21,7 @@ use cw_controllers::ClaimsResponse;
 use cw_utils::Duration;
 use dao_hooks::stake::{handle_stake_hook_reply, stake_hook_msgs, unstake_hook_msgs};
 use dao_voting::duration::validate_duration;
+use semver::Version;
 
 use crate::math;
 use crate::msg::{
@@ -467,15 +468,35 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     use cw20_stake_v1 as v1;
 
-    let ContractVersion { version, .. } = get_contract_version(deps.storage)?;
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    let ContractVersion { contract, version } = get_contract_version(deps.storage)?;
+    if contract != CONTRACT_NAME {
+        return Err(ContractError::MigrationErrorIncorrectContract {
+            expected: CONTRACT_NAME.to_string(),
+            actual: contract,
+        });
+    }
+
+    // Migrating from a version to a new one implies that the new version must
+    // be newer.
+    let storage_version: Version = version.parse()?;
+    let new_version: Version = CONTRACT_VERSION.parse()?;
+    if storage_version >= new_version {
+        return Err(ContractError::AlreadyMigrated {});
+    }
+
+    // Only v2 and later contracts store their config under the v2 key. A
+    // contract migrated from v1 still holds its stale v1 config, so this, not
+    // the v1 config, tells the two apart.
+    let is_v1 = CONFIG.may_load(deps.storage)?.is_none();
+
     match msg {
         MigrateMsg::FromV1 {} => {
-            if version == CONTRACT_VERSION {
-                // Migrating from a version to a new one implies that
-                // the new version must be different.
+            // Re-running the v1 migration on a v2 contract would reset its
+            // owner to the stale v1 owner.
+            if !is_v1 {
                 return Err(ContractError::AlreadyMigrated {});
             }
+
             let config = v1::state::CONFIG.load(deps.storage)?;
             cw_ownable::initialize_owner(
                 deps.storage,
@@ -490,8 +511,15 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                 }),
             };
             CONFIG.save(deps.storage, &config)?;
-
-            Ok(Response::default())
+        }
+        MigrateMsg::FromCompatible {} => {
+            if is_v1 {
+                return Err(ContractError::MigrateFromV1Required {});
+            }
         }
     }
+
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    Ok(Response::default())
 }

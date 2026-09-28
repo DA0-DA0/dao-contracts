@@ -1391,6 +1391,7 @@ dependencies = [
  "dao-hooks 2.8.0-alpha.2",
  "dao-testing",
  "dao-voting 2.8.0-alpha.2",
+ "semver",
  "thiserror",
 ]
 

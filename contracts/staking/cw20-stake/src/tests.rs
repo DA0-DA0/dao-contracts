@@ -1228,3 +1228,127 @@ fn test_migrate_from_v1() {
         }
     );
 }
+
+/// Seeds storage as a v2 contract at `version`, owned by `OWNER`, optionally
+/// with the stale v1 config left behind by an earlier `FromV1` migration.
+fn seed_v2_contract(
+    storage: &mut dyn cosmwasm_std::Storage,
+    api: &dyn cosmwasm_std::Api,
+    version: &str,
+    stale_v1_owner: Option<&str>,
+) {
+    cw2::set_contract_version(storage, "crates.io:cw20-stake", version).unwrap();
+    crate::state::CONFIG
+        .save(
+            storage,
+            &Config {
+                token_address: Addr::unchecked("token"),
+                unstaking_duration: None,
+            },
+        )
+        .unwrap();
+    cw_ownable::initialize_owner(storage, api, Some(OWNER)).unwrap();
+    if let Some(stale_v1_owner) = stale_v1_owner {
+        v1::state::CONFIG
+            .save(
+                storage,
+                &v1::state::Config {
+                    owner: Some(Addr::unchecked(stale_v1_owner)),
+                    manager: None,
+                    token_address: Addr::unchecked("token"),
+                    unstaking_duration: None,
+                },
+            )
+            .unwrap();
+    }
+}
+
+fn assert_owner(storage: &dyn cosmwasm_std::Storage, owner: &str) {
+    assert_eq!(
+        cw_ownable::get_ownership(storage).unwrap().owner,
+        Some(Addr::unchecked(owner))
+    );
+}
+
+#[test]
+fn test_migrate_from_compatible() {
+    let mut deps = mock_dependencies();
+    // a contract instantiated at an earlier v2 release has no v1 config.
+    seed_v2_contract(&mut deps.storage, &deps.api, "2.7.0", None);
+
+    crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg::FromCompatible {}).unwrap();
+    assert_eq!(
+        cw2::get_contract_version(&deps.storage).unwrap().version,
+        crate::contract::CONTRACT_VERSION
+    );
+    assert_owner(&deps.storage, OWNER);
+
+    // can not migrate to the same version again.
+    let err = crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg::FromCompatible {})
+        .unwrap_err();
+    assert_eq!(err, crate::ContractError::AlreadyMigrated {});
+}
+
+#[test]
+fn test_migrate_from_v1_rejects_v2_contracts() {
+    // instantiated at v2: there is no v1 config to migrate.
+    let mut deps = mock_dependencies();
+    seed_v2_contract(&mut deps.storage, &deps.api, "2.7.0", None);
+    let err =
+        crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg::FromV1 {}).unwrap_err();
+    assert_eq!(err, crate::ContractError::AlreadyMigrated {});
+
+    // migrated from v1 at an earlier v2 release, with ownership transferred
+    // since: re-running the v1 migration must not restore the stale v1 owner.
+    let mut deps = mock_dependencies();
+    seed_v2_contract(
+        &mut deps.storage,
+        &deps.api,
+        "2.7.0",
+        Some("stale_v1_owner"),
+    );
+    let err =
+        crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg::FromV1 {}).unwrap_err();
+    assert_eq!(err, crate::ContractError::AlreadyMigrated {});
+    assert_owner(&deps.storage, OWNER);
+    assert_eq!(
+        cw2::get_contract_version(&deps.storage).unwrap().version,
+        "2.7.0"
+    );
+}
+
+#[test]
+fn test_migrate_from_compatible_rejects_v1_contracts() {
+    let mut deps = mock_dependencies();
+    cw2::set_contract_version(&mut deps.storage, "crates.io:cw20-stake", "0.2.6").unwrap();
+    v1::state::CONFIG
+        .save(
+            &mut deps.storage,
+            &v1::state::Config {
+                owner: Some(Addr::unchecked(OWNER)),
+                manager: None,
+                token_address: Addr::unchecked("token"),
+                unstaking_duration: None,
+            },
+        )
+        .unwrap();
+
+    let err = crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg::FromCompatible {})
+        .unwrap_err();
+    assert_eq!(err, crate::ContractError::MigrateFromV1Required {});
+}
+
+#[test]
+fn test_migrate_rejects_other_contracts() {
+    let mut deps = mock_dependencies();
+    cw2::set_contract_version(&mut deps.storage, "crates.io:other", "0.1.0").unwrap();
+    let err = crate::contract::migrate(deps.as_mut(), mock_env(), MigrateMsg::FromCompatible {})
+        .unwrap_err();
+    assert_eq!(
+        err,
+        crate::ContractError::MigrationErrorIncorrectContract {
+            expected: "crates.io:cw20-stake".to_string(),
+            actual: "crates.io:other".to_string(),
+        }
+    );
+}
