@@ -1,6 +1,8 @@
+use std::cmp::Ordering;
+
 use cosmwasm_std::{Addr, Decimal, Deps, DepsMut, Env, StdError, StdResult, Storage, Uint128};
 
-use cw_snapshot_vector_map::SnapshotVectorMapItemRef;
+use cw_snapshot_vector_map::{LoadedItem, SnapshotVectorMapItemRef};
 use dao_voting::{
     delegation::{calculate_delegated_vp, Config, Delegation},
     voting,
@@ -8,8 +10,8 @@ use dao_voting::{
 
 use crate::{
     state::{
-        DAO, DELEGATED_VP, DELEGATES, DELEGATIONS, PERCENT_DELEGATED, PROPOSAL_HOOK_CALLERS,
-        UNVOTED_DELEGATED_VP, VOTING_POWER_HOOK_CALLERS,
+        DAO, DELEGATED_VP, DELEGATED_VP_AMOUNTS, DELEGATES, DELEGATIONS, PERCENT_DELEGATED,
+        PROPOSAL_HOOK_CALLERS, UNVOTED_DELEGATED_VP, VOTING_POWER_HOOK_CALLERS,
     },
     ContractError,
 };
@@ -89,7 +91,7 @@ pub fn add_delegated_vp(
     storage: &mut dyn Storage,
     env: &Env,
     delegate: &Addr,
-    vp: Uint128,
+    delegated_vp: Uint128,
     expiration: Option<u64>,
 ) -> StdResult<()> {
     DELEGATED_VP.increment(
@@ -103,12 +105,12 @@ pub fn add_delegated_vp(
         // update the total that will be reflected in historical queries
         // starting from the next block.
         env.block.height + 1,
-        vp,
+        delegated_vp,
     )?;
 
     // if expiration exists, decrement in the future at expiration height
     if let Some(expiration) = expiration {
-        DELEGATED_VP.decrement(storage, delegate.clone(), expiration, vp)?;
+        DELEGATED_VP.decrement(storage, delegate.clone(), expiration, delegated_vp)?;
     }
 
     Ok(())
@@ -122,7 +124,7 @@ pub fn remove_delegated_vp_if_not_expired(
     storage: &mut dyn Storage,
     env: &Env,
     delegate: &Addr,
-    vp: Uint128,
+    delegated_vp: Uint128,
     original_expiration: Option<u64>,
 ) -> StdResult<()> {
     // if delegation already expired, do nothing.
@@ -136,7 +138,7 @@ pub fn remove_delegated_vp_if_not_expired(
     // decrement at end of expiration period. do this before undoing previous
     // increment to prevent underflow.
     if let Some(original_expiration) = original_expiration {
-        DELEGATED_VP.increment(storage, delegate.clone(), original_expiration, vp)?;
+        DELEGATED_VP.increment(storage, delegate.clone(), original_expiration, delegated_vp)?;
     }
 
     DELEGATED_VP.decrement(
@@ -150,8 +152,98 @@ pub fn remove_delegated_vp_if_not_expired(
         // update the total that will be reflected in historical queries
         // starting from the next block.
         env.block.height + 1,
-        vp,
+        delegated_vp,
     )?;
+
+    Ok(())
+}
+
+/// Re-syncs a delegator's contribution to each of their active delegates'
+/// `DELEGATED_VP` totals to match `new_vp`, the delegator's current voting
+/// power. used both by the voting power change hook and by the permissionless
+/// `Sync` message, so that a missed voting power change hook (see
+/// `DELEGATED_VP_AMOUNTS` in `state.rs`) can always be repaired later, either
+/// by a subsequent hook or by anyone calling `Sync`.
+///
+/// for each of the delegator's active delegations (skipping ones expiring at
+/// or before `env.block.height + 1`, since an update this block cannot affect
+/// a delegation whose removal has already taken effect or is about to), this
+/// loads the delegation's current contribution from `DELEGATED_VP_AMOUNTS`,
+/// falling back to `legacy_old_vp` (or, if not given, `new_vp` itself, which
+/// makes this a no-op) for delegations created before that map existed,
+/// computes the delegation's new contribution, applies the difference to the
+/// delegate's total (scheduled to reverse at the delegation's expiration, if
+/// any), and stores the new contribution.
+///
+/// `legacy_old_vp` is the delegator's previous voting power to use as the
+/// fallback basis for a delegation with no stored contribution. the caller
+/// should pass `Some` when it knows (or can reasonably derive) the
+/// delegator's previous voting power, such as from a voting power change
+/// hook's delta. pass `None` when there is no such basis (e.g. a bare `Sync`
+/// call), in which case a legacy delegation's fallback contribution is
+/// computed from `new_vp` itself, making it a no-op: since we don't know its
+/// true prior contribution, we don't want to guess and potentially
+/// over/under-credit the delegate.
+pub fn sync_delegator(
+    deps: DepsMut,
+    env: &Env,
+    delegator: &Addr,
+    new_vp: Uint128,
+    legacy_old_vp: Option<Uint128>,
+) -> Result<(), ContractError> {
+    // need to get the latest delegations in case any were updated earlier in
+    // the same block
+    let delegations = DELEGATIONS.load_all_latest(deps.storage, delegator, env.block.height)?;
+
+    for LoadedItem {
+        item: Delegation { delegate, percent },
+        expiration,
+        ..
+    } in delegations
+    {
+        // if this delegation is already expired (expiration <=
+        // env.block.height) or expires on the next block (expiration ==
+        // env.block.height + 1), do nothing since this update won't take
+        // effect until the next block and thus the following operations
+        // would be no-ops (or could incorrectly reschedule a decrement that
+        // has already taken place or is about to).
+        if expiration.is_some_and(|exp| exp <= env.block.height + 1) {
+            continue;
+        }
+
+        let current_delegated_vp =
+            match DELEGATED_VP_AMOUNTS.may_load(deps.storage, (delegator, &delegate))? {
+                Some(stored) => stored,
+                // legacy delegation created before DELEGATED_VP_AMOUNTS existed:
+                // fall back to the value the old code would have used, based on
+                // legacy_old_vp if given, or new_vp otherwise (a no-op).
+                None => calculate_delegated_vp(legacy_old_vp.unwrap_or(new_vp), percent),
+            };
+
+        let new_delegated_vp = calculate_delegated_vp(new_vp, percent);
+
+        match new_delegated_vp.cmp(&current_delegated_vp) {
+            Ordering::Less => {
+                let delta = current_delegated_vp - new_delegated_vp;
+                remove_delegated_vp_if_not_expired(
+                    deps.storage,
+                    env,
+                    &delegate,
+                    delta,
+                    expiration,
+                )?;
+            }
+            Ordering::Equal => {
+                // nothing to do.
+            }
+            Ordering::Greater => {
+                let delta = new_delegated_vp - current_delegated_vp;
+                add_delegated_vp(deps.storage, env, &delegate, delta, expiration)?;
+            }
+        }
+
+        DELEGATED_VP_AMOUNTS.save(deps.storage, (delegator, &delegate), &new_delegated_vp)?;
+    }
 
     Ok(())
 }
@@ -161,7 +253,7 @@ pub fn update_delegated_vp_expiration(
     storage: &mut dyn Storage,
     env: &Env,
     delegate: &Addr,
-    vp: Uint128,
+    delegated_vp: Uint128,
     original_expiration: Option<u64>,
     new_expiration: Option<u64>,
 ) -> StdResult<()> {
@@ -174,7 +266,7 @@ pub fn update_delegated_vp_expiration(
             ));
         }
 
-        DELEGATED_VP.increment(storage, delegate.clone(), original_expiration, vp)?;
+        DELEGATED_VP.increment(storage, delegate.clone(), original_expiration, delegated_vp)?;
     }
 
     // if new expiration is set, decrement at new expiration
@@ -185,7 +277,7 @@ pub fn update_delegated_vp_expiration(
             ));
         }
 
-        DELEGATED_VP.decrement(storage, delegate.clone(), new_expiration, vp)?;
+        DELEGATED_VP.decrement(storage, delegate.clone(), new_expiration, delegated_vp)?;
     }
 
     Ok(())
@@ -239,7 +331,7 @@ pub fn handle_redelegation(
     new_percent: Decimal,
     config: &Config,
     current_percent_delegated: Decimal,
-    vp: Uint128,
+    delegator_vp: Uint128,
     existing_delegation_entry: SnapshotVectorMapItemRef,
 ) -> DelegationHandlerResult {
     let (existing_delegation_id, existing_delegation_expiration) = existing_delegation_entry;
@@ -249,18 +341,12 @@ pub fn handle_redelegation(
         .load_item(deps.storage, delegator, existing_delegation_id)?
         .percent;
 
-    // if delegation is not expired and percent is the same, just extend the
-    // expiration based on the current config.
+    // if delegation is not expired and percent is the same, refresh the
+    // expiration based on the current config and re-sync the delegation's
+    // contribution to the delegator's current voting power. this repairs any
+    // drift accumulated from a missed voting power change hook, since a
+    // refresh is a natural opportunity to catch up.
     if !expired && existing_delegation_percent == new_percent {
-        // if both expirations are none, do nothing.
-        if existing_delegation_expiration.is_none() && config.delegation_validity_blocks.is_none() {
-            return Ok((
-                current_percent_delegated,
-                (existing_delegation_id, existing_delegation_expiration),
-                false,
-            ));
-        }
-
         let (_, new_expiration) = DELEGATIONS.update_expiration(
             deps.storage,
             delegator,
@@ -269,14 +355,50 @@ pub fn handle_redelegation(
             config.delegation_validity_blocks,
         )?;
 
+        // load this delegation's current contribution to the delegate's
+        // total, falling back to what the old code would have used for
+        // delegations created before DELEGATED_VP_AMOUNTS existed.
+        let stored_delegated_vp = DELEGATED_VP_AMOUNTS
+            .may_load(deps.storage, (delegator, delegate))?
+            .unwrap_or_else(|| calculate_delegated_vp(delegator_vp, existing_delegation_percent));
+
+        // move the stored contribution from the original expiration to the
+        // new expiration. this only changes when the contribution will be
+        // reversed (if ever), not the delegate's current total.
         update_delegated_vp_expiration(
             deps.storage,
             env,
             delegate,
-            vp,
+            stored_delegated_vp,
             existing_delegation_expiration,
             new_expiration,
         )?;
+
+        // now that the stored amount is scheduled against the new expiration,
+        // resync it to the delegator's current voting power, applying any
+        // difference (positive or negative) at the new expiration.
+        let new_delegated_vp = calculate_delegated_vp(delegator_vp, new_percent);
+        match new_delegated_vp.cmp(&stored_delegated_vp) {
+            Ordering::Less => {
+                let delta = stored_delegated_vp - new_delegated_vp;
+                remove_delegated_vp_if_not_expired(
+                    deps.storage,
+                    env,
+                    delegate,
+                    delta,
+                    new_expiration,
+                )?;
+            }
+            Ordering::Equal => {
+                // already in sync; nothing to do.
+            }
+            Ordering::Greater => {
+                let delta = new_delegated_vp - stored_delegated_vp;
+                add_delegated_vp(deps.storage, env, delegate, delta, new_expiration)?;
+            }
+        }
+
+        DELEGATED_VP_AMOUNTS.save(deps.storage, (delegator, delegate), &new_delegated_vp)?;
 
         return Ok((
             current_percent_delegated,
@@ -293,13 +415,20 @@ pub fn handle_redelegation(
         .checked_add(new_percent)?;
 
     if !expired {
-        // remove current delegated VP based on existing percent
-        let old_vp = calculate_delegated_vp(vp, existing_delegation_percent);
+        // remove this delegation's stored contribution (not a freshly
+        // recomputed one, which could differ from what was actually added if
+        // a voting power change hook was missed since this delegation was
+        // last created/updated), falling back to what the old code would
+        // have used for delegations created before DELEGATED_VP_AMOUNTS
+        // existed.
+        let old_delegated_vp = DELEGATED_VP_AMOUNTS
+            .may_load(deps.storage, (delegator, delegate))?
+            .unwrap_or_else(|| calculate_delegated_vp(delegator_vp, existing_delegation_percent));
         remove_delegated_vp_if_not_expired(
             deps.storage,
             env,
             delegate,
-            old_vp,
+            old_delegated_vp,
             existing_delegation_expiration,
         )?;
     }
@@ -386,6 +515,14 @@ pub fn validate_and_update_delegated_vp(
 
     // add new delegated VP to the delegate's total
     add_delegated_vp(deps.storage, env, delegate, delegated_vp, expiration)?;
+
+    // store exactly what was added so future removals/moves (undelegate,
+    // redelegate, refresh, voting power change hooks) know exactly what to
+    // undo, instead of recomputing a potentially different amount from a
+    // since-changed voting power. this covers new delegations, delegations
+    // with a changed percent, and expired delegations being renewed -- i.e.
+    // every case that reaches this function.
+    DELEGATED_VP_AMOUNTS.save(deps.storage, (delegator, delegate), &delegated_vp)?;
 
     Ok(())
 }

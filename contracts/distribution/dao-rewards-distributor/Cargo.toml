@@ -34,6 +34,7 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 dao-rewards-distributor = { workspace = true }
+dao-proposal-hook-counter = { workspace = true }
 cw-multi-test = { workspace = true }
 anyhow = { workspace = true }
 cw20-stake = { workspace = true, features = ["library"] }

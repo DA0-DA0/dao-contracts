@@ -1,7 +1,9 @@
 use cosmwasm_std::storage_keys::to_length_prefixed_nested;
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
-use cosmwasm_std::{to_json_vec, Addr, Decimal, Storage, Uint128};
-use cw_multi_test::{next_block, Executor};
+use cosmwasm_std::{
+    attr, to_json_vec, Addr, Decimal, Reply, Storage, SubMsgResponse, SubMsgResult, Uint128,
+};
+use cw_multi_test::{next_block, AppResponse, Executor};
 use cw_storage_plus::Map;
 use cw_utils::Duration;
 use dao_interface::voting::IsActiveResponse;
@@ -531,6 +533,98 @@ fn test_dao_query_works() -> anyhow::Result<()> {
     Ok(())
 }
 
+fn has_attr(response: &AppResponse, key: &str, value: &str) -> bool {
+    response.events.iter().any(|event| {
+        event
+            .attributes
+            .iter()
+            .any(|attribute| attribute.key == key && attribute.value == value)
+    })
+}
+
+#[test]
+fn stake_hook_reply_error_is_non_fatal_and_observable() {
+    let mut deps = mock_dependencies();
+    let response = crate::contract::reply(
+        deps.as_mut(),
+        mock_env(),
+        Reply {
+            id: dao_hooks::stake::STAKE_HOOK_REPLY_ID_BASE,
+            result: SubMsgResult::Err("codespace: wasm, code: 5".to_string()),
+        },
+    )
+    .unwrap();
+
+    assert_eq!(
+        response.attributes,
+        vec![
+            attr("action", "stake_hook_failed"),
+            attr("hook", "stake"),
+            attr("addr", "unknown"),
+            attr("error", "codespace: wasm, code: 5"),
+        ]
+    );
+}
+
+#[test]
+fn unstake_hook_reply_error_is_non_fatal_and_observable() {
+    let mut deps = mock_dependencies();
+    let response = crate::contract::reply(
+        deps.as_mut(),
+        mock_env(),
+        Reply {
+            id: dao_hooks::stake::UNSTAKE_HOOK_REPLY_ID_BASE,
+            result: SubMsgResult::Err("codespace: wasm, code: 5".to_string()),
+        },
+    )
+    .unwrap();
+
+    assert_eq!(
+        response.attributes,
+        vec![
+            attr("action", "stake_hook_failed"),
+            attr("hook", "unstake"),
+            attr("addr", "unknown"),
+            attr("error", "codespace: wasm, code: 5"),
+        ]
+    );
+}
+
+#[test]
+fn stake_hook_reply_success_is_empty() {
+    let mut deps = mock_dependencies();
+    let response = crate::contract::reply(
+        deps.as_mut(),
+        mock_env(),
+        Reply {
+            id: dao_hooks::stake::STAKE_HOOK_REPLY_ID_BASE,
+            result: SubMsgResult::Ok(SubMsgResponse {
+                events: vec![],
+                data: None,
+            }),
+        },
+    )
+    .unwrap();
+
+    assert!(response.attributes.is_empty());
+}
+
+#[test]
+fn unknown_reply_id_is_rejected() {
+    let mut deps = mock_dependencies();
+    let err = crate::contract::reply(
+        deps.as_mut(),
+        mock_env(),
+        Reply {
+            id: 99,
+            result: SubMsgResult::Err("irrelevant".to_string()),
+        },
+    )
+    .unwrap_err();
+
+    assert_eq!(err, crate::ContractError::UnknownReplyId { id: 99 });
+}
+
 // The owner may add and remove hooks.
 #[test]
 fn test_add_remove_hooks() -> anyhow::Result<()> {
@@ -553,9 +647,32 @@ fn test_add_remove_hooks() -> anyhow::Result<()> {
     let hooks = query_hooks(&app, &module)?;
     assert_eq!(hooks.hooks, vec!["meow".to_string()]);
 
-    // Minting / staking now doesn't work because meow isn't a contract
-    // This failure means the hook is working
-    mint_and_stake_nft(&mut app, &nft, &module, STAKER, "1").unwrap_err();
+    // Staking and unstaking still work even though meow isn't a contract,
+    // since a failing hook must never block them. The failure is recorded on
+    // the response and the hook stays registered.
+    mint_nft(&mut app, &nft, STAKER, "2")?;
+    prepare_stake_nft(&mut app, &module, STAKER, "2")?;
+    send_nft(&mut app, &nft, "2", STAKER, module.as_str())?;
+    let res = confirm_stake_nft(&mut app, &module, STAKER, "2")?;
+    assert!(has_attr(&res, "action", "stake_hook_failed"));
+    assert!(has_attr(&res, "hook", "stake"));
+    assert!(has_attr(&res, "addr", "meow"));
+    app.update_block(next_block);
+    let (total, voting) = query_total_and_voting_power(&app, &module, STAKER, None)?;
+    assert_eq!(total, Uint128::new(2));
+    assert_eq!(voting, Uint128::new(2));
+
+    let res = unstake_nfts(&mut app, &module, STAKER, &["2"])?;
+    assert!(has_attr(&res, "action", "stake_hook_failed"));
+    assert!(has_attr(&res, "hook", "unstake"));
+    assert!(has_attr(&res, "addr", "meow"));
+    app.update_block(next_block);
+    let (total, voting) = query_total_and_voting_power(&app, &module, STAKER, None)?;
+    assert_eq!(total, Uint128::new(1));
+    assert_eq!(voting, Uint128::new(1));
+
+    let hooks = query_hooks(&app, &module)?;
+    assert_eq!(hooks.hooks, vec!["meow".to_string()]);
 
     let res = add_hook(&mut app, &module, DAO, "meow");
     is_error!(res => "Given address already registered as a hook");

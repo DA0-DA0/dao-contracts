@@ -36,6 +36,16 @@ voting power changes, such as:
 - `dao-voting-token-staked`
 - `cw20-stake`
 
+This contract rejects hook calls from any address that is not the
+`hook_caller` of at least one distribution. Staking contracts treat a failed
+hook call as non-fatal: the stake or unstake still succeeds, the hook stays
+registered, and the failure is recorded as attributes on the staking
+transaction, naming the receiver that failed (`action: stake_hook_failed`,
+`addr: <receiver>`). This means a stale or premature hook registration can never
+block staking, but it also means rewards are not being tracked while the hook is
+misconfigured, so watch for that attribute and set up hooks and distributions
+together, ideally in the same proposal.
+
 ### Creating a new distribution
 
 Only the `owner` can create new distributions.
@@ -150,7 +160,8 @@ You can also update the `vp_contract`, `hook_caller`, and
 
 > **WARNING:** You probably always want to update `vp_contract` and
 > `hook_caller` together. Make sure you know what you're doing. And be sure to
-> add/remove hooks on the old and new `hook_caller`s accordingly.
+> add/remove hooks on the old and new `hook_caller`s accordingly, ideally in the
+> same proposal as the update.
 
 ### Withdrawing
 

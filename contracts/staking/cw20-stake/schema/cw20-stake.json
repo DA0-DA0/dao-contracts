@@ -573,6 +573,20 @@
           }
         },
         "additionalProperties": false
+      },
+      {
+        "description": "Migrates a v2 or later contract to this version. Only the stored contract version changes.",
+        "type": "object",
+        "required": [
+          "from_compatible"
+        ],
+        "properties": {
+          "from_compatible": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       }
     ]
   },

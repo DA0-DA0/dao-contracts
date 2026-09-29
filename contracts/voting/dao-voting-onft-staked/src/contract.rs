@@ -1,13 +1,14 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdResult, SubMsg, Uint128, Uint256,
+    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
+    Response, StdResult, SubMsg, Uint128, Uint256,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_storage_plus::Bound;
 use cw_utils::Duration;
 use dao_hooks::nft_stake::{stake_nft_hook_msgs, unstake_nft_hook_msgs};
+use dao_hooks::stake::handle_stake_hook_reply;
 use dao_interface::voting::IsActiveResponse;
 use dao_voting::duration::validate_duration;
 use dao_voting::threshold::{
@@ -764,4 +765,12 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     }
 
     Ok(Response::new().add_attribute("action", "migrate"))
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    // hook failures must never block staking or unstaking, and must not remove
+    // the hook. record the failure and let the transaction succeed.
+    handle_stake_hook_reply(HOOKS, deps.as_ref(), &msg)?
+        .ok_or(ContractError::UnknownReplyId { id: msg.id })
 }
