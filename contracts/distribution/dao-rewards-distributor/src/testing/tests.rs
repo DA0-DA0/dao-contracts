@@ -11,6 +11,7 @@ use dao_interface::voting::InfoResponse;
 use dao_testing::{DaoTestingSuite, ADDR0, ADDR1, ADDR2, ADDR3, GOV_DENOM, OWNER};
 
 use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
+use crate::helpers::scale_factor;
 use crate::msg::ExecuteMsg;
 use crate::msg::{CreateMsg, FundMsg, InstantiateMsg, MigrateMsg};
 use crate::state::{EmissionRate, Epoch};
@@ -804,6 +805,84 @@ fn test_native_dao_rewards_time_based() {
 
     suite.stake_native_tokens(ADDR0, addr1_balance);
     suite.stake_native_tokens(ADDR1, addr2_balance);
+}
+
+#[test]
+fn test_small_linear_emission_survives_incremental_accumulator_updates() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::CW4)
+        .with_rewards_config(RewardsConfig {
+            amount: 100,
+            denom: UncheckedDenom::Native(GOV_DENOM.to_string()),
+            duration: Duration::Height(200),
+            destination: None,
+            continuous: true,
+        })
+        .with_cw4_members(vec![
+            Member {
+                addr: ADDR0.to_string(),
+                weight: 1,
+            },
+            Member {
+                addr: ADDR1.to_string(),
+                weight: 1,
+            },
+        ])
+        .build();
+
+    // Advance the accumulator once per block through ordinary membership
+    // changes while keeping total voting power constant. Each update emits
+    // half a token, so flooring before applying accumulator precision loses
+    // the entire emission.
+    for height in 0..200 {
+        suite.skip_blocks(1);
+        if height % 2 == 0 {
+            suite.update_members(
+                vec![Member {
+                    addr: ADDR2.to_string(),
+                    weight: 1,
+                }],
+                vec![ADDR1.to_string()],
+            );
+        } else {
+            suite.update_members(
+                vec![Member {
+                    addr: ADDR1.to_string(),
+                    weight: 1,
+                }],
+                vec![ADDR2.to_string()],
+            );
+        }
+
+        if height == 0 {
+            let distribution = suite.get_distribution(1);
+            assert_eq!(
+                distribution.active_epoch.last_updated_total_earned_puvp,
+                Expiration::AtHeight(1)
+            );
+            assert_eq!(
+                distribution.active_epoch.total_earned_puvp,
+                scale_factor().checked_div(Uint256::from(4u8)).unwrap()
+            );
+        }
+    }
+
+    let distribution = suite.get_distribution(1);
+    assert_eq!(
+        distribution.active_epoch.last_updated_total_earned_puvp,
+        Expiration::AtHeight(200)
+    );
+    assert_eq!(
+        distribution.active_epoch.total_earned_puvp,
+        scale_factor().checked_mul(Uint256::from(50u8)).unwrap()
+    );
+
+    // ADDR0 retained half the voting power throughout the full 100-token
+    // period. Its accrued share must remain claimable after all incremental
+    // updates consumed that period, even though the much larger funded
+    // distribution remains active.
+    suite.assert_pending_rewards(ADDR0, 1, 50);
+    suite.claim_rewards(ADDR0, 1);
+    suite.assert_native_balance(ADDR0, GOV_DENOM, 50);
 }
 
 // all of the `+1` corrections highlight rounding
@@ -3111,4 +3190,96 @@ fn test_unsafe_force_withdraw() {
     // owner has balance
     let owner_balance = suite.get_balance_native(OWNER, &suite.reward_denom);
     assert_eq!(owner_balance, 100);
+}
+
+#[test]
+fn test_large_linear_emission_amount_does_not_overflow_puvp() {
+    use cosmwasm_std::{
+        from_json, testing::MockQuerier, ContractResult, QuerierResult, SystemResult, WasmQuery,
+    };
+    use dao_interface::voting::{Query as VotingQueryMsg, TotalPowerAtHeightResponse};
+
+    use crate::rewards::get_active_total_earned_puvp;
+    use crate::state::DistributionState;
+
+    const TOTAL_POWER: u128 = 1_000_000;
+
+    let mut deps = mock_dependencies();
+    let mut querier = MockQuerier::default();
+    querier.update_wasm(|query| -> QuerierResult {
+        match query {
+            WasmQuery::Smart { msg, .. } => match from_json(msg).unwrap() {
+                VotingQueryMsg::TotalPowerAtHeight { height } => {
+                    SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&TotalPowerAtHeightResponse {
+                            power: Uint128::new(TOTAL_POWER),
+                            height: height.unwrap_or_default(),
+                        })
+                        .unwrap(),
+                    ))
+                }
+                _ => panic!("unexpected query"),
+            },
+            _ => panic!("unexpected query"),
+        }
+    });
+    deps.querier = querier;
+
+    // a valid emission amount whose product with the precision scale factor
+    // (1e39) exceeds Uint256::MAX (~1.16e77). scaling must not overflow before
+    // the elapsed fraction of the period and total voting power are applied.
+    let amount = Uint128::new(200_000_000_000_000_000_000_000_000_000_000_000_000);
+    assert!(Uint256::from(amount).checked_mul(scale_factor()).is_err());
+
+    let distribution = DistributionState {
+        id: 1,
+        denom: cw20::Denom::Native(GOV_DENOM.to_string()),
+        active_epoch: Epoch {
+            emission_rate: EmissionRate::Linear {
+                amount,
+                duration: Duration::Height(200),
+                continuous: true,
+            },
+            started_at: Expiration::AtHeight(0),
+            ends_at: Expiration::AtHeight(1_000),
+            total_earned_puvp: Uint256::zero(),
+            last_updated_total_earned_puvp: Expiration::AtHeight(0),
+        },
+        vp_contract: Addr::unchecked("vp_contract"),
+        hook_caller: Addr::unchecked("hook_caller"),
+        open_funding: false,
+        funded_amount: amount,
+        withdraw_destination: Addr::unchecked(OWNER),
+        historical_earned_puvp: Uint256::zero(),
+    };
+
+    let mut env = mock_env();
+    env.block.height = 1;
+
+    // one block of a 200-block period: amount * 1e39 / 200 / total power.
+    let expected = Uint256::from(amount)
+        .checked_div(Uint256::from(200u128 * TOTAL_POWER))
+        .unwrap()
+        .checked_mul(scale_factor())
+        .unwrap();
+    assert_eq!(
+        get_active_total_earned_puvp(deps.as_ref(), &env.block, &distribution).unwrap(),
+        expected
+    );
+
+    // a rewards per unit voting power value that cannot be represented at all
+    // (here, the maximum amount per block over a million blocks) is reported
+    // as an error rather than wrapping or panicking.
+    let mut unrepresentable = distribution.clone();
+    unrepresentable.active_epoch.emission_rate = EmissionRate::Linear {
+        amount: Uint128::MAX,
+        duration: Duration::Height(1),
+        continuous: true,
+    };
+    unrepresentable.active_epoch.ends_at = Expiration::AtHeight(u64::MAX);
+    env.block.height = 1_000_000;
+    assert!(matches!(
+        get_active_total_earned_puvp(deps.as_ref(), &env.block, &unrepresentable).unwrap_err(),
+        crate::ContractError::CheckedMultiplyRatio(_)
+    ));
 }

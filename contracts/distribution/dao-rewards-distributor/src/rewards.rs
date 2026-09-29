@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, BlockInfo, Deps, DepsMut, Env, StdResult, Uint128, Uint256};
+use cosmwasm_std::{Addr, BlockInfo, Decimal, Deps, DepsMut, Env, StdResult, Uint128, Uint256};
 use cw20::Expiration;
 
 use crate::{
@@ -126,13 +126,22 @@ pub fn get_active_total_earned_puvp(
                 let complete_distribution_periods =
                     new_reward_distribution_duration.ratio(&duration)?;
 
-                let new_rewards_distributed = Uint256::from(amount)
-                    .checked_mul_floor(complete_distribution_periods)?
-                    .checked_mul(scale_factor())?;
-
                 // the new rewards per unit voting power that have been
-                // distributed since the last update
-                let new_rewards_puvp = new_rewards_distributed.checked_div(total_power.into())?;
+                // distributed since the last update:
+                //
+                // amount * scale_factor * periods / total_power
+                //
+                // the precision scale must be applied before flooring, or
+                // small per-update emissions are lost entirely. the product
+                // is computed in 512-bit space so that large (valid) emission
+                // amounts cannot overflow the intermediate value, and flooring
+                // once here is equivalent to flooring the scaled amount and
+                // then flooring again on division by total power.
+                let new_rewards_puvp = scale_factor().checked_multiply_ratio(
+                    Uint256::from(amount)
+                        .checked_mul(complete_distribution_periods.atomics().into())?,
+                    Uint256::from(Decimal::one().atomics()).checked_mul(total_power.into())?,
+                )?;
                 Ok(curr.checked_add(new_rewards_puvp)?)
             }
         }

@@ -1,5 +1,6 @@
 use cosmwasm_std::{
-    CheckedFromRatioError, CheckedMultiplyFractionError, DivideByZeroError, OverflowError, StdError,
+    CheckedFromRatioError, CheckedMultiplyFractionError, CheckedMultiplyRatioError,
+    DivideByZeroError, OverflowError, StdError,
 };
 use cw_utils::PaymentError;
 use thiserror::Error;
@@ -26,6 +27,9 @@ pub enum ContractError {
 
     #[error(transparent)]
     CheckedMultiplyFraction(#[from] CheckedMultiplyFractionError),
+
+    #[error(transparent)]
+    CheckedMultiplyRatio(#[from] CheckedMultiplyRatioError),
 
     #[error(transparent)]
     Payment(#[from] PaymentError),
