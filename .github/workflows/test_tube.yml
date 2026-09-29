@@ -52,13 +52,18 @@ jobs:
       - name: Rust Dependencies Cache
         uses: actions/cache@v3
         with:
+          # osmosis-test-tube's build script runs `go build`, which puts the
+          # libwasmvm that libosmosistesttube links against in the Go module
+          # cache. restoring target/ skips the build script, so the module
+          # cache must be restored with it or linking the tests fails.
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
             artifacts/
-          key: ${{ runner.os }}-cargo-with-artifacts-${{ hashFiles('**/Cargo.lock') }}
+            ~/go/pkg/mod/
+          key: ${{ runner.os }}-cargo-with-artifacts-go-mod-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install just
         uses: extractions/setup-just@v1
