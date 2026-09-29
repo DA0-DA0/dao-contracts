@@ -3,13 +3,9 @@ use cw4::MemberChangedHookMsg;
 use cw_snapshot_vector_map::LoadedItem;
 use dao_hooks::{nft_stake::NftStakeChangedHookMsg, stake::StakeChangedHookMsg, vote::VoteHookMsg};
 use dao_voting::delegation::calculate_delegated_vp;
-use std::cmp::Ordering;
 
 use crate::{
-    helpers::{
-        add_delegated_vp, get_udvp, is_delegate_registered, remove_delegated_vp_if_not_expired,
-        unregister_delegate,
-    },
+    helpers::{get_udvp, is_delegate_registered, sync_delegator, unregister_delegate},
     state::{
         Delegation, DAO, DELEGATIONS, PROPOSAL_HOOK_CALLERS, UNVOTED_DELEGATED_VP,
         VOTING_POWER_HOOK_CALLERS,
@@ -162,10 +158,6 @@ fn handle_delegator_voting_power_changed_hook(
     vp_delta: Uint128,
     increased: bool,
 ) -> Result<Response, ContractError> {
-    // need to get the latest delegations in case any were updated earlier in
-    // the same block
-    let delegations = DELEGATIONS.load_all_latest(deps.storage, &delegator, env.block.height)?;
-
     // compute old VP based on the new VP and the delta, since multiple voting
     // power changes can occur in the same block and we can't reliably access
     // the previous VP without storing intermediate state (which would require
@@ -187,57 +179,23 @@ fn handle_delegator_voting_power_changed_hook(
     // the delta and applying the floor, since the floor of the delta may not
     // match the difference between the floored VPs. we care about the delta
     // between the floored VPs.
+    //
+    // this is only used as the fallback basis for delegations with no stored
+    // delegated VP amount (see `sync_delegator`), i.e. ones created before
+    // `DELEGATED_VP_AMOUNTS` existed. it's computed with saturating
+    // arithmetic, rather than `checked_sub`/`checked_add`, so that a bad
+    // delta -- e.g. because an earlier voting power change hook for this
+    // delegator was missed, such as a stake/unstake hook failure that is
+    // tolerated rather than reverting the stake change -- can never make this
+    // hook error. an inaccurate value here only affects the legacy fallback;
+    // delegations with a stored amount are unaffected.
     let old_vp = if increased {
-        new_vp.checked_sub(vp_delta)?
+        new_vp.saturating_sub(vp_delta)
     } else {
-        new_vp.checked_add(vp_delta)?
+        new_vp.saturating_add(vp_delta)
     };
 
-    for LoadedItem {
-        item: Delegation { delegate, percent },
-        expiration,
-        ..
-    } in delegations
-    {
-        // if this delegation is already expired (expiration <=
-        // env.block.height) or expires on the next block (expiration ==
-        // env.block.height + 1), do nothing since this update won't take effect
-        // until the next block and thus the following operations are no-ops.
-        // also, it should not be possible for the delegation to already be
-        // expired, since `load_all_latest` should not return expired
-        // delegations, but just check for vibes anyway.
-        if expiration.is_some_and(|exp| exp <= env.block.height + 1) {
-            continue;
-        }
-
-        // for each delegation, we first find the current delegated VP and the
-        // new delegated VP
-        let current_delegated_vp = calculate_delegated_vp(old_vp, percent);
-        let new_delegated_vp = calculate_delegated_vp(new_vp, percent);
-
-        // update the next block's delegated VP for the delegate and perform the
-        // reverse on the expiration block if necessary.
-        match new_delegated_vp.cmp(&current_delegated_vp) {
-            Ordering::Less => {
-                let delta = current_delegated_vp - new_delegated_vp;
-                remove_delegated_vp_if_not_expired(
-                    deps.storage,
-                    env,
-                    &delegate,
-                    delta,
-                    expiration,
-                )?;
-            }
-            Ordering::Equal => {
-                // for cases where current delegated VP is equal to new
-                // delegated VP, we don't need to do anything.
-            }
-            Ordering::Greater => {
-                let delta = new_delegated_vp - current_delegated_vp;
-                add_delegated_vp(deps.storage, env, &delegate, delta, expiration)?;
-            }
-        }
-    }
+    sync_delegator(deps, env, &delegator, new_vp, Some(old_vp))?;
 
     Ok(Response::new()
         .add_attribute("action", "voting_power_change_hook")
@@ -294,8 +252,18 @@ pub fn execute_vote_hook(
 
                 // remove the delegator's delegated VP from the delegate's
                 // unvoted delegated VP for this proposal since this
-                // delegator just voted.
-                let new_udvp = udvp.checked_sub(delegated_vp)?;
+                // delegator just voted. use saturating_sub instead of
+                // checked_sub: `power` is the delegator's actual voting power
+                // at the proposal's snapshot height, while `udvp` is derived
+                // from this contract's own bookkeeping of the delegate's
+                // total, which can be stale if a voting power change hook for
+                // this delegator was missed (e.g. a tolerated stake/unstake
+                // hook failure). an error here would matter far more than the
+                // (self-healing) undercount a saturating subtraction can
+                // cause: proposal modules silently REMOVE a vote hook that
+                // errors, which would permanently disconnect this contract
+                // from vote hooks for that proposal module.
+                let new_udvp = udvp.saturating_sub(delegated_vp);
 
                 UNVOTED_DELEGATED_VP.save(
                     deps.storage,

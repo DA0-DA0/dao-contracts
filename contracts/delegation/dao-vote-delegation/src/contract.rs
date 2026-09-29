@@ -20,8 +20,8 @@ use semver::Version;
 
 use crate::helpers::{
     ensure_setup, get_udvp, get_voting_power, handle_new_delegation, handle_redelegation,
-    is_delegate_registered, remove_delegated_vp_if_not_expired, unregister_delegate,
-    validate_and_update_delegated_vp, validate_delegation,
+    is_delegate_registered, remove_delegated_vp_if_not_expired, sync_delegator,
+    unregister_delegate, validate_and_update_delegated_vp, validate_delegation,
 };
 use crate::hooks::{
     execute_membership_changed, execute_nft_stake_changed, execute_stake_changed, execute_vote_hook,
@@ -31,8 +31,9 @@ use crate::msg::{
     MigrateMsg, QueryMsg,
 };
 use crate::state::{
-    Config, Delegate, CONFIG, DAO, DELEGATED_VP, DELEGATES, DELEGATIONS, DELEGATION_ENTRIES,
-    PERCENT_DELEGATED, PROPOSAL_HOOK_CALLERS, VOTING_POWER_HOOK_CALLERS, VP_CAP_PERCENT,
+    Config, Delegate, CONFIG, DAO, DELEGATED_VP, DELEGATED_VP_AMOUNTS, DELEGATES, DELEGATIONS,
+    DELEGATION_ENTRIES, PERCENT_DELEGATED, PROPOSAL_HOOK_CALLERS, VOTING_POWER_HOOK_CALLERS,
+    VP_CAP_PERCENT,
 };
 use crate::ContractError;
 
@@ -148,6 +149,7 @@ pub fn execute(
             execute_membership_changed(deps, env, info.sender, msg)
         }
         ExecuteMsg::VoteHook(vote_hook) => execute_vote_hook(deps, info.sender, vote_hook),
+        ExecuteMsg::Sync { delegator } => execute_sync(deps, env, delegator),
     }
 }
 
@@ -308,18 +310,27 @@ fn execute_undelegate(
         },
     )?;
 
-    let vp = get_voting_power(
-        deps.as_ref(),
-        &delegator,
-        // use next block height since voting power takes effect at the start of
-        // the next block. if the delegator changed their voting power in the
-        // current block, we need to use the new value.
-        env.block.height + 1,
-    )?;
+    // load this delegation's stored contribution to the delegate's total,
+    // falling back to what the old code would have used for delegations
+    // created before DELEGATED_VP_AMOUNTS existed.
+    let delegated_vp = match DELEGATED_VP_AMOUNTS.may_load(deps.storage, (&delegator, &delegate))? {
+        Some(stored) => stored,
+        None => {
+            let vp = get_voting_power(
+                deps.as_ref(),
+                &delegator,
+                // use next block height since voting power takes effect at the
+                // start of the next block. if the delegator changed their
+                // voting power in the current block, we need to use the new
+                // value.
+                env.block.height + 1,
+            )?;
+            calculate_delegated_vp(vp, delegation.percent)
+        }
+    };
 
     // remove delegated VP from delegate's total delegated VP at the current
     // height if the delegation is not expired.
-    let delegated_vp = calculate_delegated_vp(vp, delegation.percent);
     remove_delegated_vp_if_not_expired(
         deps.storage,
         &env,
@@ -328,12 +339,54 @@ fn execute_undelegate(
         existing_expiration,
     )?;
 
+    // always delete the stored entry, regardless of whether the delegation
+    // was expired: it no longer contributes anything.
+    DELEGATED_VP_AMOUNTS.remove(deps.storage, (&delegator, &delegate));
+
     Ok(Response::new()
         .add_attribute("action", "undelegate")
         .add_attribute("delegator", delegator.to_string())
         .add_attribute("delegate", delegate.to_string())
         .add_attribute("percent", delegation.percent.to_string())
         .add_attribute("vp", delegated_vp.to_string()))
+}
+
+/// permissionlessly re-derives an address' delegated voting power from their
+/// current voting power. see `ExecuteMsg::Sync` for why this exists.
+fn execute_sync(deps: DepsMut, env: Env, delegator: String) -> Result<Response, ContractError> {
+    ensure_setup(deps.as_ref())?;
+
+    let addr = deps.api.addr_validate(&delegator)?;
+
+    // use next block height since voting power takes effect at the start of
+    // the next block, matching the voting power change hook this simulates.
+    let new_vp = get_voting_power(deps.as_ref(), &addr, env.block.height + 1)?;
+
+    let response = Response::new()
+        .add_attribute("action", "sync")
+        .add_attribute("address", addr.to_string())
+        .add_attribute("vp", new_vp.to_string());
+
+    if is_delegate_registered(deps.as_ref(), &addr, None)? {
+        // behave like the delegate branch of the voting power change hook:
+        // unregister if they no longer have any voting power.
+        if new_vp.is_zero() {
+            unregister_delegate(deps, &addr, env.block.height)?;
+        }
+
+        Ok(response.add_attribute("member_type", "delegate"))
+    } else {
+        // not a delegate: re-sync their contribution to each of their
+        // delegates' totals to match their current voting power. pass
+        // `None` as the legacy fallback basis, since we have no reasonable
+        // "previous" VP to derive here (unlike the hook, which has a delta);
+        // this makes legacy delegations with no stored amount a no-op, since
+        // we don't know their true prior contribution and don't want to
+        // guess.
+        sync_delegator(deps, &env, &addr, new_vp, None)?;
+
+        Ok(response.add_attribute("member_type", "delegator"))
+    }
 }
 
 fn execute_update_voting_power_hook_callers(
@@ -648,7 +701,19 @@ fn query_effective_unvoted_delegated_vote_power_reduction(
     // effective UDVP, to ensure we properly take into account the configured VP
     // cap (the effective UDVP is the total UDVP with the cap applied, so the
     // effective UDVP can be used in place of the cap in this computation).
-    let new_effective_udvp = udvp.total.checked_sub(delegated_vp)?.min(udvp.effective);
+    //
+    // use saturating_sub instead of checked_sub: `delegated_vp` is this
+    // voter's own current delegated VP, while `udvp.total` is derived from
+    // this contract's own bookkeeping of the delegate's total, which can be
+    // stale if a voting power change hook for this voter was missed (e.g. a
+    // tolerated stake/unstake hook failure). unlike the vote hook (which is
+    // wrapped in reply_on_error by the proposal module), this query is called
+    // synchronously and unconditionally while processing the voter's vote, so
+    // an error here would revert the entire vote transaction -- permanently
+    // preventing this delegator from voting at all until the drift is
+    // repaired (e.g. via `Sync` or a subsequent hook). saturating just
+    // reduces the delegate's computed loss instead, which self-heals.
+    let new_effective_udvp = udvp.total.saturating_sub(delegated_vp).min(udvp.effective);
 
     // compute the amount of UDVP the delegate will lose due to this voter's
     // delegated VP being removed (likely due to a vote override).

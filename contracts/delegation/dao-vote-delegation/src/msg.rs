@@ -78,6 +78,29 @@ pub enum ExecuteMsg {
         /// the DAO proposal modules query.
         limit: Option<u32>,
     },
+    /// Re-derives an address' delegated voting power from their current
+    /// voting power. Can be called by anyone.
+    ///
+    /// This exists to repair a delegate's total delegated VP after a voting
+    /// power change hook for one of their delegators was missed (e.g. due to
+    /// a stake/unstake hook failure that is tolerated rather than reverting
+    /// the underlying stake change, or any other voting power change that
+    /// never reached this contract). Since delegated VP is tracked via
+    /// deltas rather than being recomputed from scratch on every query, a
+    /// missed hook would otherwise cause permanent drift between a
+    /// delegate's total and the sum of what their delegators actually
+    /// delegate. This message lets anyone force a resync once the missed
+    /// change is noticed.
+    ///
+    /// If `delegator` is a registered delegate, this behaves like the
+    /// delegate branch of the voting power change hook, unregistering them if
+    /// they no longer have any voting power. Otherwise, this re-syncs their
+    /// contribution to each of their delegates' totals to match their
+    /// current voting power.
+    Sync {
+        /// the address to sync.
+        delegator: String,
+    },
     /// Updates the configuration of the delegation system.
     UpdateConfig {
         /// the maximum percent of voting power that a single delegate can
