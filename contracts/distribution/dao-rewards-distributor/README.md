@@ -181,3 +181,75 @@ claimed. Withdrawing only applies to unallocated funds.
 ### Claiming
 
 You can claim funds from a distribution that you have pending rewards for.
+
+### Conservative accrual for missed voting power change hooks
+
+Rewards are accrued per address by multiplying that address's voting power by
+the change in rewards earned per unit voting power (puvp) since that address's
+last checkpoint. This is only correct if the address's voting power was
+constant for that entire period, which voting power change hooks (see above)
+are relied on to guarantee: any stake/unstake (or other voting power change)
+is expected to checkpoint the address's reward state before its voting power
+actually changes.
+
+Some voting power/staking contracts allow a hook receiver to fail without
+reverting the underlying stake change (so that one broken/misbehaving reward
+distributor can't block staking). If a hook is ever missed this way, the
+guarantee above breaks: an address's voting power can change without a
+checkpoint, and naively using its current voting power for the whole
+unaccounted-for period could over-credit it, potentially by more than the
+distribution ever received.
+
+To guard against this, accrual uses the *minimum* of:
+
+- the address's voting power at the current block (the existing behavior),
+  and
+- the address's voting power at the block right after its last checkpoint for
+  that distribution (voting power changes take effect on the following
+  block).
+
+In the healthy case (no missed hooks) these are always equal, since the
+address's voting power hasn't changed since its last checkpoint, so this is
+not a behavior change. After a single missed stake or unstake, the address is
+conservatively *under*-credited for the affected period rather than
+over-credited.
+
+The baseline is never earlier than the block from which the distribution's
+current `vp_contract` has been in use: its creation block (which also serves as
+the baseline for an address that has never been checkpointed), or the block
+`vp_contract` was last changed by `update`, since the new contract's earlier
+voting power is unrelated to the distribution. Distributions and reward states
+stored before this behavior was introduced don't have this information (the
+distribution's creation height, or an address's last checkpoint height,
+respectively); in that case, the original behavior (using only the current
+voting power) applies, since there is no reference point to be conservative
+against.
+
+This mitigation only compares the two endpoints of a potentially-missed
+window, so it cannot catch a missed change that moves an address's voting
+power away from, and then back to, the same value within a single
+unaccounted-for period (e.g. unstaking and then restaking the same amount
+while disconnected). The per-distribution funds cap described below exists as
+defense in depth against that residual case.
+
+### Per-distribution funds cap
+
+All distributions funded with the same denom share a single token balance on
+this contract; `Claim` does not otherwise distinguish which distribution's
+funds are being paid out. To ensure a bug in one distribution's reward
+accounting (such as the residual over-credit risk described above) can never
+pay out of a *different* distribution's funds, each distribution tracks its
+own `claimable_funds`: the amount deposited via `Create`/`Fund`/`FundLatest`
+that has not yet been claimed or clawed back via `Withdraw`. A `Claim` that
+would reduce a distribution's `claimable_funds` below zero fails instead of
+succeeding, even if the contract's total balance for that denom would
+otherwise cover it.
+
+In the healthy case, a distribution never comes close to this cap, since all
+reward math floors in the recipient's favor (i.e. against the distribution).
+
+Distributions created before this cap was introduced have no `claimable_funds`
+tracked (`null`/`None`) and are not capped, since it isn't possible to know
+how much of their already-funded amount is still outstanding after the fact.
+`UnsafeForceWithdraw` is intentionally unsafe and uncapped, and does not
+affect `claimable_funds`.

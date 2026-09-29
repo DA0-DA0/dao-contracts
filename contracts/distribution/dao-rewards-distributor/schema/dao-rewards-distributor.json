@@ -965,6 +965,18 @@
             }
           ]
         },
+        "claimable_funds": {
+          "description": "funds deposited for this distribution (via `Fund`/`FundLatest`, or natively provided on `Create`) that have not yet been claimed (via `Claim`) or clawed back (via `Withdraw`). used as a per-distribution solvency cap so that a single distribution can never pay out more than it has been funded, even if a bug (e.g. a missed voting power change hook) causes it to compute that it owes more than that. `Some(0)` on `Create`. `#[serde(default)]` so that distributions stored before this field was introduced deserialize as `None`, since we don't know how much of their already-funded amount is still outstanding; `None` disables the cap for that distribution (uncapped, matching prior behavior) and is never re-enabled. Untouched by `UnsafeForceWithdraw`, which is intentionally unsafe/uncapped.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Uint128"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "denom": {
           "description": "validated denom (native or cw20)",
           "allOf": [
@@ -1014,6 +1026,16 @@
               "$ref": "#/definitions/Addr"
             }
           ]
+        },
+        "vp_contract_since_height": {
+          "description": "the block height from which `vp_contract` has been this distribution's voting power contract: its creation height, or the height `vp_contract` was last changed by `Update`. used as the voting power baseline for users who have not been checkpointed since then, so that the conservative accrual in `rewards::get_accrued_rewards_not_yet_accounted_for` never queries the current `vp_contract` at a height from before it was in use. `#[serde(default)]` so that distributions stored before this field was introduced still deserialize as `None`, since their creation height is unknown. `None` disables the baseline for users who were never checkpointed.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
         },
         "withdraw_destination": {
           "description": "destination address for reward clawbacks",
@@ -1360,6 +1382,18 @@
                 }
               ]
             },
+            "claimable_funds": {
+              "description": "funds deposited for this distribution (via `Fund`/`FundLatest`, or natively provided on `Create`) that have not yet been claimed (via `Claim`) or clawed back (via `Withdraw`). used as a per-distribution solvency cap so that a single distribution can never pay out more than it has been funded, even if a bug (e.g. a missed voting power change hook) causes it to compute that it owes more than that. `Some(0)` on `Create`. `#[serde(default)]` so that distributions stored before this field was introduced deserialize as `None`, since we don't know how much of their already-funded amount is still outstanding; `None` disables the cap for that distribution (uncapped, matching prior behavior) and is never re-enabled. Untouched by `UnsafeForceWithdraw`, which is intentionally unsafe/uncapped.",
+              "default": null,
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "denom": {
               "description": "validated denom (native or cw20)",
               "allOf": [
@@ -1409,6 +1443,16 @@
                   "$ref": "#/definitions/Addr"
                 }
               ]
+            },
+            "vp_contract_since_height": {
+              "description": "the block height from which `vp_contract` has been this distribution's voting power contract: its creation height, or the height `vp_contract` was last changed by `Update`. used as the voting power baseline for users who have not been checkpointed since then, so that the conservative accrual in `rewards::get_accrued_rewards_not_yet_accounted_for` never queries the current `vp_contract` at a height from before it was in use. `#[serde(default)]` so that distributions stored before this field was introduced still deserialize as `None`, since their creation height is unknown. `None` disables the baseline for users who were never checkpointed.",
+              "default": null,
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
             },
             "withdraw_destination": {
               "description": "destination address for reward clawbacks",

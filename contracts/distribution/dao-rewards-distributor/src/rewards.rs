@@ -1,10 +1,12 @@
+use std::cmp::{max, min};
+
 use cosmwasm_std::{Addr, BlockInfo, Decimal, Deps, DepsMut, Env, StdResult, Uint128, Uint256};
 use cw20::Expiration;
 
 use crate::{
     helpers::{
-        get_total_voting_power_at_block, get_voting_power_at_block, scale_factor, DurationExt,
-        ExpirationExt,
+        get_total_voting_power_at_block, get_voting_power_at_block, get_voting_power_at_height,
+        scale_factor, DurationExt, ExpirationExt,
     },
     state::{DistributionState, EmissionRate, UserRewardState, DISTRIBUTIONS, USER_REWARDS},
     ContractError,
@@ -70,6 +72,14 @@ pub fn update_rewards(
     user_reward_state
         .accounted_for_rewards_puvp
         .insert(distribution_id, total_applicable_puvp);
+
+    // record the height of this checkpoint so that future accruals can
+    // conservatively bound the voting power used in case a voting power
+    // change hook is missed before the next checkpoint. see
+    // `get_accrued_rewards_not_yet_accounted_for`.
+    user_reward_state
+        .last_updated_height
+        .insert(distribution_id, env.block.height);
 
     // reflect the updated state changes
     USER_REWARDS.save(deps.storage, addr.clone(), &user_reward_state)?;
@@ -150,6 +160,38 @@ pub fn get_active_total_earned_puvp(
 
 // get a user's rewards not yet accounted for in their reward state (not pending
 // nor claimed, but available to them due to the passage of time).
+//
+// this multiplies a voting power by the `reward_factor` (the change in
+// rewards earned per unit voting power since the user's rewards were last
+// accounted for). that is only correct if the user's voting power was
+// constant for the entire period the `reward_factor` covers, which is
+// normally guaranteed by voting power change hooks: any stake/unstake (or
+// other voting power change) updates the user's reward state (and thus
+// resets `reward_factor` to start counting from that height) before the
+// voting power actually changes.
+//
+// if a voting power change hook is ever missed (e.g. because a hook receiver
+// is allowed to fail without reverting the underlying stake change), that
+// guarantee breaks: the user's voting power may have changed without a
+// checkpoint, so naively using their current voting power for the whole
+// unaccounted-for period can over-credit them, potentially by more than was
+// ever emitted. to guard against this, we conservatively use the minimum of:
+//   - the user's voting power at `env.block.height` (the current, existing
+//     query -- this reflects the state at the start of the current block,
+//     before any changes made in the current block), and
+//   - the user's voting power at `last_updated_height + 1`, i.e. the voting
+//     power that took effect immediately after their last checkpoint (voting
+//     power changes take effect on the following block).
+// in the healthy case (no missed hooks) the user's voting power has not
+// changed since their last checkpoint, so these two are equal and behavior is
+// unchanged. after a single missed stake or unstake, the user is
+// under-credited for that period rather than over-credited.
+//
+// this is only a mitigation, not a complete fix: it only compares the two
+// endpoints, so a missed change that moves away from and then back to the
+// same voting power within a single unaccounted-for period is not detected.
+// the per-distribution `claimable_funds` cap (see `state::DistributionState`)
+// exists as defense in depth against that residual risk.
 pub fn get_accrued_rewards_not_yet_accounted_for(
     deps: Deps,
     env: &Env,
@@ -158,10 +200,6 @@ pub fn get_accrued_rewards_not_yet_accounted_for(
     distribution: &DistributionState,
     user_reward_state: &UserRewardState,
 ) -> StdResult<Uint128> {
-    // get the user's voting power at the current height
-    let voting_power: Uint256 =
-        get_voting_power_at_block(deps, &env.block, &distribution.vp_contract, addr)?.into();
-
     // get previous reward per unit voting power accounted for
     let user_last_reward_puvp = user_reward_state
         .accounted_for_rewards_puvp
@@ -173,6 +211,67 @@ pub fn get_accrued_rewards_not_yet_accounted_for(
     // voting power distributed and the user's latest reward per unit voting
     // power accounted for.
     let reward_factor = total_earned_puvp.checked_sub(user_last_reward_puvp)?;
+
+    // nothing new has been earned since the user's last checkpoint, so there
+    // is nothing to accrue. skip querying voting power entirely.
+    if reward_factor.is_zero() {
+        return Ok(Uint128::zero());
+    }
+
+    // get the user's voting power at the current height (start of the
+    // current block, before any changes made in the current block).
+    let voting_power: Uint256 =
+        get_voting_power_at_block(deps, &env.block, &distribution.vp_contract, addr)?.into();
+
+    // determine the height of the user's last checkpoint for this
+    // distribution, to use as the conservative voting power reference point.
+    // it can never be earlier than the height from which the current
+    // `vp_contract` has been in use: the distribution's creation (for a user
+    // never checkpointed, whose accounted for puvp is the default of 0, i.e.
+    // the distribution's start) or the last time `vp_contract` was changed,
+    // since the new contract's earlier voting power is unrelated to this
+    // distribution. if neither is known (legacy distribution/user state stored
+    // before these fields were introduced), we have no reference point to be
+    // conservative against, so fall back to the original behavior of only
+    // using the current voting power.
+    let last_checkpoint_height = match (
+        user_reward_state
+            .last_updated_height
+            .get(&distribution.id)
+            .copied(),
+        distribution.vp_contract_since_height,
+    ) {
+        (Some(last_updated), Some(since)) => Some(max(last_updated, since)),
+        (last_updated, since) => last_updated.or(since),
+    };
+
+    let voting_power = match last_checkpoint_height {
+        Some(last_checkpoint_height) => {
+            // voting power changes take effect on the block following the
+            // one they occur in, so the voting power right after the user's
+            // last checkpoint is the voting power at `last_checkpoint_height
+            // + 1`. cap this at the current block height so we never query a
+            // future height: if the checkpoint happened this same block (or,
+            // defensively, somehow later), there's nothing more to query --
+            // the current voting power is already the answer.
+            let reference_height = min(last_checkpoint_height.saturating_add(1), env.block.height);
+
+            if reference_height == env.block.height {
+                voting_power
+            } else {
+                let reference_voting_power: Uint256 = get_voting_power_at_height(
+                    deps,
+                    reference_height,
+                    &distribution.vp_contract,
+                    addr,
+                )?
+                .into();
+
+                min(voting_power, reference_voting_power)
+            }
+        }
+        None => voting_power,
+    };
 
     // calculate the amount of rewards earned:
     // voting_power * reward_factor / scale_factor
