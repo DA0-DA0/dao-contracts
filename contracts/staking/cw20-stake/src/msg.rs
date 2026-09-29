@@ -71,6 +71,9 @@ pub enum MigrateMsg {
     /// will remove the contract's current manager, and require a
     /// nomination -> acceptance flow for future ownership transfers.
     FromV1 {},
+    /// Migrates a v2 or later contract to this version. Only the stored
+    /// contract version changes.
+    FromCompatible {},
 }
 
 #[cw_serde]

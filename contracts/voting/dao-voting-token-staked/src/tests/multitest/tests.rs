@@ -5,7 +5,9 @@ use crate::msg::{
 };
 use crate::state::Config;
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
-use cosmwasm_std::{coins, Addr, Coin, Decimal, Uint128};
+use cosmwasm_std::{
+    attr, coins, Addr, Coin, Decimal, Reply, SubMsgResponse, SubMsgResult, Uint128,
+};
 use cw_controllers::ClaimsResponse;
 use cw_multi_test::{next_block, App, AppResponse, BankSudo, Executor, SudoMsg};
 use cw_utils::Duration;
@@ -24,6 +26,98 @@ const ADDR2: &str = "addr2";
 const DENOM: &str = "ujuno";
 const INVALID_DENOM: &str = "uinvalid";
 const ODD_DENOM: &str = "uodd";
+
+fn has_attr(response: &AppResponse, key: &str, value: &str) -> bool {
+    response.events.iter().any(|event| {
+        event
+            .attributes
+            .iter()
+            .any(|attribute| attribute.key == key && attribute.value == value)
+    })
+}
+
+#[test]
+fn stake_hook_reply_error_is_non_fatal_and_observable() {
+    let mut deps = mock_dependencies();
+    let response = crate::contract::reply(
+        deps.as_mut(),
+        mock_env(),
+        Reply {
+            id: dao_hooks::stake::STAKE_HOOK_REPLY_ID_BASE,
+            result: SubMsgResult::Err("codespace: wasm, code: 5".to_string()),
+        },
+    )
+    .unwrap();
+
+    assert_eq!(
+        response.attributes,
+        vec![
+            attr("action", "stake_hook_failed"),
+            attr("hook", "stake"),
+            attr("addr", "unknown"),
+            attr("error", "codespace: wasm, code: 5"),
+        ]
+    );
+}
+
+#[test]
+fn unstake_hook_reply_error_is_non_fatal_and_observable() {
+    let mut deps = mock_dependencies();
+    let response = crate::contract::reply(
+        deps.as_mut(),
+        mock_env(),
+        Reply {
+            id: dao_hooks::stake::UNSTAKE_HOOK_REPLY_ID_BASE,
+            result: SubMsgResult::Err("codespace: wasm, code: 5".to_string()),
+        },
+    )
+    .unwrap();
+
+    assert_eq!(
+        response.attributes,
+        vec![
+            attr("action", "stake_hook_failed"),
+            attr("hook", "unstake"),
+            attr("addr", "unknown"),
+            attr("error", "codespace: wasm, code: 5"),
+        ]
+    );
+}
+
+#[test]
+fn stake_hook_reply_success_is_empty() {
+    let mut deps = mock_dependencies();
+    let response = crate::contract::reply(
+        deps.as_mut(),
+        mock_env(),
+        Reply {
+            id: dao_hooks::stake::STAKE_HOOK_REPLY_ID_BASE,
+            result: SubMsgResult::Ok(SubMsgResponse {
+                events: vec![],
+                data: None,
+            }),
+        },
+    )
+    .unwrap();
+
+    assert!(response.attributes.is_empty());
+}
+
+#[test]
+fn unknown_reply_id_is_rejected() {
+    let mut deps = mock_dependencies();
+    let err = crate::contract::reply(
+        deps.as_mut(),
+        mock_env(),
+        Reply {
+            id: 99,
+            result: SubMsgResult::Err("irrelevant".to_string()),
+        },
+    )
+    .unwrap_err();
+
+    assert_eq!(err, crate::ContractError::UnknownReplyId { id: 99 });
+}
 
 fn mock_app() -> App {
     let mut app = App::default();
@@ -1285,13 +1379,23 @@ fn test_add_remove_hooks() {
 }
 
 #[test]
-fn test_staking_hooks() {
+fn test_staking_hooks_continue_after_failure() {
     let mut app = mock_app();
 
     let staking_id = app.store_code(dao_voting_token_staked_contract());
     let hook_id = app.store_code(dao_proposal_hook_counter_contract());
 
-    let hook = app
+    let failing_hook = app
+        .instantiate_contract(
+            hook_id,
+            Addr::unchecked(DAO_ADDR),
+            &dao_proposal_hook_counter::msg::InstantiateMsg { should_error: true },
+            &[],
+            "failing hook counter",
+            None,
+        )
+        .unwrap();
+    let successful_hook = app
         .instantiate_contract(
             hook_id,
             Addr::unchecked(DAO_ADDR),
@@ -1299,7 +1403,7 @@ fn test_staking_hooks() {
                 should_error: false,
             },
             &[],
-            "hook counter".to_string(),
+            "successful hook counter",
             None,
         )
         .unwrap();
@@ -1316,30 +1420,48 @@ fn test_staking_hooks() {
         },
     );
 
-    // Add a staking hook.
-    app.execute_contract(
-        Addr::unchecked(DAO_ADDR),
-        addr.clone(),
-        &ExecuteMsg::AddHook {
-            addr: hook.to_string(),
-        },
-        &[],
-    )
-    .unwrap();
+    for hook in [&failing_hook, &successful_hook] {
+        app.execute_contract(
+            Addr::unchecked(DAO_ADDR),
+            addr.clone(),
+            &ExecuteMsg::AddHook {
+                addr: hook.to_string(),
+            },
+            &[],
+        )
+        .unwrap();
+    }
 
-    // Stake some tokens
-    let res = stake_tokens(&mut app, addr.clone(), ADDR1, 100, DENOM).unwrap();
-
-    // Make sure hook is included in response
-    assert_eq!("stake_hook", res.events.last().unwrap().attributes[1].value);
+    let stake_response = stake_tokens(&mut app, addr.clone(), ADDR1, 100, DENOM).unwrap();
+    assert!(has_attr(&stake_response, "action", "stake_hook_failed"));
+    assert!(has_attr(&stake_response, "hook", "stake"));
+    // the failure names the hook that actually failed, not the healthy one.
+    assert!(has_attr(&stake_response, "addr", failing_hook.as_str()));
+    assert!(!has_attr(&stake_response, "addr", successful_hook.as_str()));
 
     app.update_block(next_block);
+    let unstake_response = unstake_tokens(&mut app, addr.clone(), ADDR1, 75).unwrap();
+    assert!(has_attr(&unstake_response, "action", "stake_hook_failed"));
+    assert!(has_attr(&unstake_response, "hook", "unstake"));
+    assert!(has_attr(&unstake_response, "addr", failing_hook.as_str()));
 
-    // Unstake some
-    let res = unstake_tokens(&mut app, addr, ADDR1, 75).unwrap();
+    let successful_calls: Uint128 = app
+        .wrap()
+        .query_wasm_smart(
+            successful_hook.clone(),
+            &dao_proposal_hook_counter::msg::QueryMsg::StakeCounter {},
+        )
+        .unwrap();
+    assert_eq!(successful_calls, Uint128::new(2));
 
-    // Make sure hook is included in response
-    assert_eq!("stake_hook", res.events.last().unwrap().attributes[1].value);
+    let hooks: GetHooksResponse = app
+        .wrap()
+        .query_wasm_smart(addr, &QueryMsg::GetHooks {})
+        .unwrap();
+    assert_eq!(
+        hooks.hooks,
+        vec![failing_hook.to_string(), successful_hook.to_string()]
+    );
 }
 
 #[test]

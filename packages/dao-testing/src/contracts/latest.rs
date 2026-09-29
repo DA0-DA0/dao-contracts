@@ -45,6 +45,7 @@ pub fn cw20_stake_contract() -> Box<dyn Contract<Empty>> {
         cw20_stake::contract::instantiate,
         cw20_stake::contract::query,
     )
+    .with_reply(cw20_stake::contract::reply)
     .with_migrate(cw20_stake::contract::migrate);
     Box::new(contract)
 }
@@ -200,6 +201,7 @@ pub fn dao_voting_onft_staked_contract() -> Box<dyn Contract<Empty>> {
         dao_voting_onft_staked::contract::instantiate,
         dao_voting_onft_staked::contract::query,
     )
+    .with_reply(dao_voting_onft_staked::contract::reply)
     .with_migrate(dao_voting_onft_staked::contract::migrate);
     Box::new(contract)
 }

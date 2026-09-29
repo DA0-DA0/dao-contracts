@@ -4,7 +4,7 @@ use cosmwasm_std::{Uint128, Uint256};
 use cw2::ContractVersion;
 use cw20::{Cw20Coin, Expiration, UncheckedDenom};
 use cw4::Member;
-use cw_multi_test::Executor;
+use cw_multi_test::{AppResponse, Executor};
 use cw_ownable::OwnershipError;
 use cw_utils::Duration;
 use dao_interface::voting::InfoResponse;
@@ -19,6 +19,104 @@ use dao_rewards_distributor::ContractError;
 use super::suite::{RewardsConfig, SuiteBuilder};
 
 const ALT_DENOM: &str = "ualtgovtoken";
+
+fn has_attr(response: &AppResponse, key: &str, value: &str) -> bool {
+    response.events.iter().any(|event| {
+        event
+            .attributes
+            .iter()
+            .any(|attribute| attribute.key == key && attribute.value == value)
+    })
+}
+
+#[test]
+fn stale_rewards_distributor_cannot_block_cw20_stake_or_unstake() {
+    let mut suite = SuiteBuilder::base(super::suite::DaoType::CW20).build();
+    let old_staking_addr = suite.staking_addr.clone();
+
+    let new_dao = suite.base.cw4().dao();
+    let new_group_addr = new_dao.x.group_addr.clone();
+    suite
+        .base
+        .app
+        .execute_contract(
+            new_dao.core_addr,
+            new_group_addr.clone(),
+            &cw4_group::msg::ExecuteMsg::AddHook {
+                addr: suite.distribution_contract.to_string(),
+            },
+            &[],
+        )
+        .unwrap();
+    suite.update_hook_caller(1, new_group_addr.as_str());
+
+    let counter_code_id = suite
+        .base
+        .app
+        .store_code(dao_testing::contracts::dao_proposal_hook_counter_contract());
+    let counter = suite
+        .base
+        .app
+        .instantiate_contract(
+            counter_code_id,
+            Addr::unchecked(OWNER),
+            &dao_proposal_hook_counter::msg::InstantiateMsg {
+                should_error: false,
+            },
+            &[],
+            "successful stake hook",
+            None,
+        )
+        .unwrap();
+    suite
+        .base
+        .app
+        .execute_contract(
+            suite.core_addr.clone(),
+            old_staking_addr.clone(),
+            &cw20_stake::msg::ExecuteMsg::AddHook {
+                addr: counter.to_string(),
+            },
+            &[],
+        )
+        .unwrap();
+
+    let distributor = suite.distribution_contract.to_string();
+
+    let unstake_response = suite.unstake_cw20_tokens(10, ADDR0);
+    assert!(has_attr(&unstake_response, "action", "stake_hook_failed"));
+    assert!(has_attr(&unstake_response, "hook", "unstake"));
+    // the failure names the stale distributor, not the healthy counter.
+    assert!(has_attr(&unstake_response, "addr", &distributor));
+    assert!(!has_attr(&unstake_response, "addr", counter.as_str()));
+
+    let stake_response = suite.stake_cw20_tokens(5, ADDR0);
+    assert!(has_attr(&stake_response, "action", "stake_hook_failed"));
+    assert!(has_attr(&stake_response, "hook", "stake"));
+    assert!(has_attr(&stake_response, "addr", &distributor));
+
+    let successful_calls: Uint128 = suite
+        .base
+        .app
+        .wrap()
+        .query_wasm_smart(
+            counter.clone(),
+            &dao_proposal_hook_counter::msg::QueryMsg::StakeCounter {},
+        )
+        .unwrap();
+    assert_eq!(successful_calls, Uint128::new(2));
+
+    let hooks: cw20_stake::msg::GetHooksResponse = suite
+        .base
+        .app
+        .wrap()
+        .query_wasm_smart(old_staking_addr, &cw20_stake::msg::QueryMsg::GetHooks {})
+        .unwrap();
+    assert_eq!(
+        hooks.hooks,
+        vec![suite.distribution_contract.to_string(), counter.to_string()]
+    );
+}
 
 // By default, the tests are set up to distribute rewards over 1_000_000 units of time.
 // Over that time, 100_000_000 token rewards will be distributed.

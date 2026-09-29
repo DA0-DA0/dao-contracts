@@ -2,8 +2,8 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    from_json, to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdError, StdResult, Uint128,
+    from_json, to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
+    Response, StdError, StdResult, Uint128,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw20::{Cw20ReceiveMsg, TokenInfoResponse};
@@ -19,8 +19,9 @@ pub use cw20_base::contract::{
 pub use cw20_base::enumerable::{query_all_accounts, query_owner_allowances};
 use cw_controllers::ClaimsResponse;
 use cw_utils::Duration;
-use dao_hooks::stake::{stake_hook_msgs, unstake_hook_msgs};
+use dao_hooks::stake::{handle_stake_hook_reply, stake_hook_msgs, unstake_hook_msgs};
 use dao_voting::duration::validate_duration;
+use semver::Version;
 
 use crate::math;
 use crate::msg::{
@@ -456,18 +457,32 @@ pub fn query_list_stakers(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    // hook failures must never block staking or unstaking, and must not remove
+    // the hook. record the failure and let the transaction succeed.
+    handle_stake_hook_reply(HOOKS, deps.as_ref(), &msg)?
+        .ok_or(ContractError::UnknownReplyId { id: msg.id })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     use cw20_stake_v1 as v1;
 
-    let ContractVersion { version, .. } = get_contract_version(deps.storage)?;
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    // Only v2 and later contracts store their config under the v2 key. A
+    // contract migrated from v1 still holds its stale v1 config, so this, not
+    // the v1 config, tells the two apart.
+    let is_v1 = CONFIG.may_load(deps.storage)?.is_none();
+
     match msg {
         MigrateMsg::FromV1 {} => {
-            if version == CONTRACT_VERSION {
-                // Migrating from a version to a new one implies that
-                // the new version must be different.
+            // Re-running the v1 migration on a v2 contract would reset its
+            // owner to the stale v1 owner. v1 contracts were deployed under
+            // more than one contract name, so the stored name and version are
+            // not checked here.
+            if !is_v1 {
                 return Err(ContractError::AlreadyMigrated {});
             }
+
             let config = v1::state::CONFIG.load(deps.storage)?;
             cw_ownable::initialize_owner(
                 deps.storage,
@@ -482,8 +497,31 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                 }),
             };
             CONFIG.save(deps.storage, &config)?;
+        }
+        MigrateMsg::FromCompatible {} => {
+            if is_v1 {
+                return Err(ContractError::MigrateFromV1Required {});
+            }
 
-            Ok(Response::default())
+            let ContractVersion { contract, version } = get_contract_version(deps.storage)?;
+            if contract != CONTRACT_NAME {
+                return Err(ContractError::MigrationErrorIncorrectContract {
+                    expected: CONTRACT_NAME.to_string(),
+                    actual: contract,
+                });
+            }
+
+            // Migrating from a version to a new one implies that the new
+            // version must be newer.
+            let storage_version: Version = version.parse()?;
+            let new_version: Version = CONTRACT_VERSION.parse()?;
+            if storage_version >= new_version {
+                return Err(ContractError::AlreadyMigrated {});
+            }
         }
     }
+
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    Ok(Response::default())
 }
