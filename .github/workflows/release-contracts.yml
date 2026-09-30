@@ -14,12 +14,8 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-    container: cosmwasm/optimizer:0.16.1
     steps:
       - uses: actions/checkout@v3
-
-      - name: Install bash
-        run: apk add --no-cache bash
 
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -32,23 +28,18 @@ jobs:
           docker-images: true
           swap-storage: true
 
-      # tar is required for cargo cache
-      - run: apk add --no-cache tar
-
-      - name: Set up cargo cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
+      # run the optimizer exactly as `just workspace-optimize` does on x86, not
+      # as a container job. panic locations embed absolute source paths, so the
+      # source must be at /code (not the runner's checkout path) for these
+      # artifacts to match a local build byte for byte.
       - name: Compile contracts
-        timeout-minutes: 30
-        run: optimize.sh .
+        timeout-minutes: 60
+        run: |
+          docker run --rm -v "$(pwd)":/code \
+            --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
+            --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+            --platform linux/amd64 \
+            cosmwasm/optimizer:0.16.1
 
       - name: Upload contracts
         uses: actions/upload-artifact@v4
