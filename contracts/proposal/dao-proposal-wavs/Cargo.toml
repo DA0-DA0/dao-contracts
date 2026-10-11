@@ -1,0 +1,47 @@
+[package]
+name = "dao-proposal-wavs"
+authors = ["Juno AI <juno@junonetwork.io>"]
+description = "DAO DAO proposal module that consumes WAVS-attested envelopes; reference implementation of #922"
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std    = { workspace = true, features = ["ibc3"] }
+cw-storage-plus = { workspace = true }
+cw-utils        = { workspace = true }
+cw2             = { workspace = true }
+schemars        = { workspace = true }
+serde           = { workspace = true }
+serde_json      = { workspace = true }
+sha2            = "0.10"
+thiserror       = { workspace = true }
+
+cw-hooks        = { workspace = true }
+dao-hooks       = { workspace = true }
+dao-interface   = { workspace = true }
+dao-voting      = { workspace = true }
+
+# NOTE: We deliberately do NOT depend on the upstream `wavs-types` crate. Its transitive alloy
+# deps (alloy-consensus / alloy-rpc-types-eth / derive-macro version skew) cause resolver
+# conflicts in workspaces that target wasm32. We re-declare the small wire-format types in
+# `src/wavs_compat.rs`, confirmed against wavs-types 2.0.0-rc.8 source. Update in lock-step
+# with upstream wire-format changes.
+#
+# We also do NOT depend on cw-filter the crate (its cw-jsonfilter sub-dep has the same alloy
+# issue). The cw-filter wire-format types live in `src/filter.rs` and are queried via
+# deps.querier.query_wasm_smart against a deployed cw-filter contract.
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }
