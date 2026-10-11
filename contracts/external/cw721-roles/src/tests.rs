@@ -219,20 +219,52 @@ fn test_minting_and_transfer_permissions() {
     app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
         .unwrap();
 
-    // Non-minter can't transfer
-    let msg = ExecuteMsg::TransferNft {
+    // Soulbound: nobody can transfer, not even the DAO (which owns the contract).
+    //
+    // We assert against the error's Display string rather than `.downcast()` to
+    // `RolesContractError`: dao-testing depends on cw721-roles and is also a
+    // dev-dependency of cw721-roles, so the unit-test build ends up with the
+    // contract's error type compiled in two different cargo units. The TypeIds
+    // do not match across those units even though the source is the same, so a
+    // typed downcast inside `src/tests.rs` always returns None.
+    let transfer_msg = ExecuteMsg::TransferNft {
         recipient: BOB.to_string(),
         token_id: "1".to_string(),
     };
-    app.execute_contract(Addr::unchecked(ALICE), cw721_addr.clone(), &msg, &[])
+    let err = app
+        .execute_contract(
+            Addr::unchecked(ALICE),
+            cw721_addr.clone(),
+            &transfer_msg,
+            &[],
+        )
         .unwrap_err();
+    let chain: Vec<String> = err.chain().map(|c| format!("{c}")).collect();
+    assert!(
+        chain
+            .iter()
+            .any(|s| s.contains("not the contract's current owner")),
+        "expected NotOwner error for alice, got chain: {chain:?}",
+    );
 
-    // DAO can transfer
-    app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
-        .unwrap();
+    let err = app
+        .execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &transfer_msg, &[])
+        .unwrap_err();
+    let chain: Vec<String> = err.chain().map(|c| format!("{c}")).collect();
+    assert!(
+        chain.iter().any(|s| s.contains("soulbound")),
+        "expected Soulbound error for DAO, got chain: {chain:?}",
+    );
 
+    // Ownership unchanged after rejected transfers.
     let owner: OwnerOfResponse = query_nft_owner(&app, &cw721_addr, "1").unwrap();
-    assert_eq!(owner.owner, BOB);
+    assert_eq!(owner.owner, ALICE);
+
+    // And the cw4 weight map is still in sync — Alice has weight 1, Bob has none.
+    let alice: MemberResponse = query_member(&app, &cw721_addr, ALICE, None).unwrap();
+    assert_eq!(alice.weight, Some(1));
+    let bob: MemberResponse = query_member(&app, &cw721_addr, BOB, None).unwrap();
+    assert_eq!(bob.weight, None);
 }
 
 #[test]
@@ -272,22 +304,37 @@ fn test_send_permissions() {
         )
         .unwrap();
 
-    // Non-minter can't send
-    let msg = ExecuteMsg::SendNft {
+    // Soulbound: SendNft is also rejected, even when called by the DAO/minter.
+    // See `test_minting_and_transfer_permissions` for why we match on the
+    // error chain's Display string instead of `.downcast()`.
+    let send_msg = ExecuteMsg::SendNft {
         contract: cw721_staked_addr.to_string(),
         token_id: "1".to_string(),
         msg: to_json_binary(&Binary::default()).unwrap(),
     };
-    app.execute_contract(Addr::unchecked(ALICE), cw721_addr.clone(), &msg, &[])
+    let err = app
+        .execute_contract(Addr::unchecked(ALICE), cw721_addr.clone(), &send_msg, &[])
         .unwrap_err();
+    let chain: Vec<String> = err.chain().map(|c| format!("{c}")).collect();
+    assert!(
+        chain
+            .iter()
+            .any(|s| s.contains("not the contract's current owner")),
+        "expected NotOwner error for alice, got chain: {chain:?}",
+    );
 
-    // DAO can send
-    app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
-        .unwrap();
+    let err = app
+        .execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &send_msg, &[])
+        .unwrap_err();
+    let chain: Vec<String> = err.chain().map(|c| format!("{c}")).collect();
+    assert!(
+        chain.iter().any(|s| s.contains("soulbound")),
+        "expected Soulbound error for DAO, got chain: {chain:?}",
+    );
 
-    // Staking contract now owns the NFT
+    // Alice still owns the NFT.
     let owner: OwnerOfResponse = query_nft_owner(&app, &cw721_addr, "1").unwrap();
-    assert_eq!(owner.owner, cw721_staked_addr.as_str());
+    assert_eq!(owner.owner, ALICE);
 }
 
 #[test]
