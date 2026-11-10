@@ -74,5 +74,8 @@ jobs:
       - name: Run workspace optimize
         run: just workspace-optimize
 
+      - name: Check wasm function limits
+        run: just check-wasm-limits
+
       - name: Run Test Tube Integration Tests
         run: just test-tube
