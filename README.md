@@ -70,7 +70,20 @@ See [ci/integration-tests/README.md](ci/integration-tests/README.md) for more in
 
 ### Runtime compatibility
 
-Workspace and release builds use optimizer 0.16.1, which lowers Wasm sign-extension instructions for older runtimes. They run the image through [scripts/optimize.sh](scripts/optimize.sh), the image's own build script with one extra `wasm-opt` flag, `--one-caller-inline-max-function-size=15`, which stops large single-caller functions from being inlined into the contract entry points. cosmwasm-vm 2.2.10 and later (wasmvm 2.2.9 and later, used by THORChain) reject contracts with a function that declares more than 100 locals; `just check-wasm-limits` and CI enforce that limit on every built artifact. To reproduce release checksums, build with `just workspace-optimize` or pass the same `--entrypoint /code/scripts/optimize.sh` to the optimizer image; the stock optimizer command produces different artifacts.
+Workspace and release builds use optimizer 0.16.1, which lowers Wasm sign-extension instructions for older runtimes. They run the image through [scripts/optimize.sh](scripts/optimize.sh), which runs the image's own build script with one extra `wasm-opt` flag, `--one-caller-inline-max-function-size=15`, so large single-caller functions are not inlined into the contract entry points. cosmwasm-vm 2.2.10 and later (wasmvm 2.2.9 and later, used by THORChain) reject contracts with a function that declares more than 100 locals; `just workspace-optimize` finishes with `just check-wasm-limits`, which enforces that limit on every artifact listed in `artifacts/checksums.txt`, locally, in CI and in the release workflow.
+
+Release artifacts are built with `just workspace-optimize` on x86_64 at the tagged commit. To reproduce their checksums, check out the tag and run `just workspace-optimize`, or run the equivalent command from the repository root (the source must be mounted at `/code`):
+
+```sh
+docker run --rm -v "$(pwd)":/code \
+  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
+  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+  --platform linux/amd64 \
+  --entrypoint /bin/ash \
+  cosmwasm/optimizer:0.16.1 /code/scripts/optimize.sh
+```
+
+The stock optimizer command (without `--entrypoint` and the script) produces different artifacts and checksums.
 
 Optimizer 0.16.1's sign-extension lowering does **not** make every contract compatible with every CosmWasm 1.x chain: float-bearing RBAM/filter functionality requires CosmWasm/wasmvm **1.5 or later**, which [introduced float support with NaN canonicalization](https://github.com/CosmWasm/cosmwasm/blob/v1.5.0/CHANGELOG.md#150---2023-10-31).
 
