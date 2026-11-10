@@ -72,3 +72,12 @@ workspace-optimize:
             --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
             --platform linux/amd64 \
             cosmwasm/optimizer:0.16.1; fi
+
+# Fail when an optimized artifact has a function with more than 100 locals
+# (cosmwasm-vm >= 2.2.10 rejects such contracts at store time). The test
+# dependencies fetched by download-deps are third-party and not checked.
+check-wasm-limits:
+    #!/bin/bash
+    set -euo pipefail
+    shopt -s extglob
+    node scripts/check-wasm-limits.mjs artifacts/!(cw20_base|cw4_group|cw721_base).wasm
