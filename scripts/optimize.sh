@@ -52,8 +52,10 @@ rm -f artifacts/checksums.txt
 
 # The image's script only warns when nothing was built, and checksums.txt would
 # then list just the third-party contracts from `just download-deps`. Fail
-# instead; the image's script empties this directory before building.
+# instead, and remove that checksums.txt so a later `just check-wasm-limits`
+# fails too; the image's script empties this directory before building.
 if ! ls /target/wasm32-unknown-unknown/release/*.wasm >/dev/null 2>&1; then
+  rm -f artifacts/checksums.txt
   echo "error: the optimizer built no contracts" >&2
   exit 1
 fi
