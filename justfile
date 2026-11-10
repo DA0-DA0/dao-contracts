@@ -66,11 +66,13 @@ workspace-optimize:
             --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
             --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
             --platform linux/arm64 \
+            --entrypoint /code/scripts/optimize.sh \
             cosmwasm/optimizer-arm64:0.16.1; \
     elif [[ $(uname -m) == 'x86_64' ]]; then docker run --rm -v "$(pwd)":/code \
             --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
             --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
             --platform linux/amd64 \
+            --entrypoint /code/scripts/optimize.sh \
             cosmwasm/optimizer:0.16.1; fi
 
 # Fail when an optimized artifact has a function with more than 100 locals
