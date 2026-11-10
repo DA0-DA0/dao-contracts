@@ -53,12 +53,20 @@ deploy-local: download-deps
 		ghcr.io/cosmoscontracts/juno@sha256:256d5e441b9b2decdd0473a06df05be45c6fb067f8454ff3e81adddbc2bdbdc9 \
 		sh -c '/opt/setup_junod.sh "$@"; sed -i "s/^max_body_bytes = .*/max_body_bytes = 104857600/" /root/.juno/config/config.toml; junod start --rpc.laddr tcp://0.0.0.0:26657 --minimum-gas-prices 0.0001ujuno --trace' _ {{test_addrs}}
 
+# Third-party contracts used by the test-tube and integration tests. They are
+# pinned to fixed releases and verified by checksum: workspace-optimize lists
+# them in artifacts/checksums.txt, so check-wasm-limits checks them too, and an
+# unpinned upstream release could otherwise break CI.
 download-deps:
 	mkdir -p artifacts target
-	wget https://github.com/CosmWasm/cw-plus/releases/latest/download/cw20_base.wasm -O artifacts/cw20_base.wasm
-	wget https://github.com/CosmWasm/cw-plus/releases/latest/download/cw4_group.wasm -O artifacts/cw4_group.wasm
+	wget https://github.com/CosmWasm/cw-plus/releases/download/v2.0.0/cw20_base.wasm -O artifacts/cw20_base.wasm
+	wget https://github.com/CosmWasm/cw-plus/releases/download/v2.0.0/cw4_group.wasm -O artifacts/cw4_group.wasm
 	wget https://github.com/public-awesome/cw-nfts/releases/download/v0.18.0/cw721_base.wasm -O artifacts/cw721_base.wasm
-	echo 'ba81e10d053814f1dfbb92f20f77ce1cccf64b27b639db9e2afa8ab5d6ea3cf7  artifacts/cw721_base.wasm' | sha256sum --check
+	printf '%s  %s\n' \
+		4d8e90dd340993033f1b9e8e3a3ee7f8673c582ca9bcdd8c8cf3c7470d6537d5 artifacts/cw20_base.wasm \
+		4604a284e209c2fe320f223b9fd29805a0e8f2cf8ea7b01fac28c3efc4ee63f0 artifacts/cw4_group.wasm \
+		ba81e10d053814f1dfbb92f20f77ce1cccf64b27b639db9e2afa8ab5d6ea3cf7 artifacts/cw721_base.wasm \
+		| sha256sum --check
 
 # Build and optimize every contract into artifacts/ exactly as the release
 # workflow does (the source must be mounted at /code for reproducible
