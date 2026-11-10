@@ -28,26 +28,18 @@ jobs:
           docker-images: true
           swap-storage: true
 
-      # run the optimizer exactly as `just workspace-optimize` does on x86, not
-      # as a container job. panic locations embed absolute source paths, so the
-      # source must be at /code (not the runner's checkout path) for these
-      # artifacts to match a local build byte for byte. scripts/optimize.sh is
-      # the image's optimize.sh with a cap on wasm-opt's single-caller inlining
-      # (see the script); keep this command identical to the justfile.
+      - name: Install just
+        uses: extractions/setup-just@v1
+
+      # use the same recipe as local builds and the test workflows, not a
+      # container job: panic locations embed absolute source paths, so the
+      # source must be mounted at /code (not the runner's checkout path) for
+      # these artifacts to match a local build byte for byte. The recipe also
+      # runs scripts/optimize.sh (the image's build script plus one wasm-opt
+      # flag) and fails if an artifact exceeds cosmwasm-vm's locals limits.
       - name: Compile contracts
         timeout-minutes: 60
-        run: |
-          docker run --rm -v "$(pwd)":/code \
-            --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
-            --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-            --platform linux/amd64 \
-            --entrypoint /code/scripts/optimize.sh \
-            cosmwasm/optimizer:0.16.1
-
-      # cosmwasm-vm >= 2.2.10 rejects contracts with a function that declares
-      # more than 100 locals.
-      - name: Check wasm function limits
-        run: node scripts/check-wasm-limits.mjs artifacts/*.wasm
+        run: just workspace-optimize
 
       - name: Upload contracts
         uses: actions/upload-artifact@v4
@@ -60,5 +52,10 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: artifacts/*
+          append_body: true
+          body: |
+            ## Reproducing these artifacts
+
+            The contract artifacts and `checksums.txt` were built with `just workspace-optimize` at the tagged commit on x86_64 (`cosmwasm/optimizer:0.16.1` running `scripts/optimize.sh`, which adds `--one-caller-inline-max-function-size=15` to `wasm-opt`). To reproduce them byte for byte, check out the tag and run `just workspace-optimize`, or the equivalent command documented in the README's "Runtime compatibility" section. The stock optimizer command produces different checksums.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,73 +1,40 @@
 #!/bin/ash
 # shellcheck shell=dash
-# See https://www.shellcheck.net/wiki/SC2187
 #
-# Entry point for cosmwasm/optimizer:0.16.1 and cosmwasm/optimizer-arm64:0.16.1,
-# used by `just workspace-optimize` and .github/workflows/release-contracts.yml
-# through `--entrypoint /code/scripts/optimize.sh`.
+# Runs the cosmwasm/optimizer image's own build script with one extra wasm-opt
+# flag. Used by `just workspace-optimize` (and through it by CI and
+# .github/workflows/release-contracts.yml) as
 #
-# This is the image's own /usr/local/bin/optimize.sh with two changes:
+#   docker run ... --entrypoint /bin/ash cosmwasm/optimizer:0.16.1 /code/scripts/optimize.sh
 #
-# 1. wasm-opt gets --one-caller-inline-max-function-size=15. By default binaryen
-#    inlines every non-exported function that has a single caller, regardless
-#    of its size. Serde-derived deserializers form long chains of such
-#    functions, so they were merged into the contract entry points and produced
-#    functions with 103 to 118 locals. cosmwasm-vm >= 2.2.10 (wasmvm >= 2.2.9,
-#    used by THORChain) rejects contracts with a function that declares more
-#    than 100 locals. `just check-wasm-limits` verifies the result.
-# 2. The project directory defaults to "." because `--entrypoint` clears the
-#    image's default CMD (".").
+# The flag, --one-caller-inline-max-function-size=15, stops binaryen from
+# inlining every function that has a single caller regardless of its size. By
+# default serde-derived deserializer chains were merged into the contract entry
+# points, producing functions with 103 to 118 locals; cosmwasm-vm >= 2.2.10
+# (wasmvm >= 2.2.9, used by THORChain) rejects contracts with a function that
+# declares more than 100 locals. `just check-wasm-limits` verifies the result.
 #
-# Re-derive this script from the image whenever the optimizer version changes.
+# The image's /usr/local/bin/optimize.sh is patched at run time instead of
+# being copied here, so the build always follows the image in use (including
+# after an optimizer upgrade). The script fails if the wasm-opt line it patches
+# is not found exactly once.
 set -o errexit -o nounset -o pipefail
-command -v shellcheck >/dev/null && shellcheck "$0"
 
-export PATH="$PATH:/root/.cargo/bin"
+FLAG="--one-caller-inline-max-function-size=15"
+UPSTREAM=/usr/local/bin/optimize.sh
+PATCHED=/tmp/optimize.sh
 
-# Debug toolchain and default Rust version
-rustup toolchain list
-cargo --version
-
-# Prepare artifacts directory for later use
-mkdir -p artifacts
-
-# Delete previously built artifacts. Those can exist if the image is called
-# with a cache mounted to /target. In cases where contracts are removed over time,
-# old builds in cache should not be contained in the result of the next build.
-rm -f /target/wasm32-unknown-unknown/release/*.wasm
-
-# Ensure we get at most one argument and this is a directory (the path to the
-# Cargo project to be built).
-if [ "$#" -gt 1 ] || ! [ -d "${1:-.}" ]; then
-  echo "Usage: $0 [DIRECTORY]" >&2
+# The flag goes right before the input file, after the image's own flags.
+if [ "$(grep -c '^ *wasm-opt -Os .* "\$WASM" ' "$UPSTREAM")" -ne 1 ]; then
+  echo "error: expected exactly one 'wasm-opt -Os ... \"\$WASM\"' line in $UPSTREAM; update scripts/optimize.sh for this optimizer image" >&2
   exit 1
 fi
-PROJECTDIR="${1:-.}"
-echo "Building project $(realpath "$PROJECTDIR") ..."
-(
-  cd "$PROJECTDIR"
-  /usr/local/bin/bob
-)
+sed "s|^\( *wasm-opt -Os .*\) \"\\\$WASM\" |\1 $FLAG \"\\\$WASM\" |" "$UPSTREAM" > "$PATCHED"
+if [ "$(grep -c -- "^ *wasm-opt -Os .* $FLAG \"\\\$WASM\" " "$PATCHED")" -ne 1 ]; then
+  echo "error: failed to add $FLAG to the wasm-opt invocation in $UPSTREAM" >&2
+  exit 1
+fi
 
-echo "Optimizing artifacts ..."
-for WASM in /target/wasm32-unknown-unknown/release/*.wasm; do
-  [ -e "$WASM" ] || continue # https://superuser.com/a/519493
-
-  OUT_FILENAME=$(basename "$WASM")
-  echo "Optimizing $OUT_FILENAME ..."
-  # --signext-lowering is needed to support blockchains runnning CosmWasm < 1.3. It can be removed eventually
-  wasm-opt -Os --signext-lowering --one-caller-inline-max-function-size=15 "$WASM" -o "artifacts/$OUT_FILENAME"
-done
-
-echo "Post-processing artifacts..."
-(
-  cd artifacts
-
-  if test -n "$(find . -maxdepth 1 -name '*.wasm' -print -quit)"; then
-    sha256sum -- *.wasm | tee checksums.txt
-  else
-    echo "Warn: No .wasm file built. Check your build configuration in Cargo.toml."
-  fi
-)
-
-echo "Done."
+# The image's default CMD (".") is replaced by this script's path, so default
+# the project directory here.
+exec /bin/ash "$PATCHED" "${1:-.}"

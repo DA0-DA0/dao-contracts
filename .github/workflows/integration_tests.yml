@@ -62,10 +62,6 @@ jobs:
       - name: Run Integration Tests
         run: just integration-test
 
-      - name: Check wasm function limits
-        if: ${{ always() }}
-        run: just check-wasm-limits
-
       - name: Upload contract artifacts
         if: ${{ always() }}
         uses: actions/upload-artifact@v4

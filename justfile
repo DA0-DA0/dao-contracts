@@ -60,26 +60,31 @@ download-deps:
 	wget https://github.com/public-awesome/cw-nfts/releases/download/v0.18.0/cw721_base.wasm -O artifacts/cw721_base.wasm
 	echo 'ba81e10d053814f1dfbb92f20f77ce1cccf64b27b639db9e2afa8ab5d6ea3cf7  artifacts/cw721_base.wasm' | sha256sum --check
 
-workspace-optimize:
-    #!/bin/bash
-    if [[ $(uname -m) == 'arm64' ]] || [ $(uname -m) == 'aarch64' ]]; then docker run --rm -v "$(pwd)":/code \
-            --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
-            --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-            --platform linux/arm64 \
-            --entrypoint /code/scripts/optimize.sh \
-            cosmwasm/optimizer-arm64:0.16.1; \
-    elif [[ $(uname -m) == 'x86_64' ]]; then docker run --rm -v "$(pwd)":/code \
-            --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
-            --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-            --platform linux/amd64 \
-            --entrypoint /code/scripts/optimize.sh \
-            cosmwasm/optimizer:0.16.1; fi
-
-# Fail when an optimized artifact has a function with more than 100 locals
-# (cosmwasm-vm >= 2.2.10 rejects such contracts at store time). The test
-# dependencies fetched by download-deps are third-party and not checked.
-check-wasm-limits:
+# Build and optimize every contract into artifacts/ exactly as the release
+# workflow does (the source must be mounted at /code for reproducible
+# checksums), then check the artifacts against cosmwasm-vm's locals limits.
+workspace-optimize: && check-wasm-limits
     #!/bin/bash
     set -euo pipefail
-    shopt -s extglob
-    node scripts/check-wasm-limits.mjs artifacts/!(cw20_base|cw4_group|cw721_base).wasm
+    if [[ $(uname -m) == 'arm64' ]] || [[ $(uname -m) == 'aarch64' ]]; then
+        platform=linux/arm64
+        image=cosmwasm/optimizer-arm64:0.16.1
+    elif [[ $(uname -m) == 'x86_64' ]]; then
+        platform=linux/amd64
+        image=cosmwasm/optimizer:0.16.1
+    else
+        echo "unsupported architecture: $(uname -m)" >&2
+        exit 1
+    fi
+    docker run --rm -v "$(pwd)":/code \
+        --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
+        --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+        --platform "$platform" \
+        --entrypoint /bin/ash \
+        "$image" /code/scripts/optimize.sh
+
+# Fail when an artifact listed in artifacts/checksums.txt (written by the
+# optimizer) has a function with more than 100 locals; cosmwasm-vm >= 2.2.10
+# rejects such contracts at store time. Runs after every workspace-optimize.
+check-wasm-limits:
+    node scripts/check-wasm-limits.mjs --checksums artifacts/checksums.txt
