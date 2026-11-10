@@ -50,14 +50,36 @@ jobs:
             artifacts/
           key: ${{ runner.os }}-cargo-with-artifacts-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Get mainnet GAS_LIMIT
-        run: echo "MAINNET_GAS_LIMIT=$(curl -s https://juno-rpc.polkachu.com/consensus_params | jq -r '.result.consensus_params.block.max_gas')" >> $GITHUB_ENV
-
+      # Fails when Juno mainnet's block gas limit differs from GAS_LIMIT. The
+      # public RPC sometimes returns an empty or invalid response; retry a few
+      # times, then skip the comparison with a warning instead of failing.
       - name: Mainnet block GAS_LIMIT changed
-        if: ${{ env.MAINNET_GAS_LIMIT != env.GAS_LIMIT }}
-        uses: actions/github-script@v6
-        with:
-          script: core.setFailed(`Integration tests must update GAS_LIMIT from ${process.env.GAS_LIMIT} to ${process.env.MAINNET_GAS_LIMIT}`)
+        shell: bash
+        env:
+          CONSENSUS_PARAMS_URL: https://juno-rpc.polkachu.com/consensus_params
+        run: |
+          attempts=4
+          mainnet=""
+          for attempt in $(seq 1 "$attempts"); do
+            mainnet=$(curl -sf --max-time 20 "$CONSENSUS_PARAMS_URL" | jq -r '.result.consensus_params.block.max_gas' 2>/dev/null || true)
+            if [[ "$mainnet" =~ ^-?[0-9]+$ ]]; then
+              break
+            fi
+            echo "attempt $attempt/$attempts: no valid max_gas in the response (got '${mainnet}')"
+            mainnet=""
+            if [ "$attempt" -lt "$attempts" ]; then
+              sleep $((attempt * 5))
+            fi
+          done
+          if [ -z "$mainnet" ]; then
+            echo "::warning::Could not read Juno mainnet's block GAS_LIMIT from $CONSENSUS_PARAMS_URL after $attempts attempts; skipping the GAS_LIMIT check"
+            exit 0
+          fi
+          if [ "$mainnet" != "$GAS_LIMIT" ]; then
+            echo "::error::Integration tests must update GAS_LIMIT from $GAS_LIMIT to $mainnet"
+            exit 1
+          fi
+          echo "Juno mainnet block GAS_LIMIT is $mainnet, matching GAS_LIMIT"
 
       - name: Run Integration Tests
         run: just integration-test

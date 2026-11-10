@@ -17,7 +17,9 @@
 # The image's /usr/local/bin/optimize.sh is patched at run time instead of
 # being copied here, so the build always follows the image in use (including
 # after an optimizer upgrade). The script fails if the wasm-opt line it patches
-# is not found exactly once.
+# is not found exactly once. It also removes the previous build's
+# artifacts/checksums.txt before building and fails if no contract was built,
+# so the locals check never runs against stale or third-party-only artifacts.
 set -o errexit -o nounset -o pipefail
 
 FLAG="--one-caller-inline-max-function-size=15"
@@ -35,6 +37,25 @@ if [ "$(grep -c -- "^ *wasm-opt -Os .* $FLAG \"\\\$WASM\" " "$PATCHED")" -ne 1 ]
   exit 1
 fi
 
+# The image's script only writes artifacts/checksums.txt when it finds .wasm
+# files, so remove the previous build's copy first. Otherwise a build that
+# produced nothing would leave it in place and `just check-wasm-limits` would
+# check stale artifacts instead of failing. This runs in the container (as
+# root, at /code) because a local artifacts/ directory created by an earlier
+# optimizer run is owned by root. Nothing else in artifacts/ is removed: the
+# third-party contracts from `just download-deps` live there too.
+rm -f artifacts/checksums.txt
+
 # The image's default CMD (".") is replaced by this script's path, so default
 # the project directory here.
-exec /bin/ash "$PATCHED" "${1:-.}"
+/bin/ash "$PATCHED" "${1:-.}"
+
+# The image's script only warns when nothing was built, and checksums.txt would
+# then list just the third-party contracts from `just download-deps`. Fail
+# instead, and remove that checksums.txt so a later `just check-wasm-limits`
+# fails too; the image's script empties this directory before building.
+if ! ls /target/wasm32-unknown-unknown/release/*.wasm >/dev/null 2>&1; then
+  rm -f artifacts/checksums.txt
+  echo "error: the optimizer built no contracts" >&2
+  exit 1
+fi
